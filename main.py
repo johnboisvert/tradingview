@@ -593,58 +593,115 @@ def calculate_correlation_matrix(rows: List[dict]) -> Dict[str, Any]:
 # BACKTESTING ENGINE
 def run_backtest(rows: List[dict], filters: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Backtester simple: teste une stratégie sur l'historique
-    Filters: {"side": "LONG", "confidence_min": 70, "tf": "4h", etc.}
+    Backtester amélioré avec matching flexible
+    Filters: {"side": "LONG", "confidence_min": 70, "tf": "4h", "symbol": "XRP"}
     """
     filtered = rows
+    debug_info = {
+        "total_rows": len(rows),
+        "after_side": 0,
+        "after_confidence": 0,
+        "after_tf": 0,
+        "after_symbol": 0,
+        "closed_trades": 0
+    }
     
+    # Filtre 1: Side
     if filters.get("side"):
         filtered = [r for r in filtered if r.get("side") == filters["side"]]
+        debug_info["after_side"] = len(filtered)
     
-    if filters.get("confidence_min"):
+    # Filtre 2: Confidence (0 = skip ce filtre)
+    if filters.get("confidence_min") and filters["confidence_min"] > 0:
         filtered = [r for r in filtered if r.get("confidence", 0) >= filters["confidence_min"]]
+        debug_info["after_confidence"] = len(filtered)
     
+    # Filtre 3: Timeframe (matching flexible)
     if filters.get("tf"):
-        filtered = [r for r in filtered if r.get("tf_label") == filters["tf"]]
+        tf_filter = filters["tf"].lower().strip()
+        filtered = [r for r in filtered if r.get("tf_label", "").lower() == tf_filter or 
+                    str(r.get("tf", "")).lower() == tf_filter]
+        debug_info["after_tf"] = len(filtered)
     
+    # Filtre 4: Symbol (matching flexible - XRP matche XRPUSDT, XRPUSD, etc.)
     if filters.get("symbol"):
-        filtered = [r for r in filtered if r.get("symbol") == filters["symbol"]]
+        symbol_filter = filters["symbol"].upper().strip()
+        filtered = [r for r in filtered if symbol_filter in r.get("symbol", "").upper()]
+        debug_info["after_symbol"] = len(filtered)
     
-    closed = [r for r in filtered if r["row_state"] in ("tp", "sl")]
+    # Seulement les trades fermés (TP ou SL hit)
+    closed = [r for r in filtered if r.get("row_state") in ("tp", "sl")]
+    debug_info["closed_trades"] = len(closed)
     
     if not closed:
-        return {"trades": 0, "winrate": 0, "total_return": 0, "filters": filters}
+        return {
+            "trades": 0,
+            "winrate": 0,
+            "total_return": 0,
+            "avg_win": 0,
+            "avg_loss": 0,
+            "best_trade": 0,
+            "worst_trade": 0,
+            "filters": filters,
+            "debug": debug_info,
+            "message": "Aucun trade fermé ne correspond aux filtres"
+        }
     
+    # Calcul des stats
     wins = sum(1 for r in closed if r["row_state"] == "tp")
+    losses = sum(1 for r in closed if r["row_state"] == "sl")
     winrate = (wins / len(closed)) * 100
     
     # Calculate returns
     returns = []
     for r in closed:
-        if r["entry"]:
+        if r.get("entry"):
             try:
                 entry = float(r["entry"])
-                exit_p = float(r["sl"]) if r["sl_hit"] else float(r["tp1"]) if r.get("tp1") else None
+                exit_p = float(r["sl"]) if r.get("sl_hit") else float(r["tp1"]) if r.get("tp1") else None
                 if not exit_p: continue
                 
                 pl_pct = ((exit_p - entry) / entry) * 100
-                if r["side"] == "SHORT": pl_pct = -pl_pct
+                if r.get("side") == "SHORT": pl_pct = -pl_pct
                 returns.append(pl_pct)
-            except: pass
+            except: 
+                pass
+    
+    if not returns:
+        return {
+            "trades": len(closed),
+            "winrate": round(winrate, 1),
+            "wins": wins,
+            "losses": losses,
+            "total_return": 0,
+            "avg_win": 0,
+            "avg_loss": 0,
+            "best_trade": 0,
+            "worst_trade": 0,
+            "filters": filters,
+            "debug": debug_info,
+            "message": "Trades trouvés mais données de prix manquantes"
+        }
     
     total_return = sum(returns)
-    avg_win = sum(r for r in returns if r > 0) / max(1, len([r for r in returns if r > 0]))
-    avg_loss = abs(sum(r for r in returns if r < 0) / max(1, len([r for r in returns if r < 0])))
+    win_returns = [r for r in returns if r > 0]
+    loss_returns = [r for r in returns if r < 0]
+    
+    avg_win = sum(win_returns) / len(win_returns) if win_returns else 0
+    avg_loss = abs(sum(loss_returns) / len(loss_returns)) if loss_returns else 0
     
     return {
         "trades": len(closed),
         "winrate": round(winrate, 1),
+        "wins": wins,
+        "losses": losses,
         "total_return": round(total_return, 2),
         "avg_win": round(avg_win, 2),
         "avg_loss": round(avg_loss, 2),
         "best_trade": round(max(returns), 2) if returns else 0,
         "worst_trade": round(min(returns), 2) if returns else 0,
-        "filters": filters
+        "filters": filters,
+        "debug": debug_info
     }
 
 # CIRCUIT BREAKER
@@ -929,6 +986,34 @@ async def post_backtest(filters: Dict[str, Any]):
     result = run_backtest(rows, filters)
     return {"ok": True, "backtest": result}
 
+@app.get("/api/backtest/available-data")
+async def get_available_data():
+    """Retourne les symboles, TFs et sides disponibles pour le backtest"""
+    rows = build_trade_rows(limit=1000)
+    
+    symbols = set()
+    tfs = set()
+    sides = set()
+    
+    for r in rows:
+        if r.get("symbol"):
+            symbols.add(r["symbol"])
+        if r.get("tf_label"):
+            tfs.add(r["tf_label"])
+        if r.get("side"):
+            sides.add(r["side"])
+    
+    return {
+        "ok": True,
+        "data": {
+            "symbols": sorted(list(symbols)),
+            "timeframes": sorted(list(tfs)),
+            "sides": sorted(list(sides)),
+            "total_trades": len(rows),
+            "closed_trades": len([r for r in rows if r.get("row_state") in ("tp", "sl")])
+        }
+    }
+
 # JOURNAL API
 @app.post("/api/journal")
 async def add_journal_note(note: JournalNote):
@@ -1110,33 +1195,128 @@ async def backtest_page():
     <body><div class="container">
     <div class="header"><h1>⏮️ Backtesting Engine</h1><p>Testez des stratégies sur l'historique</p></div>
     {NAV}
+    
+    <div id="availableData" class="card">
+        <h2>📊 Chargement des données disponibles...</h2>
+    </div>
+    
     <div class="card">
         <h2>Configuration du Backtest</h2>
         <form id="backtestForm">
             <label>Side (optionnel)</label>
-            <select name="side">
+            <select name="side" id="sideSelect">
                 <option value="">Tous</option>
-                <option value="LONG">LONG seulement</option>
-                <option value="SHORT">SHORT seulement</option>
             </select>
             
-            <label>Symbole (optionnel)</label>
-            <input type="text" name="symbol" placeholder="ex: BTCUSDT">
+            <label>Symbole (optionnel) - Tapez une partie du nom (ex: XRP pour XRPUSDT)</label>
+            <input type="text" name="symbol" id="symbolInput" placeholder="ex: XRP, BTC, ETH">
+            <div id="symbolSuggestions" style="font-size:12px;color:#64748b;margin-top:4px"></div>
             
             <label>Timeframe (optionnel)</label>
-            <input type="text" name="tf" placeholder="ex: 4h">
+            <select name="tf" id="tfSelect">
+                <option value="">Tous</option>
+            </select>
             
-            <label>Confiance minimale (0-100)</label>
+            <label>Confiance minimale (0 = ignorer ce filtre)</label>
             <input type="number" name="confidence_min" min="0" max="100" value="0">
             
             <button type="submit">🚀 Lancer le Backtest</button>
         </form>
+        
+        <div style="margin-top:20px;padding:16px;background:rgba(99,102,241,0.05);border-radius:12px;border:1px solid rgba(99,102,241,0.2)">
+            <strong>💡 Astuce:</strong> Le symbole supporte la recherche partielle. 
+            "XRP" trouvera "XRPUSDT", "XRPUSD", etc.
+        </div>
     </div>
+    
     <div id="results" class="card" style="display:none">
         <h2>Résultats</h2>
         <div id="resultsContent"></div>
     </div>
+    
     <script>
+    let availableSymbols = [];
+    
+    // Charger les données disponibles
+    async function loadAvailableData() {{
+        try {{
+            const res = await fetch('/api/backtest/available-data');
+            const data = await res.json();
+            
+            if (data.ok) {{
+                const d = data.data;
+                availableSymbols = d.symbols;
+                
+                // Afficher les stats
+                document.getElementById('availableData').innerHTML = `
+                    <h2>📊 Données Disponibles</h2>
+                    <div class="grid">
+                        <div class="metric">
+                            <div class="metric-label">Total Trades</div>
+                            <div class="metric-value">${{d.total_trades}}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Trades Fermés</div>
+                            <div class="metric-value">${{d.closed_trades}}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Symboles</div>
+                            <div class="metric-value">${{d.symbols.length}}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Timeframes</div>
+                            <div class="metric-value">${{d.timeframes.length}}</div>
+                        </div>
+                    </div>
+                    <p style="margin-top:16px;color:#64748b">
+                        <strong>Symboles:</strong> ${{d.symbols.join(', ')}}
+                    </p>
+                    <p style="color:#64748b">
+                        <strong>Timeframes:</strong> ${{d.timeframes.join(', ')}}
+                    </p>
+                `;
+                
+                // Remplir les selects
+                const sideSelect = document.getElementById('sideSelect');
+                d.sides.forEach(side => {{
+                    const opt = document.createElement('option');
+                    opt.value = side;
+                    opt.textContent = side;
+                    sideSelect.appendChild(opt);
+                }});
+                
+                const tfSelect = document.getElementById('tfSelect');
+                d.timeframes.forEach(tf => {{
+                    const opt = document.createElement('option');
+                    opt.value = tf;
+                    opt.textContent = tf;
+                    tfSelect.appendChild(opt);
+                }});
+            }}
+        }} catch (e) {{
+            console.error('Erreur chargement données:', e);
+        }}
+    }}
+    
+    // Suggestions de symboles
+    document.getElementById('symbolInput').addEventListener('input', (e) => {{
+        const val = e.target.value.toUpperCase();
+        if (!val) {{
+            document.getElementById('symbolSuggestions').innerHTML = '';
+            return;
+        }}
+        
+        const matches = availableSymbols.filter(s => s.includes(val)).slice(0, 5);
+        if (matches.length > 0) {{
+            document.getElementById('symbolSuggestions').innerHTML = 
+                '💡 Correspondances: ' + matches.join(', ');
+        }} else {{
+            document.getElementById('symbolSuggestions').innerHTML = 
+                '⚠️ Aucun symbole trouvé';
+        }}
+    }});
+    
+    // Soumettre le backtest
     document.getElementById('backtestForm').addEventListener('submit', async (e) => {{
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -1144,6 +1324,10 @@ async def backtest_page():
         for (let [key, value] of formData.entries()) {{
             if (value) filters[key] = isNaN(value) ? value : Number(value);
         }}
+        
+        // Afficher loading
+        document.getElementById('results').style.display = 'block';
+        document.getElementById('resultsContent').innerHTML = '<p>⏳ Calcul en cours...</p>';
         
         const res = await fetch('/api/backtest', {{
             method: 'POST',
@@ -1154,23 +1338,75 @@ async def backtest_page():
         
         if (data.ok) {{
             const r = data.backtest;
-            document.getElementById('results').style.display = 'block';
-            document.getElementById('resultsContent').innerHTML = `
-                <div class="grid">
-                    <div class="metric"><div class="metric-label">Trades</div><div class="metric-value">${{r.trades}}</div></div>
-                    <div class="metric"><div class="metric-label">Win Rate</div><div class="metric-value">${{r.winrate}}%</div></div>
-                    <div class="metric"><div class="metric-label">Return Total</div><div class="metric-value" style="color:${{r.total_return >= 0 ? '#10b981' : '#ef4444'}}">${{r.total_return >= 0 ? '+' : ''}}${{r.total_return}}%</div></div>
-                    <div class="metric"><div class="metric-label">Avg Win</div><div class="metric-value">${{r.avg_win}}%</div></div>
-                    <div class="metric"><div class="metric-label">Avg Loss</div><div class="metric-value">${{r.avg_loss}}%</div></div>
-                    <div class="metric"><div class="metric-label">Best Trade</div><div class="metric-value" style="color:#10b981">+${{r.best_trade}}%</div></div>
-                    <div class="metric"><div class="metric-label">Worst Trade</div><div class="metric-value" style="color:#ef4444">${{r.worst_trade}}%</div></div>
-                </div>
-                <p style="margin-top:20px;padding:16px;background:rgba(99,102,241,0.1);border-radius:12px">
-                    💡 <strong>Filtres appliqués:</strong> ${{JSON.stringify(r.filters)}}
-                </p>
-            `;
+            
+            let html = '';
+            
+            if (r.trades === 0) {{
+                html = `
+                    <div style="padding:20px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:12px">
+                        <h3 style="color:#ef4444;margin:0 0 12px 0">❌ Aucun Trade Trouvé</h3>
+                        <p style="color:#e2e8f0;margin:0">${{r.message || 'Aucun trade ne correspond à vos filtres'}}</p>
+                    </div>
+                    
+                    <div style="margin-top:20px;padding:16px;background:rgba(99,102,241,0.1);border-radius:12px">
+                        <strong>🔍 Debug Info:</strong>
+                        <ul style="margin:8px 0;padding-left:20px">
+                            <li>Trades dans la base: ${{r.debug?.total_rows || 0}}</li>
+                            <li>Après filtre SIDE: ${{r.debug?.after_side || 'N/A'}}</li>
+                            <li>Après filtre CONFIDENCE: ${{r.debug?.after_confidence || 'N/A'}}</li>
+                            <li>Après filtre TF: ${{r.debug?.after_tf || 'N/A'}}</li>
+                            <li>Après filtre SYMBOL: ${{r.debug?.after_symbol || 'N/A'}}</li>
+                            <li>Trades fermés (TP/SL): ${{r.debug?.closed_trades || 0}}</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="margin-top:16px;padding:16px;background:rgba(251,191,36,0.1);border-radius:12px">
+                        <strong>💡 Conseils:</strong>
+                        <ul style="margin:8px 0;padding-left:20px">
+                            <li>Vérifiez que le symbole existe (voir "Données Disponibles" ci-dessus)</li>
+                            <li>Pour XRP, tapez juste "XRP" pas "XRPUSDT"</li>
+                            <li>Laissez les filtres vides pour tester TOUS les trades d'abord</li>
+                            <li>Assurez-vous d'avoir des trades fermés (TP ou SL hit)</li>
+                        </ul>
+                    </div>
+                `;
+            }} else {{
+                html = `
+                    <div class="grid">
+                        <div class="metric"><div class="metric-label">Trades</div><div class="metric-value">${{r.trades}}</div></div>
+                        <div class="metric"><div class="metric-label">Wins / Losses</div><div class="metric-value">${{r.wins}} / ${{r.losses}}</div></div>
+                        <div class="metric"><div class="metric-label">Win Rate</div><div class="metric-value">${{r.winrate}}%</div></div>
+                        <div class="metric"><div class="metric-label">Return Total</div><div class="metric-value" style="color:${{r.total_return >= 0 ? '#10b981' : '#ef4444'}}">${{r.total_return >= 0 ? '+' : ''}}${{r.total_return}}%</div></div>
+                        <div class="metric"><div class="metric-label">Avg Win</div><div class="metric-value" style="color:#10b981">+${{r.avg_win}}%</div></div>
+                        <div class="metric"><div class="metric-label">Avg Loss</div><div class="metric-value" style="color:#ef4444">-${{r.avg_loss}}%</div></div>
+                        <div class="metric"><div class="metric-label">Best Trade</div><div class="metric-value" style="color:#10b981">+${{r.best_trade}}%</div></div>
+                        <div class="metric"><div class="metric-label">Worst Trade</div><div class="metric-value" style="color:#ef4444">${{r.worst_trade}}%</div></div>
+                    </div>
+                    
+                    <div style="margin-top:20px;padding:16px;background:rgba(99,102,241,0.1);border-radius:12px">
+                        💡 <strong>Filtres appliqués:</strong> ${{JSON.stringify(r.filters)}}
+                    </div>
+                    
+                    <div style="margin-top:16px;padding:16px;background:${{
+                        r.total_return > 10 ? 'rgba(16,185,129,0.1)' : 
+                        r.total_return > 0 ? 'rgba(251,191,36,0.1)' : 
+                        'rgba(239,68,68,0.1)'
+                    }};border-radius:12px">
+                        <strong>📊 Verdict:</strong> ${{
+                            r.total_return > 10 ? '🟢 Excellente stratégie !' :
+                            r.total_return > 0 ? '🟡 Stratégie profitable' :
+                            '🔴 Stratégie perdante - À éviter'
+                        }}
+                    </div>
+                `;
+            }}
+            
+            document.getElementById('resultsContent').innerHTML = html;
         }}
     }});
+    
+    // Charger au démarrage
+    loadAvailableData();
     </script>
     </div></body></html>"""
     return html

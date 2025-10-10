@@ -1,6 +1,3 @@
-"""
-Trading Dashboard - VERSION FINALE COMPLÈTE (patch 2025-10-10)
-"""
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -1331,3 +1328,4 @@ if __name__ == "__main__":
         print("  export TELEGRAM_CHAT_ID='...'")
     print("="*70 + "\n")
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+

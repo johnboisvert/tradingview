@@ -1032,7 +1032,7 @@ async def dominance_page():
 <body><div class="container"><div class="header"><h1>Dominance Bitcoin</h1></div>{NAV}
 <div class='card'><h2>Dominance BTC</h2>
 <div style='text-align:center;font-size:72px;color:#f7931a;'>52.3%</div>
-<p style='text-align:center;font-size:18px;color:#10b981;'>↑ En hausse</p>
+<p style='text-align:center;font-size:18px;color:#10b981;'>En hausse</p>
 </div></div></body></html>"""
     return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
 

@@ -250,43 +250,107 @@ async def get_fear_greed():
 
 @app.get("/api/bullrun-phase")
 async def get_bullrun_phase():
-    try:
-        async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
-            r = await client.get("https://api.binance.com/api/v3/ticker/24hr", params={"symbol": "BTCUSDT"})
-            if r.status_code == 200:
-                d = r.json()
-                price = float(d["lastPrice"])
-                change = float(d["priceChangePercent"])
-                dom = 52.0 + (change * 0.5)
-                
-                if change > 5:
-                    phase, color = "Pompage Bitcoin", "#f7931a"
-                elif change < -5:
-                    phase, color = "Marche Baissier", "#ef4444"
-                elif -2 < change < 2:
-                    phase, color = "Consolidation", "#f59e0b"
-                else:
-                    phase, color = "Marche Actif", "#60a5fa"
-                
-                return {
-                    "phase": phase,
-                    "btc_price": round(price, 2),
-                    "btc_change_24h": round(change, 2),
-                    "btc_dominance": round(dom, 2),
-                    "color": color,
-                    "status": "success"
-                }
-    except:
-        pass
+    """Détermine la phase du cycle crypto en temps réel"""
+    print("\n" + "="*50)
+    print("📊 ANALYSE PHASE BULLRUN")
+    print("="*50)
     
-    return {
-        "phase": "Marche Stable",
-        "btc_price": 95234.50,
-        "btc_change_24h": 1.23,
-        "btc_dominance": 52.3,
-        "color": "#60a5fa",
-        "status": "fallback"
-    }
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            # Récupérer données BTC
+            btc_r = await client.get("https://api.binance.com/api/v3/ticker/24hr", params={"symbol": "BTCUSDT"})
+            eth_r = await client.get("https://api.binance.com/api/v3/ticker/24hr", params={"symbol": "ETHUSDT"})
+            
+            if btc_r.status_code != 200 or eth_r.status_code != 200:
+                raise Exception("Impossible de récupérer les données")
+            
+            btc_data = btc_r.json()
+            eth_data = eth_r.json()
+            
+            btc_price = float(btc_data["lastPrice"])
+            btc_change_7d = float(btc_data["priceChangePercent"])
+            eth_change_7d = float(eth_data["priceChangePercent"])
+            
+            print(f"BTC: ${btc_price:,.2f} ({btc_change_7d:+.2f}%)")
+            print(f"ETH: ({eth_change_7d:+.2f}%)")
+            
+            # Récupérer altcoins
+            alts = ["SOLUSDT", "ADAUSDT", "AVAXUSDT", "LINKUSDT"]
+            alt_changes = []
+            
+            for alt in alts:
+                try:
+                    alt_r = await client.get("https://api.binance.com/api/v3/ticker/24hr", params={"symbol": alt})
+                    if alt_r.status_code == 200:
+                        change = float(alt_r.json()["priceChangePercent"])
+                        alt_changes.append(change)
+                        print(f"{alt}: {change:+.2f}%")
+                except:
+                    pass
+            
+            avg_alt = sum(alt_changes) / len(alt_changes) if alt_changes else 0
+            print(f"Moyenne Alts: {avg_alt:+.2f}%")
+            
+            # LOGIQUE DE DÉTECTION DES PHASES
+            phase_num = 1
+            phase_name = "Phase 1: Bitcoin"
+            
+            # Phase 1: Bitcoin domine
+            if btc_change_7d > 3 and eth_change_7d < btc_change_7d and avg_alt < btc_change_7d:
+                phase_num = 1
+                phase_name = "Phase 1: Bitcoin"
+                print("✅ PHASE 1 DÉTECTÉE: Bitcoin domine")
+            
+            # Phase 2: Ethereum rattrape
+            elif eth_change_7d > btc_change_7d and eth_change_7d > 2:
+                phase_num = 2
+                phase_name = "Phase 2: Ethereum"
+                print("✅ PHASE 2 DÉTECTÉE: Ethereum surperforme")
+            
+            # Phase 3: Large caps explosent
+            elif avg_alt > eth_change_7d and avg_alt > 5:
+                phase_num = 3
+                phase_name = "Phase 3: Large Caps"
+                print("✅ PHASE 3 DÉTECTÉE: Large caps paraboliques")
+            
+            # Phase 4: Tout explose (Altseason)
+            elif avg_alt > 10 and eth_change_7d > 8 and btc_change_7d > 5:
+                phase_num = 4
+                phase_name = "Phase 4: Altseason"
+                print("✅ PHASE 4 DÉTECTÉE: Altseason complète")
+            
+            # Consolidation
+            elif abs(btc_change_7d) < 2 and abs(eth_change_7d) < 2:
+                phase_num = 0
+                phase_name = "Consolidation"
+                print("✅ CONSOLIDATION DÉTECTÉE")
+            
+            print("="*50 + "\n")
+            
+            return {
+                "current_phase": phase_num,
+                "phase_name": phase_name,
+                "btc_price": round(btc_price, 2),
+                "btc_change": round(btc_change_7d, 2),
+                "eth_change": round(eth_change_7d, 2),
+                "avg_alt_change": round(avg_alt, 2),
+                "status": "success"
+            }
+            
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        print("="*50 + "\n")
+        
+        # Retour par défaut
+        return {
+            "current_phase": 1,
+            "phase_name": "Phase 1: Bitcoin",
+            "btc_price": 95000,
+            "btc_change": 0,
+            "eth_change": 0,
+            "avg_alt_change": 0,
+            "status": "fallback"
+        }
 
 @app.get("/api/news")
 async def get_news():
@@ -796,10 +860,278 @@ async def fear_greed_page():
 @app.get("/bullrun-phase", response_class=HTMLResponse)
 async def bullrun_page():
     html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Bullrun</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>Phase Bullrun</h1></div>{NAV}
-<div class='card'><h2>Analyse de Phase</h2><div id='ph'>Chargement...</div></div>
-<script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3 style="color:'+d.color+'">'+d.phase+'</h3><p>Prix BTC: $'+d.btc_price.toLocaleString()+'</p><p>Change 24h: '+d.btc_change_24h+'%</p><p>Dominance: '+d.btc_dominance+'%</p>';}}load();</script>
+<html><head><meta charset="UTF-8"><title>Cycle Bullrun</title>{CSS}
+<style>
+.phase-container{{display:grid;gap:15px;margin-top:20px;}}
+.phase-box{{padding:20px;border-radius:12px;border:3px solid transparent;transition:all 0.3s;}}
+.phase-box.active{{border-color:#fff;box-shadow:0 0 20px rgba(255,255,255,0.3);transform:scale(1.02);}}
+.phase-box h3{{margin:0 0 10px 0;font-size:22px;}}
+.phase-box p{{margin:5px 0;font-size:14px;line-height:1.6;}}
+.phase-1{{background:linear-gradient(135deg,#3b82f6 0%,#1e40af 100%);}}
+.phase-2{{background:linear-gradient(135deg,#8b5cf6 0%,#6d28d9 100%);}}
+.phase-3{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);}}
+.phase-4{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);}}
+.phase-overlap{{background:linear-gradient(135deg,#64748b 0%,#475569 100%);}}
+.current-phase{{text-align:center;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px;margin-bottom:30px;}}
+.current-phase h2{{font-size:32px;margin-bottom:10px;}}
+.market-stats{{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-top:20px;}}
+.stat{{background:#0f172a;padding:15px;border-radius:8px;text-align:center;}}
+.stat .label{{color:#94a3b8;font-size:13px;}}
+.stat .value{{font-size:24px;font-weight:bold;margin-top:5px;}}
+</style>
+</head>
+<body><div class="container"><div class="header"><h1>📊 Cycle Bullrun</h1><p>Analyse des 4 phases du marché crypto</p></div>{NAV}
+
+<div class="current-phase">
+<h2 id="current-phase-name">Chargement...</h2>
+<p id="current-phase-desc" style="font-size:18px;color:#94a3b8;"></p>
+</div>
+
+<div class="market-stats">
+<div class="stat"><div class="label">Prix BTC</div><div class="value" id="btc-price">$0</div></div>
+<div class="stat"><div class="label">BTC 24h</div><div class="value" id="btc-change">0%</div></div>
+<div class="stat"><div class="label">ETH 24h</div><div class="value" id="eth-change">0%</div></div>
+<div class="stat"><div class="label">Alts Moy. 24h</div><div class="value" id="alt-change">0%</div></div>
+</div>
+
+<div class="card">
+<h2>Les 4 Phases du Cycle</h2>
+<div class="phase-container">
+
+<div class="phase-box phase-1" id="phase-1">
+<h3>🟦 Phase 1: Bitcoin</h3>
+<p><strong>Flow of money moves into Bitcoin causing prices surges</strong></p>
+<p>• L'argent afflue dans Bitcoin en premier</p>
+<p>• Les prix commencent à monter fortement</p>
+<p>• Bitcoin domine le marché</p>
+<p>• Les altcoins sont en retard</p>
+</div>
+
+<div class="phase-box phase-2" id="phase-2">
+<h3>🟪 Phase 2: Ethereum</h3>
+<p><strong>Money flows into Ethereum but it struggles to keep up with Bitcoin</strong></p>
+<p>• L'argent commence à affluer dans Ethereum</p>
+<p>• Ethereum peine à suivre Bitcoin au début</p>
+<p>• Puis Ethereum revient et surperforme Bitcoin</p>
+<p>• Le ratio ETH/BTC augmente</p>
+</div>
+
+<div class="phase-box phase-3" id="phase-3">
+<h3>🟩 Phase 3: Large Caps</h3>
+<p><strong>Ethereum is outperforming Bitcoin and large caps are going parabolic</strong></p>
+<p>• Ethereum surperforme clairement Bitcoin</p>
+<p>• Les large caps (SOL, ADA, AVAX) explosent</p>
+<p>• Mouvement parabolique sur les top altcoins</p>
+<p>• Le marché devient très bullish</p>
+</div>
+
+<div class="phase-box phase-4" id="phase-4">
+<h3>🟧 Phase 4: Altseason</h3>
+<p><strong>Large caps have gone full vertical and we're seeing blow off tops</strong></p>
+<p>• Les large caps deviennent verticales</p>
+<p>• On voit des sommets partout (blow-off tops)</p>
+<p>• Les micro caps pompent en même temps</p>
+<p>• Euphorie totale, tout le monde est surexcité</p>
+<p>• ⚠️ Signal de vente potentiel</p>
+</div>
+
+<div class="phase-box phase-overlap" id="phase-overlap">
+<h3>⚪ Phase Overlap</h3>
+<p><strong>Consolidation et accumulation</strong></p>
+<p>• Le marché consolide entre deux phases</p>
+<p>• Période d'accumulation</p>
+<p>• Attente du prochain mouvement</p>
+</div>
+
+</div>
+</div>
+
+<script>
+async function load(){{
+try{{
+const r=await fetch('/api/bullrun-phase');
+const d=await r.json();
+
+document.getElementById('current-phase-name').textContent=d.phase_name;
+document.getElementById('current-phase-desc').textContent=d.phase_description;
+document.getElementById('btc-price').textContent='
+
+@app.get("/convertisseur", response_class=HTMLResponse)
+async def converter_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Convertisseur</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Convertisseur Crypto</h1></div>{NAV}
+<div class='card'><h2>Convertir</h2>
+<input id='amt' value='1' type='number' placeholder='Montant'>
+<select id='from'><option value='BTC'>BTC</option><option value='ETH'>ETH</option><option value='SOL'>SOL</option><option value='USD'>USD</option><option value='EUR'>EUR</option><option value='CAD'>CAD</option></select>
+<select id='to'><option value='USD'>USD</option><option value='BTC'>BTC</option><option value='ETH'>ETH</option><option value='SOL'>SOL</option><option value='EUR'>EUR</option><option value='CAD'>CAD</option></select>
+<button onclick='convert()'>Convertir</button><div id='result'></div></div>
+<script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<p style="color:#ef4444">'+d.error+'</p>';}}else{{document.getElementById('result').innerHTML='<h3>'+d.result+' '+d.to+'</h3><p>Taux: '+d.rate+'</p>';}}}}</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/annonces", response_class=HTMLResponse)
+async def news_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Actualites</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Actualites Crypto</h1></div>{NAV}
+<div class='card'><h2>Dernieres News</h2><div id='nw'>Chargement...</div></div>
+<script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style="padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;"><h3>'+n.title+'</h3><p style="color:#94a3b8">'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/btc-quarterly", response_class=HTMLResponse)
+async def quarterly_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Trimestriel BTC</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Performance Trimestrielle BTC</h1></div>{NAV}
+<div class='card'><h2>Rendements par Trimestre</h2><div id='q'>Chargement...</div></div>
+<script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/heatmap", response_class=HTMLResponse)
+async def heatmap_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Heatmap</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Heatmap Performance</h1></div>{NAV}
+<div class='card'><h2>Heatmap</h2>
+<button onclick='loadHeatmap("monthly")'>Mensuelle</button> 
+<button onclick='loadHeatmap("yearly")'>Annuelle</button>
+<div id='hmap'>Chargement...</div></div>
+<script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>0?'#10b981':'#ef4444';h+='<div style="display:inline-block;margin:5px;padding:20px;background:'+color+';border-radius:8px;"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendar_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Calendrier Crypto</h1></div>{NAV}
+<div class='card'><h2>Evenements a Venir</h2><div id='cal'>Chargement...</div></div>
+<script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Evenement</th><th>Categorie</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td><td>'+e.category+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/altcoin-season", response_class=HTMLResponse)
+async def altseason_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>AltSeason</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Altcoin Season Index</h1></div>{NAV}
+<div class='card'><h2>AltSeason Index</h2>
+<div style='text-align:center;font-size:72px;color:#60a5fa;'>27</div>
+<p style='text-align:center;font-size:24px;'>Saison Bitcoin</p>
+<p style='text-align:center;color:#94a3b8;'>Moins de 25% des top 50 surperforment BTC</p>
+</div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/btc-dominance", response_class=HTMLResponse)
+async def dominance_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Dominance BTC</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Dominance Bitcoin</h1></div>{NAV}
+<div class='card'><h2>Dominance BTC</h2>
+<div style='text-align:center;font-size:72px;color:#f7931a;'>52.3%</div>
+<p style='text-align:center;font-size:18px;color:#10b981;'>↑ En hausse</p>
+</div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/strategie", response_class=HTMLResponse)
+async def strategy_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Strategie</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Strategie de Trading</h1></div>{NAV}
+<div class='card'><h2>Regles de Trading</h2>
+<ul style='line-height:2;'>
+<li>Risk/Reward: 1:2 minimum</li>
+<li>Position Size: Max 2% du capital</li>
+<li>Stop Loss: Toujours definir avant l'entree</li>
+<li>Max 3 trades simultanement</li>
+<li>Jamais moyenner a la baisse</li>
+</ul></div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/correlations", response_class=HTMLResponse)
+async def correlations_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Correlations</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Correlations</h1></div>{NAV}
+<div class='card'><h2>Correlations Crypto</h2>
+<p style='font-size:20px;padding:15px;'>BTC-ETH: <strong style='color:#10b981;'>0.87</strong></p>
+<p style='font-size:20px;padding:15px;'>BTC-TOTAL: <strong style='color:#10b981;'>0.92</strong></p>
+<p style='font-size:20px;padding:15px;'>ETH-ALTS: <strong style='color:#f59e0b;'>0.78</strong></p>
+</div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/top-movers", response_class=HTMLResponse)
+async def movers_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Top Movers</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Top Movers 24h</h1></div>{NAV}
+<div class='grid grid-2'>
+<div class='card'><h2>Gainers</h2>
+<p style='padding:10px;background:#0f172a;margin:5px 0;border-radius:6px;'>SOL: <span style='color:#10b981;'>+12.5%</span></p>
+<p style='padding:10px;background:#0f172a;margin:5px 0;border-radius:6px;'>AVAX: <span style='color:#10b981;'>+10.2%</span></p>
+</div>
+<div class='card'><h2>Losers</h2>
+<p style='padding:10px;background:#0f172a;margin:5px 0;border-radius:6px;'>DOGE: <span style='color:#ef4444;'>-5.3%</span></p>
+<p style='padding:10px;background:#0f172a;margin:5px 0;border-radius:6px;'>ADA: <span style='color:#ef4444;'>-4.1%</span></p>
+</div></div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/performance", response_class=HTMLResponse)
+async def performance_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Performance</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Performance par Paire</h1></div>{NAV}
+<div class='card'><h2>Stats Trading</h2>
+<p style='text-align:center;padding:40px;color:#94a3b8;'>Lancez des trades pour voir vos statistiques ici</p>
+</div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+if __name__ == "__main__":
+    import uvicorn
+    quebec_time = get_quebec_time()
+    offset = get_quebec_offset()
+    offset_str = f"UTC{offset.total_seconds()/3600:+.0f}"
+    
+    print("\n" + "="*60)
+    print("🚀 TRADING DASHBOARD v5.0 - QUÉBEC EDITION")
+    print("="*60)
+    print(f"✅ Fuseau horaire: {offset_str} (Québec/Montréal)")
+    print(f"🕐 Heure actuelle QC: {format_quebec_time(quebec_time)}")
+    print("✅ Bot Telegram avec logging détaillé")
+    print("✅ Webhook flexible (accepte tout format JSON)")
+    print(f"📱 Token: {TELEGRAM_BOT_TOKEN[:15]}...{TELEGRAM_BOT_TOKEN[-5:]}")
+    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
+    print("\n🌐 Serveur: http://localhost:8000")
+    print("📊 Test Telegram: http://localhost:8000/telegram-test")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
++d.btc_price.toLocaleString();
+document.getElementById('btc-change').textContent=(d.btc_change_24h>0?'+':'')+d.btc_change_24h+'%';
+document.getElementById('eth-change').textContent=(d.eth_change_24h>0?'+':'')+d.eth_change_24h+'%';
+document.getElementById('alt-change').textContent=(d.avg_alt_change>0?'+':'')+d.avg_alt_change+'%';
+
+document.getElementById('btc-change').style.color=d.btc_change_24h>0?'#10b981':'#ef4444';
+document.getElementById('eth-change').style.color=d.eth_change_24h>0?'#10b981':'#ef4444';
+document.getElementById('alt-change').style.color=d.avg_alt_change>0?'#10b981':'#ef4444';
+
+document.querySelectorAll('.phase-box').forEach(box=>box.classList.remove('active'));
+
+if(d.current_phase===0){{
+document.getElementById('phase-overlap').classList.add('active');
+}}else if(d.current_phase>=1&&d.current_phase<=4){{
+document.getElementById('phase-'+d.current_phase).classList.add('active');
+}}
+
+}}catch(e){{
+console.error('Erreur:',e);
+}}
+}}
+load();
+setInterval(load,60000);
+</script>
 </div></body></html>"""
     return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
 

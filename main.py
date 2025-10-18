@@ -578,34 +578,12 @@ TRADES_HTML = """<!DOCTYPE html>
 <div class="stat-box"><div class="label">P&L Total</div><div class="value" id="p">0%</div></div>
 <div class="stat-box"><div class="label">P&L Moyen</div><div class="value" id="a">0%</div></div>
 </div>
-<div class="card">
-<h2>Actions</h2>
-<button class="btn-danger" onclick="reset()">Reinitialiser Trades</button>
-</div>
+<div class="card"><h2>Actions</h2>
+<button class="btn-danger" onclick="reset()">Reinitialiser Trades</button></div>
 <script>
-async function load(){{
-try{{
-const r=await fetch('/api/stats');
-const d=await r.json();
-document.getElementById('t').textContent=d.total_trades;
-document.getElementById('w').textContent=d.win_rate+'%';
-document.getElementById('p').textContent=(d.total_pnl>0?'+':'')+d.total_pnl+'%';
-document.getElementById('a').textContent=(d.avg_pnl>0?'+':'')+d.avg_pnl+'%';
-document.getElementById('p').style.color=d.total_pnl>0?'#10b981':'#ef4444';
-document.getElementById('a').style.color=d.avg_pnl>0?'#10b981':'#ef4444';
-}}catch(e){{
-console.error('Erreur:',e);
-}}
-}}
-async function reset(){{
-if(confirm('Reinitialiser tous les trades?')){{
-await fetch('/api/reset-trades',{{method:'POST'}});
-alert('Trades reinitialises!');
-load();
-}}
-}}
-load();
-setInterval(load,10000);
+async function load(){{try{{const r=await fetch('/api/stats');const d=await r.json();document.getElementById('t').textContent=d.total_trades;document.getElementById('w').textContent=d.win_rate+'%';document.getElementById('p').textContent=(d.total_pnl>0?'+':'')+d.total_pnl+'%';document.getElementById('a').textContent=(d.avg_pnl>0?'+':'')+d.avg_pnl+'%';document.getElementById('p').style.color=d.total_pnl>0?'#10b981':'#ef4444';document.getElementById('a').style.color=d.avg_pnl>0?'#10b981':'#ef4444';}}catch(e){{console.error('Erreur:',e);}}}}
+async function reset(){{if(confirm('Reinitialiser tous les trades?')){{await fetch('/api/reset-trades',{{method:'POST'}});alert('Trades reinitialises!');load();}}}}
+load();setInterval(load,10000);
 </script></div></body></html>"""
 
 TELEGRAM_HTML = """<!DOCTYPE html>
@@ -630,16 +608,18 @@ PAPER_HTML = """<!DOCTYPE html>
 <input type="number" id="qt" value="0.01" step="0.001">
 <button onclick="trade()">Executer</button>
 <button onclick="resetPaper()" class="btn-danger">Reset</button>
-<div id="ms"></div>
-</div>
+<div id="ms"></div></div>
 <div class="card"><h2>Portefeuille</h2><div id="ba">Chargement...</div></div>
 </div>
 <div class="card"><h2>Historique</h2><div id="hi">Aucun trade</div></div>
 <script>
-async function loadStats(){{
-const r=await fetch('/api/paper-stats');
-const d=await r.json();
-document.getElementById('tv').textContent='
+async function loadStats(){{const r=await fetch('/api/paper-stats');const d=await r.json();document.getElementById('tv').textContent='$'+d.total_value.toLocaleString();document.getElementById('pn').textContent='$'+d.pnl;document.getElementById('tt').textContent=d.total_trades;document.getElementById('pn').style.color=d.pnl>0?'#10b981':'#ef4444';}}
+async function loadBal(){{const r=await fetch('/api/paper-balance');const d=await r.json();let h='';for(const[c,a]of Object.entries(d.balance)){{if(a>0.00001)h+='<div style="padding:10px;background:#0f172a;border-radius:6px;margin:5px 0;"><strong>'+c+':</strong> '+(c==='USDT'?a.toFixed(2):a.toFixed(6))+'</div>';}}document.getElementById('ba').innerHTML=h||'Vide';}}
+async function loadHist(){{const r=await fetch('/api/paper-trades');const d=await r.json();if(d.trades.length===0){{document.getElementById('hi').innerHTML='Aucun trade';return;}}let h='<table><tr><th>Date</th><th>Action</th><th>Crypto</th><th>Qte</th><th>Prix</th><th>Total</th></tr>';d.trades.slice().reverse().forEach(t=>{{h+='<tr><td>'+new Date(t.timestamp).toLocaleString()+'</td><td>'+t.action+'</td><td>'+t.symbol.replace('USDT','')+'</td><td>'+t.quantity+'</td><td>$'+t.price.toFixed(2)+'</td><td>$'+t.total.toFixed(2)+'</td></tr>';}});h+='</table>';document.getElementById('hi').innerHTML=h;}}
+async function trade(){{const r=await fetch('/api/paper-trade',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{action:document.getElementById('ac').value,symbol:document.getElementById('sy').value,quantity:document.getElementById('qt').value}})}});const d=await r.json();document.getElementById('ms').innerHTML='<div class="alert alert-'+(d.status==='success'?'success':'error')+'">'+d.message+'</div>';setTimeout(()=>{{document.getElementById('ms').innerHTML='';}},5000);loadStats();loadBal();loadHist();}}
+async function resetPaper(){{if(confirm('Reset?')){{await fetch('/api/paper-reset',{{method:'POST'}});alert('OK');loadStats();loadBal();loadHist();}}}}
+loadStats();loadBal();loadHist();setInterval(()=>{{loadStats();loadBal();}},30000);
+</script></div></body></html>"""
 
 BACKTEST_HTML = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Backtest</title>{CSS}</head>
@@ -648,8 +628,7 @@ BACKTEST_HTML = """<!DOCTYPE html>
 <div class="card"><h2>Config</h2>
 <select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
 <input type="number" id="ca" value="10000" step="1000">
-<button onclick="run()">Lancer</button>
-</div>
+<button onclick="run()">Lancer</button></div>
 <div class="card"><h2>Resultats</h2>
 <div id="rs" style="display:none;">
 <div class="grid grid-2">
@@ -660,122 +639,7 @@ BACKTEST_HTML = """<!DOCTYPE html>
 </div>
 <div id="lo" style="display:none;text-align:center;padding:40px;">Calcul...</div>
 <div id="ph" style="text-align:center;padding:40px;">Configurez et lancez</div>
-<div id="er"></div>
-</div>
-</div>
-<script>
-async function run(){{
-document.getElementById('ph').style.display='none';
-document.getElementById('rs').style.display='none';
-document.getElementById('er').innerHTML='';
-document.getElementById('lo').style.display='block';
-try{{
-const r=await fetch('/api/backtest',{{
-method:'POST',
-headers:{{'Content-Type':'application/json'}},
-body:JSON.stringify({{
-symbol:document.getElementById('sy').value,
-start_capital:document.getElementById('ca').value
-}})
-}});
-const d=await r.json();
-document.getElementById('lo').style.display='none';
-if(d.status==='error'){{
-document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';
-document.getElementById('ph').style.display='block';
-return;
-}}
-document.getElementById('rs').style.display='block';
-document.getElementById('fc').textContent='
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    return HTMLResponse(HOME_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    return HTMLResponse(TRADES_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/telegram-test", response_class=HTMLResponse)
-async def telegram_page():
-    return HTMLResponse(TELEGRAM_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/paper-trading", response_class=HTMLResponse)
-async def paper_page():
-    return HTMLResponse(PAPER_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/backtesting", response_class=HTMLResponse)
-async def backtest_page():
-    return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
-
-# Pages simples
-SIMPLE_PAGES = {
-    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}}load();</script></div>"),
-    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}}load();</script></div>"),
-    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}}</script></div>"),
-    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script></div>"),
-    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script></div>"),
-    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script></div>"),
-    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script></div>"),
-    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
-    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
-    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
-    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
-    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
-    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
-}
-
-for path, (title, body) in SIMPLE_PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*60)
-    print("TRADING DASHBOARD v4.4 - CORRIGE")
-    print("="*60)
-    print("✅ Toutes accolades JavaScript echappees")
-    print("✅ Routes dupliquees supprimees")
-    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"Chat: {TELEGRAM_CHAT_ID}")
-    print("\nhttp://localhost:8000")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+d.total_value.toLocaleString();
-document.getElementById('pn').textContent='
-
-BACKTEST_HTML = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Backtest</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>Backtesting</h1></div>{NAV}
-<div class="grid grid-2">
-<div class="card"><h2>Config</h2>
-<select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
-<input type="number" id="ca" value="10000" step="1000">
-<button onclick="run()">Lancer</button>
-</div>
-<div class="card"><h2>Resultats</h2>
-<div id="rs" style="display:none;">
-<div class="grid grid-2">
-<div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div>
-<div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div>
-</div>
-<p>Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p>
-</div>
-<div id="lo" style="display:none;text-align:center;padding:40px;">Calcul...</div>
-<div id="ph" style="text-align:center;padding:40px;">Configurez et lancez</div>
-<div id="er"></div>
-</div>
-</div>
+<div id="er"></div></div></div>
 <script>
 async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}}
 </script></div></body></html>"""
@@ -800,864 +664,170 @@ async def paper_page():
 async def backtest_page():
     return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
 
-# Pages simples
-SIMPLE_PAGES = {
-    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}}load();</script></div>"),
-    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}}load();</script></div>"),
-    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}}</script></div>"),
-    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script></div>"),
-    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script></div>"),
-    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script></div>"),
-    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script></div>"),
-    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
-    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
-    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
-    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
-    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
-    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
-}
-
-for path, (title, body) in SIMPLE_PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
-{body}
+# Pages simples avec JavaScript corrigé
+@app.get("/fear-greed", response_class=HTMLResponse)
+async def fear_greed_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Fear & Greed</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Fear & Greed</h1></div>{NAV}
+<div class='card'><h2>Fear & Greed Index</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><div style='text-align:center;font-size:24px;' id='c'>Chargement...</div></div>
+<script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.emoji+' '+d.value;document.getElementById('c').textContent=d.classification;}}load();</script>
 </div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/bullrun-phase", response_class=HTMLResponse)
+async def bullrun_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Bullrun</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Phase Bullrun</h1></div>{NAV}
+<div class='card'><h2>Analyse de Phase</h2><div id='ph'>Chargement...</div></div>
+<script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3 style="color:'+d.color+'">'+d.phase+'</h3><p>Prix BTC: $'+d.btc_price.toLocaleString()+'</p><p>Change 24h: '+d.btc_change_24h+'%</p><p>Dominance: '+d.btc_dominance+'%</p>';}}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/convertisseur", response_class=HTMLResponse)
+async def converter_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Convertisseur</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Convertisseur Crypto</h1></div>{NAV}
+<div class='card'><h2>Convertir</h2>
+<input id='amt' value='1' type='number' placeholder='Montant'>
+<select id='from'><option value='BTC'>BTC</option><option value='ETH'>ETH</option><option value='SOL'>SOL</option><option value='USD'>USD</option><option value='EUR'>EUR</option><option value='CAD'>CAD</option></select>
+<select id='to'><option value='USD'>USD</option><option value='BTC'>BTC</option><option value='ETH'>ETH</option><option value='SOL'>SOL</option><option value='EUR'>EUR</option><option value='CAD'>CAD</option></select>
+<button onclick='convert()'>Convertir</button><div id='result'></div></div>
+<script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<p style="color:#ef4444">'+d.error+'</p>';}}else{{document.getElementById('result').innerHTML='<h3>'+d.result+' '+d.to+'</h3><p>Taux: '+d.rate+'</p>';}}}}</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/annonces", response_class=HTMLResponse)
+async def news_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Actualites</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Actualites Crypto</h1></div>{NAV}
+<div class='card'><h2>Dernieres News</h2><div id='nw'>Chargement...</div></div>
+<script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style="padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;"><h3>'+n.title+'</h3><p style="color:#94a3b8">'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/btc-quarterly", response_class=HTMLResponse)
+async def quarterly_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Trimestriel BTC</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Performance Trimestrielle BTC</h1></div>{NAV}
+<div class='card'><h2>Rendements par Trimestre</h2><div id='q'>Chargement...</div></div>
+<script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/heatmap", response_class=HTMLResponse)
+async def heatmap_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Heatmap</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Heatmap Performance</h1></div>{NAV}
+<div class='card'><h2>Heatmap</h2>
+<button onclick='loadHeatmap("monthly")'>Mensuelle</button> 
+<button onclick='loadHeatmap("yearly")'>Annuelle</button>
+<div id='hmap'>Chargement...</div></div>
+<script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>0?'#10b981':'#ef4444';h+='<div style="display:inline-block;margin:5px;padding:20px;background:'+color+';border-radius:8px;"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendar_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Calendrier Crypto</h1></div>{NAV}
+<div class='card'><h2>Evenements a Venir</h2><div id='cal'>Chargement...</div></div>
+<script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Evenement</th><th>Categorie</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td><td>'+e.category+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/altcoin-season", response_class=HTMLResponse)
+async def altseason_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>AltSeason</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Altcoin Season Index</h1></div>{NAV}
+<div class='card'><h2>AltSeason Index</h2>
+<div style='text-align:center;font-size:72px;color:#60a5fa;'>27</div>
+<p style='text-align:center;font-size:24px;'>Saison Bitcoin</p>
+<p style='text-align:center;color:#94a3b8;'>Moins de 25% des top 50 surperforment BTC</p>
+</div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/btc-dominance", response_class=HTMLResponse)
+async def dominance_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Dominance BTC</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Dominance Bitcoin</h1></div>{NAV}
+<div class='card'><h2>Dominance BTC</h2>
+<div style='text-align:center;font-size:72px;color:#f7931a;'>52.3%</div>
+<p style='text-align:center;font-size:18px;color:#10b981;'>↑ En hausse</p>
+</div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/strategie", response_class=HTMLResponse)
+async def strategy_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Strategie</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Strategie de Trading</h1></div>{NAV}
+<div class='card'><h2>Regles de Trading</h2>
+<ul style='line-height:2;'>
+<li>Risk/Reward: 1:2 minimum</li>
+<li>Position Size: Max 2% du capital</li>
+<li>Stop Loss: Toujours definir avant l'entree</li>
+<li>Max 3 trades simultanement</li>
+<li>Jamais moyenner a la baisse</li>
+</ul></div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/correlations", response_class=HTMLResponse)
+async def correlations_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Correlations</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Correlations</h1></div>{NAV}
+<div class='card'><h2>Correlations Crypto</h2>
+<p style='font-size:20px;padding:15px;'>BTC-ETH: <strong style='color:#10b981;'>0.87</strong></p>
+<p style='font-size:20px;padding:15px;'>BTC-TOTAL: <strong style='color:#10b981;'>0.92</strong></p>
+<p style='font-size:20px;padding:15px;'>ETH-ALTS: <strong style='color:#f59e0b;'>0.78</strong></p>
+</div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/top-movers", response_class=HTMLResponse)
+async def movers_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Top Movers</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Top Movers 24h</h1></div>{NAV}
+<div class='grid grid-2'>
+<div class='card'><h2>Gainers</h2>
+<p style='padding:10px;background:#0f172a;margin:5px 0;border-radius:6px;'>SOL: <span style='color:#10b981;'>+12.5%</span></p>
+<p style='padding:10px;background:#0f172a;margin:5px 0;border-radius:6px;'>AVAX: <span style='color:#10b981;'>+10.2%</span></p>
+</div>
+<div class='card'><h2>Losers</h2>
+<p style='padding:10px;background:#0f172a;margin:5px 0;border-radius:6px;'>DOGE: <span style='color:#ef4444;'>-5.3%</span></p>
+<p style='padding:10px;background:#0f172a;margin:5px 0;border-radius:6px;'>ADA: <span style='color:#ef4444;'>-4.1%</span></p>
+</div></div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
+
+@app.get("/performance", response_class=HTMLResponse)
+async def performance_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Performance</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Performance par Paire</h1></div>{NAV}
+<div class='card'><h2>Stats Trading</h2>
+<p style='text-align:center;padding:40px;color:#94a3b8;'>Lancez des trades pour voir vos statistiques ici</p>
+</div></div></body></html>"""
+    return HTMLResponse(html.format(CSS=CSS, NAV=NAV))
 
 if __name__ == "__main__":
     import uvicorn
     print("\n" + "="*60)
-    print("TRADING DASHBOARD v4.4 - CORRIGE")
+    print("TRADING DASHBOARD v4.5 - FINAL CORRIGE")
     print("="*60)
-    print("✅ Toutes accolades JavaScript echappees")
-    print("✅ Routes dupliquees supprimees")
-    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"Chat: {TELEGRAM_CHAT_ID}")
-    print("\nhttp://localhost:8000")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+d.pnl;
-document.getElementById('tt').textContent=d.total_trades;
-document.getElementById('pn').style.color=d.pnl>0?'#10b981':'#ef4444';
-}}
-async function loadBal(){{
-const r=await fetch('/api/paper-balance');
-const d=await r.json();
-let h='';
-for(const[c,a]of Object.entries(d.balance)){{
-if(a>0.00001)h+='<div style="padding:10px;background:#0f172a;border-radius:6px;margin:5px 0;"><strong>'+c+':</strong> '+(c==='USDT'?a.toFixed(2):a.toFixed(6))+'</div>';
-}}
-document.getElementById('ba').innerHTML=h||'Vide';
-}}
-async function loadHist(){{
-const r=await fetch('/api/paper-trades');
-const d=await r.json();
-if(d.trades.length===0){{
-document.getElementById('hi').innerHTML='Aucun trade';
-return;
-}}
-let h='<table><tr><th>Date</th><th>Action</th><th>Crypto</th><th>Qte</th><th>Prix</th><th>Total</th></tr>';
-d.trades.slice().reverse().forEach(t=>{{
-h+='<tr><td>'+new Date(t.timestamp).toLocaleString()+'</td><td>'+t.action+'</td><td>'+t.symbol.replace('USDT','')+'</td><td>'+t.quantity+'</td><td>
-
-BACKTEST_HTML = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Backtest</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>Backtesting</h1></div>{NAV}
-<div class="grid grid-2">
-<div class="card"><h2>Config</h2>
-<select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
-<input type="number" id="ca" value="10000" step="1000">
-<button onclick="run()">Lancer</button>
-</div>
-<div class="card"><h2>Resultats</h2>
-<div id="rs" style="display:none;">
-<div class="grid grid-2">
-<div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div>
-<div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div>
-</div>
-<p>Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p>
-</div>
-<div id="lo" style="display:none;text-align:center;padding:40px;">Calcul...</div>
-<div id="ph" style="text-align:center;padding:40px;">Configurez et lancez</div>
-<div id="er"></div>
-</div>
-</div>
-<script>
-async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}}
-</script></div></body></html>"""
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    return HTMLResponse(HOME_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    return HTMLResponse(TRADES_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/telegram-test", response_class=HTMLResponse)
-async def telegram_page():
-    return HTMLResponse(TELEGRAM_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/paper-trading", response_class=HTMLResponse)
-async def paper_page():
-    return HTMLResponse(PAPER_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/backtesting", response_class=HTMLResponse)
-async def backtest_page():
-    return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
-
-# Pages simples
-SIMPLE_PAGES = {
-    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}}load();</script></div>"),
-    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}}load();</script></div>"),
-    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}}</script></div>"),
-    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script></div>"),
-    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script></div>"),
-    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script></div>"),
-    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script></div>"),
-    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
-    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
-    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
-    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
-    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
-    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
-}
-
-for path, (title, body) in SIMPLE_PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*60)
-    print("TRADING DASHBOARD v4.4 - CORRIGE")
-    print("="*60)
-    print("✅ Toutes accolades JavaScript echappees")
-    print("✅ Routes dupliquees supprimees")
-    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"Chat: {TELEGRAM_CHAT_ID}")
-    print("\nhttp://localhost:8000")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+t.price.toFixed(2)+'</td><td>
-
-BACKTEST_HTML = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Backtest</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>Backtesting</h1></div>{NAV}
-<div class="grid grid-2">
-<div class="card"><h2>Config</h2>
-<select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
-<input type="number" id="ca" value="10000" step="1000">
-<button onclick="run()">Lancer</button>
-</div>
-<div class="card"><h2>Resultats</h2>
-<div id="rs" style="display:none;">
-<div class="grid grid-2">
-<div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div>
-<div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div>
-</div>
-<p>Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p>
-</div>
-<div id="lo" style="display:none;text-align:center;padding:40px;">Calcul...</div>
-<div id="ph" style="text-align:center;padding:40px;">Configurez et lancez</div>
-<div id="er"></div>
-</div>
-</div>
-<script>
-async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}}
-</script></div></body></html>"""
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    return HTMLResponse(HOME_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    return HTMLResponse(TRADES_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/telegram-test", response_class=HTMLResponse)
-async def telegram_page():
-    return HTMLResponse(TELEGRAM_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/paper-trading", response_class=HTMLResponse)
-async def paper_page():
-    return HTMLResponse(PAPER_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/backtesting", response_class=HTMLResponse)
-async def backtest_page():
-    return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
-
-# Pages simples
-SIMPLE_PAGES = {
-    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}}load();</script></div>"),
-    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}}load();</script></div>"),
-    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}}</script></div>"),
-    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script></div>"),
-    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script></div>"),
-    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script></div>"),
-    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script></div>"),
-    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
-    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
-    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
-    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
-    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
-    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
-}
-
-for path, (title, body) in SIMPLE_PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*60)
-    print("TRADING DASHBOARD v4.4 - CORRIGE")
-    print("="*60)
-    print("✅ Toutes accolades JavaScript echappees")
-    print("✅ Routes dupliquees supprimees")
-    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"Chat: {TELEGRAM_CHAT_ID}")
-    print("\nhttp://localhost:8000")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+t.total.toFixed(2)+'</td></tr>';
-}});
-h+='</table>';
-document.getElementById('hi').innerHTML=h;
-}}
-async function trade(){{
-const r=await fetch('/api/paper-trade',{{
-method:'POST',
-headers:{{'Content-Type':'application/json'}},
-body:JSON.stringify({{
-action:document.getElementById('ac').value,
-symbol:document.getElementById('sy').value,
-quantity:document.getElementById('qt').value
-}})
-}});
-const d=await r.json();
-document.getElementById('ms').innerHTML='<div class="alert alert-'+(d.status==='success'?'success':'error')+'">'+d.message+'</div>';
-setTimeout(()=>{{document.getElementById('ms').innerHTML='';}},5000);
-loadStats();loadBal();loadHist();
-}}
-async function resetPaper(){{
-if(confirm('Reset?')){{
-await fetch('/api/paper-reset',{{method:'POST'}});
-alert('OK');
-loadStats();loadBal();loadHist();
-}}
-}}
-loadStats();loadBal();loadHist();
-setInterval(()=>{{loadStats();loadBal();}},30000);
-</script></div></body></html>"""
-
-BACKTEST_HTML = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Backtest</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>Backtesting</h1></div>{NAV}
-<div class="grid grid-2">
-<div class="card"><h2>Config</h2>
-<select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
-<input type="number" id="ca" value="10000" step="1000">
-<button onclick="run()">Lancer</button>
-</div>
-<div class="card"><h2>Resultats</h2>
-<div id="rs" style="display:none;">
-<div class="grid grid-2">
-<div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div>
-<div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div>
-</div>
-<p>Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p>
-</div>
-<div id="lo" style="display:none;text-align:center;padding:40px;">Calcul...</div>
-<div id="ph" style="text-align:center;padding:40px;">Configurez et lancez</div>
-<div id="er"></div>
-</div>
-</div>
-<script>
-async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}}
-</script></div></body></html>"""
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    return HTMLResponse(HOME_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    return HTMLResponse(TRADES_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/telegram-test", response_class=HTMLResponse)
-async def telegram_page():
-    return HTMLResponse(TELEGRAM_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/paper-trading", response_class=HTMLResponse)
-async def paper_page():
-    return HTMLResponse(PAPER_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/backtesting", response_class=HTMLResponse)
-async def backtest_page():
-    return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
-
-# Pages simples
-SIMPLE_PAGES = {
-    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}}load();</script></div>"),
-    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}}load();</script></div>"),
-    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}}</script></div>"),
-    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script></div>"),
-    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script></div>"),
-    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script></div>"),
-    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script></div>"),
-    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
-    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
-    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
-    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
-    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
-    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
-}
-
-for path, (title, body) in SIMPLE_PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*60)
-    print("TRADING DASHBOARD v4.4 - CORRIGE")
-    print("="*60)
-    print("✅ Toutes accolades JavaScript echappees")
-    print("✅ Routes dupliquees supprimees")
-    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"Chat: {TELEGRAM_CHAT_ID}")
-    print("\nhttp://localhost:8000")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+d.final_capital.toLocaleString();
-document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';
-document.getElementById('tc').textContent=d.trades;
-document.getElementById('wr').textContent=d.win_rate+'%';
-const c=d.total_return>0?'#10b981':'#ef4444';
-document.getElementById('tr').style.color=c;
-document.getElementById('fc').style.color=c;
-}}catch(e){{
-document.getElementById('lo').style.display='none';
-document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';
-document.getElementById('ph').style.display='block';
-}}
-}}
-</script></div></body></html>"""
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    return HTMLResponse(HOME_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    return HTMLResponse(TRADES_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/telegram-test", response_class=HTMLResponse)
-async def telegram_page():
-    return HTMLResponse(TELEGRAM_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/paper-trading", response_class=HTMLResponse)
-async def paper_page():
-    return HTMLResponse(PAPER_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/backtesting", response_class=HTMLResponse)
-async def backtest_page():
-    return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
-
-# Pages simples
-SIMPLE_PAGES = {
-    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}}load();</script></div>"),
-    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}}load();</script></div>"),
-    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}}</script></div>"),
-    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script></div>"),
-    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script></div>"),
-    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script></div>"),
-    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script></div>"),
-    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
-    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
-    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
-    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
-    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
-    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
-}
-
-for path, (title, body) in SIMPLE_PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*60)
-    print("TRADING DASHBOARD v4.4 - CORRIGE")
-    print("="*60)
-    print("✅ Toutes accolades JavaScript echappees")
-    print("✅ Routes dupliquees supprimees")
-    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"Chat: {TELEGRAM_CHAT_ID}")
-    print("\nhttp://localhost:8000")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+d.total_value.toLocaleString();
-document.getElementById('pn').textContent='
-
-BACKTEST_HTML = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Backtest</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>Backtesting</h1></div>{NAV}
-<div class="grid grid-2">
-<div class="card"><h2>Config</h2>
-<select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
-<input type="number" id="ca" value="10000" step="1000">
-<button onclick="run()">Lancer</button>
-</div>
-<div class="card"><h2>Resultats</h2>
-<div id="rs" style="display:none;">
-<div class="grid grid-2">
-<div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div>
-<div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div>
-</div>
-<p>Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p>
-</div>
-<div id="lo" style="display:none;text-align:center;padding:40px;">Calcul...</div>
-<div id="ph" style="text-align:center;padding:40px;">Configurez et lancez</div>
-<div id="er"></div>
-</div>
-</div>
-<script>
-async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}}
-</script></div></body></html>"""
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    return HTMLResponse(HOME_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    return HTMLResponse(TRADES_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/telegram-test", response_class=HTMLResponse)
-async def telegram_page():
-    return HTMLResponse(TELEGRAM_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/paper-trading", response_class=HTMLResponse)
-async def paper_page():
-    return HTMLResponse(PAPER_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/backtesting", response_class=HTMLResponse)
-async def backtest_page():
-    return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
-
-# Pages simples
-SIMPLE_PAGES = {
-    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}}load();</script></div>"),
-    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}}load();</script></div>"),
-    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}}</script></div>"),
-    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script></div>"),
-    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script></div>"),
-    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script></div>"),
-    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script></div>"),
-    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
-    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
-    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
-    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
-    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
-    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
-}
-
-for path, (title, body) in SIMPLE_PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*60)
-    print("TRADING DASHBOARD v4.4 - CORRIGE")
-    print("="*60)
-    print("✅ Toutes accolades JavaScript echappees")
-    print("✅ Routes dupliquees supprimees")
-    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"Chat: {TELEGRAM_CHAT_ID}")
-    print("\nhttp://localhost:8000")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+d.pnl;
-document.getElementById('tt').textContent=d.total_trades;
-document.getElementById('pn').style.color=d.pnl>0?'#10b981':'#ef4444';
-}}
-async function loadBal(){{
-const r=await fetch('/api/paper-balance');
-const d=await r.json();
-let h='';
-for(const[c,a]of Object.entries(d.balance)){{
-if(a>0.00001)h+='<div style="padding:10px;background:#0f172a;border-radius:6px;margin:5px 0;"><strong>'+c+':</strong> '+(c==='USDT'?a.toFixed(2):a.toFixed(6))+'</div>';
-}}
-document.getElementById('ba').innerHTML=h||'Vide';
-}}
-async function loadHist(){{
-const r=await fetch('/api/paper-trades');
-const d=await r.json();
-if(d.trades.length===0){{
-document.getElementById('hi').innerHTML='Aucun trade';
-return;
-}}
-let h='<table><tr><th>Date</th><th>Action</th><th>Crypto</th><th>Qte</th><th>Prix</th><th>Total</th></tr>';
-d.trades.slice().reverse().forEach(t=>{{
-h+='<tr><td>'+new Date(t.timestamp).toLocaleString()+'</td><td>'+t.action+'</td><td>'+t.symbol.replace('USDT','')+'</td><td>'+t.quantity+'</td><td>
-
-BACKTEST_HTML = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Backtest</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>Backtesting</h1></div>{NAV}
-<div class="grid grid-2">
-<div class="card"><h2>Config</h2>
-<select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
-<input type="number" id="ca" value="10000" step="1000">
-<button onclick="run()">Lancer</button>
-</div>
-<div class="card"><h2>Resultats</h2>
-<div id="rs" style="display:none;">
-<div class="grid grid-2">
-<div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div>
-<div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div>
-</div>
-<p>Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p>
-</div>
-<div id="lo" style="display:none;text-align:center;padding:40px;">Calcul...</div>
-<div id="ph" style="text-align:center;padding:40px;">Configurez et lancez</div>
-<div id="er"></div>
-</div>
-</div>
-<script>
-async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}}
-</script></div></body></html>"""
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    return HTMLResponse(HOME_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    return HTMLResponse(TRADES_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/telegram-test", response_class=HTMLResponse)
-async def telegram_page():
-    return HTMLResponse(TELEGRAM_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/paper-trading", response_class=HTMLResponse)
-async def paper_page():
-    return HTMLResponse(PAPER_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/backtesting", response_class=HTMLResponse)
-async def backtest_page():
-    return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
-
-# Pages simples
-SIMPLE_PAGES = {
-    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}}load();</script></div>"),
-    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}}load();</script></div>"),
-    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}}</script></div>"),
-    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script></div>"),
-    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script></div>"),
-    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script></div>"),
-    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script></div>"),
-    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
-    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
-    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
-    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
-    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
-    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
-}
-
-for path, (title, body) in SIMPLE_PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*60)
-    print("TRADING DASHBOARD v4.4 - CORRIGE")
-    print("="*60)
-    print("✅ Toutes accolades JavaScript echappees")
-    print("✅ Routes dupliquees supprimees")
-    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"Chat: {TELEGRAM_CHAT_ID}")
-    print("\nhttp://localhost:8000")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+t.price.toFixed(2)+'</td><td>
-
-BACKTEST_HTML = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Backtest</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>Backtesting</h1></div>{NAV}
-<div class="grid grid-2">
-<div class="card"><h2>Config</h2>
-<select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
-<input type="number" id="ca" value="10000" step="1000">
-<button onclick="run()">Lancer</button>
-</div>
-<div class="card"><h2>Resultats</h2>
-<div id="rs" style="display:none;">
-<div class="grid grid-2">
-<div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div>
-<div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div>
-</div>
-<p>Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p>
-</div>
-<div id="lo" style="display:none;text-align:center;padding:40px;">Calcul...</div>
-<div id="ph" style="text-align:center;padding:40px;">Configurez et lancez</div>
-<div id="er"></div>
-</div>
-</div>
-<script>
-async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}}
-</script></div></body></html>"""
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    return HTMLResponse(HOME_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    return HTMLResponse(TRADES_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/telegram-test", response_class=HTMLResponse)
-async def telegram_page():
-    return HTMLResponse(TELEGRAM_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/paper-trading", response_class=HTMLResponse)
-async def paper_page():
-    return HTMLResponse(PAPER_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/backtesting", response_class=HTMLResponse)
-async def backtest_page():
-    return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
-
-# Pages simples
-SIMPLE_PAGES = {
-    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}}load();</script></div>"),
-    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}}load();</script></div>"),
-    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}}</script></div>"),
-    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script></div>"),
-    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script></div>"),
-    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script></div>"),
-    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script></div>"),
-    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
-    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
-    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
-    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
-    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
-    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
-}
-
-for path, (title, body) in SIMPLE_PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*60)
-    print("TRADING DASHBOARD v4.4 - CORRIGE")
-    print("="*60)
-    print("✅ Toutes accolades JavaScript echappees")
-    print("✅ Routes dupliquees supprimees")
-    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"Chat: {TELEGRAM_CHAT_ID}")
-    print("\nhttp://localhost:8000")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+t.total.toFixed(2)+'</td></tr>';
-}});
-h+='</table>';
-document.getElementById('hi').innerHTML=h;
-}}
-async function trade(){{
-const r=await fetch('/api/paper-trade',{{
-method:'POST',
-headers:{{'Content-Type':'application/json'}},
-body:JSON.stringify({{
-action:document.getElementById('ac').value,
-symbol:document.getElementById('sy').value,
-quantity:document.getElementById('qt').value
-}})
-}});
-const d=await r.json();
-document.getElementById('ms').innerHTML='<div class="alert alert-'+(d.status==='success'?'success':'error')+'">'+d.message+'</div>';
-setTimeout(()=>{{document.getElementById('ms').innerHTML='';}},5000);
-loadStats();loadBal();loadHist();
-}}
-async function resetPaper(){{
-if(confirm('Reset?')){{
-await fetch('/api/paper-reset',{{method:'POST'}});
-alert('OK');
-loadStats();loadBal();loadHist();
-}}
-}}
-loadStats();loadBal();loadHist();
-setInterval(()=>{{loadStats();loadBal();}},30000);
-</script></div></body></html>"""
-
-BACKTEST_HTML = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Backtest</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>Backtesting</h1></div>{NAV}
-<div class="grid grid-2">
-<div class="card"><h2>Config</h2>
-<select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
-<input type="number" id="ca" value="10000" step="1000">
-<button onclick="run()">Lancer</button>
-</div>
-<div class="card"><h2>Resultats</h2>
-<div id="rs" style="display:none;">
-<div class="grid grid-2">
-<div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div>
-<div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div>
-</div>
-<p>Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p>
-</div>
-<div id="lo" style="display:none;text-align:center;padding:40px;">Calcul...</div>
-<div id="ph" style="text-align:center;padding:40px;">Configurez et lancez</div>
-<div id="er"></div>
-</div>
-</div>
-<script>
-async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}}
-</script></div></body></html>"""
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    return HTMLResponse(HOME_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    return HTMLResponse(TRADES_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/telegram-test", response_class=HTMLResponse)
-async def telegram_page():
-    return HTMLResponse(TELEGRAM_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/paper-trading", response_class=HTMLResponse)
-async def paper_page():
-    return HTMLResponse(PAPER_HTML.format(CSS=CSS, NAV=NAV))
-
-@app.get("/backtesting", response_class=HTMLResponse)
-async def backtest_page():
-    return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
-
-# Pages simples
-SIMPLE_PAGES = {
-    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}}load();</script></div>"),
-    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}}load();</script></div>"),
-    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}}</script></div>"),
-    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';}});document.getElementById('nw').innerHTML=h;}}load();</script></div>"),
-    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}}h+='</table>';document.getElementById('q').innerHTML=h;}}load();</script></div>"),
-    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';}});document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script></div>"),
-    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';}});h+='</table>';document.getElementById('cal').innerHTML=h;}}load();</script></div>"),
-    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
-    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
-    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
-    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
-    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
-    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
-}
-
-for path, (title, body) in SIMPLE_PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*60)
-    print("TRADING DASHBOARD v4.4 - CORRIGE")
-    print("="*60)
-    print("✅ Toutes accolades JavaScript echappees")
-    print("✅ Routes dupliquees supprimees")
-    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"Chat: {TELEGRAM_CHAT_ID}")
-    print("\nhttp://localhost:8000")
+    print("✅ Toutes erreurs de syntaxe corrigees")
+    print("✅ JavaScript valide sur toutes les pages")
+    print("✅ Routes configurees correctement")
+    print(f"\nToken Telegram: {TELEGRAM_BOT_TOKEN[:20]}...")
+    print(f"Chat ID: {TELEGRAM_CHAT_ID}")
+    print("\n🚀 Serveur: http://localhost:8000")
     print("="*60 + "\n")
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

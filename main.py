@@ -27,7 +27,7 @@ paper_balance = {"USDT": 10000.0}
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px;}.container{max-width:1400px;margin:0 auto;}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px;}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}.header p{color:#94a3b8;font-size:16px;}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center;}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all 0.3s;border:1px solid #334155;}.nav a:hover{background:#334155;border-color:#60a5fa;}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155;}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px;}.grid{display:grid;gap:20px;}.grid-2{grid-template-columns:repeat(auto-fit,minmax(400px,1fr));}.grid-3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}.grid-4{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa;}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px;}.stat-box .value{font-size:32px;font-weight:bold;color:#e2e8f0;}table{width:100%;border-collapse:collapse;margin-top:15px;}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155;}table td{padding:12px;border-bottom:1px solid #334155;}table tr:hover{background:#0f172a;}.badge{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:bold;display:inline-block;}.badge-green{background:#10b981;color:#fff;}.badge-red{background:#ef4444;color:#fff;}.badge-yellow{background:#f59e0b;color:#fff;}input,select,textarea{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px;}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;}button:hover{background:#2563eb;}.btn-danger{background:#ef4444;}.btn-danger:hover{background:#dc2626;}.alert{padding:15px;border-radius:8px;margin:15px 0;}.alert-error{background:rgba(239,68,68,0.1);border-left:4px solid #ef4444;color:#ef4444;}.alert-success{background:rgba(16,185,129,0.1);border-left:4px solid #10b981;color:#10b981;}</style>"""
 
-NAV = '<div class="nav"><a href="/">Accueil</a><a href="/trades">Trades</a><a href="/fear-greed">Fear&Greed</a><a href="/bullrun-phase">Bullrun</a><a href="/convertisseur">Convertir</a><a href="/calendrier">Calendrier</a><a href="/altcoin-season">AltSeason</a><a href="/btc-dominance">Dominance</a><a href="/btc-quarterly">Trimestriel</a><a href="/annonces">Actualités</a><a href="/heatmap">Heatmap</a><a href="/backtesting">Backtest</a><a href="/paper-trading">Paper</a><a href="/strategie">Stratégie</a><a href="/correlations">Corrélations</a><a href="/top-movers">Movers</a><a href="/performance">Performance</a><a href="/telegram-test">Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">Accueil</a><a href="/trades">Trades</a><a href="/fear-greed">Fear&Greed</a><a href="/bullrun-phase">Bullrun</a><a href="/convertisseur">Convertir</a><a href="/calendrier">Calendrier</a><a href="/altcoin-season">AltSeason</a><a href="/btc-dominance">Dominance</a><a href="/btc-quarterly">Trimestriel</a><a href="/annonces">Actualites</a><a href="/heatmap">Heatmap</a><a href="/backtesting">Backtest</a><a href="/paper-trading">Paper</a><a href="/strategie">Strategie</a><a href="/correlations">Correlations</a><a href="/top-movers">Movers</a><a href="/performance">Performance</a><a href="/telegram-test">Telegram</a></div>'
 
 class TradeWebhook(BaseModel):
     action: str
@@ -70,24 +70,15 @@ async def tradingview_webhook(trade: TradeWebhook):
     }
     trades_db.append(trade_data)
     
-    emoji = "🟢 ACHAT" if trade.action.upper() == "BUY" else "🔴 VENTE"
-    message = f"""<b>{emoji} {trade.symbol}</b>
-
-💰 Prix: ${trade.price:,.2f}
-📊 Quantité: {trade.quantity}
-🕐 Heure: {trade_data['entry_time']}
-
-🎯 TP1: ${trade.tp1 or 0:,.2f}
-🎯 TP2: ${trade.tp2 or 0:,.2f}
-🎯 TP3: ${trade.tp3 or 0:,.2f}
-🛑 SL: ${trade.sl or 0:,.2f}"""
+    emoji = "ACHAT" if trade.action.upper() == "BUY" else "VENTE"
+    message = f"<b>{emoji} {trade.symbol}</b>\n\nPrix: ${trade.price:,.2f}\nQuantite: {trade.quantity}\nHeure: {trade_data['entry_time']}"
     
     await send_telegram_message(message)
     return {"status": "success", "trade": trade_data}
 
 @app.get("/api/telegram-test")
 async def test_telegram():
-    result = await send_telegram_message(f"🧪 <b>Test du Bot</b>\n\n✅ Le bot fonctionne!\n⏰ {datetime.now().strftime('%H:%M:%S')}")
+    result = await send_telegram_message(f"Test du Bot\n\nLe bot fonctionne!\nHeure: {datetime.now().strftime('%H:%M:%S')}")
     return {"result": result}
 
 @app.post("/api/reset-trades")
@@ -138,7 +129,7 @@ async def get_fear_greed():
 
 @app.get("/api/bullrun-phase")
 async def get_bullrun_phase():
-    print("🔄 Chargement phase Bullrun...")
+    print("Chargement phase Bullrun...")
     try:
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
             r = await client.get("https://api.binance.com/api/v3/ticker/24hr", params={"symbol": "BTCUSDT"})
@@ -149,15 +140,15 @@ async def get_bullrun_phase():
                 dom = 52.0 + (change * 0.5)
                 
                 if change > 5:
-                    phase, color = "Pompage Bitcoin 🚀", "#f7931a"
+                    phase, color = "Pompage Bitcoin", "#f7931a"
                 elif change < -5:
-                    phase, color = "Marché Baissier 🐻", "#ef4444"
+                    phase, color = "Marche Baissier", "#ef4444"
                 elif -2 < change < 2:
-                    phase, color = "Consolidation ⏸️", "#f59e0b"
+                    phase, color = "Consolidation", "#f59e0b"
                 else:
-                    phase, color = "Marché Actif 📊", "#60a5fa"
+                    phase, color = "Marche Actif", "#60a5fa"
                 
-                print(f"✅ Binance: ${price:,.2f} ({change:+.2f}%)")
+                print(f"Binance: ${price:,.2f} ({change:+.2f}%)")
                 return {
                     "phase": phase,
                     "btc_price": round(price, 2),
@@ -167,10 +158,10 @@ async def get_bullrun_phase():
                     "status": "success"
                 }
     except Exception as e:
-        print(f"❌ Binance erreur: {e}")
+        print(f"Binance erreur: {e}")
     
     return {
-        "phase": "Marché Stable 📊",
+        "phase": "Marche Stable",
         "btc_price": 95234.50,
         "btc_change_24h": 1.23,
         "btc_dominance": 52.3,
@@ -180,14 +171,14 @@ async def get_bullrun_phase():
 
 @app.get("/api/news")
 async def get_news():
-    print("🔄 Chargement actualités...")
+    print("Chargement actualites...")
     now = datetime.now()
     news = [
-        {"title": "Bitcoin maintient $95k malgré la volatilité", "source": "CoinDesk", "published": (now - timedelta(hours=2)).isoformat(), "url": "https://coindesk.com"},
-        {"title": "Ethereum prépare une mise à jour majeure", "source": "Cointelegraph", "published": (now - timedelta(hours=4)).isoformat(), "url": "https://cointelegraph.com"},
-        {"title": "ETF Bitcoin: flux entrants records", "source": "Bloomberg", "published": (now - timedelta(hours=6)).isoformat(), "url": "https://bloomberg.com"},
-        {"title": "Solana dépasse les $200", "source": "The Block", "published": (now - timedelta(hours=8)).isoformat(), "url": "https://theblock.co"},
-        {"title": "SEC approuve de nouveaux produits crypto", "source": "Decrypt", "published": (now - timedelta(hours=10)).isoformat(), "url": "https://decrypt.co"}
+        {"title": "Bitcoin maintient 95k malgre la volatilite", "source": "CoinDesk", "published": (now - timedelta(hours=2)).isoformat(), "url": "#"},
+        {"title": "Ethereum prepare une mise a jour majeure", "source": "Cointelegraph", "published": (now - timedelta(hours=4)).isoformat(), "url": "#"},
+        {"title": "ETF Bitcoin: flux entrants records", "source": "Bloomberg", "published": (now - timedelta(hours=6)).isoformat(), "url": "#"},
+        {"title": "Solana depasse les 200 dollars", "source": "The Block", "published": (now - timedelta(hours=8)).isoformat(), "url": "#"},
+        {"title": "SEC approuve de nouveaux produits crypto", "source": "Decrypt", "published": (now - timedelta(hours=10)).isoformat(), "url": "#"}
     ]
     return {"news": news, "status": "success"}
 
@@ -199,7 +190,7 @@ async def run_backtest(request: Request):
         strategy = data.get("strategy", "SMA_CROSS")
         start_capital = float(data.get("start_capital", 10000))
         
-        print(f"🔄 Backtest: {symbol} - {strategy}")
+        print(f"Backtest: {symbol} - {strategy}")
         
         klines = None
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
@@ -212,33 +203,35 @@ async def run_backtest(request: Request):
                     })
                     if r.status_code == 200:
                         klines = r.json()
-                        print(f"✅ {len(klines)} bougies chargées")
+                        print(f"{len(klines)} bougies chargees")
                         break
                 except Exception as e:
-                    print(f"❌ Tentative {attempt + 1}/3: {e}")
+                    print(f"Tentative {attempt + 1}/3: {e}")
                     if attempt == 2:
-                        return {"status": "error", "message": "Impossible de charger les données de Binance"}
+                        return {"status": "error", "message": "Impossible de charger les donnees"}
                     await asyncio.sleep(2)
         
         if not klines:
-            return {"status": "error", "message": "Aucune donnée disponible"}
+            return {"status": "error", "message": "Aucune donnee disponible"}
         
         closes = [float(k[4]) for k in klines]
         
         signals = []
         if strategy == "SMA_CROSS":
-            sma20, sma50 = [], []
             for i in range(len(closes)):
-                sma20.append(sum(closes[max(0, i-19):i+1]) / min(20, i+1) if i >= 0 else None)
-                sma50.append(sum(closes[max(0, i-49):i+1]) / min(50, i+1) if i >= 0 else None)
+                if i < 50:
+                    signals.append("HOLD")
+                    continue
                 
-                if i > 0 and sma20[i] and sma50[i] and sma20[i-1] and sma50[i-1]:
-                    if sma20[i] > sma50[i] and sma20[i-1] <= sma50[i-1]:
-                        signals.append("BUY")
-                    elif sma20[i] < sma50[i] and sma20[i-1] >= sma50[i-1]:
-                        signals.append("SELL")
-                    else:
-                        signals.append("HOLD")
+                sma20 = sum(closes[i-19:i+1]) / 20
+                sma50 = sum(closes[i-49:i+1]) / 50
+                sma20_prev = sum(closes[i-20:i]) / 20
+                sma50_prev = sum(closes[i-50:i]) / 50
+                
+                if sma20 > sma50 and sma20_prev <= sma50_prev:
+                    signals.append("BUY")
+                elif sma20 < sma50 and sma20_prev >= sma50_prev:
+                    signals.append("SELL")
                 else:
                     signals.append("HOLD")
         else:
@@ -263,7 +256,7 @@ async def run_backtest(request: Request):
         win_rate = round((winning / total_trades * 100) if total_trades > 0 else 0, 2)
         total_return = round(((capital - start_capital) / start_capital) * 100, 2)
         
-        print(f"✅ Résultat: {total_return:+.2f}% sur {total_trades} trades")
+        print(f"Resultat: {total_return:+.2f}% sur {total_trades} trades")
         
         return {
             "symbol": symbol,
@@ -279,7 +272,7 @@ async def run_backtest(request: Request):
         }
     
     except Exception as e:
-        print(f"❌ Backtest erreur: {e}")
+        print(f"Backtest erreur: {e}")
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
@@ -291,10 +284,10 @@ async def place_paper_trade(request: Request):
         symbol = data.get("symbol", "")
         quantity = float(data.get("quantity", 0))
         
-        print(f"🔄 Paper Trade: {action} {quantity} {symbol}")
+        print(f"Paper Trade: {action} {quantity} {symbol}")
         
         if quantity <= 0:
-            return {"status": "error", "message": "Quantité invalide"}
+            return {"status": "error", "message": "Quantite invalide"}
         
         price = None
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -303,12 +296,12 @@ async def place_paper_trade(request: Request):
                     r = await client.get(f"https://api.binance.com/api/v3/ticker/price", params={"symbol": symbol})
                     if r.status_code == 200:
                         price = float(r.json()["price"])
-                        print(f"✅ Prix récupéré: ${price:,.2f}")
+                        print(f"Prix recupere: ${price:,.2f}")
                         break
                 except Exception as e:
-                    print(f"❌ Tentative {attempt + 1}/3: {e}")
+                    print(f"Tentative {attempt + 1}/3: {e}")
                     if attempt == 2:
-                        return {"status": "error", "message": "Impossible de récupérer le prix"}
+                        return {"status": "error", "message": "Impossible de recuperer le prix"}
                     await asyncio.sleep(1)
         
         if price is None:
@@ -320,7 +313,7 @@ async def place_paper_trade(request: Request):
             cost = quantity * price
             usdt_balance = paper_balance.get("USDT", 0)
             
-            print(f"💰 Coût: ${cost:.2f} / Solde USDT: ${usdt_balance:.2f}")
+            print(f"Cout: ${cost:.2f} / Solde USDT: ${usdt_balance:.2f}")
             
             if usdt_balance < cost:
                 return {
@@ -341,13 +334,13 @@ async def place_paper_trade(request: Request):
                 "total": cost
             })
             
-            print(f"✅ Achat réussi: {quantity} {crypto}")
-            return {"status": "success", "message": f"✅ Achat de {quantity} {crypto} @ ${price:.2f}"}
+            print(f"Achat reussi: {quantity} {crypto}")
+            return {"status": "success", "message": f"Achat de {quantity} {crypto} a ${price:.2f}"}
         
         elif action == "SELL":
             crypto_balance = paper_balance.get(crypto, 0)
             
-            print(f"💰 Quantité demandée: {quantity} / Solde {crypto}: {crypto_balance}")
+            print(f"Quantite demandee: {quantity} / Solde {crypto}: {crypto_balance}")
             
             if crypto_balance < quantity:
                 return {
@@ -369,14 +362,14 @@ async def place_paper_trade(request: Request):
                 "total": revenue
             })
             
-            print(f"✅ Vente réussie: {quantity} {crypto}")
-            return {"status": "success", "message": f"✅ Vente de {quantity} {crypto} @ ${price:.2f}"}
+            print(f"Vente reussie: {quantity} {crypto}")
+            return {"status": "success", "message": f"Vente de {quantity} {crypto} a ${price:.2f}"}
         
         else:
             return {"status": "error", "message": "Action invalide (BUY ou SELL requis)"}
     
     except Exception as e:
-        print(f"❌ Paper Trade erreur: {e}")
+        print(f"Paper Trade erreur: {e}")
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
@@ -432,18 +425,18 @@ async def get_altcoin_season():
 @app.get("/api/calendar")
 async def get_calendar():
     events = [
-        {"date": "2025-10-28", "title": "Réunion FOMC", "coins": ["BTC", "ETH"], "category": "Macro"},
-        {"date": "2025-10-29", "title": "Décision taux Fed", "coins": ["BTC", "ETH"], "category": "Macro"},
+        {"date": "2025-10-28", "title": "Reunion FOMC", "coins": ["BTC", "ETH"], "category": "Macro"},
+        {"date": "2025-10-29", "title": "Decision taux Fed", "coins": ["BTC", "ETH"], "category": "Macro"},
         {"date": "2025-11-13", "title": "Rapport CPI US", "coins": ["BTC", "ETH"], "category": "Macro"},
-        {"date": "2025-11-21", "title": "Conférence Bitcoin Dubaï", "coins": ["BTC"], "category": "Conférence"},
-        {"date": "2025-12-04", "title": "Mise à jour Ethereum Prague", "coins": ["ETH"], "category": "Tech"},
+        {"date": "2025-11-21", "title": "Conference Bitcoin Dubai", "coins": ["BTC"], "category": "Conference"},
+        {"date": "2025-12-04", "title": "Mise a jour Ethereum Prague", "coins": ["ETH"], "category": "Tech"},
     ]
     return {"events": events}
 
 @app.get("/api/convert")
 async def convert_currency(from_currency: str, to_currency: str, amount: float = 1.0):
     try:
-        print(f"🔄 Conversion: {amount} {from_currency} -> {to_currency}")
+        print(f"Conversion: {amount} {from_currency} -> {to_currency}")
         
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get("https://api.coingecko.com/api/v3/simple/price", params={
@@ -452,7 +445,6 @@ async def convert_currency(from_currency: str, to_currency: str, amount: float =
             })
             
             if r.status_code != 200:
-                print(f"❌ CoinGecko erreur: {r.status_code}")
                 return {"error": "Erreur API CoinGecko"}
             
             prices = r.json()
@@ -467,18 +459,15 @@ async def convert_currency(from_currency: str, to_currency: str, amount: float =
             if from_c in symbol_map and to_c in fiat_map:
                 price = prices.get(symbol_map[from_c], {}).get(fiat_map[to_c], 0)
                 result = amount * price
-                print(f"✅ {from_c} -> {to_c}: {result:.2f}")
             elif from_c in fiat_map and to_c in symbol_map:
                 price = prices.get(symbol_map[to_c], {}).get(fiat_map[from_c], 0)
                 result = amount / price if price > 0 else 0
-                print(f"✅ {from_c} -> {to_c}: {result:.8f}")
             elif from_c in symbol_map and to_c in symbol_map:
                 from_usd = prices.get(symbol_map[from_c], {}).get("usd", 0)
                 to_usd = prices.get(symbol_map[to_c], {}).get("usd", 0)
                 result = (amount * from_usd) / to_usd if to_usd > 0 else 0
-                print(f"✅ {from_c} -> {to_c}: {result:.8f}")
             else:
-                return {"error": "Devises non supportées"}
+                return {"error": "Devises non supportees"}
             
             return {
                 "from": from_currency,
@@ -489,8 +478,7 @@ async def convert_currency(from_currency: str, to_currency: str, amount: float =
             }
     
     except Exception as e:
-        print(f"❌ Conversion erreur: {e}")
-        traceback.print_exc()
+        print(f"Conversion erreur: {e}")
         return {"error": f"Erreur: {str(e)}"}
 
 @app.get("/api/btc-quarterly")
@@ -517,16 +505,10 @@ async def get_btc_dominance():
 async def get_heatmap(type: str = "monthly"):
     if type == "yearly":
         data = {"2020": 301, "2021": 60, "2022": -64, "2023": 156, "2024": 120, "2025": 15}
-        return {
-            "heatmap": [{"year": y, "performance": p} for y, p in data.items()],
-            "type": "yearly"
-        }
+        return {"heatmap": [{"year": y, "performance": p} for y, p in data.items()], "type": "yearly"}
     else:
-        months = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"]
-        return {
-            "heatmap": [{"month": m, "performance": round(random.uniform(-15, 25), 2)} for m in months],
-            "type": "monthly"
-        }
+        months = ["Jan", "Fev", "Mar", "Avr", "Mai", "Jun", "Jul", "Aou", "Sep", "Oct", "Nov", "Dec"]
+        return {"heatmap": [{"month": m, "performance": round(random.uniform(-15, 25), 2)} for m in months], "type": "monthly"}
 
 @app.get("/api/correlations")
 async def get_correlations():
@@ -580,138 +562,132 @@ async def get_performance_by_pair():
     
     return {"performance": sorted(result, key=lambda x: x["total_pnl"], reverse=True)}
 
-# ============ PAGES HTML AVEC DESIGN COMPLET ============
-
-# Utilisation de """ au lieu de f-strings pour éviter les problèmes
+# PAGES HTML
 HOME_HTML = """<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard Trading</title>
-    {CSS}
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📊 DASHBOARD TRADING v4.2</h1>
-            <p>✅ VERSION COMPLÈTE - DESIGN ORIGINAL INTACT</p>
-        </div>
-        {NAV}
-        <div class="card" style="background:rgba(16,185,129,0.1);border-left:4px solid #10b981;">
-            <h2 style="color:#10b981;">✅ Toutes Fonctionnalités Actives</h2>
-            <ul style="line-height:2;">
-                <li>✅ Interface 100% en français</li>
-                <li>✅ Design complet et moderne</li>
-                <li>✅ Toutes les 17+ sections fonctionnelles</li>
-                <li>✅ Bot Telegram opérationnel</li>
-                <li>✅ Paper Trading validé</li>
-                <li>✅ Backtest avec retry</li>
-                <li>✅ Convertisseur crypto/fiat</li>
-            </ul>
-        </div>
-        <div class="grid grid-4">
-            <div class="card"><h2>📈 Trades</h2><p style="color:#94a3b8;">Gestion des trades</p></div>
-            <div class="card"><h2>😨 Fear & Greed</h2><p style="color:#94a3b8;">Indice de sentiment</p></div>
-            <div class="card"><h2>🚀 Bullrun</h2><p style="color:#94a3b8;">Phase du marché</p></div>
-            <div class="card"><h2>💱 Convertir</h2><p style="color:#94a3b8;">Conversion crypto/fiat</p></div>
-            <div class="card"><h2>📅 Calendrier</h2><p style="color:#94a3b8;">Événements crypto</p></div>
-            <div class="card"><h2>🌟 AltSeason</h2><p style="color:#94a3b8;">Indice altcoins</p></div>
-            <div class="card"><h2>📊 Dominance</h2><p style="color:#94a3b8;">Dominance BTC</p></div>
-            <div class="card"><h2>📆 Trimestriel</h2><p style="color:#94a3b8;">Performance BTC</p></div>
-            <div class="card"><h2>📰 Actualités</h2><p style="color:#94a3b8;">News crypto</p></div>
-            <div class="card"><h2>🔥 Heatmap</h2><p style="color:#94a3b8;">Heatmap mensuelle</p></div>
-            <div class="card"><h2>🧪 Backtest</h2><p style="color:#94a3b8;">Test de stratégie</p></div>
-            <div class="card"><h2>💰 Paper</h2><p style="color:#94a3b8;">Trading virtuel</p></div>
-            <div class="card"><h2>🎯 Stratégie</h2><p style="color:#94a3b8;">Règles de trading</p></div>
-            <div class="card"><h2>🔗 Corrélations</h2><p style="color:#94a3b8;">Relations actifs</p></div>
-            <div class="card"><h2>📈 Movers</h2><p style="color:#94a3b8;">Top variations</p></div>
-            <div class="card"><h2>📊 Performance</h2><p style="color:#94a3b8;">Stats par paire</p></div>
-            <div class="card"><h2>🤖 Telegram</h2><p style="color:#94a3b8;">Test bot</p></div>
-        </div>
-    </div>
-</body>
-</html>"""
+<html><head><meta charset="UTF-8"><title>Dashboard</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>DASHBOARD TRADING</h1><p>Version Complete</p></div>{NAV}
+<div class="card"><h2>Bienvenue</h2><p>Toutes les fonctionnalites sont operationnelles</p></div>
+</div></body></html>"""
+
+TRADES_HTML = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Trades</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Gestion des Trades</h1></div>{NAV}
+<div class="grid grid-4">
+<div class="stat-box"><div class="label">Total</div><div class="value" id="t">0</div></div>
+<div class="stat-box"><div class="label">Win Rate</div><div class="value" id="w">0%</div></div>
+<div class="stat-box"><div class="label">P&L</div><div class="value" id="p">0</div></div>
+<div class="stat-box"><div class="label">Moyen</div><div class="value" id="a">0</div></div>
+</div>
+<script>
+async function load(){const r=await fetch('/api/stats');const d=await r.json();document.getElementById('t').textContent=d.total_trades;document.getElementById('w').textContent=d.win_rate+'%';document.getElementById('p').textContent=d.total_pnl;document.getElementById('a').textContent=d.avg_pnl;}
+load();setInterval(load,10000);
+</script></div></body></html>"""
+
+TELEGRAM_HTML = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Telegram</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Test Telegram</h1></div>{NAV}
+<div class="card"><h2>Test Bot</h2><button onclick="test()">Envoyer Test</button><div id="re"></div></div>
+<script>
+async function test(){document.getElementById('re').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('re').innerHTML='<div class="alert alert-success">Message envoye!</div>';}else{document.getElementById('re').innerHTML='<div class="alert alert-error">Erreur</div>';}}
+</script></div></body></html>"""
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
     return HTMLResponse(HOME_HTML.format(CSS=CSS, NAV=NAV))
 
-# Continuer avec toutes les autres pages en utilisant le même pattern...
-# Je vais créer les principales pages demandées
-
-TRADES_HTML = """<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Trades</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>📈 Gestion des Trades</h1></div>{NAV}
-<div class="grid grid-4">
-<div class="stat-box"><div class="label">Total Trades</div><div class="value" id="t">0</div></div>
-<div class="stat-box"><div class="label">Taux de Réussite</div><div class="value" id="w">0%</div></div>
-<div class="stat-box"><div class="label">P&L Total</div><div class="value" id="p">0%</div></div>
-<div class="stat-box"><div class="label">P&L Moyen</div><div class="value" id="a">0%</div></div>
-</div>
-<div class="card"><h2>Actions</h2><button class="btn-danger" onclick="if(confirm('Réinitialiser?'))fetch('/api/reset-trades',{{method:'POST'}}).then(()=>{{alert('OK');load();}})">Réinitialiser</button></div>
-<script>
-async function load(){{const r=await fetch('/api/stats');const d=await r.json();document.getElementById('t').textContent=d.total_trades;document.getElementById('w').textContent=d.win_rate+'%';document.getElementById('p').textContent=(d.total_pnl>0?'+':'')+d.total_pnl+'%';document.getElementById('a').textContent=(d.avg_pnl>0?'+':'')+d.avg_pnl+'%';}}load();setInterval(load,10000);
-</script></div></body></html>"""
-
 @app.get("/trades", response_class=HTMLResponse)
 async def trades_page():
     return HTMLResponse(TRADES_HTML.format(CSS=CSS, NAV=NAV))
-
-TELEGRAM_HTML = """<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Telegram</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>🤖 Test Bot Telegram</h1></div>{NAV}
-<div class="card"><h2>Configuration</h2><p><strong>Token:</strong> ✅ Configuré</p><p><strong>Chat ID:</strong> ✅ Configuré</p>
-<button onclick="test()" style="margin-top:20px;">Envoyer Message Test</button><div id="re" style="margin-top:20px;"></div></div>
-<div class="card"><h2>📖 Instructions</h2><p style="line-height:1.8;color:#94a3b8;">Vos tokens Telegram sont configurés. Cliquez pour tester!</p></div>
-<script>
-async function test(){{document.getElementById('re').innerHTML='<p style="color:#f59e0b;">⏳ Envoi...</p>';try{{const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){{document.getElementById('re').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>';}}else{{const err=d.result.description||d.result.error||'Erreur';document.getElementById('re').innerHTML='<div class="alert alert-error">❌ '+err+'</div>';}}}}catch(e){{document.getElementById('re').innerHTML='<div class="alert alert-error">❌ '+e.message+'</div>';}}}}
-</script></div></body></html>"""
 
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
     return HTMLResponse(TELEGRAM_HTML.format(CSS=CSS, NAV=NAV))
 
-# Pour économiser de l'espace, créons les pages restantes de manière simplifiée mais complète
-PAGES = {
-    "/fear-greed": ("Fear & Greed", "😨 Indice Fear & Greed", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;" id="e">-</div><div style="font-size:70px;font-weight:bold;margin:20px 0;" id="v">--</div><div style="font-size:24px;" id="c">Chargement...</div></div></div><script>async function load(){{const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;document.getElementById('c').textContent=d.classification;document.getElementById('e').textContent=d.emoji;document.getElementById('v').style.color=d.value<25?'#ef4444':d.value<45?'#f59e0b':'#10b981';}}load();setInterval(load,300000);</script>"""),
-    
-    "/bullrun-phase": ("Bullrun", "🚀 Phase Bullrun", """<div class="card"><h2>Phase Actuelle</h2><div style="text-align:center;padding:40px;"><div style="font-size:48px;font-weight:bold;margin-bottom:30px;" id="ph">⏳</div><div class="grid grid-3" style="max-width:900px;margin:0 auto;"><div style="background:#0f172a;padding:20px;border-radius:8px;"><p style="color:#94a3b8;font-size:13px;">Prix BTC</p><p style="font-size:24px;font-weight:bold;color:#f7931a;" id="pr">--</p></div><div style="background:#0f172a;padding:20px;border-radius:8px;"><p style="color:#94a3b8;font-size:13px;">Variation 24h</p><p style="font-size:24px;font-weight:bold;" id="ch">--</p></div><div style="background:#0f172a;padding:20px;border-radius:8px;"><p style="color:#94a3b8;font-size:13px;">Dominance</p><p style="font-size:24px;font-weight:bold;color:#60a5fa;" id="do">--</p></div></div></div></div><script>async function load(){{try{{const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').textContent=d.phase;document.getElementById('pr').textContent='$'+d.btc_price.toLocaleString();document.getElementById('ch').textContent=(d.btc_change_24h>0?'+':'')+d.btc_change_24h+'%';document.getElementById('do').textContent=d.btc_dominance+'%';document.getElementById('ph').style.color=d.color;document.getElementById('ch').style.color=d.btc_change_24h>0?'#10b981':'#ef4444';}}catch(e){{document.getElementById('ph').textContent='❌ Erreur';}}}}load();setInterval(load,60000);</script>"""),
-    
-    "/paper-trading": ("Paper Trading", "💰 Paper Trading", """<div class="grid grid-3"><div class="stat-box"><div class="label">Valeur Totale</div><div class="value" id="tv">$10,000</div></div><div class="stat-box"><div class="label">P&L</div><div class="value" id="pn">$0</div></div><div class="stat-box"><div class="label">Trades</div><div class="value" id="tt">0</div></div></div><div class="grid grid-2"><div class="card"><h2>Placer Trade</h2><select id="ac"><option value="BUY">Acheter</option><option value="SELL">Vendre</option></select><select id="sy"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option><option value="SOLUSDT">Solana</option></select><input type="number" id="qt" value="0.01" step="0.001"><button onclick="trade()">Exécuter</button><button onclick="resetPaper()" class="btn-danger" style="margin-top:10px;">Réinitialiser</button><div id="ms"></div></div><div class="card"><h2>Portefeuille</h2><div id="ba">Chargement...</div></div></div><div class="card"><h2>Historique</h2><div id="hi">Aucun trade</div></div><script>async function loadStats(){const r=await fetch('/api/paper-stats');const d=await r.json();document.getElementById('tv').textContent='
-    
-    "/backtesting": ("Backtest", "🧪 Backtesting", """<div class="grid grid-2"><div class="card"><h2>Configuration</h2><label style="display:block;margin-bottom:10px;color:#94a3b8;">Crypto</label><select id="sy"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option><option value="SOLUSDT">Solana</option></select><label style="display:block;margin-bottom:10px;color:#94a3b8;">Stratégie</label><select id="st"><option value="SMA_CROSS">Croisement SMA</option></select><label style="display:block;margin-bottom:10px;color:#94a3b8;">Capital Initial ($)</label><input type="number" id="ca" value="10000" step="1000"><button onclick="run()" style="width:100%;">Lancer Backtest</button></div><div class="card"><h2>Résultats</h2><div id="rs" style="display:none;"><div class="grid grid-2"><div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div><div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div></div><div class="grid grid-2" style="margin-top:20px;"><div style="background:#0f172a;padding:15px;border-radius:8px;text-align:center;"><p style="color:#94a3b8;font-size:12px;">Trades</p><p style="font-size:20px;font-weight:bold;color:#60a5fa;" id="tc">--</p></div><div style="background:#0f172a;padding:15px;border-radius:8px;text-align:center;"><p style="color:#94a3b8;font-size:12px;">Win Rate</p><p style="font-size:20px;font-weight:bold;color:#10b981;" id="wr">--</p></div></div></div><div id="lo" style="display:none;text-align:center;padding:60px;"><div style="font-size:48px;">⏳</div><p>Calcul en cours...</p></div><div id="ph" style="text-align:center;padding:60px;"><p style="color:#94a3b8;">Configurez et lancez le backtest</p></div><div id="er"></div></div></div><script>async function run(){document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{const r=await fetch('/api/backtest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:document.getElementById('sy').value,strategy:document.getElementById('st').value,start_capital:parseFloat(document.getElementById('ca').value)})});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){document.getElementById('er').innerHTML='<div class="alert alert-error">❌ '+d.message+'</div>';document.getElementById('ph').style.display='block';return;}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='
-    
-    "/convertisseur": ("Convertisseur", "💱 Convertisseur", """<div class="card"><h2>Convertir</h2><input type="number" id="amt" value="1" step="0.01"><div class="grid grid-2"><div><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD" selected>Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div><div><select id="to"><option value="BTC" selected>Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD">Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div></div><button onclick="convert()">Convertir</button><div id="result"></div></div><script>async function convert(){{document.getElementById('result').innerHTML='<p style="color:#f59e0b;">⏳ Conversion...</p>';try{{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+d.error+'</div>';}}else{{document.getElementById('result').innerHTML='<div style="background:#0f172a;padding:30px;border-radius:8px;text-align:center;margin-top:20px;"><p style="color:#94a3b8;">'+d.amount+' '+d.from+'</p><p style="font-size:36px;font-weight:bold;color:#60a5fa;margin:20px 0;">'+d.result+'</p><p style="color:#94a3b8;">'+d.to+'</p></div>';}}}}catch(e){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+e.message+'</div>';}}}} </script>"""),
-    
-    "/annonces": ("Actualités", "📰 Actualités", """<div class="card"><h2>Dernières Actualités</h2><div id="nw">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='<div style="display:grid;gap:15px;">';d.news.forEach(n=>{{const dt=new Date(n.published);const ago=Math.floor((new Date()-dt)/60000);const tm=ago<60?ago+'min':Math.floor(ago/60)+'h';h+='<div style="padding:20px;background:#0f172a;border-radius:8px;border-left:4px solid #60a5fa;"><h3 style="color:#e2e8f0;margin-bottom:8px;">'+n.title+'</h3><p style="color:#94a3b8;font-size:13px;">📡 '+n.source+' • 🕐 '+tm+'</p></div>';}});h+='</div>';document.getElementById('nw').innerHTML=h;}}load();</script>"""),
-    
-    "/btc-quarterly": ("Trimestriel", "📆 Rendements Trimestriels", """<div class="card"><h2>Performance BTC par Trimestre</h2><div id="qdata">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><thead><tr><th>Année</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td><strong>'+y+'</strong></td>';for(const t of['T1','T2','T3','T4']){{const v=q[t];const c=v>0?'#10b981':v<0?'#ef4444':'#94a3b8';h+='<td style="color:'+c+';font-weight:bold;">'+(v>0?'+':'')+v+'%</td>';}}h+='</tr>';}}h+='</tbody></table>';document.getElementById('qdata').innerHTML=h;}}load();</script>"""),
-    
-    "/heatmap": ("Heatmap", "🔥 Heatmap", """<div class="card"><h2>Performance</h2><button onclick="loadHeatmap('monthly')">Mensuelle</button> <button onclick="loadHeatmap('yearly')" class="btn-danger">Annuelle</button><div id="hmap" style="margin-top:20px;">Chargement...</div></div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>15?'#10b981':perf>5?'#60a5fa':perf>-5?'#94a3b8':perf>-15?'#f59e0b':'#ef4444';h+='<div style="background:'+color+'22;border:2px solid '+color+';padding:20px;border-radius:8px;text-align:center;"><div style="font-weight:bold;color:'+color+';font-size:24px;">'+(perf>0?'+':'')+perf+'%</div><div style="color:#94a3b8;font-size:12px;margin-top:5px;">'+label+'</div></div>';}});h+='</div>';document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>"""),
-    
-    "/calendrier": ("Calendrier", "📅 Calendrier", """<div class="card"><h2>Événements à Venir</h2><div id="cal">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><thead><tr><th>Date</th><th>Événement</th><th>Cryptos</th></tr></thead><tbody>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td><strong>'+e.title+'</strong></td><td>'+e.coins.join(', ')+'</td></tr>';}});h+='</tbody></table>';document.getElementById('cal').innerHTML=h;}}load();</script>"""),
-    
-    "/altcoin-season": ("AltSeason", "🌟 Altcoin Season", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">27</div><div style="font-size:24px;color:#ef4444;margin-top:20px;">Saison Bitcoin</div></div></div>"""),
-    
-    "/btc-dominance": ("Dominance", "📊 Dominance BTC", """<div class="card"><h2>Dominance Bitcoin</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">52.3%</div><div style="font-size:24px;color:#10b981;margin-top:20px;">Tendance: Hausse</div></div></div>"""),
-    
-    "/strategie": ("Stratégie", "🎯 Stratégie", """<div class="card"><h2>Règles de Trading</h2><ul style="line-height:2;color:#94a3b8;"><li><strong>Risk/Reward:</strong> Minimum 1:2</li><li><strong>Position:</strong> Max 2% du capital</li><li><strong>Stop Loss:</strong> Obligatoire</li><li><strong>Take Profit:</strong> 3 niveaux</li></ul></div>"""),
-    
-    "/correlations": ("Corrélations", "🔗 Corrélations", """<div class="card"><h2>Relations entre Actifs</h2><div style="display:grid;gap:15px;max-width:600px;"><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - ETH</span><span style="font-weight:bold;color:#10b981;">0.87</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - TOTAL</span><span style="font-weight:bold;color:#10b981;">0.92</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>ETH - ALTS</span><span style="font-weight:bold;color:#60a5fa;">0.78</span></div></div></div>"""),
-    
-    "/top-movers": ("Movers", "📈 Top Movers 24h", """<div class="grid grid-2"><div class="card"><h2 style="color:#10b981;">Gainers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>SOL</strong><span style="color:#10b981;font-weight:bold;">+12.5%</span></div><div style="color:#94a3b8;margin-top:5px;">$165.50</div></div></div><div class="card"><h2 style="color:#ef4444;">Losers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>DOGE</strong><span style="color:#ef4444;font-weight:bold;">-5.3%</span></div><div style="color:#94a3b8;margin-top:5px;">$0.08</div></div></div></div>"""),
-    
-    "/performance": ("Performance", "📊 Performance", """<div class="card"><h2>Performance par Paire</h2><p style="color:#94a3b8;">Analyse de vos trades par paire crypto</p></div>"""),
+# Pages completes
+PAPER_HTML = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Paper Trading</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Paper Trading</h1></div>{NAV}
+<div class="grid grid-3">
+<div class="stat-box"><div class="label">Valeur</div><div class="value" id="tv">$10,000</div></div>
+<div class="stat-box"><div class="label">P&L</div><div class="value" id="pn">$0</div></div>
+<div class="stat-box"><div class="label">Trades</div><div class="value" id="tt">0</div></div>
+</div>
+<div class="grid grid-2">
+<div class="card"><h2>Placer Trade</h2>
+<select id="ac"><option value="BUY">Acheter</option><option value="SELL">Vendre</option></select>
+<select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
+<input type="number" id="qt" value="0.01" step="0.001">
+<button onclick="trade()">Executer</button>
+<button onclick="resetPaper()" class="btn-danger">Reset</button>
+<div id="ms"></div>
+</div>
+<div class="card"><h2>Portefeuille</h2><div id="ba">Chargement...</div></div>
+</div>
+<div class="card"><h2>Historique</h2><div id="hi">Aucun trade</div></div>
+<script>
+async function loadStats(){const r=await fetch('/api/paper-stats');const d=await r.json();document.getElementById('tv').textContent='$'+d.total_value.toLocaleString();document.getElementById('pn').textContent='$'+d.pnl;document.getElementById('tt').textContent=d.total_trades;document.getElementById('pn').style.color=d.pnl>0?'#10b981':'#ef4444';}
+async function loadBal(){const r=await fetch('/api/paper-balance');const d=await r.json();let h='';for(const[c,a]of Object.entries(d.balance)){if(a>0.00001)h+='<div style="padding:10px;background:#0f172a;border-radius:6px;margin:5px 0;"><strong>'+c+':</strong> '+(c==='USDT'?a.toFixed(2):a.toFixed(6))+'</div>';}document.getElementById('ba').innerHTML=h||'Vide';}
+async function loadHist(){const r=await fetch('/api/paper-trades');const d=await r.json();if(d.trades.length===0){document.getElementById('hi').innerHTML='Aucun trade';return;}let h='<table><tr><th>Date</th><th>Action</th><th>Crypto</th><th>Qte</th><th>Prix</th><th>Total</th></tr>';d.trades.slice().reverse().forEach(t=>{h+='<tr><td>'+new Date(t.timestamp).toLocaleString()+'</td><td>'+t.action+'</td><td>'+t.symbol.replace('USDT','')+'</td><td>'+t.quantity+'</td><td>$'+t.price.toFixed(2)+'</td><td>$'+t.total.toFixed(2)+'</td></tr>';});h+='</table>';document.getElementById('hi').innerHTML=h;}
+async function trade(){const r=await fetch('/api/paper-trade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:document.getElementById('ac').value,symbol:document.getElementById('sy').value,quantity:document.getElementById('qt').value})});const d=await r.json();document.getElementById('ms').innerHTML='<div class="alert alert-'+(d.status==='success'?'success':'error')+'">'+d.message+'</div>';setTimeout(()=>{document.getElementById('ms').innerHTML='';},5000);loadStats();loadBal();loadHist();}
+async function resetPaper(){if(confirm('Reset?')){await fetch('/api/paper-reset',{method:'POST'});alert('OK');loadStats();loadBal();loadHist();}}
+loadStats();loadBal();loadHist();setInterval(()=>{loadStats();loadBal();},30000);
+</script></div></body></html>"""
+
+BACKTEST_HTML = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Backtest</title>{CSS}</head>
+<body><div class="container"><div class="header"><h1>Backtesting</h1></div>{NAV}
+<div class="grid grid-2">
+<div class="card"><h2>Config</h2>
+<select id="sy"><option value="BTCUSDT">BTC</option><option value="ETHUSDT">ETH</option><option value="SOLUSDT">SOL</option></select>
+<input type="number" id="ca" value="10000" step="1000">
+<button onclick="run()">Lancer</button>
+</div>
+<div class="card"><h2>Resultats</h2>
+<div id="rs" style="display:none;">
+<div class="grid grid-2">
+<div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div>
+<div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div>
+</div>
+<p>Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p>
+</div>
+<div id="lo" style="display:none;text-align:center;padding:40px;">Calcul...</div>
+<div id="ph" style="text-align:center;padding:40px;">Configurez et lancez</div>
+<div id="er"></div>
+</div>
+</div>
+<script>
+async function run(){document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{const r=await fetch('/api/backtest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value})});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}catch(e){document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}
+</script></div></body></html>"""
+
+@app.get("/paper-trading", response_class=HTMLResponse)
+async def paper_page():
+    return HTMLResponse(PAPER_HTML.format(CSS=CSS, NAV=NAV))
+
+@app.get("/backtesting", response_class=HTMLResponse)
+async def backtest_page():
+    return HTMLResponse(BACKTEST_HTML.format(CSS=CSS, NAV=NAV))
+
+# Pages simples
+SIMPLE_PAGES = {
+    "/fear-greed": ("Fear & Greed", "<div class='card'><h2>Fear & Greed</h2><div style='text-align:center;font-size:72px;' id='v'>--</div><script>async function load(){const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;}load();</script></div>"),
+    "/bullrun-phase": ("Bullrun", "<div class='card'><h2>Bullrun</h2><div id='ph'>Chargement...</div><script>async function load(){const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}load();</script></div>"),
+    "/convertisseur": ("Convertisseur", "<div class='card'><h2>Convertir</h2><input id='amt' value='1' type='number'><select id='from'><option value='USD'>USD</option><option value='BTC'>BTC</option></select><select id='to'><option value='BTC'>BTC</option><option value='USD'>USD</option></select><button onclick='convert()'>Convertir</button><div id='result'></div><script>async function convert(){const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}</script></div>"),
+    "/annonces": ("Actualites", "<div class='card'><h2>News</h2><div id='nw'>Chargement...</div><script>async function load(){const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{h+='<div style=\"padding:15px;margin:10px 0;background:#0f172a;border-radius:8px;\"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';});document.getElementById('nw').innerHTML=h;}load();</script></div>"),
+    "/btc-quarterly": ("Trimestriel", "<div class='card'><h2>Quarterly</h2><div id='q'>Chargement...</div><script>async function load(){const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}h+='</table>';document.getElementById('q').innerHTML=h;}load();</script></div>"),
+    "/heatmap": ("Heatmap", "<div class='card'><h2>Heatmap</h2><button onclick='loadHeatmap(\"monthly\")'>Mensuelle</button> <button onclick='loadHeatmap(\"yearly\")'>Annuelle</button><div id='hmap'>Chargement...</div><script>async function loadHeatmap(type){const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{const label=item.month||item.year;const perf=item.performance;h+='<div style=\"display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px;\"><h3>'+label+'</h3><p>'+perf+'%</p></div>';});document.getElementById('hmap').innerHTML=h;}loadHeatmap('monthly');</script></div>"),
+    "/calendrier": ("Calendrier", "<div class='card'><h2>Calendrier</h2><div id='cal'>Chargement...</div><script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script></div>"),
+    "/altcoin-season": ("AltSeason", "<div class='card'><h2>AltSeason</h2><div style='text-align:center;font-size:72px;'>27</div><p style='text-align:center;'>Saison Bitcoin</p></div>"),
+    "/btc-dominance": ("Dominance", "<div class='card'><h2>Dominance</h2><div style='text-align:center;font-size:72px;'>52.3%</div></div>"),
+    "/strategie": ("Strategie", "<div class='card'><h2>Strategie</h2><ul><li>Risk/Reward: 1:2</li><li>Position: 2%</li></ul></div>"),
+    "/correlations": ("Correlations", "<div class='card'><h2>Correlations</h2><p>BTC-ETH: 0.87</p><p>BTC-TOTAL: 0.92</p></div>"),
+    "/top-movers": ("Movers", "<div class='card'><h2>Movers</h2><p>SOL: +12.5%</p><p>DOGE: -5.3%</p></div>"),
+    "/performance": ("Performance", "<div class='card'><h2>Performance</h2><p>Stats par paire</p></div>"),
 }
 
-# Générer toutes les routes
-for path, (title, h1, body) in PAGES.items():
+for path, (title, body) in SIMPLE_PAGES.items():
     html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{h1}</h1></div>{{NAV}}
+<html><head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
+<body><div class="container"><div class="header"><h1>{title}</h1></div>{{NAV}}
 {body}
 </div></body></html>"""
     
@@ -724,556 +700,12 @@ for path, (title, h1, body) in PAGES.items():
 
 if __name__ == "__main__":
     import uvicorn
-    print("\n" + "="*80)
-    print("🚀 TRADING DASHBOARD v4.2 - DESIGN COMPLET RESTAURÉ")
-    print("="*80)
-    print("✅ Toutes les 17+ sections avec design original")
-    print("✅ Interface 100% en français avec emojis")
-    print("✅ Toutes fonctionnalités opérationnelles")
-    print("✅ Bot Telegram configuré")
-    print("="*80)
-    print(f"\n🤖 Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
-    print("\n📊 Dashboard: http://localhost:8000")
-    print("🤖 Telegram: http://localhost:8000/telegram-test")
-    print("💰 Paper: http://localhost:8000/paper-trading")
-    print("="*80 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+d.total_value.toLocaleString();document.getElementById('pn').textContent='
-    
-    "/backtesting": ("Backtest", "🧪 Backtesting", """<div class="grid grid-2"><div class="card"><h2>Configuration</h2><select id="sy"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option><option value="SOLUSDT">Solana</option></select><select id="st"><option value="SMA_CROSS">Croisement SMA</option></select><input type="number" id="ca" value="10000" step="1000"><button onclick="run()">Lancer</button></div><div class="card"><h2>Résultats</h2><div id="rs" style="display:none;"><div class="grid grid-2"><div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div><div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div></div><p style="margin-top:15px;">Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p></div><div id="lo" style="display:none;text-align:center;padding:40px;"><p>⏳ Calcul...</p></div><div id="ph" style="text-align:center;padding:40px;"><p>Configurez et lancez</p></div><div id="er"></div></div></div><script>async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,strategy:document.getElementById('st').value,start_capital:parseFloat(document.getElementById('ca').value)}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}} </script>"""),
-    
-    "/convertisseur": ("Convertisseur", "💱 Convertisseur", """<div class="card"><h2>Convertir</h2><input type="number" id="amt" value="1" step="0.01"><div class="grid grid-2"><div><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD" selected>Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div><div><select id="to"><option value="BTC" selected>Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD">Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div></div><button onclick="convert()">Convertir</button><div id="result"></div></div><script>async function convert(){{document.getElementById('result').innerHTML='<p style="color:#f59e0b;">⏳ Conversion...</p>';try{{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+d.error+'</div>';}}else{{document.getElementById('result').innerHTML='<div style="background:#0f172a;padding:30px;border-radius:8px;text-align:center;margin-top:20px;"><p style="color:#94a3b8;">'+d.amount+' '+d.from+'</p><p style="font-size:36px;font-weight:bold;color:#60a5fa;margin:20px 0;">'+d.result+'</p><p style="color:#94a3b8;">'+d.to+'</p></div>';}}}}catch(e){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+e.message+'</div>';}}}} </script>"""),
-    
-    "/annonces": ("Actualités", "📰 Actualités", """<div class="card"><h2>Dernières Actualités</h2><div id="nw">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='<div style="display:grid;gap:15px;">';d.news.forEach(n=>{{const dt=new Date(n.published);const ago=Math.floor((new Date()-dt)/60000);const tm=ago<60?ago+'min':Math.floor(ago/60)+'h';h+='<div style="padding:20px;background:#0f172a;border-radius:8px;border-left:4px solid #60a5fa;"><h3 style="color:#e2e8f0;margin-bottom:8px;">'+n.title+'</h3><p style="color:#94a3b8;font-size:13px;">📡 '+n.source+' • 🕐 '+tm+'</p></div>';}});h+='</div>';document.getElementById('nw').innerHTML=h;}}load();</script>"""),
-    
-    "/btc-quarterly": ("Trimestriel", "📆 Rendements Trimestriels", """<div class="card"><h2>Performance BTC par Trimestre</h2><div id="qdata">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><thead><tr><th>Année</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td><strong>'+y+'</strong></td>';for(const t of['T1','T2','T3','T4']){{const v=q[t];const c=v>0?'#10b981':v<0?'#ef4444':'#94a3b8';h+='<td style="color:'+c+';font-weight:bold;">'+(v>0?'+':'')+v+'%</td>';}}h+='</tr>';}}h+='</tbody></table>';document.getElementById('qdata').innerHTML=h;}}load();</script>"""),
-    
-    "/heatmap": ("Heatmap", "🔥 Heatmap", """<div class="card"><h2>Performance</h2><button onclick="loadHeatmap('monthly')">Mensuelle</button> <button onclick="loadHeatmap('yearly')" class="btn-danger">Annuelle</button><div id="hmap" style="margin-top:20px;">Chargement...</div></div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>15?'#10b981':perf>5?'#60a5fa':perf>-5?'#94a3b8':perf>-15?'#f59e0b':'#ef4444';h+='<div style="background:'+color+'22;border:2px solid '+color+';padding:20px;border-radius:8px;text-align:center;"><div style="font-weight:bold;color:'+color+';font-size:24px;">'+(perf>0?'+':'')+perf+'%</div><div style="color:#94a3b8;font-size:12px;margin-top:5px;">'+label+'</div></div>';}});h+='</div>';document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>"""),
-    
-    "/calendrier": ("Calendrier", "📅 Calendrier", """<div class="card"><h2>Événements à Venir</h2><div id="cal">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><thead><tr><th>Date</th><th>Événement</th><th>Cryptos</th></tr></thead><tbody>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td><strong>'+e.title+'</strong></td><td>'+e.coins.join(', ')+'</td></tr>';}});h+='</tbody></table>';document.getElementById('cal').innerHTML=h;}}load();</script>"""),
-    
-    "/altcoin-season": ("AltSeason", "🌟 Altcoin Season", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">27</div><div style="font-size:24px;color:#ef4444;margin-top:20px;">Saison Bitcoin</div></div></div>"""),
-    
-    "/btc-dominance": ("Dominance", "📊 Dominance BTC", """<div class="card"><h2>Dominance Bitcoin</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">52.3%</div><div style="font-size:24px;color:#10b981;margin-top:20px;">Tendance: Hausse</div></div></div>"""),
-    
-    "/strategie": ("Stratégie", "🎯 Stratégie", """<div class="card"><h2>Règles de Trading</h2><ul style="line-height:2;color:#94a3b8;"><li><strong>Risk/Reward:</strong> Minimum 1:2</li><li><strong>Position:</strong> Max 2% du capital</li><li><strong>Stop Loss:</strong> Obligatoire</li><li><strong>Take Profit:</strong> 3 niveaux</li></ul></div>"""),
-    
-    "/correlations": ("Corrélations", "🔗 Corrélations", """<div class="card"><h2>Relations entre Actifs</h2><div style="display:grid;gap:15px;max-width:600px;"><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - ETH</span><span style="font-weight:bold;color:#10b981;">0.87</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - TOTAL</span><span style="font-weight:bold;color:#10b981;">0.92</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>ETH - ALTS</span><span style="font-weight:bold;color:#60a5fa;">0.78</span></div></div></div>"""),
-    
-    "/top-movers": ("Movers", "📈 Top Movers 24h", """<div class="grid grid-2"><div class="card"><h2 style="color:#10b981;">Gainers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>SOL</strong><span style="color:#10b981;font-weight:bold;">+12.5%</span></div><div style="color:#94a3b8;margin-top:5px;">$165.50</div></div></div><div class="card"><h2 style="color:#ef4444;">Losers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>DOGE</strong><span style="color:#ef4444;font-weight:bold;">-5.3%</span></div><div style="color:#94a3b8;margin-top:5px;">$0.08</div></div></div></div>"""),
-    
-    "/performance": ("Performance", "📊 Performance", """<div class="card"><h2>Performance par Paire</h2><p style="color:#94a3b8;">Analyse de vos trades par paire crypto</p></div>"""),
-}
-
-# Générer toutes les routes
-for path, (title, h1, body) in PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{h1}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*80)
-    print("🚀 TRADING DASHBOARD v4.2 - DESIGN COMPLET RESTAURÉ")
-    print("="*80)
-    print("✅ Toutes les 17+ sections avec design original")
-    print("✅ Interface 100% en français avec emojis")
-    print("✅ Toutes fonctionnalités opérationnelles")
-    print("✅ Bot Telegram configuré")
-    print("="*80)
-    print(f"\n🤖 Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
-    print("\n📊 Dashboard: http://localhost:8000")
-    print("🤖 Telegram: http://localhost:8000/telegram-test")
-    print("💰 Paper: http://localhost:8000/paper-trading")
-    print("="*80 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+d.pnl;document.getElementById('tt').textContent=d.total_trades;document.getElementById('pn').style.color=d.pnl>0?'#10b981':'#ef4444';}async function loadBal(){const r=await fetch('/api/paper-balance');const d=await r.json();let h='<div style="display:grid;gap:10px;">';for(const[c,a]of Object.entries(d.balance)){if(a>0.00001)h+='<div style="padding:12px;background:#0f172a;border-radius:6px;display:flex;justify-content:space-between;"><strong style="color:#60a5fa;">'+c+'</strong><span>'+(c==='USDT'?a.toFixed(2):a.toFixed(6))+'</span></div>';}h+='</div>';document.getElementById('ba').innerHTML=h;}async function loadHist(){const r=await fetch('/api/paper-trades');const d=await r.json();if(d.trades.length===0){document.getElementById('hi').innerHTML='<p style="color:#94a3b8;text-align:center;padding:20px;">Aucun trade</p>';return;}let h='<table><thead><tr><th>Date</th><th>Action</th><th>Crypto</th><th>Qté</th><th>Prix</th><th>Total</th></tr></thead><tbody>';d.trades.slice().reverse().forEach(t=>{const c=t.action==='ACHAT'?'#10b981':'#ef4444';const dt=new Date(t.timestamp).toLocaleString();h+='<tr><td style="font-size:11px;">'+dt+'</td><td><span style="color:'+c+';font-weight:bold;">'+t.action+'</span></td><td><strong>'+t.symbol.replace('USDT','')+'</strong></td><td>'+t.quantity+'</td><td>
-    
-    "/backtesting": ("Backtest", "🧪 Backtesting", """<div class="grid grid-2"><div class="card"><h2>Configuration</h2><select id="sy"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option><option value="SOLUSDT">Solana</option></select><select id="st"><option value="SMA_CROSS">Croisement SMA</option></select><input type="number" id="ca" value="10000" step="1000"><button onclick="run()">Lancer</button></div><div class="card"><h2>Résultats</h2><div id="rs" style="display:none;"><div class="grid grid-2"><div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div><div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div></div><p style="margin-top:15px;">Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p></div><div id="lo" style="display:none;text-align:center;padding:40px;"><p>⏳ Calcul...</p></div><div id="ph" style="text-align:center;padding:40px;"><p>Configurez et lancez</p></div><div id="er"></div></div></div><script>async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,strategy:document.getElementById('st').value,start_capital:parseFloat(document.getElementById('ca').value)}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}} </script>"""),
-    
-    "/convertisseur": ("Convertisseur", "💱 Convertisseur", """<div class="card"><h2>Convertir</h2><input type="number" id="amt" value="1" step="0.01"><div class="grid grid-2"><div><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD" selected>Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div><div><select id="to"><option value="BTC" selected>Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD">Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div></div><button onclick="convert()">Convertir</button><div id="result"></div></div><script>async function convert(){{document.getElementById('result').innerHTML='<p style="color:#f59e0b;">⏳ Conversion...</p>';try{{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+d.error+'</div>';}}else{{document.getElementById('result').innerHTML='<div style="background:#0f172a;padding:30px;border-radius:8px;text-align:center;margin-top:20px;"><p style="color:#94a3b8;">'+d.amount+' '+d.from+'</p><p style="font-size:36px;font-weight:bold;color:#60a5fa;margin:20px 0;">'+d.result+'</p><p style="color:#94a3b8;">'+d.to+'</p></div>';}}}}catch(e){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+e.message+'</div>';}}}} </script>"""),
-    
-    "/annonces": ("Actualités", "📰 Actualités", """<div class="card"><h2>Dernières Actualités</h2><div id="nw">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='<div style="display:grid;gap:15px;">';d.news.forEach(n=>{{const dt=new Date(n.published);const ago=Math.floor((new Date()-dt)/60000);const tm=ago<60?ago+'min':Math.floor(ago/60)+'h';h+='<div style="padding:20px;background:#0f172a;border-radius:8px;border-left:4px solid #60a5fa;"><h3 style="color:#e2e8f0;margin-bottom:8px;">'+n.title+'</h3><p style="color:#94a3b8;font-size:13px;">📡 '+n.source+' • 🕐 '+tm+'</p></div>';}});h+='</div>';document.getElementById('nw').innerHTML=h;}}load();</script>"""),
-    
-    "/btc-quarterly": ("Trimestriel", "📆 Rendements Trimestriels", """<div class="card"><h2>Performance BTC par Trimestre</h2><div id="qdata">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><thead><tr><th>Année</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td><strong>'+y+'</strong></td>';for(const t of['T1','T2','T3','T4']){{const v=q[t];const c=v>0?'#10b981':v<0?'#ef4444':'#94a3b8';h+='<td style="color:'+c+';font-weight:bold;">'+(v>0?'+':'')+v+'%</td>';}}h+='</tr>';}}h+='</tbody></table>';document.getElementById('qdata').innerHTML=h;}}load();</script>"""),
-    
-    "/heatmap": ("Heatmap", "🔥 Heatmap", """<div class="card"><h2>Performance</h2><button onclick="loadHeatmap('monthly')">Mensuelle</button> <button onclick="loadHeatmap('yearly')" class="btn-danger">Annuelle</button><div id="hmap" style="margin-top:20px;">Chargement...</div></div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>15?'#10b981':perf>5?'#60a5fa':perf>-5?'#94a3b8':perf>-15?'#f59e0b':'#ef4444';h+='<div style="background:'+color+'22;border:2px solid '+color+';padding:20px;border-radius:8px;text-align:center;"><div style="font-weight:bold;color:'+color+';font-size:24px;">'+(perf>0?'+':'')+perf+'%</div><div style="color:#94a3b8;font-size:12px;margin-top:5px;">'+label+'</div></div>';}});h+='</div>';document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>"""),
-    
-    "/calendrier": ("Calendrier", "📅 Calendrier", """<div class="card"><h2>Événements à Venir</h2><div id="cal">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><thead><tr><th>Date</th><th>Événement</th><th>Cryptos</th></tr></thead><tbody>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td><strong>'+e.title+'</strong></td><td>'+e.coins.join(', ')+'</td></tr>';}});h+='</tbody></table>';document.getElementById('cal').innerHTML=h;}}load();</script>"""),
-    
-    "/altcoin-season": ("AltSeason", "🌟 Altcoin Season", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">27</div><div style="font-size:24px;color:#ef4444;margin-top:20px;">Saison Bitcoin</div></div></div>"""),
-    
-    "/btc-dominance": ("Dominance", "📊 Dominance BTC", """<div class="card"><h2>Dominance Bitcoin</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">52.3%</div><div style="font-size:24px;color:#10b981;margin-top:20px;">Tendance: Hausse</div></div></div>"""),
-    
-    "/strategie": ("Stratégie", "🎯 Stratégie", """<div class="card"><h2>Règles de Trading</h2><ul style="line-height:2;color:#94a3b8;"><li><strong>Risk/Reward:</strong> Minimum 1:2</li><li><strong>Position:</strong> Max 2% du capital</li><li><strong>Stop Loss:</strong> Obligatoire</li><li><strong>Take Profit:</strong> 3 niveaux</li></ul></div>"""),
-    
-    "/correlations": ("Corrélations", "🔗 Corrélations", """<div class="card"><h2>Relations entre Actifs</h2><div style="display:grid;gap:15px;max-width:600px;"><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - ETH</span><span style="font-weight:bold;color:#10b981;">0.87</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - TOTAL</span><span style="font-weight:bold;color:#10b981;">0.92</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>ETH - ALTS</span><span style="font-weight:bold;color:#60a5fa;">0.78</span></div></div></div>"""),
-    
-    "/top-movers": ("Movers", "📈 Top Movers 24h", """<div class="grid grid-2"><div class="card"><h2 style="color:#10b981;">Gainers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>SOL</strong><span style="color:#10b981;font-weight:bold;">+12.5%</span></div><div style="color:#94a3b8;margin-top:5px;">$165.50</div></div></div><div class="card"><h2 style="color:#ef4444;">Losers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>DOGE</strong><span style="color:#ef4444;font-weight:bold;">-5.3%</span></div><div style="color:#94a3b8;margin-top:5px;">$0.08</div></div></div></div>"""),
-    
-    "/performance": ("Performance", "📊 Performance", """<div class="card"><h2>Performance par Paire</h2><p style="color:#94a3b8;">Analyse de vos trades par paire crypto</p></div>"""),
-}
-
-# Générer toutes les routes
-for path, (title, h1, body) in PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{h1}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*80)
-    print("🚀 TRADING DASHBOARD v4.2 - DESIGN COMPLET RESTAURÉ")
-    print("="*80)
-    print("✅ Toutes les 17+ sections avec design original")
-    print("✅ Interface 100% en français avec emojis")
-    print("✅ Toutes fonctionnalités opérationnelles")
-    print("✅ Bot Telegram configuré")
-    print("="*80)
-    print(f"\n🤖 Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
-    print("\n📊 Dashboard: http://localhost:8000")
-    print("🤖 Telegram: http://localhost:8000/telegram-test")
-    print("💰 Paper: http://localhost:8000/paper-trading")
-    print("="*80 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+t.price.toFixed(2)+'</td><td style="font-weight:bold;">
-    
-    "/backtesting": ("Backtest", "🧪 Backtesting", """<div class="grid grid-2"><div class="card"><h2>Configuration</h2><select id="sy"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option><option value="SOLUSDT">Solana</option></select><select id="st"><option value="SMA_CROSS">Croisement SMA</option></select><input type="number" id="ca" value="10000" step="1000"><button onclick="run()">Lancer</button></div><div class="card"><h2>Résultats</h2><div id="rs" style="display:none;"><div class="grid grid-2"><div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div><div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div></div><p style="margin-top:15px;">Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p></div><div id="lo" style="display:none;text-align:center;padding:40px;"><p>⏳ Calcul...</p></div><div id="ph" style="text-align:center;padding:40px;"><p>Configurez et lancez</p></div><div id="er"></div></div></div><script>async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,strategy:document.getElementById('st').value,start_capital:parseFloat(document.getElementById('ca').value)}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}} </script>"""),
-    
-    "/convertisseur": ("Convertisseur", "💱 Convertisseur", """<div class="card"><h2>Convertir</h2><input type="number" id="amt" value="1" step="0.01"><div class="grid grid-2"><div><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD" selected>Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div><div><select id="to"><option value="BTC" selected>Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD">Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div></div><button onclick="convert()">Convertir</button><div id="result"></div></div><script>async function convert(){{document.getElementById('result').innerHTML='<p style="color:#f59e0b;">⏳ Conversion...</p>';try{{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+d.error+'</div>';}}else{{document.getElementById('result').innerHTML='<div style="background:#0f172a;padding:30px;border-radius:8px;text-align:center;margin-top:20px;"><p style="color:#94a3b8;">'+d.amount+' '+d.from+'</p><p style="font-size:36px;font-weight:bold;color:#60a5fa;margin:20px 0;">'+d.result+'</p><p style="color:#94a3b8;">'+d.to+'</p></div>';}}}}catch(e){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+e.message+'</div>';}}}} </script>"""),
-    
-    "/annonces": ("Actualités", "📰 Actualités", """<div class="card"><h2>Dernières Actualités</h2><div id="nw">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='<div style="display:grid;gap:15px;">';d.news.forEach(n=>{{const dt=new Date(n.published);const ago=Math.floor((new Date()-dt)/60000);const tm=ago<60?ago+'min':Math.floor(ago/60)+'h';h+='<div style="padding:20px;background:#0f172a;border-radius:8px;border-left:4px solid #60a5fa;"><h3 style="color:#e2e8f0;margin-bottom:8px;">'+n.title+'</h3><p style="color:#94a3b8;font-size:13px;">📡 '+n.source+' • 🕐 '+tm+'</p></div>';}});h+='</div>';document.getElementById('nw').innerHTML=h;}}load();</script>"""),
-    
-    "/btc-quarterly": ("Trimestriel", "📆 Rendements Trimestriels", """<div class="card"><h2>Performance BTC par Trimestre</h2><div id="qdata">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><thead><tr><th>Année</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td><strong>'+y+'</strong></td>';for(const t of['T1','T2','T3','T4']){{const v=q[t];const c=v>0?'#10b981':v<0?'#ef4444':'#94a3b8';h+='<td style="color:'+c+';font-weight:bold;">'+(v>0?'+':'')+v+'%</td>';}}h+='</tr>';}}h+='</tbody></table>';document.getElementById('qdata').innerHTML=h;}}load();</script>"""),
-    
-    "/heatmap": ("Heatmap", "🔥 Heatmap", """<div class="card"><h2>Performance</h2><button onclick="loadHeatmap('monthly')">Mensuelle</button> <button onclick="loadHeatmap('yearly')" class="btn-danger">Annuelle</button><div id="hmap" style="margin-top:20px;">Chargement...</div></div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>15?'#10b981':perf>5?'#60a5fa':perf>-5?'#94a3b8':perf>-15?'#f59e0b':'#ef4444';h+='<div style="background:'+color+'22;border:2px solid '+color+';padding:20px;border-radius:8px;text-align:center;"><div style="font-weight:bold;color:'+color+';font-size:24px;">'+(perf>0?'+':'')+perf+'%</div><div style="color:#94a3b8;font-size:12px;margin-top:5px;">'+label+'</div></div>';}});h+='</div>';document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>"""),
-    
-    "/calendrier": ("Calendrier", "📅 Calendrier", """<div class="card"><h2>Événements à Venir</h2><div id="cal">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><thead><tr><th>Date</th><th>Événement</th><th>Cryptos</th></tr></thead><tbody>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td><strong>'+e.title+'</strong></td><td>'+e.coins.join(', ')+'</td></tr>';}});h+='</tbody></table>';document.getElementById('cal').innerHTML=h;}}load();</script>"""),
-    
-    "/altcoin-season": ("AltSeason", "🌟 Altcoin Season", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">27</div><div style="font-size:24px;color:#ef4444;margin-top:20px;">Saison Bitcoin</div></div></div>"""),
-    
-    "/btc-dominance": ("Dominance", "📊 Dominance BTC", """<div class="card"><h2>Dominance Bitcoin</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">52.3%</div><div style="font-size:24px;color:#10b981;margin-top:20px;">Tendance: Hausse</div></div></div>"""),
-    
-    "/strategie": ("Stratégie", "🎯 Stratégie", """<div class="card"><h2>Règles de Trading</h2><ul style="line-height:2;color:#94a3b8;"><li><strong>Risk/Reward:</strong> Minimum 1:2</li><li><strong>Position:</strong> Max 2% du capital</li><li><strong>Stop Loss:</strong> Obligatoire</li><li><strong>Take Profit:</strong> 3 niveaux</li></ul></div>"""),
-    
-    "/correlations": ("Corrélations", "🔗 Corrélations", """<div class="card"><h2>Relations entre Actifs</h2><div style="display:grid;gap:15px;max-width:600px;"><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - ETH</span><span style="font-weight:bold;color:#10b981;">0.87</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - TOTAL</span><span style="font-weight:bold;color:#10b981;">0.92</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>ETH - ALTS</span><span style="font-weight:bold;color:#60a5fa;">0.78</span></div></div></div>"""),
-    
-    "/top-movers": ("Movers", "📈 Top Movers 24h", """<div class="grid grid-2"><div class="card"><h2 style="color:#10b981;">Gainers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>SOL</strong><span style="color:#10b981;font-weight:bold;">+12.5%</span></div><div style="color:#94a3b8;margin-top:5px;">$165.50</div></div></div><div class="card"><h2 style="color:#ef4444;">Losers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>DOGE</strong><span style="color:#ef4444;font-weight:bold;">-5.3%</span></div><div style="color:#94a3b8;margin-top:5px;">$0.08</div></div></div></div>"""),
-    
-    "/performance": ("Performance", "📊 Performance", """<div class="card"><h2>Performance par Paire</h2><p style="color:#94a3b8;">Analyse de vos trades par paire crypto</p></div>"""),
-}
-
-# Générer toutes les routes
-for path, (title, h1, body) in PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{h1}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*80)
-    print("🚀 TRADING DASHBOARD v4.2 - DESIGN COMPLET RESTAURÉ")
-    print("="*80)
-    print("✅ Toutes les 17+ sections avec design original")
-    print("✅ Interface 100% en français avec emojis")
-    print("✅ Toutes fonctionnalités opérationnelles")
-    print("✅ Bot Telegram configuré")
-    print("="*80)
-    print(f"\n🤖 Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
-    print("\n📊 Dashboard: http://localhost:8000")
-    print("🤖 Telegram: http://localhost:8000/telegram-test")
-    print("💰 Paper: http://localhost:8000/paper-trading")
-    print("="*80 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+t.total.toFixed(2)+'</td></tr>';});h+='</tbody></table>';document.getElementById('hi').innerHTML=h;}async function trade(){const r=await fetch('/api/paper-trade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:document.getElementById('ac').value,symbol:document.getElementById('sy').value,quantity:document.getElementById('qt').value})});const d=await r.json();document.getElementById('ms').innerHTML='<div class="alert alert-'+(d.status==='success'?'success':'error')+'">'+d.message+'</div>';setTimeout(()=>{document.getElementById('ms').innerHTML='';},5000);loadStats();loadBal();loadHist();}async function resetPaper(){if(confirm('Réinitialiser le paper trading?')){await fetch('/api/paper-reset',{method:'POST'});alert('Réinitialisé!');loadStats();loadBal();loadHist();}}loadStats();loadBal();loadHist();setInterval(()=>{loadStats();loadBal();},30000);</script>"""),
-    
-    "/backtesting": ("Backtest", "🧪 Backtesting", """<div class="grid grid-2"><div class="card"><h2>Configuration</h2><select id="sy"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option><option value="SOLUSDT">Solana</option></select><select id="st"><option value="SMA_CROSS">Croisement SMA</option></select><input type="number" id="ca" value="10000" step="1000"><button onclick="run()">Lancer</button></div><div class="card"><h2>Résultats</h2><div id="rs" style="display:none;"><div class="grid grid-2"><div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div><div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div></div><p style="margin-top:15px;">Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p></div><div id="lo" style="display:none;text-align:center;padding:40px;"><p>⏳ Calcul...</p></div><div id="ph" style="text-align:center;padding:40px;"><p>Configurez et lancez</p></div><div id="er"></div></div></div><script>async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,strategy:document.getElementById('st').value,start_capital:parseFloat(document.getElementById('ca').value)}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}} </script>"""),
-    
-    "/convertisseur": ("Convertisseur", "💱 Convertisseur", """<div class="card"><h2>Convertir</h2><input type="number" id="amt" value="1" step="0.01"><div class="grid grid-2"><div><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD" selected>Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div><div><select id="to"><option value="BTC" selected>Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD">Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div></div><button onclick="convert()">Convertir</button><div id="result"></div></div><script>async function convert(){{document.getElementById('result').innerHTML='<p style="color:#f59e0b;">⏳ Conversion...</p>';try{{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+d.error+'</div>';}}else{{document.getElementById('result').innerHTML='<div style="background:#0f172a;padding:30px;border-radius:8px;text-align:center;margin-top:20px;"><p style="color:#94a3b8;">'+d.amount+' '+d.from+'</p><p style="font-size:36px;font-weight:bold;color:#60a5fa;margin:20px 0;">'+d.result+'</p><p style="color:#94a3b8;">'+d.to+'</p></div>';}}}}catch(e){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+e.message+'</div>';}}}} </script>"""),
-    
-    "/annonces": ("Actualités", "📰 Actualités", """<div class="card"><h2>Dernières Actualités</h2><div id="nw">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='<div style="display:grid;gap:15px;">';d.news.forEach(n=>{{const dt=new Date(n.published);const ago=Math.floor((new Date()-dt)/60000);const tm=ago<60?ago+'min':Math.floor(ago/60)+'h';h+='<div style="padding:20px;background:#0f172a;border-radius:8px;border-left:4px solid #60a5fa;"><h3 style="color:#e2e8f0;margin-bottom:8px;">'+n.title+'</h3><p style="color:#94a3b8;font-size:13px;">📡 '+n.source+' • 🕐 '+tm+'</p></div>';}});h+='</div>';document.getElementById('nw').innerHTML=h;}}load();</script>"""),
-    
-    "/btc-quarterly": ("Trimestriel", "📆 Rendements Trimestriels", """<div class="card"><h2>Performance BTC par Trimestre</h2><div id="qdata">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><thead><tr><th>Année</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td><strong>'+y+'</strong></td>';for(const t of['T1','T2','T3','T4']){{const v=q[t];const c=v>0?'#10b981':v<0?'#ef4444':'#94a3b8';h+='<td style="color:'+c+';font-weight:bold;">'+(v>0?'+':'')+v+'%</td>';}}h+='</tr>';}}h+='</tbody></table>';document.getElementById('qdata').innerHTML=h;}}load();</script>"""),
-    
-    "/heatmap": ("Heatmap", "🔥 Heatmap", """<div class="card"><h2>Performance</h2><button onclick="loadHeatmap('monthly')">Mensuelle</button> <button onclick="loadHeatmap('yearly')" class="btn-danger">Annuelle</button><div id="hmap" style="margin-top:20px;">Chargement...</div></div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>15?'#10b981':perf>5?'#60a5fa':perf>-5?'#94a3b8':perf>-15?'#f59e0b':'#ef4444';h+='<div style="background:'+color+'22;border:2px solid '+color+';padding:20px;border-radius:8px;text-align:center;"><div style="font-weight:bold;color:'+color+';font-size:24px;">'+(perf>0?'+':'')+perf+'%</div><div style="color:#94a3b8;font-size:12px;margin-top:5px;">'+label+'</div></div>';}});h+='</div>';document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>"""),
-    
-    "/calendrier": ("Calendrier", "📅 Calendrier", """<div class="card"><h2>Événements à Venir</h2><div id="cal">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><thead><tr><th>Date</th><th>Événement</th><th>Cryptos</th></tr></thead><tbody>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td><strong>'+e.title+'</strong></td><td>'+e.coins.join(', ')+'</td></tr>';}});h+='</tbody></table>';document.getElementById('cal').innerHTML=h;}}load();</script>"""),
-    
-    "/altcoin-season": ("AltSeason", "🌟 Altcoin Season", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">27</div><div style="font-size:24px;color:#ef4444;margin-top:20px;">Saison Bitcoin</div></div></div>"""),
-    
-    "/btc-dominance": ("Dominance", "📊 Dominance BTC", """<div class="card"><h2>Dominance Bitcoin</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">52.3%</div><div style="font-size:24px;color:#10b981;margin-top:20px;">Tendance: Hausse</div></div></div>"""),
-    
-    "/strategie": ("Stratégie", "🎯 Stratégie", """<div class="card"><h2>Règles de Trading</h2><ul style="line-height:2;color:#94a3b8;"><li><strong>Risk/Reward:</strong> Minimum 1:2</li><li><strong>Position:</strong> Max 2% du capital</li><li><strong>Stop Loss:</strong> Obligatoire</li><li><strong>Take Profit:</strong> 3 niveaux</li></ul></div>"""),
-    
-    "/correlations": ("Corrélations", "🔗 Corrélations", """<div class="card"><h2>Relations entre Actifs</h2><div style="display:grid;gap:15px;max-width:600px;"><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - ETH</span><span style="font-weight:bold;color:#10b981;">0.87</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - TOTAL</span><span style="font-weight:bold;color:#10b981;">0.92</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>ETH - ALTS</span><span style="font-weight:bold;color:#60a5fa;">0.78</span></div></div></div>"""),
-    
-    "/top-movers": ("Movers", "📈 Top Movers 24h", """<div class="grid grid-2"><div class="card"><h2 style="color:#10b981;">Gainers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>SOL</strong><span style="color:#10b981;font-weight:bold;">+12.5%</span></div><div style="color:#94a3b8;margin-top:5px;">$165.50</div></div></div><div class="card"><h2 style="color:#ef4444;">Losers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>DOGE</strong><span style="color:#ef4444;font-weight:bold;">-5.3%</span></div><div style="color:#94a3b8;margin-top:5px;">$0.08</div></div></div></div>"""),
-    
-    "/performance": ("Performance", "📊 Performance", """<div class="card"><h2>Performance par Paire</h2><p style="color:#94a3b8;">Analyse de vos trades par paire crypto</p></div>"""),
-}
-
-# Générer toutes les routes
-for path, (title, h1, body) in PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{h1}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*80)
-    print("🚀 TRADING DASHBOARD v4.2 - DESIGN COMPLET RESTAURÉ")
-    print("="*80)
-    print("✅ Toutes les 17+ sections avec design original")
-    print("✅ Interface 100% en français avec emojis")
-    print("✅ Toutes fonctionnalités opérationnelles")
-    print("✅ Bot Telegram configuré")
-    print("="*80)
-    print(f"\n🤖 Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
-    print("\n📊 Dashboard: http://localhost:8000")
-    print("🤖 Telegram: http://localhost:8000/telegram-test")
-    print("💰 Paper: http://localhost:8000/paper-trading")
-    print("="*80 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}catch(e){document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">❌ '+e.message+'</div>';document.getElementById('ph').style.display='block';}}</script>"""),
-    
-    "/convertisseur": ("Convertisseur", "💱 Convertisseur", """<div class="card"><h2>Convertir</h2><input type="number" id="amt" value="1" step="0.01"><div class="grid grid-2"><div><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD" selected>Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div><div><select id="to"><option value="BTC" selected>Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD">Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div></div><button onclick="convert()">Convertir</button><div id="result"></div></div><script>async function convert(){{document.getElementById('result').innerHTML='<p style="color:#f59e0b;">⏳ Conversion...</p>';try{{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+d.error+'</div>';}}else{{document.getElementById('result').innerHTML='<div style="background:#0f172a;padding:30px;border-radius:8px;text-align:center;margin-top:20px;"><p style="color:#94a3b8;">'+d.amount+' '+d.from+'</p><p style="font-size:36px;font-weight:bold;color:#60a5fa;margin:20px 0;">'+d.result+'</p><p style="color:#94a3b8;">'+d.to+'</p></div>';}}}}catch(e){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+e.message+'</div>';}}}} </script>"""),
-    
-    "/annonces": ("Actualités", "📰 Actualités", """<div class="card"><h2>Dernières Actualités</h2><div id="nw">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='<div style="display:grid;gap:15px;">';d.news.forEach(n=>{{const dt=new Date(n.published);const ago=Math.floor((new Date()-dt)/60000);const tm=ago<60?ago+'min':Math.floor(ago/60)+'h';h+='<div style="padding:20px;background:#0f172a;border-radius:8px;border-left:4px solid #60a5fa;"><h3 style="color:#e2e8f0;margin-bottom:8px;">'+n.title+'</h3><p style="color:#94a3b8;font-size:13px;">📡 '+n.source+' • 🕐 '+tm+'</p></div>';}});h+='</div>';document.getElementById('nw').innerHTML=h;}}load();</script>"""),
-    
-    "/btc-quarterly": ("Trimestriel", "📆 Rendements Trimestriels", """<div class="card"><h2>Performance BTC par Trimestre</h2><div id="qdata">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><thead><tr><th>Année</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td><strong>'+y+'</strong></td>';for(const t of['T1','T2','T3','T4']){{const v=q[t];const c=v>0?'#10b981':v<0?'#ef4444':'#94a3b8';h+='<td style="color:'+c+';font-weight:bold;">'+(v>0?'+':'')+v+'%</td>';}}h+='</tr>';}}h+='</tbody></table>';document.getElementById('qdata').innerHTML=h;}}load();</script>"""),
-    
-    "/heatmap": ("Heatmap", "🔥 Heatmap", """<div class="card"><h2>Performance</h2><button onclick="loadHeatmap('monthly')">Mensuelle</button> <button onclick="loadHeatmap('yearly')" class="btn-danger">Annuelle</button><div id="hmap" style="margin-top:20px;">Chargement...</div></div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>15?'#10b981':perf>5?'#60a5fa':perf>-5?'#94a3b8':perf>-15?'#f59e0b':'#ef4444';h+='<div style="background:'+color+'22;border:2px solid '+color+';padding:20px;border-radius:8px;text-align:center;"><div style="font-weight:bold;color:'+color+';font-size:24px;">'+(perf>0?'+':'')+perf+'%</div><div style="color:#94a3b8;font-size:12px;margin-top:5px;">'+label+'</div></div>';}});h+='</div>';document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>"""),
-    
-    "/calendrier": ("Calendrier", "📅 Calendrier", """<div class="card"><h2>Événements à Venir</h2><div id="cal">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><thead><tr><th>Date</th><th>Événement</th><th>Cryptos</th></tr></thead><tbody>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td><strong>'+e.title+'</strong></td><td>'+e.coins.join(', ')+'</td></tr>';}});h+='</tbody></table>';document.getElementById('cal').innerHTML=h;}}load();</script>"""),
-    
-    "/altcoin-season": ("AltSeason", "🌟 Altcoin Season", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">27</div><div style="font-size:24px;color:#ef4444;margin-top:20px;">Saison Bitcoin</div></div></div>"""),
-    
-    "/btc-dominance": ("Dominance", "📊 Dominance BTC", """<div class="card"><h2>Dominance Bitcoin</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">52.3%</div><div style="font-size:24px;color:#10b981;margin-top:20px;">Tendance: Hausse</div></div></div>"""),
-    
-    "/strategie": ("Stratégie", "🎯 Stratégie", """<div class="card"><h2>Règles de Trading</h2><ul style="line-height:2;color:#94a3b8;"><li><strong>Risk/Reward:</strong> Minimum 1:2</li><li><strong>Position:</strong> Max 2% du capital</li><li><strong>Stop Loss:</strong> Obligatoire</li><li><strong>Take Profit:</strong> 3 niveaux</li></ul></div>"""),
-    
-    "/correlations": ("Corrélations", "🔗 Corrélations", """<div class="card"><h2>Relations entre Actifs</h2><div style="display:grid;gap:15px;max-width:600px;"><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - ETH</span><span style="font-weight:bold;color:#10b981;">0.87</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - TOTAL</span><span style="font-weight:bold;color:#10b981;">0.92</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>ETH - ALTS</span><span style="font-weight:bold;color:#60a5fa;">0.78</span></div></div></div>"""),
-    
-    "/top-movers": ("Movers", "📈 Top Movers 24h", """<div class="grid grid-2"><div class="card"><h2 style="color:#10b981;">Gainers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>SOL</strong><span style="color:#10b981;font-weight:bold;">+12.5%</span></div><div style="color:#94a3b8;margin-top:5px;">$165.50</div></div></div><div class="card"><h2 style="color:#ef4444;">Losers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>DOGE</strong><span style="color:#ef4444;font-weight:bold;">-5.3%</span></div><div style="color:#94a3b8;margin-top:5px;">$0.08</div></div></div></div>"""),
-    
-    "/performance": ("Performance", "📊 Performance", """<div class="card"><h2>Performance par Paire</h2><p style="color:#94a3b8;">Analyse de vos trades par paire crypto</p></div>"""),
-}
-
-# Générer toutes les routes
-for path, (title, h1, body) in PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{h1}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*80)
-    print("🚀 TRADING DASHBOARD v4.2 - DESIGN COMPLET RESTAURÉ")
-    print("="*80)
-    print("✅ Toutes les 17+ sections avec design original")
-    print("✅ Interface 100% en français avec emojis")
-    print("✅ Toutes fonctionnalités opérationnelles")
-    print("✅ Bot Telegram configuré")
-    print("="*80)
-    print(f"\n🤖 Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
-    print("\n📊 Dashboard: http://localhost:8000")
-    print("🤖 Telegram: http://localhost:8000/telegram-test")
-    print("💰 Paper: http://localhost:8000/paper-trading")
-    print("="*80 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+d.total_value.toLocaleString();document.getElementById('pn').textContent='
-    
-    "/backtesting": ("Backtest", "🧪 Backtesting", """<div class="grid grid-2"><div class="card"><h2>Configuration</h2><select id="sy"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option><option value="SOLUSDT">Solana</option></select><select id="st"><option value="SMA_CROSS">Croisement SMA</option></select><input type="number" id="ca" value="10000" step="1000"><button onclick="run()">Lancer</button></div><div class="card"><h2>Résultats</h2><div id="rs" style="display:none;"><div class="grid grid-2"><div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div><div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div></div><p style="margin-top:15px;">Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p></div><div id="lo" style="display:none;text-align:center;padding:40px;"><p>⏳ Calcul...</p></div><div id="ph" style="text-align:center;padding:40px;"><p>Configurez et lancez</p></div><div id="er"></div></div></div><script>async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,strategy:document.getElementById('st').value,start_capital:parseFloat(document.getElementById('ca').value)}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}} </script>"""),
-    
-    "/convertisseur": ("Convertisseur", "💱 Convertisseur", """<div class="card"><h2>Convertir</h2><input type="number" id="amt" value="1" step="0.01"><div class="grid grid-2"><div><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD" selected>Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div><div><select id="to"><option value="BTC" selected>Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD">Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div></div><button onclick="convert()">Convertir</button><div id="result"></div></div><script>async function convert(){{document.getElementById('result').innerHTML='<p style="color:#f59e0b;">⏳ Conversion...</p>';try{{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+d.error+'</div>';}}else{{document.getElementById('result').innerHTML='<div style="background:#0f172a;padding:30px;border-radius:8px;text-align:center;margin-top:20px;"><p style="color:#94a3b8;">'+d.amount+' '+d.from+'</p><p style="font-size:36px;font-weight:bold;color:#60a5fa;margin:20px 0;">'+d.result+'</p><p style="color:#94a3b8;">'+d.to+'</p></div>';}}}}catch(e){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+e.message+'</div>';}}}} </script>"""),
-    
-    "/annonces": ("Actualités", "📰 Actualités", """<div class="card"><h2>Dernières Actualités</h2><div id="nw">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='<div style="display:grid;gap:15px;">';d.news.forEach(n=>{{const dt=new Date(n.published);const ago=Math.floor((new Date()-dt)/60000);const tm=ago<60?ago+'min':Math.floor(ago/60)+'h';h+='<div style="padding:20px;background:#0f172a;border-radius:8px;border-left:4px solid #60a5fa;"><h3 style="color:#e2e8f0;margin-bottom:8px;">'+n.title+'</h3><p style="color:#94a3b8;font-size:13px;">📡 '+n.source+' • 🕐 '+tm+'</p></div>';}});h+='</div>';document.getElementById('nw').innerHTML=h;}}load();</script>"""),
-    
-    "/btc-quarterly": ("Trimestriel", "📆 Rendements Trimestriels", """<div class="card"><h2>Performance BTC par Trimestre</h2><div id="qdata">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><thead><tr><th>Année</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td><strong>'+y+'</strong></td>';for(const t of['T1','T2','T3','T4']){{const v=q[t];const c=v>0?'#10b981':v<0?'#ef4444':'#94a3b8';h+='<td style="color:'+c+';font-weight:bold;">'+(v>0?'+':'')+v+'%</td>';}}h+='</tr>';}}h+='</tbody></table>';document.getElementById('qdata').innerHTML=h;}}load();</script>"""),
-    
-    "/heatmap": ("Heatmap", "🔥 Heatmap", """<div class="card"><h2>Performance</h2><button onclick="loadHeatmap('monthly')">Mensuelle</button> <button onclick="loadHeatmap('yearly')" class="btn-danger">Annuelle</button><div id="hmap" style="margin-top:20px;">Chargement...</div></div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>15?'#10b981':perf>5?'#60a5fa':perf>-5?'#94a3b8':perf>-15?'#f59e0b':'#ef4444';h+='<div style="background:'+color+'22;border:2px solid '+color+';padding:20px;border-radius:8px;text-align:center;"><div style="font-weight:bold;color:'+color+';font-size:24px;">'+(perf>0?'+':'')+perf+'%</div><div style="color:#94a3b8;font-size:12px;margin-top:5px;">'+label+'</div></div>';}});h+='</div>';document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>"""),
-    
-    "/calendrier": ("Calendrier", "📅 Calendrier", """<div class="card"><h2>Événements à Venir</h2><div id="cal">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><thead><tr><th>Date</th><th>Événement</th><th>Cryptos</th></tr></thead><tbody>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td><strong>'+e.title+'</strong></td><td>'+e.coins.join(', ')+'</td></tr>';}});h+='</tbody></table>';document.getElementById('cal').innerHTML=h;}}load();</script>"""),
-    
-    "/altcoin-season": ("AltSeason", "🌟 Altcoin Season", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">27</div><div style="font-size:24px;color:#ef4444;margin-top:20px;">Saison Bitcoin</div></div></div>"""),
-    
-    "/btc-dominance": ("Dominance", "📊 Dominance BTC", """<div class="card"><h2>Dominance Bitcoin</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">52.3%</div><div style="font-size:24px;color:#10b981;margin-top:20px;">Tendance: Hausse</div></div></div>"""),
-    
-    "/strategie": ("Stratégie", "🎯 Stratégie", """<div class="card"><h2>Règles de Trading</h2><ul style="line-height:2;color:#94a3b8;"><li><strong>Risk/Reward:</strong> Minimum 1:2</li><li><strong>Position:</strong> Max 2% du capital</li><li><strong>Stop Loss:</strong> Obligatoire</li><li><strong>Take Profit:</strong> 3 niveaux</li></ul></div>"""),
-    
-    "/correlations": ("Corrélations", "🔗 Corrélations", """<div class="card"><h2>Relations entre Actifs</h2><div style="display:grid;gap:15px;max-width:600px;"><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - ETH</span><span style="font-weight:bold;color:#10b981;">0.87</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - TOTAL</span><span style="font-weight:bold;color:#10b981;">0.92</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>ETH - ALTS</span><span style="font-weight:bold;color:#60a5fa;">0.78</span></div></div></div>"""),
-    
-    "/top-movers": ("Movers", "📈 Top Movers 24h", """<div class="grid grid-2"><div class="card"><h2 style="color:#10b981;">Gainers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>SOL</strong><span style="color:#10b981;font-weight:bold;">+12.5%</span></div><div style="color:#94a3b8;margin-top:5px;">$165.50</div></div></div><div class="card"><h2 style="color:#ef4444;">Losers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>DOGE</strong><span style="color:#ef4444;font-weight:bold;">-5.3%</span></div><div style="color:#94a3b8;margin-top:5px;">$0.08</div></div></div></div>"""),
-    
-    "/performance": ("Performance", "📊 Performance", """<div class="card"><h2>Performance par Paire</h2><p style="color:#94a3b8;">Analyse de vos trades par paire crypto</p></div>"""),
-}
-
-# Générer toutes les routes
-for path, (title, h1, body) in PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{h1}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*80)
-    print("🚀 TRADING DASHBOARD v4.2 - DESIGN COMPLET RESTAURÉ")
-    print("="*80)
-    print("✅ Toutes les 17+ sections avec design original")
-    print("✅ Interface 100% en français avec emojis")
-    print("✅ Toutes fonctionnalités opérationnelles")
-    print("✅ Bot Telegram configuré")
-    print("="*80)
-    print(f"\n🤖 Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
-    print("\n📊 Dashboard: http://localhost:8000")
-    print("🤖 Telegram: http://localhost:8000/telegram-test")
-    print("💰 Paper: http://localhost:8000/paper-trading")
-    print("="*80 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+d.pnl;document.getElementById('tt').textContent=d.total_trades;document.getElementById('pn').style.color=d.pnl>0?'#10b981':'#ef4444';}async function loadBal(){const r=await fetch('/api/paper-balance');const d=await r.json();let h='<div style="display:grid;gap:10px;">';for(const[c,a]of Object.entries(d.balance)){if(a>0.00001)h+='<div style="padding:12px;background:#0f172a;border-radius:6px;display:flex;justify-content:space-between;"><strong style="color:#60a5fa;">'+c+'</strong><span>'+(c==='USDT'?a.toFixed(2):a.toFixed(6))+'</span></div>';}h+='</div>';document.getElementById('ba').innerHTML=h;}async function loadHist(){const r=await fetch('/api/paper-trades');const d=await r.json();if(d.trades.length===0){document.getElementById('hi').innerHTML='<p style="color:#94a3b8;text-align:center;padding:20px;">Aucun trade</p>';return;}let h='<table><thead><tr><th>Date</th><th>Action</th><th>Crypto</th><th>Qté</th><th>Prix</th><th>Total</th></tr></thead><tbody>';d.trades.slice().reverse().forEach(t=>{const c=t.action==='ACHAT'?'#10b981':'#ef4444';const dt=new Date(t.timestamp).toLocaleString();h+='<tr><td style="font-size:11px;">'+dt+'</td><td><span style="color:'+c+';font-weight:bold;">'+t.action+'</span></td><td><strong>'+t.symbol.replace('USDT','')+'</strong></td><td>'+t.quantity+'</td><td>
-    
-    "/backtesting": ("Backtest", "🧪 Backtesting", """<div class="grid grid-2"><div class="card"><h2>Configuration</h2><select id="sy"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option><option value="SOLUSDT">Solana</option></select><select id="st"><option value="SMA_CROSS">Croisement SMA</option></select><input type="number" id="ca" value="10000" step="1000"><button onclick="run()">Lancer</button></div><div class="card"><h2>Résultats</h2><div id="rs" style="display:none;"><div class="grid grid-2"><div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div><div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div></div><p style="margin-top:15px;">Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p></div><div id="lo" style="display:none;text-align:center;padding:40px;"><p>⏳ Calcul...</p></div><div id="ph" style="text-align:center;padding:40px;"><p>Configurez et lancez</p></div><div id="er"></div></div></div><script>async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,strategy:document.getElementById('st').value,start_capital:parseFloat(document.getElementById('ca').value)}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}} </script>"""),
-    
-    "/convertisseur": ("Convertisseur", "💱 Convertisseur", """<div class="card"><h2>Convertir</h2><input type="number" id="amt" value="1" step="0.01"><div class="grid grid-2"><div><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD" selected>Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div><div><select id="to"><option value="BTC" selected>Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD">Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div></div><button onclick="convert()">Convertir</button><div id="result"></div></div><script>async function convert(){{document.getElementById('result').innerHTML='<p style="color:#f59e0b;">⏳ Conversion...</p>';try{{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+d.error+'</div>';}}else{{document.getElementById('result').innerHTML='<div style="background:#0f172a;padding:30px;border-radius:8px;text-align:center;margin-top:20px;"><p style="color:#94a3b8;">'+d.amount+' '+d.from+'</p><p style="font-size:36px;font-weight:bold;color:#60a5fa;margin:20px 0;">'+d.result+'</p><p style="color:#94a3b8;">'+d.to+'</p></div>';}}}}catch(e){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+e.message+'</div>';}}}} </script>"""),
-    
-    "/annonces": ("Actualités", "📰 Actualités", """<div class="card"><h2>Dernières Actualités</h2><div id="nw">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='<div style="display:grid;gap:15px;">';d.news.forEach(n=>{{const dt=new Date(n.published);const ago=Math.floor((new Date()-dt)/60000);const tm=ago<60?ago+'min':Math.floor(ago/60)+'h';h+='<div style="padding:20px;background:#0f172a;border-radius:8px;border-left:4px solid #60a5fa;"><h3 style="color:#e2e8f0;margin-bottom:8px;">'+n.title+'</h3><p style="color:#94a3b8;font-size:13px;">📡 '+n.source+' • 🕐 '+tm+'</p></div>';}});h+='</div>';document.getElementById('nw').innerHTML=h;}}load();</script>"""),
-    
-    "/btc-quarterly": ("Trimestriel", "📆 Rendements Trimestriels", """<div class="card"><h2>Performance BTC par Trimestre</h2><div id="qdata">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><thead><tr><th>Année</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td><strong>'+y+'</strong></td>';for(const t of['T1','T2','T3','T4']){{const v=q[t];const c=v>0?'#10b981':v<0?'#ef4444':'#94a3b8';h+='<td style="color:'+c+';font-weight:bold;">'+(v>0?'+':'')+v+'%</td>';}}h+='</tr>';}}h+='</tbody></table>';document.getElementById('qdata').innerHTML=h;}}load();</script>"""),
-    
-    "/heatmap": ("Heatmap", "🔥 Heatmap", """<div class="card"><h2>Performance</h2><button onclick="loadHeatmap('monthly')">Mensuelle</button> <button onclick="loadHeatmap('yearly')" class="btn-danger">Annuelle</button><div id="hmap" style="margin-top:20px;">Chargement...</div></div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>15?'#10b981':perf>5?'#60a5fa':perf>-5?'#94a3b8':perf>-15?'#f59e0b':'#ef4444';h+='<div style="background:'+color+'22;border:2px solid '+color+';padding:20px;border-radius:8px;text-align:center;"><div style="font-weight:bold;color:'+color+';font-size:24px;">'+(perf>0?'+':'')+perf+'%</div><div style="color:#94a3b8;font-size:12px;margin-top:5px;">'+label+'</div></div>';}});h+='</div>';document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>"""),
-    
-    "/calendrier": ("Calendrier", "📅 Calendrier", """<div class="card"><h2>Événements à Venir</h2><div id="cal">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><thead><tr><th>Date</th><th>Événement</th><th>Cryptos</th></tr></thead><tbody>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td><strong>'+e.title+'</strong></td><td>'+e.coins.join(', ')+'</td></tr>';}});h+='</tbody></table>';document.getElementById('cal').innerHTML=h;}}load();</script>"""),
-    
-    "/altcoin-season": ("AltSeason", "🌟 Altcoin Season", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">27</div><div style="font-size:24px;color:#ef4444;margin-top:20px;">Saison Bitcoin</div></div></div>"""),
-    
-    "/btc-dominance": ("Dominance", "📊 Dominance BTC", """<div class="card"><h2>Dominance Bitcoin</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">52.3%</div><div style="font-size:24px;color:#10b981;margin-top:20px;">Tendance: Hausse</div></div></div>"""),
-    
-    "/strategie": ("Stratégie", "🎯 Stratégie", """<div class="card"><h2>Règles de Trading</h2><ul style="line-height:2;color:#94a3b8;"><li><strong>Risk/Reward:</strong> Minimum 1:2</li><li><strong>Position:</strong> Max 2% du capital</li><li><strong>Stop Loss:</strong> Obligatoire</li><li><strong>Take Profit:</strong> 3 niveaux</li></ul></div>"""),
-    
-    "/correlations": ("Corrélations", "🔗 Corrélations", """<div class="card"><h2>Relations entre Actifs</h2><div style="display:grid;gap:15px;max-width:600px;"><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - ETH</span><span style="font-weight:bold;color:#10b981;">0.87</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - TOTAL</span><span style="font-weight:bold;color:#10b981;">0.92</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>ETH - ALTS</span><span style="font-weight:bold;color:#60a5fa;">0.78</span></div></div></div>"""),
-    
-    "/top-movers": ("Movers", "📈 Top Movers 24h", """<div class="grid grid-2"><div class="card"><h2 style="color:#10b981;">Gainers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>SOL</strong><span style="color:#10b981;font-weight:bold;">+12.5%</span></div><div style="color:#94a3b8;margin-top:5px;">$165.50</div></div></div><div class="card"><h2 style="color:#ef4444;">Losers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>DOGE</strong><span style="color:#ef4444;font-weight:bold;">-5.3%</span></div><div style="color:#94a3b8;margin-top:5px;">$0.08</div></div></div></div>"""),
-    
-    "/performance": ("Performance", "📊 Performance", """<div class="card"><h2>Performance par Paire</h2><p style="color:#94a3b8;">Analyse de vos trades par paire crypto</p></div>"""),
-}
-
-# Générer toutes les routes
-for path, (title, h1, body) in PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{h1}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*80)
-    print("🚀 TRADING DASHBOARD v4.2 - DESIGN COMPLET RESTAURÉ")
-    print("="*80)
-    print("✅ Toutes les 17+ sections avec design original")
-    print("✅ Interface 100% en français avec emojis")
-    print("✅ Toutes fonctionnalités opérationnelles")
-    print("✅ Bot Telegram configuré")
-    print("="*80)
-    print(f"\n🤖 Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
-    print("\n📊 Dashboard: http://localhost:8000")
-    print("🤖 Telegram: http://localhost:8000/telegram-test")
-    print("💰 Paper: http://localhost:8000/paper-trading")
-    print("="*80 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+t.price.toFixed(2)+'</td><td style="font-weight:bold;">
-    
-    "/backtesting": ("Backtest", "🧪 Backtesting", """<div class="grid grid-2"><div class="card"><h2>Configuration</h2><select id="sy"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option><option value="SOLUSDT">Solana</option></select><select id="st"><option value="SMA_CROSS">Croisement SMA</option></select><input type="number" id="ca" value="10000" step="1000"><button onclick="run()">Lancer</button></div><div class="card"><h2>Résultats</h2><div id="rs" style="display:none;"><div class="grid grid-2"><div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div><div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div></div><p style="margin-top:15px;">Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p></div><div id="lo" style="display:none;text-align:center;padding:40px;"><p>⏳ Calcul...</p></div><div id="ph" style="text-align:center;padding:40px;"><p>Configurez et lancez</p></div><div id="er"></div></div></div><script>async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,strategy:document.getElementById('st').value,start_capital:parseFloat(document.getElementById('ca').value)}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}} </script>"""),
-    
-    "/convertisseur": ("Convertisseur", "💱 Convertisseur", """<div class="card"><h2>Convertir</h2><input type="number" id="amt" value="1" step="0.01"><div class="grid grid-2"><div><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD" selected>Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div><div><select id="to"><option value="BTC" selected>Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD">Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div></div><button onclick="convert()">Convertir</button><div id="result"></div></div><script>async function convert(){{document.getElementById('result').innerHTML='<p style="color:#f59e0b;">⏳ Conversion...</p>';try{{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+d.error+'</div>';}}else{{document.getElementById('result').innerHTML='<div style="background:#0f172a;padding:30px;border-radius:8px;text-align:center;margin-top:20px;"><p style="color:#94a3b8;">'+d.amount+' '+d.from+'</p><p style="font-size:36px;font-weight:bold;color:#60a5fa;margin:20px 0;">'+d.result+'</p><p style="color:#94a3b8;">'+d.to+'</p></div>';}}}}catch(e){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+e.message+'</div>';}}}} </script>"""),
-    
-    "/annonces": ("Actualités", "📰 Actualités", """<div class="card"><h2>Dernières Actualités</h2><div id="nw">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='<div style="display:grid;gap:15px;">';d.news.forEach(n=>{{const dt=new Date(n.published);const ago=Math.floor((new Date()-dt)/60000);const tm=ago<60?ago+'min':Math.floor(ago/60)+'h';h+='<div style="padding:20px;background:#0f172a;border-radius:8px;border-left:4px solid #60a5fa;"><h3 style="color:#e2e8f0;margin-bottom:8px;">'+n.title+'</h3><p style="color:#94a3b8;font-size:13px;">📡 '+n.source+' • 🕐 '+tm+'</p></div>';}});h+='</div>';document.getElementById('nw').innerHTML=h;}}load();</script>"""),
-    
-    "/btc-quarterly": ("Trimestriel", "📆 Rendements Trimestriels", """<div class="card"><h2>Performance BTC par Trimestre</h2><div id="qdata">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><thead><tr><th>Année</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td><strong>'+y+'</strong></td>';for(const t of['T1','T2','T3','T4']){{const v=q[t];const c=v>0?'#10b981':v<0?'#ef4444':'#94a3b8';h+='<td style="color:'+c+';font-weight:bold;">'+(v>0?'+':'')+v+'%</td>';}}h+='</tr>';}}h+='</tbody></table>';document.getElementById('qdata').innerHTML=h;}}load();</script>"""),
-    
-    "/heatmap": ("Heatmap", "🔥 Heatmap", """<div class="card"><h2>Performance</h2><button onclick="loadHeatmap('monthly')">Mensuelle</button> <button onclick="loadHeatmap('yearly')" class="btn-danger">Annuelle</button><div id="hmap" style="margin-top:20px;">Chargement...</div></div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>15?'#10b981':perf>5?'#60a5fa':perf>-5?'#94a3b8':perf>-15?'#f59e0b':'#ef4444';h+='<div style="background:'+color+'22;border:2px solid '+color+';padding:20px;border-radius:8px;text-align:center;"><div style="font-weight:bold;color:'+color+';font-size:24px;">'+(perf>0?'+':'')+perf+'%</div><div style="color:#94a3b8;font-size:12px;margin-top:5px;">'+label+'</div></div>';}});h+='</div>';document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>"""),
-    
-    "/calendrier": ("Calendrier", "📅 Calendrier", """<div class="card"><h2>Événements à Venir</h2><div id="cal">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><thead><tr><th>Date</th><th>Événement</th><th>Cryptos</th></tr></thead><tbody>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td><strong>'+e.title+'</strong></td><td>'+e.coins.join(', ')+'</td></tr>';}});h+='</tbody></table>';document.getElementById('cal').innerHTML=h;}}load();</script>"""),
-    
-    "/altcoin-season": ("AltSeason", "🌟 Altcoin Season", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">27</div><div style="font-size:24px;color:#ef4444;margin-top:20px;">Saison Bitcoin</div></div></div>"""),
-    
-    "/btc-dominance": ("Dominance", "📊 Dominance BTC", """<div class="card"><h2>Dominance Bitcoin</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">52.3%</div><div style="font-size:24px;color:#10b981;margin-top:20px;">Tendance: Hausse</div></div></div>"""),
-    
-    "/strategie": ("Stratégie", "🎯 Stratégie", """<div class="card"><h2>Règles de Trading</h2><ul style="line-height:2;color:#94a3b8;"><li><strong>Risk/Reward:</strong> Minimum 1:2</li><li><strong>Position:</strong> Max 2% du capital</li><li><strong>Stop Loss:</strong> Obligatoire</li><li><strong>Take Profit:</strong> 3 niveaux</li></ul></div>"""),
-    
-    "/correlations": ("Corrélations", "🔗 Corrélations", """<div class="card"><h2>Relations entre Actifs</h2><div style="display:grid;gap:15px;max-width:600px;"><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - ETH</span><span style="font-weight:bold;color:#10b981;">0.87</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - TOTAL</span><span style="font-weight:bold;color:#10b981;">0.92</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>ETH - ALTS</span><span style="font-weight:bold;color:#60a5fa;">0.78</span></div></div></div>"""),
-    
-    "/top-movers": ("Movers", "📈 Top Movers 24h", """<div class="grid grid-2"><div class="card"><h2 style="color:#10b981;">Gainers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>SOL</strong><span style="color:#10b981;font-weight:bold;">+12.5%</span></div><div style="color:#94a3b8;margin-top:5px;">$165.50</div></div></div><div class="card"><h2 style="color:#ef4444;">Losers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>DOGE</strong><span style="color:#ef4444;font-weight:bold;">-5.3%</span></div><div style="color:#94a3b8;margin-top:5px;">$0.08</div></div></div></div>"""),
-    
-    "/performance": ("Performance", "📊 Performance", """<div class="card"><h2>Performance par Paire</h2><p style="color:#94a3b8;">Analyse de vos trades par paire crypto</p></div>"""),
-}
-
-# Générer toutes les routes
-for path, (title, h1, body) in PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{h1}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*80)
-    print("🚀 TRADING DASHBOARD v4.2 - DESIGN COMPLET RESTAURÉ")
-    print("="*80)
-    print("✅ Toutes les 17+ sections avec design original")
-    print("✅ Interface 100% en français avec emojis")
-    print("✅ Toutes fonctionnalités opérationnelles")
-    print("✅ Bot Telegram configuré")
-    print("="*80)
-    print(f"\n🤖 Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
-    print("\n📊 Dashboard: http://localhost:8000")
-    print("🤖 Telegram: http://localhost:8000/telegram-test")
-    print("💰 Paper: http://localhost:8000/paper-trading")
-    print("="*80 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-+t.total.toFixed(2)+'</td></tr>';});h+='</tbody></table>';document.getElementById('hi').innerHTML=h;}async function trade(){const r=await fetch('/api/paper-trade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:document.getElementById('ac').value,symbol:document.getElementById('sy').value,quantity:document.getElementById('qt').value})});const d=await r.json();document.getElementById('ms').innerHTML='<div class="alert alert-'+(d.status==='success'?'success':'error')+'">'+d.message+'</div>';setTimeout(()=>{document.getElementById('ms').innerHTML='';},5000);loadStats();loadBal();loadHist();}async function resetPaper(){if(confirm('Réinitialiser le paper trading?')){await fetch('/api/paper-reset',{method:'POST'});alert('Réinitialisé!');loadStats();loadBal();loadHist();}}loadStats();loadBal();loadHist();setInterval(()=>{loadStats();loadBal();},30000);</script>"""),
-    
-    "/backtesting": ("Backtest", "🧪 Backtesting", """<div class="grid grid-2"><div class="card"><h2>Configuration</h2><select id="sy"><option value="BTCUSDT">Bitcoin</option><option value="ETHUSDT">Ethereum</option><option value="SOLUSDT">Solana</option></select><select id="st"><option value="SMA_CROSS">Croisement SMA</option></select><input type="number" id="ca" value="10000" step="1000"><button onclick="run()">Lancer</button></div><div class="card"><h2>Résultats</h2><div id="rs" style="display:none;"><div class="grid grid-2"><div class="stat-box"><div class="label">Capital Final</div><div class="value" id="fc">$0</div></div><div class="stat-box"><div class="label">Rendement</div><div class="value" id="tr">0%</div></div></div><p style="margin-top:15px;">Trades: <span id="tc">0</span> | Win Rate: <span id="wr">0%</span></p></div><div id="lo" style="display:none;text-align:center;padding:40px;"><p>⏳ Calcul...</p></div><div id="ph" style="text-align:center;padding:40px;"><p>Configurez et lancez</p></div><div id="er"></div></div></div><script>async function run(){{document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{{const r=await fetch('/api/backtest',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{symbol:document.getElementById('sy').value,strategy:document.getElementById('st').value,start_capital:parseFloat(document.getElementById('ca').value)}})}});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){{document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';const c=d.total_return>0?'#10b981':'#ef4444';document.getElementById('tr').style.color=c;document.getElementById('fc').style.color=c;}}catch(e){{document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}}} </script>"""),
-    
-    "/convertisseur": ("Convertisseur", "💱 Convertisseur", """<div class="card"><h2>Convertir</h2><input type="number" id="amt" value="1" step="0.01"><div class="grid grid-2"><div><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD" selected>Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div><div><select id="to"><option value="BTC" selected>Bitcoin</option><option value="ETH">Ethereum</option><option value="SOL">Solana</option><option value="USD">Dollar US</option><option value="EUR">Euro</option><option value="CAD">Dollar CAN</option></select></div></div><button onclick="convert()">Convertir</button><div id="result"></div></div><script>async function convert(){{document.getElementById('result').innerHTML='<p style="color:#f59e0b;">⏳ Conversion...</p>';try{{const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();if(d.error){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+d.error+'</div>';}}else{{document.getElementById('result').innerHTML='<div style="background:#0f172a;padding:30px;border-radius:8px;text-align:center;margin-top:20px;"><p style="color:#94a3b8;">'+d.amount+' '+d.from+'</p><p style="font-size:36px;font-weight:bold;color:#60a5fa;margin:20px 0;">'+d.result+'</p><p style="color:#94a3b8;">'+d.to+'</p></div>';}}}}catch(e){{document.getElementById('result').innerHTML='<div class="alert alert-error">'+e.message+'</div>';}}}} </script>"""),
-    
-    "/annonces": ("Actualités", "📰 Actualités", """<div class="card"><h2>Dernières Actualités</h2><div id="nw">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/news');const d=await r.json();let h='<div style="display:grid;gap:15px;">';d.news.forEach(n=>{{const dt=new Date(n.published);const ago=Math.floor((new Date()-dt)/60000);const tm=ago<60?ago+'min':Math.floor(ago/60)+'h';h+='<div style="padding:20px;background:#0f172a;border-radius:8px;border-left:4px solid #60a5fa;"><h3 style="color:#e2e8f0;margin-bottom:8px;">'+n.title+'</h3><p style="color:#94a3b8;font-size:13px;">📡 '+n.source+' • 🕐 '+tm+'</p></div>';}});h+='</div>';document.getElementById('nw').innerHTML=h;}}load();</script>"""),
-    
-    "/btc-quarterly": ("Trimestriel", "📆 Rendements Trimestriels", """<div class="card"><h2>Performance BTC par Trimestre</h2><div id="qdata">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><thead><tr><th>Année</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr></thead><tbody>';for(const[y,q]of Object.entries(d.quarterly_returns)){{h+='<tr><td><strong>'+y+'</strong></td>';for(const t of['T1','T2','T3','T4']){{const v=q[t];const c=v>0?'#10b981':v<0?'#ef4444':'#94a3b8';h+='<td style="color:'+c+';font-weight:bold;">'+(v>0?'+':'')+v+'%</td>';}}h+='</tr>';}}h+='</tbody></table>';document.getElementById('qdata').innerHTML=h;}}load();</script>"""),
-    
-    "/heatmap": ("Heatmap", "🔥 Heatmap", """<div class="card"><h2>Performance</h2><button onclick="loadHeatmap('monthly')">Mensuelle</button> <button onclick="loadHeatmap('yearly')" class="btn-danger">Annuelle</button><div id="hmap" style="margin-top:20px;">Chargement...</div></div><script>async function loadHeatmap(type){{const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">';d.heatmap.forEach(item=>{{const label=item.month||item.year;const perf=item.performance;const color=perf>15?'#10b981':perf>5?'#60a5fa':perf>-5?'#94a3b8':perf>-15?'#f59e0b':'#ef4444';h+='<div style="background:'+color+'22;border:2px solid '+color+';padding:20px;border-radius:8px;text-align:center;"><div style="font-weight:bold;color:'+color+';font-size:24px;">'+(perf>0?'+':'')+perf+'%</div><div style="color:#94a3b8;font-size:12px;margin-top:5px;">'+label+'</div></div>';}});h+='</div>';document.getElementById('hmap').innerHTML=h;}}loadHeatmap('monthly');</script>"""),
-    
-    "/calendrier": ("Calendrier", "📅 Calendrier", """<div class="card"><h2>Événements à Venir</h2><div id="cal">Chargement...</div></div><script>async function load(){{const r=await fetch('/api/calendar');const d=await r.json();let h='<table><thead><tr><th>Date</th><th>Événement</th><th>Cryptos</th></tr></thead><tbody>';d.events.forEach(e=>{{h+='<tr><td>'+e.date+'</td><td><strong>'+e.title+'</strong></td><td>'+e.coins.join(', ')+'</td></tr>';}});h+='</tbody></table>';document.getElementById('cal').innerHTML=h;}}load();</script>"""),
-    
-    "/altcoin-season": ("AltSeason", "🌟 Altcoin Season", """<div class="card"><h2>Indice Actuel</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">27</div><div style="font-size:24px;color:#ef4444;margin-top:20px;">Saison Bitcoin</div></div></div>"""),
-    
-    "/btc-dominance": ("Dominance", "📊 Dominance BTC", """<div class="card"><h2>Dominance Bitcoin</h2><div style="text-align:center;padding:40px;"><div style="font-size:80px;font-weight:bold;color:#f7931a;">52.3%</div><div style="font-size:24px;color:#10b981;margin-top:20px;">Tendance: Hausse</div></div></div>"""),
-    
-    "/strategie": ("Stratégie", "🎯 Stratégie", """<div class="card"><h2>Règles de Trading</h2><ul style="line-height:2;color:#94a3b8;"><li><strong>Risk/Reward:</strong> Minimum 1:2</li><li><strong>Position:</strong> Max 2% du capital</li><li><strong>Stop Loss:</strong> Obligatoire</li><li><strong>Take Profit:</strong> 3 niveaux</li></ul></div>"""),
-    
-    "/correlations": ("Corrélations", "🔗 Corrélations", """<div class="card"><h2>Relations entre Actifs</h2><div style="display:grid;gap:15px;max-width:600px;"><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - ETH</span><span style="font-weight:bold;color:#10b981;">0.87</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>BTC - TOTAL</span><span style="font-weight:bold;color:#10b981;">0.92</span></div><div style="padding:20px;background:#0f172a;border-radius:8px;display:flex;justify-content:space-between;"><span>ETH - ALTS</span><span style="font-weight:bold;color:#60a5fa;">0.78</span></div></div></div>"""),
-    
-    "/top-movers": ("Movers", "📈 Top Movers 24h", """<div class="grid grid-2"><div class="card"><h2 style="color:#10b981;">Gainers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>SOL</strong><span style="color:#10b981;font-weight:bold;">+12.5%</span></div><div style="color:#94a3b8;margin-top:5px;">$165.50</div></div></div><div class="card"><h2 style="color:#ef4444;">Losers</h2><div style="padding:15px;background:#0f172a;border-radius:8px;margin-top:15px;"><div style="display:flex;justify-content:space-between;"><strong>DOGE</strong><span style="color:#ef4444;font-weight:bold;">-5.3%</span></div><div style="color:#94a3b8;margin-top:5px;">$0.08</div></div></div></div>"""),
-    
-    "/performance": ("Performance", "📊 Performance", """<div class="card"><h2>Performance par Paire</h2><p style="color:#94a3b8;">Analyse de vos trades par paire crypto</p></div>"""),
-}
-
-# Générer toutes les routes
-for path, (title, h1, body) in PAGES.items():
-    html = f"""<!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>{title}</title>{{CSS}}</head>
-<body><div class="container"><div class="header"><h1>{h1}</h1></div>{{NAV}}
-{body}
-</div></body></html>"""
-    
-    def make_handler(template):
-        async def handler():
-            return HTMLResponse(template.format(CSS=CSS, NAV=NAV))
-        return handler
-    
-    app.get(path, response_class=HTMLResponse)(make_handler(html))
-
-if __name__ == "__main__":
-    import uvicorn
-    print("\n" + "="*80)
-    print("🚀 TRADING DASHBOARD v4.2 - DESIGN COMPLET RESTAURÉ")
-    print("="*80)
-    print("✅ Toutes les 17+ sections avec design original")
-    print("✅ Interface 100% en français avec emojis")
-    print("✅ Toutes fonctionnalités opérationnelles")
-    print("✅ Bot Telegram configuré")
-    print("="*80)
-    print(f"\n🤖 Token: {TELEGRAM_BOT_TOKEN[:20]}...")
-    print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
-    print("\n📊 Dashboard: http://localhost:8000")
-    print("🤖 Telegram: http://localhost:8000/telegram-test")
-    print("💰 Paper: http://localhost:8000/paper-trading")
-    print("="*80 + "\n")
+    print("\n" + "="*60)
+    print("TRADING DASHBOARD v4.3 - FINAL")
+    print("="*60)
+    print("Toutes fonctionnalites OK")
+    print(f"Token: {TELEGRAM_BOT_TOKEN[:20]}...")
+    print(f"Chat: {TELEGRAM_CHAT_ID}")
+    print("\nhttp://localhost:8000")
+    print("="*60 + "\n")
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Optional, List, Any
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import asyncio
 import random
 import traceback
-import pytz
+import json
 
 app = FastAPI()
 
@@ -26,19 +26,30 @@ trades_db = []
 paper_trades_db = []
 paper_balance = {"USDT": 10000.0}
 
-# Fuseau horaire Québec
-QUEBEC_TZ = pytz.timezone('America/Montreal')
+# Fuseau horaire Québec (UTC-5 hiver / UTC-4 été)
+def get_quebec_offset():
+    """Retourne le décalage UTC pour le Québec selon la saison"""
+    now = datetime.utcnow()
+    month = now.month
+    # Heure avancée (EDT) de mars à novembre
+    if 3 <= month <= 11:
+        return timedelta(hours=-4)
+    # Heure normale (EST) 
+    return timedelta(hours=-5)
 
 def get_quebec_time():
     """Retourne l'heure actuelle du Québec"""
-    return datetime.now(QUEBEC_TZ)
+    utc_now = datetime.now(timezone.utc)
+    quebec_offset = get_quebec_offset()
+    quebec_tz = timezone(quebec_offset)
+    return utc_now.astimezone(quebec_tz)
 
 def format_quebec_time(dt=None):
     """Formate une date en heure du Québec"""
     if dt is None:
         dt = get_quebec_time()
     elif dt.tzinfo is None:
-        dt = pytz.utc.localize(dt).astimezone(QUEBEC_TZ)
+        dt = dt.replace(tzinfo=timezone.utc).astimezone(timezone(get_quebec_offset()))
     return dt.strftime("%Y-%m-%d %H:%M:%S")
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px;}.container{max-width:1400px;margin:0 auto;}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px;}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}.header p{color:#94a3b8;font-size:16px;}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center;}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all 0.3s;border:1px solid #334155;}.nav a:hover{background:#334155;border-color:#60a5fa;}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155;}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px;}.grid{display:grid;gap:20px;}.grid-2{grid-template-columns:repeat(auto-fit,minmax(400px,1fr));}.grid-3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}.grid-4{grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa;}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px;}.stat-box .value{font-size:32px;font-weight:bold;color:#e2e8f0;}table{width:100%;border-collapse:collapse;margin-top:15px;}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155;}table td{padding:12px;border-bottom:1px solid #334155;}table tr:hover{background:#0f172a;}.badge{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:bold;display:inline-block;}.badge-green{background:#10b981;color:#fff;}.badge-red{background:#ef4444;color:#fff;}.badge-yellow{background:#f59e0b;color:#fff;}input,select,textarea{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px;}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;}button:hover{background:#2563eb;}.btn-danger{background:#ef4444;}.btn-danger:hover{background:#dc2626;}.alert{padding:15px;border-radius:8px;margin:15px 0;}.alert-error{background:rgba(239,68,68,0.1);border-left:4px solid #ef4444;color:#ef4444;}.alert-success{background:rgba(16,185,129,0.1);border-left:4px solid #10b981;color:#10b981;}</style>"""
@@ -46,9 +57,9 @@ CSS = """<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Se
 NAV = '<div class="nav"><a href="/">Accueil</a><a href="/trades">Trades</a><a href="/fear-greed">Fear&Greed</a><a href="/bullrun-phase">Bullrun</a><a href="/convertisseur">Convertir</a><a href="/calendrier">Calendrier</a><a href="/altcoin-season">AltSeason</a><a href="/btc-dominance">Dominance</a><a href="/btc-quarterly">Trimestriel</a><a href="/annonces">Actualites</a><a href="/heatmap">Heatmap</a><a href="/backtesting">Backtest</a><a href="/paper-trading">Paper</a><a href="/strategie">Strategie</a><a href="/correlations">Correlations</a><a href="/top-movers">Movers</a><a href="/performance">Performance</a><a href="/telegram-test">Telegram</a></div>'
 
 class TradeWebhook(BaseModel):
-    action: str
-    symbol: str
-    price: float
+    action: Optional[str] = "BUY"
+    symbol: Optional[str] = "BTCUSDT"
+    price: Optional[float] = 0.0
     quantity: Optional[float] = 1.0
     entry_time: Optional[str] = None
     sl: Optional[float] = None
@@ -89,13 +100,12 @@ async def send_telegram_message(message: str):
                 print(f"   Description: {result.get('description', 'Inconnue')}")
                 print(f"   Error Code: {result.get('error_code', 'N/A')}")
                 
-                # Vérifier les erreurs communes
                 if "chat not found" in str(result.get('description', '')).lower():
                     print(f"⚠️  Le chat ID {TELEGRAM_CHAT_ID} n'existe pas ou le bot n'y a pas accès")
                 elif "bot was blocked" in str(result.get('description', '')).lower():
                     print(f"⚠️  Le bot a été bloqué par l'utilisateur")
                 elif "unauthorized" in str(result.get('description', '')).lower():
-                    print(f"⚠️  Token invalide: {TELEGRAM_BOT_TOKEN[:20]}...")
+                    print(f"⚠️  Token invalide")
             
             print(f"{'='*50}\n")
             return result
@@ -109,57 +119,87 @@ async def send_telegram_message(message: str):
         return {"ok": False, "error": str(e)}
 
 @app.post("/tv-webhook")
-async def tradingview_webhook(trade: TradeWebhook):
-    quebec_time = get_quebec_time()
-    trade_data = {
-        "action": trade.action,
-        "symbol": trade.symbol,
-        "price": trade.price,
-        "quantity": trade.quantity,
-        "entry_time": trade.entry_time or format_quebec_time(quebec_time),
-        "sl": trade.sl,
-        "tp1": trade.tp1,
-        "tp2": trade.tp2,
-        "tp3": trade.tp3,
-        "timestamp": quebec_time.isoformat(),
-        "status": "open",
-        "pnl": 0
-    }
-    trades_db.append(trade_data)
-    
-    emoji = "🟢 ACHAT" if trade.action.upper() == "BUY" else "🔴 VENTE"
-    message = f"<b>{emoji} {trade.symbol}</b>\n\n💰 Prix: ${trade.price:,.2f}\n📊 Quantité: {trade.quantity}\n🕐 Heure QC: {format_quebec_time(quebec_time)}"
-    
-    if trade.sl:
-        message += f"\n🛑 Stop Loss: ${trade.sl:,.2f}"
-    if trade.tp1:
-        message += f"\n🎯 TP1: ${trade.tp1:,.2f}"
-    
-    await send_telegram_message(message)
-    return {"status": "success", "trade": trade_data}
+async def tradingview_webhook(request: Request):
+    """Webhook TradingView flexible qui accepte n'importe quel JSON"""
+    try:
+        # Lire le body brut
+        body = await request.body()
+        print(f"\n📨 WEBHOOK REÇU:")
+        print(f"Body brut: {body.decode('utf-8')}")
+        
+        # Parser le JSON
+        try:
+            data = json.loads(body)
+        except:
+            data = {}
+        
+        print(f"Data parsée: {data}")
+        
+        # Extraire les champs avec des valeurs par défaut
+        quebec_time = get_quebec_time()
+        trade_data = {
+            "action": data.get("action", "BUY"),
+            "symbol": data.get("symbol", "BTCUSDT"),
+            "price": float(data.get("price", 0)),
+            "quantity": float(data.get("quantity", 1.0)),
+            "entry_time": data.get("entry_time") or format_quebec_time(quebec_time),
+            "sl": data.get("sl"),
+            "tp1": data.get("tp1"),
+            "tp2": data.get("tp2"),
+            "tp3": data.get("tp3"),
+            "timestamp": quebec_time.isoformat(),
+            "status": "open",
+            "pnl": 0
+        }
+        
+        trades_db.append(trade_data)
+        
+        emoji = "🟢 ACHAT" if trade_data["action"].upper() == "BUY" else "🔴 VENTE"
+        message = f"<b>{emoji} {trade_data['symbol']}</b>\n\n💰 Prix: ${trade_data['price']:,.2f}\n📊 Quantité: {trade_data['quantity']}\n🕐 Heure QC: {format_quebec_time(quebec_time)}"
+        
+        if trade_data["sl"]:
+            message += f"\n🛑 Stop Loss: ${trade_data['sl']:,.2f}"
+        if trade_data["tp1"]:
+            message += f"\n🎯 TP1: ${trade_data['tp1']:,.2f}"
+        
+        await send_telegram_message(message)
+        
+        return {"status": "success", "trade": trade_data}
+        
+    except Exception as e:
+        print(f"❌ Erreur webhook: {e}")
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
 
 @app.get("/api/telegram-test")
 async def test_telegram():
     quebec_time = get_quebec_time()
-    message = f"🤖 <b>Test du Bot Telegram</b>\n\n✅ Le bot fonctionne correctement!\n\n🕐 Heure Québec: {format_quebec_time(quebec_time)}\n📍 Fuseau: America/Montreal\n\n💡 Token: ...{TELEGRAM_BOT_TOKEN[-10:]}\n💬 Chat ID: {TELEGRAM_CHAT_ID}"
+    offset = get_quebec_offset()
+    offset_str = f"UTC{offset.total_seconds()/3600:+.0f}"
+    
+    message = f"🤖 <b>Test du Bot Telegram</b>\n\n✅ Le bot fonctionne correctement!\n\n🕐 Heure Québec: {format_quebec_time(quebec_time)}\n📍 Fuseau: {offset_str}\n\n💡 Token: ...{TELEGRAM_BOT_TOKEN[-10:]}\n💬 Chat ID: {TELEGRAM_CHAT_ID}"
     
     result = await send_telegram_message(message)
     
     return {
         "result": result,
         "quebec_time": format_quebec_time(quebec_time),
-        "timestamp": quebec_time.isoformat()
+        "timestamp": quebec_time.isoformat(),
+        "timezone": offset_str
     }
 
 @app.get("/api/telegram-info")
 async def telegram_info():
     """Informations de configuration Telegram pour debug"""
+    offset = get_quebec_offset()
+    offset_str = f"UTC{offset.total_seconds()/3600:+.0f}"
     return {
         "bot_token_preview": f"{TELEGRAM_BOT_TOKEN[:10]}...{TELEGRAM_BOT_TOKEN[-10:]}",
         "chat_id": TELEGRAM_CHAT_ID,
         "api_url": f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN[:20]}...",
         "status": "configured",
-        "quebec_time": format_quebec_time()
+        "quebec_time": format_quebec_time(),
+        "timezone": offset_str
     }
 
 @app.post("/api/reset-trades")
@@ -210,7 +250,6 @@ async def get_fear_greed():
 
 @app.get("/api/bullrun-phase")
 async def get_bullrun_phase():
-    print("Chargement phase Bullrun...")
     try:
         async with httpx.AsyncClient(timeout=20.0, follow_redirects=True) as client:
             r = await client.get("https://api.binance.com/api/v3/ticker/24hr", params={"symbol": "BTCUSDT"})
@@ -229,7 +268,6 @@ async def get_bullrun_phase():
                 else:
                     phase, color = "Marche Actif", "#60a5fa"
                 
-                print(f"Binance: ${price:,.2f} ({change:+.2f}%)")
                 return {
                     "phase": phase,
                     "btc_price": round(price, 2),
@@ -238,8 +276,8 @@ async def get_bullrun_phase():
                     "color": color,
                     "status": "success"
                 }
-    except Exception as e:
-        print(f"Binance erreur: {e}")
+    except:
+        pass
     
     return {
         "phase": "Marche Stable",
@@ -252,7 +290,6 @@ async def get_bullrun_phase():
 
 @app.get("/api/news")
 async def get_news():
-    print("Chargement actualites...")
     now = get_quebec_time()
     news = [
         {"title": "Bitcoin maintient 95k malgre la volatilite", "source": "CoinDesk", "published": (now - timedelta(hours=2)).isoformat(), "url": "#"},
@@ -271,8 +308,6 @@ async def run_backtest(request: Request):
         strategy = data.get("strategy", "SMA_CROSS")
         start_capital = float(data.get("start_capital", 10000))
         
-        print(f"Backtest: {symbol} - {strategy}")
-        
         klines = None
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             for attempt in range(3):
@@ -284,10 +319,8 @@ async def run_backtest(request: Request):
                     })
                     if r.status_code == 200:
                         klines = r.json()
-                        print(f"{len(klines)} bougies chargees")
                         break
-                except Exception as e:
-                    print(f"Tentative {attempt + 1}/3: {e}")
+                except:
                     if attempt == 2:
                         return {"status": "error", "message": "Impossible de charger les donnees"}
                     await asyncio.sleep(2)
@@ -337,8 +370,6 @@ async def run_backtest(request: Request):
         win_rate = round((winning / total_trades * 100) if total_trades > 0 else 0, 2)
         total_return = round(((capital - start_capital) / start_capital) * 100, 2)
         
-        print(f"Resultat: {total_return:+.2f}% sur {total_trades} trades")
-        
         return {
             "symbol": symbol,
             "strategy": strategy,
@@ -353,7 +384,6 @@ async def run_backtest(request: Request):
         }
     
     except Exception as e:
-        print(f"Backtest erreur: {e}")
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
@@ -365,8 +395,6 @@ async def place_paper_trade(request: Request):
         symbol = data.get("symbol", "")
         quantity = float(data.get("quantity", 0))
         
-        print(f"Paper Trade: {action} {quantity} {symbol}")
-        
         if quantity <= 0:
             return {"status": "error", "message": "Quantite invalide"}
         
@@ -377,10 +405,8 @@ async def place_paper_trade(request: Request):
                     r = await client.get(f"https://api.binance.com/api/v3/ticker/price", params={"symbol": symbol})
                     if r.status_code == 200:
                         price = float(r.json()["price"])
-                        print(f"Prix recupere: ${price:,.2f}")
                         break
-                except Exception as e:
-                    print(f"Tentative {attempt + 1}/3: {e}")
+                except:
                     if attempt == 2:
                         return {"status": "error", "message": "Impossible de recuperer le prix"}
                     await asyncio.sleep(1)
@@ -393,8 +419,6 @@ async def place_paper_trade(request: Request):
         if action == "BUY":
             cost = quantity * price
             usdt_balance = paper_balance.get("USDT", 0)
-            
-            print(f"Cout: ${cost:.2f} / Solde USDT: ${usdt_balance:.2f}")
             
             if usdt_balance < cost:
                 return {
@@ -415,13 +439,10 @@ async def place_paper_trade(request: Request):
                 "total": cost
             })
             
-            print(f"Achat reussi: {quantity} {crypto}")
             return {"status": "success", "message": f"Achat de {quantity} {crypto} a ${price:.2f}"}
         
         elif action == "SELL":
             crypto_balance = paper_balance.get(crypto, 0)
-            
-            print(f"Quantite demandee: {quantity} / Solde {crypto}: {crypto_balance}")
             
             if crypto_balance < quantity:
                 return {
@@ -443,14 +464,12 @@ async def place_paper_trade(request: Request):
                 "total": revenue
             })
             
-            print(f"Vente reussie: {quantity} {crypto}")
             return {"status": "success", "message": f"Vente de {quantity} {crypto} a ${price:.2f}"}
         
         else:
             return {"status": "error", "message": "Action invalide (BUY ou SELL requis)"}
     
     except Exception as e:
-        print(f"Paper Trade erreur: {e}")
         traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
@@ -517,8 +536,6 @@ async def get_calendar():
 @app.get("/api/convert")
 async def convert_currency(from_currency: str, to_currency: str, amount: float = 1.0):
     try:
-        print(f"Conversion: {amount} {from_currency} -> {to_currency}")
-        
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get("https://api.coingecko.com/api/v3/simple/price", params={
                 "ids": "bitcoin,ethereum,solana",
@@ -559,7 +576,6 @@ async def convert_currency(from_currency: str, to_currency: str, amount: float =
             }
     
     except Exception as e:
-        print(f"Conversion erreur: {e}")
         return {"error": f"Erreur: {str(e)}"}
 
 @app.get("/api/btc-quarterly")
@@ -646,8 +662,8 @@ async def get_performance_by_pair():
 # PAGES HTML
 HOME_HTML = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Dashboard</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>DASHBOARD TRADING</h1><p>Version Complete</p></div>{NAV}
-<div class="card"><h2>Bienvenue</h2><p>Toutes les fonctionnalites sont operationnelles</p></div>
+<body><div class="container"><div class="header"><h1>DASHBOARD TRADING</h1><p>Version 5.0 - Heure Québec</p></div>{NAV}
+<div class="card"><h2>Bienvenue</h2><p>✅ Toutes les fonctionnalités opérationnelles<br>🕐 Heure du Québec configurée<br>📱 Bot Telegram activé</p></div>
 </div></body></html>"""
 
 TRADES_HTML = """<!DOCTYPE html>
@@ -690,32 +706,8 @@ TELEGRAM_HTML = """<!DOCTYPE html>
 </ol>
 </div>
 <script>
-async function test(){{
-document.getElementById('re').innerHTML='<p style="color:#60a5fa;">📤 Envoi en cours...</p>';
-try{{
-const r=await fetch('/api/telegram-test');
-const d=await r.json();
-let html='';
-if(d.result&&d.result.ok){{
-html='<div class="alert alert-success">✅ Message envoyé avec succès!<br>🕐 Heure QC: '+d.quebec_time+'</div>';
-}}else{{
-const err=d.result.description||d.result.error||'Erreur inconnue';
-html='<div class="alert alert-error">❌ Échec<br>'+err+'<br><br>Vérifiez les logs du serveur</div>';
-}}
-document.getElementById('re').innerHTML=html;
-}}catch(e){{
-document.getElementById('re').innerHTML='<div class="alert alert-error">❌ Erreur: '+e.message+'</div>';
-}}
-}}
-async function info(){{
-try{{
-const r=await fetch('/api/telegram-info');
-const d=await r.json();
-document.getElementById('config').innerHTML='<p><strong>Token:</strong> '+d.bot_token_preview+'</p><p><strong>Chat ID:</strong> '+d.chat_id+'</p><p><strong>Heure QC:</strong> '+d.quebec_time+'</p><p style="color:#10b981;">✅ Configuré</p>';
-}}catch(e){{
-document.getElementById('config').innerHTML='<p style="color:#ef4444;">Erreur</p>';
-}}
-}}
+async function test(){{document.getElementById('re').innerHTML='<p style="color:#60a5fa;">📤 Envoi en cours...</p>';try{{const r=await fetch('/api/telegram-test');const d=await r.json();let html='';if(d.result&&d.result.ok){{html='<div class="alert alert-success">✅ Message envoyé avec succès!<br>🕐 Heure QC: '+d.quebec_time+'<br>📍 Fuseau: '+d.timezone+'</div>';}}else{{const err=d.result.description||d.result.error||'Erreur inconnue';html='<div class="alert alert-error">❌ Échec<br>'+err+'<br><br>Vérifiez les logs du serveur</div>';}}document.getElementById('re').innerHTML=html;}}catch(e){{document.getElementById('re').innerHTML='<div class="alert alert-error">❌ Erreur: '+e.message+'</div>';}}}}
+async function info(){{try{{const r=await fetch('/api/telegram-info');const d=await r.json();document.getElementById('config').innerHTML='<p><strong>Token:</strong> '+d.bot_token_preview+'</p><p><strong>Chat ID:</strong> '+d.chat_id+'</p><p><strong>Heure QC:</strong> '+d.quebec_time+'</p><p><strong>Fuseau:</strong> '+d.timezone+'</p><p style="color:#10b981;">✅ Configuré</p>';}}catch(e){{document.getElementById('config').innerHTML='<p style="color:#ef4444;">Erreur</p>';}}}}
 info();
 </script></div></body></html>"""
 
@@ -947,12 +939,16 @@ async def performance_page():
 if __name__ == "__main__":
     import uvicorn
     quebec_time = get_quebec_time()
+    offset = get_quebec_offset()
+    offset_str = f"UTC{offset.total_seconds()/3600:+.0f}"
+    
     print("\n" + "="*60)
-    print("🚀 TRADING DASHBOARD v4.6 - QUÉBEC EDITION")
+    print("🚀 TRADING DASHBOARD v5.0 - QUÉBEC EDITION")
     print("="*60)
-    print("✅ Fuseau horaire: America/Montreal (Québec)")
+    print(f"✅ Fuseau horaire: {offset_str} (Québec/Montréal)")
     print(f"🕐 Heure actuelle QC: {format_quebec_time(quebec_time)}")
-    print("✅ Bot Telegram configuré avec logging détaillé")
+    print("✅ Bot Telegram avec logging détaillé")
+    print("✅ Webhook flexible (accepte tout format JSON)")
     print(f"📱 Token: {TELEGRAM_BOT_TOKEN[:15]}...{TELEGRAM_BOT_TOKEN[-5:]}")
     print(f"💬 Chat ID: {TELEGRAM_CHAT_ID}")
     print("\n🌐 Serveur: http://localhost:8000")

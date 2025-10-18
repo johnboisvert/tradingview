@@ -1067,7 +1067,7 @@ async def correlations_page():
 async def movers_page():
     html = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Top Movers</title>{CSS}</head>
-<body><div class="container"><div class="header"><h1>Top Movers 24h</h1></div>{NAV}
+<body><div class="container"><div class="header"><h1>Top Movers 24 heures</h1></div>{NAV}
 <div class='grid grid-2'>
 <div class='card'><h2>Gainers</h2>
 <p style='padding:10px;background:#0f172a;margin:5px 0;border-radius:6px;'>SOL: <span style='color:#10b981;'>+12.5%</span></p>

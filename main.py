@@ -1045,7 +1045,7 @@ async def strategy_page():
 <ul style='line-height:2;'>
 <li>Risk/Reward: 1:2 minimum</li>
 <li>Position Size: Max 2% du capital</li>
-<li>Stop Loss: Toujours definir avant l'entree</li>
+<li>Stop Loss: Toujours definir avant entree</li>
 <li>Max 3 trades simultanement</li>
 <li>Jamais moyenner a la baisse</li>
 </ul></div></div></body></html>"""

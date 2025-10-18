@@ -573,14 +573,39 @@ TRADES_HTML = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Trades</title>{CSS}</head>
 <body><div class="container"><div class="header"><h1>Gestion des Trades</h1></div>{NAV}
 <div class="grid grid-4">
-<div class="stat-box"><div class="label">Total</div><div class="value" id="t">0</div></div>
-<div class="stat-box"><div class="label">Win Rate</div><div class="value" id="w">0%</div></div>
-<div class="stat-box"><div class="label">P&L</div><div class="value" id="p">0</div></div>
-<div class="stat-box"><div class="label">Moyen</div><div class="value" id="a">0</div></div>
+<div class="stat-box"><div class="label">Total Trades</div><div class="value" id="t">0</div></div>
+<div class="stat-box"><div class="label">Taux Reussite</div><div class="value" id="w">0%</div></div>
+<div class="stat-box"><div class="label">P&L Total</div><div class="value" id="p">0%</div></div>
+<div class="stat-box"><div class="label">P&L Moyen</div><div class="value" id="a">0%</div></div>
+</div>
+<div class="card">
+<h2>Actions</h2>
+<button class="btn-danger" onclick="reset()">Reinitialiser Trades</button>
 </div>
 <script>
-async function load(){const r=await fetch('/api/stats');const d=await r.json();document.getElementById('t').textContent=d.total_trades;document.getElementById('w').textContent=d.win_rate+'%';document.getElementById('p').textContent=d.total_pnl;document.getElementById('a').textContent=d.avg_pnl;}
-load();setInterval(load,10000);
+async function load(){
+try{
+const r=await fetch('/api/stats');
+const d=await r.json();
+document.getElementById('t').textContent=d.total_trades;
+document.getElementById('w').textContent=d.win_rate+'%';
+document.getElementById('p').textContent=(d.total_pnl>0?'+':'')+d.total_pnl+'%';
+document.getElementById('a').textContent=(d.avg_pnl>0?'+':'')+d.avg_pnl+'%';
+document.getElementById('p').style.color=d.total_pnl>0?'#10b981':'#ef4444';
+document.getElementById('a').style.color=d.avg_pnl>0?'#10b981':'#ef4444';
+}catch(e){
+console.error('Erreur:',e);
+}
+}
+async function reset(){
+if(confirm('Reinitialiser tous les trades?')){
+await fetch('/api/reset-trades',{method:'POST'});
+alert('Trades reinitialises!');
+load();
+}
+}
+load();
+setInterval(load,10000);
 </script></div></body></html>"""
 
 TELEGRAM_HTML = """<!DOCTYPE html>

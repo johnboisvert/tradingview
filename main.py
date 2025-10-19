@@ -370,11 +370,62 @@ async def get_btc_quarterly():
     return {"quarterly_returns": {"2020": {"T1": -10, "T2": 42, "T3": 18, "T4": 171}, "2021": {"T1": 103, "T2": -39, "T3": 39, "T4": 1}, "2022": {"T1": -5, "T2": -56, "T3": 2, "T4": -17}, "2023": {"T1": 72, "T2": 11, "T3": -11, "T4": 57}, "2024": {"T1": 69, "T2": -12, "T3": 6, "T4": 45}}}
 
 @app.get("/api/heatmap")
-async def get_heatmap(type: str = "monthly"):
-    if type == "yearly":
-        return {"heatmap": [{"year": y, "performance": p} for y, p in {"2020": 301, "2021": 60, "2022": -64, "2023": 156, "2024": 120}.items()], "type": "yearly"}
-    months = ["Jan", "Fev", "Mar", "Avr", "Mai", "Jun", "Jul", "Aou", "Sep", "Oct", "Nov", "Dec"]
-    return {"heatmap": [{"month": m, "performance": round(random.uniform(-15, 25), 2)} for m in months], "type": "monthly"}
+async def get_heatmap():
+    """Récupère les données crypto pour la heatmap"""
+    print("📊 Appel API heatmap")
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # CoinGecko API - Top 100 cryptos
+            r = await client.get(
+                "https://api.coingecko.com/api/v3/coins/markets",
+                params={
+                    "vs_currency": "usd",
+                    "order": "market_cap_desc",
+                    "per_page": 100,
+                    "page": 1,
+                    "sparkline": False,
+                    "price_change_percentage": "24h"
+                }
+            )
+            
+            if r.status_code == 200:
+                data = r.json()
+                
+                cryptos = []
+                for coin in data:
+                    cryptos.append({
+                        "symbol": coin["symbol"].upper(),
+                        "name": coin["name"],
+                        "price": coin["current_price"],
+                        "change_24h": round(coin.get("price_change_percentage_24h", 0), 2),
+                        "market_cap": coin["market_cap"],
+                        "volume": coin["total_volume"]
+                    })
+                
+                print(f"✅ {len(cryptos)} cryptos récupérées")
+                return {"cryptos": cryptos, "status": "success"}
+            else:
+                print(f"❌ CoinGecko status: {r.status_code}")
+                
+    except Exception as e:
+        print(f"❌ Erreur heatmap: {e}")
+    
+    # Fallback avec données fictives
+    print("⚠️ Utilisation du fallback")
+    fallback_cryptos = [
+        {"symbol": "BTC", "name": "Bitcoin", "price": 107150.46, "change_24h": 0.69, "market_cap": 2136218033539, "volume": 37480142027},
+        {"symbol": "ETH", "name": "Ethereum", "price": 3887.14, "change_24h": 1.61, "market_cap": 467000000000, "volume": 15000000000},
+        {"symbol": "USDT", "name": "Tether", "price": 1.0003, "change_24h": 0.0, "market_cap": 140000000000, "volume": 80000000000},
+        {"symbol": "BNB", "name": "BNB", "price": 1090.01, "change_24h": 1.61, "market_cap": 79000000000, "volume": 2000000000},
+        {"symbol": "SOL", "name": "Solana", "price": 187.01, "change_24h": 2.63, "market_cap": 90000000000, "volume": 5000000000},
+        {"symbol": "XRP", "name": "XRP", "price": 2.3559, "change_24h": 2.39, "market_cap": 135000000000, "volume": 8000000000},
+        {"symbol": "USDC", "name": "USDC", "price": 0.9998, "change_24h": 0.0, "market_cap": 38000000000, "volume": 6000000000},
+        {"symbol": "ADA", "name": "Cardano", "price": 1.05, "change_24h": -1.2, "market_cap": 37000000000, "volume": 1200000000},
+        {"symbol": "AVAX", "name": "Avalanche", "price": 42.15, "change_24h": 3.5, "market_cap": 17000000000, "volume": 800000000},
+        {"symbol": "DOGE", "name": "Dogecoin", "price": 0.38, "change_24h": 1.1, "market_cap": 56000000000, "volume": 4000000000},
+    ]
+    return {"cryptos": fallback_cryptos, "status": "fallback"}
 
 @app.get("/api/calendar")
 async def get_calendar():
@@ -821,13 +872,529 @@ async def quarterly_page():
 @app.get("/heatmap", response_class=HTMLResponse)
 async def heatmap_page():
     html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Heatmap</title>""" + CSS + """</head>
-<body><div class="container"><div class="header"><h1>Heatmap</h1></div>""" + NAV + """
-<div class="card"><h2>Heatmap</h2>
-<button onclick="loadH('monthly')">Mensuelle</button> <button onclick="loadH('yearly')">Annuelle</button>
-<div id="hmap">...</div></div>
-<script>async function loadH(type){const r=await fetch('/api/heatmap?type='+type);const d=await r.json();let h='';d.heatmap.forEach(item=>{const label=item.month||item.year;const perf=item.performance;h+='<div style="display:inline-block;margin:5px;padding:20px;background:#0f172a;border-radius:8px"><h3>'+label+'</h3><p>'+perf+'%</p></div>';});document.getElementById('hmap').innerHTML=h;}loadH('monthly');</script>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Heatmap</title>
+    """ + CSS + """
+    <style>
+        .heatmap-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 8px;
+            margin-top: 20px;
+        }
+        
+        .crypto-tile {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            min-height: 120px;
+            cursor: pointer;
+        }
+        
+        .crypto-tile:hover {
+            transform: scale(1.05);
+            border-color: #60a5fa;
+            box-shadow: 0 8px 16px rgba(96, 165, 250, 0.3);
+        }
+        
+        .crypto-tile.positive {
+            background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+        }
+        
+        .crypto-tile.negative {
+            background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%);
+        }
+        
+        .crypto-tile.neutral {
+            background: #1e293b;
+        }
+        
+        .crypto-symbol {
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .crypto-price {
+            font-size: 14px;
+            color: #e2e8f0;
+            margin-bottom: 5px;
+        }
+        
+        .crypto-change {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .crypto-name {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .controls button {
+            padding: 10px 20px;
+            background: #334155;
+            color: #e2e8f0;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .controls button:hover {
+            background: #475569;
+        }
+        
+        .controls button.active {
+            background: #60a5fa;
+            border-color: #60a5fa;
+        }
+        
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #e2e8f0;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .loading-content {
+            text-align: center;
+            color: #e2e8f0;
+        }
+        
+        .spinner {
+            border: 4px solid #334155;
+            border-top: 4px solid #60a5fa;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Crypto Heatmap</h1>
+            <p>Visualisation en temps réel du marché crypto</p>
+        </div>
+        
+        """ + NAV + """
+        
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-label">Total Cryptos</div>
+                <div class="stat-value" id="total-cryptos">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">En hausse</div>
+                <div class="stat-value" style="color:#22c55e;" id="gainers">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">En baisse</div>
+                <div class="stat-value" style="color:#ef4444;" id="losers">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Variation moyenne</div>
+                <div class="stat-value" id="avg-change">0%</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>🔥 Top 100 Cryptomonnaies</h2>
+            
+            <div class="controls">
+                <button class="active" onclick="sortBy('market_cap')">📈 Market Cap</button>
+                <button onclick="sortBy('change')">📊 Variation 24h</button>
+                <button onclick="sortBy('volume')">💰 Volume</button>
+                <button onclick="loadData()">🔄 Actualiser</button>
+            </div>
+            
+            <div id="heatmap-container" class="heatmap-container">
+                <!-- Les tuiles seront générées ici -->
+            </div>
+        </div>
+        
+        <div class="card">
+            <p style="text-align:center;color:#94a3b8;">
+                📊 Données fournies par CoinGecko • Mise à jour automatique toutes les 30 secondes
+            </p>
+        </div>
+    </div>
+    
+    <div id="loading" class="loading-overlay" style="display:none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>Chargement des données...</p>
+        </div>
+    </div>
+    
+    <script>
+        let cryptosData = [];
+        let currentSort = 'market_cap';
+        let updateInterval;
+        
+        console.log('🚀 Heatmap initialisée');
+        
+        function formatPrice(price) {
+            if (price >= 1000) return '
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendar_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
+<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
+<div class="card"><h2>Events</h2><div id="cal">...</div></div>
+<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
 </div></body></html>"""
+    return HTMLResponse(html)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("DASHBOARD TRADING - DEMARRAGE")
+    print("="*60)
+    print(f"Port: {port}")
+    print(f"Telegram: Configuré")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + price.toLocaleString('en-US', {maximumFractionDigits: 2});
+            if (price >= 1) return '
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendar_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
+<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
+<div class="card"><h2>Events</h2><div id="cal">...</div></div>
+<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("DASHBOARD TRADING - DEMARRAGE")
+    print("="*60)
+    print(f"Port: {port}")
+    print(f"Telegram: Configuré")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + price.toFixed(2);
+            if (price >= 0.01) return '
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendar_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
+<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
+<div class="card"><h2>Events</h2><div id="cal">...</div></div>
+<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("DASHBOARD TRADING - DEMARRAGE")
+    print("="*60)
+    print(f"Port: {port}")
+    print(f"Telegram: Configuré")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + price.toFixed(4);
+            return '
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendar_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
+<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
+<div class="card"><h2>Events</h2><div id="cal">...</div></div>
+<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("DASHBOARD TRADING - DEMARRAGE")
+    print("="*60)
+    print(f"Port: {port}")
+    print(f"Telegram: Configuré")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + price.toFixed(6);
+        }
+        
+        function formatMarketCap(mc) {
+            if (mc >= 1e12) return '
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendar_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
+<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
+<div class="card"><h2>Events</h2><div id="cal">...</div></div>
+<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("DASHBOARD TRADING - DEMARRAGE")
+    print("="*60)
+    print(f"Port: {port}")
+    print(f"Telegram: Configuré")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + (mc / 1e12).toFixed(2) + 'T';
+            if (mc >= 1e9) return '
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendar_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
+<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
+<div class="card"><h2>Events</h2><div id="cal">...</div></div>
+<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("DASHBOARD TRADING - DEMARRAGE")
+    print("="*60)
+    print(f"Port: {port}")
+    print(f"Telegram: Configuré")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + (mc / 1e9).toFixed(2) + 'B';
+            if (mc >= 1e6) return '
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendar_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
+<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
+<div class="card"><h2>Events</h2><div id="cal">...</div></div>
+<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("DASHBOARD TRADING - DEMARRAGE")
+    print("="*60)
+    print(f"Port: {port}")
+    print(f"Telegram: Configuré")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + (mc / 1e6).toFixed(2) + 'M';
+            return '
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendar_page():
+    html = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
+<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
+<div class="card"><h2>Events</h2><div id="cal">...</div></div>
+<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
+</div></body></html>"""
+    return HTMLResponse(html)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("DASHBOARD TRADING - DEMARRAGE")
+    print("="*60)
+    print(f"Port: {port}")
+    print(f"Telegram: Configuré")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + mc.toLocaleString();
+        }
+        
+        function getColorClass(change) {
+            if (change > 0.5) return 'positive';
+            if (change < -0.5) return 'negative';
+            return 'neutral';
+        }
+        
+        function sortBy(type) {
+            currentSort = type;
+            
+            // Update active button
+            document.querySelectorAll('.controls button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Sort data
+            if (type === 'market_cap') {
+                cryptosData.sort((a, b) => b.market_cap - a.market_cap);
+            } else if (type === 'change') {
+                cryptosData.sort((a, b) => b.change_24h - a.change_24h);
+            } else if (type === 'volume') {
+                cryptosData.sort((a, b) => b.volume - a.volume);
+            }
+            
+            renderHeatmap();
+        }
+        
+        function updateStats() {
+            const total = cryptosData.length;
+            const gainers = cryptosData.filter(c => c.change_24h > 0).length;
+            const losers = cryptosData.filter(c => c.change_24h < 0).length;
+            const avgChange = cryptosData.reduce((sum, c) => sum + c.change_24h, 0) / total;
+            
+            document.getElementById('total-cryptos').textContent = total;
+            document.getElementById('gainers').textContent = gainers;
+            document.getElementById('losers').textContent = losers;
+            
+            const avgEl = document.getElementById('avg-change');
+            avgEl.textContent = (avgChange > 0 ? '+' : '') + avgChange.toFixed(2) + '%';
+            avgEl.style.color = avgChange > 0 ? '#22c55e' : avgChange < 0 ? '#ef4444' : '#94a3b8';
+        }
+        
+        function renderHeatmap() {
+            const container = document.getElementById('heatmap-container');
+            
+            let html = '';
+            cryptosData.forEach(crypto => {
+                const colorClass = getColorClass(crypto.change_24h);
+                const changeSymbol = crypto.change_24h > 0 ? '▲' : crypto.change_24h < 0 ? '▼' : '•';
+                
+                html += `
+                    <div class="crypto-tile ${colorClass}" title="${crypto.name} - Market Cap: ${formatMarketCap(crypto.market_cap)}">
+                        <div class="crypto-symbol">${crypto.symbol}</div>
+                        <div class="crypto-price">${formatPrice(crypto.price)}</div>
+                        <div class="crypto-change">${changeSymbol} ${Math.abs(crypto.change_24h)}%</div>
+                        <div class="crypto-name">${crypto.name}</div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            updateStats();
+        }
+        
+        async function loadData() {
+            console.log('📡 Chargement données heatmap...');
+            
+            try {
+                const response = await fetch('/api/heatmap');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('📊 Données reçues:', data);
+                
+                if (data.cryptos && data.cryptos.length > 0) {
+                    cryptosData = data.cryptos;
+                    
+                    // Sort by current sort method
+                    if (currentSort === 'market_cap') {
+                        cryptosData.sort((a, b) => b.market_cap - a.market_cap);
+                    } else if (currentSort === 'change') {
+                        cryptosData.sort((a, b) => b.change_24h - a.change_24h);
+                    } else if (currentSort === 'volume') {
+                        cryptosData.sort((a, b) => b.volume - a.volume);
+                    }
+                    
+                    renderHeatmap();
+                    console.log('✅ Heatmap rendue');
+                } else {
+                    throw new Error('Aucune donnée disponible');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erreur:', error);
+                document.getElementById('heatmap-container').innerHTML = `
+                    <div style="grid-column: 1/-1; text-align:center; padding:40px; color:#94a3b8;">
+                        <h3 style="color:#ef4444; margin-bottom:15px;">❌ Erreur de chargement</h3>
+                        <p>Impossible de charger les données. ${error.message}</p>
+                        <button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:white;border:none;border-radius:8px;cursor:pointer;">
+                            🔄 Réessayer
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        // Initial load
+        loadData();
+        
+        // Auto-refresh every 30 seconds
+        updateInterval = setInterval(loadData, 30000);
+        
+        console.log('✅ Heatmap script initialisé');
+    </script>
+</body>
+</html>"""
     return HTMLResponse(html)
 
 @app.get("/calendrier", response_class=HTMLResponse)

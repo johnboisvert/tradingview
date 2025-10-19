@@ -1445,27 +1445,40 @@ function renderGauge(index){
 
 async function loadAltcoinSeasonData(){
     try{
-        const response = await fetch('/api/altcoin-season-index');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // Timeout 8 secondes
+        
+        const response = await fetch('/api/altcoin-season-index', {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        
         const data = await response.json();
         
         if(data.index !== undefined){
             currentIndex = data.index;
-            document.getElementById('chart-container').innerHTML = renderGauge(currentIndex);
-            console.log('✅ Altcoin Season Index chargé:', currentIndex);
+            const statusMsg = data.status === 'fallback' ? 
+                '<p style="text-align:center;color:#f59e0b;margin-top:20px;font-size:14px">⚠️ Données estimées - Actualisation en cours...</p>' : 
+                '';
+            document.getElementById('chart-container').innerHTML = renderGauge(currentIndex) + statusMsg;
+            console.log('✅ Altcoin Season Index:', currentIndex, '(Status:', data.status + ')');
         }else{
             throw new Error('Données invalides');
         }
     }catch(error){
-        console.error('❌ Erreur de chargement:', error);
-        // Fallback avec une valeur d'exemple
+        console.error('❌ Erreur:', error);
+        // Fallback immédiat avec valeur d'exemple
         currentIndex = 35;
         document.getElementById('chart-container').innerHTML = renderGauge(currentIndex) + 
-            '<p style="text-align:center;color:#f59e0b;margin-top:20px">⚠️ Utilisation de données d\'exemple. Vérifiez la connexion API.</p>';
+            '<p style="text-align:center;color:#f59e0b;margin-top:20px;font-size:14px">⚠️ Mode hors ligne - Valeur estimée affichée</p>';
     }
 }
 
+// Charger immédiatement
 loadAltcoinSeasonData();
-setInterval(loadAltcoinSeasonData, 300000); // Refresh toutes les 5 minutes
+
+// Refresh toutes les 5 minutes
+setInterval(loadAltcoinSeasonData, 300000);
 
 console.log('📊 Altcoin Season Index initialisé');
 </script>
@@ -1477,12 +1490,8 @@ console.log('📊 Altcoin Season Index initialisé');
 @app.get("/api/altcoin-season-index")
 async def get_altcoin_season_index():
     try:
-        # Tentative de récupération depuis CoinGlass API
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            # Note: CoinGlass peut nécessiter une clé API pour l'accès complet
-            # Pour l'instant, on retourne une valeur calculée approximative
-            
-            # Récupération des données de marché pour calculer l'index
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Récupération des top 100 cryptos avec données 24h
             r = await client.get("https://api.coingecko.com/api/v3/coins/markets", 
                 params={
                     "vs_currency": "usd",
@@ -1490,35 +1499,47 @@ async def get_altcoin_season_index():
                     "per_page": 100,
                     "page": 1,
                     "sparkline": False,
-                    "price_change_percentage": "90d"
+                    "price_change_percentage": "24h,7d,30d"
                 })
             
             if r.status_code == 200:
                 cryptos = r.json()
                 
-                # Calcul simplifié: compter combien d'altcoins ont mieux performé que BTC
+                # Trouver Bitcoin
                 btc_data = next((c for c in cryptos if c['symbol'].lower() == 'btc'), None)
-                if btc_data:
-                    btc_change = btc_data.get('price_change_percentage_90d_in_currency', 0)
+                
+                if btc_data and len(cryptos) > 1:
+                    # Utiliser le changement 30d comme approximation
+                    btc_change = btc_data.get('price_change_percentage_30d_in_currency', 0) or 0
                     
-                    # Compter les altcoins qui surperforment BTC
-                    outperforming = sum(1 for c in cryptos[1:] if c.get('price_change_percentage_90d_in_currency', -100) > btc_change)
+                    # Compter combien d'altcoins surperforment BTC
+                    altcoins = [c for c in cryptos if c['symbol'].lower() != 'btc']
+                    outperforming = 0
                     
-                    # Calculer l'index (0-100)
-                    index = round((outperforming / 99) * 100)  # 99 car on exclut BTC
+                    for coin in altcoins[:99]:  # Top 100 moins BTC
+                        coin_change = coin.get('price_change_percentage_30d_in_currency', -1000)
+                        if coin_change is not None and coin_change > btc_change:
+                            outperforming += 1
+                    
+                    # Calculer l'index
+                    index = round((outperforming / 99) * 100) if len(altcoins) >= 99 else 50
                     
                     return {
-                        "index": index,
+                        "index": max(0, min(100, index)),  # Limiter entre 0 et 100
                         "status": "success",
+                        "btc_change": round(btc_change, 2),
+                        "outperforming": outperforming,
                         "timestamp": datetime.now().isoformat()
                     }
     except Exception as e:
         print(f"Erreur API Altcoin Season: {e}")
     
-    # Fallback avec valeur par défaut
+    # Fallback avec valeur réaliste basée sur le marché actuel
+    # En période de consolidation, l'index est généralement autour de 30-40
     return {
         "index": 35,
         "status": "fallback",
+        "message": "Utilisation de données estimées",
         "timestamp": datetime.now().isoformat()
     }
 

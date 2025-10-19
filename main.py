@@ -130,7 +130,6 @@ async def get_fear_greed_full():
                 print("✅ API répondu avec succès")
                 data = r.json()
                 
-                # Calcul next update
                 now = datetime.now()
                 tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
                 seconds_until_update = int((tomorrow - now).total_seconds())
@@ -168,7 +167,6 @@ async def get_fear_greed_full():
     except Exception as e:
         print(f"❌ Erreur Fear & Greed Full: {e}")
     
-    # Fallback
     print("⚠️ Utilisation du fallback")
     now = datetime.now()
     tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
@@ -187,6 +185,62 @@ async def get_fear_greed_full():
         "timestamp": str(int(datetime.now().timestamp())),
         "status": "fallback"
     }
+
+@app.get("/api/heatmap")
+async def get_heatmap():
+    """Récupère les données crypto pour la heatmap"""
+    print("📊 Appel API heatmap")
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.get(
+                "https://api.coingecko.com/api/v3/coins/markets",
+                params={
+                    "vs_currency": "usd",
+                    "order": "market_cap_desc",
+                    "per_page": 100,
+                    "page": 1,
+                    "sparkline": False,
+                    "price_change_percentage": "24h"
+                }
+            )
+            
+            if r.status_code == 200:
+                data = r.json()
+                
+                cryptos = []
+                for coin in data:
+                    cryptos.append({
+                        "symbol": coin["symbol"].upper(),
+                        "name": coin["name"],
+                        "price": coin["current_price"],
+                        "change_24h": round(coin.get("price_change_percentage_24h", 0), 2),
+                        "market_cap": coin["market_cap"],
+                        "volume": coin["total_volume"]
+                    })
+                
+                print(f"✅ {len(cryptos)} cryptos récupérées")
+                return {"cryptos": cryptos, "status": "success"}
+            else:
+                print(f"❌ CoinGecko status: {r.status_code}")
+                
+    except Exception as e:
+        print(f"❌ Erreur heatmap: {e}")
+    
+    print("⚠️ Utilisation du fallback")
+    fallback_cryptos = [
+        {"symbol": "BTC", "name": "Bitcoin", "price": 107150.46, "change_24h": 0.69, "market_cap": 2136218033539, "volume": 37480142027},
+        {"symbol": "ETH", "name": "Ethereum", "price": 3887.14, "change_24h": 1.61, "market_cap": 467000000000, "volume": 15000000000},
+        {"symbol": "USDT", "name": "Tether", "price": 1.0003, "change_24h": 0.0, "market_cap": 140000000000, "volume": 80000000000},
+        {"symbol": "BNB", "name": "BNB", "price": 1090.01, "change_24h": 1.61, "market_cap": 79000000000, "volume": 2000000000},
+        {"symbol": "SOL", "name": "Solana", "price": 187.01, "change_24h": 2.63, "market_cap": 90000000000, "volume": 5000000000},
+        {"symbol": "XRP", "name": "XRP", "price": 2.3559, "change_24h": 2.39, "market_cap": 135000000000, "volume": 8000000000},
+        {"symbol": "USDC", "name": "USDC", "price": 0.9998, "change_24h": 0.0, "market_cap": 38000000000, "volume": 6000000000},
+        {"symbol": "ADA", "name": "Cardano", "price": 1.05, "change_24h": -1.2, "market_cap": 37000000000, "volume": 1200000000},
+        {"symbol": "AVAX", "name": "Avalanche", "price": 42.15, "change_24h": 3.5, "market_cap": 17000000000, "volume": 800000000},
+        {"symbol": "DOGE", "name": "Dogecoin", "price": 0.38, "change_24h": 1.1, "market_cap": 56000000000, "volume": 4000000000},
+    ]
+    return {"cryptos": fallback_cryptos, "status": "fallback"}
 
 @app.get("/api/bullrun-phase")
 async def get_bullrun_phase():
@@ -369,64 +423,6 @@ async def convert_currency(from_currency: str, to_currency: str, amount: float =
 async def get_btc_quarterly():
     return {"quarterly_returns": {"2020": {"T1": -10, "T2": 42, "T3": 18, "T4": 171}, "2021": {"T1": 103, "T2": -39, "T3": 39, "T4": 1}, "2022": {"T1": -5, "T2": -56, "T3": 2, "T4": -17}, "2023": {"T1": 72, "T2": 11, "T3": -11, "T4": 57}, "2024": {"T1": 69, "T2": -12, "T3": 6, "T4": 45}}}
 
-@app.get("/api/heatmap")
-async def get_heatmap():
-    """Récupère les données crypto pour la heatmap"""
-    print("📊 Appel API heatmap")
-    
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            # CoinGecko API - Top 100 cryptos
-            r = await client.get(
-                "https://api.coingecko.com/api/v3/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 100,
-                    "page": 1,
-                    "sparkline": False,
-                    "price_change_percentage": "24h"
-                }
-            )
-            
-            if r.status_code == 200:
-                data = r.json()
-                
-                cryptos = []
-                for coin in data:
-                    cryptos.append({
-                        "symbol": coin["symbol"].upper(),
-                        "name": coin["name"],
-                        "price": coin["current_price"],
-                        "change_24h": round(coin.get("price_change_percentage_24h", 0), 2),
-                        "market_cap": coin["market_cap"],
-                        "volume": coin["total_volume"]
-                    })
-                
-                print(f"✅ {len(cryptos)} cryptos récupérées")
-                return {"cryptos": cryptos, "status": "success"}
-            else:
-                print(f"❌ CoinGecko status: {r.status_code}")
-                
-    except Exception as e:
-        print(f"❌ Erreur heatmap: {e}")
-    
-    # Fallback avec données fictives
-    print("⚠️ Utilisation du fallback")
-    fallback_cryptos = [
-        {"symbol": "BTC", "name": "Bitcoin", "price": 107150.46, "change_24h": 0.69, "market_cap": 2136218033539, "volume": 37480142027},
-        {"symbol": "ETH", "name": "Ethereum", "price": 3887.14, "change_24h": 1.61, "market_cap": 467000000000, "volume": 15000000000},
-        {"symbol": "USDT", "name": "Tether", "price": 1.0003, "change_24h": 0.0, "market_cap": 140000000000, "volume": 80000000000},
-        {"symbol": "BNB", "name": "BNB", "price": 1090.01, "change_24h": 1.61, "market_cap": 79000000000, "volume": 2000000000},
-        {"symbol": "SOL", "name": "Solana", "price": 187.01, "change_24h": 2.63, "market_cap": 90000000000, "volume": 5000000000},
-        {"symbol": "XRP", "name": "XRP", "price": 2.3559, "change_24h": 2.39, "market_cap": 135000000000, "volume": 8000000000},
-        {"symbol": "USDC", "name": "USDC", "price": 0.9998, "change_24h": 0.0, "market_cap": 38000000000, "volume": 6000000000},
-        {"symbol": "ADA", "name": "Cardano", "price": 1.05, "change_24h": -1.2, "market_cap": 37000000000, "volume": 1200000000},
-        {"symbol": "AVAX", "name": "Avalanche", "price": 42.15, "change_24h": 3.5, "market_cap": 17000000000, "volume": 800000000},
-        {"symbol": "DOGE", "name": "Dogecoin", "price": 0.38, "change_24h": 1.1, "market_cap": 56000000000, "volume": 4000000000},
-    ]
-    return {"cryptos": fallback_cryptos, "status": "fallback"}
-
 @app.get("/api/calendar")
 async def get_calendar():
     return {"events": [{"date": "2025-10-28", "title": "FOMC", "coins": ["BTC", "ETH"]}, {"date": "2025-10-29", "title": "Fed Decision", "coins": ["BTC", "ETH"]}]}
@@ -434,16 +430,15 @@ async def get_calendar():
 # PAGES HTML
 @app.get("/", response_class=HTMLResponse)
 async def home():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
 <body><div class="container"><div class="header"><h1>DASHBOARD TRADING</h1><p>Toutes fonctionnalites OK</p></div>""" + NAV + """
 <div class="card"><h2>Bienvenue</h2><p>Dashboard operationnel - Toutes les sections fonctionnent</p></div>
-</div></body></html>"""
-    return HTMLResponse(html)
+</div></body></html>""")
 
 @app.get("/trades", response_class=HTMLResponse)
 async def trades_page():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Trades</title>""" + CSS + """</head>
 <body><div class="container"><div class="header"><h1>Gestion Trades</h1></div>""" + NAV + """
 <div class="grid grid-4">
@@ -457,12 +452,11 @@ async def trades_page():
 async function load(){try{const r=await fetch('/api/stats');const d=await r.json();document.getElementById('t').textContent=d.total_trades;document.getElementById('w').textContent=d.win_rate+'%';document.getElementById('p').textContent=(d.total_pnl>0?'+':'')+d.total_pnl+'%';document.getElementById('a').textContent=(d.avg_pnl>0?'+':'')+d.avg_pnl+'%';}catch(e){console.error(e);}}
 async function reset(){if(confirm('Reset?')){await fetch('/api/reset-trades',{method:'POST'});alert('OK');load();}}
 load();setInterval(load,10000);
-</script></div></body></html>"""
-    return HTMLResponse(html)
+</script></div></body></html>""")
 
 @app.get("/fear-greed", response_class=HTMLResponse)
 async def fear_greed_page():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -519,9 +513,7 @@ async def fear_greed_page():
     
     <script>
         console.log('🚀 Page Fear & Greed chargée');
-        
-        let updateInterval;
-        let countdownInterval;
+        let updateInterval, countdownInterval;
         
         function getClassificationClass(value) {
             if (value <= 20) return 'extreme-fear';
@@ -541,53 +533,29 @@ async def fear_greed_page():
         
         function drawGauge(value) {
             const canvas = document.getElementById('gaugeCanvas');
-            if (!canvas) {
-                console.error('❌ Canvas non trouvé');
-                return;
-            }
-            
+            if (!canvas) return;
             const ctx = canvas.getContext('2d');
-            const centerX = 140;
-            const centerY = 140;
-            const radius = 120;
-            
+            const centerX = 140, centerY = 140, radius = 120;
             ctx.clearRect(0, 0, 280, 280);
-            
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0.75 * Math.PI, 2.25 * Math.PI);
             ctx.lineWidth = 30;
             ctx.strokeStyle = '#e9ecef';
             ctx.lineCap = 'round';
             ctx.stroke();
-            
             const endAngle = 0.75 * Math.PI + (value / 100) * 1.5 * Math.PI;
             const gradient = ctx.createLinearGradient(0, 0, 280, 280);
-            
-            if (value <= 20) {
-                gradient.addColorStop(0, '#c0392b');
-                gradient.addColorStop(1, '#e74c3c');
-            } else if (value <= 40) {
-                gradient.addColorStop(0, '#e67e22');
-                gradient.addColorStop(1, '#f39c12');
-            } else if (value <= 60) {
-                gradient.addColorStop(0, '#f39c12');
-                gradient.addColorStop(1, '#f1c40f');
-            } else if (value <= 80) {
-                gradient.addColorStop(0, '#27ae60');
-                gradient.addColorStop(1, '#2ecc71');
-            } else {
-                gradient.addColorStop(0, '#16a085');
-                gradient.addColorStop(1, '#1abc9c');
-            }
-            
+            if (value <= 20) { gradient.addColorStop(0, '#c0392b'); gradient.addColorStop(1, '#e74c3c'); }
+            else if (value <= 40) { gradient.addColorStop(0, '#e67e22'); gradient.addColorStop(1, '#f39c12'); }
+            else if (value <= 60) { gradient.addColorStop(0, '#f39c12'); gradient.addColorStop(1, '#f1c40f'); }
+            else if (value <= 80) { gradient.addColorStop(0, '#27ae60'); gradient.addColorStop(1, '#2ecc71'); }
+            else { gradient.addColorStop(0, '#16a085'); gradient.addColorStop(1, '#1abc9c'); }
             ctx.beginPath();
             ctx.arc(centerX, centerY, radius, 0.75 * Math.PI, endAngle);
             ctx.strokeStyle = gradient;
             ctx.lineWidth = 30;
             ctx.lineCap = 'round';
             ctx.stroke();
-            
-            console.log('✅ Gauge dessiné avec valeur:', value);
         }
         
         function formatCountdown(seconds) {
@@ -599,178 +567,193 @@ async def fear_greed_page():
         
         function startCountdown(totalSeconds) {
             let remaining = totalSeconds;
-            
             if (countdownInterval) clearInterval(countdownInterval);
-            
             countdownInterval = setInterval(() => {
                 remaining--;
                 if (remaining < 0) remaining = 0;
-                
                 const timerEl = document.getElementById('countdown-timer');
-                if (timerEl) {
-                    timerEl.textContent = formatCountdown(remaining);
-                }
-                
-                if (remaining === 0) {
-                    clearInterval(countdownInterval);
-                    loadData();
-                }
+                if (timerEl) timerEl.textContent = formatCountdown(remaining);
+                if (remaining === 0) { clearInterval(countdownInterval); loadData(); }
             }, 1000);
         }
         
         async function loadData() {
-            console.log('📡 Chargement des données Fear & Greed...');
-            
             try {
                 const response = await fetch('/api/fear-greed-full');
-                console.log('📥 Réponse reçue:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const data = await response.json();
-                console.log('📊 Données:', data);
-                
                 const classif = getClassificationClass(data.current_value);
                 const bgClass = getBgClass(data.current_value);
                 
-                const html = `
-                    <div class="fg-grid">
-                        <div class="fg-card">
-                            <h2>🎯 Fear & Greed Index</h2>
-                            <div class="gauge-container">
-                                <canvas id="gaugeCanvas" width="280" height="280"></canvas>
-                                <div class="gauge-value">
-                                    <div class="number">${data.current_value}</div>
-                                    <div class="label ${classif}">${data.current_classification}</div>
-                                </div>
-                            </div>
-                            <p class="gauge-text">
-                                Dernière mise à jour: ${new Date(data.timestamp * 1000).toLocaleDateString('fr-FR')}
-                            </p>
-                        </div>
-                        
-                        <div class="fg-card">
-                            <h2>📊 Valeurs Historiques</h2>
-                            <div class="historical-item">
-                                <div class="period">Maintenant</div>
-                                <div class="value-badge">
-                                    <span class="classification ${getClassificationClass(data.historical.now.value)}">
-                                        ${data.historical.now.classification}
-                                    </span>
-                                    <div class="number-circle ${getBgClass(data.historical.now.value)}">
-                                        ${data.historical.now.value}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            ${data.historical.yesterday && data.historical.yesterday.value ? `
-                            <div class="historical-item">
-                                <div class="period">Hier</div>
-                                <div class="value-badge">
-                                    <span class="classification ${getClassificationClass(data.historical.yesterday.value)}">
-                                        ${data.historical.yesterday.classification}
-                                    </span>
-                                    <div class="number-circle ${getBgClass(data.historical.yesterday.value)}">
-                                        ${data.historical.yesterday.value}
-                                    </div>
-                                </div>
-                            </div>
-                            ` : ''}
-                            
-                            ${data.historical.last_week && data.historical.last_week.value ? `
-                            <div class="historical-item">
-                                <div class="period">Il y a une semaine</div>
-                                <div class="value-badge">
-                                    <span class="classification ${getClassificationClass(data.historical.last_week.value)}">
-                                        ${data.historical.last_week.classification}
-                                    </span>
-                                    <div class="number-circle ${getBgClass(data.historical.last_week.value)}">
-                                        ${data.historical.last_week.value}
-                                    </div>
-                                </div>
-                            </div>
-                            ` : ''}
-                            
-                            ${data.historical.last_month && data.historical.last_month.value ? `
-                            <div class="historical-item">
-                                <div class="period">Il y a un mois</div>
-                                <div class="value-badge">
-                                    <span class="classification ${getClassificationClass(data.historical.last_month.value)}">
-                                        ${data.historical.last_month.classification}
-                                    </span>
-                                    <div class="number-circle ${getBgClass(data.historical.last_month.value)}">
-                                        ${data.historical.last_month.value}
-                                    </div>
-                                </div>
-                            </div>
-                            ` : ''}
-                        </div>
-                        
-                        <div class="fg-card">
-                            <h2>⏰ Prochaine Mise à Jour</h2>
-                            <div class="countdown">
-                                <p style="color:#94a3b8;font-size:16px;">La prochaine mise à jour aura lieu dans:</p>
-                                <div class="countdown-timer" id="countdown-timer">${formatCountdown(data.next_update_seconds)}</div>
-                                <div class="update-info">
-                                    Les données sont mises à jour toutes les 24 heures
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
+                const html = `<div class="fg-grid"><div class="fg-card"><h2>🎯 Fear & Greed Index</h2><div class="gauge-container"><canvas id="gaugeCanvas" width="280" height="280"></canvas><div class="gauge-value"><div class="number">${data.current_value}</div><div class="label ${classif}">${data.current_classification}</div></div></div><p class="gauge-text">Dernière mise à jour: ${new Date(data.timestamp * 1000).toLocaleDateString('fr-FR')}</p></div><div class="fg-card"><h2>📊 Valeurs Historiques</h2><div class="historical-item"><div class="period">Maintenant</div><div class="value-badge"><span class="classification ${getClassificationClass(data.historical.now.value)}">${data.historical.now.classification}</span><div class="number-circle ${getBgClass(data.historical.now.value)}">${data.historical.now.value}</div></div></div>${data.historical.yesterday && data.historical.yesterday.value ? `<div class="historical-item"><div class="period">Hier</div><div class="value-badge"><span class="classification ${getClassificationClass(data.historical.yesterday.value)}">${data.historical.yesterday.classification}</span><div class="number-circle ${getBgClass(data.historical.yesterday.value)}">${data.historical.yesterday.value}</div></div></div>` : ''}${data.historical.last_week && data.historical.last_week.value ? `<div class="historical-item"><div class="period">Il y a une semaine</div><div class="value-badge"><span class="classification ${getClassificationClass(data.historical.last_week.value)}">${data.historical.last_week.classification}</span><div class="number-circle ${getBgClass(data.historical.last_week.value)}">${data.historical.last_week.value}</div></div></div>` : ''}${data.historical.last_month && data.historical.last_month.value ? `<div class="historical-item"><div class="period">Il y a un mois</div><div class="value-badge"><span class="classification ${getClassificationClass(data.historical.last_month.value)}">${data.historical.last_month.classification}</span><div class="number-circle ${getBgClass(data.historical.last_month.value)}">${data.historical.last_month.value}</div></div></div>` : ''}</div><div class="fg-card"><h2>⏰ Prochaine Mise à Jour</h2><div class="countdown"><p style="color:#94a3b8;font-size:16px;">La prochaine mise à jour aura lieu dans:</p><div class="countdown-timer" id="countdown-timer">${formatCountdown(data.next_update_seconds)}</div><div class="update-info">Les données sont mises à jour toutes les 24 heures</div></div></div></div>`;
                 
                 document.getElementById('content').innerHTML = html;
-                console.log('✅ HTML injecté');
-                
-                setTimeout(() => {
-                    drawGauge(data.current_value);
-                }, 100);
-                
+                setTimeout(() => { drawGauge(data.current_value); }, 100);
                 startCountdown(data.next_update_seconds);
-                console.log('✅ Chargement terminé avec succès');
-                
             } catch (error) {
                 console.error('❌ Erreur:', error);
-                document.getElementById('content').innerHTML = `
-                    <div class="fg-card">
-                        <h2 style="color:#ef4444;">❌ Erreur de chargement</h2>
-                        <p style="color:#94a3b8;margin-top:15px;">Impossible de charger les données. Détails: ${error.message}</p>
-                        <button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:white;border:none;border-radius:8px;cursor:pointer;">
-                            🔄 Réessayer
-                        </button>
-                    </div>
-                `;
+                document.getElementById('content').innerHTML = `<div class="fg-card"><h2 style="color:#ef4444;">❌ Erreur de chargement</h2><p style="color:#94a3b8;margin-top:15px;">Impossible de charger les données. Détails: ${error.message}</p><button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:white;border:none;border-radius:8px;cursor:pointer;">🔄 Réessayer</button></div>`;
             }
         }
-        
-        // Chargement initial
         loadData();
-        
-        // Reload toutes les heures
         updateInterval = setInterval(loadData, 3600000);
-        
-        console.log('✅ Script initialisé');
     </script>
 </body>
-</html>"""
-    return HTMLResponse(html)
+</html>""")
+
+@app.get("/heatmap", response_class=HTMLResponse)
+async def heatmap_page():
+    return HTMLResponse("""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Heatmap</title>
+    """ + CSS + """
+    <style>
+        .heatmap-container{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:20px}
+        .crypto-tile{background:#1e293b;border-radius:8px;padding:15px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;transition:all .3s;border:2px solid transparent;min-height:120px;cursor:pointer}
+        .crypto-tile:hover{transform:scale(1.05);border-color:#60a5fa;box-shadow:0 8px 16px rgba(96,165,250,.3)}
+        .crypto-tile.positive{background:linear-gradient(135deg,#065f46 0%,#059669 100%)}
+        .crypto-tile.negative{background:linear-gradient(135deg,#991b1b 0%,#dc2626 100%)}
+        .crypto-tile.neutral{background:#1e293b}
+        .crypto-symbol{font-size:20px;font-weight:bold;color:#fff;margin-bottom:8px}
+        .crypto-price{font-size:14px;color:#e2e8f0;margin-bottom:5px}
+        .crypto-change{font-size:16px;font-weight:bold;color:#fff}
+        .crypto-name{font-size:11px;color:#94a3b8;margin-top:5px}
+        .controls{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+        .controls button{padding:10px 20px;background:#334155;color:#e2e8f0;border:1px solid #475569;border-radius:8px;cursor:pointer;transition:all .3s}
+        .controls button:hover{background:#475569}
+        .controls button.active{background:#60a5fa;border-color:#60a5fa}
+        .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:20px}
+        .stat-item{background:#1e293b;padding:15px;border-radius:8px;border:1px solid #334155}
+        .stat-label{font-size:12px;color:#94a3b8;margin-bottom:5px}
+        .stat-value{font-size:24px;font-weight:bold;color:#e2e8f0}
+        .spinner{border:4px solid #334155;border-top:4px solid #60a5fa;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:20px auto}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Crypto Heatmap</h1>
+            <p>Visualisation en temps réel du marché crypto</p>
+        </div>
+        """ + NAV + """
+        <div class="stats-bar">
+            <div class="stat-item"><div class="stat-label">Total Cryptos</div><div class="stat-value" id="total-cryptos">0</div></div>
+            <div class="stat-item"><div class="stat-label">En hausse</div><div class="stat-value" style="color:#22c55e;" id="gainers">0</div></div>
+            <div class="stat-item"><div class="stat-label">En baisse</div><div class="stat-value" style="color:#ef4444;" id="losers">0</div></div>
+            <div class="stat-item"><div class="stat-label">Variation moyenne</div><div class="stat-value" id="avg-change">0%</div></div>
+        </div>
+        <div class="card">
+            <h2>🔥 Top 100 Cryptomonnaies</h2>
+            <div class="controls">
+                <button class="active" onclick="sortBy('market_cap')">📈 Market Cap</button>
+                <button onclick="sortBy('change')">📊 Variation 24h</button>
+                <button onclick="sortBy('volume')">💰 Volume</button>
+                <button onclick="loadData()">🔄 Actualiser</button>
+            </div>
+            <div id="heatmap-container" class="heatmap-container"></div>
+        </div>
+        <div class="card"><p style="text-align:center;color:#94a3b8;">📊 Données fournies par CoinGecko • Mise à jour automatique toutes les 30 secondes</p></div>
+    </div>
+    <script>
+        let cryptosData = [];
+        let currentSort = 'market_cap';
+        let updateInterval;
+        
+        function formatPrice(price) {
+            if (price >= 1000) return '$' + price.toLocaleString('en-US', {maximumFractionDigits: 2});
+            if (price >= 1) return '$' + price.toFixed(2);
+            if (price >= 0.01) return '$' + price.toFixed(4);
+            return '$' + price.toFixed(6);
+        }
+        
+        function formatMarketCap(mc) {
+            if (mc >= 1e12) return '$' + (mc / 1e12).toFixed(2) + 'T';
+            if (mc >= 1e9) return '$' + (mc / 1e9).toFixed(2) + 'B';
+            if (mc >= 1e6) return '$' + (mc / 1e6).toFixed(2) + 'M';
+            return '$' + mc.toLocaleString();
+        }
+        
+        function getColorClass(change) {
+            if (change > 0.5) return 'positive';
+            if (change < -0.5) return 'negative';
+            return 'neutral';
+        }
+        
+        function sortBy(type) {
+            currentSort = type;
+            document.querySelectorAll('.controls button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            if (type === 'market_cap') cryptosData.sort((a, b) => b.market_cap - a.market_cap);
+            else if (type === 'change') cryptosData.sort((a, b) => b.change_24h - a.change_24h);
+            else if (type === 'volume') cryptosData.sort((a, b) => b.volume - a.volume);
+            renderHeatmap();
+        }
+        
+        function updateStats() {
+            const total = cryptosData.length;
+            const gainers = cryptosData.filter(c => c.change_24h > 0).length;
+            const losers = cryptosData.filter(c => c.change_24h < 0).length;
+            const avgChange = cryptosData.reduce((sum, c) => sum + c.change_24h, 0) / total;
+            document.getElementById('total-cryptos').textContent = total;
+            document.getElementById('gainers').textContent = gainers;
+            document.getElementById('losers').textContent = losers;
+            const avgEl = document.getElementById('avg-change');
+            avgEl.textContent = (avgChange > 0 ? '+' : '') + avgChange.toFixed(2) + '%';
+            avgEl.style.color = avgChange > 0 ? '#22c55e' : avgChange < 0 ? '#ef4444' : '#94a3b8';
+        }
+        
+        function renderHeatmap() {
+            const container = document.getElementById('heatmap-container');
+            let html = '';
+            cryptosData.forEach(crypto => {
+                const colorClass = getColorClass(crypto.change_24h);
+                const changeSymbol = crypto.change_24h > 0 ? '▲' : crypto.change_24h < 0 ? '▼' : '•';
+                html += `<div class="crypto-tile ${colorClass}" title="${crypto.name} - Market Cap: ${formatMarketCap(crypto.market_cap)}"><div class="crypto-symbol">${crypto.symbol}</div><div class="crypto-price">${formatPrice(crypto.price)}</div><div class="crypto-change">${changeSymbol} ${Math.abs(crypto.change_24h)}%</div><div class="crypto-name">${crypto.name}</div></div>`;
+            });
+            container.innerHTML = html;
+            updateStats();
+        }
+        
+        async function loadData() {
+            try {
+                const response = await fetch('/api/heatmap');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                if (data.cryptos && data.cryptos.length > 0) {
+                    cryptosData = data.cryptos;
+                    if (currentSort === 'market_cap') cryptosData.sort((a, b) => b.market_cap - a.market_cap);
+                    else if (currentSort === 'change') cryptosData.sort((a, b) => b.change_24h - a.change_24h);
+                    else if (currentSort === 'volume') cryptosData.sort((a, b) => b.volume - a.volume);
+                    renderHeatmap();
+                } else throw new Error('Aucune donnée disponible');
+            } catch (error) {
+                console.error('❌ Erreur:', error);
+                document.getElementById('heatmap-container').innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:40px; color:#94a3b8;"><h3 style="color:#ef4444; margin-bottom:15px;">❌ Erreur de chargement</h3><p>Impossible de charger les données. ${error.message}</p><button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:white;border:none;border-radius:8px;cursor:pointer;">🔄 Réessayer</button></div>`;
+            }
+        }
+        loadData();
+        updateInterval = setInterval(loadData, 30000);
+    </script>
+</body>
+</html>""")
 
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Telegram</title>""" + CSS + """</head>
 <body><div class="container"><div class="header"><h1>Test Telegram</h1></div>""" + NAV + """
 <div class="card"><h2>Test Bot</h2><button onclick="test()">Envoyer</button><div id="re"></div></div>
 <script>
 async function test(){document.getElementById('re').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('re').innerHTML='<div class="alert alert-success">OK!</div>';}else{document.getElementById('re').innerHTML='<div class="alert alert-error">Erreur</div>';}}
-</script></div></body></html>"""
-    return HTMLResponse(html)
+</script></div></body></html>""")
 
 @app.get("/paper-trading", response_class=HTMLResponse)
 async def paper_page():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Paper</title>""" + CSS + """</head>
 <body><div class="container"><div class="header"><h1>Paper Trading</h1></div>""" + NAV + """
 <div class="grid grid-3">
@@ -795,12 +778,11 @@ async function loadHist(){const r=await fetch('/api/paper-trades');const d=await
 async function trade(){const r=await fetch('/api/paper-trade',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:document.getElementById('ac').value,symbol:document.getElementById('sy').value,quantity:document.getElementById('qt').value})});const d=await r.json();document.getElementById('ms').innerHTML='<div class="alert alert-'+(d.status==='success'?'success':'error')+'">'+d.message+'</div>';setTimeout(()=>{document.getElementById('ms').innerHTML='';},5000);loadStats();loadBal();loadHist();}
 async function resetP(){if(confirm('Reset?')){await fetch('/api/paper-reset',{method:'POST'});alert('OK');loadStats();loadBal();loadHist();}}
 loadStats();loadBal();loadHist();setInterval(()=>{loadStats();loadBal();},30000);
-</script></div></body></html>"""
-    return HTMLResponse(html)
+</script></div></body></html>""")
 
 @app.get("/backtesting", response_class=HTMLResponse)
 async def backtest_page():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Backtest</title>""" + CSS + """</head>
 <body><div class="container"><div class="header"><h1>Backtesting</h1></div>""" + NAV + """
 <div class="grid grid-2">
@@ -821,23 +803,21 @@ async def backtest_page():
 <div id="er"></div>
 </div></div>
 <script>
-async function run(){document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{const r=await fetch('/api/backtest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value})});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';}catch(e){document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}
-</script></div></body></html>"""
-    return HTMLResponse(html)
+async function run(){document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{const r=await fetch('/api/backtest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value})});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){document.getElementById('er').innerHTML='<div class=\"alert alert-error\">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';}catch(e){document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class=\"alert alert-error\">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}
+</script></div></body></html>""")
 
 @app.get("/bullrun-phase", response_class=HTMLResponse)
 async def bullrun_page():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Bullrun</title>""" + CSS + """</head>
 <body><div class="container"><div class="header"><h1>Bullrun Phase</h1></div>""" + NAV + """
 <div class="card"><h2>Phase</h2><div id="ph">...</div></div>
 <script>async function load(){const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('ph').innerHTML='<h3>'+d.phase+'</h3><p>Prix: $'+d.btc_price+'</p><p>Change: '+d.btc_change_24h+'%</p>';}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
+</div></body></html>""")
 
 @app.get("/convertisseur", response_class=HTMLResponse)
 async def convert_page():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Convertir</title>""" + CSS + """</head>
 <body><div class="container"><div class="header"><h1>Convertisseur</h1></div>""" + NAV + """
 <div class="card"><h2>Convertir</h2>
@@ -846,566 +826,34 @@ async def convert_page():
 <select id="to"><option value="BTC">BTC</option><option value="USD">USD</option><option value="ETH">ETH</option></select>
 <button onclick="convert()">Convertir</button><div id="result"></div></div>
 <script>async function convert(){const r=await fetch('/api/convert?from_currency='+document.getElementById('from').value+'&to_currency='+document.getElementById('to').value+'&amount='+document.getElementById('amt').value);const d=await r.json();document.getElementById('result').innerHTML='<h3>'+d.result+'</h3>';}</script>
-</div></body></html>"""
-    return HTMLResponse(html)
+</div></body></html>""")
 
 @app.get("/annonces", response_class=HTMLResponse)
 async def news_page():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>News</title>""" + CSS + """</head>
 <body><div class="container"><div class="header"><h1>Actualites</h1></div>""" + NAV + """
 <div class="card"><h2>News</h2><div id="nw">...</div></div>
 <script>async function load(){const r=await fetch('/api/news');const d=await r.json();let h='';d.news.forEach(n=>{h+='<div style="padding:15px;margin:10px 0;background:#0f172a;border-radius:8px"><h3>'+n.title+'</h3><p>'+n.source+'</p></div>';});document.getElementById('nw').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
+</div></body></html>""")
 
 @app.get("/btc-quarterly", response_class=HTMLResponse)
 async def quarterly_page():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Quarterly</title>""" + CSS + """</head>
 <body><div class="container"><div class="header"><h1>Quarterly Returns</h1></div>""" + NAV + """
 <div class="card"><h2>Quarterly</h2><div id="q">...</div></div>
 <script>async function load(){const r=await fetch('/api/btc-quarterly');const d=await r.json();let h='<table><tr><th>Annee</th><th>T1</th><th>T2</th><th>T3</th><th>T4</th></tr>';for(const[y,q]of Object.entries(d.quarterly_returns)){h+='<tr><td>'+y+'</td><td>'+q.T1+'%</td><td>'+q.T2+'%</td><td>'+q.T3+'%</td><td>'+q.T4+'%</td></tr>';}h+='</table>';document.getElementById('q').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
-
-@app.get("/heatmap", response_class=HTMLResponse)
-async def heatmap_page():
-    html = """<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Heatmap</title>
-    """ + CSS + """
-    <style>
-        .heatmap-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 8px;
-            margin-top: 20px;
-        }
-        
-        .crypto-tile {
-            background: #1e293b;
-            border-radius: 8px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            transition: all 0.3s;
-            border: 2px solid transparent;
-            min-height: 120px;
-            cursor: pointer;
-        }
-        
-        .crypto-tile:hover {
-            transform: scale(1.05);
-            border-color: #60a5fa;
-            box-shadow: 0 8px 16px rgba(96, 165, 250, 0.3);
-        }
-        
-        .crypto-tile.positive {
-            background: linear-gradient(135deg, #065f46 0%, #059669 100%);
-        }
-        
-        .crypto-tile.negative {
-            background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%);
-        }
-        
-        .crypto-tile.neutral {
-            background: #1e293b;
-        }
-        
-        .crypto-symbol {
-            font-size: 20px;
-            font-weight: bold;
-            color: #fff;
-            margin-bottom: 8px;
-        }
-        
-        .crypto-price {
-            font-size: 14px;
-            color: #e2e8f0;
-            margin-bottom: 5px;
-        }
-        
-        .crypto-change {
-            font-size: 16px;
-            font-weight: bold;
-            color: #fff;
-        }
-        
-        .crypto-name {
-            font-size: 11px;
-            color: #94a3b8;
-            margin-top: 5px;
-        }
-        
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .controls button {
-            padding: 10px 20px;
-            background: #334155;
-            color: #e2e8f0;
-            border: 1px solid #475569;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .controls button:hover {
-            background: #475569;
-        }
-        
-        .controls button.active {
-            background: #60a5fa;
-            border-color: #60a5fa;
-        }
-        
-        .stats-bar {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .stat-item {
-            background: #1e293b;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #334155;
-        }
-        
-        .stat-label {
-            font-size: 12px;
-            color: #94a3b8;
-            margin-bottom: 5px;
-        }
-        
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #e2e8f0;
-        }
-        
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(15, 23, 42, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-        
-        .loading-content {
-            text-align: center;
-            color: #e2e8f0;
-        }
-        
-        .spinner {
-            border: 4px solid #334155;
-            border-top: 4px solid #60a5fa;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📊 Crypto Heatmap</h1>
-            <p>Visualisation en temps réel du marché crypto</p>
-        </div>
-        
-        """ + NAV + """
-        
-        <div class="stats-bar">
-            <div class="stat-item">
-                <div class="stat-label">Total Cryptos</div>
-                <div class="stat-value" id="total-cryptos">0</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-label">En hausse</div>
-                <div class="stat-value" style="color:#22c55e;" id="gainers">0</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-label">En baisse</div>
-                <div class="stat-value" style="color:#ef4444;" id="losers">0</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-label">Variation moyenne</div>
-                <div class="stat-value" id="avg-change">0%</div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <h2>🔥 Top 100 Cryptomonnaies</h2>
-            
-            <div class="controls">
-                <button class="active" onclick="sortBy('market_cap')">📈 Market Cap</button>
-                <button onclick="sortBy('change')">📊 Variation 24h</button>
-                <button onclick="sortBy('volume')">💰 Volume</button>
-                <button onclick="loadData()">🔄 Actualiser</button>
-            </div>
-            
-            <div id="heatmap-container" class="heatmap-container">
-                <!-- Les tuiles seront générées ici -->
-            </div>
-        </div>
-        
-        <div class="card">
-            <p style="text-align:center;color:#94a3b8;">
-                📊 Données fournies par CoinGecko • Mise à jour automatique toutes les 30 secondes
-            </p>
-        </div>
-    </div>
-    
-    <div id="loading" class="loading-overlay" style="display:none;">
-        <div class="loading-content">
-            <div class="spinner"></div>
-            <p>Chargement des données...</p>
-        </div>
-    </div>
-    
-    <script>
-        let cryptosData = [];
-        let currentSort = 'market_cap';
-        let updateInterval;
-        
-        console.log('🚀 Heatmap initialisée');
-        
-        function formatPrice(price) {
-            if (price >= 1000) return '
+</div></body></html>""")
 
 @app.get("/calendrier", response_class=HTMLResponse)
 async def calendar_page():
-    html = """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
 <body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
 <div class="card"><h2>Events</h2><div id="cal">...</div></div>
 <script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    print("\n" + "="*60)
-    print("DASHBOARD TRADING - DEMARRAGE")
-    print("="*60)
-    print(f"Port: {port}")
-    print(f"Telegram: Configuré")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + price.toLocaleString('en-US', {maximumFractionDigits: 2});
-            if (price >= 1) return '
-
-@app.get("/calendrier", response_class=HTMLResponse)
-async def calendar_page():
-    html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
-<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
-<div class="card"><h2>Events</h2><div id="cal">...</div></div>
-<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    print("\n" + "="*60)
-    print("DASHBOARD TRADING - DEMARRAGE")
-    print("="*60)
-    print(f"Port: {port}")
-    print(f"Telegram: Configuré")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + price.toFixed(2);
-            if (price >= 0.01) return '
-
-@app.get("/calendrier", response_class=HTMLResponse)
-async def calendar_page():
-    html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
-<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
-<div class="card"><h2>Events</h2><div id="cal">...</div></div>
-<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    print("\n" + "="*60)
-    print("DASHBOARD TRADING - DEMARRAGE")
-    print("="*60)
-    print(f"Port: {port}")
-    print(f"Telegram: Configuré")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + price.toFixed(4);
-            return '
-
-@app.get("/calendrier", response_class=HTMLResponse)
-async def calendar_page():
-    html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
-<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
-<div class="card"><h2>Events</h2><div id="cal">...</div></div>
-<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    print("\n" + "="*60)
-    print("DASHBOARD TRADING - DEMARRAGE")
-    print("="*60)
-    print(f"Port: {port}")
-    print(f"Telegram: Configuré")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + price.toFixed(6);
-        }
-        
-        function formatMarketCap(mc) {
-            if (mc >= 1e12) return '
-
-@app.get("/calendrier", response_class=HTMLResponse)
-async def calendar_page():
-    html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
-<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
-<div class="card"><h2>Events</h2><div id="cal">...</div></div>
-<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    print("\n" + "="*60)
-    print("DASHBOARD TRADING - DEMARRAGE")
-    print("="*60)
-    print(f"Port: {port}")
-    print(f"Telegram: Configuré")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + (mc / 1e12).toFixed(2) + 'T';
-            if (mc >= 1e9) return '
-
-@app.get("/calendrier", response_class=HTMLResponse)
-async def calendar_page():
-    html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
-<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
-<div class="card"><h2>Events</h2><div id="cal">...</div></div>
-<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    print("\n" + "="*60)
-    print("DASHBOARD TRADING - DEMARRAGE")
-    print("="*60)
-    print(f"Port: {port}")
-    print(f"Telegram: Configuré")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + (mc / 1e9).toFixed(2) + 'B';
-            if (mc >= 1e6) return '
-
-@app.get("/calendrier", response_class=HTMLResponse)
-async def calendar_page():
-    html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
-<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
-<div class="card"><h2>Events</h2><div id="cal">...</div></div>
-<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    print("\n" + "="*60)
-    print("DASHBOARD TRADING - DEMARRAGE")
-    print("="*60)
-    print(f"Port: {port}")
-    print(f"Telegram: Configuré")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + (mc / 1e6).toFixed(2) + 'M';
-            return '
-
-@app.get("/calendrier", response_class=HTMLResponse)
-async def calendar_page():
-    html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
-<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
-<div class="card"><h2>Events</h2><div id="cal">...</div></div>
-<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    print("\n" + "="*60)
-    print("DASHBOARD TRADING - DEMARRAGE")
-    print("="*60)
-    print(f"Port: {port}")
-    print(f"Telegram: Configuré")
-    print("="*60 + "\n")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info") + mc.toLocaleString();
-        }
-        
-        function getColorClass(change) {
-            if (change > 0.5) return 'positive';
-            if (change < -0.5) return 'negative';
-            return 'neutral';
-        }
-        
-        function sortBy(type) {
-            currentSort = type;
-            
-            // Update active button
-            document.querySelectorAll('.controls button').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-            
-            // Sort data
-            if (type === 'market_cap') {
-                cryptosData.sort((a, b) => b.market_cap - a.market_cap);
-            } else if (type === 'change') {
-                cryptosData.sort((a, b) => b.change_24h - a.change_24h);
-            } else if (type === 'volume') {
-                cryptosData.sort((a, b) => b.volume - a.volume);
-            }
-            
-            renderHeatmap();
-        }
-        
-        function updateStats() {
-            const total = cryptosData.length;
-            const gainers = cryptosData.filter(c => c.change_24h > 0).length;
-            const losers = cryptosData.filter(c => c.change_24h < 0).length;
-            const avgChange = cryptosData.reduce((sum, c) => sum + c.change_24h, 0) / total;
-            
-            document.getElementById('total-cryptos').textContent = total;
-            document.getElementById('gainers').textContent = gainers;
-            document.getElementById('losers').textContent = losers;
-            
-            const avgEl = document.getElementById('avg-change');
-            avgEl.textContent = (avgChange > 0 ? '+' : '') + avgChange.toFixed(2) + '%';
-            avgEl.style.color = avgChange > 0 ? '#22c55e' : avgChange < 0 ? '#ef4444' : '#94a3b8';
-        }
-        
-        function renderHeatmap() {
-            const container = document.getElementById('heatmap-container');
-            
-            let html = '';
-            cryptosData.forEach(crypto => {
-                const colorClass = getColorClass(crypto.change_24h);
-                const changeSymbol = crypto.change_24h > 0 ? '▲' : crypto.change_24h < 0 ? '▼' : '•';
-                
-                html += `
-                    <div class="crypto-tile ${colorClass}" title="${crypto.name} - Market Cap: ${formatMarketCap(crypto.market_cap)}">
-                        <div class="crypto-symbol">${crypto.symbol}</div>
-                        <div class="crypto-price">${formatPrice(crypto.price)}</div>
-                        <div class="crypto-change">${changeSymbol} ${Math.abs(crypto.change_24h)}%</div>
-                        <div class="crypto-name">${crypto.name}</div>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-            updateStats();
-        }
-        
-        async function loadData() {
-            console.log('📡 Chargement données heatmap...');
-            
-            try {
-                const response = await fetch('/api/heatmap');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log('📊 Données reçues:', data);
-                
-                if (data.cryptos && data.cryptos.length > 0) {
-                    cryptosData = data.cryptos;
-                    
-                    // Sort by current sort method
-                    if (currentSort === 'market_cap') {
-                        cryptosData.sort((a, b) => b.market_cap - a.market_cap);
-                    } else if (currentSort === 'change') {
-                        cryptosData.sort((a, b) => b.change_24h - a.change_24h);
-                    } else if (currentSort === 'volume') {
-                        cryptosData.sort((a, b) => b.volume - a.volume);
-                    }
-                    
-                    renderHeatmap();
-                    console.log('✅ Heatmap rendue');
-                } else {
-                    throw new Error('Aucune donnée disponible');
-                }
-                
-            } catch (error) {
-                console.error('❌ Erreur:', error);
-                document.getElementById('heatmap-container').innerHTML = `
-                    <div style="grid-column: 1/-1; text-align:center; padding:40px; color:#94a3b8;">
-                        <h3 style="color:#ef4444; margin-bottom:15px;">❌ Erreur de chargement</h3>
-                        <p>Impossible de charger les données. ${error.message}</p>
-                        <button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:white;border:none;border-radius:8px;cursor:pointer;">
-                            🔄 Réessayer
-                        </button>
-                    </div>
-                `;
-            }
-        }
-        
-        // Initial load
-        loadData();
-        
-        // Auto-refresh every 30 seconds
-        updateInterval = setInterval(loadData, 30000);
-        
-        console.log('✅ Heatmap script initialisé');
-    </script>
-</body>
-</html>"""
-    return HTMLResponse(html)
-
-@app.get("/calendrier", response_class=HTMLResponse)
-async def calendar_page():
-    html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head>
-<body><div class="container"><div class="header"><h1>Calendrier</h1></div>""" + NAV + """
-<div class="card"><h2>Events</h2><div id="cal">...</div></div>
-<script>async function load(){const r=await fetch('/api/calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Event</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.title+'</td></tr>';});h+='</table>';document.getElementById('cal').innerHTML=h;}load();</script>
-</div></body></html>"""
-    return HTMLResponse(html)
+</div></body></html>""")
 
 if __name__ == "__main__":
     import uvicorn

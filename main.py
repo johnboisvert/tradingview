@@ -55,7 +55,7 @@ async def send_telegram_message(message: str):
         print(f"Telegram exception: {e}")
         return {"ok": False, "error": str(e)}
 
-# HEALTH CHECK pour Render
+# HEALTH CHECK
 @app.get("/health")
 @app.head("/health")
 async def health_check():
@@ -112,52 +112,67 @@ async def get_fear_greed():
                 d = r.json()
                 v = int(d["data"][0]["value"])
                 return {"value": v, "classification": d["data"][0]["value_classification"], "status": "success"}
-    except:
-        pass
+    except Exception as e:
+        print(f"Erreur fear-greed: {e}")
     return {"value": 50, "classification": "Neutre", "status": "fallback"}
 
 @app.get("/api/fear-greed-full")
 async def get_fear_greed_full():
-    """Récupère les données Fear & Greed actuelles et historiques"""
+    """Récupère les données Fear & Greed avec historique"""
+    print("📊 Appel API fear-greed-full")
+    
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
+            print("🌐 Tentative connexion Alternative.me...")
             r = await client.get("https://api.alternative.me/fng/?limit=30")
+            
             if r.status_code == 200:
+                print("✅ API répondu avec succès")
                 data = r.json()
                 
-                historical = {
-                    "now": {
-                        "value": int(data["data"][0]["value"]),
-                        "classification": data["data"][0]["value_classification"]
-                    },
-                    "yesterday": {
-                        "value": int(data["data"][1]["value"]) if len(data["data"]) > 1 else None,
-                        "classification": data["data"][1]["value_classification"] if len(data["data"]) > 1 else None
-                    },
-                    "last_week": {
-                        "value": int(data["data"][7]["value"]) if len(data["data"]) > 7 else None,
-                        "classification": data["data"][7]["value_classification"] if len(data["data"]) > 7 else None
-                    },
-                    "last_month": {
-                        "value": int(data["data"][29]["value"]) if len(data["data"]) > 29 else None,
-                        "classification": data["data"][29]["value_classification"] if len(data["data"]) > 29 else None
-                    }
-                }
-                
+                # Calcul next update
                 now = datetime.now()
                 tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
                 seconds_until_update = int((tomorrow - now).total_seconds())
                 
-                return {
+                result = {
                     "current_value": int(data["data"][0]["value"]),
                     "current_classification": data["data"][0]["value_classification"],
-                    "historical": historical,
+                    "historical": {
+                        "now": {
+                            "value": int(data["data"][0]["value"]),
+                            "classification": data["data"][0]["value_classification"]
+                        },
+                        "yesterday": {
+                            "value": int(data["data"][1]["value"]) if len(data["data"]) > 1 else None,
+                            "classification": data["data"][1]["value_classification"] if len(data["data"]) > 1 else None
+                        },
+                        "last_week": {
+                            "value": int(data["data"][7]["value"]) if len(data["data"]) > 7 else None,
+                            "classification": data["data"][7]["value_classification"] if len(data["data"]) > 7 else None
+                        },
+                        "last_month": {
+                            "value": int(data["data"][29]["value"]) if len(data["data"]) > 29 else None,
+                            "classification": data["data"][29]["value_classification"] if len(data["data"]) > 29 else None
+                        }
+                    },
                     "next_update_seconds": seconds_until_update,
                     "timestamp": data["data"][0]["timestamp"],
                     "status": "success"
                 }
+                print(f"📈 Valeur actuelle: {result['current_value']}")
+                return result
+            else:
+                print(f"❌ API status code: {r.status_code}")
+                
     except Exception as e:
-        print(f"Erreur Fear & Greed: {e}")
+        print(f"❌ Erreur Fear & Greed Full: {e}")
+    
+    # Fallback
+    print("⚠️ Utilisation du fallback")
+    now = datetime.now()
+    tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+    seconds_until_update = int((tomorrow - now).total_seconds())
     
     return {
         "current_value": 29,
@@ -168,8 +183,8 @@ async def get_fear_greed_full():
             "last_week": {"value": 24, "classification": "Extreme Fear"},
             "last_month": {"value": 53, "classification": "Neutral"}
         },
-        "next_update_seconds": 82800,
-        "timestamp": "1729296000",
+        "next_update_seconds": seconds_until_update,
+        "timestamp": str(int(datetime.now().timestamp())),
         "status": "fallback"
     }
 
@@ -403,225 +418,38 @@ async def fear_greed_page():
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fear & Greed Index</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 40px;
-            color: white;
-        }
-        
-        .header h1 {
-            font-size: 48px;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .header p {
-            font-size: 18px;
-            opacity: 0.9;
-        }
-        
-        .back-btn {
-            display: inline-block;
-            margin-bottom: 20px;
-            padding: 12px 24px;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            transition: all 0.3s;
-            backdrop-filter: blur(10px);
-        }
-        
-        .back-btn:hover {
-            background: rgba(255,255,255,0.3);
-            transform: translateY(-2px);
-        }
-        
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 30px;
-            margin-top: 30px;
-        }
-        
-        .card {
-            background: white;
-            border-radius: 16px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            transition: transform 0.3s;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .card h2 {
-            font-size: 24px;
-            margin-bottom: 20px;
-            color: #333;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 10px;
-        }
-        
-        .gauge-container {
-            position: relative;
-            width: 280px;
-            height: 280px;
-            margin: 20px auto;
-        }
-        
-        .gauge-value {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-        }
-        
-        .gauge-value .number {
-            font-size: 72px;
-            font-weight: bold;
-            color: #333;
-            line-height: 1;
-        }
-        
-        .gauge-value .label {
-            font-size: 24px;
-            color: #666;
-            margin-top: 10px;
-            font-weight: 600;
-        }
-        
-        .historical-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            margin-bottom: 12px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            transition: all 0.3s;
-        }
-        
-        .historical-item:hover {
-            background: #e9ecef;
-            transform: translateX(5px);
-        }
-        
-        .historical-item .period {
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        .historical-item .value-badge {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .historical-item .classification {
-            font-weight: 600;
-            font-size: 16px;
-        }
-        
-        .historical-item .number-circle {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: white;
-            font-size: 18px;
-        }
-        
-        .extreme-fear { color: #c0392b; }
-        .fear { color: #e67e22; }
-        .neutral { color: #f39c12; }
-        .greed { color: #27ae60; }
-        .extreme-greed { color: #16a085; }
-        
-        .bg-extreme-fear { background: linear-gradient(135deg, #c0392b, #e74c3c); }
-        .bg-fear { background: linear-gradient(135deg, #e67e22, #f39c12); }
-        .bg-neutral { background: linear-gradient(135deg, #f39c12, #f1c40f); }
-        .bg-greed { background: linear-gradient(135deg, #27ae60, #2ecc71); }
-        .bg-extreme-greed { background: linear-gradient(135deg, #16a085, #1abc9c); }
-        
-        .countdown {
-            text-align: center;
-            padding: 20px;
-        }
-        
-        .countdown-timer {
-            font-size: 32px;
-            font-weight: bold;
-            color: #667eea;
-            margin-top: 15px;
-            font-family: 'Courier New', monospace;
-        }
-        
-        .update-info {
-            margin-top: 15px;
-            color: #666;
-            font-size: 14px;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-        
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .info-footer {
-            text-align: center;
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 12px;
-            color: white;
-            backdrop-filter: blur(10px);
-        }
-        
-        .info-footer a {
-            color: white;
-            text-decoration: underline;
-        }
+        * {margin: 0;padding: 0;box-sizing: border-box;}
+        body {font-family: 'Segoe UI', sans-serif;background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);min-height: 100vh;padding: 20px;color: #333;}
+        .container {max-width: 1200px;margin: 0 auto;}
+        .header {text-align: center;margin-bottom: 40px;color: white;}
+        .header h1 {font-size: 48px;margin-bottom: 10px;text-shadow: 2px 2px 4px rgba(0,0,0,0.2);}
+        .header p {font-size: 18px;opacity: 0.9;}
+        .back-btn {display: inline-block;margin-bottom: 20px;padding: 12px 24px;background: rgba(255,255,255,0.2);color: white;text-decoration: none;border-radius: 8px;transition: all 0.3s;backdrop-filter: blur(10px);}
+        .back-btn:hover {background: rgba(255,255,255,0.3);transform: translateY(-2px);}
+        .grid {display: grid;grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));gap: 30px;margin-top: 30px;}
+        .card {background: white;border-radius: 16px;padding: 30px;box-shadow: 0 10px 30px rgba(0,0,0,0.2);transition: transform 0.3s;}
+        .card:hover {transform: translateY(-5px);}
+        .card h2 {font-size: 24px;margin-bottom: 20px;color: #333;border-bottom: 3px solid #667eea;padding-bottom: 10px;}
+        .gauge-container {position: relative;width: 280px;height: 280px;margin: 20px auto;}
+        .gauge-value {position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);text-align: center;}
+        .gauge-value .number {font-size: 72px;font-weight: bold;color: #333;line-height: 1;}
+        .gauge-value .label {font-size: 24px;color: #666;margin-top: 10px;font-weight: 600;}
+        .historical-item {display: flex;justify-content: space-between;align-items: center;padding: 15px;margin-bottom: 12px;background: #f8f9fa;border-radius: 12px;transition: all 0.3s;}
+        .historical-item:hover {background: #e9ecef;transform: translateX(5px);}
+        .historical-item .period {font-weight: 600;color: #495057;}
+        .historical-item .value-badge {display: flex;align-items: center;gap: 12px;}
+        .historical-item .classification {font-weight: 600;font-size: 16px;}
+        .historical-item .number-circle {width: 50px;height: 50px;border-radius: 50%;display: flex;align-items: center;justify-content: center;font-weight: bold;color: white;font-size: 18px;}
+        .extreme-fear {color: #c0392b;} .fear {color: #e67e22;} .neutral {color: #f39c12;} .greed {color: #27ae60;} .extreme-greed {color: #16a085;}
+        .bg-extreme-fear {background: linear-gradient(135deg, #c0392b, #e74c3c);} .bg-fear {background: linear-gradient(135deg, #e67e22, #f39c12);} .bg-neutral {background: linear-gradient(135deg, #f39c12, #f1c40f);} .bg-greed {background: linear-gradient(135deg, #27ae60, #2ecc71);} .bg-extreme-greed {background: linear-gradient(135deg, #16a085, #1abc9c);}
+        .countdown {text-align: center;padding: 20px;}
+        .countdown-timer {font-size: 32px;font-weight: bold;color: #667eea;margin-top: 15px;font-family: 'Courier New', monospace;}
+        .update-info {margin-top: 15px;color: #666;font-size: 14px;}
+        .loading {text-align: center;padding: 40px;color: #fff;}
+        .spinner {border: 4px solid #f3f3f3;border-top: 4px solid #667eea;border-radius: 50%;width: 50px;height: 50px;animation: spin 1s linear infinite;margin: 20px auto;}
+        @keyframes spin {0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);}}
+        .info-footer {text-align: center;margin-top: 30px;padding: 20px;background: rgba(255,255,255,0.1);border-radius: 12px;color: white;backdrop-filter: blur(10px);}
+        .info-footer a {color: white;text-decoration: underline;}
     </style>
 </head>
 <body>
@@ -645,6 +473,8 @@ async def fear_greed_page():
     </div>
     
     <script>
+        console.log('🚀 Page Fear & Greed chargée');
+        
         let updateInterval;
         let countdownInterval;
         
@@ -664,9 +494,12 @@ async def fear_greed_page():
             return 'bg-extreme-greed';
         }
         
-        function drawGauge(value, classification) {
+        function drawGauge(value) {
             const canvas = document.getElementById('gaugeCanvas');
-            if (!canvas) return;
+            if (!canvas) {
+                console.error('❌ Canvas non trouvé');
+                return;
+            }
             
             const ctx = canvas.getContext('2d');
             const centerX = 140;
@@ -708,22 +541,21 @@ async def fear_greed_page():
             ctx.lineWidth = 30;
             ctx.lineCap = 'round';
             ctx.stroke();
+            
+            console.log('✅ Gauge dessiné avec valeur:', value);
         }
         
         function formatCountdown(seconds) {
             const hours = Math.floor(seconds / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
-            
             return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
         }
         
         function startCountdown(totalSeconds) {
             let remaining = totalSeconds;
             
-            if (countdownInterval) {
-                clearInterval(countdownInterval);
-            }
+            if (countdownInterval) clearInterval(countdownInterval);
             
             countdownInterval = setInterval(() => {
                 remaining--;
@@ -742,9 +574,18 @@ async def fear_greed_page():
         }
         
         async function loadData() {
+            console.log('📡 Chargement des données Fear & Greed...');
+            
             try {
                 const response = await fetch('/api/fear-greed-full');
+                console.log('📥 Réponse reçue:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
                 const data = await response.json();
+                console.log('📊 Données:', data);
                 
                 const classif = getClassificationClass(data.current_value);
                 const bgClass = getBgClass(data.current_value);
@@ -779,7 +620,7 @@ async def fear_greed_page():
                                 </div>
                             </div>
                             
-                            ${data.historical.yesterday.value ? `
+                            ${data.historical.yesterday && data.historical.yesterday.value ? `
                             <div class="historical-item">
                                 <div class="period">Hier</div>
                                 <div class="value-badge">
@@ -793,7 +634,7 @@ async def fear_greed_page():
                             </div>
                             ` : ''}
                             
-                            ${data.historical.last_week.value ? `
+                            ${data.historical.last_week && data.historical.last_week.value ? `
                             <div class="historical-item">
                                 <div class="period">Il y a une semaine</div>
                                 <div class="value-badge">
@@ -807,7 +648,7 @@ async def fear_greed_page():
                             </div>
                             ` : ''}
                             
-                            ${data.historical.last_month.value ? `
+                            ${data.historical.last_month && data.historical.last_month.value ? `
                             <div class="historical-item">
                                 <div class="period">Il y a un mois</div>
                                 <div class="value-badge">
@@ -836,29 +677,36 @@ async def fear_greed_page():
                 `;
                 
                 document.getElementById('content').innerHTML = html;
+                console.log('✅ HTML injecté');
                 
                 setTimeout(() => {
-                    drawGauge(data.current_value, data.current_classification);
+                    drawGauge(data.current_value);
                 }, 100);
                 
                 startCountdown(data.next_update_seconds);
+                console.log('✅ Chargement terminé avec succès');
                 
             } catch (error) {
-                console.error('Erreur:', error);
+                console.error('❌ Erreur:', error);
                 document.getElementById('content').innerHTML = `
-                    <div class="card">
+                    <div class="card" style="background:white;">
                         <h2 style="color:#e74c3c;">❌ Erreur de chargement</h2>
-                        <p>Impossible de charger les données. Veuillez réessayer.</p>
+                        <p style="color:#666;margin-top:15px;">Impossible de charger les données. Détails: ${error.message}</p>
                         <button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;">
-                            Réessayer
+                            🔄 Réessayer
                         </button>
                     </div>
                 `;
             }
         }
         
+        // Chargement initial
         loadData();
+        
+        // Reload toutes les heures
         updateInterval = setInterval(loadData, 3600000);
+        
+        console.log('✅ Script initialisé');
     </script>
 </body>
 </html>"""

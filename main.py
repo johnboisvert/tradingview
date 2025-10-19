@@ -257,42 +257,393 @@ loadData();setInterval(loadData,60000);
 @app.get("/heatmap", response_class=HTMLResponse)
 async def heatmap_page():
     page = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Heatmap</title>""" + CSS + """
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crypto Heatmap</title>""" + CSS + """
 <style>
-.heatmap-container{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:20px}
-.crypto-tile{background:#1e293b;border-radius:8px;padding:15px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;transition:all .3s;border:2px solid transparent;min-height:120px;cursor:pointer}
-.crypto-tile:hover{transform:scale(1.05);border-color:#60a5fa;box-shadow:0 8px 16px rgba(96,165,250,.3)}
-.crypto-tile.positive{background:linear-gradient(135deg,#065f46,#059669)}
-.crypto-tile.negative{background:linear-gradient(135deg,#991b1b,#dc2626)}
-.crypto-tile.neutral{background:#1e293b}
-.crypto-symbol{font-size:20px;font-weight:bold;color:#fff;margin-bottom:8px}
-.crypto-price{font-size:14px;color:#e2e8f0;margin-bottom:5px}
-.crypto-change{font-size:16px;font-weight:bold;color:#fff}
-.crypto-name{font-size:11px;color:#94a3b8;margin-top:5px}
+.heatmap-treemap{display:flex;flex-wrap:wrap;gap:2px;background:#0f172a;padding:2px;border-radius:12px;min-height:800px}
+.crypto-tile{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:15px;border-radius:4px;transition:all .3s;cursor:pointer;overflow:hidden;min-width:80px;min-height:80px}
+.crypto-tile:hover{transform:scale(1.02);box-shadow:0 8px 24px rgba(0,0,0,0.5);z-index:10;border:2px solid rgba(255,255,255,0.3)}
+.crypto-tile::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:inherit;filter:brightness(1.1);opacity:0;transition:opacity .3s}
+.crypto-tile:hover::before{opacity:1}
+.tile-content{position:relative;z-index:1;width:100%;height:100%}
+.crypto-symbol{font-size:clamp(14px,2vw,24px);font-weight:bold;color:#fff;margin-bottom:5px;text-shadow:1px 1px 2px rgba(0,0,0,0.5)}
+.crypto-price{font-size:clamp(11px,1.5vw,16px);color:rgba(255,255,255,0.9);margin-bottom:3px;font-weight:500}
+.crypto-change{font-size:clamp(12px,1.8vw,20px);font-weight:bold;color:#fff;text-shadow:1px 1px 2px rgba(0,0,0,0.5)}
+.crypto-dominance{font-size:clamp(9px,1.2vw,12px);color:rgba(255,255,255,0.7);margin-top:8px}
 .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:20px}
+.controls{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.controls button{padding:10px 20px;background:#334155;color:#e2e8f0;border:1px solid #475569;border-radius:8px;cursor:pointer;transition:all .3s;font-size:14px}
+.controls button:hover{background:#475569;transform:translateY(-2px)}
+.controls button.active{background:#60a5fa;border-color:#60a5fa;color:#fff}
 .spinner{border:4px solid #334155;border-top:4px solid #60a5fa;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:20px auto}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 </style>
 </head>
 <body><div class="container">
-<div class="header"><h1>📊 Crypto Heatmap</h1><p>Top 100 cryptos en temps réel</p></div>
+<div class="header"><h1>🔥 Crypto Heatmap</h1><p>Visualisation en temps réel - Taille = Market Cap</p></div>
 """ + NAV + """
 <div class="stats-bar">
-<div class="stat-box"><div class="label">Total</div><div class="value" id="total">0</div></div>
+<div class="stat-box"><div class="label">Total Cryptos</div><div class="value" id="total">0</div></div>
 <div class="stat-box"><div class="label">En hausse</div><div class="value" style="color:#22c55e" id="gainers">0</div></div>
 <div class="stat-box"><div class="label">En baisse</div><div class="value" style="color:#ef4444" id="losers">0</div></div>
-<div class="stat-box"><div class="label">Variation moy.</div><div class="value" id="avg">0%</div></div>
+<div class="stat-box"><div class="label">Variation moyenne</div><div class="value" id="avg">0%</div></div>
 </div>
 <div class="card">
-<h2>🔥 Top Cryptomonnaies</h2>
-<div id="heatmap-container" class="heatmap-container"><div class="spinner"></div></div>
+<h2>🌐 Top 100 Cryptomonnaies</h2>
+<div class="controls">
+<button class="active" onclick="updateView('24h')">📊 24 Heures</button>
+<button onclick="updateView('7d')">📅 7 Jours</button>
+<button onclick="loadData()">🔄 Actualiser</button>
+</div>
+<div id="heatmap-container" class="heatmap-treemap"><div class="spinner"></div></div>
 </div>
 </div>
 <script>
-function getColorClass(c){if(c>0.5)return'positive';if(c<-0.5)return'negative';return'neutral'}
-function formatPrice(p){if(p>=1000)return'$'+p.toLocaleString('en-US',{maximumFractionDigits:2});if(p>=1)return'$'+p.toFixed(2);if(p>=0.01)return'$'+p.toFixed(4);return'$'+p.toFixed(6)}
-async function loadData(){try{const r=await fetch('/api/heatmap');const d=await r.json();const total=d.cryptos.length;const gainers=d.cryptos.filter(c=>c.change_24h>0).length;const losers=d.cryptos.filter(c=>c.change_24h<0).length;const avg=(d.cryptos.reduce((s,c)=>s+c.change_24h,0)/total).toFixed(2);document.getElementById('total').textContent=total;document.getElementById('gainers').textContent=gainers;document.getElementById('losers').textContent=losers;document.getElementById('avg').textContent=(avg>0?'+':'')+avg+'%';document.getElementById('avg').style.color=avg>0?'#22c55e':avg<0?'#ef4444':'#94a3b8';let html='';d.cryptos.forEach(crypto=>{const colorClass=getColorClass(crypto.change_24h);const symbol=crypto.change_24h>0?'▲':crypto.change_24h<0?'▼':'•';html+='<div class="crypto-tile '+colorClass+'"><div class="crypto-symbol">'+crypto.symbol+'</div><div class="crypto-price">'+formatPrice(crypto.price)+'</div><div class="crypto-change">'+symbol+' '+Math.abs(crypto.change_24h)+'%</div><div class="crypto-name">'+crypto.name+'</div></div>'});document.getElementById('heatmap-container').innerHTML=html}catch(e){console.error(e)}}
-loadData();setInterval(loadData,30000);
+let cryptosData=[];
+let currentView='24h';
+
+function getColorForChange(change){
+const absChange=Math.abs(change);
+if(change>10)return'rgb(0,150,70)';
+if(change>5)return'rgb(0,180,90)';
+if(change>2)return'rgb(16,185,129)';
+if(change>0.5)return'rgb(34,197,94)';
+if(change>0)return'rgb(74,222,128)';
+if(change>-0.5)return'rgb(252,165,165)';
+if(change>-2)return'rgb(248,113,113)';
+if(change>-5)return'rgb(239,68,68)';
+if(change>-10)return'rgb(220,38,38)';
+return'rgb(153,27,27)';
+}
+
+function formatPrice(p){
+if(p>=1000)return'
+
+@app.get("/telegram-test", response_class=HTMLResponse)
+async def telegram_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Telegram</title>""" + CSS + """</head>
+<body><div class="container">
+<div class="header"><h1>Test Telegram</h1></div>""" + NAV + """
+<div class="card"><h2>Test Bot</h2>
+<button onclick="test()">Envoyer Test</button>
+<div id="result"></div></div>
+<script>
+async function test(){document.getElementById('result').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}else{document.getElementById('result').innerHTML='<div class="alert alert-error">❌ Erreur</div>'}}
+</script>
+</div></body></html>"""
+    return HTMLResponse(page)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("🚀 DASHBOARD TRADING - COMPLET")
+    print("="*60)
+    print("✅ Fear & Greed : /fear-greed")
+    print("✅ BTC Dominance : /btc-dominance")
+    print("✅ Heatmap : /heatmap")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
++p.toLocaleString('en-US',{maximumFractionDigits:2});
+if(p>=1)return'
+
+@app.get("/telegram-test", response_class=HTMLResponse)
+async def telegram_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Telegram</title>""" + CSS + """</head>
+<body><div class="container">
+<div class="header"><h1>Test Telegram</h1></div>""" + NAV + """
+<div class="card"><h2>Test Bot</h2>
+<button onclick="test()">Envoyer Test</button>
+<div id="result"></div></div>
+<script>
+async function test(){document.getElementById('result').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}else{document.getElementById('result').innerHTML='<div class="alert alert-error">❌ Erreur</div>'}}
+</script>
+</div></body></html>"""
+    return HTMLResponse(page)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("🚀 DASHBOARD TRADING - COMPLET")
+    print("="*60)
+    print("✅ Fear & Greed : /fear-greed")
+    print("✅ BTC Dominance : /btc-dominance")
+    print("✅ Heatmap : /heatmap")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
++p.toFixed(2);
+if(p>=0.01)return'
+
+@app.get("/telegram-test", response_class=HTMLResponse)
+async def telegram_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Telegram</title>""" + CSS + """</head>
+<body><div class="container">
+<div class="header"><h1>Test Telegram</h1></div>""" + NAV + """
+<div class="card"><h2>Test Bot</h2>
+<button onclick="test()">Envoyer Test</button>
+<div id="result"></div></div>
+<script>
+async function test(){document.getElementById('result').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}else{document.getElementById('result').innerHTML='<div class="alert alert-error">❌ Erreur</div>'}}
+</script>
+</div></body></html>"""
+    return HTMLResponse(page)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("🚀 DASHBOARD TRADING - COMPLET")
+    print("="*60)
+    print("✅ Fear & Greed : /fear-greed")
+    print("✅ BTC Dominance : /btc-dominance")
+    print("✅ Heatmap : /heatmap")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
++p.toFixed(4);
+return'
+
+@app.get("/telegram-test", response_class=HTMLResponse)
+async def telegram_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Telegram</title>""" + CSS + """</head>
+<body><div class="container">
+<div class="header"><h1>Test Telegram</h1></div>""" + NAV + """
+<div class="card"><h2>Test Bot</h2>
+<button onclick="test()">Envoyer Test</button>
+<div id="result"></div></div>
+<script>
+async function test(){document.getElementById('result').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}else{document.getElementById('result').innerHTML='<div class="alert alert-error">❌ Erreur</div>'}}
+</script>
+</div></body></html>"""
+    return HTMLResponse(page)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("🚀 DASHBOARD TRADING - COMPLET")
+    print("="*60)
+    print("✅ Fear & Greed : /fear-greed")
+    print("✅ BTC Dominance : /btc-dominance")
+    print("✅ Heatmap : /heatmap")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
++p.toFixed(6);
+}
+
+function formatMarketCap(mc){
+if(mc>=1e12)return'
+
+@app.get("/telegram-test", response_class=HTMLResponse)
+async def telegram_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Telegram</title>""" + CSS + """</head>
+<body><div class="container">
+<div class="header"><h1>Test Telegram</h1></div>""" + NAV + """
+<div class="card"><h2>Test Bot</h2>
+<button onclick="test()">Envoyer Test</button>
+<div id="result"></div></div>
+<script>
+async function test(){document.getElementById('result').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}else{document.getElementById('result').innerHTML='<div class="alert alert-error">❌ Erreur</div>'}}
+</script>
+</div></body></html>"""
+    return HTMLResponse(page)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("🚀 DASHBOARD TRADING - COMPLET")
+    print("="*60)
+    print("✅ Fear & Greed : /fear-greed")
+    print("✅ BTC Dominance : /btc-dominance")
+    print("✅ Heatmap : /heatmap")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
++(mc/1e12).toFixed(2)+'T';
+if(mc>=1e9)return'
+
+@app.get("/telegram-test", response_class=HTMLResponse)
+async def telegram_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Telegram</title>""" + CSS + """</head>
+<body><div class="container">
+<div class="header"><h1>Test Telegram</h1></div>""" + NAV + """
+<div class="card"><h2>Test Bot</h2>
+<button onclick="test()">Envoyer Test</button>
+<div id="result"></div></div>
+<script>
+async function test(){document.getElementById('result').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}else{document.getElementById('result').innerHTML='<div class="alert alert-error">❌ Erreur</div>'}}
+</script>
+</div></body></html>"""
+    return HTMLResponse(page)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("🚀 DASHBOARD TRADING - COMPLET")
+    print("="*60)
+    print("✅ Fear & Greed : /fear-greed")
+    print("✅ BTC Dominance : /btc-dominance")
+    print("✅ Heatmap : /heatmap")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
++(mc/1e9).toFixed(2)+'B';
+if(mc>=1e6)return'
+
+@app.get("/telegram-test", response_class=HTMLResponse)
+async def telegram_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Telegram</title>""" + CSS + """</head>
+<body><div class="container">
+<div class="header"><h1>Test Telegram</h1></div>""" + NAV + """
+<div class="card"><h2>Test Bot</h2>
+<button onclick="test()">Envoyer Test</button>
+<div id="result"></div></div>
+<script>
+async function test(){document.getElementById('result').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}else{document.getElementById('result').innerHTML='<div class="alert alert-error">❌ Erreur</div>'}}
+</script>
+</div></body></html>"""
+    return HTMLResponse(page)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("🚀 DASHBOARD TRADING - COMPLET")
+    print("="*60)
+    print("✅ Fear & Greed : /fear-greed")
+    print("✅ BTC Dominance : /btc-dominance")
+    print("✅ Heatmap : /heatmap")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
++(mc/1e6).toFixed(2)+'M';
+return'
+
+@app.get("/telegram-test", response_class=HTMLResponse)
+async def telegram_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Telegram</title>""" + CSS + """</head>
+<body><div class="container">
+<div class="header"><h1>Test Telegram</h1></div>""" + NAV + """
+<div class="card"><h2>Test Bot</h2>
+<button onclick="test()">Envoyer Test</button>
+<div id="result"></div></div>
+<script>
+async function test(){document.getElementById('result').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}else{document.getElementById('result').innerHTML='<div class="alert alert-error">❌ Erreur</div>'}}
+</script>
+</div></body></html>"""
+    return HTMLResponse(page)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*60)
+    print("🚀 DASHBOARD TRADING - COMPLET")
+    print("="*60)
+    print("✅ Fear & Greed : /fear-greed")
+    print("✅ BTC Dominance : /btc-dominance")
+    print("✅ Heatmap : /heatmap")
+    print("="*60 + "\n")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
++mc.toLocaleString();
+}
+
+function calculateTileSize(marketCap,totalMarketCap,containerWidth){
+const ratio=marketCap/totalMarketCap;
+const baseSize=containerWidth*0.18;
+const size=Math.sqrt(ratio)*containerWidth;
+return Math.max(size,baseSize*0.3);
+}
+
+function renderTreemap(){
+const container=document.getElementById('heatmap-container');
+const containerWidth=container.offsetWidth||1200;
+const totalMarketCap=cryptosData.reduce((sum,c)=>sum+c.market_cap,0);
+let html='';
+
+cryptosData.forEach(crypto=>{
+const size=calculateTileSize(crypto.market_cap,totalMarketCap,containerWidth);
+const color=getColorForChange(crypto.change_24h);
+const changeSymbol=crypto.change_24h>=0?'▲':'▼';
+const dominancePercent=((crypto.market_cap/totalMarketCap)*100).toFixed(2);
+
+html+=`<div class="crypto-tile" style="width:${size}px;height:${size*0.7}px;background:${color};flex-grow:${crypto.market_cap}">
+<div class="tile-content">
+<div class="crypto-symbol">${crypto.symbol}</div>
+<div class="crypto-price">${formatPrice(crypto.price)}</div>
+<div class="crypto-change">${changeSymbol} ${Math.abs(crypto.change_24h).toFixed(2)}%</div>
+<div class="crypto-dominance">Dominance: ${dominancePercent}%</div>
+</div>
+</div>`;
+});
+
+container.innerHTML=html;
+updateStats();
+}
+
+function updateStats(){
+const total=cryptosData.length;
+const gainers=cryptosData.filter(c=>c.change_24h>0).length;
+const losers=cryptosData.filter(c=>c.change_24h<0).length;
+const avg=(cryptosData.reduce((s,c)=>s+c.change_24h,0)/total).toFixed(2);
+
+document.getElementById('total').textContent=total;
+document.getElementById('gainers').textContent=gainers;
+document.getElementById('losers').textContent=losers;
+
+const avgEl=document.getElementById('avg');
+avgEl.textContent=(avg>0?'+':'')+avg+'%';
+avgEl.style.color=avg>0?'#22c55e':avg<0?'#ef4444':'#94a3b8';
+}
+
+function updateView(view){
+currentView=view;
+document.querySelectorAll('.controls button').forEach(btn=>btn.classList.remove('active'));
+event.target.classList.add('active');
+}
+
+async function loadData(){
+try{
+const response=await fetch('/api/heatmap');
+if(!response.ok)throw new Error('Erreur API');
+const data=await response.json();
+
+if(data.cryptos&&data.cryptos.length>0){
+cryptosData=data.cryptos.sort((a,b)=>b.market_cap-a.market_cap);
+renderTreemap();
+console.log('✅ Heatmap chargée:',cryptosData.length,'cryptos');
+}else{
+throw new Error('Aucune donnée');
+}
+}catch(error){
+console.error('❌ Erreur:',error);
+document.getElementById('heatmap-container').innerHTML=`
+<div style="text-align:center;padding:40px;width:100%;color:#94a3b8">
+<h3 style="color:#ef4444;margin-bottom:15px">❌ Erreur de chargement</h3>
+<p>Impossible de charger les données. ${error.message}</p>
+<button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:white;border:none;border-radius:8px;cursor:pointer">
+🔄 Réessayer
+</button>
+</div>`;
+}
+}
+
+let resizeTimeout;
+window.addEventListener('resize',()=>{
+clearTimeout(resizeTimeout);
+resizeTimeout=setTimeout(()=>{
+if(cryptosData.length>0)renderTreemap();
+},250);
+});
+
+loadData();
+setInterval(loadData,30000);
+console.log('🚀 Heatmap initialisée');
 </script>
 </body></html>"""
     return HTMLResponse(page)

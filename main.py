@@ -21,7 +21,7 @@ paper_balance = {"USDT": 10000.0}
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.grid{display:grid;gap:20px}.grid-2{grid-template-columns:repeat(auto-fit,minmax(400px,1fr))}.grid-3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.grid-4{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}table{width:100%;border-collapse:collapse;margin-top:15px}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}</style>"""
 
-NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/btc-dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/trades">Trades</a><a href="/telegram-test">Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/btc-dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/test-webhook">Test Webhook</a><a href="/trades">Trades</a><a href="/telegram-test">Telegram</a></div>'
 
 class TradeWebhook(BaseModel):
     action: str
@@ -1542,6 +1542,92 @@ async def get_altcoin_season_index():
         "message": "Utilisation de données estimées",
         "timestamp": datetime.now().isoformat()
     }
+
+@app.get("/test-webhook", response_class=HTMLResponse)
+async def test_webhook_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Test Webhook</title>""" + CSS + """</head>
+<body><div class="container">
+<div class="header"><h1>📊 Test Webhook TradingView</h1><p>Simulez une alerte</p></div>
+""" + NAV + """
+<div class="card">
+<h2>🧪 Tester le Webhook</h2>
+<button onclick="testBuy()" style="padding:20px 40px;background:#22c55e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:18px;margin:10px">
+🟢 Simuler BUY
+</button>
+<button onclick="testSell()" style="padding:20px 40px;background:#ef4444;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:18px;margin:10px">
+🔴 Simuler SELL
+</button>
+<div id="result" style="margin-top:30px;padding:20px;background:#1e293b;border-radius:8px;font-family:monospace;min-height:100px"></div>
+</div>
+<div class="card">
+<h2>📋 Configuration TradingView</h2>
+<p style="color:#94a3b8;line-height:1.8">
+<strong>URL du Webhook:</strong><br>
+<code style="background:#0f172a;padding:10px;border-radius:4px;display:block;margin:10px 0;color:#60a5fa">
+https://tradingview-gd03.onrender.com/tv-webhook
+</code>
+</p>
+<p style="color:#94a3b8;line-height:1.8">
+<strong>Message JSON:</strong><br>
+<code style="background:#0f172a;padding:10px;border-radius:4px;display:block;margin:10px 0;color:#60a5fa;white-space:pre">
+{
+  "action": "{{strategy.order.action}}",
+  "symbol": "{{ticker}}",
+  "price": {{close}},
+  "quantity": 0.001
+}</code>
+</p>
+</div>
+</div>
+<script>
+async function testBuy(){
+    document.getElementById('result').innerHTML = '⏳ Envoi en cours...';
+    try{
+        const r = await fetch('/tv-webhook', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'BUY',
+                symbol: 'BTCUSDT',
+                price: 107500.00,
+                quantity: 0.001
+            })
+        });
+        const d = await r.json();
+        document.getElementById('result').innerHTML = 
+            '✅ Signal BUY envoyé!\\n\\n' +
+            'Réponse: ' + JSON.stringify(d, null, 2) + '\\n\\n' +
+            '🎉 Vérifiez Telegram dans le groupe "Signals"!';
+    }catch(e){
+        document.getElementById('result').innerHTML = '❌ Erreur: ' + e.message;
+    }
+}
+async function testSell(){
+    document.getElementById('result').innerHTML = '⏳ Envoi en cours...';
+    try{
+        const r = await fetch('/tv-webhook', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                action: 'SELL',
+                symbol: 'ETHUSDT',
+                price: 3850.00,
+                quantity: 0.01
+            })
+        });
+        const d = await r.json();
+        document.getElementById('result').innerHTML = 
+            '✅ Signal SELL envoyé!\\n\\n' +
+            'Réponse: ' + JSON.stringify(d, null, 2) + '\\n\\n' +
+            '🎉 Vérifiez Telegram dans le groupe "Signals"!';
+    }catch(e){
+        document.getElementById('result').innerHTML = '❌ Erreur: ' + e.message;
+    }
+}
+</script>
+</body></html>"""
+    return HTMLResponse(page)
 
 if __name__ == "__main__":
     import uvicorn

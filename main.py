@@ -417,49 +417,44 @@ async def fear_greed_page():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fear & Greed Index</title>
+    """ + CSS + """
     <style>
-        * {margin: 0;padding: 0;box-sizing: border-box;}
-        body {font-family: 'Segoe UI', sans-serif;background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);min-height: 100vh;padding: 20px;color: #333;}
-        .container {max-width: 1200px;margin: 0 auto;}
-        .header {text-align: center;margin-bottom: 40px;color: white;}
-        .header h1 {font-size: 48px;margin-bottom: 10px;text-shadow: 2px 2px 4px rgba(0,0,0,0.2);}
-        .header p {font-size: 18px;opacity: 0.9;}
-        .back-btn {display: inline-block;margin-bottom: 20px;padding: 12px 24px;background: rgba(255,255,255,0.2);color: white;text-decoration: none;border-radius: 8px;transition: all 0.3s;backdrop-filter: blur(10px);}
-        .back-btn:hover {background: rgba(255,255,255,0.3);transform: translateY(-2px);}
-        .grid {display: grid;grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));gap: 30px;margin-top: 30px;}
-        .card {background: white;border-radius: 16px;padding: 30px;box-shadow: 0 10px 30px rgba(0,0,0,0.2);transition: transform 0.3s;}
-        .card:hover {transform: translateY(-5px);}
-        .card h2 {font-size: 24px;margin-bottom: 20px;color: #333;border-bottom: 3px solid #667eea;padding-bottom: 10px;}
+        .fg-grid {display: grid;grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));gap: 30px;margin-top: 20px;}
+        .fg-card {background: #1e293b;border-radius: 16px;padding: 30px;box-shadow: 0 10px 30px rgba(0,0,0,0.3);transition: transform 0.3s;border: 1px solid #334155;}
+        .fg-card:hover {transform: translateY(-5px);}
+        .fg-card h2 {font-size: 24px;margin-bottom: 20px;color: #60a5fa;border-bottom: 3px solid #60a5fa;padding-bottom: 10px;}
         .gauge-container {position: relative;width: 280px;height: 280px;margin: 20px auto;}
         .gauge-value {position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);text-align: center;}
-        .gauge-value .number {font-size: 72px;font-weight: bold;color: #333;line-height: 1;}
-        .gauge-value .label {font-size: 24px;color: #666;margin-top: 10px;font-weight: 600;}
-        .historical-item {display: flex;justify-content: space-between;align-items: center;padding: 15px;margin-bottom: 12px;background: #f8f9fa;border-radius: 12px;transition: all 0.3s;}
-        .historical-item:hover {background: #e9ecef;transform: translateX(5px);}
-        .historical-item .period {font-weight: 600;color: #495057;}
+        .gauge-value .number {font-size: 72px;font-weight: bold;color: #e2e8f0;line-height: 1;}
+        .gauge-value .label {font-size: 24px;color: #94a3b8;margin-top: 10px;font-weight: 600;}
+        .historical-item {display: flex;justify-content: space-between;align-items: center;padding: 15px;margin-bottom: 12px;background: #0f172a;border-radius: 12px;transition: all 0.3s;border: 1px solid #334155;}
+        .historical-item:hover {background: #1e293b;transform: translateX(5px);}
+        .historical-item .period {font-weight: 600;color: #e2e8f0;}
         .historical-item .value-badge {display: flex;align-items: center;gap: 12px;}
         .historical-item .classification {font-weight: 600;font-size: 16px;}
         .historical-item .number-circle {width: 50px;height: 50px;border-radius: 50%;display: flex;align-items: center;justify-content: center;font-weight: bold;color: white;font-size: 18px;}
-        .extreme-fear {color: #c0392b;} .fear {color: #e67e22;} .neutral {color: #f39c12;} .greed {color: #27ae60;} .extreme-greed {color: #16a085;}
-        .bg-extreme-fear {background: linear-gradient(135deg, #c0392b, #e74c3c);} .bg-fear {background: linear-gradient(135deg, #e67e22, #f39c12);} .bg-neutral {background: linear-gradient(135deg, #f39c12, #f1c40f);} .bg-greed {background: linear-gradient(135deg, #27ae60, #2ecc71);} .bg-extreme-greed {background: linear-gradient(135deg, #16a085, #1abc9c);}
+        .extreme-fear {color: #ef4444;} .fear {color: #f97316;} .neutral {color: #eab308;} .greed {color: #22c55e;} .extreme-greed {color: #14b8a6;}
+        .bg-extreme-fear {background: linear-gradient(135deg, #dc2626, #ef4444);} .bg-fear {background: linear-gradient(135deg, #ea580c, #f97316);} .bg-neutral {background: linear-gradient(135deg, #ca8a04, #eab308);} .bg-greed {background: linear-gradient(135deg, #16a34a, #22c55e);} .bg-extreme-greed {background: linear-gradient(135deg, #0d9488, #14b8a6);}
         .countdown {text-align: center;padding: 20px;}
-        .countdown-timer {font-size: 32px;font-weight: bold;color: #667eea;margin-top: 15px;font-family: 'Courier New', monospace;}
-        .update-info {margin-top: 15px;color: #666;font-size: 14px;}
-        .loading {text-align: center;padding: 40px;color: #fff;}
-        .spinner {border: 4px solid #f3f3f3;border-top: 4px solid #667eea;border-radius: 50%;width: 50px;height: 50px;animation: spin 1s linear infinite;margin: 20px auto;}
+        .countdown-timer {font-size: 32px;font-weight: bold;color: #60a5fa;margin-top: 15px;font-family: 'Courier New', monospace;}
+        .update-info {margin-top: 15px;color: #94a3b8;font-size: 14px;}
+        .loading {text-align: center;padding: 40px;color: #94a3b8;}
+        .spinner {border: 4px solid #334155;border-top: 4px solid #60a5fa;border-radius: 50%;width: 50px;height: 50px;animation: spin 1s linear infinite;margin: 20px auto;}
         @keyframes spin {0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);}}
-        .info-footer {text-align: center;margin-top: 30px;padding: 20px;background: rgba(255,255,255,0.1);border-radius: 12px;color: white;backdrop-filter: blur(10px);}
-        .info-footer a {color: white;text-decoration: underline;}
+        .info-footer {text-align: center;margin-top: 30px;padding: 20px;background: #1e293b;border-radius: 12px;color: #94a3b8;border: 1px solid #334155;}
+        .info-footer a {color: #60a5fa;text-decoration: none;}
+        .info-footer a:hover {text-decoration: underline;}
+        .gauge-text {text-align:center;color:#94a3b8;margin-top:20px;}
     </style>
 </head>
 <body>
     <div class="container">
-        <a href="/" class="back-btn">← Retour au Dashboard</a>
-        
         <div class="header">
             <h1>🪙 Fear & Greed Index</h1>
             <p>Analyse du sentiment du marché crypto en temps réel</p>
         </div>
+        
+        """ + NAV + """
         
         <div id="content" class="loading">
             <div class="spinner"></div>
@@ -467,8 +462,7 @@ async def fear_greed_page():
         </div>
         
         <div class="info-footer">
-            <p>📊 Données fournies par <a href="https://alternative.me" target="_blank">Alternative.me</a></p>
-            <p>Mise à jour automatique toutes les 24 heures</p>
+            <p>📊 Données fournies par <a href="https://alternative.me" target="_blank">Alternative.me</a> • Mise à jour toutes les 24h</p>
         </div>
     </div>
     
@@ -591,8 +585,8 @@ async def fear_greed_page():
                 const bgClass = getBgClass(data.current_value);
                 
                 const html = `
-                    <div class="grid">
-                        <div class="card">
+                    <div class="fg-grid">
+                        <div class="fg-card">
                             <h2>🎯 Fear & Greed Index</h2>
                             <div class="gauge-container">
                                 <canvas id="gaugeCanvas" width="280" height="280"></canvas>
@@ -601,12 +595,12 @@ async def fear_greed_page():
                                     <div class="label ${classif}">${data.current_classification}</div>
                                 </div>
                             </div>
-                            <p style="text-align:center;color:#666;margin-top:20px;">
+                            <p class="gauge-text">
                                 Dernière mise à jour: ${new Date(data.timestamp * 1000).toLocaleDateString('fr-FR')}
                             </p>
                         </div>
                         
-                        <div class="card">
+                        <div class="fg-card">
                             <h2>📊 Valeurs Historiques</h2>
                             <div class="historical-item">
                                 <div class="period">Maintenant</div>
@@ -663,10 +657,10 @@ async def fear_greed_page():
                             ` : ''}
                         </div>
                         
-                        <div class="card">
+                        <div class="fg-card">
                             <h2>⏰ Prochaine Mise à Jour</h2>
                             <div class="countdown">
-                                <p style="color:#666;font-size:16px;">La prochaine mise à jour aura lieu dans:</p>
+                                <p style="color:#94a3b8;font-size:16px;">La prochaine mise à jour aura lieu dans:</p>
                                 <div class="countdown-timer" id="countdown-timer">${formatCountdown(data.next_update_seconds)}</div>
                                 <div class="update-info">
                                     Les données sont mises à jour toutes les 24 heures
@@ -689,10 +683,10 @@ async def fear_greed_page():
             } catch (error) {
                 console.error('❌ Erreur:', error);
                 document.getElementById('content').innerHTML = `
-                    <div class="card" style="background:white;">
-                        <h2 style="color:#e74c3c;">❌ Erreur de chargement</h2>
-                        <p style="color:#666;margin-top:15px;">Impossible de charger les données. Détails: ${error.message}</p>
-                        <button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;">
+                    <div class="fg-card">
+                        <h2 style="color:#ef4444;">❌ Erreur de chargement</h2>
+                        <p style="color:#94a3b8;margin-top:15px;">Impossible de charger les données. Détails: ${error.message}</p>
+                        <button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:white;border:none;border-radius:8px;cursor:pointer;">
                             🔄 Réessayer
                         </button>
                     </div>

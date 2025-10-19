@@ -743,17 +743,406 @@ console.log('🚀 Heatmap initialisée');
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
     page = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Telegram</title>""" + CSS + """</head>
+<html><head><meta charset="UTF-8"><title>Test Telegram Bot</title>""" + CSS + """
+<style>
+.test-section{
+    background:#1e293b;
+    padding:25px;
+    border-radius:12px;
+    margin-bottom:20px;
+    border:1px solid #334155
+}
+.test-section h3{
+    color:#60a5fa;
+    margin-bottom:15px;
+    font-size:20px
+}
+.info-box{
+    background:#0f172a;
+    padding:15px;
+    border-radius:8px;
+    margin:10px 0;
+    font-family:monospace;
+    font-size:14px;
+    border-left:4px solid #60a5fa
+}
+.info-box.success{
+    border-left-color:#22c55e
+}
+.info-box.error{
+    border-left-color:#ef4444
+}
+.test-button{
+    padding:12px 24px;
+    background:#3b82f6;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:600;
+    margin:5px;
+    transition:all .3s
+}
+.test-button:hover{
+    background:#2563eb;
+    transform:translateY(-2px)
+}
+.test-button:disabled{
+    background:#475569;
+    cursor:not-allowed;
+    transform:none
+}
+.response-box{
+    background:#0f172a;
+    padding:20px;
+    border-radius:8px;
+    margin-top:15px;
+    max-height:400px;
+    overflow-y:auto;
+    font-family:monospace;
+    font-size:13px;
+    line-height:1.6
+}
+.step{
+    padding:10px;
+    margin:10px 0;
+    border-left:3px solid #475569
+}
+.step.active{
+    border-left-color:#3b82f6;
+    background:rgba(59,130,246,0.1)
+}
+.step.success{
+    border-left-color:#22c55e;
+    background:rgba(34,197,94,0.1)
+}
+.step.error{
+    border-left-color:#ef4444;
+    background:rgba(239,68,68,0.1)
+}
+</style>
+</head>
 <body><div class="container">
-<div class="header"><h1>Test Telegram</h1></div>""" + NAV + """
-<div class="card"><h2>Test Bot</h2>
-<button onclick="test()">Envoyer Test</button>
-<div id="result"></div></div>
+<div class="header">
+    <h1>🤖 Diagnostic Bot Telegram</h1>
+    <p>Vérification complète de la connexion</p>
+</div>
+""" + NAV + """
+
+<div class="test-section">
+    <h3>📋 Configuration Actuelle</h3>
+    <div class="info-box">
+        <strong>Token Bot:</strong> <span id="bot-token">Chargement...</span><br>
+        <strong>Chat ID:</strong> <span id="chat-id">Chargement...</span><br>
+        <strong>Status:</strong> <span id="config-status">En attente...</span>
+    </div>
+</div>
+
+<div class="test-section">
+    <h3>🔬 Tests Détaillés</h3>
+    
+    <div class="step" id="step1">
+        <strong>1. Test de connexion au bot</strong>
+        <button class="test-button" onclick="testBotConnection()">▶️ Tester</button>
+        <div id="result1"></div>
+    </div>
+    
+    <div class="step" id="step2">
+        <strong>2. Vérification du Chat ID</strong>
+        <button class="test-button" onclick="verifyChatId()">▶️ Vérifier</button>
+        <div id="result2"></div>
+    </div>
+    
+    <div class="step" id="step3">
+        <strong>3. Envoi d'un message de test</strong>
+        <button class="test-button" onclick="sendTestMessage()">▶️ Envoyer</button>
+        <div id="result3"></div>
+    </div>
+    
+    <div class="step" id="step4">
+        <strong>4. Test avec Trade simulé</strong>
+        <button class="test-button" onclick="simulateTrade()">▶️ Simuler Trade</button>
+        <div id="result4"></div>
+    </div>
+</div>
+
+<div class="test-section">
+    <h3>🔧 Actions Rapides</h3>
+    <button class="test-button" onclick="getAllTests()" style="background:#22c55e">🚀 Lancer tous les tests</button>
+    <button class="test-button" onclick="getUpdateInfo()" style="background:#a78bfa">📨 Voir derniers messages reçus</button>
+    <button class="test-button" onclick="location.reload()" style="background:#6b7280">🔄 Rafraîchir</button>
+</div>
+
+<div class="test-section">
+    <h3>📊 Résultats Détaillés</h3>
+    <div class="response-box" id="detailed-results">
+        Aucun test effectué. Cliquez sur les boutons ci-dessus pour commencer.
+    </div>
+</div>
+
+<div class="test-section">
+    <h3>💡 Guide de Résolution</h3>
+    <div style="color:#94a3b8;line-height:1.8">
+        <p><strong>Si les messages ne passent pas :</strong></p>
+        <ul style="margin-left:20px">
+            <li>✅ Vérifiez que le bot n'est pas bloqué</li>
+            <li>✅ Vérifiez que vous avez envoyé /start au bot</li>
+            <li>✅ Vérifiez le Chat ID (utilisez @userinfobot sur Telegram)</li>
+            <li>✅ Pour un groupe : Ajoutez le bot comme admin</li>
+            <li>✅ Vérifiez que le token est correct dans BotFather</li>
+        </ul>
+    </div>
+</div>
+
+</div>
+
 <script>
-async function test(){document.getElementById('result').innerHTML='Envoi...';const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}else{document.getElementById('result').innerHTML='<div class="alert alert-error">❌ Erreur</div>'}}
+async function loadConfig(){
+    try{
+        const r = await fetch('/api/telegram-config');
+        const d = await r.json();
+        document.getElementById('bot-token').textContent = d.token.substring(0,20) + '...';
+        document.getElementById('chat-id').textContent = d.chat_id;
+        document.getElementById('config-status').textContent = '✅ Chargé';
+        document.getElementById('config-status').style.color = '#22c55e';
+    }catch(e){
+        document.getElementById('config-status').textContent = '❌ Erreur';
+        document.getElementById('config-status').style.color = '#ef4444';
+    }
+}
+
+function addLog(message, type='info'){
+    const box = document.getElementById('detailed-results');
+    const timestamp = new Date().toLocaleTimeString();
+    const colors = {
+        'info': '#60a5fa',
+        'success': '#22c55e',
+        'error': '#ef4444',
+        'warning': '#f59e0b'
+    };
+    box.innerHTML += `<div style="color:${colors[type]};margin:5px 0">[${timestamp}] ${message}</div>`;
+    box.scrollTop = box.scrollHeight;
+}
+
+async function testBotConnection(){
+    const step = document.getElementById('step1');
+    step.classList.add('active');
+    addLog('🔍 Test de connexion au bot...', 'info');
+    
+    try{
+        const r = await fetch('/api/telegram-bot-info');
+        const d = await r.json();
+        
+        if(d.ok){
+            step.classList.remove('active');
+            step.classList.add('success');
+            document.getElementById('result1').innerHTML = `
+                <div class="info-box success" style="margin-top:10px">
+                    ✅ Bot connecté !<br>
+                    <strong>Nom:</strong> ${d.result.first_name}<br>
+                    <strong>Username:</strong> @${d.result.username}<br>
+                    <strong>ID:</strong> ${d.result.id}
+                </div>`;
+            addLog(`✅ Bot connecté: @${d.result.username}`, 'success');
+        }else{
+            throw new Error(d.description || 'Erreur inconnue');
+        }
+    }catch(e){
+        step.classList.remove('active');
+        step.classList.add('error');
+        document.getElementById('result1').innerHTML = `<div class="info-box error" style="margin-top:10px">❌ ${e.message}</div>`;
+        addLog(`❌ Erreur de connexion: ${e.message}`, 'error');
+    }
+}
+
+async function verifyChatId(){
+    const step = document.getElementById('step2');
+    step.classList.add('active');
+    addLog('🔍 Vérification du Chat ID...', 'info');
+    
+    try{
+        const r = await fetch('/api/telegram-verify-chat');
+        const d = await r.json();
+        
+        if(d.valid){
+            step.classList.remove('active');
+            step.classList.add('success');
+            document.getElementById('result2').innerHTML = `
+                <div class="info-box success" style="margin-top:10px">
+                    ✅ Chat ID valide !<br>
+                    <strong>Type:</strong> ${d.chat_type}<br>
+                    <strong>Titre:</strong> ${d.title || 'N/A'}
+                </div>`;
+            addLog(`✅ Chat ID valide (Type: ${d.chat_type})`, 'success');
+        }else{
+            throw new Error(d.error || 'Chat ID invalide');
+        }
+    }catch(e){
+        step.classList.remove('active');
+        step.classList.add('error');
+        document.getElementById('result2').innerHTML = `<div class="info-box error" style="margin-top:10px">❌ ${e.message}</div>`;
+        addLog(`❌ Erreur Chat ID: ${e.message}`, 'error');
+    }
+}
+
+async function sendTestMessage(){
+    const step = document.getElementById('step3');
+    step.classList.add('active');
+    addLog('📤 Envoi du message de test...', 'info');
+    
+    try{
+        const r = await fetch('/api/telegram-test');
+        const d = await r.json();
+        
+        if(d.result && d.result.ok){
+            step.classList.remove('active');
+            step.classList.add('success');
+            document.getElementById('result3').innerHTML = `
+                <div class="info-box success" style="margin-top:10px">
+                    ✅ Message envoyé !<br>
+                    <strong>Message ID:</strong> ${d.result.result.message_id}<br>
+                    <strong>Date:</strong> ${new Date(d.result.result.date * 1000).toLocaleString()}
+                </div>`;
+            addLog(`✅ Message envoyé avec succès (ID: ${d.result.result.message_id})`, 'success');
+        }else{
+            throw new Error(d.result?.description || 'Erreur lors de l\'envoi');
+        }
+    }catch(e){
+        step.classList.remove('active');
+        step.classList.add('error');
+        document.getElementById('result3').innerHTML = `<div class="info-box error" style="margin-top:10px">❌ ${e.message}</div>`;
+        addLog(`❌ Erreur d'envoi: ${e.message}`, 'error');
+    }
+}
+
+async function simulateTrade(){
+    const step = document.getElementById('step4');
+    step.classList.add('active');
+    addLog('📊 Simulation d\'un trade...', 'info');
+    
+    try{
+        const tradeData = {
+            action: 'BUY',
+            symbol: 'BTCUSDT',
+            price: 107250.50,
+            quantity: 0.001
+        };
+        
+        const r = await fetch('/tv-webhook', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(tradeData)
+        });
+        const d = await r.json();
+        
+        if(d.status === 'success'){
+            step.classList.remove('active');
+            step.classList.add('success');
+            document.getElementById('result4').innerHTML = `
+                <div class="info-box success" style="margin-top:10px">
+                    ✅ Trade simulé envoyé !<br>
+                    <strong>Action:</strong> ${tradeData.action}<br>
+                    <strong>Symbol:</strong> ${tradeData.symbol}<br>
+                    <strong>Prix:</strong> ${tradeData.price}
+                </div>`;
+            addLog(`✅ Trade simulé: ${tradeData.action} ${tradeData.symbol} @ ${tradeData.price}`, 'success');
+        }else{
+            throw new Error('Erreur lors de la simulation');
+        }
+    }catch(e){
+        step.classList.remove('active');
+        step.classList.add('error');
+        document.getElementById('result4').innerHTML = `<div class="info-box error" style="margin-top:10px">❌ ${e.message}</div>`;
+        addLog(`❌ Erreur de simulation: ${e.message}`, 'error');
+    }
+}
+
+async function getAllTests(){
+    addLog('🚀 Lancement de tous les tests...', 'info');
+    await testBotConnection();
+    await new Promise(r => setTimeout(r, 1000));
+    await verifyChatId();
+    await new Promise(r => setTimeout(r, 1000));
+    await sendTestMessage();
+    await new Promise(r => setTimeout(r, 1000));
+    await simulateTrade();
+    addLog('✅ Tous les tests terminés !', 'success');
+}
+
+async function getUpdateInfo(){
+    addLog('📨 Récupération des derniers messages...', 'info');
+    try{
+        const r = await fetch('/api/telegram-updates');
+        const d = await r.json();
+        
+        if(d.ok && d.result.length > 0){
+            addLog(`✅ ${d.result.length} message(s) trouvé(s)`, 'success');
+            d.result.slice(-5).forEach(update => {
+                if(update.message){
+                    const msg = update.message;
+                    addLog(`📩 De: ${msg.from.first_name} (${msg.from.id}) - "${msg.text || '[media]'}"`, 'info');
+                }
+            });
+        }else{
+            addLog('⚠️ Aucun message récent trouvé', 'warning');
+        }
+    }catch(e){
+        addLog(`❌ Erreur: ${e.message}`, 'error');
+    }
+}
+
+loadConfig();
 </script>
-</div></body></html>"""
+</body></html>"""
     return HTMLResponse(page)
+
+# Nouvelles routes API pour le diagnostic Telegram
+@app.get("/api/telegram-config")
+async def get_telegram_config():
+    return {
+        "token": TELEGRAM_BOT_TOKEN,
+        "chat_id": TELEGRAM_CHAT_ID
+    }
+
+@app.get("/api/telegram-bot-info")
+async def get_bot_info():
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe"
+            response = await client.get(url)
+            return response.json()
+    except Exception as e:
+        return {"ok": False, "description": str(e)}
+
+@app.get("/api/telegram-verify-chat")
+async def verify_chat():
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getChat"
+            response = await client.post(url, json={"chat_id": TELEGRAM_CHAT_ID})
+            data = response.json()
+            
+            if data.get("ok"):
+                chat = data.get("result", {})
+                return {
+                    "valid": True,
+                    "chat_type": chat.get("type"),
+                    "title": chat.get("title")
+                }
+            else:
+                return {"valid": False, "error": data.get("description")}
+    except Exception as e:
+        return {"valid": False, "error": str(e)}
+
+@app.get("/api/telegram-updates")
+async def get_updates():
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUpdates"
+            response = await client.get(url)
+            return response.json()
+    except Exception as e:
+        return {"ok": False, "description": str(e)}
 
 if __name__ == "__main__":
     import uvicorn

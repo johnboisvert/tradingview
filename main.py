@@ -21,7 +21,7 @@ paper_balance = {"USDT": 10000.0}
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.grid{display:grid;gap:20px}.grid-2{grid-template-columns:repeat(auto-fit,minmax(400px,1fr))}.grid-3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.grid-4{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}table{width:100%;border-collapse:collapse;margin-top:15px}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}</style>"""
 
-NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/btc-dominance">Dominance</a><a href="/heatmap">Heatmap</a><a href="/trades">Trades</a><a href="/telegram-test">Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/btc-dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/trades">Trades</a><a href="/telegram-test">Telegram</a></div>'
 
 class TradeWebhook(BaseModel):
     action: str
@@ -1143,6 +1143,150 @@ async def get_updates():
             return response.json()
     except Exception as e:
         return {"ok": False, "description": str(e)}
+
+@app.get("/altcoin-season", response_class=HTMLResponse)
+async def altcoin_season_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Altcoin Season</title>""" + CSS + """
+<style>
+.altcoin-container{
+    max-width:100%;
+    margin:0 auto
+}
+.iframe-wrapper{
+    position:relative;
+    width:100%;
+    background:#1e293b;
+    border-radius:12px;
+    overflow:hidden;
+    border:1px solid #334155;
+    box-shadow:0 8px 24px rgba(0,0,0,0.3)
+}
+.iframe-wrapper iframe{
+    width:100%;
+    height:800px;
+    border:none;
+    display:block
+}
+.info-card{
+    background:#1e293b;
+    padding:25px;
+    border-radius:12px;
+    margin-bottom:20px;
+    border:1px solid #334155
+}
+.info-card h3{
+    color:#60a5fa;
+    margin-bottom:15px;
+    font-size:20px
+}
+.info-card p{
+    color:#94a3b8;
+    line-height:1.8;
+    margin-bottom:10px
+}
+.info-card ul{
+    color:#94a3b8;
+    line-height:1.8;
+    margin-left:20px
+}
+.info-card ul li{
+    margin-bottom:8px
+}
+.season-indicator{
+    display:inline-block;
+    padding:8px 16px;
+    border-radius:8px;
+    font-weight:700;
+    font-size:16px;
+    margin:10px 0
+}
+.season-btc{
+    background:linear-gradient(135deg,#f97316,#fb923c);
+    color:#fff
+}
+.season-alt{
+    background:linear-gradient(135deg,#3b82f6,#60a5fa);
+    color:#fff
+}
+</style>
+</head>
+<body><div class="container">
+<div class="header">
+    <h1>📊 Altcoin Season Index</h1>
+    <p>Sommes-nous en Bitcoin Season ou Altcoin Season ?</p>
+</div>
+""" + NAV + """
+
+<div class="altcoin-container">
+
+<div class="info-card">
+    <h3>🎯 Qu'est-ce que l'Altcoin Season Index ?</h3>
+    <p>
+        L'<strong>Altcoin Season Index</strong> mesure la performance des altcoins par rapport au Bitcoin sur les 90 derniers jours.
+        Il analyse les 100 principales cryptomonnaies pour déterminer si nous sommes en "Bitcoin Season" ou en "Altcoin Season".
+    </p>
+    
+    <div style="margin:20px 0">
+        <p><strong>Interprétation :</strong></p>
+        <ul>
+            <li><span class="season-indicator season-btc">Bitcoin Season (0-25)</span> - Le Bitcoin surperforme la majorité des altcoins</li>
+            <li><span class="season-indicator" style="background:linear-gradient(135deg,#6b7280,#9ca3af);color:#fff">Zone Neutre (25-75)</span> - Performance mixte</li>
+            <li><span class="season-indicator season-alt">Altcoin Season (75-100)</span> - Les altcoins surperforment le Bitcoin</li>
+        </ul>
+    </div>
+    
+    <p>
+        <strong>Comment ça marche :</strong> 
+        Si 75% ou plus des 100 principales cryptos ont mieux performé que le Bitcoin sur 90 jours, 
+        alors nous sommes officiellement en <strong>Altcoin Season</strong> ! 🚀
+    </p>
+</div>
+
+<div class="card">
+    <h2>📈 Graphique en Temps Réel</h2>
+    <div class="iframe-wrapper">
+        <iframe src="https://www.coinglass.com/pro/AltcoinSeasonIndex" 
+                frameborder="0" 
+                scrolling="no"
+                allowtransparency="true">
+        </iframe>
+    </div>
+    <p style="text-align:center;margin-top:15px;color:#94a3b8;font-size:13px">
+        Données fournies par <a href="https://www.coinglass.com" target="_blank" style="color:#60a5fa;text-decoration:none">CoinGlass</a>
+    </p>
+</div>
+
+<div class="info-card">
+    <h3>💡 Comment utiliser cet indicateur ?</h3>
+    <ul>
+        <li><strong>Stratégie Bitcoin Season :</strong> Privilégiez l'accumulation de BTC et des cryptos majeures</li>
+        <li><strong>Stratégie Altcoin Season :</strong> C'est le moment idéal pour trader les altcoins avec potentiel</li>
+        <li><strong>Zone Neutre :</strong> Restez prudent et diversifiez votre portefeuille</li>
+    </ul>
+    <p style="margin-top:15px">
+        ⚠️ <strong>Note :</strong> Cet indicateur est basé sur des données historiques. 
+        Utilisez-le comme un outil parmi d'autres dans votre analyse de marché.
+    </p>
+</div>
+
+</div>
+</div>
+
+<script>
+// Auto-refresh de l'iframe toutes les 5 minutes pour garder les données à jour
+setInterval(() => {
+    const iframe = document.querySelector('.iframe-wrapper iframe');
+    if(iframe) {
+        iframe.src = iframe.src;
+    }
+}, 300000);
+
+console.log('📊 Altcoin Season Index chargé');
+</script>
+
+</body></html>"""
+    return HTMLResponse(page)
 
 if __name__ == "__main__":
     import uvicorn

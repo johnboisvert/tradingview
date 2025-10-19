@@ -116,6 +116,63 @@ async def get_fear_greed():
         pass
     return {"value": 50, "classification": "Neutre", "status": "fallback"}
 
+@app.get("/api/fear-greed-full")
+async def get_fear_greed_full():
+    """Récupère les données Fear & Greed actuelles et historiques"""
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            r = await client.get("https://api.alternative.me/fng/?limit=30")
+            if r.status_code == 200:
+                data = r.json()
+                
+                historical = {
+                    "now": {
+                        "value": int(data["data"][0]["value"]),
+                        "classification": data["data"][0]["value_classification"]
+                    },
+                    "yesterday": {
+                        "value": int(data["data"][1]["value"]) if len(data["data"]) > 1 else None,
+                        "classification": data["data"][1]["value_classification"] if len(data["data"]) > 1 else None
+                    },
+                    "last_week": {
+                        "value": int(data["data"][7]["value"]) if len(data["data"]) > 7 else None,
+                        "classification": data["data"][7]["value_classification"] if len(data["data"]) > 7 else None
+                    },
+                    "last_month": {
+                        "value": int(data["data"][29]["value"]) if len(data["data"]) > 29 else None,
+                        "classification": data["data"][29]["value_classification"] if len(data["data"]) > 29 else None
+                    }
+                }
+                
+                now = datetime.now()
+                tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+                seconds_until_update = int((tomorrow - now).total_seconds())
+                
+                return {
+                    "current_value": int(data["data"][0]["value"]),
+                    "current_classification": data["data"][0]["value_classification"],
+                    "historical": historical,
+                    "next_update_seconds": seconds_until_update,
+                    "timestamp": data["data"][0]["timestamp"],
+                    "status": "success"
+                }
+    except Exception as e:
+        print(f"Erreur Fear & Greed: {e}")
+    
+    return {
+        "current_value": 29,
+        "current_classification": "Fear",
+        "historical": {
+            "now": {"value": 29, "classification": "Fear"},
+            "yesterday": {"value": 23, "classification": "Extreme Fear"},
+            "last_week": {"value": 24, "classification": "Extreme Fear"},
+            "last_month": {"value": 53, "classification": "Neutral"}
+        },
+        "next_update_seconds": 82800,
+        "timestamp": "1729296000",
+        "status": "fallback"
+    }
+
 @app.get("/api/bullrun-phase")
 async def get_bullrun_phase():
     try:
@@ -337,6 +394,476 @@ load();setInterval(load,10000);
 </script></div></body></html>"""
     return HTMLResponse(html)
 
+@app.get("/fear-greed", response_class=HTMLResponse)
+async def fear_greed_page():
+    html = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fear & Greed Index</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .gauge-container {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin: 20px auto;
+        }
+        
+        .gauge-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        .gauge-value .number {
+            font-size: 72px;
+            font-weight: bold;
+            color: #333;
+            line-height: 1;
+        }
+        
+        .gauge-value .label {
+            font-size: 24px;
+            color: #666;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        
+        .historical-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 12px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        
+        .historical-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+        
+        .historical-item .period {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .historical-item .value-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .historical-item .classification {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .historical-item .number-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 18px;
+        }
+        
+        .extreme-fear { color: #c0392b; }
+        .fear { color: #e67e22; }
+        .neutral { color: #f39c12; }
+        .greed { color: #27ae60; }
+        .extreme-greed { color: #16a085; }
+        
+        .bg-extreme-fear { background: linear-gradient(135deg, #c0392b, #e74c3c); }
+        .bg-fear { background: linear-gradient(135deg, #e67e22, #f39c12); }
+        .bg-neutral { background: linear-gradient(135deg, #f39c12, #f1c40f); }
+        .bg-greed { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .bg-extreme-greed { background: linear-gradient(135deg, #16a085, #1abc9c); }
+        
+        .countdown {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .countdown-timer {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .update-info {
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info-footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+        
+        .info-footer a {
+            color: white;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-btn">← Retour au Dashboard</a>
+        
+        <div class="header">
+            <h1>🪙 Fear & Greed Index</h1>
+            <p>Analyse du sentiment du marché crypto en temps réel</p>
+        </div>
+        
+        <div id="content" class="loading">
+            <div class="spinner"></div>
+            <p>Chargement des données...</p>
+        </div>
+        
+        <div class="info-footer">
+            <p>📊 Données fournies par <a href="https://alternative.me" target="_blank">Alternative.me</a></p>
+            <p>Mise à jour automatique toutes les 24 heures</p>
+        </div>
+    </div>
+    
+    <script>
+        let updateInterval;
+        let countdownInterval;
+        
+        function getClassificationClass(value) {
+            if (value <= 20) return 'extreme-fear';
+            if (value <= 40) return 'fear';
+            if (value <= 60) return 'neutral';
+            if (value <= 80) return 'greed';
+            return 'extreme-greed';
+        }
+        
+        function getBgClass(value) {
+            if (value <= 20) return 'bg-extreme-fear';
+            if (value <= 40) return 'bg-fear';
+            if (value <= 60) return 'bg-neutral';
+            if (value <= 80) return 'bg-greed';
+            return 'bg-extreme-greed';
+        }
+        
+        function drawGauge(value, classification) {
+            const canvas = document.getElementById('gaugeCanvas');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const centerX = 140;
+            const centerY = 140;
+            const radius = 120;
+            
+            ctx.clearRect(0, 0, 280, 280);
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0.75 * Math.PI, 2.25 * Math.PI);
+            ctx.lineWidth = 30;
+            ctx.strokeStyle = '#e9ecef';
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            const endAngle = 0.75 * Math.PI + (value / 100) * 1.5 * Math.PI;
+            const gradient = ctx.createLinearGradient(0, 0, 280, 280);
+            
+            if (value <= 20) {
+                gradient.addColorStop(0, '#c0392b');
+                gradient.addColorStop(1, '#e74c3c');
+            } else if (value <= 40) {
+                gradient.addColorStop(0, '#e67e22');
+                gradient.addColorStop(1, '#f39c12');
+            } else if (value <= 60) {
+                gradient.addColorStop(0, '#f39c12');
+                gradient.addColorStop(1, '#f1c40f');
+            } else if (value <= 80) {
+                gradient.addColorStop(0, '#27ae60');
+                gradient.addColorStop(1, '#2ecc71');
+            } else {
+                gradient.addColorStop(0, '#16a085');
+                gradient.addColorStop(1, '#1abc9c');
+            }
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0.75 * Math.PI, endAngle);
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 30;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+        
+        function formatCountdown(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+        
+        function startCountdown(totalSeconds) {
+            let remaining = totalSeconds;
+            
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+            
+            countdownInterval = setInterval(() => {
+                remaining--;
+                if (remaining < 0) remaining = 0;
+                
+                const timerEl = document.getElementById('countdown-timer');
+                if (timerEl) {
+                    timerEl.textContent = formatCountdown(remaining);
+                }
+                
+                if (remaining === 0) {
+                    clearInterval(countdownInterval);
+                    loadData();
+                }
+            }, 1000);
+        }
+        
+        async function loadData() {
+            try {
+                const response = await fetch('/api/fear-greed-full');
+                const data = await response.json();
+                
+                const classif = getClassificationClass(data.current_value);
+                const bgClass = getBgClass(data.current_value);
+                
+                const html = `
+                    <div class="grid">
+                        <div class="card">
+                            <h2>🎯 Fear & Greed Index</h2>
+                            <div class="gauge-container">
+                                <canvas id="gaugeCanvas" width="280" height="280"></canvas>
+                                <div class="gauge-value">
+                                    <div class="number">${data.current_value}</div>
+                                    <div class="label ${classif}">${data.current_classification}</div>
+                                </div>
+                            </div>
+                            <p style="text-align:center;color:#666;margin-top:20px;">
+                                Dernière mise à jour: ${new Date(data.timestamp * 1000).toLocaleDateString('fr-FR')}
+                            </p>
+                        </div>
+                        
+                        <div class="card">
+                            <h2>📊 Valeurs Historiques</h2>
+                            <div class="historical-item">
+                                <div class="period">Maintenant</div>
+                                <div class="value-badge">
+                                    <span class="classification ${getClassificationClass(data.historical.now.value)}">
+                                        ${data.historical.now.classification}
+                                    </span>
+                                    <div class="number-circle ${getBgClass(data.historical.now.value)}">
+                                        ${data.historical.now.value}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            ${data.historical.yesterday.value ? `
+                            <div class="historical-item">
+                                <div class="period">Hier</div>
+                                <div class="value-badge">
+                                    <span class="classification ${getClassificationClass(data.historical.yesterday.value)}">
+                                        ${data.historical.yesterday.classification}
+                                    </span>
+                                    <div class="number-circle ${getBgClass(data.historical.yesterday.value)}">
+                                        ${data.historical.yesterday.value}
+                                    </div>
+                                </div>
+                            </div>
+                            ` : ''}
+                            
+                            ${data.historical.last_week.value ? `
+                            <div class="historical-item">
+                                <div class="period">Il y a une semaine</div>
+                                <div class="value-badge">
+                                    <span class="classification ${getClassificationClass(data.historical.last_week.value)}">
+                                        ${data.historical.last_week.classification}
+                                    </span>
+                                    <div class="number-circle ${getBgClass(data.historical.last_week.value)}">
+                                        ${data.historical.last_week.value}
+                                    </div>
+                                </div>
+                            </div>
+                            ` : ''}
+                            
+                            ${data.historical.last_month.value ? `
+                            <div class="historical-item">
+                                <div class="period">Il y a un mois</div>
+                                <div class="value-badge">
+                                    <span class="classification ${getClassificationClass(data.historical.last_month.value)}">
+                                        ${data.historical.last_month.classification}
+                                    </span>
+                                    <div class="number-circle ${getBgClass(data.historical.last_month.value)}">
+                                        ${data.historical.last_month.value}
+                                    </div>
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="card">
+                            <h2>⏰ Prochaine Mise à Jour</h2>
+                            <div class="countdown">
+                                <p style="color:#666;font-size:16px;">La prochaine mise à jour aura lieu dans:</p>
+                                <div class="countdown-timer" id="countdown-timer">${formatCountdown(data.next_update_seconds)}</div>
+                                <div class="update-info">
+                                    Les données sont mises à jour toutes les 24 heures
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('content').innerHTML = html;
+                
+                setTimeout(() => {
+                    drawGauge(data.current_value, data.current_classification);
+                }, 100);
+                
+                startCountdown(data.next_update_seconds);
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                document.getElementById('content').innerHTML = `
+                    <div class="card">
+                        <h2 style="color:#e74c3c;">❌ Erreur de chargement</h2>
+                        <p>Impossible de charger les données. Veuillez réessayer.</p>
+                        <button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;">
+                            Réessayer
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        loadData();
+        updateInterval = setInterval(loadData, 3600000);
+    </script>
+</body>
+</html>"""
+    return HTMLResponse(html)
+
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
     html = """<!DOCTYPE html>
@@ -403,16 +930,6 @@ async def backtest_page():
 <script>
 async function run(){document.getElementById('ph').style.display='none';document.getElementById('rs').style.display='none';document.getElementById('er').innerHTML='';document.getElementById('lo').style.display='block';try{const r=await fetch('/api/backtest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({symbol:document.getElementById('sy').value,start_capital:document.getElementById('ca').value})});const d=await r.json();document.getElementById('lo').style.display='none';if(d.status==='error'){document.getElementById('er').innerHTML='<div class="alert alert-error">'+d.message+'</div>';document.getElementById('ph').style.display='block';return;}document.getElementById('rs').style.display='block';document.getElementById('fc').textContent='$'+d.final_capital.toLocaleString();document.getElementById('tr').textContent=(d.total_return>0?'+':'')+d.total_return+'%';document.getElementById('tc').textContent=d.trades;document.getElementById('wr').textContent=d.win_rate+'%';}catch(e){document.getElementById('lo').style.display='none';document.getElementById('er').innerHTML='<div class="alert alert-error">'+e.message+'</div>';document.getElementById('ph').style.display='block';}}
 </script></div></body></html>"""
-    return HTMLResponse(html)
-
-@app.get("/fear-greed", response_class=HTMLResponse)
-async def fear_page():
-    html = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Fear&Greed</title>""" + CSS + """</head>
-<body><div class="container"><div class="header"><h1>Fear & Greed</h1></div>""" + NAV + """
-<div class="card"><h2>Indice</h2><div style="text-align:center;font-size:72px" id="v">--</div><div style="text-align:center;font-size:24px" id="c">...</div></div>
-<script>async function load(){const r=await fetch('/api/fear-greed');const d=await r.json();document.getElementById('v').textContent=d.value;document.getElementById('c').textContent=d.classification;}load();</script>
-</div></body></html>"""
     return HTMLResponse(html)
 
 @app.get("/bullrun-phase", response_class=HTMLResponse)

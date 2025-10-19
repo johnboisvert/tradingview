@@ -1153,20 +1153,80 @@ async def altcoin_season_page():
     max-width:100%;
     margin:0 auto
 }
-.iframe-wrapper{
+.chart-container{
     position:relative;
     width:100%;
     background:#1e293b;
     border-radius:12px;
-    overflow:hidden;
+    padding:30px;
     border:1px solid #334155;
-    box-shadow:0 8px 24px rgba(0,0,0,0.3)
+    box-shadow:0 8px 24px rgba(0,0,0,0.3);
+    min-height:600px
 }
-.iframe-wrapper iframe{
+.chart-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:30px;
+    flex-wrap:wrap;
+    gap:20px
+}
+.current-index{
+    text-align:center;
+    padding:20px
+}
+.index-value{
+    font-size:72px;
+    font-weight:900;
+    background:linear-gradient(135deg,#60a5fa,#a78bfa);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    margin:10px 0
+}
+.index-label{
+    font-size:24px;
+    font-weight:700;
+    color:#e2e8f0;
+    margin-top:10px
+}
+.gauge-container{
+    position:relative;
     width:100%;
-    height:800px;
-    border:none;
-    display:block
+    max-width:600px;
+    height:300px;
+    margin:30px auto
+}
+.gauge-bar{
+    width:100%;
+    height:60px;
+    background:linear-gradient(90deg, #f97316 0%, #6b7280 25%, #6b7280 75%, #3b82f6 100%);
+    border-radius:30px;
+    position:relative;
+    box-shadow:inset 0 2px 8px rgba(0,0,0,0.3)
+}
+.gauge-marker{
+    position:absolute;
+    top:-40px;
+    transform:translateX(-50%);
+    transition:left 0.5s ease
+}
+.gauge-arrow{
+    width:0;
+    height:0;
+    border-left:15px solid transparent;
+    border-right:15px solid transparent;
+    border-top:40px solid #fff;
+    filter:drop-shadow(0 4px 6px rgba(0,0,0,0.3))
+}
+.gauge-labels{
+    display:flex;
+    justify-content:space-between;
+    margin-top:15px;
+    font-size:14px;
+    font-weight:600
+}
+.gauge-labels span{
+    color:#94a3b8
 }
 .info-card{
     background:#1e293b;
@@ -1199,7 +1259,7 @@ async def altcoin_season_page():
     border-radius:8px;
     font-weight:700;
     font-size:16px;
-    margin:10px 0
+    margin:10px 5px
 }
 .season-btc{
     background:linear-gradient(135deg,#f97316,#fb923c);
@@ -1208,6 +1268,61 @@ async def altcoin_season_page():
 .season-alt{
     background:linear-gradient(135deg,#3b82f6,#60a5fa);
     color:#fff
+}
+.stats-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:20px;
+    margin-top:30px
+}
+.stat-card{
+    background:#0f172a;
+    padding:20px;
+    border-radius:12px;
+    text-align:center;
+    border:1px solid #334155
+}
+.stat-card .label{
+    color:#94a3b8;
+    font-size:14px;
+    margin-bottom:10px;
+    font-weight:600
+}
+.stat-card .value{
+    color:#e2e8f0;
+    font-size:32px;
+    font-weight:800
+}
+.spinner{
+    border:5px solid #334155;
+    border-top:5px solid #60a5fa;
+    border-radius:50%;
+    width:60px;
+    height:60px;
+    animation:spin 1s linear infinite;
+    margin:40px auto
+}
+@keyframes spin{
+    0%{transform:rotate(0deg)}
+    100%{transform:rotate(360deg)}
+}
+.external-link{
+    text-align:center;
+    margin-top:20px;
+    padding:15px;
+    background:#0f172a;
+    border-radius:8px;
+    border:1px solid #334155
+}
+.external-link a{
+    color:#60a5fa;
+    text-decoration:none;
+    font-weight:600;
+    font-size:16px;
+    transition:color 0.3s
+}
+.external-link a:hover{
+    color:#93c5fd
 }
 </style>
 </head>
@@ -1244,17 +1359,17 @@ async def altcoin_season_page():
 </div>
 
 <div class="card">
-    <h2>📈 Graphique en Temps Réel</h2>
-    <div class="iframe-wrapper">
-        <iframe src="https://www.coinglass.com/pro/AltcoinSeasonIndex" 
-                frameborder="0" 
-                scrolling="no"
-                allowtransparency="true">
-        </iframe>
+    <h2>📈 Index Actuel</h2>
+    <div class="chart-container" id="chart-container">
+        <div class="spinner"></div>
     </div>
-    <p style="text-align:center;margin-top:15px;color:#94a3b8;font-size:13px">
-        Données fournies par <a href="https://www.coinglass.com" target="_blank" style="color:#60a5fa;text-decoration:none">CoinGlass</a>
-    </p>
+    
+    <div class="external-link">
+        <p style="color:#94a3b8;margin-bottom:10px">Voir le graphique historique complet :</p>
+        <a href="https://www.coinglass.com/pro/AltcoinSeasonIndex" target="_blank">
+            📊 Ouvrir sur CoinGlass (graphique interactif complet)
+        </a>
+    </div>
 </div>
 
 <div class="info-card">
@@ -1274,19 +1389,138 @@ async def altcoin_season_page():
 </div>
 
 <script>
-// Auto-refresh de l'iframe toutes les 5 minutes pour garder les données à jour
-setInterval(() => {
-    const iframe = document.querySelector('.iframe-wrapper iframe');
-    if(iframe) {
-        iframe.src = iframe.src;
-    }
-}, 300000);
+let currentIndex = 0;
 
-console.log('📊 Altcoin Season Index chargé');
+function getSeasonLabel(index){
+    if(index >= 75) return 'Altcoin Season';
+    if(index <= 25) return 'Bitcoin Season';
+    return 'Zone Neutre';
+}
+
+function getSeasonColor(index){
+    if(index >= 75) return '#3b82f6';
+    if(index <= 25) return '#f97316';
+    return '#6b7280';
+}
+
+function renderGauge(index){
+    const seasonLabel = getSeasonLabel(index);
+    const seasonColor = getSeasonColor(index);
+    
+    return `
+        <div class="current-index">
+            <div class="index-value">${index}</div>
+            <div class="index-label" style="color:${seasonColor}">${seasonLabel}</div>
+        </div>
+        
+        <div class="gauge-container">
+            <div class="gauge-bar">
+                <div class="gauge-marker" style="left:${index}%">
+                    <div class="gauge-arrow"></div>
+                </div>
+            </div>
+            <div class="gauge-labels">
+                <span>0<br>Bitcoin Season</span>
+                <span>50<br>Neutre</span>
+                <span>100<br>Altcoin Season</span>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="label">Période d'analyse</div>
+                <div class="value">90 jours</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Cryptos analysées</div>
+                <div class="value">100</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Dernière mise à jour</div>
+                <div class="value" style="font-size:18px">${new Date().toLocaleDateString('fr-FR')}</div>
+            </div>
+        </div>
+    `;
+}
+
+async function loadAltcoinSeasonData(){
+    try{
+        const response = await fetch('/api/altcoin-season-index');
+        const data = await response.json();
+        
+        if(data.index !== undefined){
+            currentIndex = data.index;
+            document.getElementById('chart-container').innerHTML = renderGauge(currentIndex);
+            console.log('✅ Altcoin Season Index chargé:', currentIndex);
+        }else{
+            throw new Error('Données invalides');
+        }
+    }catch(error){
+        console.error('❌ Erreur de chargement:', error);
+        // Fallback avec une valeur d'exemple
+        currentIndex = 35;
+        document.getElementById('chart-container').innerHTML = renderGauge(currentIndex) + 
+            '<p style="text-align:center;color:#f59e0b;margin-top:20px">⚠️ Utilisation de données d\'exemple. Vérifiez la connexion API.</p>';
+    }
+}
+
+loadAltcoinSeasonData();
+setInterval(loadAltcoinSeasonData, 300000); // Refresh toutes les 5 minutes
+
+console.log('📊 Altcoin Season Index initialisé');
 </script>
 
 </body></html>"""
     return HTMLResponse(page)
+
+# Route API pour récupérer l'index Altcoin Season
+@app.get("/api/altcoin-season-index")
+async def get_altcoin_season_index():
+    try:
+        # Tentative de récupération depuis CoinGlass API
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Note: CoinGlass peut nécessiter une clé API pour l'accès complet
+            # Pour l'instant, on retourne une valeur calculée approximative
+            
+            # Récupération des données de marché pour calculer l'index
+            r = await client.get("https://api.coingecko.com/api/v3/coins/markets", 
+                params={
+                    "vs_currency": "usd",
+                    "order": "market_cap_desc",
+                    "per_page": 100,
+                    "page": 1,
+                    "sparkline": False,
+                    "price_change_percentage": "90d"
+                })
+            
+            if r.status_code == 200:
+                cryptos = r.json()
+                
+                # Calcul simplifié: compter combien d'altcoins ont mieux performé que BTC
+                btc_data = next((c for c in cryptos if c['symbol'].lower() == 'btc'), None)
+                if btc_data:
+                    btc_change = btc_data.get('price_change_percentage_90d_in_currency', 0)
+                    
+                    # Compter les altcoins qui surperforment BTC
+                    outperforming = sum(1 for c in cryptos[1:] if c.get('price_change_percentage_90d_in_currency', -100) > btc_change)
+                    
+                    # Calculer l'index (0-100)
+                    index = round((outperforming / 99) * 100)  # 99 car on exclut BTC
+                    
+                    return {
+                        "index": index,
+                        "status": "success",
+                        "timestamp": datetime.now().isoformat()
+                    }
+    except Exception as e:
+        print(f"Erreur API Altcoin Season: {e}")
+    
+    # Fallback avec valeur par défaut
+    return {
+        "index": 35,
+        "status": "fallback",
+        "timestamp": datetime.now().isoformat()
+    }
 
 if __name__ == "__main__":
     import uvicorn

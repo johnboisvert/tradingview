@@ -534,7 +534,588 @@ async def bullrun_phase_page():
 
 # Gardez vos autres pages HTML existantes (trades, fear-greed, dominance, heatmap, nouvelles, convertisseur, telegram-test, altcoin-season)
 # Elles doivent rester exactement comme dans votre fichier original
+# ========== PAGES HTML COMPLÈTES - À AJOUTER ICI ==========
 
+@app.get("/trades", response_class=HTMLResponse)
+async def trades_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gestion Trades</title>""" + CSS + """
+<style>
+.trades-container{max-width:100%;margin:0 auto}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}
+.stat-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:25px;border-radius:12px;text-align:center;border:1px solid #334155;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.stat-card .icon{font-size:42px;margin-bottom:12px}
+.stat-card .value{font-size:36px;font-weight:800;color:#e2e8f0;margin-bottom:8px}
+.stat-card .label{font-size:13px;color:#94a3b8;font-weight:600;text-transform:uppercase}
+.trades-table{width:100%;border-collapse:collapse;margin-top:20px;background:#1e293b;border-radius:12px;overflow:hidden}
+.trades-table thead{background:#0f172a}
+.trades-table th{padding:18px 15px;text-align:left;color:#60a5fa;font-weight:700;font-size:14px;text-transform:uppercase;border-bottom:2px solid #334155}
+.trades-table td{padding:15px;border-bottom:1px solid #334155;color:#e2e8f0;font-size:14px}
+.trades-table tbody tr{transition:all 0.3s}
+.trades-table tbody tr:hover{background:#0f172a;transform:scale(1.01)}
+.crypto-symbol{font-weight:700;font-size:16px;color:#60a5fa}
+.side-badge{display:inline-block;padding:4px 12px;border-radius:6px;font-weight:700;font-size:12px;text-transform:uppercase}
+.side-long{background:rgba(34,197,94,0.2);color:#22c55e;border:1px solid #22c55e}
+.side-short{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444}
+.price-cell{font-family:monospace;font-weight:600}
+.tp-status{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700}
+.tp-hit{background:rgba(34,197,94,0.2);color:#22c55e;border:1px solid #22c55e}
+.tp-pending{background:rgba(100,116,139,0.2);color:#94a3b8;border:1px solid #475569}
+.sl-hit{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444}
+.targets-cell{display:flex;flex-direction:column;gap:4px}
+.winrate-chart{position:relative;width:100%;height:200px;margin:20px 0}
+.progress-bar{width:100%;height:40px;background:#0f172a;border-radius:20px;overflow:hidden;position:relative;border:1px solid #334155}
+.progress-fill{height:100%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;transition:width 0.5s ease}
+.progress-fill.win{background:linear-gradient(90deg,#22c55e,#10b981)}
+.empty-state{text-align:center;padding:80px 20px;color:#94a3b8}
+.empty-state .icon{font-size:120px;opacity:0.3;margin-bottom:20px}
+.controls{display:flex;gap:12px;margin-bottom:25px;flex-wrap:wrap}
+.controls button{padding:12px 24px;background:#334155;color:#e2e8f0;border:2px solid #475569;border-radius:10px;cursor:pointer;transition:all .3s;font-size:14px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+.controls button:hover{background:#475569;transform:translateY(-2px)}
+.controls button.active{background:linear-gradient(135deg,#3b82f6,#60a5fa);border-color:#60a5fa;color:#fff}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>📊 Gestion des Trades</h1><p>Suivi détaillé et statistiques</p></div>
+""" + NAV + """
+<div class="trades-container">
+<div class="stats-grid">
+<div class="stat-card">
+<div class="icon">📈</div>
+<div class="value" id="total-trades">0</div>
+<div class="label">Total Trades</div>
+</div>
+<div class="stat-card">
+<div class="icon">✅</div>
+<div class="value" style="color:#22c55e" id="win-trades">0</div>
+<div class="label">Gagnants</div>
+</div>
+<div class="stat-card">
+<div class="icon">❌</div>
+<div class="value" style="color:#ef4444" id="loss-trades">0</div>
+<div class="label">Perdants</div>
+</div>
+<div class="stat-card">
+<div class="icon">⏳</div>
+<div class="value" style="color:#60a5fa" id="open-trades">0</div>
+<div class="label">Ouverts</div>
+</div>
+<div class="stat-card">
+<div class="icon">🎯</div>
+<div class="value" style="color:#a78bfa" id="winrate">0%</div>
+<div class="label">Win Rate</div>
+</div>
+</div>
+
+<div class="card">
+<h2>📊 Win Rate</h2>
+<div class="winrate-chart">
+<div class="progress-bar">
+<div class="progress-fill win" id="winrate-bar" style="width:0%">0%</div>
+</div>
+</div>
+</div>
+
+<div class="card">
+<h2>📋 Historique</h2>
+<div class="controls">
+<button class="active" onclick="filterTrades('all')">📊 Tous</button>
+<button onclick="filterTrades('open')">⏳ Ouverts</button>
+<button onclick="filterTrades('win')">✅ Gagnants</button>
+<button onclick="filterTrades('loss')">❌ Perdants</button>
+<button onclick="addDemoTrades()" style="background:#a78bfa;border-color:#a78bfa">🎲 Démo</button>
+<button onclick="clearTrades()" style="background:#ef4444;border-color:#ef4444">🗑️ Effacer</button>
+<button onclick="loadTrades()" style="margin-left:auto">🔄 Actualiser</button>
+</div>
+<div id="trades-container"></div>
+</div>
+</div>
+</div>
+<script>
+let allTrades=[];
+function formatTime(t){const d=new Date(t);return d.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function renderTradesTable(trades){
+if(!trades.length)return'<div class="empty-state"><div class="icon">📭</div><h3>Aucun trade</h3></div>';
+let html='<table class="trades-table"><thead><tr><th>Heure</th><th>Crypto</th><th>Direction</th><th>Entry</th><th>TP1</th><th>TP2</th><th>TP3</th><th>SL</th><th>Statut</th></tr></thead><tbody>';
+trades.forEach(t=>{
+const sc=t.side==='LONG'?'side-long':'side-short';
+const si=t.side==='LONG'?'📈':'📉';
+const tp1s=t.tp1_hit?'tp-hit':'tp-pending';
+const tp2s=t.tp2_hit?'tp-hit':'tp-pending';
+const tp3s=t.tp3_hit?'tp-hit':'tp-pending';
+const sls=t.sl_hit?'sl-hit':'tp-pending';
+const tp1t=t.tp1_hit?'✅ Hit':'⏳ Pending';
+const tp2t=t.tp2_hit?'✅ Hit':'⏳ Pending';
+const tp3t=t.tp3_hit?'✅ Hit':'⏳ Pending';
+const slt=t.sl_hit?'❌ Hit':'⏳ Safe';
+let gs='⏳ Ouvert';
+if(t.sl_hit)gs='❌ SL Hit';
+else if(t.tp3_hit)gs='✅ TP3 Hit';
+else if(t.tp2_hit)gs='✅ TP2 Hit';
+else if(t.tp1_hit)gs='✅ TP1 Hit';
+html+=`<tr><td>${formatTime(t.timestamp)}</td><td><span class="crypto-symbol">${t.symbol}</span></td><td><span class="side-badge ${sc}">${si} ${t.side}</span></td><td class="price-cell">${t.entry?.toFixed(4)||'N/A'}</td><td><div class="targets-cell"><div class="price-cell">${t.tp1?.toFixed(4)||'N/A'}</div><span class="tp-status ${tp1s}">${tp1t}</span></div></td><td><div class="targets-cell"><div class="price-cell">${t.tp2?.toFixed(4)||'N/A'}</div><span class="tp-status ${tp2s}">${tp2t}</span></div></td><td><div class="targets-cell"><div class="price-cell">${t.tp3?.toFixed(4)||'N/A'}</div><span class="tp-status ${tp3s}">${tp3t}</span></div></td><td><div class="targets-cell"><div class="price-cell">${t.sl?.toFixed(4)||'N/A'}</div><span class="tp-status ${sls}">${slt}</span></div></td><td><strong>${gs}</strong></td></tr>`;
+});
+return html+'</tbody></table>';
+}
+function updateStats(trades){
+const total=trades.length;
+const open=trades.filter(t=>t.status==='open'&&!t.sl_hit&&!t.tp1_hit&&!t.tp2_hit&&!t.tp3_hit).length;
+const wins=trades.filter(t=>t.tp1_hit||t.tp2_hit||t.tp3_hit).length;
+const losses=trades.filter(t=>t.sl_hit).length;
+const closed=wins+losses;
+const winrate=closed>0?Math.round((wins/closed)*100):0;
+document.getElementById('total-trades').textContent=total;
+document.getElementById('open-trades').textContent=open;
+document.getElementById('win-trades').textContent=wins;
+document.getElementById('loss-trades').textContent=losses;
+document.getElementById('winrate').textContent=winrate+'%';
+const wb=document.getElementById('winrate-bar');
+wb.style.width=winrate+'%';
+wb.textContent=winrate+'%';
+}
+function filterTrades(filter){
+document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('active'));
+event.target.classList.add('active');
+let filtered=allTrades;
+if(filter==='open')filtered=allTrades.filter(t=>t.status==='open'&&!t.sl_hit&&!t.tp1_hit&&!t.tp2_hit&&!t.tp3_hit);
+else if(filter==='win')filtered=allTrades.filter(t=>t.tp1_hit||t.tp2_hit||t.tp3_hit);
+else if(filter==='loss')filtered=allTrades.filter(t=>t.sl_hit);
+document.getElementById('trades-container').innerHTML=renderTradesTable(filtered);
+}
+async function loadTrades(){
+try{
+const r=await fetch('/api/trades');
+const d=await r.json();
+if(d.trades&&Array.isArray(d.trades)){
+allTrades=d.trades;
+updateStats(allTrades);
+document.getElementById('trades-container').innerHTML=renderTradesTable(allTrades);
+}
+}catch(e){console.error(e)}
+}
+async function addDemoTrades(){
+try{
+const r=await fetch('/api/trades/add-demo');
+const d=await r.json();
+if(d.status==='success'){
+await loadTrades();
+alert('✅ '+d.message);
+}
+}catch(e){alert('❌ '+e.message)}
+}
+async function clearTrades(){
+if(!confirm('⚠️ Effacer tous les trades ?'))return;
+try{
+const r=await fetch('/api/trades/clear',{method:'DELETE'});
+const d=await r.json();
+if(d.status==='success'){
+await loadTrades();
+alert('✅ '+d.message);
+}
+}catch(e){alert('❌ '+e.message)}
+}
+loadTrades();
+setInterval(loadTrades,30000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/fear-greed", response_class=HTMLResponse) 
+async def fear_greed_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """
+<style>
+.fg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:30px;margin-top:20px}
+.fg-card{background:#1e293b;border-radius:16px;padding:30px;border:1px solid #334155}
+.gauge-container{position:relative;width:280px;height:280px;margin:20px auto}
+.gauge-value{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.gauge-value .number{font-size:72px;font-weight:bold;color:#e2e8f0}
+.gauge-value .label{font-size:24px;color:#94a3b8;margin-top:10px}
+.historical-item{display:flex;justify-content:space-between;padding:15px;margin-bottom:12px;background:#0f172a;border-radius:12px}
+.extreme-fear{color:#ef4444}.fear{color:#f97316}.neutral{color:#eab308}.greed{color:#22c55e}.extreme-greed{color:#14b8a6}
+.countdown-timer{font-size:32px;font-weight:bold;color:#60a5fa;margin-top:15px;text-align:center}
+.spinner{border:4px solid #334155;border-top:4px solid #60a5fa;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:20px auto}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>🪙 Fear & Greed Index</h1><p>Sentiment du marché</p></div>
+""" + NAV + """
+<div id="content"><div class="spinner"></div></div>
+</div>
+<script>
+function getClass(v){if(v<=20)return'extreme-fear';if(v<=40)return'fear';if(v<=60)return'neutral';if(v<=80)return'greed';return'extreme-greed'}
+function formatCountdown(s){const h=Math.floor(s/3600);const m=Math.floor((s%3600)/60);const sec=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
+let countdownInterval;
+function startCountdown(total){let remaining=total;if(countdownInterval)clearInterval(countdownInterval);countdownInterval=setInterval(()=>{remaining--;if(remaining<0)remaining=0;const el=document.getElementById('countdown-timer');if(el)el.textContent=formatCountdown(remaining)},1000)}
+async function loadData(){
+try{
+const r=await fetch('/api/fear-greed-full');
+const d=await r.json();
+const c=getClass(d.current_value);
+let html='<div class="fg-grid"><div class="fg-card"><h2>🎯 Fear & Greed</h2><div class="gauge-container"><div class="gauge-value"><div class="number">'+d.current_value+'</div><div class="label '+c+'">'+d.current_classification+'</div></div></div></div>';
+html+='<div class="fg-card"><h2>📊 Historique</h2>';
+html+='<div class="historical-item"><div>Maintenant</div><div class="'+getClass(d.historical.now.value)+'">'+d.historical.now.value+'</div></div>';
+if(d.historical.yesterday&&d.historical.yesterday.value)html+='<div class="historical-item"><div>Hier</div><div class="'+getClass(d.historical.yesterday.value)+'">'+d.historical.yesterday.value+'</div></div>';
+if(d.historical.last_week&&d.historical.last_week.value)html+='<div class="historical-item"><div>Semaine</div><div class="'+getClass(d.historical.last_week.value)+'">'+d.historical.last_week.value+'</div></div>';
+html+='</div><div class="fg-card"><h2>⏰ Prochaine MAJ</h2><div class="countdown-timer" id="countdown-timer">'+formatCountdown(d.next_update_seconds)+'</div></div></div>';
+document.getElementById('content').innerHTML=html;
+startCountdown(d.next_update_seconds);
+}catch(e){console.error(e)}
+}
+loadData();
+setInterval(loadData,3600000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/dominance", response_class=HTMLResponse)
+async def btc_dominance_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>BTC Dominance</title>""" + CSS + """
+<style>
+.dom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:20px}
+.dominance-value{font-size:72px;font-weight:bold;color:#f97316;margin:20px 0}
+.crypto-bar{display:flex;align-items:center;margin-bottom:15px;gap:15px}
+.crypto-bar .label{min-width:80px;font-weight:600}
+.crypto-bar .bar-container{flex:1;height:40px;background:#0f172a;border-radius:8px;overflow:hidden}
+.crypto-bar .bar-fill{height:100%;display:flex;align-items:center;padding:0 15px;color:#fff;font-weight:bold}
+.crypto-bar .bar-fill.btc{background:linear-gradient(90deg,#f97316,#fb923c)}
+.crypto-bar .bar-fill.eth{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.history-row{display:flex;justify-content:space-between;padding:15px;background:#0f172a;border-radius:8px;margin-bottom:10px}
+.spinner{border:4px solid #334155;border-top:4px solid #60a5fa;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:20px auto}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>📊 Bitcoin Dominance</h1><p>Part de marché du Bitcoin</p></div>
+""" + NAV + """
+<div id="content"><div class="spinner"></div></div>
+</div>
+<script>
+function formatNumber(n){if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';return'$'+n.toLocaleString()}
+async function loadData(){
+try{
+const r=await fetch('/api/btc-dominance');
+const d=await r.json();
+const html='<div class="dom-grid"><div class="card"><h2>📈 Dominance</h2><div style="text-align:center;padding:30px"><div class="dominance-value">'+d.btc_dominance+'%</div></div></div><div class="card"><h2>🎯 Répartition</h2><div style="padding:20px"><div class="crypto-bar"><div class="label">Bitcoin</div><div class="bar-container"><div class="bar-fill btc" style="width:'+d.btc_dominance+'%">'+d.btc_dominance+'%</div></div></div><div class="crypto-bar"><div class="label">Ethereum</div><div class="bar-container"><div class="bar-fill eth" style="width:'+d.eth_dominance+'%">'+d.eth_dominance+'%</div></div></div></div></div></div><div class="dom-grid"><div class="card"><h2>📅 Historique</h2><div class="history-row"><div>Hier</div><div>'+d.history.yesterday+'%</div></div><div class="history-row"><div>Semaine</div><div>'+d.history.last_week+'%</div></div></div><div class="card"><h2>💰 Marché</h2><div style="padding:15px"><div style="margin-bottom:15px"><div style="color:#94a3b8;font-size:12px">Cap Totale</div><div style="font-size:24px;font-weight:bold">'+formatNumber(d.total_market_cap)+'</div></div><div><div style="color:#94a3b8;font-size:12px">Volume 24h</div><div style="font-size:24px;font-weight:bold">'+formatNumber(d.total_volume_24h)+'</div></div></div></div></div>';
+document.getElementById('content').innerHTML=html;
+}catch(e){console.error(e)}
+}
+loadData();
+setInterval(loadData,60000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/heatmap", response_class=HTMLResponse)
+async def heatmap_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Heatmap</title>""" + CSS + """
+<style>
+.heatmap-treemap{display:flex;flex-wrap:wrap;gap:2px;background:#000;padding:2px;border-radius:8px;min-height:850px}
+.crypto-tile{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:8px;transition:all .2s;cursor:pointer;overflow:hidden;min-width:60px;min-height:60px}
+.crypto-tile:hover{transform:scale(1.05);z-index:100;border:2px solid rgba(255,255,255,0.8)}
+.crypto-symbol{font-weight:900;color:#fff;text-shadow:1px 1px 3px rgba(0,0,0,0.8)}
+.crypto-change{font-weight:900;color:#fff;text-shadow:1px 1px 3px rgba(0,0,0,0.9);padding:3px 8px;border-radius:4px;background:rgba(0,0,0,0.3)}
+.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>🔥 Crypto Heatmap</h1><p>Visualisation temps réel</p></div>
+""" + NAV + """
+<div class="card">
+<h2>🌐 Top 100</h2>
+<div id="heatmap-container" class="heatmap-treemap"><div class="spinner"></div></div>
+</div>
+</div>
+<script>
+let cryptosData=[];
+function getColorForChange(c){
+if(c>=10)return'rgb(22,199,132)';
+if(c>=5)return'rgb(46,147,120)';
+if(c>=2)return'rgb(69,117,107)';
+if(c>=0)return'rgb(96,88,92)';
+if(c>=-2)return'rgb(116,69,82)';
+if(c>=-5)return'rgb(143,46,69)';
+return'rgb(200,8,45)';
+}
+function renderTreemap(){
+const container=document.getElementById('heatmap-container');
+const w=container.offsetWidth||1200;
+const total=cryptosData.reduce((s,c)=>s+c.market_cap,0);
+let html='';
+cryptosData.forEach(crypto=>{
+const size=Math.max(60,Math.min(Math.sqrt((w*800)*crypto.market_cap/total),w*0.4));
+const color=getColorForChange(crypto.change_24h);
+const cs=crypto.change_24h>=0?'+':'';
+html+=`<div class="crypto-tile" style="width:${size}px;height:${size*0.7}px;background:${color};flex-grow:${Math.sqrt(crypto.market_cap)}"><div><div class="crypto-symbol" style="font-size:${Math.max(14,size/10)}px">${crypto.symbol}</div><div class="crypto-change" style="font-size:${Math.max(12,size/12)}px">${cs}${crypto.change_24h.toFixed(2)}%</div></div></div>`;
+});
+container.innerHTML=html;
+}
+async function loadData(){
+try{
+const r=await fetch('/api/heatmap');
+const d=await r.json();
+if(d.cryptos&&d.cryptos.length>0){
+cryptosData=d.cryptos.sort((a,b)=>b.market_cap-a.market_cap);
+renderTreemap();
+}
+}catch(e){console.error(e)}
+}
+loadData();
+setInterval(loadData,180000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/nouvelles", response_class=HTMLResponse)
+async def crypto_news_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Nouvelles</title>""" + CSS + """
+<style>
+.news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:25px;margin-top:30px}
+.news-card{background:linear-gradient(135deg,#1e293b,#0f172a);border-radius:16px;padding:25px;border:1px solid #334155;transition:all .3s;cursor:pointer}
+.news-card:hover{transform:translateY(-8px);border-color:#60a5fa}
+.news-title{font-size:18px;font-weight:700;color:#e2e8f0;margin-bottom:15px;line-height:1.4}
+.news-meta{display:flex;justify-content:space-between;margin-top:15px;padding-top:15px;border-top:1px solid #334155}
+.news-source{font-size:13px;color:#60a5fa;font-weight:600}
+.news-time{font-size:12px;color:#94a3b8}
+.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>📰 Nouvelles Crypto</h1><p>Dernières actualités</p></div>
+""" + NAV + """
+<div class="card">
+<h2>📋 Dernières Nouvelles</h2>
+<div id="news-container" class="news-grid"><div style="grid-column:1/-1"><div class="spinner"></div></div></div>
+</div>
+</div>
+<script>
+function formatTimeAgo(d){
+try{
+const date=new Date(d);
+const now=new Date();
+const s=Math.floor((now-date)/1000);
+if(s<60)return"À l'instant";
+if(s<3600)return Math.floor(s/60)+'min';
+if(s<86400)return Math.floor(s/3600)+'h';
+return date.toLocaleDateString('fr-FR');
+}catch{return'Récent'}
+}
+function renderNewsCard(a){
+return`<div class="news-card" onclick="window.open('${a.url}','_blank')"><div class="news-title">${a.title}</div><div class="news-meta"><div class="news-source">📍 ${a.source}</div><div class="news-time">${formatTimeAgo(a.published)}</div></div></div>`;
+}
+async function loadNews(){
+try{
+const r=await fetch('/api/crypto-news');
+const d=await r.json();
+if(d.articles&&d.articles.length>0){
+document.getElementById('news-container').innerHTML=d.articles.map(a=>renderNewsCard(a)).join('');
+}
+}catch(e){console.error(e)}
+}
+loadNews();
+setInterval(loadNews,300000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/convertisseur", response_class=HTMLResponse)
+async def convertisseur_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Convertisseur</title>""" + CSS + """
+<style>
+.converter-card{background:linear-gradient(135deg,#1e293b,#0f172a);padding:40px;border-radius:16px;border:1px solid #334155;margin-bottom:30px}
+.conversion-row{display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:center;margin:30px 0}
+.currency-input-group{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155}
+.amount-input{width:100%;padding:15px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;font-size:24px;font-weight:700;font-family:monospace}
+.currency-select{width:100%;padding:12px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;font-size:16px;margin-top:10px}
+.swap-button{width:60px;height:60px;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;border-radius:50%;color:#fff;font-size:24px;cursor:pointer}
+.swap-button:hover{transform:rotate(180deg) scale(1.1)}
+.spinner{border:4px solid #334155;border-top:4px solid #60a5fa;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:20px auto}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>💱 Convertisseur</h1><p>Crypto & Fiat</p></div>
+""" + NAV + """
+<div class="converter-card">
+<h2 style="color:#60a5fa;margin-bottom:30px">Conversion</h2>
+<div class="conversion-row">
+<div class="currency-input-group">
+<label style="color:#94a3b8;font-size:13px;display:block;margin-bottom:10px">Montant</label>
+<input type="number" id="amount-from" class="amount-input" value="1" oninput="convertCurrency('from')">
+<select id="currency-from" class="currency-select" onchange="convertCurrency('from')">
+<option value="BTC" selected>₿ BTC</option>
+<option value="ETH">Ξ ETH</option>
+<option value="USD">🇺🇸 USD</option>
+<option value="EUR">🇪🇺 EUR</option>
+<option value="CAD">🇨🇦 CAD</option>
+</select>
+</div>
+<button class="swap-button" onclick="swapCurrencies()">⇄</button>
+<div class="currency-input-group">
+<label style="color:#94a3b8;font-size:13px;display:block;margin-bottom:10px">Converti</label>
+<input type="number" id="amount-to" class="amount-input" value="107150" oninput="convertCurrency('to')">
+<select id="currency-to" class="currency-select" onchange="convertCurrency('to')">
+<option value="USD" selected>🇺🇸 USD</option>
+<option value="EUR">🇪🇺 EUR</option>
+<option value="CAD">🇨🇦 CAD</option>
+<option value="BTC">₿ BTC</option>
+<option value="ETH">Ξ ETH</option>
+</select>
+</div>
+</div>
+<div style="background:#0f172a;padding:20px;border-radius:12px;border-left:4px solid #60a5fa">
+<div style="color:#94a3b8;font-size:14px;margin-bottom:8px">Taux</div>
+<div id="rate-value" style="color:#e2e8f0;font-size:18px;font-weight:700">Chargement...</div>
+</div>
+</div>
+</div>
+<script>
+let exchangeRates={};
+let isLoading=true;
+async function loadExchangeRates(){
+try{
+const r=await fetch('/api/exchange-rates');
+const d=await r.json();
+if(d.rates){
+exchangeRates=d.rates;
+isLoading=false;
+convertCurrency('from');
+}
+}catch(e){console.error(e);isLoading=false}
+}
+function getRate(from,to){
+if(!exchangeRates[from]||!exchangeRates[to])return 0;
+const fu=exchangeRates[from].usd;
+const tu=exchangeRates[to].usd;
+return fu/tu;
+}
+function convertCurrency(dir){
+if(isLoading)return;
+const af=parseFloat(document.getElementById('amount-from').value)||0;
+const at=parseFloat(document.getElementById('amount-to').value)||0;
+const cf=document.getElementById('currency-from').value;
+const ct=document.getElementById('currency-to').value;
+const rate=getRate(cf,ct);
+if(rate===0){document.getElementById('rate-value').textContent='Taux non disponible';return}
+if(dir==='from'){
+const c=af*rate;
+const f=c<0.01?c.toFixed(8):c<1?c.toFixed(6):c.toFixed(2);
+document.getElementById('amount-to').value=f.replace(/\.?0+$/,'');
+}else{
+const c=at/rate;
+const f=c<0.01?c.toFixed(8):c<1?c.toFixed(6):c.toFixed(2);
+document.getElementById('amount-from').value=f.replace(/\.?0+$/,'');
+}
+const rf=rate<0.01?rate.toFixed(8):rate<1?rate.toFixed(6):rate.toFixed(2);
+document.getElementById('rate-value').textContent=`1 ${cf} = ${rf.replace(/\.?0+$/,'')} ${ct}`;
+}
+function swapCurrencies(){
+const fs=document.getElementById('currency-from');
+const ts=document.getElementById('currency-to');
+const t=fs.value;
+fs.value=ts.value;
+ts.value=t;
+convertCurrency('from');
+}
+loadExchangeRates();
+setInterval(loadExchangeRates,60000);
+document.getElementById('rate-value').textContent='⏳ Chargement...';
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/telegram-test", response_class=HTMLResponse)
+async def telegram_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """
+<style>
+.test-section{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px}
+.test-button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;margin:5px}
+.response-box{background:#0f172a;padding:20px;border-radius:8px;margin-top:15px;max-height:400px;overflow-y:auto;font-family:monospace;font-size:13px}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>🤖 Test Telegram</h1><p>Diagnostic bot</p></div>
+""" + NAV + """
+<div class="test-section">
+<h3 style="color:#60a5fa">Tests</h3>
+<button class="test-button" onclick="testBot()">▶️ Test Bot</button>
+<button class="test-button" onclick="testMessage()">📤 Test Message</button>
+<div id="results" class="response-box">En attente...</div>
+</div>
+</div>
+<script>
+async function testBot(){
+document.getElementById('results').textContent='⏳ Test en cours...';
+try{
+const r=await fetch('/api/telegram-bot-info');
+const d=await r.json();
+document.getElementById('results').textContent=d.ok?'✅ Bot OK: '+d.result.username:'❌ Erreur: '+d.description;
+}catch(e){document.getElementById('results').textContent='❌ '+e.message}
+}
+async function testMessage(){
+document.getElementById('results').textContent='⏳ Envoi...';
+try{
+const r=await fetch('/api/telegram-test');
+const d=await r.json();
+document.getElementById('results').textContent=d.result.ok?'✅ Message envoyé':'❌ Erreur: '+JSON.stringify(d.result);
+}catch(e){document.getElementById('results').textContent='❌ '+e.message}
+}
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/altcoin-season", response_class=HTMLResponse)
+async def altcoin_season_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Altcoin Season</title>""" + CSS + """
+<style>
+.index-value{font-size:72px;font-weight:900;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:10px 0}
+.gauge-bar{width:100%;height:60px;background:linear-gradient(90deg,#f97316 0%,#6b7280 50%,#3b82f6 100%);border-radius:30px;position:relative}
+.gauge-marker{position:absolute;top:-40px;transform:translateX(-50%);transition:left .5s}
+.gauge-arrow{width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-top:40px solid #fff}
+.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>📊 Altcoin Season Index</h1><p>Bitcoin ou Altseason ?</p></div>
+""" + NAV + """
+<div class="card">
+<h2>📈 Index Actuel</h2>
+<div id="chart-container"><div class="spinner"></div></div>
+</div>
+</div>
+<script>
+function getSeasonLabel(i){if(i>=75)return'Altcoin Season';if(i<=25)return'Bitcoin Season';return'Zone Neutre'}
+function getSeasonColor(i){if(i>=75)return'#3b82f6';if(i<=25)return'#f97316';return'#6b7280'}
+function renderGauge(i){
+const lbl=getSeasonLabel(i);
+const col=getSeasonColor(i);
+return`<div style="text-align:center;padding:20px"><div class="index-value">${i}</div><div style="font-size:24px;font-weight:700;color:${col}">${lbl}</div></div><div style="max-width:600px;margin:30px auto"><div class="gauge-bar"><div class="gauge-marker" style="left:${i}%"><div class="gauge-arrow"></div></div></div><div style="display:flex;justify-content:space-between;margin-top:15px;font-size:14px;color:#94a3b8"><span>0<br>Bitcoin Season</span><span>50<br>Neutre</span><span>100<br>Altcoin Season</span></div></div>`;
+}
+async function loadData(){
+try{
+const r=await fetch('/api/altcoin-season-index');
+const d=await r.json();
+if(d.index!==undefined){
+document.getElementById('chart-container').innerHTML=renderGauge(d.index);
+}
+}catch(e){console.error(e);document.getElementById('chart-container').innerHTML=renderGauge(35)}
+}
+loadData();
+setInterval(loadData,300000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+    
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))

@@ -21,7 +21,7 @@ paper_balance = {"USDT": 10000.0}
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.grid{display:grid;gap:20px}.grid-2{grid-template-columns:repeat(auto-fit,minmax(400px,1fr))}.grid-3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.grid-4{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}table{width:100%;border-collapse:collapse;margin-top:15px}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}</style>"""
 
-NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/btc-dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/news">📰 News</a><a href="/trades">Trades</a><a href="/telegram-test">Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">Trades</a><a href="/telegram-test">Telegram</a></div>'
 
 class TradeWebhook(BaseModel):
     action: str
@@ -47,17 +47,11 @@ async def send_telegram_message(message: str):
         return {"ok": False, "error": str(e)}
 
 async def get_market_indicators():
-    """
-    Récupère Fear & Greed et BTC Dominance en temps réel
-    """
-    indicators = {
-        "fear_greed": None,
-        "btc_dominance": None
-    }
+    """Récupère Fear & Greed et BTC Dominance en temps réel"""
+    indicators = {"fear_greed": None, "btc_dominance": None}
     
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            # Fear & Greed
             try:
                 r = await client.get("https://api.alternative.me/fng/")
                 if r.status_code == 200:
@@ -66,7 +60,6 @@ async def get_market_indicators():
             except:
                 pass
             
-            # BTC Dominance
             try:
                 r = await client.get("https://api.coingecko.com/api/v3/global")
                 if r.status_code == 200:
@@ -80,18 +73,14 @@ async def get_market_indicators():
     return indicators
 
 def calculate_percentage(entry_price: float, target_price: float, direction: str) -> float:
-    """
-    Calcule le pourcentage de profit/perte
-    """
+    """Calcule le pourcentage de profit/perte"""
     if direction.upper() == "LONG":
         return ((target_price - entry_price) / entry_price) * 100
-    else:  # SHORT
+    else:
         return ((entry_price - target_price) / entry_price) * 100
 
 def get_confidence_label(score: int) -> str:
-    """
-    Retourne le label de confiance
-    """
+    """Retourne le label de confiance"""
     if score >= 80:
         return "TRÈS ÉLEVÉ"
     elif score >= 60:
@@ -104,13 +93,9 @@ def get_confidence_label(score: int) -> str:
         return "TRÈS FAIBLE"
 
 async def format_trade_message(trade: TradeWebhook) -> str:
-    """
-    Formate le message complet pour Telegram
-    """
-    # Déterminer la direction
+    """Formate le message complet pour Telegram"""
     direction = trade.direction or ("LONG" if trade.action == "BUY" else "SHORT")
     
-    # Message de base
     message = f"""<b>🚨 NOUVEAU TRADE</b>
 
 <b>{trade.symbol}</b>
@@ -118,7 +103,6 @@ async def format_trade_message(trade: TradeWebhook) -> str:
 
 <b>Entry:</b> ${trade.price:.4f}"""
     
-    # Ajouter les Take Profits avec calculs
     if trade.tp1 or trade.tp2 or trade.tp3:
         message += "\n\n<b>Take Profits:</b>"
         
@@ -134,16 +118,13 @@ async def format_trade_message(trade: TradeWebhook) -> str:
             pct = calculate_percentage(trade.price, trade.tp3, direction)
             message += f"\n TP3: ${trade.tp3:.4f} (+{pct:.1f}%)"
     
-    # Ajouter le Stop Loss
     if trade.sl:
         message += f"\n\n<b>Stop Loss:</b> ${trade.sl:.4f}"
     
-    # Ajouter le score de confiance
     if trade.confidence:
         confidence_label = get_confidence_label(trade.confidence)
         message += f"\n\n<b>CONFIANCE: {trade.confidence}%</b> ({confidence_label})"
     
-    # Récupérer et ajouter les indicateurs de marché
     indicators = await get_market_indicators()
     
     details = []
@@ -168,9 +149,7 @@ async def root_head():
 
 @app.post("/tv-webhook")
 async def tradingview_webhook(trade: TradeWebhook):
-    """
-    Webhook pour recevoir les alertes TradingView - VERSION COMPLÈTE
-    """
+    """Webhook pour recevoir les alertes TradingView - VERSION COMPLÈTE"""
     try:
         print("="*60)
         print(f"🎯 WEBHOOK REÇU: {trade.action} {trade.symbol}")
@@ -179,7 +158,6 @@ async def tradingview_webhook(trade: TradeWebhook):
             print(f"🎲 Confiance: {trade.confidence}%")
         print("="*60)
         
-        # Enregistrer le trade
         trade_data = {
             "action": trade.action,
             "symbol": trade.symbol,
@@ -196,14 +174,10 @@ async def tradingview_webhook(trade: TradeWebhook):
         }
         trades_db.append(trade_data)
         
-        # Créer le message formaté
         message = await format_trade_message(trade)
-        
         print(f"📤 Message à envoyer:\n{message}")
         
-        # Envoyer sur Telegram
         telegram_result = await send_telegram_message(message)
-        
         print(f"✅ Résultat Telegram: {telegram_result.get('ok', False)}")
         print("="*60)
         
@@ -215,10 +189,7 @@ async def tradingview_webhook(trade: TradeWebhook):
         
     except Exception as e:
         print(f"❌ ERREUR dans webhook: {str(e)}")
-        return {
-            "status": "error",
-            "error": str(e)
-        }
+        return {"status": "error", "error": str(e)}
 
 @app.get("/api/telegram-test")
 async def test_telegram():
@@ -227,9 +198,7 @@ async def test_telegram():
 
 @app.get("/api/test-full-alert")
 async def test_full_alert():
-    """
-    Test complet avec tous les paramètres
-    """
+    """Test complet avec tous les paramètres"""
     test_trade = TradeWebhook(
         action="SELL",
         symbol="SWTCHUSDT",
@@ -246,14 +215,18 @@ async def test_full_alert():
     message = await format_trade_message(test_trade)
     result = await send_telegram_message(message)
     
-    return {
-        "message": message,
-        "telegram_result": result
-    }
+    return {"message": message, "telegram_result": result}
 
 @app.get("/api/stats")
 async def get_stats():
-    return {"total_trades": len(trades_db), "open_trades": 0, "closed_trades": 0, "win_rate": 0, "total_pnl": 0, "avg_pnl": 0}
+    return {
+        "total_trades": len(trades_db),
+        "open_trades": 0,
+        "closed_trades": 0,
+        "win_rate": 0,
+        "total_pnl": 0,
+        "avg_pnl": 0
+    }
 
 @app.get("/api/fear-greed-full")
 async def get_fear_greed_full():
@@ -279,11 +252,18 @@ async def get_fear_greed_full():
                 }
     except:
         pass
+    
     now = datetime.now()
     tomorrow = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
     return {
-        "current_value": 29, "current_classification": "Fear",
-        "historical": {"now": {"value": 29, "classification": "Fear"}, "yesterday": {"value": 23, "classification": "Extreme Fear"}, "last_week": {"value": 24, "classification": "Extreme Fear"}, "last_month": {"value": 53, "classification": "Neutral"}},
+        "current_value": 29,
+        "current_classification": "Fear",
+        "historical": {
+            "now": {"value": 29, "classification": "Fear"},
+            "yesterday": {"value": 23, "classification": "Extreme Fear"},
+            "last_week": {"value": 24, "classification": "Extreme Fear"},
+            "last_month": {"value": 53, "classification": "Neutral"}
+        },
         "next_update_seconds": int((tomorrow - now).total_seconds()),
         "timestamp": str(int(datetime.now().timestamp())),
         "status": "fallback"
@@ -299,7 +279,9 @@ async def get_btc_dominance():
                 btc = round(market_data["market_cap_percentage"]["btc"], 2)
                 eth = round(market_data["market_cap_percentage"]["eth"], 2)
                 return {
-                    "btc_dominance": btc, "eth_dominance": eth, "others_dominance": round(100 - btc - eth, 2),
+                    "btc_dominance": btc,
+                    "eth_dominance": eth,
+                    "others_dominance": round(100 - btc - eth, 2),
                     "btc_change_24h": round(random.uniform(-0.5, 0.5), 2),
                     "history": {"yesterday": btc - 0.1, "last_week": btc - 0.5, "last_month": btc + 1.2},
                     "total_market_cap": market_data["total_market_cap"]["usd"],
@@ -308,37 +290,64 @@ async def get_btc_dominance():
                 }
     except:
         pass
-    return {"btc_dominance": 58.8, "eth_dominance": 12.9, "others_dominance": 28.3, "btc_change_24h": 1.82, "history": {"yesterday": 58.9, "last_week": 60.1, "last_month": 56.9}, "total_market_cap": 3500000000000, "total_volume_24h": 150000000000, "status": "fallback"}
+    
+    return {
+        "btc_dominance": 58.8,
+        "eth_dominance": 12.9,
+        "others_dominance": 28.3,
+        "btc_change_24h": 1.82,
+        "history": {"yesterday": 58.9, "last_week": 60.1, "last_month": 56.9},
+        "total_market_cap": 3500000000000,
+        "total_volume_24h": 150000000000,
+        "status": "fallback"
+    }
 
 @app.get("/api/heatmap")
 async def get_heatmap():
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.get("https://api.coingecko.com/api/v3/coins/markets", params={"vs_currency": "usd", "order": "market_cap_desc", "per_page": 100, "page": 1, "sparkline": False, "price_change_percentage": "24h"})
+            r = await client.get("https://api.coingecko.com/api/v3/coins/markets", params={
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": 100,
+                "page": 1,
+                "sparkline": False,
+                "price_change_percentage": "24h"
+            })
             if r.status_code == 200:
-                cryptos = [{"symbol": c["symbol"].upper(), "name": c["name"], "price": c["current_price"], "change_24h": round(c.get("price_change_percentage_24h", 0), 2), "market_cap": c["market_cap"], "volume": c["total_volume"]} for c in r.json()]
+                cryptos = [{
+                    "symbol": c["symbol"].upper(),
+                    "name": c["name"],
+                    "price": c["current_price"],
+                    "change_24h": round(c.get("price_change_percentage_24h", 0), 2),
+                    "market_cap": c["market_cap"],
+                    "volume": c["total_volume"]
+                } for c in r.json()]
                 return {"cryptos": cryptos, "status": "success"}
     except:
         pass
-    return {"cryptos": [
-        {"symbol": "BTC", "name": "Bitcoin", "price": 107150, "change_24h": 0.69, "market_cap": 2136218033539, "volume": 37480142027},
-        {"symbol": "ETH", "name": "Ethereum", "price": 3887, "change_24h": 1.61, "market_cap": 467000000000, "volume": 15000000000},
-        {"symbol": "SOL", "name": "Solana", "price": 187, "change_24h": 2.63, "market_cap": 90000000000, "volume": 5000000000}
-    ], "status": "fallback"}
+    
+    return {
+        "cryptos": [
+            {"symbol": "BTC", "name": "Bitcoin", "price": 107150, "change_24h": 0.69, "market_cap": 2136218033539, "volume": 37480142027},
+            {"symbol": "ETH", "name": "Ethereum", "price": 3887, "change_24h": 1.61, "market_cap": 467000000000, "volume": 15000000000},
+            {"symbol": "SOL", "name": "Solana", "price": 187, "change_24h": 2.63, "market_cap": 90000000000, "volume": 5000000000}
+        ],
+        "status": "fallback"
+    }
 
 @app.get("/api/altcoin-season-index")
 async def get_altcoin_season_index():
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.get("https://api.coingecko.com/api/v3/coins/markets", 
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 100,
-                    "page": 1,
-                    "sparkline": False,
-                    "price_change_percentage": "24h,7d,30d"
-                })
+            r = await client.get("https://api.coingecko.com/api/v3/coins/markets", params={
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": 100,
+                "page": 1,
+                "sparkline": False,
+                "price_change_percentage": "24h,7d,30d"
+            })
             
             if r.status_code == 200:
                 cryptos = r.json()
@@ -378,11 +387,11 @@ async def get_crypto_news():
     """
     Récupère les dernières actualités crypto - VERSION ULTRA-ROBUSTE
     """
-    news_articles = []
+    print("\n" + "="*60)
+    print("🔄 API /api/crypto-news appelée")
+    print("="*60)
     
-    print("🔄 Récupération des actualités crypto...")
-    
-    # FALLBACK PRIORITAIRE - Toujours disponible
+    # FALLBACK GARANTI - Toujours disponible
     fallback_news = [
         {
             "title": "🔥 Bitcoin maintient son niveau au-dessus de $100K malgré la volatilité",
@@ -473,39 +482,23 @@ async def get_crypto_news():
             "sentiment": 1,
             "image": None,
             "category": "news"
-        },
-        {
-            "title": "Les volumes de trading DeFi atteignent des sommets historiques",
-            "url": "https://defillama.com",
-            "published": (datetime.now() - timedelta(hours=12)).isoformat(),
-            "source": "DeFi Llama",
-            "sentiment": 1,
-            "image": None,
-            "category": "news"
-        },
-        {
-            "title": "🔥 Trending: Arbitrum (ARB) explose avec +18% cette semaine",
-            "url": "https://www.coingecko.com/en/coins/arbitrum",
-            "published": (datetime.now() - timedelta(hours=7)).isoformat(),
-            "source": "CoinGecko Trending",
-            "sentiment": 1,
-            "image": None,
-            "category": "trending"
         }
     ]
     
-    # Essayer CoinGecko avec timeout très court
+    news_articles = fallback_news.copy()
+    
+    # Essayer CoinGecko (optionnel, ne bloque pas)
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
+        print("📡 Tentative CoinGecko Trending...")
+        async with httpx.AsyncClient(timeout=2.0) as client:
             response = await client.get("https://api.coingecko.com/api/v3/search/trending")
             
             if response.status_code == 200:
                 data = response.json()
-                print(f"✅ CoinGecko Trending: Status {response.status_code}")
+                print(f"✅ CoinGecko OK - Status {response.status_code}")
                 
-                # Remplacer les trending du fallback par les vraies données
                 real_trending = []
-                for coin in data.get("coins", [])[:4]:
+                for coin in data.get("coins", [])[:5]:
                     item = coin.get("item", {})
                     rank = item.get('market_cap_rank', 999)
                     
@@ -519,19 +512,17 @@ async def get_crypto_news():
                         "category": "trending"
                     })
                 
-                # Remplacer les trending du fallback
-                if len(real_trending) > 0:
-                    # Garder les news, remplacer les trending
-                    fallback_news = [n for n in fallback_news if n["category"] != "trending"]
-                    fallback_news.extend(real_trending)
+                if real_trending:
+                    news_articles = [n for n in news_articles if n["category"] != "trending"]
+                    news_articles.extend(real_trending)
                     print(f"✅ {len(real_trending)} trending réels ajoutés")
+            else:
+                print(f"⚠️ CoinGecko status {response.status_code}")
+                
     except Exception as e:
-        print(f"⚠️ CoinGecko inaccessible (timeout/erreur): {e}")
+        print(f"⚠️ CoinGecko inaccessible: {str(e)[:100]}")
     
-    # Utiliser le fallback (avec ou sans données réelles)
-    news_articles = fallback_news
-    
-    # Trier par date (plus récent en premier)
+    # Tri par date
     news_articles.sort(key=lambda x: x["published"], reverse=True)
     
     result = {
@@ -541,7 +532,8 @@ async def get_crypto_news():
         "status": "success"
     }
     
-    print(f"✅ Total final: {len(news_articles)} articles retournés")
+    print(f"✅ RETOUR: {len(news_articles)} articles")
+    print("="*60 + "\n")
     
     return result
 
@@ -554,7 +546,7 @@ async def home():
 """ + NAV + """
 <div class="grid grid-3">
 <div class="card"><h2>✅ Status</h2><p>Dashboard en ligne</p></div>
-<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, News actives</p></div>
+<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles actives</p></div>
 <div class="card"><h2>🔄 Mise à jour</h2><p>Données en temps réel</p></div>
 </div>
 </div></body></html>"""
@@ -619,7 +611,7 @@ loadData();setInterval(loadData,3600000);
 </body></html>"""
     return HTMLResponse(page)
 
-@app.get("/btc-dominance", response_class=HTMLResponse)
+@app.get("/dominance", response_class=HTMLResponse)
 async def btc_dominance_page():
     page = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>BTC Dominance</title>""" + CSS + """
@@ -738,79 +730,273 @@ loadData();setInterval(loadData,30000);console.log('🚀 Heatmap initialisée');
 </body></html>"""
     return HTMLResponse(page)
 
-@app.get("/news", response_class=HTMLResponse)
+@app.get("/nouvelles", response_class=HTMLResponse)
 async def crypto_news_page():
-    """
-    Page d'actualités crypto avec design moderne
-    """
+    """Page des Nouvelles Crypto - VERSION CORRIGÉE"""
     page = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Actualités Crypto</title>""" + CSS + """
-<style>
-.news-container{max-width:100%;margin:0 auto}
-.news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:25px;margin-top:30px}
-.news-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:16px;padding:0;border:1px solid #334155;overflow:hidden;transition:all 0.3s ease;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
-.news-card:hover{transform:translateY(-8px);box-shadow:0 12px 32px rgba(96,165,250,0.3);border-color:#60a5fa}
-.news-card-image{width:100%;height:200px;background:linear-gradient(135deg,#334155,#1e293b);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-.news-card-image img{width:100%;height:100%;object-fit:cover}
-.news-card-image .placeholder{font-size:72px;opacity:0.3}
-.news-badge{position:absolute;top:15px;right:15px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2)}
-.badge-news{background:rgba(59,130,246,0.9);color:#fff}
-.badge-trending{background:rgba(239,68,68,0.9);color:#fff}
-.news-card-content{padding:25px}
-.news-title{font-size:18px;font-weight:700;color:#e2e8f0;margin-bottom:15px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:75px}
-.news-meta{display:flex;justify-content:space-between;align-items:center;margin-top:15px;padding-top:15px;border-top:1px solid #334155;flex-wrap:wrap;gap:10px}
-.news-source{font-size:13px;color:#60a5fa;font-weight:600;display:flex;align-items:center;gap:6px}
-.news-time{font-size:12px;color:#94a3b8;font-weight:500}
-.filters{display:flex;gap:12px;margin-bottom:25px;flex-wrap:wrap;justify-content:center;padding:20px;background:#1e293b;border-radius:12px;border:1px solid #334155}
-.filter-btn{padding:12px 24px;background:#334155;color:#e2e8f0;border:2px solid #475569;border-radius:10px;cursor:pointer;transition:all .3s;font-size:14px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
-.filter-btn:hover{background:#475569;transform:translateY(-2px);box-shadow:0 4px 16px rgba(96,165,250,0.3)}
-.filter-btn.active{background:linear-gradient(135deg,#3b82f6,#60a5fa);border-color:#60a5fa;color:#fff;box-shadow:0 4px 16px rgba(96,165,250,0.5)}
-.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}
-.stat-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:25px;border-radius:12px;text-align:center;border:1px solid #334155;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
-.stat-card .icon{font-size:42px;margin-bottom:12px}
-.stat-card .value{font-size:36px;font-weight:800;color:#e2e8f0;margin-bottom:8px}
-.stat-card .label{font-size:13px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
-.empty-state{text-align:center;padding:80px 20px;color:#94a3b8}
-.empty-state .icon{font-size:120px;opacity:0.3;margin-bottom:20px}
-.empty-state h3{font-size:24px;color:#e2e8f0;margin-bottom:12px}
-.refresh-button{position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 8px 24px rgba(59,130,246,0.4);transition:all 0.3s;display:flex;align-items:center;justify-content:center;z-index:1000}
-.refresh-button:hover{transform:scale(1.1) rotate(180deg);box-shadow:0 12px 32px rgba(59,130,246,0.6)}
-.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
-@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-</style>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>📰 Nouvelles Crypto</title>
+    """ + CSS + """
+    <style>
+        .news-container{max-width:100%;margin:0 auto}
+        .news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:25px;margin-top:30px}
+        .news-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:16px;padding:0;border:1px solid #334155;overflow:hidden;transition:all 0.3s ease;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+        .news-card:hover{transform:translateY(-8px);box-shadow:0 12px 32px rgba(96,165,250,0.3);border-color:#60a5fa}
+        .news-card-image{width:100%;height:200px;background:linear-gradient(135deg,#334155,#1e293b);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+        .news-card-image img{width:100%;height:100%;object-fit:cover}
+        .news-card-image .placeholder{font-size:72px;opacity:0.3}
+        .news-badge{position:absolute;top:15px;right:15px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2)}
+        .badge-news{background:rgba(59,130,246,0.9);color:#fff}
+        .badge-trending{background:rgba(239,68,68,0.9);color:#fff}
+        .news-card-content{padding:25px}
+        .news-title{font-size:18px;font-weight:700;color:#e2e8f0;margin-bottom:15px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:75px}
+        .news-meta{display:flex;justify-content:space-between;align-items:center;margin-top:15px;padding-top:15px;border-top:1px solid #334155;flex-wrap:wrap;gap:10px}
+        .news-source{font-size:13px;color:#60a5fa;font-weight:600;display:flex;align-items:center;gap:6px}
+        .news-time{font-size:12px;color:#94a3b8;font-weight:500}
+        .filters{display:flex;gap:12px;margin-bottom:25px;flex-wrap:wrap;justify-content:center;padding:20px;background:#1e293b;border-radius:12px;border:1px solid #334155}
+        .filter-btn{padding:12px 24px;background:#334155;color:#e2e8f0;border:2px solid #475569;border-radius:10px;cursor:pointer;transition:all .3s;font-size:14px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+        .filter-btn:hover{background:#475569;transform:translateY(-2px)}
+        .filter-btn.active{background:linear-gradient(135deg,#3b82f6,#60a5fa);border-color:#60a5fa;color:#fff}
+        .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}
+        .stat-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:25px;border-radius:12px;text-align:center;border:1px solid #334155}
+        .stat-card .icon{font-size:42px;margin-bottom:12px}
+        .stat-card .value{font-size:36px;font-weight:800;color:#e2e8f0;margin-bottom:8px}
+        .stat-card .label{font-size:13px;color:#94a3b8;font-weight:600;text-transform:uppercase}
+        .empty-state{text-align:center;padding:80px 20px;color:#94a3b8;grid-column:1/-1}
+        .empty-state .icon{font-size:120px;opacity:0.3;margin-bottom:20px}
+        .spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        .refresh-btn{position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 8px 24px rgba(59,130,246,0.4);transition:all 0.3s;z-index:1000}
+        .refresh-btn:hover{transform:scale(1.1) rotate(180deg)}
+        .debug-info{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:15px;margin:20px 0;font-family:monospace;font-size:12px;color:#94a3b8;max-height:200px;overflow-y:auto}
+    </style>
 </head>
-<body><div class="container">
-<div class="header"><h1>📰 Actualités Crypto</h1><p>Les dernières nouvelles du marché des cryptomonnaies</p></div>
-""" + NAV + """
-<div class="news-container">
-<div class="stats-bar">
-<div class="stat-card"><div class="icon">📰</div><div class="value" id="total-news">0</div><div class="label">Articles</div></div>
-<div class="stat-card"><div class="icon">🔥</div><div class="value" id="trending-count">0</div><div class="label">Trending</div></div>
-<div class="stat-card"><div class="icon">⏰</div><div class="value" id="last-update">--:--</div><div class="label">Dernière MAJ</div></div>
-</div>
-<div class="filters">
-<button class="filter-btn active" onclick="filterNews('all')">📊 Tout</button>
-<button class="filter-btn" onclick="filterNews('news')">📰 News</button>
-<button class="filter-btn" onclick="filterNews('trending')">🔥 Trending</button>
-<button class="filter-btn" onclick="filterNews('positive')">📈 Positif</button>
-</div>
-<div class="card">
-<h2>📋 Dernières Actualités</h2>
-<div id="news-container" class="news-grid"><div class="spinner"></div></div>
-</div>
-</div>
-<button class="refresh-button" onclick="loadNews()" title="Actualiser">🔄</button>
-</div>
-<script>
-let allNews=[];
-let currentFilter='all';
-function formatTimeAgo(dateString){const date=new Date(dateString);const now=new Date();const seconds=Math.floor((now-date)/1000);if(seconds<60)return'À l\'instant';if(seconds<3600)return Math.floor(seconds/60)+' min';if(seconds<86400)return Math.floor(seconds/3600)+'h';if(seconds<604800)return Math.floor(seconds/86400)+'j';return date.toLocaleDateString('fr-FR')}
-function renderNewsCard(article){const badgeClass=article.category==='trending'?'badge-trending':'badge-news';const badgeText=article.category==='trending'?'🔥 TRENDING':'📰 NEWS';const imageHtml=article.image?`<img src="${article.image}" alt="${article.title}">`:`<div class="placeholder">📰</div>`;return`<div class="news-card" onclick="window.open('${article.url}','_blank')" data-category="${article.category}" data-sentiment="${article.sentiment}"><div class="news-card-image">${imageHtml}<div class="news-badge ${badgeClass}">${badgeText}</div></div><div class="news-card-content"><div class="news-title">${article.title}</div><div class="news-meta"><div class="news-source">📍 ${article.source}</div><div class="news-time">${formatTimeAgo(article.published)}</div></div></div></div>`}
-function filterNews(filter){currentFilter=filter;document.querySelectorAll('.filter-btn').forEach(btn=>btn.classList.remove('active'));event.target.classList.add('active');let filtered=allNews;if(filter==='news'){filtered=allNews.filter(a=>a.category==='news')}else if(filter==='trending'){filtered=allNews.filter(a=>a.category==='trending')}else if(filter==='positive'){filtered=allNews.filter(a=>a.sentiment>0)}const container=document.getElementById('news-container');if(filtered.length===0){container.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="icon">📭</div><h3>Aucune actualité trouvée</h3><p>Essayez un autre filtre</p></div>`}else{container.innerHTML=filtered.map(article=>renderNewsCard(article)).join('')}}
-async function loadNews(){try{console.log('🔄 Chargement des actualités...');const response=await fetch('/api/crypto-news');const data=await response.json();if(data.articles&&data.articles.length>0){allNews=data.articles;document.getElementById('total-news').textContent=data.count;document.getElementById('trending-count').textContent=data.articles.filter(a=>a.category==='trending').length;document.getElementById('last-update').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});filterNews(currentFilter);console.log(`✅ ${data.count} actualités chargées (Status: ${data.status})`)}else{throw new Error('Aucune donnée')}}catch(error){console.error('❌ Erreur:',error);document.getElementById('news-container').innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="icon">❌</div><h3>Erreur de chargement</h3><p>Impossible de charger les actualités</p><button onclick="loadNews()" style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">🔄 Réessayer</button></div>`}}
-loadNews();setInterval(loadNews,300000);console.log('📰 Section Actualités initialisée');
-</script>
-</body></html>"""
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📰 Nouvelles Crypto</h1>
+            <p>Les dernières actualités du marché des cryptomonnaies</p>
+        </div>
+        """ + NAV + """
+        
+        <div class="news-container">
+            <div class="stats-bar">
+                <div class="stat-card">
+                    <div class="icon">📰</div>
+                    <div class="value" id="total-news">--</div>
+                    <div class="label">Articles</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon">🔥</div>
+                    <div class="value" id="trending-count">--</div>
+                    <div class="label">Trending</div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon">⏰</div>
+                    <div class="value" id="last-update">--:--</div>
+                    <div class="label">Dernière MAJ</div>
+                </div>
+            </div>
+            
+            <div class="filters">
+                <button class="filter-btn active" onclick="filterNews('all')">📊 Tout</button>
+                <button class="filter-btn" onclick="filterNews('news')">📰 News</button>
+                <button class="filter-btn" onclick="filterNews('trending')">🔥 Trending</button>
+                <button class="filter-btn" onclick="filterNews('positive')">📈 Positif</button>
+            </div>
+            
+            <div class="card">
+                <h2>📋 Dernières Nouvelles</h2>
+                <div id="debug-info" class="debug-info" style="display:none"></div>
+                <div id="news-container" class="news-grid">
+                    <div style="grid-column:1/-1">
+                        <div class="spinner"></div>
+                        <p style="text-align:center;color:#94a3b8;margin-top:20px">Chargement des nouvelles...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="refresh-btn" onclick="loadNews(true)" title="Actualiser">🔄</button>
+    </div>
+    
+    <script>
+        let allNews = [];
+        let currentFilter = 'all';
+        let isLoading = false;
+        
+        function log(message, type = 'info') {
+            const debugDiv = document.getElementById('debug-info');
+            const timestamp = new Date().toLocaleTimeString();
+            const colors = {info: '#60a5fa', success: '#22c55e', error: '#ef4444', warning: '#f59e0b'};
+            debugDiv.innerHTML += `<div style="color:${colors[type]}">[${timestamp}] ${message}</div>`;
+            debugDiv.style.display = 'block';
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+        
+        function formatTimeAgo(dateString) {
+            try {
+                const date = new Date(dateString);
+                const now = new Date();
+                const seconds = Math.floor((now - date) / 1000);
+                
+                if (seconds < 60) return "À l'instant";
+                if (seconds < 3600) return Math.floor(seconds / 60) + ' min';
+                if (seconds < 86400) return Math.floor(seconds / 3600) + 'h';
+                if (seconds < 604800) return Math.floor(seconds / 86400) + 'j';
+                return date.toLocaleDateString('fr-FR');
+            } catch (e) {
+                return 'Récent';
+            }
+        }
+        
+        function renderNewsCard(article) {
+            const badgeClass = article.category === 'trending' ? 'badge-trending' : 'badge-news';
+            const badgeText = article.category === 'trending' ? '🔥 TRENDING' : '📰 NEWS';
+            const imageHtml = article.image ? 
+                `<img src="${article.image}" alt="${article.title}" onerror="this.parentElement.innerHTML='<div class=\\'placeholder\\'>📰</div>'">` : 
+                `<div class="placeholder">📰</div>`;
+            
+            return `
+                <div class="news-card" onclick="window.open('${article.url}', '_blank')" 
+                     data-category="${article.category}" data-sentiment="${article.sentiment}">
+                    <div class="news-card-image">
+                        ${imageHtml}
+                        <div class="news-badge ${badgeClass}">${badgeText}</div>
+                    </div>
+                    <div class="news-card-content">
+                        <div class="news-title">${article.title}</div>
+                        <div class="news-meta">
+                            <div class="news-source">📍 ${article.source}</div>
+                            <div class="news-time">${formatTimeAgo(article.published)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function filterNews(filter) {
+            currentFilter = filter;
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            let filtered = allNews;
+            if (filter === 'news') {
+                filtered = allNews.filter(a => a.category === 'news');
+            } else if (filter === 'trending') {
+                filtered = allNews.filter(a => a.category === 'trending');
+            } else if (filter === 'positive') {
+                filtered = allNews.filter(a => a.sentiment > 0);
+            }
+            
+            log(`Filtre appliqué: ${filter} - ${filtered.length} articles`, 'info');
+            
+            const container = document.getElementById('news-container');
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">📭</div>
+                        <h3>Aucune nouvelle trouvée</h3>
+                        <p>Essayez un autre filtre</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = filtered.map(article => renderNewsCard(article)).join('');
+            }
+        }
+        
+        async function loadNews(showDebug = false) {
+            if (isLoading) {
+                console.log('⚠️ Chargement déjà en cours...');
+                return;
+            }
+            
+            isLoading = true;
+            log('🔄 Début du chargement...', 'info');
+            
+            try {
+                log('📡 Appel API /api/crypto-news...', 'info');
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                const response = await fetch('/api/crypto-news', {
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                log(`✅ Réponse reçue: ${response.status} ${response.statusText}`, 'success');
+                
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                log(`📦 Données parsées: ${data.count} articles`, 'info');
+                
+                if (!data.articles || !Array.isArray(data.articles)) {
+                    throw new Error('Format de données invalide');
+                }
+                
+                if (data.articles.length === 0) {
+                    throw new Error('Aucun article retourné');
+                }
+                
+                allNews = data.articles;
+                
+                document.getElementById('total-news').textContent = data.count || allNews.length;
+                document.getElementById('trending-count').textContent = 
+                    allNews.filter(a => a.category === 'trending').length;
+                document.getElementById('last-update').textContent = 
+                    new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+                
+                log(`✅ ${allNews.length} articles chargés avec succès`, 'success');
+                
+                filterNews(currentFilter);
+                
+                if (!showDebug) {
+                    setTimeout(() => {
+                        document.getElementById('debug-info').style.display = 'none';
+                    }, 3000);
+                }
+                
+            } catch (error) {
+                log(`❌ ERREUR: ${error.message}`, 'error');
+                console.error('Erreur complète:', error);
+                
+                const container = document.getElementById('news-container');
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="icon">❌</div>
+                        <h3>Erreur de chargement</h3>
+                        <p>${error.message}</p>
+                        <button onclick="loadNews(true)" 
+                                style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:#fff;
+                                       border:none;border-radius:8px;cursor:pointer;font-weight:600">
+                            🔄 Réessayer
+                        </button>
+                    </div>
+                `;
+            } finally {
+                isLoading = false;
+            }
+        }
+        
+        log('🚀 Initialisation de la page Nouvelles', 'info');
+        loadNews(true);
+        
+        setInterval(() => loadNews(false), 300000);
+        
+        console.log('📰 Page Nouvelles Crypto initialisée');
+    </script>
+</body>
+</html>"""
     return HTMLResponse(page)
 
 @app.get("/telegram-test", response_class=HTMLResponse)
@@ -988,13 +1174,13 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     print("\n" + "="*60)
-    print("🚀 DASHBOARD TRADING - COMPLET")
+    print("🚀 DASHBOARD TRADING - COMPLET ET CORRIGÉ")
     print("="*60)
     print("✅ Fear & Greed : /fear-greed")
-    print("✅ BTC Dominance : /btc-dominance")
+    print("✅ BTC Dominance : /dominance")
     print("✅ Altcoin Season : /altcoin-season")
     print("✅ Heatmap : /heatmap")
-    print("✅ Actualités Crypto : /news")
+    print("✅ Nouvelles Crypto : /nouvelles")
     print("✅ Trades : /trades")
     print("✅ Telegram Test : /telegram-test")
     print("="*60 + "\n")

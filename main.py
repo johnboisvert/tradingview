@@ -21,7 +21,7 @@ paper_balance = {"USDT": 10000.0}
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.grid{display:grid;gap:20px}.grid-2{grid-template-columns:repeat(auto-fit,minmax(400px,1fr))}.grid-3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.grid-4{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}table{width:100%;border-collapse:collapse;margin-top:15px}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}</style>"""
 
-NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/btc-dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/test-webhook">Test Webhook</a><a href="/trades">Trades</a><a href="/telegram-test">Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/btc-dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/trades">Trades</a><a href="/telegram-test">Telegram</a></div>'
 
 class TradeWebhook(BaseModel):
     action: str
@@ -33,6 +33,8 @@ class TradeWebhook(BaseModel):
     tp1: Optional[float] = None
     tp2: Optional[float] = None
     tp3: Optional[float] = None
+    confidence: Optional[int] = None
+    direction: Optional[str] = None
 
 async def send_telegram_message(message: str):
     try:
@@ -43,6 +45,117 @@ async def send_telegram_message(message: str):
             return result
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+async def get_market_indicators():
+    """
+    Récupère Fear & Greed et BTC Dominance en temps réel
+    """
+    indicators = {
+        "fear_greed": None,
+        "btc_dominance": None
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            # Fear & Greed
+            try:
+                r = await client.get("https://api.alternative.me/fng/")
+                if r.status_code == 200:
+                    data = r.json()
+                    indicators["fear_greed"] = int(data["data"][0]["value"])
+            except:
+                pass
+            
+            # BTC Dominance
+            try:
+                r = await client.get("https://api.coingecko.com/api/v3/global")
+                if r.status_code == 200:
+                    data = r.json()
+                    indicators["btc_dominance"] = round(data["data"]["market_cap_percentage"]["btc"], 1)
+            except:
+                pass
+    except:
+        pass
+    
+    return indicators
+
+def calculate_percentage(entry_price: float, target_price: float, direction: str) -> float:
+    """
+    Calcule le pourcentage de profit/perte
+    """
+    if direction.upper() == "LONG":
+        return ((target_price - entry_price) / entry_price) * 100
+    else:  # SHORT
+        return ((entry_price - target_price) / entry_price) * 100
+
+def get_confidence_label(score: int) -> str:
+    """
+    Retourne le label de confiance
+    """
+    if score >= 80:
+        return "TRÈS ÉLEVÉ"
+    elif score >= 60:
+        return "ÉLEVÉ"
+    elif score >= 40:
+        return "MOYEN"
+    elif score >= 20:
+        return "FAIBLE"
+    else:
+        return "TRÈS FAIBLE"
+
+async def format_trade_message(trade: TradeWebhook) -> str:
+    """
+    Formate le message complet pour Telegram
+    """
+    # Déterminer la direction
+    direction = trade.direction or ("LONG" if trade.action == "BUY" else "SHORT")
+    
+    # Message de base
+    message = f"""<b>🚨 NOUVEAU TRADE</b>
+
+<b>{trade.symbol}</b>
+<b>Direction: {direction}</b> | {trade.confidence or 50}
+
+<b>Entry:</b> ${trade.price:.4f}"""
+    
+    # Ajouter les Take Profits avec calculs
+    if trade.tp1 or trade.tp2 or trade.tp3:
+        message += "\n\n<b>Take Profits:</b>"
+        
+        if trade.tp1:
+            pct = calculate_percentage(trade.price, trade.tp1, direction)
+            message += f"\n TP1: ${trade.tp1:.4f} (+{pct:.1f}%)"
+        
+        if trade.tp2:
+            pct = calculate_percentage(trade.price, trade.tp2, direction)
+            message += f"\n TP2: ${trade.tp2:.4f} (+{pct:.1f}%)"
+        
+        if trade.tp3:
+            pct = calculate_percentage(trade.price, trade.tp3, direction)
+            message += f"\n TP3: ${trade.tp3:.4f} (+{pct:.1f}%)"
+    
+    # Ajouter le Stop Loss
+    if trade.sl:
+        message += f"\n\n<b>Stop Loss:</b> ${trade.sl:.4f}"
+    
+    # Ajouter le score de confiance
+    if trade.confidence:
+        confidence_label = get_confidence_label(trade.confidence)
+        message += f"\n\n<b>CONFIANCE: {trade.confidence}%</b> ({confidence_label})"
+    
+    # Récupérer et ajouter les indicateurs de marché
+    indicators = await get_market_indicators()
+    
+    details = []
+    if indicators["fear_greed"]:
+        details.append(f"F&G {indicators['fear_greed']}")
+    if indicators["btc_dominance"]:
+        details.append(f"BTC.D {indicators['btc_dominance']}%")
+    
+    if details:
+        message += f"\n<i>Pourquoi ce score ? {' | '.join(details)}</i>"
+    
+    return message
 
 @app.get("/health")
 @app.head("/health")
@@ -55,18 +168,88 @@ async def root_head():
 
 @app.post("/tv-webhook")
 async def tradingview_webhook(trade: TradeWebhook):
-    trade_data = {
-        "action": trade.action, "symbol": trade.symbol, "price": trade.price,
-        "quantity": trade.quantity, "timestamp": datetime.now().isoformat(), "status": "open"
-    }
-    trades_db.append(trade_data)
-    await send_telegram_message(f"<b>{trade.action} {trade.symbol}</b>\n\nPrix: ${trade.price:,.2f}")
-    return {"status": "success", "trade": trade_data}
+    """
+    Webhook pour recevoir les alertes TradingView - VERSION COMPLÈTE
+    """
+    try:
+        print("="*60)
+        print(f"🎯 WEBHOOK REÇU: {trade.action} {trade.symbol}")
+        print(f"📊 Prix: ${trade.price}")
+        if trade.confidence:
+            print(f"🎲 Confiance: {trade.confidence}%")
+        print("="*60)
+        
+        # Enregistrer le trade
+        trade_data = {
+            "action": trade.action,
+            "symbol": trade.symbol,
+            "price": trade.price,
+            "quantity": trade.quantity,
+            "direction": trade.direction or ("LONG" if trade.action == "BUY" else "SHORT"),
+            "sl": trade.sl,
+            "tp1": trade.tp1,
+            "tp2": trade.tp2,
+            "tp3": trade.tp3,
+            "confidence": trade.confidence,
+            "timestamp": datetime.now().isoformat(),
+            "status": "open"
+        }
+        trades_db.append(trade_data)
+        
+        # Créer le message formaté
+        message = await format_trade_message(trade)
+        
+        print(f"📤 Message à envoyer:\n{message}")
+        
+        # Envoyer sur Telegram
+        telegram_result = await send_telegram_message(message)
+        
+        print(f"✅ Résultat Telegram: {telegram_result.get('ok', False)}")
+        print("="*60)
+        
+        return {
+            "status": "success",
+            "trade": trade_data,
+            "telegram": telegram_result
+        }
+        
+    except Exception as e:
+        print(f"❌ ERREUR dans webhook: {str(e)}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
 
 @app.get("/api/telegram-test")
 async def test_telegram():
-    result = await send_telegram_message(f"Test Bot OK! {datetime.now().strftime('%H:%M:%S')}")
+    result = await send_telegram_message(f"✅ Test Bot OK! {datetime.now().strftime('%H:%M:%S')}")
     return {"result": result}
+
+@app.get("/api/test-full-alert")
+async def test_full_alert():
+    """
+    Test complet avec tous les paramètres
+    """
+    test_trade = TradeWebhook(
+        action="SELL",
+        symbol="SWTCHUSDT",
+        price=0.0926,
+        quantity=1.0,
+        direction="SHORT",
+        tp1=0.0720,
+        tp2=0.0584,
+        tp3=0.0378,
+        sl=0.1063,
+        confidence=50
+    )
+    
+    message = await format_trade_message(test_trade)
+    result = await send_telegram_message(message)
+    
+    return {
+        "message": message,
+        "telegram_result": result
+    }
 
 @app.get("/api/stats")
 async def get_stats():
@@ -142,6 +325,53 @@ async def get_heatmap():
         {"symbol": "ETH", "name": "Ethereum", "price": 3887, "change_24h": 1.61, "market_cap": 467000000000, "volume": 15000000000},
         {"symbol": "SOL", "name": "Solana", "price": 187, "change_24h": 2.63, "market_cap": 90000000000, "volume": 5000000000}
     ], "status": "fallback"}
+
+@app.get("/api/altcoin-season-index")
+async def get_altcoin_season_index():
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get("https://api.coingecko.com/api/v3/coins/markets", 
+                params={
+                    "vs_currency": "usd",
+                    "order": "market_cap_desc",
+                    "per_page": 100,
+                    "page": 1,
+                    "sparkline": False,
+                    "price_change_percentage": "24h,7d,30d"
+                })
+            
+            if r.status_code == 200:
+                cryptos = r.json()
+                btc_data = next((c for c in cryptos if c['symbol'].lower() == 'btc'), None)
+                
+                if btc_data and len(cryptos) > 1:
+                    btc_change = btc_data.get('price_change_percentage_30d_in_currency', 0) or 0
+                    altcoins = [c for c in cryptos if c['symbol'].lower() != 'btc']
+                    outperforming = 0
+                    
+                    for coin in altcoins[:99]:
+                        coin_change = coin.get('price_change_percentage_30d_in_currency', -1000)
+                        if coin_change is not None and coin_change > btc_change:
+                            outperforming += 1
+                    
+                    index = round((outperforming / 99) * 100) if len(altcoins) >= 99 else 50
+                    
+                    return {
+                        "index": max(0, min(100, index)),
+                        "status": "success",
+                        "btc_change": round(btc_change, 2),
+                        "outperforming": outperforming,
+                        "timestamp": datetime.now().isoformat()
+                    }
+    except Exception as e:
+        print(f"Erreur API Altcoin Season: {e}")
+    
+    return {
+        "index": 35,
+        "status": "fallback",
+        "message": "Utilisation de données estimées",
+        "timestamp": datetime.now().isoformat()
+    }
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -323,7 +553,6 @@ async def heatmap_page():
     gap:6px
 }
 
-/* Très grandes tuiles - tout visible */
 .crypto-tile.size-xl .crypto-symbol{
     font-size:36px;
     font-weight:900;
@@ -369,7 +598,6 @@ async def heatmap_page():
     display:block
 }
 
-/* Grandes tuiles */
 .crypto-tile.size-lg .crypto-symbol{
     font-size:28px;
     font-weight:900;
@@ -414,7 +642,6 @@ async def heatmap_page():
     display:block
 }
 
-/* Tuiles moyennes */
 .crypto-tile.size-md .crypto-symbol{
     font-size:22px;
     font-weight:900;
@@ -455,7 +682,6 @@ async def heatmap_page():
     display:block
 }
 
-/* Petites tuiles - minimal */
 .crypto-tile.size-sm .crypto-symbol{
     font-size:18px;
     font-weight:900;
@@ -860,7 +1086,7 @@ async def telegram_page():
     </div>
     
     <div class="step" id="step4">
-        <strong>4. Test avec Trade simulé</strong>
+        <strong>4. Test avec Trade simulé COMPLET</strong>
         <button class="test-button" onclick="simulateTrade()">▶️ Simuler Trade</button>
         <div id="result4"></div>
     </div>
@@ -1018,34 +1244,22 @@ async function sendTestMessage(){
 async function simulateTrade(){
     const step = document.getElementById('step4');
     step.classList.add('active');
-    addLog('📊 Simulation d\'un trade...', 'info');
+    addLog('📊 Simulation d\'un trade COMPLET...', 'info');
     
     try{
-        const tradeData = {
-            action: 'BUY',
-            symbol: 'BTCUSDT',
-            price: 107250.50,
-            quantity: 0.001
-        };
-        
-        const r = await fetch('/tv-webhook', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(tradeData)
-        });
+        const r = await fetch('/api/test-full-alert');
         const d = await r.json();
         
-        if(d.status === 'success'){
+        if(d.telegram_result && d.telegram_result.ok){
             step.classList.remove('active');
             step.classList.add('success');
             document.getElementById('result4').innerHTML = `
                 <div class="info-box success" style="margin-top:10px">
                     ✅ Trade simulé envoyé !<br>
-                    <strong>Action:</strong> ${tradeData.action}<br>
-                    <strong>Symbol:</strong> ${tradeData.symbol}<br>
-                    <strong>Prix:</strong> ${tradeData.price}
+                    <strong>Message envoyé sur Telegram avec tous les détails</strong><br>
+                    <pre style="margin-top:10px;padding:10px;background:#000;border-radius:5px;font-size:12px;overflow-x:auto">${d.message}</pre>
                 </div>`;
-            addLog(`✅ Trade simulé: ${tradeData.action} ${tradeData.symbol} @ ${tradeData.price}`, 'success');
+            addLog(`✅ Trade COMPLET simulé et envoyé!`, 'success');
         }else{
             throw new Error('Erreur lors de la simulation');
         }
@@ -1096,7 +1310,6 @@ loadConfig();
 </body></html>"""
     return HTMLResponse(page)
 
-# Nouvelles routes API pour le diagnostic Telegram
 @app.get("/api/telegram-config")
 async def get_telegram_config():
     return {
@@ -1446,7 +1659,7 @@ function renderGauge(index){
 async function loadAltcoinSeasonData(){
     try{
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // Timeout 8 secondes
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
         
         const response = await fetch('/api/altcoin-season-index', {
             signal: controller.signal
@@ -1467,165 +1680,17 @@ async function loadAltcoinSeasonData(){
         }
     }catch(error){
         console.error('❌ Erreur:', error);
-        // Fallback immédiat avec valeur d'exemple
         currentIndex = 35;
         document.getElementById('chart-container').innerHTML = renderGauge(currentIndex) + 
             '<p style="text-align:center;color:#f59e0b;margin-top:20px;font-size:14px">⚠️ Mode hors ligne - Valeur estimée affichée</p>';
     }
 }
 
-// Charger immédiatement
 loadAltcoinSeasonData();
-
-// Refresh toutes les 5 minutes
 setInterval(loadAltcoinSeasonData, 300000);
-
 console.log('📊 Altcoin Season Index initialisé');
 </script>
 
-</body></html>"""
-    return HTMLResponse(page)
-
-# Route API pour récupérer l'index Altcoin Season
-@app.get("/api/altcoin-season-index")
-async def get_altcoin_season_index():
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # Récupération des top 100 cryptos avec données 24h
-            r = await client.get("https://api.coingecko.com/api/v3/coins/markets", 
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 100,
-                    "page": 1,
-                    "sparkline": False,
-                    "price_change_percentage": "24h,7d,30d"
-                })
-            
-            if r.status_code == 200:
-                cryptos = r.json()
-                
-                # Trouver Bitcoin
-                btc_data = next((c for c in cryptos if c['symbol'].lower() == 'btc'), None)
-                
-                if btc_data and len(cryptos) > 1:
-                    # Utiliser le changement 30d comme approximation
-                    btc_change = btc_data.get('price_change_percentage_30d_in_currency', 0) or 0
-                    
-                    # Compter combien d'altcoins surperforment BTC
-                    altcoins = [c for c in cryptos if c['symbol'].lower() != 'btc']
-                    outperforming = 0
-                    
-                    for coin in altcoins[:99]:  # Top 100 moins BTC
-                        coin_change = coin.get('price_change_percentage_30d_in_currency', -1000)
-                        if coin_change is not None and coin_change > btc_change:
-                            outperforming += 1
-                    
-                    # Calculer l'index
-                    index = round((outperforming / 99) * 100) if len(altcoins) >= 99 else 50
-                    
-                    return {
-                        "index": max(0, min(100, index)),  # Limiter entre 0 et 100
-                        "status": "success",
-                        "btc_change": round(btc_change, 2),
-                        "outperforming": outperforming,
-                        "timestamp": datetime.now().isoformat()
-                    }
-    except Exception as e:
-        print(f"Erreur API Altcoin Season: {e}")
-    
-    # Fallback avec valeur réaliste basée sur le marché actuel
-    # En période de consolidation, l'index est généralement autour de 30-40
-    return {
-        "index": 35,
-        "status": "fallback",
-        "message": "Utilisation de données estimées",
-        "timestamp": datetime.now().isoformat()
-    }
-
-@app.get("/test-webhook", response_class=HTMLResponse)
-async def test_webhook_page():
-    page = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Test Webhook</title>""" + CSS + """</head>
-<body><div class="container">
-<div class="header"><h1>📊 Test Webhook TradingView</h1><p>Simulez une alerte</p></div>
-""" + NAV + """
-<div class="card">
-<h2>🧪 Tester le Webhook</h2>
-<button onclick="testBuy()" style="padding:20px 40px;background:#22c55e;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:18px;margin:10px">
-🟢 Simuler BUY
-</button>
-<button onclick="testSell()" style="padding:20px 40px;background:#ef4444;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:18px;margin:10px">
-🔴 Simuler SELL
-</button>
-<div id="result" style="margin-top:30px;padding:20px;background:#1e293b;border-radius:8px;font-family:monospace;min-height:100px"></div>
-</div>
-<div class="card">
-<h2>📋 Configuration TradingView</h2>
-<p style="color:#94a3b8;line-height:1.8">
-<strong>URL du Webhook:</strong><br>
-<code style="background:#0f172a;padding:10px;border-radius:4px;display:block;margin:10px 0;color:#60a5fa">
-https://tradingview-gd03.onrender.com/tv-webhook
-</code>
-</p>
-<p style="color:#94a3b8;line-height:1.8">
-<strong>Message JSON:</strong><br>
-<code style="background:#0f172a;padding:10px;border-radius:4px;display:block;margin:10px 0;color:#60a5fa;white-space:pre">
-{
-  "action": "{{strategy.order.action}}",
-  "symbol": "{{ticker}}",
-  "price": {{close}},
-  "quantity": 0.001
-}</code>
-</p>
-</div>
-</div>
-<script>
-async function testBuy(){
-    document.getElementById('result').innerHTML = '⏳ Envoi en cours...';
-    try{
-        const r = await fetch('/tv-webhook', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                action: 'BUY',
-                symbol: 'BTCUSDT',
-                price: 107500.00,
-                quantity: 0.001
-            })
-        });
-        const d = await r.json();
-        document.getElementById('result').innerHTML = 
-            '✅ Signal BUY envoyé!\\n\\n' +
-            'Réponse: ' + JSON.stringify(d, null, 2) + '\\n\\n' +
-            '🎉 Vérifiez Telegram dans le groupe "Signals"!';
-    }catch(e){
-        document.getElementById('result').innerHTML = '❌ Erreur: ' + e.message;
-    }
-}
-async function testSell(){
-    document.getElementById('result').innerHTML = '⏳ Envoi en cours...';
-    try{
-        const r = await fetch('/tv-webhook', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                action: 'SELL',
-                symbol: 'ETHUSDT',
-                price: 3850.00,
-                quantity: 0.01
-            })
-        });
-        const d = await r.json();
-        document.getElementById('result').innerHTML = 
-            '✅ Signal SELL envoyé!\\n\\n' +
-            'Réponse: ' + JSON.stringify(d, null, 2) + '\\n\\n' +
-            '🎉 Vérifiez Telegram dans le groupe "Signals"!';
-    }catch(e){
-        document.getElementById('result').innerHTML = '❌ Erreur: ' + e.message;
-    }
-}
-</script>
 </body></html>"""
     return HTMLResponse(page)
 
@@ -1637,6 +1702,8 @@ if __name__ == "__main__":
     print("="*60)
     print("✅ Fear & Greed : /fear-greed")
     print("✅ BTC Dominance : /btc-dominance")
+    print("✅ Altcoin Season : /altcoin-season")
     print("✅ Heatmap : /heatmap")
+    print("✅ Telegram Test : /telegram-test")
     print("="*60 + "\n")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

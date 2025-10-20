@@ -970,7 +970,7 @@ async def home():
 """ + NAV + """
 <div class="grid grid-3">
 <div class="card"><h2>✅ Status</h2><p>Dashboard en ligne</p></div>
-<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles, Trades, Convertisseur, Calendrier, Bullrun Phase</p></div>
+<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles, Trades, Convertisseur, Calendrier, Bullrun Phase, Graphiques</p></div>
 <div class="card"><h2>🔄 Mise à jour</h2><p>Données en temps réel</p></div>
 </div>
 </div></body></html>"""
@@ -3551,12 +3551,14 @@ if __name__ == "__main__":
     print("✅ Convertisseur : /convertisseur (💱 CRYPTO & FIAT)")
     print("✅ Calendrier Économique : /calendrier (📅 ÉVÉNEMENTS)")
     print("✅ Bullrun Phase : /bullrun-phase (🚀 DÉTECTION PHASE)")
+    print("✅ Graphiques Interactifs : /graphiques (📈 CHART.JS)")
     print("✅ Telegram Test : /telegram-test")
     print("="*60)
     print("📊 API Disponibles:")
     print("   /api/exchange-rates - Taux de change temps réel")
     print("   /api/economic-calendar - Événements économiques")
     print("   /api/bullrun-phase - Détection phase du cycle")
+    print("   /api/chart-data - Données historiques pour graphiques")
     print("   /api/trades - Liste tous les trades")
     print("   /api/stats - Statistiques détaillées")
     print("   /api/heatmap - Données heatmap avec cache")

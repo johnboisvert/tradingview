@@ -970,7 +970,7 @@ async def home():
 """ + NAV + """
 <div class="grid grid-3">
 <div class="card"><h2>✅ Status</h2><p>Dashboard en ligne</p></div>
-<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles, Trades, Convertisseur, Calendrier, Bullrun Phase, Graphiques</p></div>
+<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles, Trades, Convertisseur, Calendrier, Bullrun Phase</p></div>
 <div class="card"><h2>🔄 Mise à jour</h2><p>Données en temps réel</p></div>
 </div>
 </div></body></html>"""
@@ -3551,14 +3551,12 @@ if __name__ == "__main__":
     print("✅ Convertisseur : /convertisseur (💱 CRYPTO & FIAT)")
     print("✅ Calendrier Économique : /calendrier (📅 ÉVÉNEMENTS)")
     print("✅ Bullrun Phase : /bullrun-phase (🚀 DÉTECTION PHASE)")
-    print("✅ Graphiques Interactifs : /graphiques (📈 CHART.JS)")
     print("✅ Telegram Test : /telegram-test")
     print("="*60)
     print("📊 API Disponibles:")
     print("   /api/exchange-rates - Taux de change temps réel")
     print("   /api/economic-calendar - Événements économiques")
     print("   /api/bullrun-phase - Détection phase du cycle")
-    print("   /api/chart-data - Données historiques pour graphiques")
     print("   /api/trades - Liste tous les trades")
     print("   /api/stats - Statistiques détaillées")
     print("   /api/heatmap - Données heatmap avec cache")
@@ -4934,66 +4932,6 @@ async def altcoin_season_page():
 <style>
 .altcoin-container{max-width:100%;margin:0 auto}
 .chart-container{position:relative;width:100%;background:#1e293b;border-radius:12px;padding:30px;border:1px solid #334155;box-shadow:0 8px 24px rgba(0,0,0,0.3);min-height:600px}
-.current-index{text-align:center;padding:20px}
-.index-value{font-size:72px;font-weight:900;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:10px 0}
-.index-label{font-size:24px;font-weight:700;color:#e2e8f0;margin-top:10px}
-.gauge-container{position:relative;width:100%;max-width:600px;height:300px;margin:30px auto}
-.gauge-bar{width:100%;height:60px;background:linear-gradient(90deg,#f97316 0%,#6b7280 25%,#6b7280 75%,#3b82f6 100%);border-radius:30px;position:relative;box-shadow:inset 0 2px 8px rgba(0,0,0,0.3)}
-.gauge-marker{position:absolute;top:-40px;transform:translateX(-50%);transition:left 0.5s ease}
-.gauge-arrow{width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-top:40px solid #fff;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.3))}
-.gauge-labels{display:flex;justify-content:space-between;margin-top:15px;font-size:14px;font-weight:600}
-.gauge-labels span{color:#94a3b8}
-.info-card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}
-.info-card h3{color:#60a5fa;margin-bottom:15px;font-size:20px}
-.info-card p{color:#94a3b8;line-height:1.8;margin-bottom:10px}
-.info-card ul{color:#94a3b8;line-height:1.8;margin-left:20px}
-.info-card ul li{margin-bottom:8px}
-.season-indicator{display:inline-block;padding:8px 16px;border-radius:8px;font-weight:700;font-size:16px;margin:10px 5px}
-.season-btc{background:linear-gradient(135deg,#f97316,#fb923c);color:#fff}
-.season-alt{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-top:30px}
-.stat-card{background:#0f172a;padding:20px;border-radius:12px;text-align:center;border:1px solid #334155}
-.stat-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;font-weight:600}
-.stat-card .value{color:#e2e8f0;font-size:32px;font-weight:800}
-.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
-@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-.external-link{text-align:center;margin-top:20px;padding:15px;background:#0f172a;border-radius:8px;border:1px solid #334155}
-.external-link a{color:#60a5fa;text-decoration:none;font-weight:600;font-size:16px;transition:color 0.3s}
-.external-link a:hover{color:#93c5fd}
-</style>
-</head>
-<body><div class="container">
-<div class="header"><h1>📊 Altcoin Season Index</h1><p>Sommes-nous en Bitcoin Season ou Altcoin Season ?</p></div>
-""" + NAV + """
-<div class="altcoin-container">
-<div class="info-card">
-<h3>🎯 Qu'est-ce que l'Altcoin Season Index ?</h3>
-<p>L'<strong>Altcoin Season Index</strong> mesure la performance des altcoins par rapport au Bitcoin sur les 90 derniers jours. Il analyse les 100 principales cryptomonnaies pour déterminer si nous sommes en "Bitcoin Season" ou en "Altcoin Season".</p>
-<div style="margin:20px 0"><p><strong>Interprétation :</strong></p><ul><li><span class="season-indicator season-btc">Bitcoin Season (0-25)</span> - Le Bitcoin surperforme la majorité des altcoins</li><li><span class="season-indicator" style="background:linear-gradient(135deg,#6b7280,#9ca3af);color:#fff">Zone Neutre (25-75)</span> - Performance mixte</li><li><span class="season-indicator season-alt">Altcoin Season (75-100)</span> - Les altcoins surperforment le Bitcoin</li></ul></div>
-<p><strong>Comment ça marche :</strong> Si 75% ou plus des 100 principales cryptos ont mieux performé que le Bitcoin sur 90 jours, alors nous sommes officiellement en <strong>Altcoin Season</strong> ! 🚀</p>
-</div>
-<div class="card">
-<h2>📈 Index Actuel</h2>
-<div class="chart-container" id="chart-container"><div class="spinner"></div></div>
-<div class="external-link"><p style="color:#94a3b8;margin-bottom:10px">Voir le graphique historique complet :</p><a href="https://www.coinglass.com/pro/AltcoinSeasonIndex" target="_blank">📊 Ouvrir sur CoinGlass (graphique interactif complet)</a></div>
-</div>
-<div class="info-card">
-<h3>💡 Comment utiliser cet indicateur ?</h3>
-<ul><li><strong>Stratégie Bitcoin Season :</strong> Privilégiez l'accumulation de BTC et des cryptos majeures</li><li><strong>Stratégie Altcoin Season :</strong> C'est le moment idéal pour trader les altcoins avec potentiel</li><li><strong>Zone Neutre :</strong> Restez prudent et diversifiez votre portefeuille</li></ul>
-<p style="margin-top:15px">⚠️ <strong>Note :</strong> Cet indicateur est basé sur des données historiques. Utilisez-le comme un outil parmi d'autres dans votre analyse de marché.</p>
-</div>
-</div>
-</div>
-<script>
-let currentIndex=0;
-function getSeasonLabel(index){if(index>=75)return'Altcoin Season';if(index<=25)return'Bitcoin Season';return'Zone Neutre'}
-function getSeasonColor(index){if(index>=75)return'#3b82f6';if(index<=25)return'#f97316';return'#6b7280'}
-function renderGauge(index){const seasonLabel=getSeasonLabel(index);const seasonColor=getSeasonColor(index);return`<div class="current-index"><div class="index-value">${index}</div><div class="index-label" style="color:${seasonColor}">${seasonLabel}</div></div><div class="gauge-container"><div class="gauge-bar"><div class="gauge-marker" style="left:${index}%"><div class="gauge-arrow"></div></div></div><div class="gauge-labels"><span>0<br>Bitcoin Season</span><span>50<br>Neutre</span><span>100<br>Altcoin Season</span></div></div><div class="stats-grid"><div class="stat-card"><div class="label">Période d'analyse</div><div class="value">90 jours</div></div><div class="stat-card"><div class="label">Cryptos analysées</div><div class="value">100</div></div><div class="stat-card"><div class="label">Dernière mise à jour</div><div class="value" style="font-size:18px">${new Date().toLocaleDateString('fr-FR')}</div></div></div>`}
-async function loadAltcoinSeasonData(){try{const controller=new AbortController();const timeoutId=setTimeout(()=>controller.abort(),8000);const response=await fetch('/api/altcoin-season-index',{signal:controller.signal});clearTimeout(timeoutId);const data=await response.json();if(data.index!==undefined){currentIndex=data.index;const statusMsg=data.status==='fallback'?'<p style="text-align:center;color:#f59e0b;margin-top:20px;font-size:14px">⚠️ Données estimées - Actualisation en cours...</p>':'';document.getElementById('chart-container').innerHTML=renderGauge(currentIndex)+statusMsg;console.log('✅ Altcoin Season Index:',currentIndex,'(Status:',data.status+')')}else{throw new Error('Données invalides')}}catch(error){console.error('❌ Erreur:',error);currentIndex=35;document.getElementById('chart-container').innerHTML=renderGauge(currentIndex)+'<p style="text-align:center;color:#f59e0b;margin-top:20px;font-size:14px">⚠️ Mode hors ligne - Valeur estimée affichée</p>'}}
-loadAltcoinSeasonData();setInterval(loadAltcoinSeasonData,300000);console.log('📊 Altcoin Season Index initialisé');
-</script>
-</body></html>"""
-    return HTMLResponse(page)
 .current-index{text-align:center;padding:20px}
 .index-value{font-size:72px;font-weight:900;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:10px 0}
 .index-label{font-size:24px;font-weight:700;color:#e2e8f0;margin-top:10px}

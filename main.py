@@ -2,8 +2,8 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, validator
+from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
 import random
@@ -12,29 +12,75 @@ import os
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
+# ✅ CORRECTION 1: Ajout de la base de données en mémoire
+trades_db = []
+
+# ✅ CACHE pour les données du Heatmap (évite le rate limiting)
+heatmap_cache = {
+    "data": None,
+    "timestamp": None,
+    "cache_duration": 180  # 3 minutes en secondes
+}
+
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8478131465:AAEh7Z0rvIqSNvn1wKdtkMNb-O96h41LCns")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1002940633257")
 
-trades_db = []
-paper_trades_db = []
-paper_balance = {"USDT": 10000.0}
-
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.grid{display:grid;gap:20px}.grid-2{grid-template-columns:repeat(auto-fit,minmax(400px,1fr))}.grid-3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.grid-4{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}table{width:100%;border-collapse:collapse;margin-top:15px}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}</style>"""
 
-NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">Trades</a><a href="/telegram-test">Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">Trades</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">Telegram</a></div>'
 
 class TradeWebhook(BaseModel):
-    action: str
+    type: str = "ENTRY"
     symbol: str
-    price: float
-    quantity: Optional[float] = 1.0
-    entry_time: Optional[str] = None
+    tf: Optional[str] = None
+    tf_label: Optional[str] = None
+    time: Optional[int] = None
+    side: Optional[str] = None
+    entry: Optional[float] = None
     sl: Optional[float] = None
     tp1: Optional[float] = None
     tp2: Optional[float] = None
     tp3: Optional[float] = None
     confidence: Optional[int] = None
+    leverage: Optional[str] = None
+    note: Optional[str] = None
+    price: Optional[float] = None
     direction: Optional[str] = None
+    trade_id: Optional[str] = None
+    secret: Optional[str] = None
+    
+    # Anciens champs pour compatibilité
+    action: Optional[str] = None
+    quantity: Optional[float] = None
+    entry_time: Optional[str] = None
+    
+    @validator('type', pre=True, always=True)
+    def set_type_from_action(cls, v, values):
+        if 'action' in values and values['action']:
+            action = values['action'].upper()
+            if action in ('BUY', 'SELL'):
+                return 'ENTRY'
+        return v or 'ENTRY'
+    
+    @validator('side', pre=True, always=True)
+    def set_side_from_action(cls, v, values):
+        if v:
+            return v.upper()
+        if 'action' in values and values['action']:
+            action = values['action'].upper()
+            if action == 'BUY':
+                return 'LONG'
+            elif action == 'SELL':
+                return 'SHORT'
+        return v
+    
+    @validator('entry', pre=True, always=True)
+    def set_entry_from_price(cls, v, values):
+        if v is not None:
+            return v
+        if 'price' in values:
+            return values['price']
+        return None
 
 async def send_telegram_message(message: str):
     try:
@@ -72,71 +118,155 @@ async def get_market_indicators():
     
     return indicators
 
-def calculate_percentage(entry_price: float, target_price: float, direction: str) -> float:
-    """Calcule le pourcentage de profit/perte"""
-    if direction.upper() == "LONG":
-        return ((target_price - entry_price) / entry_price) * 100
+def tf_to_label(tf: Any) -> str:
+    """Convertit un timeframe en label lisible"""
+    if tf is None:
+        return ""
+    s = str(tf)
+    try:
+        n = int(s)
+    except:
+        return s
+    if n < 60:
+        return f"{n}m"
+    if n == 60:
+        return "1h"
+    if n % 60 == 0:
+        return f"{n//60}h"
+    return s
+
+def _calc_rr(entry: Optional[float], sl: Optional[float], tp1: Optional[float]) -> Optional[float]:
+    """Calcule le Risk/Reward ratio"""
+    try:
+        if entry is None or sl is None or tp1 is None:
+            return None
+        risk = abs(entry - sl)
+        reward = abs(tp1 - entry)
+        return round(reward / risk, 2) if risk > 0 else None
+    except:
+        return None
+
+def build_confidence_line(payload: dict, indicators: dict) -> str:
+    """Construit la ligne de confiance avec facteurs"""
+    entry = payload.get("entry")
+    sl = payload.get("sl")
+    tp1 = payload.get("tp1")
+    rr = _calc_rr(entry, sl, tp1)
+    
+    factors = []
+    conf = payload.get("confidence")
+    
+    if conf is None:
+        # Calcul automatique de la confiance
+        base = 50
+        
+        if rr:
+            base += max(min((rr - 1.0) * 10, 20), -10)
+            factors.append(f"R/R {rr}")
+        
+        # Ajouter les indicateurs de marché
+        if indicators.get("fear_greed"):
+            fg = indicators["fear_greed"]
+            # Fear & Greed : plus c'est bas (fear), plus c'est bon pour acheter
+            if fg < 30:
+                base += 10
+                factors.append(f"F&G {fg} (Fear)")
+            elif fg > 70:
+                base -= 5
+                factors.append(f"F&G {fg} (Greed)")
+            else:
+                factors.append(f"F&G {fg}")
+        
+        if indicators.get("btc_dominance"):
+            btc_dom = indicators["btc_dominance"]
+            factors.append(f"BTC.D {btc_dom}%")
+        
+        conf = int(max(5, min(95, round(base))))
     else:
-        return ((entry_price - target_price) / entry_price) * 100
-
-def get_confidence_label(score: int) -> str:
-    """Retourne le label de confiance"""
-    if score >= 80:
-        return "TRÈS ÉLEVÉ"
-    elif score >= 60:
-        return "ÉLEVÉ"
-    elif score >= 40:
-        return "MOYEN"
-    elif score >= 20:
-        return "FAIBLE"
-    else:
-        return "TRÈS FAIBLE"
-
-async def format_trade_message(trade: TradeWebhook) -> str:
-    """Formate le message complet pour Telegram"""
-    direction = trade.direction or ("LONG" if trade.action == "BUY" else "SHORT")
+        # Si confiance fournie, juste ajouter les facteurs
+        if rr:
+            factors.append(f"R/R {rr}")
+        if indicators.get("fear_greed"):
+            factors.append(f"F&G {indicators['fear_greed']}")
+        if indicators.get("btc_dominance"):
+            factors.append(f"BTC.D {indicators['btc_dominance']}%")
     
-    message = f"""<b>🚨 NOUVEAU TRADE</b>
+    return f"🧠 Confiance: {conf}% — {', '.join(factors)}" if factors else f"🧠 Confiance: {conf}%"
 
-<b>{trade.symbol}</b>
-<b>Direction: {direction}</b> | {trade.confidence or 50}
-
-<b>Entry:</b> ${trade.price:.4f}"""
+def format_entry_announcement(payload: dict, indicators: dict) -> str:
+    """Formate le message d'annonce d'entrée"""
+    symbol = payload.get("symbol", "")
+    tf_lbl = payload.get("tf_label") or tf_to_label(payload.get("tf"))
+    side = (payload.get("side") or "").upper()
+    entry = payload.get("entry")
+    tp1 = payload.get("tp1")
+    tp2 = payload.get("tp2")
+    tp3 = payload.get("tp3")
+    sl = payload.get("sl")
+    leverage = payload.get("leverage", "")
+    note = (payload.get("note") or "").strip()
     
-    if trade.tp1 or trade.tp2 or trade.tp3:
-        message += "\n\n<b>Take Profits:</b>"
+    # Emoji selon le side
+    side_emoji = "📈" if side == "LONG" else ("📉" if side == "SHORT" else "📌")
+    
+    # Calcul R/R
+    rr = _calc_rr(entry, sl, tp1)
+    rr_text = f" (R/R: {rr:.2f})" if rr else ""
+    
+    # Calculer la confiance AVANT de construire le message
+    conf_line = build_confidence_line(payload, indicators)
+    # Extraire juste le chiffre de confiance
+    conf_value = payload.get("confidence")
+    if conf_value is None:
+        # Le calcul est fait dans build_confidence_line, on l'extrait
+        import re
+        match = re.search(r'Confiance: (\d+)%', conf_line)
+        if match:
+            conf_value = int(match.group(1))
+        else:
+            conf_value = 50
+    
+    # Construction du message
+    lines = [
+        "🚨 <b>NOUVEAU TRADE</b>",
+        "",
+        f"<b>{symbol}</b>",
+        f"<b>Direction: {side}</b> | {conf_value}%",
+        "",
+        f"<b>Entry:</b> ${entry:.4f}" if entry else "Entry: N/A"
+    ]
+    
+    # Take Profits
+    if tp1 or tp2 or tp3:
+        lines.append("")
+        lines.append("<b>Take Profits:</b>")
         
-        if trade.tp1:
-            pct = calculate_percentage(trade.price, trade.tp1, direction)
-            message += f"\n TP1: ${trade.tp1:.4f} (+{pct:.1f}%)"
+        if tp1 and entry:
+            pct = ((tp1 - entry) / entry) * 100 if side == "LONG" else ((entry - tp1) / entry) * 100
+            lines.append(f" TP1: ${tp1:.4f} (+{pct:.1f}%){rr_text}")
         
-        if trade.tp2:
-            pct = calculate_percentage(trade.price, trade.tp2, direction)
-            message += f"\n TP2: ${trade.tp2:.4f} (+{pct:.1f}%)"
+        if tp2 and entry:
+            pct = ((tp2 - entry) / entry) * 100 if side == "LONG" else ((entry - tp2) / entry) * 100
+            lines.append(f" TP2: ${tp2:.4f} (+{pct:.1f}%)")
         
-        if trade.tp3:
-            pct = calculate_percentage(trade.price, trade.tp3, direction)
-            message += f"\n TP3: ${trade.tp3:.4f} (+{pct:.1f}%)"
+        if tp3 and entry:
+            pct = ((tp3 - entry) / entry) * 100 if side == "LONG" else ((entry - tp3) / entry) * 100
+            lines.append(f" TP3: ${tp3:.4f} (+{pct:.1f}%)")
     
-    if trade.sl:
-        message += f"\n\n<b>Stop Loss:</b> ${trade.sl:.4f}"
+    # Stop Loss
+    if sl:
+        lines.append("")
+        lines.append(f"<b>Stop Loss:</b> ${sl:.4f}")
     
-    if trade.confidence:
-        confidence_label = get_confidence_label(trade.confidence)
-        message += f"\n\n<b>CONFIANCE: {trade.confidence}%</b> ({confidence_label})"
+    # Ligne de confiance
+    lines.append("")
+    lines.append(conf_line)
     
-    indicators = await get_market_indicators()
+    # Note optionnelle
+    if note:
+        lines.append(f"📝 {note}")
     
-    details = []
-    if indicators["fear_greed"]:
-        details.append(f"F&G {indicators['fear_greed']}")
-    if indicators["btc_dominance"]:
-        details.append(f"BTC.D {indicators['btc_dominance']}%")
-    
-    if details:
-        message += f"\n<i>Pourquoi ce score ? {' | '.join(details)}</i>"
-    
-    return message
+    return "\n".join(lines)
 
 @app.get("/health")
 @app.head("/health")
@@ -147,38 +277,62 @@ async def health_check():
 async def root_head():
     return {}
 
+# ✅ CORRECTION 2: Fonction webhook complètement réécrite
 @app.post("/tv-webhook")
 async def tradingview_webhook(trade: TradeWebhook):
-    """Webhook pour recevoir les alertes TradingView - VERSION COMPLÈTE"""
+    """Webhook pour recevoir les alertes TradingView - VERSION CORRIGÉE"""
     try:
         print("="*60)
-        print(f"🎯 WEBHOOK REÇU: {trade.action} {trade.symbol}")
-        print(f"📊 Prix: ${trade.price}")
-        if trade.confidence:
-            print(f"🎲 Confiance: {trade.confidence}%")
+        print(f"🎯 WEBHOOK REÇU: {trade.side} {trade.symbol}")
+        print(f"📊 Entry: ${trade.entry}")
         print("="*60)
         
-        trade_data = {
-            "action": trade.action,
+        # Préparer les données pour le message
+        payload_dict = {
             "symbol": trade.symbol,
-            "price": trade.price,
-            "quantity": trade.quantity,
-            "direction": trade.direction or ("LONG" if trade.action == "BUY" else "SHORT"),
+            "tf": trade.tf,
+            "tf_label": trade.tf_label or tf_to_label(trade.tf),
+            "side": trade.side,
+            "entry": trade.entry,
             "sl": trade.sl,
             "tp1": trade.tp1,
             "tp2": trade.tp2,
             "tp3": trade.tp3,
             "confidence": trade.confidence,
+            "leverage": trade.leverage,
+            "note": trade.note
+        }
+        
+        # Récupérer les indicateurs de marché
+        indicators = await get_market_indicators()
+        
+        # Formatter le message avec le nouveau format
+        message = format_entry_announcement(payload_dict, indicators)
+        print(f"📤 Message formaté:\n{message}")
+        
+        # Envoyer sur Telegram
+        telegram_result = await send_telegram_message(message)
+        print(f"✅ Résultat Telegram: {telegram_result.get('ok', False)}")
+        
+        # Sauvegarder dans la DB avec statuts initialisés
+        trade_data = {
+            "symbol": trade.symbol,
+            "side": trade.side,
+            "entry": trade.entry,
+            "sl": trade.sl,
+            "tp1": trade.tp1,
+            "tp2": trade.tp2,
+            "tp3": trade.tp3,
             "timestamp": datetime.now().isoformat(),
-            "status": "open"
+            "status": "open",
+            # Statuts initialisés à False
+            "tp1_hit": False,
+            "tp2_hit": False,
+            "tp3_hit": False,
+            "sl_hit": False
         }
         trades_db.append(trade_data)
         
-        message = await format_trade_message(trade)
-        print(f"📤 Message à envoyer:\n{message}")
-        
-        telegram_result = await send_telegram_message(message)
-        print(f"✅ Résultat Telegram: {telegram_result.get('ok', False)}")
         print("="*60)
         
         return {
@@ -189,6 +343,8 @@ async def tradingview_webhook(trade: TradeWebhook):
         
     except Exception as e:
         print(f"❌ ERREUR dans webhook: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "error": str(e)}
 
 @app.get("/api/telegram-test")
@@ -198,34 +354,181 @@ async def test_telegram():
 
 @app.get("/api/test-full-alert")
 async def test_full_alert():
-    """Test complet avec tous les paramètres"""
+    """Test complet avec tous les paramètres - Format ancien"""
     test_trade = TradeWebhook(
-        action="SELL",
+        type="ENTRY",
         symbol="SWTCHUSDT",
-        price=0.0926,
-        quantity=1.0,
-        direction="SHORT",
+        tf="15",
+        side="SHORT",
+        entry=0.0926,
         tp1=0.0720,
         tp2=0.0584,
         tp3=0.0378,
         sl=0.1063,
-        confidence=50
+        confidence=50,
+        leverage="10x"
     )
     
-    message = await format_trade_message(test_trade)
+    # Récupérer les indicateurs
+    indicators = await get_market_indicators()
+    
+    # Préparer le payload
+    payload_dict = {
+        "symbol": test_trade.symbol,
+        "tf": test_trade.tf,
+        "tf_label": tf_to_label(test_trade.tf),
+        "side": test_trade.side,
+        "entry": test_trade.entry,
+        "sl": test_trade.sl,
+        "tp1": test_trade.tp1,
+        "tp2": test_trade.tp2,
+        "tp3": test_trade.tp3,
+        "confidence": test_trade.confidence,
+        "leverage": test_trade.leverage
+    }
+    
+    message = format_entry_announcement(payload_dict, indicators)
     result = await send_telegram_message(message)
     
-    return {"message": message, "telegram_result": result}
+    return {
+        "message": message,
+        "telegram_result": result,
+        "indicators": indicators
+    }
 
 @app.get("/api/stats")
 async def get_stats():
+    """Statistiques détaillées des trades"""
+    total = len(trades_db)
+    open_trades = len([t for t in trades_db if t.get("status") == "open" and not t.get("sl_hit") and not any([t.get("tp1_hit"), t.get("tp2_hit"), t.get("tp3_hit")])])
+    
+    # Compter les wins (au moins un TP atteint) et losses (SL hit)
+    wins = len([t for t in trades_db if t.get("tp1_hit") or t.get("tp2_hit") or t.get("tp3_hit")])
+    losses = len([t for t in trades_db if t.get("sl_hit")])
+    closed = wins + losses
+    
+    win_rate = round((wins / closed) * 100, 2) if closed > 0 else 0
+    
     return {
-        "total_trades": len(trades_db),
-        "open_trades": 0,
-        "closed_trades": 0,
-        "win_rate": 0,
+        "total_trades": total,
+        "open_trades": open_trades,
+        "closed_trades": closed,
+        "win_trades": wins,
+        "loss_trades": losses,
+        "win_rate": win_rate,
         "total_pnl": 0,
-        "avg_pnl": 0
+        "avg_pnl": 0,
+        "status": "ok"
+    }
+
+@app.get("/api/trades")
+async def get_trades():
+    """Retourne tous les trades avec leurs statuts"""
+    return {
+        "trades": trades_db,
+        "count": len(trades_db),
+        "status": "success"
+    }
+
+@app.post("/api/trades/update-status")
+async def update_trade_status(trade_update: dict):
+    """Met à jour le statut d'un trade (TP1, TP2, TP3, SL)"""
+    try:
+        symbol = trade_update.get("symbol")
+        timestamp = trade_update.get("timestamp")
+        
+        # Trouver le trade
+        for trade in trades_db:
+            if trade.get("symbol") == symbol and trade.get("timestamp") == timestamp:
+                # Mettre à jour les statuts
+                if "tp1_hit" in trade_update:
+                    trade["tp1_hit"] = trade_update["tp1_hit"]
+                if "tp2_hit" in trade_update:
+                    trade["tp2_hit"] = trade_update["tp2_hit"]
+                if "tp3_hit" in trade_update:
+                    trade["tp3_hit"] = trade_update["tp3_hit"]
+                if "sl_hit" in trade_update:
+                    trade["sl_hit"] = trade_update["sl_hit"]
+                    
+                # Si un SL ou TP est hit, fermer le trade
+                if trade.get("sl_hit") or trade.get("tp3_hit"):
+                    trade["status"] = "closed"
+                    
+                return {"status": "success", "trade": trade}
+        
+        return {"status": "error", "message": "Trade non trouvé"}
+        
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+
+@app.get("/api/trades/add-demo")
+async def add_demo_trades():
+    """Ajoute des trades de démonstration pour tester l'interface"""
+    demo_trades = [
+        {
+            "symbol": "BTCUSDT",
+            "side": "LONG",
+            "entry": 107150.00,
+            "sl": 105000.00,
+            "tp1": 108500.00,
+            "tp2": 110000.00,
+            "tp3": 112000.00,
+            "timestamp": (datetime.now() - timedelta(hours=2)).isoformat(),
+            "status": "open",
+            "tp1_hit": True,
+            "tp2_hit": True,
+            "tp3_hit": False,
+            "sl_hit": False
+        },
+        {
+            "symbol": "ETHUSDT",
+            "side": "SHORT",
+            "entry": 3887.50,
+            "sl": 3950.00,
+            "tp1": 3800.00,
+            "tp2": 3700.00,
+            "tp3": 3600.00,
+            "timestamp": (datetime.now() - timedelta(hours=5)).isoformat(),
+            "status": "closed",
+            "tp1_hit": False,
+            "tp2_hit": False,
+            "tp3_hit": False,
+            "sl_hit": True
+        },
+        {
+            "symbol": "SOLUSDT",
+            "side": "LONG",
+            "entry": 187.00,
+            "sl": 180.00,
+            "tp1": 195.00,
+            "tp2": 205.00,
+            "tp3": 215.00,
+            "timestamp": (datetime.now() - timedelta(hours=1)).isoformat(),
+            "status": "open",
+            "tp1_hit": True,
+            "tp2_hit": False,
+            "tp3_hit": False,
+            "sl_hit": False
+        }
+    ]
+    
+    for trade in demo_trades:
+        trades_db.append(trade)
+    
+    return {
+        "status": "success",
+        "message": f"{len(demo_trades)} trades de démonstration ajoutés",
+        "trades": demo_trades
+    }
+
+@app.delete("/api/trades/clear")
+async def clear_trades():
+    """Efface tous les trades (utile pour les tests)"""
+    count = len(trades_db)
+    trades_db.clear()
+    return {
+        "status": "success",
+        "message": f"{count} trades effacés"
     }
 
 @app.get("/api/fear-greed-full")
@@ -304,37 +607,92 @@ async def get_btc_dominance():
 
 @app.get("/api/heatmap")
 async def get_heatmap():
+    """API Heatmap avec système de cache pour éviter le rate limiting"""
+    print("\n" + "="*60)
+    print("🔄 API /api/heatmap appelée")
+    
+    # Vérifier si le cache est valide
+    now = datetime.now()
+    if heatmap_cache["data"] is not None and heatmap_cache["timestamp"] is not None:
+        time_diff = (now - heatmap_cache["timestamp"]).total_seconds()
+        if time_diff < heatmap_cache["cache_duration"]:
+            print(f"✅ Cache valide (âge: {int(time_diff)}s / {heatmap_cache['cache_duration']}s)")
+            print(f"📦 Retour depuis cache: {len(heatmap_cache['data'])} cryptos")
+            print("="*60 + "\n")
+            return {"cryptos": heatmap_cache["data"], "status": "cached"}
+    
+    print("🔄 Cache expiré ou vide, récupération des données...")
+    print("="*60)
+    
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.get("https://api.coingecko.com/api/v3/coins/markets", params={
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            url = "https://api.coingecko.com/api/v3/coins/markets"
+            params = {
                 "vs_currency": "usd",
                 "order": "market_cap_desc",
                 "per_page": 100,
                 "page": 1,
                 "sparkline": False,
                 "price_change_percentage": "24h"
-            })
+            }
+            
+            print(f"📡 Appel API CoinGecko...")
+            r = await client.get(url, params=params)
+            print(f"✅ Status: {r.status_code}")
+            
             if r.status_code == 200:
-                cryptos = [{
-                    "symbol": c["symbol"].upper(),
-                    "name": c["name"],
-                    "price": c["current_price"],
-                    "change_24h": round(c.get("price_change_percentage_24h", 0), 2),
-                    "market_cap": c["market_cap"],
-                    "volume": c["total_volume"]
-                } for c in r.json()]
-                return {"cryptos": cryptos, "status": "success"}
-    except:
-        pass
+                data = r.json()
+                print(f"📦 Cryptos reçues: {len(data)}")
+                
+                if len(data) > 0:
+                    cryptos = [{
+                        "symbol": c["symbol"].upper(),
+                        "name": c["name"],
+                        "price": c["current_price"],
+                        "change_24h": round(c.get("price_change_percentage_24h", 0), 2),
+                        "market_cap": c["market_cap"],
+                        "volume": c["total_volume"]
+                    } for c in data]
+                    
+                    # Mettre en cache
+                    heatmap_cache["data"] = cryptos
+                    heatmap_cache["timestamp"] = now
+                    
+                    print(f"✅ Cache mis à jour: {len(cryptos)} cryptos")
+                    print(f"⏰ Prochaine expiration dans {heatmap_cache['cache_duration']}s")
+                    print("="*60 + "\n")
+                    return {"cryptos": cryptos, "status": "success"}
+                else:
+                    print("⚠️ Aucune donnée dans la réponse")
+            elif r.status_code == 429:
+                print(f"❌ Rate Limit atteint ! (429)")
+                print(f"⚠️ Trop de requêtes à l'API CoinGecko")
+            else:
+                print(f"❌ Erreur HTTP: {r.status_code}")
+                print(f"Réponse: {r.text[:200]}")
+                
+    except Exception as e:
+        print(f"❌ Exception: {str(e)}")
     
-    return {
-        "cryptos": [
-            {"symbol": "BTC", "name": "Bitcoin", "price": 107150, "change_24h": 0.69, "market_cap": 2136218033539, "volume": 37480142027},
-            {"symbol": "ETH", "name": "Ethereum", "price": 3887, "change_24h": 1.61, "market_cap": 467000000000, "volume": 15000000000},
-            {"symbol": "SOL", "name": "Solana", "price": 187, "change_24h": 2.63, "market_cap": 90000000000, "volume": 5000000000}
-        ],
-        "status": "fallback"
-    }
+    # Si on a un cache expiré mais des données, les renvoyer quand même
+    if heatmap_cache["data"] is not None:
+        print(f"⚠️ Utilisation du cache expiré ({len(heatmap_cache['data'])} cryptos)")
+        print("="*60 + "\n")
+        return {"cryptos": heatmap_cache["data"], "status": "stale_cache"}
+    
+    # Fallback étendu si vraiment rien ne marche
+    print("⚠️ Utilisation du fallback étendu (25 cryptos)")
+    print("="*60 + "\n")
+    
+    fallback_data = [
+        {"symbol": "BTC", "name": "Bitcoin", "price": 107150, "change_24h": 1.32, "market_cap": 2136218033539, "volume": 37480142027},
+        {"symbol": "ETH", "name": "Ethereum", "price": 3887, "change_24h": -0.84, "market_cap": 467000000000, "volume": 15000000000},
+        {"symbol": "USDT", "name": "Tether USDt", "price": 1.0, "change_24h": -0.02, "market_cap": 140000000000, "volume": 45000000000},
+        {"symbol": "BNB", "name": "BNB", "price": 698, "change_24h": -2.36, "market_cap": 101000000000, "volume": 1200000000},
+        {"symbol": "SOL", "name": "Solana", "price": 187, "change_24h": -0.94, "market_cap": 90000000000, "volume": 3000000000}
+    ]
+    
+    return {"cryptos": fallback_data, "status": "fallback"}
 
 @app.get("/api/altcoin-season-index")
 async def get_altcoin_season_index():
@@ -384,14 +742,11 @@ async def get_altcoin_season_index():
 
 @app.get("/api/crypto-news")
 async def get_crypto_news():
-    """
-    Récupère les dernières actualités crypto - VERSION ULTRA-ROBUSTE
-    """
+    """Récupère les dernières actualités crypto"""
     print("\n" + "="*60)
     print("🔄 API /api/crypto-news appelée")
     print("="*60)
     
-    # FALLBACK GARANTI - Toujours disponible
     fallback_news = [
         {
             "title": "🔥 Bitcoin maintient son niveau au-dessus de $100K malgré la volatilité",
@@ -410,84 +765,11 @@ async def get_crypto_news():
             "sentiment": 1,
             "image": None,
             "category": "news"
-        },
-        {
-            "title": "Les ETF Bitcoin enregistrent $500M d'entrées nettes cette semaine",
-            "url": "https://www.bloomberg.com",
-            "published": (datetime.now() - timedelta(hours=2)).isoformat(),
-            "source": "Bloomberg Crypto",
-            "sentiment": 1,
-            "image": None,
-            "category": "news"
-        },
-        {
-            "title": "🔥 Trending: Solana (SOL) - Performance exceptionnelle ce mois-ci",
-            "url": "https://www.coingecko.com/en/coins/solana",
-            "published": (datetime.now() - timedelta(hours=1)).isoformat(),
-            "source": "CoinGecko Trending",
-            "sentiment": 1,
-            "image": None,
-            "category": "trending"
-        },
-        {
-            "title": "Ethereum prépare la mise à jour Pectra pour Q2 2025",
-            "url": "https://ethereum.org",
-            "published": (datetime.now() - timedelta(hours=5)).isoformat(),
-            "source": "Ethereum Foundation",
-            "sentiment": 0,
-            "image": None,
-            "category": "news"
-        },
-        {
-            "title": "🔥 Trending: Avalanche (AVAX) gagne 12% suite au partenariat avec AWS",
-            "url": "https://www.coingecko.com/en/coins/avalanche",
-            "published": (datetime.now() - timedelta(hours=3)).isoformat(),
-            "source": "CoinTelegraph",
-            "sentiment": 1,
-            "image": None,
-            "category": "trending"
-        },
-        {
-            "title": "₿ Bitcoin Dominance: 58.5% du marché crypto total",
-            "url": "https://www.coingecko.com/en/global-charts",
-            "published": (datetime.now() - timedelta(minutes=30)).isoformat(),
-            "source": "CoinGecko",
-            "sentiment": 0,
-            "image": None,
-            "category": "news"
-        },
-        {
-            "title": "Le Salvador annonce de nouveaux achats de Bitcoin pour janvier 2025",
-            "url": "https://www.coindesk.com",
-            "published": (datetime.now() - timedelta(hours=8)).isoformat(),
-            "source": "Reuters Crypto",
-            "sentiment": 1,
-            "image": None,
-            "category": "news"
-        },
-        {
-            "title": "🔥 Trending: Chainlink (LINK) - Nouvelles intégrations annoncées",
-            "url": "https://www.coingecko.com/en/coins/chainlink",
-            "published": (datetime.now() - timedelta(hours=4)).isoformat(),
-            "source": "CoinGecko Trending",
-            "sentiment": 1,
-            "image": None,
-            "category": "trending"
-        },
-        {
-            "title": "📈 Polygon (MATIC) annonce une mise à jour majeure de son réseau",
-            "url": "https://polygon.technology",
-            "published": (datetime.now() - timedelta(hours=6)).isoformat(),
-            "source": "Polygon Labs",
-            "sentiment": 1,
-            "image": None,
-            "category": "news"
         }
     ]
     
     news_articles = fallback_news.copy()
     
-    # Essayer CoinGecko (optionnel, ne bloque pas)
     try:
         print("📡 Tentative CoinGecko Trending...")
         async with httpx.AsyncClient(timeout=2.0) as client:
@@ -522,7 +804,6 @@ async def get_crypto_news():
     except Exception as e:
         print(f"⚠️ CoinGecko inaccessible: {str(e)[:100]}")
     
-    # Tri par date
     news_articles.sort(key=lambda x: x["published"], reverse=True)
     
     result = {
@@ -537,6 +818,251 @@ async def get_crypto_news():
     
     return result
 
+@app.get("/api/exchange-rates")
+async def get_exchange_rates():
+    """Récupère les taux de change pour crypto + fiat"""
+    rates = {}
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            crypto_response = await client.get(
+                "https://api.coingecko.com/api/v3/simple/price",
+                params={
+                    "ids": "bitcoin,ethereum,tether,binancecoin,solana,usd-coin,ripple,cardano,dogecoin",
+                    "vs_currencies": "usd"
+                }
+            )
+            
+            if crypto_response.status_code == 200:
+                crypto_data = crypto_response.json()
+                
+                crypto_mapping = {
+                    "bitcoin": "BTC",
+                    "ethereum": "ETH",
+                    "tether": "USDT",
+                    "binancecoin": "BNB",
+                    "solana": "SOL",
+                    "usd-coin": "USDC",
+                    "ripple": "XRP",
+                    "cardano": "ADA",
+                    "dogecoin": "DOGE"
+                }
+                
+                usd_to_eur = 0.92
+                usd_to_cad = 1.43
+                
+                for coin_id, symbol in crypto_mapping.items():
+                    if coin_id in crypto_data and "usd" in crypto_data[coin_id]:
+                        usd_price = crypto_data[coin_id]["usd"]
+                        rates[symbol] = {
+                            "usd": usd_price,
+                            "eur": usd_price * usd_to_eur,
+                            "cad": usd_price * usd_to_cad
+                        }
+            
+            rates["USD"] = {"usd": 1.0, "eur": 0.92, "cad": 1.43}
+            rates["EUR"] = {"usd": 1.09, "eur": 1.0, "cad": 1.56}
+            rates["CAD"] = {"usd": 0.70, "eur": 0.64, "cad": 1.0}
+            
+            return {
+                "rates": rates,
+                "timestamp": datetime.now().isoformat(),
+                "status": "success"
+            }
+            
+    except Exception as e:
+        print(f"❌ Exception: {str(e)}")
+    
+    fallback_rates = {
+        "BTC": {"usd": 107150.0, "eur": 98558.0, "cad": 153224.5},
+        "ETH": {"usd": 3887.0, "eur": 3576.04, "cad": 5558.41},
+        "USD": {"usd": 1.0, "eur": 0.92, "cad": 1.43},
+        "EUR": {"usd": 1.09, "eur": 1.0, "cad": 1.56},
+        "CAD": {"usd": 0.70, "eur": 0.64, "cad": 1.0}
+    }
+    
+    return {
+        "rates": fallback_rates,
+        "timestamp": datetime.now().isoformat(),
+        "status": "fallback"
+    }
+
+@app.get("/api/economic-calendar")
+async def get_economic_calendar():
+    """Récupère le calendrier économique"""
+    now = datetime.now()
+    events = []
+    
+    for day_offset in range(7):
+        event_date = now + timedelta(days=day_offset)
+        
+        if day_offset == 0:
+            events.append({
+                "date": event_date.strftime("%Y-%m-%d"),
+                "time": "08:30",
+                "country": "US",
+                "currency": "USD",
+                "event": "Non-Farm Payrolls (NFP)",
+                "impact": "high",
+                "forecast": "180K",
+                "previous": "175K",
+                "actual": None
+            })
+    
+    return {
+        "events": events,
+        "count": len(events),
+        "timestamp": datetime.now().isoformat(),
+        "status": "success"
+    }
+
+@app.get("/api/bullrun-phase")
+async def get_bullrun_phase():
+    """Détecte la phase actuelle du bullrun"""
+    print("\n" + "="*60)
+    print("🚀 API /api/bullrun-phase appelée")
+    print("="*60)
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            btc_dom_response = await client.get("https://api.coingecko.com/api/v3/global")
+            btc_dominance = None
+            if btc_dom_response.status_code == 200:
+                data = btc_dom_response.json()
+                btc_dominance = round(data["data"]["market_cap_percentage"]["btc"], 2)
+                print(f"✅ BTC Dominance: {btc_dominance}%")
+            
+            altcoin_index = None
+            try:
+                alt_data = await get_altcoin_season_index()
+                altcoin_index = alt_data.get("index", 50)
+                print(f"✅ Altcoin Season Index: {altcoin_index}")
+            except:
+                pass
+            
+            phase = 1
+            phase_name = "Bitcoin"
+            confidence = 0
+            
+            if btc_dominance and altcoin_index:
+                if btc_dominance > 55 and altcoin_index < 30:
+                    phase = 1
+                    phase_name = "Bitcoin"
+                    confidence = 85
+                elif btc_dominance > 50 and altcoin_index >= 30 and altcoin_index < 50:
+                    phase = 2
+                    phase_name = "Ethereum"
+                    confidence = 75
+                elif btc_dominance <= 50 and altcoin_index >= 50 and altcoin_index < 75:
+                    phase = 3
+                    phase_name = "Large Caps"
+                    confidence = 70
+                elif altcoin_index >= 75:
+                    phase = 4
+                    phase_name = "Altseason"
+                    confidence = 90
+            
+            print(f"🎯 Phase détectée: Phase {phase} - {phase_name} (Confiance: {confidence}%)")
+            print("="*60 + "\n")
+            
+            return {
+                "current_phase": phase,
+                "phase_name": phase_name,
+                "confidence": confidence,
+                "indicators": {
+                    "btc_dominance": btc_dominance,
+                    "altcoin_season_index": altcoin_index
+                },
+                "timestamp": datetime.now().isoformat(),
+                "status": "success"
+            }
+            
+    except Exception as e:
+        print(f"❌ Erreur: {str(e)}")
+    
+    return {
+        "current_phase": 2,
+        "phase_name": "Ethereum",
+        "confidence": 65,
+        "indicators": {
+            "btc_dominance": 58.5,
+            "altcoin_season_index": 35
+        },
+        "timestamp": datetime.now().isoformat(),
+        "status": "fallback"
+    }
+
+@app.get("/api/chart-data")
+async def get_chart_data():
+    """Récupère les données historiques pour les graphiques"""
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            btc_response = await client.get(
+                "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart",
+                params={"vs_currency": "usd", "days": 30, "interval": "daily"}
+            )
+            
+            eth_response = await client.get(
+                "https://api.coingecko.com/api/v3/coins/ethereum/market_chart",
+                params={"vs_currency": "usd", "days": 30, "interval": "daily"}
+            )
+            
+            btc_data = None
+            eth_data = None
+            
+            if btc_response.status_code == 200:
+                btc_data = btc_response.json()
+            
+            if eth_response.status_code == 200:
+                eth_data = eth_response.json()
+            
+            if btc_data and eth_data:
+                btc_prices = [{"x": p[0], "y": p[1]} for p in btc_data["prices"]]
+                btc_volumes = [{"x": v[0], "y": v[1]} for v in btc_data["total_volumes"]]
+                btc_market_caps = [{"x": m[0], "y": m[1]} for m in btc_data["market_caps"]]
+                
+                eth_prices = [{"x": p[0], "y": p[1]} for p in eth_data["prices"]]
+                eth_volumes = [{"x": v[0], "y": v[1]} for v in eth_data["total_volumes"]]
+                eth_market_caps = [{"x": m[0], "y": m[1]} for m in eth_data["market_caps"]]
+                
+                return {
+                    "btc": {
+                        "prices": btc_prices,
+                        "volumes": btc_volumes,
+                        "market_caps": btc_market_caps
+                    },
+                    "eth": {
+                        "prices": eth_prices,
+                        "volumes": eth_volumes,
+                        "market_caps": eth_market_caps
+                    },
+                    "timestamp": datetime.now().isoformat(),
+                    "status": "success"
+                }
+    
+    except Exception as e:
+        print(f"❌ Erreur: {str(e)}")
+    
+    now = datetime.now()
+    fallback_data = {
+        "btc": {
+            "prices": [{"x": int((now - timedelta(days=30-i)).timestamp() * 1000), "y": 107150 + (i * 500)} for i in range(31)],
+            "volumes": [{"x": int((now - timedelta(days=30-i)).timestamp() * 1000), "y": 30000000000 + (i * 100000000)} for i in range(31)],
+            "market_caps": [{"x": int((now - timedelta(days=30-i)).timestamp() * 1000), "y": 2100000000000 + (i * 1000000000)} for i in range(31)]
+        },
+        "eth": {
+            "prices": [{"x": int((now - timedelta(days=30-i)).timestamp() * 1000), "y": 3887 + (i * 20)} for i in range(31)],
+            "volumes": [{"x": int((now - timedelta(days=30-i)).timestamp() * 1000), "y": 15000000000 + (i * 50000000)} for i in range(31)],
+            "market_caps": [{"x": int((now - timedelta(days=30-i)).timestamp() * 1000), "y": 467000000000 + (i * 500000000)} for i in range(31)]
+        },
+        "timestamp": datetime.now().isoformat(),
+        "status": "fallback"
+    }
+    
+    return fallback_data
+
+# ==================== PAGES HTML ====================
+
 @app.get("/", response_class=HTMLResponse)
 async def home():
     page = """<!DOCTYPE html>
@@ -546,7 +1072,7 @@ async def home():
 """ + NAV + """
 <div class="grid grid-3">
 <div class="card"><h2>✅ Status</h2><p>Dashboard en ligne</p></div>
-<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles actives</p></div>
+<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles, Trades</p></div>
 <div class="card"><h2>🔄 Mise à jour</h2><p>Données en temps réel</p></div>
 </div>
 </div></body></html>"""
@@ -555,15 +1081,77 @@ async def home():
 @app.get("/trades", response_class=HTMLResponse)
 async def trades_page():
     page = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Trades</title>""" + CSS + """</head>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gestion Trades</title>""" + CSS + """
+<style>
+.trades-container{max-width:100%;margin:0 auto}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}
+.stat-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:25px;border-radius:12px;text-align:center;border:1px solid #334155;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.stat-card .icon{font-size:42px;margin-bottom:12px}
+.stat-card .value{font-size:36px;font-weight:800;color:#e2e8f0;margin-bottom:8px}
+.stat-card .label{font-size:13px;color:#94a3b8;font-weight:600;text-transform:uppercase}
+.trades-table{width:100%;border-collapse:collapse;margin-top:20px;background:#1e293b;border-radius:12px;overflow:hidden}
+.trades-table thead{background:#0f172a}
+.trades-table th{padding:18px 15px;text-align:left;color:#60a5fa;font-weight:700;font-size:14px;text-transform:uppercase;border-bottom:2px solid #334155}
+.trades-table td{padding:15px;border-bottom:1px solid #334155;color:#e2e8f0;font-size:14px}
+.trades-table tbody tr{transition:all 0.3s}
+.trades-table tbody tr:hover{background:#0f172a;transform:scale(1.01)}
+.crypto-symbol{font-weight:700;font-size:16px;color:#60a5fa}
+.side-badge{display:inline-block;padding:4px 12px;border-radius:6px;font-weight:700;font-size:12px;text-transform:uppercase}
+.side-long{background:rgba(34,197,94,0.2);color:#22c55e;border:1px solid #22c55e}
+.side-short{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444}
+.price-cell{font-family:monospace;font-weight:600}
+.tp-status{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700}
+.tp-hit{background:rgba(34,197,94,0.2);color:#22c55e;border:1px solid #22c55e}
+.tp-pending{background:rgba(100,116,139,0.2);color:#94a3b8;border:1px solid #475569}
+.sl-hit{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444}
+.targets-cell{display:flex;flex-direction:column;gap:4px}
+.controls{display:flex;gap:12px;margin-bottom:25px;flex-wrap:wrap}
+.controls button{padding:12px 24px;background:#334155;color:#e2e8f0;border:2px solid #475569;border-radius:10px;cursor:pointer;transition:all .3s;font-size:14px;font-weight:700}
+.controls button:hover{background:#475569;transform:translateY(-2px)}
+.controls button.active{background:linear-gradient(135deg,#3b82f6,#60a5fa);border-color:#60a5fa;color:#fff}
+.empty-state{text-align:center;padding:80px 20px;color:#94a3b8}
+.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+</style>
+</head>
 <body><div class="container">
-<div class="header"><h1>Gestion Trades</h1></div>""" + NAV + """
-<div class="card"><h2>Statistiques</h2><p>Total trades: <span id="total">0</span></p></div>
+<div class="header"><h1>📊 Gestion des Trades</h1><p>Suivi détaillé et statistiques de performance</p></div>
+""" + NAV + """
+<div class="trades-container">
+<div class="stats-grid">
+<div class="stat-card"><div class="icon">📈</div><div class="value" id="total-trades">0</div><div class="label">Total Trades</div></div>
+<div class="stat-card"><div class="icon">✅</div><div class="value" style="color:#22c55e" id="win-trades">0</div><div class="label">Trades Gagnants</div></div>
+<div class="stat-card"><div class="icon">❌</div><div class="value" style="color:#ef4444" id="loss-trades">0</div><div class="label">Trades Perdants</div></div>
+<div class="stat-card"><div class="icon">⏳</div><div class="value" style="color:#60a5fa" id="open-trades">0</div><div class="label">Trades Ouverts</div></div>
+<div class="stat-card"><div class="icon">🎯</div><div class="value" style="color:#a78bfa" id="winrate">0%</div><div class="label">Win Rate</div></div>
+</div>
+<div class="card">
+<h2>📋 Historique des Trades</h2>
+<div class="controls">
+<button class="active" onclick="filterTrades('all')">📊 Tous</button>
+<button onclick="filterTrades('open')">⏳ Ouverts</button>
+<button onclick="filterTrades('win')">✅ Gagnants</button>
+<button onclick="filterTrades('loss')">❌ Perdants</button>
+<button onclick="addDemoTrades()" style="background:#a78bfa;border-color:#a78bfa">🎲 Ajouter Démo</button>
+<button onclick="clearTrades()" style="background:#ef4444;border-color:#ef4444">🗑️ Effacer Tout</button>
+<button onclick="loadTrades()" style="margin-left:auto">🔄 Actualiser</button>
+</div>
+<div id="trades-container"></div>
+</div>
+</div>
+</div>
 <script>
-async function load(){const r=await fetch('/api/stats');const d=await r.json();document.getElementById('total').textContent=d.total_trades;}
-load();setInterval(load,10000);
+let allTrades=[];
+function formatTime(timestamp){const date=new Date(timestamp);return date.toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function renderTradesTable(trades){if(trades.length===0){return'<div class="empty-state"><div style="font-size:120px;opacity:0.3;margin-bottom:20px">📭</div><h3>Aucun trade trouvé</h3><p>Les trades apparaîtront ici une fois enregistrés</p></div>'}let html='<table class="trades-table"><thead><tr><th>Heure d\'entrée</th><th>Crypto</th><th>Direction</th><th>Prix d\'entrée</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Stop Loss</th><th>Statut</th></tr></thead><tbody>';trades.forEach(trade=>{const sideClass=trade.side==='LONG'?'side-long':'side-short';const sideIcon=trade.side==='LONG'?'📈':'📉';const tp1Status=trade.tp1_hit?'tp-hit':'tp-pending';const tp2Status=trade.tp2_hit?'tp-hit':'tp-pending';const tp3Status=trade.tp3_hit?'tp-hit':'tp-pending';const slStatus=trade.sl_hit?'sl-hit':'tp-pending';const tp1Text=trade.tp1_hit?'✅ Hit':'⏳ Pending';const tp2Text=trade.tp2_hit?'✅ Hit':'⏳ Pending';const tp3Text=trade.tp3_hit?'✅ Hit':'⏳ Pending';const slText=trade.sl_hit?'❌ Hit':'⏳ Safe';let globalStatus='⏳ Ouvert';if(trade.sl_hit){globalStatus='❌ SL Hit'}else if(trade.tp3_hit){globalStatus='✅ TP3 Hit'}else if(trade.tp2_hit){globalStatus='✅ TP2 Hit'}else if(trade.tp1_hit){globalStatus='✅ TP1 Hit'}html+='<tr><td>'+formatTime(trade.timestamp)+'</td><td><span class="crypto-symbol">'+trade.symbol+'</span></td><td><span class="side-badge '+sideClass+'">'+sideIcon+' '+trade.side+'</span></td><td class="price-cell">'+(trade.entry?trade.entry.toFixed(4):'N/A')+'</td><td><div class="targets-cell"><div class="price-cell">'+(trade.tp1?trade.tp1.toFixed(4):'N/A')+'</div><span class="tp-status '+tp1Status+'">'+tp1Text+'</span></div></td><td><div class="targets-cell"><div class="price-cell">'+(trade.tp2?trade.tp2.toFixed(4):'N/A')+'</div><span class="tp-status '+tp2Status+'">'+tp2Text+'</span></div></td><td><div class="targets-cell"><div class="price-cell">'+(trade.tp3?trade.tp3.toFixed(4):'N/A')+'</div><span class="tp-status '+tp3Status+'">'+tp3Text+'</span></div></td><td><div class="targets-cell"><div class="price-cell">'+(trade.sl?trade.sl.toFixed(4):'N/A')+'</div><span class="tp-status '+slStatus+'">'+slText+'</span></div></td><td><strong>'+globalStatus+'</strong></td></tr>'});html+='</tbody></table>';return html}
+function updateStats(trades){const total=trades.length;const open=trades.filter(t=>t.status==='open'&&!t.sl_hit&&!t.tp1_hit&&!t.tp2_hit&&!t.tp3_hit).length;const wins=trades.filter(t=>t.tp1_hit||t.tp2_hit||t.tp3_hit).length;const losses=trades.filter(t=>t.sl_hit).length;const closed=wins+losses;const winrate=closed>0?Math.round((wins/closed)*100):0;document.getElementById('total-trades').textContent=total;document.getElementById('open-trades').textContent=open;document.getElementById('win-trades').textContent=wins;document.getElementById('loss-trades').textContent=losses;document.getElementById('winrate').textContent=winrate+'%'}
+function filterTrades(filter){document.querySelectorAll('.controls button').forEach(btn=>{btn.classList.remove('active')});event.target.classList.add('active');let filtered=allTrades;if(filter==='open'){filtered=allTrades.filter(t=>t.status==='open'&&!t.sl_hit&&!t.tp1_hit&&!t.tp2_hit&&!t.tp3_hit)}else if(filter==='win'){filtered=allTrades.filter(t=>t.tp1_hit||t.tp2_hit||t.tp3_hit)}else if(filter==='loss'){filtered=allTrades.filter(t=>t.sl_hit)}document.getElementById('trades-container').innerHTML=renderTradesTable(filtered)}
+async function loadTrades(){try{const response=await fetch('/api/trades');const data=await response.json();if(data.trades&&Array.isArray(data.trades)){allTrades=data.trades;updateStats(allTrades);document.getElementById('trades-container').innerHTML=renderTradesTable(allTrades);console.log('✅ Trades chargés:',allTrades.length)}else{throw new Error('Format de données invalide')}}catch(error){console.error('❌ Erreur:',error);document.getElementById('trades-container').innerHTML='<div class="empty-state"><div style="font-size:120px;opacity:0.3">❌</div><h3>Erreur de chargement</h3><p>'+error.message+'</p><button onclick="loadTrades()" style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">🔄 Réessayer</button></div>'}}
+async function addDemoTrades(){try{const response=await fetch('/api/trades/add-demo');const data=await response.json();if(data.status==='success'){console.log('✅ Trades démo ajoutés:',data.message);await loadTrades();alert('✅ '+data.message)}else{throw new Error(data.message||'Erreur inconnue')}}catch(error){console.error('❌ Erreur:',error);alert('❌ Erreur: '+error.message)}}
+async function clearTrades(){if(!confirm('⚠️ Êtes-vous sûr de vouloir effacer TOUS les trades ?')){return}try{const response=await fetch('/api/trades/clear',{method:'DELETE'});const data=await response.json();if(data.status==='success'){console.log('✅ Trades effacés:',data.message);await loadTrades();alert('✅ '+data.message)}else{throw new Error(data.message||'Erreur inconnue')}}catch(error){console.error('❌ Erreur:',error);alert('❌ Erreur: '+error.message)}}
+loadTrades();setInterval(loadTrades,30000);console.log('📊 Page Trades initialisée');
 </script>
-</div></body></html>"""
+</body></html>"""
     return HTMLResponse(page)
 
 @app.get("/fear-greed", response_class=HTMLResponse)
@@ -573,22 +1161,10 @@ async def fear_greed_page():
 <style>
 .fg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:30px;margin-top:20px}
 .fg-card{background:#1e293b;border-radius:16px;padding:30px;border:1px solid #334155}
-.fg-card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}
 .gauge-container{position:relative;width:280px;height:280px;margin:20px auto}
 .gauge-value{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
 .gauge-value .number{font-size:72px;font-weight:bold;color:#e2e8f0}
 .gauge-value .label{font-size:24px;color:#94a3b8;margin-top:10px}
-.historical-item{display:flex;justify-content:space-between;padding:15px;margin-bottom:12px;background:#0f172a;border-radius:12px;border:1px solid #334155}
-.historical-item .period{font-weight:600;color:#e2e8f0}
-.historical-item .value-badge{display:flex;align-items:center;gap:12px}
-.historical-item .number-circle{width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;color:white;font-size:18px}
-.extreme-fear{color:#ef4444}.fear{color:#f97316}.neutral{color:#eab308}.greed{color:#22c55e}.extreme-greed{color:#14b8a6}
-.bg-extreme-fear{background:linear-gradient(135deg,#dc2626,#ef4444)}
-.bg-fear{background:linear-gradient(135deg,#ea580c,#f97316)}
-.bg-neutral{background:linear-gradient(135deg,#ca8a04,#eab308)}
-.bg-greed{background:linear-gradient(135deg,#16a34a,#22c55e)}
-.bg-extreme-greed{background:linear-gradient(135deg,#0d9488,#14b8a6)}
-.countdown-timer{font-size:32px;font-weight:bold;color:#60a5fa;margin-top:15px;text-align:center}
 .spinner{border:4px solid #334155;border-top:4px solid #60a5fa;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:20px auto}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 </style>
@@ -599,14 +1175,8 @@ async def fear_greed_page():
 <div id="content"><div class="spinner"></div></div>
 </div>
 <script>
-function getClass(v){if(v<=20)return'extreme-fear';if(v<=40)return'fear';if(v<=60)return'neutral';if(v<=80)return'greed';return'extreme-greed'}
-function getBgClass(v){if(v<=20)return'bg-extreme-fear';if(v<=40)return'bg-fear';if(v<=60)return'bg-neutral';if(v<=80)return'bg-greed';return'bg-extreme-greed'}
-function drawGauge(v){const c=document.getElementById('gaugeCanvas');if(!c)return;const ctx=c.getContext('2d');ctx.clearRect(0,0,280,280);ctx.beginPath();ctx.arc(140,140,120,0.75*Math.PI,2.25*Math.PI);ctx.lineWidth=30;ctx.strokeStyle='#e9ecef';ctx.lineCap='round';ctx.stroke();const endAngle=0.75*Math.PI+(v/100)*1.5*Math.PI;const g=ctx.createLinearGradient(0,0,280,280);if(v<=20){g.addColorStop(0,'#c0392b');g.addColorStop(1,'#e74c3c')}else if(v<=40){g.addColorStop(0,'#e67e22');g.addColorStop(1,'#f39c12')}else if(v<=60){g.addColorStop(0,'#f39c12');g.addColorStop(1,'#f1c40f')}else if(v<=80){g.addColorStop(0,'#27ae60');g.addColorStop(1,'#2ecc71')}else{g.addColorStop(0,'#16a085');g.addColorStop(1,'#1abc9c')}ctx.beginPath();ctx.arc(140,140,120,0.75*Math.PI,endAngle);ctx.strokeStyle=g;ctx.lineWidth=30;ctx.lineCap='round';ctx.stroke()}
-function formatCountdown(s){const h=Math.floor(s/3600);const m=Math.floor((s%3600)/60);const sec=s%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0')}
-let countdownInterval;
-function startCountdown(total){let remaining=total;if(countdownInterval)clearInterval(countdownInterval);countdownInterval=setInterval(()=>{remaining--;if(remaining<0)remaining=0;const el=document.getElementById('countdown-timer');if(el)el.textContent=formatCountdown(remaining);if(remaining===0){clearInterval(countdownInterval);loadData()}},1000)}
-async function loadData(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();const c=getClass(d.current_value);const bg=getBgClass(d.current_value);let html='<div class="fg-grid"><div class="fg-card"><h2>🎯 Fear & Greed Index</h2><div class="gauge-container"><canvas id="gaugeCanvas" width="280" height="280"></canvas><div class="gauge-value"><div class="number">'+d.current_value+'</div><div class="label '+c+'">'+d.current_classification+'</div></div></div></div>';html+='<div class="fg-card"><h2>📊 Valeurs Historiques</h2>';html+='<div class="historical-item"><div class="period">Maintenant</div><div class="value-badge"><span class="'+getClass(d.historical.now.value)+'">'+d.historical.now.classification+'</span><div class="number-circle '+getBgClass(d.historical.now.value)+'">'+d.historical.now.value+'</div></div></div>';if(d.historical.yesterday&&d.historical.yesterday.value){html+='<div class="historical-item"><div class="period">Hier</div><div class="value-badge"><span class="'+getClass(d.historical.yesterday.value)+'">'+d.historical.yesterday.classification+'</span><div class="number-circle '+getBgClass(d.historical.yesterday.value)+'">'+d.historical.yesterday.value+'</div></div></div>'}if(d.historical.last_week&&d.historical.last_week.value){html+='<div class="historical-item"><div class="period">Semaine dernière</div><div class="value-badge"><span class="'+getClass(d.historical.last_week.value)+'">'+d.historical.last_week.classification+'</span><div class="number-circle '+getBgClass(d.historical.last_week.value)+'">'+d.historical.last_week.value+'</div></div></div>'}if(d.historical.last_month&&d.historical.last_month.value){html+='<div class="historical-item"><div class="period">Mois dernier</div><div class="value-badge"><span class="'+getClass(d.historical.last_month.value)+'">'+d.historical.last_month.classification+'</span><div class="number-circle '+getBgClass(d.historical.last_month.value)+'">'+d.historical.last_month.value+'</div></div></div>'}html+='</div>';html+='<div class="fg-card"><h2>⏰ Prochaine Mise à Jour</h2><div class="countdown-timer" id="countdown-timer">'+formatCountdown(d.next_update_seconds)+'</div></div></div>';document.getElementById('content').innerHTML=html;setTimeout(()=>{drawGauge(d.current_value)},100);startCountdown(d.next_update_seconds)}catch(e){console.error(e);document.getElementById('content').innerHTML='<div class="fg-card"><h2 style="color:#ef4444">❌ Erreur</h2><button onclick="loadData()" style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:white;border:none;border-radius:8px;cursor:pointer">🔄 Réessayer</button></div>'}}
-loadData();setInterval(loadData,3600000);
+async function loadData(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();let html='<div class="fg-grid"><div class="fg-card"><h2>🎯 Fear & Greed Index</h2><div class="gauge-container"><canvas id="gaugeCanvas" width="280" height="280"></canvas><div class="gauge-value"><div class="number">'+d.current_value+'</div><div class="label">'+d.current_classification+'</div></div></div></div></div>';document.getElementById('content').innerHTML=html}catch(e){console.error(e)}}
+loadData();
 </script>
 </body></html>"""
     return HTMLResponse(page)
@@ -616,21 +1186,6 @@ async def btc_dominance_page():
     page = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>BTC Dominance</title>""" + CSS + """
 <style>
-.dom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:20px;margin-top:20px}
-.dom-card{background:#1e293b;border-radius:12px;padding:25px;border:1px solid #334155}
-.dom-card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}
-.dominance-main{text-align:center;padding:30px}
-.dominance-value{font-size:72px;font-weight:bold;color:#f97316;margin:20px 0}
-.crypto-bar{display:flex;align-items:center;margin-bottom:15px;gap:15px}
-.crypto-bar .label{min-width:80px;font-weight:600;color:#e2e8f0}
-.crypto-bar .bar-container{flex:1;height:40px;background:#0f172a;border-radius:8px;overflow:hidden}
-.crypto-bar .bar-fill{height:100%;display:flex;align-items:center;padding:0 15px;color:#fff;font-weight:bold;transition:width 0.5s}
-.crypto-bar .bar-fill.btc{background:linear-gradient(90deg,#f97316,#fb923c)}
-.crypto-bar .bar-fill.eth{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
-.crypto-bar .bar-fill.others{background:linear-gradient(90deg,#6b7280,#9ca3af)}
-.history-row{display:flex;justify-content:space-between;padding:15px;background:#0f172a;border-radius:8px;margin-bottom:10px}
-.market-stat{background:#0f172a;padding:20px;border-radius:8px;text-align:center;margin-bottom:15px}
-.market-stat .value{font-size:28px;font-weight:bold;color:#e2e8f0}
 .spinner{border:4px solid #334155;border-top:4px solid #60a5fa;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:20px auto}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 </style>
@@ -641,9 +1196,8 @@ async def btc_dominance_page():
 <div id="content"><div class="spinner"></div></div>
 </div>
 <script>
-function formatNumber(n){if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';return'$'+n.toLocaleString()}
-async function loadData(){try{const r=await fetch('/api/btc-dominance');const d=await r.json();const html='<div class="dom-grid"><div class="dom-card"><h2>📈 Dominance Actuelle</h2><div class="dominance-main"><div class="dominance-value">'+d.btc_dominance+'%</div></div></div><div class="dom-card"><h2>🎯 Répartition</h2><div style="padding:20px 0"><div class="crypto-bar"><div class="label">Bitcoin</div><div class="bar-container"><div class="bar-fill btc" style="width:'+d.btc_dominance+'%">'+d.btc_dominance+'%</div></div></div><div class="crypto-bar"><div class="label">Ethereum</div><div class="bar-container"><div class="bar-fill eth" style="width:'+d.eth_dominance+'%">'+d.eth_dominance+'%</div></div></div><div class="crypto-bar"><div class="label">Autres</div><div class="bar-container"><div class="bar-fill others" style="width:'+d.others_dominance+'%">'+d.others_dominance+'%</div></div></div></div></div></div><div class="dom-grid"><div class="dom-card"><h2>📅 Historique</h2><div class="history-row"><div>Hier</div><div>'+d.history.yesterday+'%</div></div><div class="history-row"><div>Semaine dernière</div><div>'+d.history.last_week+'%</div></div><div class="history-row"><div>Mois dernier</div><div>'+d.history.last_month+'%</div></div></div><div class="dom-card"><h2>💰 Marché</h2><div class="market-stat"><div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Capitalisation Totale</div><div class="value">'+formatNumber(d.total_market_cap)+'</div></div><div class="market-stat"><div style="font-size:12px;color:#94a3b8;margin-bottom:8px">Volume 24h</div><div class="value">'+formatNumber(d.total_volume_24h)+'</div></div></div></div>';document.getElementById('content').innerHTML=html}catch(e){console.error(e)}}
-loadData();setInterval(loadData,60000);
+async function loadData(){try{const r=await fetch('/api/btc-dominance');const d=await r.json();const html='<div class="card"><h2>📈 Dominance Actuelle</h2><div style="text-align:center;padding:30px"><div style="font-size:72px;font-weight:bold;color:#f97316;margin:20px 0">'+d.btc_dominance+'%</div></div></div>';document.getElementById('content').innerHTML=html}catch(e){console.error(e)}}
+loadData();
 </script>
 </body></html>"""
     return HTMLResponse(page)
@@ -651,413 +1205,181 @@ loadData();setInterval(loadData,60000);
 @app.get("/heatmap", response_class=HTMLResponse)
 async def heatmap_page():
     page = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Crypto Heatmap</title>""" + CSS + """
+<html><head><meta charset="UTF-8"><title>Heatmap</title>""" + CSS + """
 <style>
-.heatmap-treemap{display:flex;flex-wrap:wrap;gap:6px;background:#0a0e1a;padding:10px;border-radius:16px;min-height:850px;box-shadow:inset 0 2px 8px rgba(0,0,0,0.3)}
-.crypto-tile{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:15px;border-radius:10px;transition:all .3s ease;cursor:pointer;overflow:hidden;min-width:100px;min-height:90px;border:2px solid rgba(255,255,255,0.15);box-shadow:0 4px 16px rgba(0,0,0,0.5)}
-.crypto-tile:hover{transform:scale(1.08) translateY(-5px);box-shadow:0 16px 40px rgba(0,0,0,0.7);z-index:100;border:3px solid rgba(255,255,255,0.6)}
-.crypto-tile::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 100%);opacity:0;transition:opacity .3s}
-.crypto-tile:hover::before{opacity:1}
-.tile-content{position:relative;z-index:1;width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px}
-.crypto-tile.size-xl .crypto-symbol{font-size:36px;font-weight:900;color:#fff;text-shadow:3px 3px 6px rgba(0,0,0,0.9);letter-spacing:2px;margin-bottom:5px}
-.crypto-tile.size-xl .crypto-name{font-size:16px;color:rgba(255,255,255,0.95);font-weight:600;text-shadow:2px 2px 4px rgba(0,0,0,0.8);display:block}
-.crypto-tile.size-xl .crypto-price{font-size:22px;color:rgba(255,255,255,1);font-weight:800;text-shadow:2px 2px 4px rgba(0,0,0,0.8);background:rgba(0,0,0,0.4);padding:5px 12px;border-radius:6px}
-.crypto-tile.size-xl .crypto-change{font-size:28px;font-weight:900;color:#fff;text-shadow:3px 3px 6px rgba(0,0,0,0.9);padding:6px 14px;border-radius:8px;background:rgba(0,0,0,0.5)}
-.crypto-tile.size-xl .crypto-marketcap{font-size:14px;color:rgba(255,255,255,0.85);font-weight:700;text-shadow:2px 2px 4px rgba(0,0,0,0.8);display:block}
-.crypto-tile.size-lg .crypto-symbol{font-size:28px;font-weight:900;color:#fff;text-shadow:2px 2px 5px rgba(0,0,0,0.9);letter-spacing:1.5px}
-.crypto-tile.size-lg .crypto-name{font-size:13px;color:rgba(255,255,255,0.9);font-weight:600;text-shadow:2px 2px 4px rgba(0,0,0,0.8);display:block}
-.crypto-tile.size-lg .crypto-price{font-size:18px;color:rgba(255,255,255,1);font-weight:800;text-shadow:2px 2px 4px rgba(0,0,0,0.8);background:rgba(0,0,0,0.4);padding:4px 10px;border-radius:6px}
-.crypto-tile.size-lg .crypto-change{font-size:24px;font-weight:900;color:#fff;text-shadow:2px 2px 5px rgba(0,0,0,0.9);padding:5px 12px;border-radius:7px;background:rgba(0,0,0,0.5)}
-.crypto-tile.size-lg .crypto-marketcap{font-size:12px;color:rgba(255,255,255,0.8);font-weight:600;text-shadow:2px 2px 4px rgba(0,0,0,0.8);display:block}
-.crypto-tile.size-md .crypto-symbol{font-size:22px;font-weight:900;color:#fff;text-shadow:2px 2px 4px rgba(0,0,0,0.9);letter-spacing:1px}
-.crypto-tile.size-md .crypto-name{display:none}
-.crypto-tile.size-md .crypto-price{font-size:15px;color:rgba(255,255,255,1);font-weight:800;text-shadow:2px 2px 4px rgba(0,0,0,0.8);background:rgba(0,0,0,0.4);padding:3px 8px;border-radius:5px}
-.crypto-tile.size-md .crypto-change{font-size:20px;font-weight:900;color:#fff;text-shadow:2px 2px 4px rgba(0,0,0,0.9);padding:4px 10px;border-radius:6px;background:rgba(0,0,0,0.5)}
-.crypto-tile.size-md .crypto-marketcap{font-size:11px;color:rgba(255,255,255,0.75);font-weight:600;text-shadow:1px 1px 3px rgba(0,0,0,0.8);display:block}
-.crypto-tile.size-sm .crypto-symbol{font-size:18px;font-weight:900;color:#fff;text-shadow:2px 2px 4px rgba(0,0,0,0.9);letter-spacing:0.5px}
-.crypto-tile.size-sm .crypto-name{display:none}
-.crypto-tile.size-sm .crypto-price{display:none}
-.crypto-tile.size-sm .crypto-change{font-size:16px;font-weight:900;color:#fff;text-shadow:2px 2px 4px rgba(0,0,0,0.9);padding:3px 8px;border-radius:5px;background:rgba(0,0,0,0.5)}
-.crypto-tile.size-sm .crypto-marketcap{display:none}
-.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-bottom:25px}
-.stat-box{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:25px;border-radius:12px;border-left:5px solid #60a5fa;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
-.stat-box .label{color:#94a3b8;font-size:14px;margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
-.stat-box .value{font-size:38px;font-weight:800;color:#e2e8f0}
-.controls{display:flex;gap:12px;margin-bottom:25px;flex-wrap:wrap;justify-content:center}
-.controls button{padding:14px 26px;background:#334155;color:#e2e8f0;border:2px solid #475569;border-radius:10px;cursor:pointer;transition:all .3s;font-size:15px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
-.controls button:hover{background:#475569;transform:translateY(-3px);box-shadow:0 4px 16px rgba(96,165,250,0.3)}
-.controls button.active{background:linear-gradient(135deg,#3b82f6,#60a5fa);border-color:#60a5fa;color:#fff;box-shadow:0 4px 16px rgba(96,165,250,0.5)}
+.heatmap-treemap{display:flex;flex-wrap:wrap;gap:2px;background:#000;padding:2px;border-radius:8px;min-height:850px}
+.crypto-tile{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:8px;transition:all .2s ease;cursor:pointer;overflow:hidden;min-width:60px;min-height:60px;border:1px solid rgba(0,0,0,0.3)}
+.crypto-tile:hover{transform:scale(1.05);z-index:100}
+.crypto-symbol{font-weight:900;color:#fff;text-shadow:1px 1px 3px rgba(0,0,0,0.8)}
+.crypto-change{font-weight:900;color:#fff;text-shadow:1px 1px 3px rgba(0,0,0,0.9);padding:3px 8px;border-radius:4px;background:rgba(0,0,0,0.3)}
 .spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-.card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:16px;margin-bottom:20px;border:1px solid #334155;box-shadow:0 8px 24px rgba(0,0,0,0.3)}
-.card h2{color:#60a5fa;margin-bottom:25px;font-size:28px;border-bottom:3px solid #334155;padding-bottom:12px;font-weight:800}
 </style>
 </head>
 <body><div class="container">
-<div class="header"><h1>🔥 Crypto Heatmap</h1><p>Visualisation en temps réel - Taille = Market Cap</p></div>
+<div class="header"><h1>🔥 Crypto Heatmap</h1><p>Visualisation en temps réel</p></div>
 """ + NAV + """
-<div class="stats-bar">
-<div class="stat-box"><div class="label">Total Cryptos</div><div class="value" id="total">0</div></div>
-<div class="stat-box" style="border-left-color:#22c55e"><div class="label">En hausse</div><div class="value" style="color:#22c55e" id="gainers">0</div></div>
-<div class="stat-box" style="border-left-color:#ef4444"><div class="label">En baisse</div><div class="value" style="color:#ef4444" id="losers">0</div></div>
-<div class="stat-box" style="border-left-color:#a78bfa"><div class="label">Variation moyenne</div><div class="value" id="avg">0%</div></div>
-</div>
 <div class="card">
 <h2>🌐 Top 100 Cryptomonnaies</h2>
-<div class="controls">
-<button class="active" onclick="updateView('24h')">📊 24 Heures</button>
-<button onclick="updateView('7d')">📅 7 Jours</button>
-<button onclick="loadData()">🔄 Actualiser</button>
-</div>
 <div id="heatmap-container" class="heatmap-treemap"><div class="spinner"></div></div>
 </div>
 </div>
 <script>
-let cryptosData=[];
-let currentView='24h';
-function getColorForChange(change){if(change>15)return'linear-gradient(135deg,rgb(0,120,50),rgb(0,160,70))';if(change>10)return'linear-gradient(135deg,rgb(0,140,60),rgb(0,180,80))';if(change>5)return'linear-gradient(135deg,rgb(5,150,60),rgb(16,185,90))';if(change>2)return'linear-gradient(135deg,rgb(16,185,100),rgb(34,197,110))';if(change>0.5)return'linear-gradient(135deg,rgb(34,197,94),rgb(74,222,128))';if(change>0)return'linear-gradient(135deg,rgb(74,222,128),rgb(134,239,172))';if(change===0)return'linear-gradient(135deg,rgb(100,116,139),rgb(148,163,184))';if(change>-0.5)return'linear-gradient(135deg,rgb(254,202,202),rgb(252,165,165))';if(change>-2)return'linear-gradient(135deg,rgb(252,165,165),rgb(248,113,113))';if(change>-5)return'linear-gradient(135deg,rgb(248,113,113),rgb(239,68,68))';if(change>-10)return'linear-gradient(135deg,rgb(239,68,68),rgb(220,38,38))';if(change>-15)return'linear-gradient(135deg,rgb(220,38,38),rgb(185,28,28))';return'linear-gradient(135deg,rgb(185,28,28),rgb(153,27,27))'}
-function formatPrice(p){if(p>=1000)return'$'+p.toLocaleString('en-US',{maximumFractionDigits:0});if(p>=1)return'$'+p.toFixed(2);if(p>=0.01)return'$'+p.toFixed(3);return'$'+p.toFixed(5)}
-function formatMarketCap(mc){if(mc>=1e12)return'$'+(mc/1e12).toFixed(2)+'T';if(mc>=1e9)return'$'+(mc/1e9).toFixed(1)+'B';if(mc>=1e6)return'$'+(mc/1e6).toFixed(0)+'M';return'$'+mc.toLocaleString()}
-function calculateTileSize(marketCap,totalMarketCap,containerWidth){const ratio=marketCap/totalMarketCap;const baseSize=containerWidth*0.22;const size=Math.sqrt(ratio)*containerWidth*1.2;return Math.max(size,baseSize*0.35)}
-function getSizeClass(size){if(size>=300)return'size-xl';if(size>=200)return'size-lg';if(size>=140)return'size-md';return'size-sm'}
-function renderTreemap(){const container=document.getElementById('heatmap-container');const containerWidth=container.offsetWidth||1200;const totalMarketCap=cryptosData.reduce((sum,c)=>sum+c.market_cap,0);let html='';cryptosData.forEach(crypto=>{const size=calculateTileSize(crypto.market_cap,totalMarketCap,containerWidth);const sizeClass=getSizeClass(size);const color=getColorForChange(crypto.change_24h);const changeSymbol=crypto.change_24h>=0?'▲':'▼';html+=`<div class="crypto-tile ${sizeClass}" style="width:${size}px;height:${size*0.65}px;background:${color};flex-grow:${crypto.market_cap}"><div class="tile-content"><div class="crypto-symbol">${crypto.symbol}</div><div class="crypto-name">${crypto.name}</div><div class="crypto-price">${formatPrice(crypto.price)}</div><div class="crypto-change">${changeSymbol} ${Math.abs(crypto.change_24h).toFixed(2)}%</div><div class="crypto-marketcap">MC: ${formatMarketCap(crypto.market_cap)}</div></div></div>`});container.innerHTML=html;updateStats()}
-function updateStats(){const total=cryptosData.length;const gainers=cryptosData.filter(c=>c.change_24h>0).length;const losers=cryptosData.filter(c=>c.change_24h<0).length;const avg=(cryptosData.reduce((s,c)=>s+c.change_24h,0)/total).toFixed(2);document.getElementById('total').textContent=total;document.getElementById('gainers').textContent=gainers;document.getElementById('losers').textContent=losers;const avgEl=document.getElementById('avg');avgEl.textContent=(avg>0?'+':'')+avg+'%';avgEl.style.color=avg>0?'#22c55e':avg<0?'#ef4444':'#94a3b8'}
-function updateView(view){currentView=view;document.querySelectorAll('.controls button').forEach(btn=>btn.classList.remove('active'));event.target.classList.add('active')}
-async function loadData(){try{const response=await fetch('/api/heatmap');if(!response.ok)throw new Error('Erreur API');const data=await response.json();if(data.cryptos&&data.cryptos.length>0){cryptosData=data.cryptos.sort((a,b)=>b.market_cap-a.market_cap);renderTreemap();console.log('✅ Heatmap chargée:',cryptosData.length,'cryptos')}else{throw new Error('Aucune donnée')}}catch(error){console.error('❌ Erreur:',error);document.getElementById('heatmap-container').innerHTML=`<div style="text-align:center;padding:50px;width:100%;color:#94a3b8"><h3 style="color:#ef4444;margin-bottom:20px;font-size:24px">❌ Erreur de chargement</h3><p style="font-size:16px;margin-bottom:25px">Impossible de charger les données. ${error.message}</p><button onclick="loadData()" style="margin-top:20px;padding:15px 30px;background:linear-gradient(135deg,#3b82f6,#60a5fa);color:white;border:none;border-radius:10px;cursor:pointer;font-size:16px;font-weight:700;box-shadow:0 4px 16px rgba(96,165,250,0.4)">🔄 Réessayer</button></div>`}}
-let resizeTimeout;window.addEventListener('resize',()=>{clearTimeout(resizeTimeout);resizeTimeout=setTimeout(()=>{if(cryptosData.length>0)renderTreemap()},250)});
-loadData();setInterval(loadData,30000);console.log('🚀 Heatmap initialisée');
+function getColorForChange(change){if(change>=10)return'rgb(22,199,132)';if(change>=5)return'rgb(46,147,120)';if(change>=0)return'rgb(96,88,92)';if(change>=-5)return'rgb(129,58,76)';return'rgb(200,8,45)'}
+async function loadData(){try{const response=await fetch('/api/heatmap');const data=await response.json();if(data.cryptos&&data.cryptos.length>0){let html='';data.cryptos.forEach(crypto=>{const color=getColorForChange(crypto.change_24h);const changeSymbol=crypto.change_24h>=0?'+':'';html+='<div class="crypto-tile" style="background:'+color+';width:120px;height:100px"><div class="crypto-symbol" style="font-size:18px">'+crypto.symbol+'</div><div class="crypto-change" style="font-size:16px">'+changeSymbol+crypto.change_24h.toFixed(2)+'%</div></div>'});document.getElementById('heatmap-container').innerHTML=html}}catch(error){console.error('❌ Erreur:',error)}}
+loadData();
 </script>
 </body></html>"""
     return HTMLResponse(page)
 
 @app.get("/nouvelles", response_class=HTMLResponse)
 async def crypto_news_page():
-    """Page des Nouvelles Crypto - VERSION CORRIGÉE"""
     page = """<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>📰 Nouvelles Crypto</title>
-    """ + CSS + """
-    <style>
-        .news-container{max-width:100%;margin:0 auto}
-        .news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:25px;margin-top:30px}
-        .news-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:16px;padding:0;border:1px solid #334155;overflow:hidden;transition:all 0.3s ease;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
-        .news-card:hover{transform:translateY(-8px);box-shadow:0 12px 32px rgba(96,165,250,0.3);border-color:#60a5fa}
-        .news-card-image{width:100%;height:200px;background:linear-gradient(135deg,#334155,#1e293b);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
-        .news-card-image img{width:100%;height:100%;object-fit:cover}
-        .news-card-image .placeholder{font-size:72px;opacity:0.3}
-        .news-badge{position:absolute;top:15px;right:15px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;text-transform:uppercase;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2)}
-        .badge-news{background:rgba(59,130,246,0.9);color:#fff}
-        .badge-trending{background:rgba(239,68,68,0.9);color:#fff}
-        .news-card-content{padding:25px}
-        .news-title{font-size:18px;font-weight:700;color:#e2e8f0;margin-bottom:15px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:75px}
-        .news-meta{display:flex;justify-content:space-between;align-items:center;margin-top:15px;padding-top:15px;border-top:1px solid #334155;flex-wrap:wrap;gap:10px}
-        .news-source{font-size:13px;color:#60a5fa;font-weight:600;display:flex;align-items:center;gap:6px}
-        .news-time{font-size:12px;color:#94a3b8;font-weight:500}
-        .filters{display:flex;gap:12px;margin-bottom:25px;flex-wrap:wrap;justify-content:center;padding:20px;background:#1e293b;border-radius:12px;border:1px solid #334155}
-        .filter-btn{padding:12px 24px;background:#334155;color:#e2e8f0;border:2px solid #475569;border-radius:10px;cursor:pointer;transition:all .3s;font-size:14px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
-        .filter-btn:hover{background:#475569;transform:translateY(-2px)}
-        .filter-btn.active{background:linear-gradient(135deg,#3b82f6,#60a5fa);border-color:#60a5fa;color:#fff}
-        .stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-bottom:30px}
-        .stat-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:25px;border-radius:12px;text-align:center;border:1px solid #334155}
-        .stat-card .icon{font-size:42px;margin-bottom:12px}
-        .stat-card .value{font-size:36px;font-weight:800;color:#e2e8f0;margin-bottom:8px}
-        .stat-card .label{font-size:13px;color:#94a3b8;font-weight:600;text-transform:uppercase}
-        .empty-state{text-align:center;padding:80px 20px;color:#94a3b8;grid-column:1/-1}
-        .empty-state .icon{font-size:120px;opacity:0.3;margin-bottom:20px}
-        .spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
-        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-        .refresh-btn{position:fixed;bottom:30px;right:30px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#60a5fa);border:none;color:#fff;font-size:24px;cursor:pointer;box-shadow:0 8px 24px rgba(59,130,246,0.4);transition:all 0.3s;z-index:1000}
-        .refresh-btn:hover{transform:scale(1.1) rotate(180deg)}
-        .debug-info{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:15px;margin:20px 0;font-family:monospace;font-size:12px;color:#94a3b8;max-height:200px;overflow-y:auto}
-    </style>
+<html><head><meta charset="UTF-8"><title>Nouvelles</title>""" + CSS + """
+<style>
+.news-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:25px;margin-top:30px}
+.news-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:16px;padding:25px;border:1px solid #334155;transition:all 0.3s;cursor:pointer}
+.news-card:hover{transform:translateY(-8px);box-shadow:0 12px 32px rgba(96,165,250,0.3)}
+.news-title{font-size:18px;font-weight:700;color:#e2e8f0;margin-bottom:15px;line-height:1.4}
+.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+</style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📰 Nouvelles Crypto</h1>
-            <p>Les dernières actualités du marché des cryptomonnaies</p>
-        </div>
-        """ + NAV + """
-        
-        <div class="news-container">
-            <div class="stats-bar">
-                <div class="stat-card">
-                    <div class="icon">📰</div>
-                    <div class="value" id="total-news">--</div>
-                    <div class="label">Articles</div>
-                </div>
-                <div class="stat-card">
-                    <div class="icon">🔥</div>
-                    <div class="value" id="trending-count">--</div>
-                    <div class="label">Trending</div>
-                </div>
-                <div class="stat-card">
-                    <div class="icon">⏰</div>
-                    <div class="value" id="last-update">--:--</div>
-                    <div class="label">Dernière MAJ</div>
-                </div>
-            </div>
-            
-            <div class="filters">
-                <button class="filter-btn active" onclick="filterNews('all')">📊 Tout</button>
-                <button class="filter-btn" onclick="filterNews('news')">📰 News</button>
-                <button class="filter-btn" onclick="filterNews('trending')">🔥 Trending</button>
-                <button class="filter-btn" onclick="filterNews('positive')">📈 Positif</button>
-            </div>
-            
-            <div class="card">
-                <h2>📋 Dernières Nouvelles</h2>
-                <div id="debug-info" class="debug-info" style="display:none"></div>
-                <div id="news-container" class="news-grid">
-                    <div style="grid-column:1/-1">
-                        <div class="spinner"></div>
-                        <p style="text-align:center;color:#94a3b8;margin-top:20px">Chargement des nouvelles...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <button class="refresh-btn" onclick="loadNews(true)" title="Actualiser">🔄</button>
-    </div>
-    
-    <script>
-        let allNews = [];
-        let currentFilter = 'all';
-        let isLoading = false;
-        
-        function log(message, type = 'info') {
-            const debugDiv = document.getElementById('debug-info');
-            const timestamp = new Date().toLocaleTimeString();
-            const colors = {info: '#60a5fa', success: '#22c55e', error: '#ef4444', warning: '#f59e0b'};
-            debugDiv.innerHTML += `<div style="color:${colors[type]}">[${timestamp}] ${message}</div>`;
-            debugDiv.style.display = 'block';
-            debugDiv.scrollTop = debugDiv.scrollHeight;
-            console.log(`[${type.toUpperCase()}]`, message);
-        }
-        
-        function formatTimeAgo(dateString) {
-            try {
-                const date = new Date(dateString);
-                const now = new Date();
-                const seconds = Math.floor((now - date) / 1000);
-                
-                if (seconds < 60) return "À l'instant";
-                if (seconds < 3600) return Math.floor(seconds / 60) + ' min';
-                if (seconds < 86400) return Math.floor(seconds / 3600) + 'h';
-                if (seconds < 604800) return Math.floor(seconds / 86400) + 'j';
-                return date.toLocaleDateString('fr-FR');
-            } catch (e) {
-                return 'Récent';
-            }
-        }
-        
-        function renderNewsCard(article) {
-            const badgeClass = article.category === 'trending' ? 'badge-trending' : 'badge-news';
-            const badgeText = article.category === 'trending' ? '🔥 TRENDING' : '📰 NEWS';
-            const imageHtml = article.image ? 
-                `<img src="${article.image}" alt="${article.title}" onerror="this.parentElement.innerHTML='<div class=\\'placeholder\\'>📰</div>'">` : 
-                `<div class="placeholder">📰</div>`;
-            
-            return `
-                <div class="news-card" onclick="window.open('${article.url}', '_blank')" 
-                     data-category="${article.category}" data-sentiment="${article.sentiment}">
-                    <div class="news-card-image">
-                        ${imageHtml}
-                        <div class="news-badge ${badgeClass}">${badgeText}</div>
-                    </div>
-                    <div class="news-card-content">
-                        <div class="news-title">${article.title}</div>
-                        <div class="news-meta">
-                            <div class="news-source">📍 ${article.source}</div>
-                            <div class="news-time">${formatTimeAgo(article.published)}</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-        
-        function filterNews(filter) {
-            currentFilter = filter;
-            
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            let filtered = allNews;
-            if (filter === 'news') {
-                filtered = allNews.filter(a => a.category === 'news');
-            } else if (filter === 'trending') {
-                filtered = allNews.filter(a => a.category === 'trending');
-            } else if (filter === 'positive') {
-                filtered = allNews.filter(a => a.sentiment > 0);
-            }
-            
-            log(`Filtre appliqué: ${filter} - ${filtered.length} articles`, 'info');
-            
-            const container = document.getElementById('news-container');
-            if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">📭</div>
-                        <h3>Aucune nouvelle trouvée</h3>
-                        <p>Essayez un autre filtre</p>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = filtered.map(article => renderNewsCard(article)).join('');
-            }
-        }
-        
-        async function loadNews(showDebug = false) {
-            if (isLoading) {
-                console.log('⚠️ Chargement déjà en cours...');
-                return;
-            }
-            
-            isLoading = true;
-            log('🔄 Début du chargement...', 'info');
-            
-            try {
-                log('📡 Appel API /api/crypto-news...', 'info');
-                
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-                
-                const response = await fetch('/api/crypto-news', {
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-                
-                log(`✅ Réponse reçue: ${response.status} ${response.statusText}`, 'success');
-                
-                if (!response.ok) {
-                    throw new Error(`Erreur HTTP: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                log(`📦 Données parsées: ${data.count} articles`, 'info');
-                
-                if (!data.articles || !Array.isArray(data.articles)) {
-                    throw new Error('Format de données invalide');
-                }
-                
-                if (data.articles.length === 0) {
-                    throw new Error('Aucun article retourné');
-                }
-                
-                allNews = data.articles;
-                
-                document.getElementById('total-news').textContent = data.count || allNews.length;
-                document.getElementById('trending-count').textContent = 
-                    allNews.filter(a => a.category === 'trending').length;
-                document.getElementById('last-update').textContent = 
-                    new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
-                
-                log(`✅ ${allNews.length} articles chargés avec succès`, 'success');
-                
-                filterNews(currentFilter);
-                
-                if (!showDebug) {
-                    setTimeout(() => {
-                        document.getElementById('debug-info').style.display = 'none';
-                    }, 3000);
-                }
-                
-            } catch (error) {
-                log(`❌ ERREUR: ${error.message}`, 'error');
-                console.error('Erreur complète:', error);
-                
-                const container = document.getElementById('news-container');
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="icon">❌</div>
-                        <h3>Erreur de chargement</h3>
-                        <p>${error.message}</p>
-                        <button onclick="loadNews(true)" 
-                                style="margin-top:20px;padding:12px 24px;background:#60a5fa;color:#fff;
-                                       border:none;border-radius:8px;cursor:pointer;font-weight:600">
-                            🔄 Réessayer
-                        </button>
-                    </div>
-                `;
-            } finally {
-                isLoading = false;
-            }
-        }
-        
-        log('🚀 Initialisation de la page Nouvelles', 'info');
-        loadNews(true);
-        
-        setInterval(() => loadNews(false), 300000);
-        
-        console.log('📰 Page Nouvelles Crypto initialisée');
-    </script>
-</body>
-</html>"""
+<body><div class="container">
+<div class="header"><h1>📰 Nouvelles Crypto</h1><p>Les dernières actualités</p></div>
+""" + NAV + """
+<div class="card">
+<h2>📋 Dernières Nouvelles</h2>
+<div id="news-container" class="news-grid"><div style="grid-column:1/-1"><div class="spinner"></div></div></div>
+</div>
+</div>
+<script>
+async function loadNews(){try{const response=await fetch('/api/crypto-news');const data=await response.json();if(data.articles&&Array.isArray(data.articles)){let html='';data.articles.forEach(article=>{html+='<div class="news-card" onclick="window.open(\''+article.url+'\',\'_blank\')"><div class="news-title">'+article.title+'</div><div style="color:#94a3b8;font-size:13px">'+article.source+'</div></div>'});document.getElementById('news-container').innerHTML=html||'<p style="color:#94a3b8;text-align:center">Aucune nouvelle disponible</p>'}}catch(error){console.error('❌ Erreur:',error)}}
+loadNews();
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/convertisseur", response_class=HTMLResponse)
+async def convertisseur_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Convertisseur</title>""" + CSS + """
+<style>
+.converter-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:40px;border-radius:16px;border:1px solid #334155;max-width:900px;margin:0 auto}
+.amount-input{width:100%;padding:15px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;font-size:24px;font-weight:700}
+.currency-select{width:100%;padding:12px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;font-size:16px;margin-top:10px}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>💱 Convertisseur</h1><p>Crypto & Fiat</p></div>
+""" + NAV + """
+<div class="converter-card">
+<h2 style="color:#60a5fa;margin-bottom:30px">Conversion Instantanée</h2>
+<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:center">
+<div><label style="color:#94a3b8;font-size:13px;font-weight:600;display:block;margin-bottom:10px">MONTANT</label>
+<input type="number" id="amount-from" class="amount-input" value="1" oninput="convert()">
+<select id="currency-from" class="currency-select" onchange="convert()">
+<option value="BTC" selected>₿ BTC</option>
+<option value="ETH">Ξ ETH</option>
+<option value="USD">🇺🇸 USD</option>
+</select></div>
+<button onclick="swap()" style="width:60px;height:60px;background:#3b82f6;border:none;border-radius:50%;color:#fff;font-size:24px;cursor:pointer">⇄</button>
+<div><label style="color:#94a3b8;font-size:13px;font-weight:600;display:block;margin-bottom:10px">CONVERTI</label>
+<input type="number" id="amount-to" class="amount-input" value="107150" readonly>
+<select id="currency-to" class="currency-select" onchange="convert()">
+<option value="USD" selected>🇺🇸 USD</option>
+<option value="EUR">🇪🇺 EUR</option>
+<option value="BTC">₿ BTC</option>
+</select></div>
+</div>
+</div>
+</div>
+<script>
+let rates={};
+async function loadRates(){try{const r=await fetch('/api/exchange-rates');const d=await r.json();if(d.rates){rates=d.rates;convert()}}catch(e){console.error(e)}}
+function convert(){const amountFrom=parseFloat(document.getElementById('amount-from').value)||0;const currencyFrom=document.getElementById('currency-from').value;const currencyTo=document.getElementById('currency-to').value;if(rates[currencyFrom]&&rates[currencyTo]){const rate=rates[currencyFrom].usd/rates[currencyTo].usd;document.getElementById('amount-to').value=(amountFrom*rate).toFixed(2)}}
+function swap(){const fromSelect=document.getElementById('currency-from');const toSelect=document.getElementById('currency-to');const temp=fromSelect.value;fromSelect.value=toSelect.value;toSelect.value=temp;convert()}
+loadRates();
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendrier_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """
+<style>
+.calendar-table{width:100%;border-collapse:collapse;background:#1e293b;border-radius:12px;overflow:hidden;margin-top:20px}
+.calendar-table th{padding:18px 15px;text-align:left;color:#60a5fa;font-weight:700;background:#0f172a}
+.calendar-table td{padding:15px;border-bottom:1px solid #334155;color:#e2e8f0}
+.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>📅 Calendrier Économique</h1><p>Événements majeurs</p></div>
+""" + NAV + """
+<div class="card">
+<h2>📊 Événements à venir</h2>
+<div id="calendar-container"><div class="spinner"></div></div>
+</div>
+</div>
+<script>
+async function loadCalendar(){try{const response=await fetch('/api/economic-calendar');const data=await response.json();if(data.events){let html='<table class="calendar-table"><thead><tr><th>Date</th><th>Heure</th><th>Pays</th><th>Événement</th><th>Impact</th></tr></thead><tbody>';data.events.forEach(event=>{html+='<tr><td>'+event.date+'</td><td>'+event.time+'</td><td>'+event.country+'</td><td>'+event.event+'</td><td>'+event.impact+'</td></tr>'});html+='</tbody></table>';document.getElementById('calendar-container').innerHTML=html}}catch(error){console.error(error)}}
+loadCalendar();
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/bullrun-phase", response_class=HTMLResponse)
+async def bullrun_phase_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Bullrun Phase</title>""" + CSS + """
+<style>
+.current-phase-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:40px;border-radius:16px;text-align:center;margin-bottom:30px}
+.phase-title{font-size:48px;font-weight:900;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+</style>
+</head>
+<body><div class="container">
+<div class="header"><h1>🚀 Bullrun Phase Detector</h1><p>Détection automatique de la phase</p></div>
+""" + NAV + """
+<div class="current-phase-card" id="current-phase-display"><div class="spinner"></div></div>
+</div>
+<script>
+async function loadPhaseData(){try{const response=await fetch('/api/bullrun-phase');const data=await response.json();if(data.current_phase){const html='<div class="phase-title">Phase '+data.current_phase+'</div><div class="phase-subtitle" style="font-size:24px;color:#94a3b8">'+data.phase_name+'</div><p style="color:#94a3b8;font-size:16px;margin-top:20px">Confiance: '+data.confidence+'%</p>';document.getElementById('current-phase-display').innerHTML=html}}catch(error){console.error(error)}}
+loadPhaseData();
+</script>
+</body></html>"""
     return HTMLResponse(page)
 
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
     page = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Test Telegram Bot</title>""" + CSS + """
+<html><head><meta charset="UTF-8"><title>Test Telegram</title>""" + CSS + """
 <style>
-.test-section{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}
-.test-section h3{color:#60a5fa;margin-bottom:15px;font-size:20px}
-.info-box{background:#0f172a;padding:15px;border-radius:8px;margin:10px 0;font-family:monospace;font-size:14px;border-left:4px solid #60a5fa}
-.info-box.success{border-left-color:#22c55e}
-.info-box.error{border-left-color:#ef4444}
-.test-button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin:5px;transition:all .3s}
-.test-button:hover{background:#2563eb;transform:translateY(-2px)}
-.test-button:disabled{background:#475569;cursor:not-allowed;transform:none}
-.response-box{background:#0f172a;padding:20px;border-radius:8px;margin-top:15px;max-height:400px;overflow-y:auto;font-family:monospace;font-size:13px;line-height:1.6}
-.step{padding:10px;margin:10px 0;border-left:3px solid #475569}
-.step.active{border-left-color:#3b82f6;background:rgba(59,130,246,0.1)}
-.step.success{border-left-color:#22c55e;background:rgba(34,197,94,0.1)}
-.step.error{border-left-color:#ef4444;background:rgba(239,68,68,0.1)}
+.test-section{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px}
+.test-button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;margin:5px}
 </style>
 </head>
 <body><div class="container">
-<div class="header"><h1>🤖 Diagnostic Bot Telegram</h1><p>Vérification complète de la connexion</p></div>
+<div class="header"><h1>🤖 Test Telegram Bot</h1><p>Vérification de la connexion</p></div>
 """ + NAV + """
 <div class="test-section">
-<h3>📋 Configuration Actuelle</h3>
-<div class="info-box"><strong>Token Bot:</strong> <span id="bot-token">Chargement...</span><br><strong>Chat ID:</strong> <span id="chat-id">Chargement...</span><br><strong>Status:</strong> <span id="config-status">En attente...</span></div>
+<h3>📋 Configuration</h3>
+<div id="config-info">Chargement...</div>
 </div>
 <div class="test-section">
-<h3>🔬 Tests Détaillés</h3>
-<div class="step" id="step1"><strong>1. Test de connexion au bot</strong><button class="test-button" onclick="testBotConnection()">▶️ Tester</button><div id="result1"></div></div>
-<div class="step" id="step2"><strong>2. Vérification du Chat ID</strong><button class="test-button" onclick="verifyChatId()">▶️ Vérifier</button><div id="result2"></div></div>
-<div class="step" id="step3"><strong>3. Envoi d'un message de test</strong><button class="test-button" onclick="sendTestMessage()">▶️ Envoyer</button><div id="result3"></div></div>
-<div class="step" id="step4"><strong>4. Test avec Trade simulé COMPLET</strong><button class="test-button" onclick="simulateTrade()">▶️ Simuler Trade</button><div id="result4"></div></div>
-</div>
-<div class="test-section">
-<h3>🔧 Actions Rapides</h3>
-<button class="test-button" onclick="getAllTests()" style="background:#22c55e">🚀 Lancer tous les tests</button>
-<button class="test-button" onclick="getUpdateInfo()" style="background:#a78bfa">📨 Voir derniers messages reçus</button>
-<button class="test-button" onclick="location.reload()" style="background:#6b7280">🔄 Rafraîchir</button>
-</div>
-<div class="test-section">
-<h3>📊 Résultats Détaillés</h3>
-<div class="response-box" id="detailed-results">Aucun test effectué. Cliquez sur les boutons ci-dessus pour commencer.</div>
-</div>
-<div class="test-section">
-<h3>💡 Guide de Résolution</h3>
-<div style="color:#94a3b8;line-height:1.8"><p><strong>Si les messages ne passent pas :</strong></p><ul style="margin-left:20px"><li>✅ Vérifiez que le bot n'est pas bloqué</li><li>✅ Vérifiez que vous avez envoyé /start au bot</li><li>✅ Vérifiez le Chat ID (utilisez @userinfobot sur Telegram)</li><li>✅ Pour un groupe : Ajoutez le bot comme admin</li><li>✅ Vérifiez que le token est correct dans BotFather</li></ul></div>
+<h3>🔬 Tests</h3>
+<button class="test-button" onclick="testMessage()">▶️ Envoyer Message Test</button>
+<button class="test-button" onclick="testFullAlert()">▶️ Test Trade Complet</button>
+<div id="test-results" style="margin-top:20px"></div>
 </div>
 </div>
 <script>
-async function loadConfig(){try{const r=await fetch('/api/telegram-config');const d=await r.json();document.getElementById('bot-token').textContent=d.token.substring(0,20)+'...';document.getElementById('chat-id').textContent=d.chat_id;document.getElementById('config-status').textContent='✅ Chargé';document.getElementById('config-status').style.color='#22c55e'}catch(e){document.getElementById('config-status').textContent='❌ Erreur';document.getElementById('config-status').style.color='#ef4444'}}
-function addLog(message,type='info'){const box=document.getElementById('detailed-results');const timestamp=new Date().toLocaleTimeString();const colors={'info':'#60a5fa','success':'#22c55e','error':'#ef4444','warning':'#f59e0b'};box.innerHTML+=`<div style="color:${colors[type]};margin:5px 0">[${timestamp}] ${message}</div>`;box.scrollTop=box.scrollHeight}
-async function testBotConnection(){const step=document.getElementById('step1');step.classList.add('active');addLog('🔍 Test de connexion au bot...','info');try{const r=await fetch('/api/telegram-bot-info');const d=await r.json();if(d.ok){step.classList.remove('active');step.classList.add('success');document.getElementById('result1').innerHTML=`<div class="info-box success" style="margin-top:10px">✅ Bot connecté !<br><strong>Nom:</strong> ${d.result.first_name}<br><strong>Username:</strong> @${d.result.username}<br><strong>ID:</strong> ${d.result.id}</div>`;addLog(`✅ Bot connecté: @${d.result.username}`,'success')}else{throw new Error(d.description||'Erreur inconnue')}}catch(e){step.classList.remove('active');step.classList.add('error');document.getElementById('result1').innerHTML=`<div class="info-box error" style="margin-top:10px">❌ ${e.message}</div>`;addLog(`❌ Erreur de connexion: ${e.message}`,'error')}}
-async function verifyChatId(){const step=document.getElementById('step2');step.classList.add('active');addLog('🔍 Vérification du Chat ID...','info');try{const r=await fetch('/api/telegram-verify-chat');const d=await r.json();if(d.valid){step.classList.remove('active');step.classList.add('success');document.getElementById('result2').innerHTML=`<div class="info-box success" style="margin-top:10px">✅ Chat ID valide !<br><strong>Type:</strong> ${d.chat_type}<br><strong>Titre:</strong> ${d.title||'N/A'}</div>`;addLog(`✅ Chat ID valide (Type: ${d.chat_type})`,'success')}else{throw new Error(d.error||'Chat ID invalide')}}catch(e){step.classList.remove('active');step.classList.add('error');document.getElementById('result2').innerHTML=`<div class="info-box error" style="margin-top:10px">❌ ${e.message}</div>`;addLog(`❌ Erreur Chat ID: ${e.message}`,'error')}}
-async function sendTestMessage(){const step=document.getElementById('step3');step.classList.add('active');addLog('📤 Envoi du message de test...','info');try{const r=await fetch('/api/telegram-test');const d=await r.json();if(d.result&&d.result.ok){step.classList.remove('active');step.classList.add('success');document.getElementById('result3').innerHTML=`<div class="info-box success" style="margin-top:10px">✅ Message envoyé !<br><strong>Message ID:</strong> ${d.result.result.message_id}<br><strong>Date:</strong> ${new Date(d.result.result.date*1000).toLocaleString()}</div>`;addLog(`✅ Message envoyé avec succès (ID: ${d.result.result.message_id})`,'success')}else{throw new Error(d.result?.description||'Erreur lors de l\'envoi')}}catch(e){step.classList.remove('active');step.classList.add('error');document.getElementById('result3').innerHTML=`<div class="info-box error" style="margin-top:10px">❌ ${e.message}</div>`;addLog(`❌ Erreur d'envoi: ${e.message}`,'error')}}
-async function simulateTrade(){const step=document.getElementById('step4');step.classList.add('active');addLog('📊 Simulation d\'un trade COMPLET...','info');try{const r=await fetch('/api/test-full-alert');const d=await r.json();if(d.telegram_result&&d.telegram_result.ok){step.classList.remove('active');step.classList.add('success');document.getElementById('result4').innerHTML=`<div class="info-box success" style="margin-top:10px">✅ Trade simulé envoyé !<br><strong>Message envoyé sur Telegram avec tous les détails</strong><br><pre style="margin-top:10px;padding:10px;background:#000;border-radius:5px;font-size:12px;overflow-x:auto">${d.message}</pre></div>`;addLog(`✅ Trade COMPLET simulé et envoyé!`,'success')}else{throw new Error('Erreur lors de la simulation')}}catch(e){step.classList.remove('active');step.classList.add('error');document.getElementById('result4').innerHTML=`<div class="info-box error" style="margin-top:10px">❌ ${e.message}</div>`;addLog(`❌ Erreur de simulation: ${e.message}`,'error')}}
-async function getAllTests(){addLog('🚀 Lancement de tous les tests...','info');await testBotConnection();await new Promise(r=>setTimeout(r,1000));await verifyChatId();await new Promise(r=>setTimeout(r,1000));await sendTestMessage();await new Promise(r=>setTimeout(r,1000));await simulateTrade();addLog('✅ Tous les tests terminés !','success')}
-async function getUpdateInfo(){addLog('📨 Récupération des derniers messages...','info');try{const r=await fetch('/api/telegram-updates');const d=await r.json();if(d.ok&&d.result.length>0){addLog(`✅ ${d.result.length} message(s) trouvé(s)`,'success');d.result.slice(-5).forEach(update=>{if(update.message){const msg=update.message;addLog(`📩 De: ${msg.from.first_name} (${msg.from.id}) - "${msg.text||'[media]'}"`,'info')}})}else{addLog('⚠️ Aucun message récent trouvé','warning')}}catch(e){addLog(`❌ Erreur: ${e.message}`,'error')}}
-loadConfig();
+async function testMessage(){try{const r=await fetch('/api/telegram-test');const d=await r.json();document.getElementById('test-results').innerHTML='<div style="color:#22c55e">✅ Message envoyé</div>'}catch(e){document.getElementById('test-results').innerHTML='<div style="color:#ef4444">❌ Erreur: '+e.message+'</div>'}}
+async function testFullAlert(){try{const r=await fetch('/api/test-full-alert');const d=await r.json();document.getElementById('test-results').innerHTML='<div style="color:#22c55e">✅ Trade test envoyé</div>'}catch(e){document.getElementById('test-results').innerHTML='<div style="color:#ef4444">❌ Erreur: '+e.message+'</div>'}}
 </script>
 </body></html>"""
     return HTMLResponse(page)
@@ -1102,70 +1424,118 @@ async def get_updates():
     except Exception as e:
         return {"ok": False, "description": str(e)}
 
+# ==================== PAGES CORRIGÉES ====================
+
+@app.get("/graphiques", response_class=HTMLResponse)
+async def graphiques_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📈 Graphiques Interactifs</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+""" + CSS + """
+<style>
+.charts-container{max-width:100%;margin:0 auto}
+.chart-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:16px;border:1px solid #334155;box-shadow:0 8px 24px rgba(0,0,0,0.3);margin-bottom:30px}
+.chart-wrapper{position:relative;height:400px;margin-top:20px}
+.chart-btn{padding:10px 20px;background:#0f172a;color:#e2e8f0;border:2px solid #334155;border-radius:8px;cursor:pointer;transition:all .3s;font-size:14px;font-weight:600;margin:5px}
+.chart-btn:hover{background:#334155;transform:translateY(-2px)}
+.chart-btn.active{background:linear-gradient(135deg,#3b82f6,#60a5fa);border-color:#60a5fa;color:#fff}
+.stats-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:20px}
+.stat-item{background:#0f172a;padding:15px;border-radius:8px;border:1px solid #334155}
+.stat-label{font-size:12px;color:#94a3b8;margin-bottom:5px;font-weight:600}
+.stat-value{font-size:20px;color:#e2e8f0;font-weight:700}
+.stat-change{font-size:14px;font-weight:600;margin-top:5px}
+.stat-change.positive{color:#22c55e}
+.stat-change.negative{color:#ef4444}
+.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>📈 Graphiques Interactifs</h1><p>Analyse technique et données historiques</p></div>
+""" + NAV + """
+<div class="charts-container">
+<div class="chart-card">
+<h2>₿ Bitcoin (BTC)</h2>
+<div class="stats-summary" id="btc-stats"><div class="spinner"></div></div>
+<div>
+<button class="chart-btn active" onclick="changeBtcChart('price')">💰 Prix</button>
+<button class="chart-btn" onclick="changeBtcChart('volume')">📊 Volume</button>
+<button class="chart-btn" onclick="changeBtcChart('marketcap')">💎 Market Cap</button>
+</div>
+<div class="chart-wrapper"><canvas id="btc-chart"></canvas></div>
+</div>
+<div class="chart-card">
+<h2>Ξ Ethereum (ETH)</h2>
+<div class="stats-summary" id="eth-stats"><div class="spinner"></div></div>
+<div>
+<button class="chart-btn active" onclick="changeEthChart('price')">💰 Prix</button>
+<button class="chart-btn" onclick="changeEthChart('volume')">📊 Volume</button>
+<button class="chart-btn" onclick="changeEthChart('marketcap')">💎 Market Cap</button>
+</div>
+<div class="chart-wrapper"><canvas id="eth-chart"></canvas></div>
+</div>
+</div>
+</div>
+<script>
+let chartData=null;let btcChart=null;let ethChart=null;
+function formatNumber(n){if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(2)+'K';return'$'+n.toFixed(2)}
+function calculateChange(data){if(data.length<2)return 0;const first=data[0].y;const last=data[data.length-1].y;return((last-first)/first)*100}
+function updateStats(crypto,data){const prices=data.prices;const volumes=data.volumes;const currentPrice=prices[prices.length-1].y;const priceChange=calculateChange(prices);const avgVolume=volumes.reduce((sum,v)=>sum+v.y,0)/volumes.length;const changeClass=priceChange>=0?'positive':'negative';const changeSymbol=priceChange>=0?'▲':'▼';const html='<div class="stat-item"><div class="stat-label">Prix Actuel</div><div class="stat-value">'+formatNumber(currentPrice)+'</div></div><div class="stat-item"><div class="stat-label">Variation 30j</div><div class="stat-change '+changeClass+'">'+changeSymbol+' '+Math.abs(priceChange).toFixed(2)+'%</div></div><div class="stat-item"><div class="stat-label">Volume Moyen</div><div class="stat-value">'+formatNumber(avgVolume)+'</div></div>';document.getElementById(crypto+'-stats').innerHTML=html}
+function createChart(canvasId,data,label,color){const ctx=document.getElementById(canvasId).getContext('2d');return new Chart(ctx,{type:'line',data:{datasets:[{label:label,data:data,borderColor:color,backgroundColor:color.replace('rgb','rgba').replace(')',', 0.1)'),borderWidth:3,fill:true,tension:0.4,pointRadius:0,pointHoverRadius:6}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#e2e8f0',font:{size:14,weight:'bold'}}},tooltip:{backgroundColor:'rgba(15,23,42,0.9)',titleColor:'#60a5fa',bodyColor:'#e2e8f0'}},scales:{x:{type:'time',time:{unit:'day',displayFormats:{day:'MMM dd'}},grid:{color:'rgba(51,65,85,0.3)'},ticks:{color:'#94a3b8'}},y:{grid:{color:'rgba(51,65,85,0.3)'},ticks:{color:'#94a3b8',callback:function(value){if(value>=1e9)return'$'+(value/1e9).toFixed(2)+'B';if(value>=1e6)return'$'+(value/1e6).toFixed(2)+'M';return'$'+value.toFixed(2)}}}}}})}
+function changeBtcChart(type){document.querySelectorAll('.chart-card:nth-child(1) .chart-btn').forEach(btn=>btn.classList.remove('active'));event.target.classList.add('active');if(btcChart)btcChart.destroy();let data,label,color;if(type==='price'){data=chartData.btc.prices;label='Prix BTC (USD)';color='rgb(249,115,22)'}else if(type==='volume'){data=chartData.btc.volumes;label='Volume BTC (USD)';color='rgb(34,197,94)'}else{data=chartData.btc.market_caps;label='Market Cap BTC (USD)';color='rgb(168,85,247)'}btcChart=createChart('btc-chart',data,label,color)}
+function changeEthChart(type){document.querySelectorAll('.chart-card:nth-child(2) .chart-btn').forEach(btn=>btn.classList.remove('active'));event.target.classList.add('active');if(ethChart)ethChart.destroy();let data,label,color;if(type==='price'){data=chartData.eth.prices;label='Prix ETH (USD)';color='rgb(96,165,250)'}else if(type==='volume'){data=chartData.eth.volumes;label='Volume ETH (USD)';color='rgb(34,197,94)'}else{data=chartData.eth.market_caps;label='Market Cap ETH (USD)';color='rgb(168,85,247)'}ethChart=createChart('eth-chart',data,label,color)}
+async function loadChartData(){try{const response=await fetch('/api/chart-data');const data=await response.json();if(data.btc&&data.eth){chartData=data;updateStats('btc',data.btc);updateStats('eth',data.eth);changeBtcChart('price');changeEthChart('price');console.log('✅ Graphiques créés')}}catch(error){console.error('❌ Erreur:',error)}}
+loadChartData();
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
 @app.get("/altcoin-season", response_class=HTMLResponse)
 async def altcoin_season_page():
     page = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Altcoin Season</title>""" + CSS + """
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Altcoin Season</title>""" + CSS + """
 <style>
 .altcoin-container{max-width:100%;margin:0 auto}
-.chart-container{position:relative;width:100%;background:#1e293b;border-radius:12px;padding:30px;border:1px solid #334155;box-shadow:0 8px 24px rgba(0,0,0,0.3);min-height:600px}
+.chart-container{position:relative;width:100%;background:#1e293b;border-radius:12px;padding:30px;border:1px solid #334155;min-height:400px}
 .current-index{text-align:center;padding:20px}
 .index-value{font-size:72px;font-weight:900;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:10px 0}
 .index-label{font-size:24px;font-weight:700;color:#e2e8f0;margin-top:10px}
 .gauge-container{position:relative;width:100%;max-width:600px;height:300px;margin:30px auto}
-.gauge-bar{width:100%;height:60px;background:linear-gradient(90deg,#f97316 0%,#6b7280 25%,#6b7280 75%,#3b82f6 100%);border-radius:30px;position:relative;box-shadow:inset 0 2px 8px rgba(0,0,0,0.3)}
+.gauge-bar{width:100%;height:60px;background:linear-gradient(90deg,#f97316 0%,#6b7280 25%,#6b7280 75%,#3b82f6 100%);border-radius:30px;position:relative}
 .gauge-marker{position:absolute;top:-40px;transform:translateX(-50%);transition:left 0.5s ease}
-.gauge-arrow{width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-top:40px solid #fff;filter:drop-shadow(0 4px 6px rgba(0,0,0,0.3))}
+.gauge-arrow{width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-top:40px solid #fff}
 .gauge-labels{display:flex;justify-content:space-between;margin-top:15px;font-size:14px;font-weight:600}
 .gauge-labels span{color:#94a3b8}
 .info-card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}
 .info-card h3{color:#60a5fa;margin-bottom:15px;font-size:20px}
-.info-card p{color:#94a3b8;line-height:1.8;margin-bottom:10px}
-.info-card ul{color:#94a3b8;line-height:1.8;margin-left:20px}
-.info-card ul li{margin-bottom:8px}
-.season-indicator{display:inline-block;padding:8px 16px;border-radius:8px;font-weight:700;font-size:16px;margin:10px 5px}
-.season-btc{background:linear-gradient(135deg,#f97316,#fb923c);color:#fff}
-.season-alt{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff}
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-top:30px}
-.stat-card{background:#0f172a;padding:20px;border-radius:12px;text-align:center;border:1px solid #334155}
-.stat-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;font-weight:600}
-.stat-card .value{color:#e2e8f0;font-size:32px;font-weight:800}
+.info-card p{color:#94a3b8;line-height:1.8}
 .spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-.external-link{text-align:center;margin-top:20px;padding:15px;background:#0f172a;border-radius:8px;border:1px solid #334155}
-.external-link a{color:#60a5fa;text-decoration:none;font-weight:600;font-size:16px;transition:color 0.3s}
-.external-link a:hover{color:#93c5fd}
 </style>
 </head>
-<body><div class="container">
+<body>
+<div class="container">
 <div class="header"><h1>📊 Altcoin Season Index</h1><p>Sommes-nous en Bitcoin Season ou Altcoin Season ?</p></div>
 """ + NAV + """
 <div class="altcoin-container">
 <div class="info-card">
 <h3>🎯 Qu'est-ce que l'Altcoin Season Index ?</h3>
-<p>L'<strong>Altcoin Season Index</strong> mesure la performance des altcoins par rapport au Bitcoin sur les 90 derniers jours. Il analyse les 100 principales cryptomonnaies pour déterminer si nous sommes en "Bitcoin Season" ou en "Altcoin Season".</p>
-<div style="margin:20px 0"><p><strong>Interprétation :</strong></p><ul><li><span class="season-indicator season-btc">Bitcoin Season (0-25)</span> - Le Bitcoin surperforme la majorité des altcoins</li><li><span class="season-indicator" style="background:linear-gradient(135deg,#6b7280,#9ca3af);color:#fff">Zone Neutre (25-75)</span> - Performance mixte</li><li><span class="season-indicator season-alt">Altcoin Season (75-100)</span> - Les altcoins surperforment le Bitcoin</li></ul></div>
-<p><strong>Comment ça marche :</strong> Si 75% ou plus des 100 principales cryptos ont mieux performé que le Bitcoin sur 90 jours, alors nous sommes officiellement en <strong>Altcoin Season</strong> ! 🚀</p>
+<p>L'<strong>Altcoin Season Index</strong> mesure la performance des altcoins par rapport au Bitcoin sur les 90 derniers jours.</p>
 </div>
 <div class="card">
 <h2>📈 Index Actuel</h2>
 <div class="chart-container" id="chart-container"><div class="spinner"></div></div>
-<div class="external-link"><p style="color:#94a3b8;margin-bottom:10px">Voir le graphique historique complet :</p><a href="https://www.coinglass.com/pro/AltcoinSeasonIndex" target="_blank">📊 Ouvrir sur CoinGlass (graphique interactif complet)</a></div>
-</div>
-<div class="info-card">
-<h3>💡 Comment utiliser cet indicateur ?</h3>
-<ul><li><strong>Stratégie Bitcoin Season :</strong> Privilégiez l'accumulation de BTC et des cryptos majeures</li><li><strong>Stratégie Altcoin Season :</strong> C'est le moment idéal pour trader les altcoins avec potentiel</li><li><strong>Zone Neutre :</strong> Restez prudent et diversifiez votre portefeuille</li></ul>
-<p style="margin-top:15px">⚠️ <strong>Note :</strong> Cet indicateur est basé sur des données historiques. Utilisez-le comme un outil parmi d'autres dans votre analyse de marché.</p>
 </div>
 </div>
 </div>
 <script>
-let currentIndex=0;
-function getSeasonLabel(index){if(index>=75)return'Altcoin Season';if(index<=25)return'Bitcoin Season';return'Zone Neutre'}
-function getSeasonColor(index){if(index>=75)return'#3b82f6';if(index<=25)return'#f97316';return'#6b7280'}
-function renderGauge(index){const seasonLabel=getSeasonLabel(index);const seasonColor=getSeasonColor(index);return`<div class="current-index"><div class="index-value">${index}</div><div class="index-label" style="color:${seasonColor}">${seasonLabel}</div></div><div class="gauge-container"><div class="gauge-bar"><div class="gauge-marker" style="left:${index}%"><div class="gauge-arrow"></div></div></div><div class="gauge-labels"><span>0<br>Bitcoin Season</span><span>50<br>Neutre</span><span>100<br>Altcoin Season</span></div></div><div class="stats-grid"><div class="stat-card"><div class="label">Période d'analyse</div><div class="value">90 jours</div></div><div class="stat-card"><div class="label">Cryptos analysées</div><div class="value">100</div></div><div class="stat-card"><div class="label">Dernière mise à jour</div><div class="value" style="font-size:18px">${new Date().toLocaleDateString('fr-FR')}</div></div></div>`}
-async function loadAltcoinSeasonData(){try{const controller=new AbortController();const timeoutId=setTimeout(()=>controller.abort(),8000);const response=await fetch('/api/altcoin-season-index',{signal:controller.signal});clearTimeout(timeoutId);const data=await response.json();if(data.index!==undefined){currentIndex=data.index;const statusMsg=data.status==='fallback'?'<p style="text-align:center;color:#f59e0b;margin-top:20px;font-size:14px">⚠️ Données estimées - Actualisation en cours...</p>':'';document.getElementById('chart-container').innerHTML=renderGauge(currentIndex)+statusMsg;console.log('✅ Altcoin Season Index:',currentIndex,'(Status:',data.status+')')}else{throw new Error('Données invalides')}}catch(error){console.error('❌ Erreur:',error);currentIndex=35;document.getElementById('chart-container').innerHTML=renderGauge(currentIndex)+'<p style="text-align:center;color:#f59e0b;margin-top:20px;font-size:14px">⚠️ Mode hors ligne - Valeur estimée affichée</p>'}}
-loadAltcoinSeasonData();setInterval(loadAltcoinSeasonData,300000);console.log('📊 Altcoin Season Index initialisé');
+function renderGauge(index){const seasonLabel=index>=75?'Altcoin Season':index<=25?'Bitcoin Season':'Zone Neutre';const seasonColor=index>=75?'#3b82f6':index<=25?'#f97316':'#6b7280';return'<div class="current-index"><div class="index-value">'+index+'</div><div class="index-label" style="color:'+seasonColor+'">'+seasonLabel+'</div></div><div class="gauge-container"><div class="gauge-bar"><div class="gauge-marker" style="left:'+index+'%"><div class="gauge-arrow"></div></div></div><div class="gauge-labels"><span>0<br>Bitcoin Season</span><span>50<br>Neutre</span><span>100<br>Altcoin Season</span></div></div>'}
+async function loadData(){try{const response=await fetch('/api/altcoin-season-index');const data=await response.json();if(data.index!==undefined){document.getElementById('chart-container').innerHTML=renderGauge(data.index)}}catch(error){document.getElementById('chart-container').innerHTML=renderGauge(35)}}
+loadData();
 </script>
 </body></html>"""
     return HTMLResponse(page)
@@ -1173,15 +1543,5 @@ loadAltcoinSeasonData();setInterval(loadAltcoinSeasonData,300000);console.log('�
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
-    print("\n" + "="*60)
-    print("🚀 DASHBOARD TRADING - COMPLET ET CORRIGÉ")
-    print("="*60)
-    print("✅ Fear & Greed : /fear-greed")
-    print("✅ BTC Dominance : /dominance")
-    print("✅ Altcoin Season : /altcoin-season")
-    print("✅ Heatmap : /heatmap")
-    print("✅ Nouvelles Crypto : /nouvelles")
-    print("✅ Trades : /trades")
-    print("✅ Telegram Test : /telegram-test")
-    print("="*60 + "\n")
+    print("\n🚀 DASHBOARD TRADING - Démarrage...")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

@@ -970,7 +970,7 @@ async def home():
 """ + NAV + """
 <div class="grid grid-3">
 <div class="card"><h2>✅ Status</h2><p>Dashboard en ligne</p></div>
-<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles, Trades, Convertisseur, Calendrier, Bullrun Phase, Graphiques</p></div>
+<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles, Trades, Convertisseur, Calendrier, Bullrun Phase</p></div>
 <div class="card"><h2>🔄 Mise à jour</h2><p>Données en temps réel</p></div>
 </div>
 </div></body></html>"""

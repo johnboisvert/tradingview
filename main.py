@@ -25,7 +25,7 @@ heatmap_cache = {
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8478131465:AAEh7Z0rvIqSNvn1wKdtkMNb-O96h41LCns")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1002940633257")
 
-CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.grid{display:grid;gap:20px}.grid-2{grid-template-columns:repeat(auto-fit,minmax(400px,1fr))}.grid-3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.grid-4{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}table{width:100%;border-collapse:collapse;margin-top:15px}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}</style>"""
+CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.grid{display:grid;gap:20px}.grid-2{grid-template-columns:repeat(auto-fit,minmax(400px,1fr))}.grid-3{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}.grid-4{grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}table{width:100%;border-collapse:collapse;margin-top:15px}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.btn-success{background:#22c55e}.btn-success:hover{background:#16a34a}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.loading{text-align:center;padding:60px;color:#94a3b8}</style>"""
 
 NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">Trades</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">Telegram</a></div>'
 
@@ -395,6 +395,7 @@ async def test_full_alert():
         "telegram_result": result,
         "indicators": indicators
     }
+    # ==================== PARTIE 2/3 - ROUTES API ====================
 
 @app.get("/api/stats")
 async def get_stats():
@@ -1061,69 +1062,6 @@ async def get_chart_data():
     
     return fallback_data
 
-# ==================== PAGES HTML ====================
-
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    page = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
-<body><div class="container">
-<div class="header"><h1>DASHBOARD TRADING</h1><p>Toutes sections opérationnelles</p></div>
-""" + NAV + """
-<div class="grid grid-3">
-<div class="card"><h2>✅ Status</h2><p>Dashboard en ligne</p></div>
-<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles, Trades</p></div>
-<div class="card"><h2>🔄 Mise à jour</h2><p>Données en temps réel</p></div>
-</div>
-</div></body></html>"""
-    return HTMLResponse(page)
-
-@app.get("/trades", response_class=HTMLResponse)
-async def trades_page():
-    # Code complet de la page trades (trop long pour l'artifact)
-    # Voir fichier original pour le code complet
-    return HTMLResponse("<html>Trades Page</html>")
-
-@app.get("/fear-greed", response_class=HTMLResponse)
-async def fear_greed_page():
-    # Code complet de la page fear-greed
-    return HTMLResponse("<html>Fear & Greed Page</html>")
-
-@app.get("/dominance", response_class=HTMLResponse)
-async def btc_dominance_page():
-    # Code complet de la page dominance
-    return HTMLResponse("<html>Dominance Page</html>")
-
-@app.get("/heatmap", response_class=HTMLResponse)
-async def heatmap_page():
-    # Code complet de la page heatmap
-    return HTMLResponse("<html>Heatmap Page</html>")
-
-@app.get("/nouvelles", response_class=HTMLResponse)
-async def crypto_news_page():
-    # Code complet de la page nouvelles
-    return HTMLResponse("<html>Nouvelles Page</html>")
-
-@app.get("/convertisseur", response_class=HTMLResponse)
-async def convertisseur_page():
-    # Code complet de la page convertisseur
-    return HTMLResponse("<html>Convertisseur Page</html>")
-
-@app.get("/calendrier", response_class=HTMLResponse)
-async def calendrier_page():
-    # Code complet de la page calendrier
-    return HTMLResponse("<html>Calendrier Page</html>")
-
-@app.get("/bullrun-phase", response_class=HTMLResponse)
-async def bullrun_phase_page():
-    # Code complet de la page bullrun-phase
-    return HTMLResponse("<html>Bullrun Phase Page</html>")
-
-@app.get("/telegram-test", response_class=HTMLResponse)
-async def telegram_page():
-    # Code complet de la page telegram
-    return HTMLResponse("<html>Telegram Page</html>")
-
 @app.get("/api/telegram-config")
 async def get_telegram_config():
     return {"token": TELEGRAM_BOT_TOKEN, "chat_id": TELEGRAM_CHAT_ID}
@@ -1163,8 +1101,924 @@ async def get_updates():
             return response.json()
     except Exception as e:
         return {"ok": False, "description": str(e)}
+        # ==================== PARTIE 3/3 - PAGES HTML ====================
 
-# ==================== PAGES CORRIGÉES ====================
+@app.get("/", response_class=HTMLResponse)
+async def home():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
+<body><div class="container">
+<div class="header"><h1>DASHBOARD TRADING</h1><p>Toutes sections opérationnelles</p></div>
+""" + NAV + """
+<div class="grid grid-3">
+<div class="card"><h2>✅ Status</h2><p>Dashboard en ligne</p></div>
+<div class="card"><h2>📊 Sections</h2><p>Fear & Greed, Dominance, Heatmap, Nouvelles, Trades</p></div>
+<div class="card"><h2>🔄 Mise à jour</h2><p>Données en temps réel</p></div>
+</div>
+</div></body></html>"""
+    return HTMLResponse(page)
+
+@app.get("/trades", response_class=HTMLResponse)
+async def trades_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📊 Mes Trades</title>""" + CSS + """
+<style>
+.trades-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.trade-item{background:#0f172a;padding:20px;border-radius:8px;margin-bottom:15px;border-left:4px solid #60a5fa;transition:all .3s}
+.trade-item:hover{transform:translateX(5px);box-shadow:0 4px 12px rgba(96,165,250,0.3)}
+.trade-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap}
+.trade-symbol{font-size:24px;font-weight:700;color:#60a5fa}
+.trade-side{padding:6px 12px;border-radius:6px;font-weight:700;font-size:14px}
+.trade-side.long{background:#22c55e;color:#fff}
+.trade-side.short{background:#ef4444;color:#fff}
+.trade-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:15px}
+.trade-detail{padding:10px;background:#1e293b;border-radius:6px}
+.trade-detail-label{font-size:12px;color:#94a3b8;margin-bottom:5px}
+.trade-detail-value{font-size:16px;font-weight:700;color:#e2e8f0}
+.trade-status{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}
+.status-badge{padding:8px 12px;border-radius:6px;font-size:13px;font-weight:600;border:2px solid transparent}
+.status-badge.hit{background:#22c55e;border-color:#22c55e;color:#fff}
+.status-badge.pending{background:#0f172a;border-color:#334155;color:#94a3b8}
+.status-badge.sl{background:#ef4444;border-color:#ef4444;color:#fff}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px;margin-bottom:30px}
+.empty-state{text-align:center;padding:60px 20px;color:#94a3b8}
+.empty-state h3{font-size:24px;margin-bottom:10px}
+.btn-group{display:flex;gap:10px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>📊 Mes Trades</h1><p>Suivi de vos positions et performances</p></div>
+""" + NAV + """
+
+<div class="stats-row" id="stats-section">
+<div class="stat-box"><div class="label">Total Trades</div><div class="value" id="total-trades">-</div></div>
+<div class="stat-box"><div class="label">Positions Ouvertes</div><div class="value" id="open-trades">-</div></div>
+<div class="stat-box"><div class="label">Win Rate</div><div class="value" id="win-rate">-</div></div>
+<div class="stat-box"><div class="label">Fermés</div><div class="value" id="closed-trades">-</div></div>
+</div>
+
+<div class="card">
+<div class="trades-header">
+<h2>📈 Liste des Trades</h2>
+<div class="btn-group">
+<button onclick="loadTrades()">🔄 Actualiser</button>
+<button onclick="addDemoTrades()" class="btn-success">➕ Ajouter Démo</button>
+<button onclick="clearTrades()" class="btn-danger">🗑️ Effacer Tout</button>
+</div>
+</div>
+<div id="trades-list"></div>
+</div>
+
+</div>
+
+<script>
+async function loadStats(){
+try{
+const response=await fetch('/api/stats');
+const data=await response.json();
+document.getElementById('total-trades').textContent=data.total_trades||0;
+document.getElementById('open-trades').textContent=data.open_trades||0;
+document.getElementById('win-rate').textContent=(data.win_rate||0)+'%';
+document.getElementById('closed-trades').textContent=data.closed_trades||0;
+}catch(e){console.error('❌ Erreur stats:',e)}
+}
+
+async function loadTrades(){
+try{
+const response=await fetch('/api/trades');
+const data=await response.json();
+const container=document.getElementById('trades-list');
+if(!data.trades||data.trades.length===0){
+container.innerHTML='<div class="empty-state"><h3>Aucun trade</h3><p>Les trades apparaîtront ici automatiquement</p></div>';
+return;
+}
+container.innerHTML=data.trades.map(trade=>{
+const sideClass=trade.side.toLowerCase();
+const isOpen=trade.status==='open';
+return`<div class="trade-item">
+<div class="trade-header">
+<div><span class="trade-symbol">${trade.symbol}</span></div>
+<span class="trade-side ${sideClass}">${trade.side}</span>
+</div>
+<div class="trade-details">
+<div class="trade-detail"><div class="trade-detail-label">Entry</div><div class="trade-detail-value">$${trade.entry?.toFixed(4)||'N/A'}</div></div>
+<div class="trade-detail"><div class="trade-detail-label">TP1</div><div class="trade-detail-value">$${trade.tp1?.toFixed(4)||'N/A'}</div></div>
+<div class="trade-detail"><div class="trade-detail-label">TP2</div><div class="trade-detail-value">$${trade.tp2?.toFixed(4)||'N/A'}</div></div>
+<div class="trade-detail"><div class="trade-detail-label">TP3</div><div class="trade-detail-value">$${trade.tp3?.toFixed(4)||'N/A'}</div></div>
+<div class="trade-detail"><div class="trade-detail-label">Stop Loss</div><div class="trade-detail-value">$${trade.sl?.toFixed(4)||'N/A'}</div></div>
+</div>
+<div class="trade-status">
+<span class="status-badge ${trade.tp1_hit?'hit':'pending'}">TP1 ${trade.tp1_hit?'✅':'⏳'}</span>
+<span class="status-badge ${trade.tp2_hit?'hit':'pending'}">TP2 ${trade.tp2_hit?'✅':'⏳'}</span>
+<span class="status-badge ${trade.tp3_hit?'hit':'pending'}">TP3 ${trade.tp3_hit?'✅':'⏳'}</span>
+<span class="status-badge ${trade.sl_hit?'sl':'pending'}">SL ${trade.sl_hit?'❌':'⏳'}</span>
+</div>
+<div style="margin-top:10px;font-size:12px;color:#94a3b8">📅 ${new Date(trade.timestamp).toLocaleString('fr-FR')}</div>
+</div>`;
+}).join('');
+await loadStats();
+}catch(e){console.error('❌ Erreur:',e)}
+}
+
+async function addDemoTrades(){
+try{
+await fetch('/api/trades/add-demo');
+await loadTrades();
+alert('✅ Trades de démonstration ajoutés !');
+}catch(e){alert('❌ Erreur: '+e.message)}
+}
+
+async function clearTrades(){
+if(!confirm('Êtes-vous sûr de vouloir effacer tous les trades ?'))return;
+try{
+await fetch('/api/trades/clear',{method:'DELETE'});
+await loadTrades();
+alert('✅ Tous les trades ont été effacés');
+}catch(e){alert('❌ Erreur: '+e.message)}
+}
+
+loadTrades();
+setInterval(loadTrades,30000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+
+@app.get("/fear-greed", response_class=HTMLResponse)
+async def fear_greed_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>😨 Fear & Greed Index</title>""" + CSS + """
+<style>
+.fg-container{max-width:800px;margin:0 auto}
+.gauge{position:relative;width:100%;max-width:500px;height:300px;margin:30px auto}
+.gauge-bg{width:100%;height:150px;background:linear-gradient(90deg,#dc2626 0%,#f59e0b 25%,#fbbf24 50%,#84cc16 75%,#22c55e 100%);border-radius:150px 150px 0 0;position:relative}
+.gauge-needle{position:absolute;bottom:0;left:50%;width:4px;height:140px;background:#fff;transform-origin:bottom center;transition:transform 0.8s cubic-bezier(0.4,0,0.2,1);box-shadow:0 0 10px rgba(255,255,255,0.5)}
+.gauge-center{position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);width:30px;height:30px;background:#fff;border-radius:50%;box-shadow:0 0 15px rgba(255,255,255,0.3)}
+.fg-value{text-align:center;font-size:72px;font-weight:900;margin:20px 0;background:linear-gradient(135deg,#f59e0b,#dc2626);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.fg-label{text-align:center;font-size:28px;font-weight:700;margin-bottom:20px}
+.history-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-top:30px}
+.history-item{background:#0f172a;padding:20px;border-radius:8px;text-align:center}
+.history-label{font-size:13px;color:#94a3b8;margin-bottom:10px}
+.history-value{font-size:32px;font-weight:700;color:#e2e8f0}
+.history-class{font-size:14px;color:#94a3b8;margin-top:5px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>😨 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div>
+""" + NAV + """
+<div class="fg-container">
+<div class="card">
+<h2>📊 Index Actuel</h2>
+<div class="gauge">
+<div class="gauge-bg">
+<div class="gauge-needle" id="needle"></div>
+<div class="gauge-center"></div>
+</div>
+</div>
+<div class="fg-value" id="fg-value">--</div>
+<div class="fg-label" id="fg-label">Chargement...</div>
+</div>
+
+<div class="card">
+<h2>📈 Historique</h2>
+<div class="history-grid">
+<div class="history-item">
+<div class="history-label">Aujourd'hui</div>
+<div class="history-value" id="hist-now">--</div>
+<div class="history-class" id="hist-now-class">--</div>
+</div>
+<div class="history-item">
+<div class="history-label">Hier</div>
+<div class="history-value" id="hist-yesterday">--</div>
+<div class="history-class" id="hist-yesterday-class">--</div>
+</div>
+<div class="history-item">
+<div class="history-label">Il y a 7j</div>
+<div class="history-value" id="hist-week">--</div>
+<div class="history-class" id="hist-week-class">--</div>
+</div>
+<div class="history-item">
+<div class="history-label">Il y a 30j</div>
+<div class="history-value" id="hist-month">--</div>
+<div class="history-class" id="hist-month-class">--</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+function getColorForValue(value){
+if(value<=20)return'#dc2626';
+if(value<=40)return'#f59e0b';
+if(value<=60)return'#fbbf24';
+if(value<=80)return'#84cc16';
+return'#22c55e';
+}
+
+async function loadFearGreed(){
+try{
+const response=await fetch('/api/fear-greed-full');
+const data=await response.json();
+const value=data.current_value;
+const classification=data.current_classification;
+document.getElementById('fg-value').textContent=value;
+document.getElementById('fg-label').textContent=classification;
+document.getElementById('fg-label').style.color=getColorForValue(value);
+const rotation=(value/100)*180-90;
+document.getElementById('needle').style.transform=`translateX(-50%) rotate(${rotation}deg)`;
+if(data.historical){
+const h=data.historical;
+document.getElementById('hist-now').textContent=h.now.value;
+document.getElementById('hist-now-class').textContent=h.now.classification;
+if(h.yesterday){
+document.getElementById('hist-yesterday').textContent=h.yesterday.value;
+document.getElementById('hist-yesterday-class').textContent=h.yesterday.classification;
+}
+if(h.last_week){
+document.getElementById('hist-week').textContent=h.last_week.value;
+document.getElementById('hist-week-class').textContent=h.last_week.classification;
+}
+if(h.last_month){
+document.getElementById('hist-month').textContent=h.last_month.value;
+document.getElementById('hist-month-class').textContent=h.last_month.classification;
+}
+}
+}catch(e){console.error('❌ Erreur:',e)}
+}
+loadFearGreed();
+setInterval(loadFearGreed,60000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+
+@app.get("/dominance", response_class=HTMLResponse)
+async def btc_dominance_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>👑 BTC Dominance</title>""" + CSS + """
+<style>
+.dom-container{max-width:900px;margin:0 auto}
+.pie-chart{width:100%;max-width:400px;height:400px;margin:30px auto;position:relative}
+.chart-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-top:30px}
+.legend-item{display:flex;align-items:center;gap:10px;padding:15px;background:#0f172a;border-radius:8px}
+.legend-color{width:30px;height:30px;border-radius:6px}
+.legend-info{flex:1}
+.legend-name{font-size:14px;color:#94a3b8;margin-bottom:5px}
+.legend-value{font-size:20px;font-weight:700;color:#e2e8f0}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>👑 BTC Dominance</h1><p>Répartition de la capitalisation du marché crypto</p></div>
+""" + NAV + """
+<div class="dom-container">
+<div class="card">
+<h2>📊 Répartition Actuelle</h2>
+<div class="pie-chart"><canvas id="dominance-chart"></canvas></div>
+<div class="chart-legend" id="legend"></div>
+</div>
+
+<div class="grid grid-3" style="margin-top:30px">
+<div class="stat-box">
+<div class="label">Market Cap Total</div>
+<div class="value" id="total-mc">--</div>
+</div>
+<div class="stat-box">
+<div class="label">Volume 24h</div>
+<div class="value" id="total-vol">--</div>
+</div>
+<div class="stat-box">
+<div class="label">BTC Change 24h</div>
+<div class="value" id="btc-change">--</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+let chart=null;
+function formatBigNumber(n){
+if(n>=1e12)return'$'+(n/1e12).toFixed(2)+'T';
+if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';
+return'$'+n.toFixed(2);
+}
+
+async function loadDominance(){
+try{
+const response=await fetch('/api/btc-dominance');
+const data=await response.json();
+const btc=data.btc_dominance;
+const eth=data.eth_dominance;
+const others=data.others_dominance;
+if(chart)chart.destroy();
+const ctx=document.getElementById('dominance-chart').getContext('2d');
+chart=new Chart(ctx,{
+type:'doughnut',
+data:{
+labels:['Bitcoin','Ethereum','Autres'],
+datasets:[{
+data:[btc,eth,others],
+backgroundColor:['#f97316','#60a5fa','#a78bfa'],
+borderWidth:3,
+borderColor:'#0f172a'
+}]
+},
+options:{
+responsive:true,
+maintainAspectRatio:true,
+plugins:{
+legend:{display:false},
+tooltip:{
+backgroundColor:'rgba(15,23,42,0.9)',
+titleColor:'#60a5fa',
+bodyColor:'#e2e8f0',
+callbacks:{
+label:function(context){
+return context.label+': '+context.parsed.toFixed(2)+'%';
+}
+}
+}
+}
+}
+});
+document.getElementById('legend').innerHTML=`
+<div class="legend-item">
+<div class="legend-color" style="background:#f97316"></div>
+<div class="legend-info">
+<div class="legend-name">Bitcoin</div>
+<div class="legend-value">${btc.toFixed(2)}%</div>
+</div>
+</div>
+<div class="legend-item">
+<div class="legend-color" style="background:#60a5fa"></div>
+<div class="legend-info">
+<div class="legend-name">Ethereum</div>
+<div class="legend-value">${eth.toFixed(2)}%</div>
+</div>
+</div>
+<div class="legend-item">
+<div class="legend-color" style="background:#a78bfa"></div>
+<div class="legend-info">
+<div class="legend-name">Autres</div>
+<div class="legend-value">${others.toFixed(2)}%</div>
+</div>
+</div>`;
+document.getElementById('total-mc').textContent=formatBigNumber(data.total_market_cap);
+document.getElementById('total-vol').textContent=formatBigNumber(data.total_volume_24h);
+const change=data.btc_change_24h;
+const changeEl=document.getElementById('btc-change');
+changeEl.textContent=(change>=0?'+':'')+change.toFixed(2)+'%';
+changeEl.style.color=change>=0?'#22c55e':'#ef4444';
+}catch(e){console.error('❌ Erreur:',e)}
+}
+loadDominance();
+setInterval(loadDominance,60000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+
+@app.get("/heatmap", response_class=HTMLResponse)
+async def heatmap_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🔥 Heatmap Crypto</title>""" + CSS + """
+<style>
+.heatmap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:15px;margin-top:20px}
+.heatmap-cell{padding:20px;border-radius:10px;text-align:center;transition:all .3s;cursor:pointer;border:2px solid transparent}
+.heatmap-cell:hover{transform:scale(1.05);border-color:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+.cell-symbol{font-size:18px;font-weight:700;margin-bottom:8px}
+.cell-price{font-size:14px;margin-bottom:5px;opacity:0.9}
+.cell-change{font-size:20px;font-weight:900}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>🔥 Heatmap Crypto</h1><p>Visualisation des variations sur 24h</p></div>
+""" + NAV + """
+<div class="card">
+<h2>📊 Top 100 Cryptomonnaies</h2>
+<div id="heatmap-container" class="loading">Chargement des données...</div>
+</div>
+</div>
+
+<script>
+function getHeatmapColor(change){
+const absChange=Math.abs(change);
+if(change>0){
+if(absChange>=10)return'rgba(34,197,94,0.9)';
+if(absChange>=5)return'rgba(34,197,94,0.7)';
+if(absChange>=2)return'rgba(34,197,94,0.5)';
+return'rgba(34,197,94,0.3)';
+}else{
+if(absChange>=10)return'rgba(239,68,68,0.9)';
+if(absChange>=5)return'rgba(239,68,68,0.7)';
+if(absChange>=2)return'rgba(239,68,68,0.5)';
+return'rgba(239,68,68,0.3)';
+}
+}
+
+function formatPrice(price){
+if(price>=1000)return'$'+price.toLocaleString('en-US',{maximumFractionDigits:0});
+if(price>=1)return'$'+price.toFixed(2);
+if(price>=0.01)return'$'+price.toFixed(4);
+return'$'+price.toFixed(6);
+}
+
+async function loadHeatmap(){
+try{
+const response=await fetch('/api/heatmap');
+const data=await response.json();
+if(!data.cryptos||data.cryptos.length===0){
+document.getElementById('heatmap-container').innerHTML='<p>Aucune donnée disponible</p>';
+return;
+}
+const html=data.cryptos.map(crypto=>{
+const color=getHeatmapColor(crypto.change_24h);
+return`<div class="heatmap-cell" style="background:${color}">
+<div class="cell-symbol">${crypto.symbol}</div>
+<div class="cell-price">${formatPrice(crypto.price)}</div>
+<div class="cell-change">${crypto.change_24h>0?'+':''}${crypto.change_24h.toFixed(2)}%</div>
+</div>`;
+}).join('');
+document.getElementById('heatmap-container').innerHTML='<div class="heatmap-grid">'+html+'</div>';
+}catch(e){
+console.error('❌ Erreur:',e);
+document.getElementById('heatmap-container').innerHTML='<p style="color:#ef4444">❌ Erreur de chargement</p>';
+}
+}
+loadHeatmap();
+setInterval(loadHeatmap,60000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+
+@app.get("/nouvelles", response_class=HTMLResponse)
+async def crypto_news_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📰 Actualités Crypto</title>""" + CSS + """
+<style>
+.news-grid{display:grid;gap:20px}
+.news-item{background:#1e293b;padding:25px;border-radius:12px;border:1px solid #334155;transition:all .3s;cursor:pointer}
+.news-item:hover{transform:translateY(-5px);box-shadow:0 8px 24px rgba(96,165,250,0.2);border-color:#60a5fa}
+.news-header{display:flex;justify-content:space-between;align-items:start;margin-bottom:15px;gap:15px}
+.news-title{font-size:20px;font-weight:700;color:#e2e8f0;line-height:1.4;flex:1}
+.news-image{width:120px;height:80px;border-radius:8px;object-fit:cover;background:#0f172a}
+.news-meta{display:flex;gap:15px;font-size:14px;color:#94a3b8;margin-top:10px}
+.news-source{font-weight:600}
+.news-date{opacity:0.8}
+.sentiment-badge{padding:4px 8px;border-radius:4px;font-size:12px;font-weight:700}
+.sentiment-positive{background:rgba(34,197,94,0.2);color:#22c55e}
+.sentiment-neutral{background:rgba(148,163,184,0.2);color:#94a3b8}
+.sentiment-negative{background:rgba(239,68,68,0.2);color:#ef4444}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>📰 Actualités Crypto</h1><p>Dernières nouvelles du marché</p></div>
+""" + NAV + """
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+<h2>🔥 Actualités</h2>
+<button onclick="loadNews()">🔄 Actualiser</button>
+</div>
+<div class="news-grid" id="news-container">
+<div class="loading">Chargement des actualités...</div>
+</div>
+</div>
+</div>
+
+<script>
+function formatDate(dateString){
+const date=new Date(dateString);
+const now=new Date();
+const diffMs=now-date;
+const diffMins=Math.floor(diffMs/60000);
+if(diffMins<60)return`Il y a ${diffMins}min`;
+const diffHours=Math.floor(diffMins/60);
+if(diffHours<24)return`Il y a ${diffHours}h`;
+const diffDays=Math.floor(diffHours/24);
+return`Il y a ${diffDays}j`;
+}
+
+function getSentimentBadge(sentiment){
+if(sentiment>0)return'<span class="sentiment-badge sentiment-positive">📈 Positif</span>';
+if(sentiment<0)return'<span class="sentiment-badge sentiment-negative">📉 Négatif</span>';
+return'<span class="sentiment-badge sentiment-neutral">➡️ Neutre</span>';
+}
+
+async function loadNews(){
+try{
+const response=await fetch('/api/crypto-news');
+const data=await response.json();
+if(!data.articles||data.articles.length===0){
+document.getElementById('news-container').innerHTML='<p style="text-align:center;color:#94a3b8">Aucune actualité disponible</p>';
+return;
+}
+const html=data.articles.map(article=>`
+<div class="news-item" onclick="window.open('${article.url}','_blank')">
+<div class="news-header">
+<div class="news-title">${article.title}</div>
+${article.image?`<img src="${article.image}" class="news-image" onerror="this.style.display='none'">`:''}
+</div>
+<div class="news-meta">
+<span class="news-source">📌 ${article.source}</span>
+<span class="news-date">🕐 ${formatDate(article.published)}</span>
+${getSentimentBadge(article.sentiment)}
+</div>
+</div>
+`).join('');
+document.getElementById('news-container').innerHTML=html;
+}catch(e){
+console.error('❌ Erreur:',e);
+document.getElementById('news-container').innerHTML='<p style="color:#ef4444;text-align:center">❌ Erreur de chargement</p>';
+}
+}
+loadNews();
+setInterval(loadNews,120000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+
+@app.get("/convertisseur", response_class=HTMLResponse)
+async def convertisseur_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>💱 Convertisseur Crypto</title>""" + CSS + """
+<style>
+.converter-box{max-width:600px;margin:0 auto;background:#1e293b;padding:40px;border-radius:16px;border:1px solid #334155}
+.input-group{margin-bottom:25px}
+.input-group label{display:block;margin-bottom:10px;color:#94a3b8;font-weight:600}
+.input-wrapper{display:flex;gap:10px}
+.input-wrapper input{flex:1}
+.result-box{background:#0f172a;padding:30px;border-radius:12px;text-align:center;margin-top:30px;border:2px solid #60a5fa}
+.result-label{color:#94a3b8;font-size:14px;margin-bottom:10px}
+.result-value{font-size:48px;font-weight:900;color:#60a5fa;margin-bottom:10px}
+.result-details{color:#94a3b8;font-size:14px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>💱 Convertisseur Crypto</h1><p>Convertissez entre cryptos et devises fiat</p></div>
+""" + NAV + """
+<div class="card">
+<div class="converter-box">
+<div class="input-group">
+<label>Montant</label>
+<input type="number" id="amount" value="1" min="0" step="any" oninput="convert()">
+</div>
+<div class="input-group">
+<label>De</label>
+<div class="input-wrapper">
+<select id="from-currency" onchange="convert()">
+<option value="BTC">Bitcoin (BTC)</option>
+<option value="ETH">Ethereum (ETH)</option>
+<option value="USDT">Tether (USDT)</option>
+<option value="BNB">Binance Coin (BNB)</option>
+<option value="SOL">Solana (SOL)</option>
+<option value="USD">Dollar US (USD)</option>
+<option value="EUR">Euro (EUR)</option>
+<option value="CAD">Dollar Canadien (CAD)</option>
+</select>
+</div>
+</div>
+<div class="input-group">
+<label>Vers</label>
+<div class="input-wrapper">
+<select id="to-currency" onchange="convert()">
+<option value="USD" selected>Dollar US (USD)</option>
+<option value="EUR">Euro (EUR)</option>
+<option value="CAD">Dollar Canadien (CAD)</option>
+<option value="BTC">Bitcoin (BTC)</option>
+<option value="ETH">Ethereum (ETH)</option>
+<option value="USDT">Tether (USDT)</option>
+<option value="BNB">Binance Coin (BNB)</option>
+<option value="SOL">Solana (SOL)</option>
+</select>
+</div>
+</div>
+<div class="result-box" id="result">
+<div class="result-label">Résultat</div>
+<div class="result-value">--</div>
+<div class="result-details">Sélectionnez les devises</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+let rates={};
+async function loadRates(){
+try{
+const response=await fetch('/api/exchange-rates');
+const data=await response.json();
+rates=data.rates;
+convert();
+}catch(e){console.error('❌ Erreur:',e)}
+}
+
+function convert(){
+const amount=parseFloat(document.getElementById('amount').value)||0;
+const from=document.getElementById('from-currency').value;
+const to=document.getElementById('to-currency').value;
+if(!rates[from]||!rates[to]){
+document.querySelector('.result-value').textContent='--';
+return;
+}
+const fromUsd=rates[from].usd;
+const toUsd=rates[to].usd;
+const result=(amount*fromUsd)/toUsd;
+document.querySelector('.result-value').textContent=result.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:8});
+document.querySelector('.result-details').textContent=`1 ${from} = ${(fromUsd/toUsd).toFixed(8)} ${to}`;
+}
+loadRates();
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendrier_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📅 Calendrier Économique</title>""" + CSS + """
+<style>
+.calendar-item{background:#1e293b;padding:20px;border-radius:12px;margin-bottom:15px;border-left:4px solid #60a5fa}
+.calendar-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.calendar-date{font-size:18px;font-weight:700;color:#60a5fa}
+.calendar-time{font-size:14px;color:#94a3b8}
+.event-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px}
+.event-field{padding:10px;background:#0f172a;border-radius:6px}
+.event-label{font-size:12px;color:#94a3b8;margin-bottom:5px}
+.event-value{font-size:16px;font-weight:700;color:#e2e8f0}
+.impact-badge{padding:4px 8px;border-radius:4px;font-size:12px;font-weight:700}
+.impact-high{background:rgba(239,68,68,0.2);color:#ef4444}
+.impact-medium{background:rgba(251,191,36,0.2);color:#fbbf24}
+.impact-low{background:rgba(34,197,94,0.2);color:#22c55e}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>📅 Calendrier Économique</h1><p>Événements économiques importants</p></div>
+""" + NAV + """
+<div class="card">
+<h2>📊 Prochains Événements</h2>
+<div id="calendar-container">
+<div class="loading">Chargement du calendrier...</div>
+</div>
+</div>
+</div>
+
+<script>
+function getImpactBadge(impact){
+if(impact==='high')return'<span class="impact-badge impact-high">🔴 Impact Élevé</span>';
+if(impact==='medium')return'<span class="impact-badge impact-medium">🟡 Impact Moyen</span>';
+return'<span class="impact-badge impact-low">🟢 Impact Faible</span>';
+}
+
+async function loadCalendar(){
+try{
+const response=await fetch('/api/economic-calendar');
+const data=await response.json();
+if(!data.events||data.events.length===0){
+document.getElementById('calendar-container').innerHTML='<p style="text-align:center;color:#94a3b8">Aucun événement à venir</p>';
+return;
+}
+const html=data.events.map(event=>`
+<div class="calendar-item">
+<div class="calendar-header">
+<div>
+<div class="calendar-date">📅 ${new Date(event.date).toLocaleDateString('fr-FR',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+<div class="calendar-time">🕐 ${event.time}</div>
+</div>
+${getImpactBadge(event.impact)}
+</div>
+<div style="font-size:18px;font-weight:700;margin-bottom:15px;color:#e2e8f0">${event.country} - ${event.event}</div>
+<div class="event-details">
+<div class="event-field"><div class="event-label">Devise</div><div class="event-value">${event.currency}</div></div>
+<div class="event-field"><div class="event-label">Prévision</div><div class="event-value">${event.forecast||'N/A'}</div></div>
+<div class="event-field"><div class="event-label">Précédent</div><div class="event-value">${event.previous||'N/A'}</div></div>
+${event.actual?`<div class="event-field"><div class="event-label">Actuel</div><div class="event-value">${event.actual}</div></div>`:''}
+</div>
+</div>
+`).join('');
+document.getElementById('calendar-container').innerHTML=html;
+}catch(e){
+console.error('❌ Erreur:',e);
+document.getElementById('calendar-container').innerHTML='<p style="color:#ef4444;text-align:center">❌ Erreur de chargement</p>';
+}
+}
+loadCalendar();
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+
+@app.get("/bullrun-phase", response_class=HTMLResponse)
+async def bullrun_phase_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🚀 Bullrun Phase</title>""" + CSS + """
+<style>
+.phase-container{max-width:900px;margin:0 auto}
+.phase-display{text-align:center;padding:40px;background:linear-gradient(135deg,#1e293b,#0f172a);border-radius:16px;margin-bottom:30px}
+.phase-number{font-size:96px;font-weight:900;background:linear-gradient(135deg,#f97316,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px}
+.phase-name{font-size:36px;font-weight:700;color:#e2e8f0;margin-bottom:20px}
+.phase-confidence{font-size:18px;color:#94a3b8}
+.phases-info{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:15px}
+.phase-card{background:#1e293b;padding:20px;border-radius:12px;border:2px solid #334155;transition:all .3s}
+.phase-card.active{border-color:#60a5fa;box-shadow:0 0 20px rgba(96,165,250,0.3)}
+.phase-card h3{color:#60a5fa;margin-bottom:10px}
+.phase-card p{color:#94a3b8;font-size:14px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>🚀 Bullrun Phase Detector</h1><p>Identifie la phase actuelle du cycle de marché</p></div>
+""" + NAV + """
+<div class="phase-container">
+<div class="card">
+<div class="phase-display" id="phase-display">
+<div class="phase-number">--</div>
+<div class="phase-name">Chargement...</div>
+<div class="phase-confidence">--</div>
+</div>
+</div>
+
+<div class="card">
+<h2>📊 Les 4 Phases</h2>
+<div class="phases-info">
+<div class="phase-card" id="phase-1">
+<h3>Phase 1: Bitcoin</h3>
+<p>Bitcoin domine et monte en premier. Les altcoins sont stables ou baissent.</p>
+</div>
+<div class="phase-card" id="phase-2">
+<h3>Phase 2: Ethereum</h3>
+<p>ETH commence à surperformer BTC. Les grandes caps bougent.</p>
+</div>
+<div class="phase-card" id="phase-3">
+<h3>Phase 3: Large Caps</h3>
+<p>Les grandes altcoins explosent. Le marché s'élargit.</p>
+</div>
+<div class="phase-card" id="phase-4">
+<h3>Phase 4: Altseason</h3>
+<p>Toutes les altcoins pompent. C'est l'euphorie totale!</p>
+</div>
+</div>
+</div>
+
+<div class="grid grid-2" style="margin-top:30px">
+<div class="stat-box">
+<div class="label">BTC Dominance</div>
+<div class="value" id="btc-dom">--</div>
+</div>
+<div class="stat-box">
+<div class="label">Altcoin Season Index</div>
+<div class="value" id="alt-index">--</div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+async function loadPhase(){
+try{
+const response=await fetch('/api/bullrun-phase');
+const data=await response.json();
+document.querySelector('.phase-number').textContent=data.current_phase;
+document.querySelector('.phase-name').textContent='Phase '+data.current_phase+': '+data.phase_name;
+document.querySelector('.phase-confidence').textContent='Confiance: '+data.confidence+'%';
+for(let i=1;i<=4;i++){
+document.getElementById('phase-'+i).classList.remove('active');
+}
+document.getElementById('phase-'+data.current_phase).classList.add('active');
+if(data.indicators.btc_dominance){
+document.getElementById('btc-dom').textContent=data.indicators.btc_dominance+'%';
+}
+if(data.indicators.altcoin_season_index){
+document.getElementById('alt-index').textContent=data.indicators.altcoin_season_index;
+}
+}catch(e){console.error('❌ Erreur:',e)}
+}
+loadPhase();
+setInterval(loadPhase,60000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
+
+@app.get("/telegram-test", response_class=HTMLResponse)
+async def telegram_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📱 Test Telegram</title>""" + CSS + """
+<style>
+.test-section{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}
+.test-result{background:#0f172a;padding:15px;border-radius:8px;margin-top:15px;font-family:monospace;font-size:13px;max-height:300px;overflow-y:auto}
+.btn-test{width:100%;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>📱 Test Telegram Bot</h1><p>Testez l'intégration Telegram</p></div>
+""" + NAV + """
+<div style="max-width:800px;margin:0 auto">
+<div class="test-section">
+<h2>1️⃣ Configuration</h2>
+<button class="btn-test" onclick="testConfig()">Vérifier la Config</button>
+<div class="test-result" id="config-result">Cliquez pour tester...</div>
+</div>
+
+<div class="test-section">
+<h2>2️⃣ Bot Info</h2>
+<button class="btn-test" onclick="testBotInfo()">Obtenir Info Bot</button>
+<div class="test-result" id="bot-result">Cliquez pour tester...</div>
+</div>
+
+<div class="test-section">
+<h2>3️⃣ Vérifier Chat</h2>
+<button class="btn-test" onclick="verifyChat()">Vérifier le Chat ID</button>
+<div class="test-result" id="chat-result">Cliquez pour tester...</div>
+</div>
+
+<div class="test-section">
+<h2>4️⃣ Envoyer Message Test</h2>
+<button class="btn-test" onclick="sendTest()">Envoyer Message</button>
+<div class="test-result" id="send-result">Cliquez pour tester...</div>
+</div>
+
+<div class="test-section">
+<h2>5️⃣ Test Alerte Complète</h2>
+<button class="btn-test" onclick="testFullAlert()">Tester Alerte Trading</button>
+<div class="test-result" id="alert-result">Cliquez pour tester...</div>
+</div>
+</div>
+</div>
+
+<script>
+async function testConfig(){
+try{
+const response=await fetch('/api/telegram-config');
+const data=await response.json();
+document.getElementById('config-result').innerHTML=`<pre>${JSON.stringify(data,null,2)}</pre>`;
+}catch(e){
+document.getElementById('config-result').innerHTML='<span style="color:#ef4444">❌ Erreur: '+e.message+'</span>';
+}
+}
+
+async function testBotInfo(){
+try{
+const response=await fetch('/api/telegram-bot-info');
+const data=await response.json();
+document.getElementById('bot-result').innerHTML=`<pre>${JSON.stringify(data,null,2)}</pre>`;
+}catch(e){
+document.getElementById('bot-result').innerHTML='<span style="color:#ef4444">❌ Erreur: '+e.message+'</span>';
+}
+}
+
+async function verifyChat(){
+try{
+const response=await fetch('/api/telegram-verify-chat');
+const data=await response.json();
+document.getElementById('chat-result').innerHTML=`<pre>${JSON.stringify(data,null,2)}</pre>`;
+}catch(e){
+document.getElementById('chat-result').innerHTML='<span style="color:#ef4444">❌ Erreur: '+e.message+'</span>';
+}
+}
+
+async function sendTest(){
+try{
+const response=await fetch('/api/telegram-test');
+const data=await response.json();
+document.getElementById('send-result').innerHTML=`<pre>${JSON.stringify(data,null,2)}</pre>`;
+}catch(e){
+document.getElementById('send-result').innerHTML='<span style="color:#ef4444">❌ Erreur: '+e.message+'</span>';
+}
+}
+
+async function testFullAlert(){
+try{
+const response=await fetch('/api/test-full-alert');
+const data=await response.json();
+document.getElementById('alert-result').innerHTML=`<pre>${JSON.stringify(data,null,2)}</pre>`;
+}catch(e){
+document.getElementById('alert-result').innerHTML='<span style="color:#ef4444">❌ Erreur: '+e.message+'</span>';
+}
+}
+</script>
+</body></html>"""
+    return HTMLResponse(page)
+
 
 @app.get("/graphiques", response_class=HTMLResponse)
 async def graphiques_page():
@@ -1233,6 +2087,7 @@ loadChartData();
 </body></html>"""
     return HTMLResponse(page)
 
+
 @app.get("/altcoin-season", response_class=HTMLResponse)
 async def altcoin_season_page():
     page = """<!DOCTYPE html>
@@ -1280,9 +2135,27 @@ loadData();
 </body></html>"""
     return HTMLResponse(page)
 
+
+# ==================== LANCEMENT DE L'APP ====================
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     print("\n🚀 DASHBOARD TRADING - Démarrage...")
+    print(f"📡 Serveur démarré sur le port {port}")
+    print(f"🌐 Accès local: http://localhost:{port}")
+    print("\n✅ Toutes les pages sont fonctionnelles:")
+    print("   - / (Accueil)")
+    print("   - /trades (Suivi des trades)")
+    print("   - /fear-greed (Fear & Greed Index)")
+    print("   - /dominance (BTC Dominance)")
+    print("   - /heatmap (Heatmap crypto)")
+    print("   - /nouvelles (Actualités)")
+    print("   - /convertisseur (Convertisseur)")
+    print("   - /calendrier (Calendrier économique)")
+    print("   - /bullrun-phase (Phase du bullrun)")
+    print("   - /graphiques (Graphiques interactifs)")
+    print("   - /altcoin-season (Altcoin Season Index)")
+    print("   - /telegram-test (Tests Telegram)")
+    print("\n🎯 Prêt à recevoir des webhooks sur /tv-webhook\n")
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
-

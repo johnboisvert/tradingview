@@ -695,51 +695,384 @@ async def get_heatmap():
     
     return {"cryptos": fallback_data, "status": "fallback"}
 
-@app.get("/api/altcoin-season-index")
-async def get_altcoin_season_index():
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.get("https://api.coingecko.com/api/v3/coins/markets", params={
-                "vs_currency": "usd",
-                "order": "market_cap_desc",
-                "per_page": 100,
-                "page": 1,
-                "sparkline": False,
-                "price_change_percentage": "24h,7d,30d"
-            })
-            
-            if r.status_code == 200:
-                cryptos = r.json()
-                btc_data = next((c for c in cryptos if c['symbol'].lower() == 'btc'), None)
-                
-                if btc_data and len(cryptos) > 1:
-                    btc_change = btc_data.get('price_change_percentage_30d_in_currency', 0) or 0
-                    altcoins = [c for c in cryptos if c['symbol'].lower() != 'btc']
-                    outperforming = 0
-                    
-                    for coin in altcoins[:99]:
-                        coin_change = coin.get('price_change_percentage_30d_in_currency', -1000)
-                        if coin_change is not None and coin_change > btc_change:
-                            outperforming += 1
-                    
-                    index = round((outperforming / 99) * 100) if len(altcoins) >= 99 else 50
-                    
-                    return {
-                        "index": max(0, min(100, index)),
-                        "status": "success",
-                        "btc_change": round(btc_change, 2),
-                        "outperforming": outperforming,
-                        "timestamp": datetime.now().isoformat()
-                    }
-    except Exception as e:
-        print(f"Erreur API Altcoin Season: {e}")
-    
-    return {
-        "index": 35,
-        "status": "fallback",
-        "message": "Utilisation de données estimées",
-        "timestamp": datetime.now().isoformat()
+@app.get("/altcoin-season", response_class=HTMLResponse)
+async def altcoin_season_page():
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🌊 Altcoin Season Index</title>""" + CSS + """
+<style>
+.altcoin-container{max-width:1200px;margin:0 auto}
+
+/* Section principale avec index géant */
+.main-index-section{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:50px 30px;border-radius:20px;margin-bottom:30px;border:2px solid #334155;position:relative;overflow:hidden}
+.main-index-section::before{content:'';position:absolute;top:-50%;right:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(96,165,250,0.1) 0%,transparent 70%);animation:pulse 8s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+
+.index-display{text-align:center;position:relative;z-index:1}
+.index-value{font-size:120px;font-weight:900;background:linear-gradient(135deg,#f97316,#fbbf24,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:20px 0;text-shadow:0 0 40px rgba(96,165,250,0.3);animation:glow 3s ease-in-out infinite}
+@keyframes glow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.3)}}
+.index-label{font-size:36px;font-weight:700;margin-bottom:10px;text-transform:uppercase;letter-spacing:2px}
+.index-description{font-size:16px;color:#94a3b8;max-width:600px;margin:0 auto;line-height:1.6}
+
+/* Jauge horizontale améliorée */
+.gauge-section{background:#1e293b;padding:40px 30px;border-radius:16px;margin-bottom:30px;border:1px solid #334155}
+.gauge-container{position:relative;width:100%;height:120px;margin:30px 0}
+.gauge-track{width:100%;height:50px;background:linear-gradient(90deg,#dc2626 0%,#f59e0b 12.5%,#fbbf24 25%,#84cc16 37.5%,#22c55e 50%,#3b82f6 62.5%,#2563eb 75%,#1d4ed8 87.5%,#1e3a8a 100%);border-radius:25px;position:relative;box-shadow:inset 0 2px 8px rgba(0,0,0,0.3),0 4px 12px rgba(0,0,0,0.2)}
+
+/* Marqueurs sur la jauge */
+.gauge-markers{position:absolute;width:100%;top:-30px;display:flex;justify-content:space-between;font-size:12px;color:#94a3b8;font-weight:600}
+.gauge-marker-line{position:absolute;width:2px;height:60px;background:#334155;top:-10px}
+.gauge-marker-line:nth-child(1){left:0%}
+.gauge-marker-line:nth-child(2){left:25%}
+.gauge-marker-line:nth-child(3){left:50%}
+.gauge-marker-line:nth-child(4){left:75%}
+.gauge-marker-line:nth-child(5){left:100%}
+
+/* Indicateur de position */
+.gauge-indicator{position:absolute;top:-40px;transform:translateX(-50%);transition:left 0.8s cubic-bezier(0.4,0,0.2,1);z-index:10}
+.gauge-arrow{width:0;height:0;border-left:20px solid transparent;border-right:20px solid transparent;border-top:50px solid #fff;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3))}
+.gauge-value-badge{position:absolute;top:60px;left:50%;transform:translateX(-50%);background:#0f172a;padding:10px 20px;border-radius:12px;font-size:18px;font-weight:900;color:#fff;border:2px solid #60a5fa;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.4)}
+
+/* Zones expliquées */
+.zones-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-top:30px}
+.zone-card{background:linear-gradient(135deg,#1e293b,#0f172a);padding:25px;border-radius:16px;border:2px solid #334155;transition:all .3s;position:relative;overflow:hidden}
+.zone-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;transition:all .3s}
+.zone-card.bitcoin::before{background:linear-gradient(90deg,#dc2626,#f59e0b)}
+.zone-card.neutral::before{background:linear-gradient(90deg,#fbbf24,#84cc16)}
+.zone-card.altseason::before{background:linear-gradient(90deg,#3b82f6,#1e3a8a)}
+.zone-card:hover{transform:translateY(-5px);box-shadow:0 12px 24px rgba(96,165,250,0.2);border-color:#60a5fa}
+.zone-card.active{border-color:#60a5fa;box-shadow:0 0 30px rgba(96,165,250,0.4)}
+.zone-card.active::before{height:8px}
+.zone-icon{font-size:48px;margin-bottom:15px}
+.zone-title{font-size:20px;font-weight:700;color:#e2e8f0;margin-bottom:10px}
+.zone-range{font-size:14px;color:#60a5fa;font-weight:600;margin-bottom:15px}
+.zone-description{font-size:14px;color:#94a3b8;line-height:1.6}
+
+/* Statistiques détaillées */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px;margin-top:30px}
+.stat-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center;transition:all .3s}
+.stat-card:hover{transform:translateY(-3px);border-color:#60a5fa}
+.stat-icon{font-size:32px;margin-bottom:10px}
+.stat-label{font-size:13px;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px}
+.stat-value{font-size:28px;font-weight:900;color:#e2e8f0;margin-bottom:5px}
+.stat-subtitle{font-size:12px;color:#60a5fa}
+
+/* Info cards */
+.info-section{background:#1e293b;padding:30px;border-radius:16px;border:1px solid #334155;margin-bottom:30px}
+.info-title{font-size:22px;font-weight:700;color:#60a5fa;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.info-content{color:#94a3b8;line-height:1.8;font-size:15px}
+.info-list{list-style:none;padding:0;margin:15px 0}
+.info-list li{padding:10px 0;border-bottom:1px solid #334155;display:flex;align-items:start;gap:10px}
+.info-list li:last-child{border-bottom:none}
+.info-list li::before{content:'✓';color:#22c55e;font-weight:700;font-size:18px}
+
+/* Animation de chargement */
+.loading-spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:40px auto}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+/* Responsive */
+@media(max-width:768px){
+.index-value{font-size:72px}
+.index-label{font-size:24px}
+.zones-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>🌊 Altcoin Season Index</h1>
+<p>Analyse en temps réel de la domination Bitcoin vs Altcoins</p>
+</div>
+""" + NAV + """
+
+<div class="altcoin-container">
+
+<!-- Index Principal -->
+<div class="main-index-section">
+<div class="index-display">
+<div id="main-index-value" class="index-value">--</div>
+<div id="main-index-label" class="index-label">Chargement...</div>
+<div class="index-description">L'index mesure combien d'altcoins (top 100) surperforment Bitcoin sur 30 jours</div>
+</div>
+</div>
+
+<!-- Jauge Visuelle -->
+<div class="gauge-section">
+<h2>📊 Jauge de Position</h2>
+<div class="gauge-container">
+<div class="gauge-markers">
+<span style="position:absolute;left:0;transform:translateX(-50%)">0</span>
+<span style="position:absolute;left:25%;transform:translateX(-50%)">25</span>
+<span style="position:absolute;left:50%;transform:translateX(-50%)">50</span>
+<span style="position:absolute;left:75%;transform:translateX(-50%)">75</span>
+<span style="position:absolute;left:100%;transform:translateX(-50%)">100</span>
+</div>
+<div class="gauge-track">
+<div class="gauge-marker-line"></div>
+<div class="gauge-marker-line"></div>
+<div class="gauge-marker-line"></div>
+<div class="gauge-marker-line"></div>
+<div class="gauge-marker-line"></div>
+<div id="gauge-indicator" class="gauge-indicator" style="left:50%">
+<div class="gauge-arrow"></div>
+</div>
+</div>
+<div id="gauge-badge" class="gauge-value-badge">-- / 100</div>
+</div>
+</div>
+
+<!-- Zones Détaillées -->
+<div class="card">
+<h2>🎯 Zones du Marché</h2>
+<div class="zones-grid">
+<div class="zone-card bitcoin" id="zone-bitcoin">
+<div class="zone-icon">🔥</div>
+<div class="zone-title">Bitcoin Season</div>
+<div class="zone-range">Index: 0 - 25</div>
+<div class="zone-description">
+Bitcoin domine le marché et surperforme massivement les altcoins. 
+Moins de 25% des altcoins font mieux que BTC. Phase d'accumulation pour les alts.
+</div>
+</div>
+
+<div class="zone-card neutral" id="zone-neutral">
+<div class="zone-icon">⚖️</div>
+<div class="zone-title">Zone Neutre</div>
+<div class="zone-range">Index: 25 - 75</div>
+<div class="zone-description">
+Marché équilibré. Entre 25% et 75% des altcoins surperforment Bitcoin. 
+Phase de transition, surveillance nécessaire.
+</div>
+</div>
+
+<div class="zone-card altseason" id="zone-altseason">
+<div class="zone-icon">🚀</div>
+<div class="zone-title">Altcoin Season</div>
+<div class="zone-range">Index: 75 - 100</div>
+<div class="zone-description">
+Les altcoins dominent! Plus de 75% des alts surperforment BTC. 
+Phase euphorie, profits maximaux sur les altcoins.
+</div>
+</div>
+</div>
+</div>
+
+<!-- Statistiques Détaillées -->
+<div class="card">
+<h2>📈 Statistiques du Marché</h2>
+<div class="stats-grid">
+<div class="stat-card">
+<div class="stat-icon">₿</div>
+<div class="stat-label">BTC Change 30j</div>
+<div class="stat-value" id="btc-change-30d">--</div>
+<div class="stat-subtitle">Performance Bitcoin</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-icon">🎯</div>
+<div class="stat-label">Altcoins Gagnants</div>
+<div class="stat-value" id="alts-outperform">--</div>
+<div class="stat-subtitle">Sur 99 altcoins mesurés</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-icon">📊</div>
+<div class="stat-label">Dominance BTC</div>
+<div class="stat-value" id="btc-dominance">--</div>
+<div class="stat-subtitle">Part de marché Bitcoin</div>
+</div>
+
+<div class="stat-card">
+<div class="stat-icon">⏱️</div>
+<div class="stat-label">Dernière MAJ</div>
+<div class="stat-value" id="last-update" style="font-size:18px">--</div>
+<div class="stat-subtitle">Temps réel</div>
+</div>
+</div>
+</div>
+
+<!-- Guide d'Utilisation -->
+<div class="info-section">
+<div class="info-title">
+<span>💡</span>
+<span>Comment Utiliser l'Index ?</span>
+</div>
+<div class="info-content">
+<ul class="info-list">
+<li>
+<div>
+<strong>Index 0-25 (Bitcoin Season):</strong> Concentrez-vous sur Bitcoin. 
+Les altcoins sont en retard. Moment d'accumuler les alts à bas prix.
+</div>
+</li>
+<li>
+<div>
+<strong>Index 25-50 (Début Transition):</strong> Bitcoin ralentit, 
+les grandes caps commencent à bouger. Surveillez ETH et les top 10.
+</div>
+</li>
+<li>
+<div>
+<strong>Index 50-75 (Transition Active):</strong> Les altcoins prennent 
+de la vitesse. Moment de diversifier vers les mid-caps.
+</div>
+</li>
+<li>
+<div>
+<strong>Index 75-100 (Altcoin Season):</strong> Euphorie! Tous les 
+altcoins montent. Prenez vos profits progressivement.
+</div>
+</li>
+</ul>
+</div>
+</div>
+
+<!-- Méthodologie -->
+<div class="info-section">
+<div class="info-title">
+<span>🔬</span>
+<span>Méthodologie de Calcul</span>
+</div>
+<div class="info-content">
+<p style="margin-bottom:15px">
+L'index compare la performance de <strong>99 altcoins du top 100</strong> 
+(excluant Bitcoin) par rapport à Bitcoin sur une période de <strong>30 jours</strong>.
+</p>
+<p style="margin-bottom:15px">
+<strong>Calcul:</strong> Si 60 altcoins sur 99 ont une meilleure performance 
+que Bitcoin, l'index sera de (60/99) × 100 = <strong>60.6</strong>
+</p>
+<p>
+Les données sont mises à jour en temps réel via l'API CoinGecko et 
+prennent en compte uniquement les variations de prix sur 30 jours glissants.
+</p>
+</div>
+</div>
+
+</div>
+</div>
+
+<script>
+let currentIndex = 0;
+
+function getSeasonInfo(index) {
+    if (index <= 25) {
+        return {
+            label: 'Bitcoin Season',
+            color: '#f97316',
+            emoji: '🔥',
+            zone: 'bitcoin'
+        };
+    } else if (index <= 50) {
+        return {
+            label: 'Zone Neutre (Début)',
+            color: '#fbbf24',
+            emoji: '⚖️',
+            zone: 'neutral'
+        };
+    } else if (index <= 75) {
+        return {
+            label: 'Zone Neutre (Transition)',
+            color: '#84cc16',
+            emoji: '⚖️',
+            zone: 'neutral'
+        };
+    } else {
+        return {
+            label: 'Altcoin Season',
+            color: '#3b82f6',
+            emoji: '🚀',
+            zone: 'altseason'
+        };
     }
+}
+
+function updateDisplay(data) {
+    const index = data.index;
+    currentIndex = index;
+    const seasonInfo = getSeasonInfo(index);
+    
+    // Mettre à jour l'index principal
+    document.getElementById('main-index-value').textContent = index;
+    const labelEl = document.getElementById('main-index-label');
+    labelEl.textContent = seasonInfo.emoji + ' ' + seasonInfo.label;
+    labelEl.style.color = seasonInfo.color;
+    
+    // Mettre à jour la jauge
+    const indicator = document.getElementById('gauge-indicator');
+    indicator.style.left = index + '%';
+    
+    const badge = document.getElementById('gauge-badge');
+    badge.textContent = index + ' / 100';
+    badge.style.borderColor = seasonInfo.color;
+    
+    // Activer la zone correspondante
+    document.querySelectorAll('.zone-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    document.getElementById('zone-' + seasonInfo.zone).classList.add('active');
+    
+    // Mettre à jour les stats
+    if (data.btc_change !== undefined) {
+        const btcChangeEl = document.getElementById('btc-change-30d');
+        const change = data.btc_change;
+        btcChangeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+        btcChangeEl.style.color = change >= 0 ? '#22c55e' : '#ef4444';
+    }
+    
+    if (data.outperforming !== undefined) {
+        document.getElementById('alts-outperform').textContent = data.outperforming + ' / 99';
+    }
+    
+    // Récupérer BTC Dominance
+    loadBtcDominance();
+    
+    // Dernière mise à jour
+    const now = new Date();
+    document.getElementById('last-update').textContent = now.toLocaleTimeString('fr-FR');
+}
+
+async function loadBtcDominance() {
+    try {
+        const response = await fetch('/api/btc-dominance');
+        const data = await response.json();
+        if (data.btc_dominance) {
+            document.getElementById('btc-dominance').textContent = data.btc_dominance.toFixed(2) + '%';
+        }
+    } catch (e) {
+        console.error('Erreur BTC Dominance:', e);
+    }
+}
+
+async function loadAltcoinIndex() {
+    try {
+        const response = await fetch('/api/altcoin-season-index');
+        const data = await response.json();
+        
+        if (data.index !== undefined) {
+            updateDisplay(data);
+        }
+    } catch (error) {
+        console.error('❌ Erreur chargement:', error);
+        // Afficher des données par défaut
+        updateDisplay({
+            index: 35,
+            btc_change: 5.2,
+            outperforming: 35
+        });
+    }
+}
+
+// Charger au démarrage
+loadAltcoinIndex();
+
+// Actualiser toutes les 60 secondes
+setInterval(loadAltcoinIndex, 60000);
+</script>
+
+</body></html>"""
+    return HTMLResponse(page)
 
 @app.get("/api/crypto-news")
 async def get_crypto_news():

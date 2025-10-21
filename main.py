@@ -695,7 +695,7 @@ async def get_heatmap():
     
     return {"cryptos": fallback_data, "status": "fallback"}
 
-# ==================== SECTION ALTCOIN SEASON - VERSION CORRIGÉE ====================
+# ==================== SECTION ALTCOIN SEASON - VERSION CORRIGEE ====================
 
 @app.get("/api/altcoin-season-index")
 async def get_altcoin_season_index():
@@ -812,7 +812,7 @@ async def get_altcoin_season_index():
 
 @app.get("/altcoin-season", response_class=HTMLResponse)
 async def altcoin_season_page():
-    """Page Altcoin Season - VERSION CORRIGÉE AVEC MEILLEUR DÉBOGAGE"""
+    """Page Altcoin Season - VERSION CORRIGEE AVEC MEILLEUR DEBOGAGE"""
     page = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>🌊 Altcoin Season Index</title>""" + CSS + """
@@ -929,16 +929,15 @@ async def altcoin_season_page():
 </div>
 
 <script>
-// Console de débogage
 function log(msg) {
     const console_el = document.getElementById('debug-console');
     const timestamp = new Date().toLocaleTimeString();
-    console_el.innerHTML += `[${timestamp}] ${msg}<br>`;
+    console_el.innerHTML += '[' + timestamp + '] ' + msg + '<br>';
     console_el.scrollTop = console_el.scrollHeight;
     console.log(msg);
 }
 
-log('✅ Script chargé');
+log('Script charge');
 
 function getSeasonInfo(index) {
     if (index <= 25) return {label:'Bitcoin Season', color:'#f97316', zone:'bitcoin'};
@@ -947,26 +946,22 @@ function getSeasonInfo(index) {
 }
 
 function updateDisplay(data) {
-    log(`📊 updateDisplay appelé avec index: ${data.index}`);
+    log('updateDisplay appele avec index: ' + data.index);
     
     const index = data.index || 0;
     const seasonInfo = getSeasonInfo(index);
     
-    // Mettre à jour l'affichage principal
     document.getElementById('main-index-value').textContent = index;
     const labelEl = document.getElementById('main-index-label');
     labelEl.textContent = seasonInfo.label;
     labelEl.style.color = seasonInfo.color;
     
-    // Mettre à jour la jauge
     document.getElementById('gauge-indicator').style.left = index + '%';
     document.getElementById('gauge-badge').textContent = index + ' / 100';
     
-    // Activer la zone correspondante
     document.querySelectorAll('.zone-card').forEach(card => card.classList.remove('active'));
     document.getElementById('zone-' + seasonInfo.zone).classList.add('active');
     
-    // Mettre à jour les stats
     if (data.btc_change !== undefined) {
         const change = parseFloat(data.btc_change);
         document.getElementById('btc-change-30d').textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
@@ -978,11 +973,11 @@ function updateDisplay(data) {
     
     document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
     
-    log(`✅ Affichage mis à jour - Index: ${index}, Zone: ${seasonInfo.zone}`);
+    log('Affichage mis a jour - Index: ' + index + ', Zone: ' + seasonInfo.zone);
 }
 
 async function loadAltcoinIndex() {
-    log('🔄 Chargement API /api/altcoin-season-index...');
+    log('Chargement API /api/altcoin-season-index...');
     
     try {
         const controller = new AbortController();
@@ -994,26 +989,25 @@ async function loadAltcoinIndex() {
         
         clearTimeout(timeoutId);
         
-        log(`📡 Réponse API: HTTP ${response.status}`);
+        log('Reponse API: HTTP ' + response.status);
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+            throw new Error('HTTP ' + response.status);
         }
         
         const data = await response.json();
-        log(`✅ Données reçues: ${JSON.stringify(data)}`);
+        log('Donnees recues: ' + JSON.stringify(data));
         
         if (data && typeof data.index === 'number') {
             updateDisplay(data);
-            log(`✅ Index affiché: ${data.index}`);
+            log('Index affiche: ' + data.index);
         } else {
-            throw new Error('Format de données invalide');
+            throw new Error('Format de donnees invalide');
         }
         
     } catch (error) {
-        log(`❌ ERREUR: ${error.message}`);
+        log('ERREUR: ' + error.message);
         
-        // Fallback en cas d'erreur
         updateDisplay({
             index: 45,
             btc_change: 12.3,
@@ -1023,56 +1017,29 @@ async function loadAltcoinIndex() {
     }
 }
 
-// Initialisation
-log('🚀 Initialisation de la page...');
+log('Initialisation de la page...');
 
-// Afficher des données par défaut immédiatement
 updateDisplay({
     index: 50,
     btc_change: 10.0,
     outperforming: 50
 });
 
-// Charger les vraies données après 500ms
 setTimeout(() => {
-    log('📡 Lancement du chargement API...');
+    log('Lancement du chargement API...');
     loadAltcoinIndex();
 }, 500);
 
-// Actualisation automatique toutes les 60 secondes
 setInterval(() => {
-    log('🔄 Actualisation automatique...');
+    log('Actualisation automatique...');
     loadAltcoinIndex();
 }, 60000);
 
-log('✅ Page complètement initialisée');
+log('Page completement initialisee');
 </script>
 
 </body></html>"""
     return HTMLResponse(page)
-```
-
-**Changements apportés :**
-
-1. ✅ **Console de débogage visible** dans la page pour voir ce qui se passe
-2. ✅ **Meilleure gestion des erreurs** avec try/catch détaillés  
-3. ✅ **Logs plus détaillés** côté serveur (dans Render)
-4. ✅ **Timeout augmenté** à 10 secondes pour l'API
-5. ✅ **Délai d'initialisation** passé à 500ms au lieu de 200ms
-6. ✅ **Fallback automatique** si l'API ne répond pas
-7. ✅ **Fonction `log()`** pour tracer toutes les étapes dans la page
-
-**Pour tester :**
-1. Remplacez uniquement les 2 fonctions `get_altcoin_season_index()` et `altcoin_season_page()` dans votre main.py
-2. Redémarrez Render
-3. Allez sur `/altcoin-season`
-4. Regardez la section "Debug Console" en bas de page
-5. Vérifiez les logs Render pour voir les appels API
-
-**Vous devriez maintenant voir** dans les logs Render quelque chose comme:
-```
-🌊 API /api/altcoin-season-index appelée
-📡 Appel CoinGecko API...
 
 @app.get("/api/crypto-news")
 async def get_crypto_news():

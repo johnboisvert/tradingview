@@ -606,13 +606,22 @@ async def get_btc_dominance():
         "status": "fallback"
     }
 
+# SECTION HEATMAP - VERSION AMELIOREE
+
+# Cache pour les donnees du Heatmap (evite le rate limiting)
+heatmap_cache = {
+    "data": None,
+    "timestamp": None,
+    "cache_duration": 600  # 10 minutes au lieu de 3
+}
+
 @app.get("/api/heatmap")
 async def get_heatmap():
-    """API Heatmap avec système de cache pour éviter le rate limiting"""
+    """API Heatmap avec systeme de cache ameliore pour eviter le rate limiting"""
     print("\n" + "="*60)
     print("🔄 API /api/heatmap appelée")
     
-    # Vérifier si le cache est valide
+    # Verifier si le cache est valide
     now = datetime.now()
     if heatmap_cache["data"] is not None and heatmap_cache["timestamp"] is not None:
         time_diff = (now - heatmap_cache["timestamp"]).total_seconds()
@@ -675,25 +684,168 @@ async def get_heatmap():
     except Exception as e:
         print(f"❌ Exception: {str(e)}")
     
-    # Si on a un cache expiré mais des données, les renvoyer quand même
+    # Si on a un cache expire mais des donnees, les renvoyer quand meme
     if heatmap_cache["data"] is not None:
         print(f"⚠️ Utilisation du cache expiré ({len(heatmap_cache['data'])} cryptos)")
         print("="*60 + "\n")
         return {"cryptos": heatmap_cache["data"], "status": "stale_cache"}
     
-    # Fallback étendu si vraiment rien ne marche
-    print("⚠️ Utilisation du fallback étendu (25 cryptos)")
+    # Fallback etendu avec 30 cryptos populaires
+    print("⚠️ Utilisation du fallback étendu (30 cryptos)")
     print("="*60 + "\n")
     
     fallback_data = [
         {"symbol": "BTC", "name": "Bitcoin", "price": 107150, "change_24h": 1.32, "market_cap": 2136218033539, "volume": 37480142027},
         {"symbol": "ETH", "name": "Ethereum", "price": 3887, "change_24h": -0.84, "market_cap": 467000000000, "volume": 15000000000},
-        {"symbol": "USDT", "name": "Tether USDt", "price": 1.0, "change_24h": -0.02, "market_cap": 140000000000, "volume": 45000000000},
+        {"symbol": "USDT", "name": "Tether", "price": 1.0, "change_24h": -0.02, "market_cap": 140000000000, "volume": 45000000000},
         {"symbol": "BNB", "name": "BNB", "price": 698, "change_24h": -2.36, "market_cap": 101000000000, "volume": 1200000000},
-        {"symbol": "SOL", "name": "Solana", "price": 187, "change_24h": -0.94, "market_cap": 90000000000, "volume": 3000000000}
+        {"symbol": "SOL", "name": "Solana", "price": 187, "change_24h": -0.94, "market_cap": 90000000000, "volume": 3000000000},
+        {"symbol": "XRP", "name": "XRP", "price": 0.63, "change_24h": 2.15, "market_cap": 36000000000, "volume": 2000000000},
+        {"symbol": "USDC", "name": "USD Coin", "price": 1.0, "change_24h": 0.01, "market_cap": 35000000000, "volume": 5000000000},
+        {"symbol": "ADA", "name": "Cardano", "price": 0.62, "change_24h": -1.23, "market_cap": 22000000000, "volume": 800000000},
+        {"symbol": "AVAX", "name": "Avalanche", "price": 36.5, "change_24h": 3.45, "market_cap": 15000000000, "volume": 600000000},
+        {"symbol": "DOGE", "name": "Dogecoin", "price": 0.08, "change_24h": 1.87, "market_cap": 12000000000, "volume": 900000000},
+        {"symbol": "TRX", "name": "TRON", "price": 0.25, "change_24h": 0.45, "market_cap": 21000000000, "volume": 2000000000},
+        {"symbol": "DOT", "name": "Polkadot", "price": 7.2, "change_24h": -2.1, "market_cap": 10000000000, "volume": 400000000},
+        {"symbol": "MATIC", "name": "Polygon", "price": 0.45, "change_24h": 4.2, "market_cap": 4200000000, "volume": 300000000},
+        {"symbol": "LINK", "name": "Chainlink", "price": 14.8, "change_24h": 2.8, "market_cap": 9000000000, "volume": 500000000},
+        {"symbol": "UNI", "name": "Uniswap", "price": 6.8, "change_24h": -1.5, "market_cap": 5100000000, "volume": 200000000},
+        {"symbol": "ATOM", "name": "Cosmos", "price": 9.5, "change_24h": 1.2, "market_cap": 3700000000, "volume": 180000000},
+        {"symbol": "LTC", "name": "Litecoin", "price": 102, "change_24h": 0.9, "market_cap": 7600000000, "volume": 600000000},
+        {"symbol": "NEAR", "name": "NEAR Protocol", "price": 5.2, "change_24h": 3.1, "market_cap": 5500000000, "volume": 400000000},
+        {"symbol": "BCH", "name": "Bitcoin Cash", "price": 380, "change_24h": -0.5, "market_cap": 7500000000, "volume": 300000000},
+        {"symbol": "APT", "name": "Aptos", "price": 8.9, "change_24h": 5.2, "market_cap": 3400000000, "volume": 250000000},
+        {"symbol": "ICP", "name": "Internet Computer", "price": 11.2, "change_24h": 2.3, "market_cap": 5200000000, "volume": 180000000},
+        {"symbol": "FIL", "name": "Filecoin", "price": 4.8, "change_24h": -1.8, "market_cap": 2800000000, "volume": 150000000},
+        {"symbol": "ARB", "name": "Arbitrum", "price": 0.82, "change_24h": 4.5, "market_cap": 3200000000, "volume": 300000000},
+        {"symbol": "OP", "name": "Optimism", "price": 2.1, "change_24h": 3.8, "market_cap": 2100000000, "volume": 200000000},
+        {"symbol": "HBAR", "name": "Hedera", "price": 0.28, "change_24h": 1.5, "market_cap": 10000000000, "volume": 250000000},
+        {"symbol": "VET", "name": "VeChain", "price": 0.048, "change_24h": 2.1, "market_cap": 3500000000, "volume": 120000000},
+        {"symbol": "ALGO", "name": "Algorand", "price": 0.32, "change_24h": -0.8, "market_cap": 2500000000, "volume": 100000000},
+        {"symbol": "GRT", "name": "The Graph", "price": 0.26, "change_24h": 1.9, "market_cap": 2400000000, "volume": 90000000},
+        {"symbol": "AAVE", "name": "Aave", "price": 320, "change_24h": -2.3, "market_cap": 4700000000, "volume": 250000000},
+        {"symbol": "MKR", "name": "Maker", "price": 1580, "change_24h": 1.1, "market_cap": 1500000000, "volume": 80000000}
     ]
     
     return {"cryptos": fallback_data, "status": "fallback"}
+
+
+@app.get("/heatmap", response_class=HTMLResponse)
+async def heatmap_page():
+    """Page Heatmap avec indicateur de statut ameliore"""
+    page = """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🔥 Heatmap Crypto</title>""" + CSS + """
+<style>
+.heatmap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:15px;margin-top:20px}
+.heatmap-cell{padding:20px;border-radius:10px;text-align:center;transition:all .3s;cursor:pointer;border:2px solid transparent}
+.heatmap-cell:hover{transform:scale(1.05);border-color:#fff;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+.cell-symbol{font-size:18px;font-weight:700;margin-bottom:8px}
+.cell-price{font-size:14px;margin-bottom:5px;opacity:0.9}
+.cell-change{font-size:20px;font-weight:900}
+.status-banner{background:linear-gradient(135deg,#1e293b,#0f172a);padding:15px;border-radius:8px;margin-bottom:20px;border-left:4px solid #60a5fa;display:flex;justify-content:space-between;align-items:center}
+.status-text{font-size:14px;color:#94a3b8}
+.status-badge{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:700}
+.status-success{background:rgba(34,197,94,0.2);color:#22c55e}
+.status-cached{background:rgba(251,191,36,0.2);color:#fbbf24}
+.status-fallback{background:rgba(239,68,68,0.2);color:#ef4444}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>🔥 Heatmap Crypto</h1><p>Visualisation des variations sur 24h</p></div>
+""" + NAV + """
+<div class="card">
+<div class="status-banner" id="status-banner">
+<div class="status-text" id="status-text">Chargement...</div>
+<span class="status-badge status-cached" id="status-badge">Chargement</span>
+</div>
+<h2>📊 Top 100 Cryptomonnaies</h2>
+<div id="heatmap-container" class="loading">Chargement des données...</div>
+</div>
+</div>
+
+<script>
+function getHeatmapColor(change){
+const absChange=Math.abs(change);
+if(change>0){
+if(absChange>=10)return'rgba(34,197,94,0.9)';
+if(absChange>=5)return'rgba(34,197,94,0.7)';
+if(absChange>=2)return'rgba(34,197,94,0.5)';
+return'rgba(34,197,94,0.3)';
+}else{
+if(absChange>=10)return'rgba(239,68,68,0.9)';
+if(absChange>=5)return'rgba(239,68,68,0.7)';
+if(absChange>=2)return'rgba(239,68,68,0.5)';
+return'rgba(239,68,68,0.3)';
+}
+}
+
+function formatPrice(price){
+if(price>=1000)return'$'+price.toLocaleString('en-US',{maximumFractionDigits:0});
+if(price>=1)return'$'+price.toFixed(2);
+if(price>=0.01)return'$'+price.toFixed(4);
+return'$'+price.toFixed(6);
+}
+
+function updateStatus(status, count) {
+const statusText = document.getElementById('status-text');
+const statusBadge = document.getElementById('status-badge');
+const banner = document.getElementById('status-banner');
+    
+if (status === 'success') {
+statusText.textContent = count + ' cryptos - Données en temps réel via CoinGecko API';
+statusBadge.textContent = '✅ Live';
+statusBadge.className = 'status-badge status-success';
+banner.style.borderLeftColor = '#22c55e';
+} else if (status === 'cached') {
+statusText.textContent = count + ' cryptos - Données en cache (mise à jour dans quelques minutes)';
+statusBadge.textContent = '📦 Cache';
+statusBadge.className = 'status-badge status-cached';
+banner.style.borderLeftColor = '#fbbf24';
+} else if (status === 'stale_cache') {
+statusText.textContent = count + ' cryptos - Cache expiré (API temporairement indisponible)';
+statusBadge.textContent = '⚠️ Cache Expiré';
+statusBadge.className = 'status-badge status-cached';
+banner.style.borderLeftColor = '#fbbf24';
+} else {
+statusText.textContent = count + ' cryptos - Données de démonstration (API rate limited)';
+statusBadge.textContent = '⚠️ Fallback';
+statusBadge.className = 'status-badge status-fallback';
+banner.style.borderLeftColor = '#ef4444';
+}
+}
+
+async function loadHeatmap(){
+try{
+const response=await fetch('/api/heatmap');
+const data=await response.json();
+if(!data.cryptos||data.cryptos.length===0){
+document.getElementById('heatmap-container').innerHTML='<p>Aucune donnée disponible</p>';
+return;
+}
+
+updateStatus(data.status, data.cryptos.length);
+
+const html=data.cryptos.map(crypto=>{
+const color=getHeatmapColor(crypto.change_24h);
+return`<div class="heatmap-cell" style="background:${color}">
+<div class="cell-symbol">${crypto.symbol}</div>
+<div class="cell-price">${formatPrice(crypto.price)}</div>
+<div class="cell-change">${crypto.change_24h>0?'+':''}${crypto.change_24h.toFixed(2)}%</div>
+</div>`;
+}).join('');
+document.getElementById('heatmap-container').innerHTML='<div class="heatmap-grid">'+html+'</div>';
+}catch(e){
+console.error('❌ Erreur:',e);
+document.getElementById('heatmap-container').innerHTML='<p style="color:#ef4444">❌ Erreur de chargement</p>';
+}
+}
+loadHeatmap();
+setInterval(loadHeatmap,60000);
+</script>
+</body></html>"""
+    return HTMLResponse(page)
 
 # ==================== SECTION ALTCOIN SEASON - VERSION CORRIGEE ====================
 

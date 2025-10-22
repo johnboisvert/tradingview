@@ -557,35 +557,38 @@ const gaugeHTML=`<div class="gauge-box">
 <stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/>
 <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/>
 </linearGradient>
-<filter id="glow">
-<feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-<feMerge>
-<feMergeNode in="coloredBlur"/>
-<feMergeNode in="SourceGraphic"/>
-</feMerge>
-</filter>
 </defs>
+
 <path d="M 50 200 A 150 150 0 0 1 350 200" fill="none" stroke="url(#gradient1)" stroke-width="30" stroke-linecap="round" opacity="0.8"/>
 <path d="M 60 195 A 140 140 0 0 1 340 195" fill="none" stroke="#0f172a" stroke-width="25" stroke-linecap="round"/>
+
 <circle cx="50" cy="200" r="6" fill="#dc2626"/>
 <text x="50" y="230" text-anchor="middle" font-size="14" font-weight="700" fill="#dc2626">0</text>
+
 <circle cx="125" cy="89" r="6" fill="#f97316"/>
 <text x="125" y="75" text-anchor="middle" font-size="14" font-weight="700" fill="#f97316">25</text>
+
 <circle cx="200" cy="50" r="6" fill="#fbbf24"/>
 <text x="200" y="35" text-anchor="middle" font-size="14" font-weight="700" fill="#fbbf24">50</text>
+
 <circle cx="275" cy="89" r="6" fill="#84cc16"/>
 <text x="275" y="75" text-anchor="middle" font-size="14" font-weight="700" fill="#84cc16">75</text>
+
 <circle cx="350" cy="200" r="6" fill="#22c55e"/>
 <text x="350" y="230" text-anchor="middle" font-size="14" font-weight="700" fill="#22c55e">100</text>
-<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" stroke="${color}" stroke-width="12" stroke-linecap="round" opacity="0.9" filter="url(#glow)"/>
-<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
-<polygon points="${tipX},${tipY} ${arrow1X},${arrow1Y} ${arrow2X},${arrow2Y}" fill="${color}" opacity="0.95" filter="url(#glow)"/>
-<circle cx="${bubbleX}" cy="${bubbleY}" r="30" fill="${color}" opacity="0.95" filter="url(#glow)"/>
-<circle cx="${bubbleX}" cy="${bubbleY}" r="26" fill="#0f172a" opacity="0.98"/>
-<text x="${bubbleX}" y="${bubbleY + 8}" text-anchor="middle" font-size="22" font-weight="900" fill="${color}">${value}</text>
+
 <circle cx="200" cy="200" r="14" fill="${color}" opacity="0.3"/>
 <circle cx="200" cy="200" r="10" fill="${color}"/>
 <circle cx="200" cy="200" r="6" fill="white"/>
+
+<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" stroke="${color}" stroke-width="14" stroke-linecap="round" stroke-opacity="1"/>
+<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-opacity="0.5"/>
+
+<polygon points="${tipX},${tipY} ${arrow1X},${arrow1Y} ${arrow2X},${arrow2Y}" fill="${color}" stroke="${color}" stroke-width="2"/>
+
+<circle cx="${bubbleX}" cy="${bubbleY}" r="32" fill="${color}" opacity="1"/>
+<circle cx="${bubbleX}" cy="${bubbleY}" r="28" fill="#0f172a" opacity="1"/>
+<text x="${bubbleX}" y="${bubbleY + 9}" text-anchor="middle" font-size="24" font-weight="900" fill="${color}">${value}</text>
 </svg>
 <div class="gauge-center">
 <div class="center-value" style="color:${color}">${value}</div>
@@ -601,6 +604,7 @@ const gaugeHTML=`<div class="gauge-box">
 </div>
 </div>`;
 
+console.log('Needle coords:', {startX, startY, endX, endY, color, value});
 document.getElementById('gauge-display').innerHTML=gaugeHTML;if(data.historical){let historyHTML='';const periods=[{key:'now',label:'Maintenant',icon:'🔴'},{key:'yesterday',label:'Hier',icon:'📅'},{key:'last_week',label:'7 jours',icon:'📊'},{key:'last_month',label:'30 jours',icon:'📈'}];periods.forEach(period=>{const hist=data.historical[period.key];if(hist&&hist.value!==null){const histValue=hist.value;const histColor=getColor(histValue);const histClass=hist.classification;const change=period.key!=='now'&&data.historical.now?histValue-data.historical.now.value:0;const changeText=change!==0?`<div class="hist-change">${change>0?'↑':'↓'} ${Math.abs(change)} points vs aujourd'hui</div>`:'';historyHTML+=`<div class="hist-card" style="color:${histColor}"><div class="hist-icon">${period.icon}</div><div class="hist-label">${period.label}</div><div class="hist-value">${histValue}</div><div class="hist-class">${histClass}</div>${changeText}</div>`}});document.getElementById('history').innerHTML=historyHTML}}async function loadData(){try{const response=await fetch('/api/fear-greed-full');const data=await response.json();console.log('📊 Données:',data);render(data)}catch(error){console.error('Erreur:',error);document.getElementById('gauge-display').innerHTML='<div style="text-align:center;color:#ef4444;padding:60px 20px"><div style="font-size:48px;margin-bottom:20px">❌</div><p>Erreur de chargement</p><button onclick="loadData()" style="padding:12px 24px;background:#3b82f6;color:white;border:none;border-radius:8px;cursor:pointer">🔄 Réessayer</button></div>'}}loadData();setInterval(loadData,60000);</script></body></html>"""
     return HTMLResponse(html)
 

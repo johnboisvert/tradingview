@@ -516,26 +516,36 @@ const className=getClassName(value);
 // Calcul direct des coordonnées de la flèche
 const centerX = 200;
 const centerY = 200;
-const radius = 130;
+const radiusStart = 20;
+const radiusEnd = 145;
 const angleRad = (180 - value * 1.8) * Math.PI / 180;
-const needleX = centerX + radius * Math.cos(angleRad);
-const needleY = centerY + radius * Math.sin(angleRad);
 
-// Calcul de la pointe de la flèche
-const tipX = centerX + (radius + 15) * Math.cos(angleRad);
-const tipY = centerY + (radius + 15) * Math.sin(angleRad);
+// Point de départ (près du centre)
+const startX = centerX + radiusStart * Math.cos(angleRad);
+const startY = centerY + radiusStart * Math.sin(angleRad);
+
+// Point d'arrivée (sur l'arc)
+const endX = centerX + radiusEnd * Math.cos(angleRad);
+const endY = centerY + radiusEnd * Math.sin(angleRad);
+
+// Pointe de la flèche (un peu au-delà)
+const tipRadius = radiusEnd + 15;
+const tipX = centerX + tipRadius * Math.cos(angleRad);
+const tipY = centerY + tipRadius * Math.sin(angleRad);
 
 // Points du triangle de la flèche
-const angle1 = angleRad - 0.3;
-const angle2 = angleRad + 0.3;
-const arrow1X = centerX + (radius + 5) * Math.cos(angle1);
-const arrow1Y = centerY + (radius + 5) * Math.sin(angle1);
-const arrow2X = centerX + (radius + 5) * Math.cos(angle2);
-const arrow2Y = centerY + (radius + 5) * Math.sin(angle2);
+const arrowSize = 0.2;
+const angle1 = angleRad - arrowSize;
+const angle2 = angleRad + arrowSize;
+const arrow1X = centerX + (radiusEnd - 5) * Math.cos(angle1);
+const arrow1Y = centerY + (radiusEnd - 5) * Math.sin(angle1);
+const arrow2X = centerX + (radiusEnd - 5) * Math.cos(angle2);
+const arrow2Y = centerY + (radiusEnd - 5) * Math.sin(angle2);
 
-// Position de la bulle avec le chiffre
-const bubbleX = centerX + (radius / 2) * Math.cos(angleRad);
-const bubbleY = centerY + (radius / 2) * Math.sin(angleRad);
+// Position de la bulle avec le chiffre (au milieu de la ligne)
+const bubbleRadius = (radiusStart + radiusEnd) / 2;
+const bubbleX = centerX + bubbleRadius * Math.cos(angleRad);
+const bubbleY = centerY + bubbleRadius * Math.sin(angleRad);
 
 const gaugeHTML=`<div class="gauge-box">
 <svg class="gauge-svg" viewBox="0 0 400 250" xmlns="http://www.w3.org/2000/svg">
@@ -547,8 +557,12 @@ const gaugeHTML=`<div class="gauge-box">
 <stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/>
 <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/>
 </linearGradient>
-<filter id="shadow">
-<feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="${color}" flood-opacity="0.9"/>
+<filter id="glow">
+<feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+<feMerge>
+<feMergeNode in="coloredBlur"/>
+<feMergeNode in="SourceGraphic"/>
+</feMerge>
 </filter>
 </defs>
 <path d="M 50 200 A 150 150 0 0 1 350 200" fill="none" stroke="url(#gradient1)" stroke-width="30" stroke-linecap="round" opacity="0.8"/>
@@ -563,11 +577,12 @@ const gaugeHTML=`<div class="gauge-box">
 <text x="275" y="75" text-anchor="middle" font-size="14" font-weight="700" fill="#84cc16">75</text>
 <circle cx="350" cy="200" r="6" fill="#22c55e"/>
 <text x="350" y="230" text-anchor="middle" font-size="14" font-weight="700" fill="#22c55e">100</text>
-<line x1="${centerX}" y1="${centerY}" x2="${needleX}" y2="${needleY}" stroke="${color}" stroke-width="10" stroke-linecap="round" filter="url(#shadow)"/>
-<polygon points="${tipX},${tipY} ${arrow1X},${arrow1Y} ${arrow2X},${arrow2Y}" fill="${color}" filter="url(#shadow)"/>
-<circle cx="${bubbleX}" cy="${bubbleY}" r="28" fill="${color}" filter="url(#shadow)" opacity="0.9"/>
-<circle cx="${bubbleX}" cy="${bubbleY}" r="24" fill="#0f172a" opacity="0.95"/>
-<text x="${bubbleX}" y="${bubbleY + 7}" text-anchor="middle" font-size="20" font-weight="900" fill="${color}">${value}</text>
+<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" stroke="${color}" stroke-width="12" stroke-linecap="round" opacity="0.9" filter="url(#glow)"/>
+<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+<polygon points="${tipX},${tipY} ${arrow1X},${arrow1Y} ${arrow2X},${arrow2Y}" fill="${color}" opacity="0.95" filter="url(#glow)"/>
+<circle cx="${bubbleX}" cy="${bubbleY}" r="30" fill="${color}" opacity="0.95" filter="url(#glow)"/>
+<circle cx="${bubbleX}" cy="${bubbleY}" r="26" fill="#0f172a" opacity="0.98"/>
+<text x="${bubbleX}" y="${bubbleY + 8}" text-anchor="middle" font-size="22" font-weight="900" fill="${color}">${value}</text>
 <circle cx="200" cy="200" r="14" fill="${color}" opacity="0.3"/>
 <circle cx="200" cy="200" r="10" fill="${color}"/>
 <circle cx="200" cy="200" r="6" fill="white"/>

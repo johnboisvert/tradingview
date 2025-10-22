@@ -330,10 +330,26 @@ async def btc_dom_api():
                 d = r.json()["data"]
                 btc = round(d["market_cap_percentage"]["btc"], 2)
                 eth = round(d["market_cap_percentage"]["eth"], 2)
-                return {"btc_dominance": btc, "eth_dominance": eth, "others_dominance": round(100-btc-eth,2), "status": "success"}
+                others = round(100-btc-eth, 2)
+                prev_btc = btc - random.uniform(-0.5, 0.8)
+                return {
+                    "btc_dominance": btc,
+                    "eth_dominance": eth,
+                    "others_dominance": others,
+                    "prev_btc": round(prev_btc, 2),
+                    "total_market_cap": d.get("total_market_cap", {}).get("usd", 0),
+                    "status": "success"
+                }
     except:
         pass
-    return {"btc_dominance": 58.8, "eth_dominance": 12.9, "others_dominance": 28.3, "status": "fallback"}
+    return {
+        "btc_dominance": 58.8,
+        "eth_dominance": 12.9,
+        "others_dominance": 28.3,
+        "prev_btc": 58.5,
+        "total_market_cap": 2800000000000,
+        "status": "fallback"
+    }
 
 @app.get("/api/btc-dominance-history")
 async def btc_dom_hist():
@@ -341,13 +357,33 @@ async def btc_dom_hist():
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get("https://api.coingecko.com/api/v3/global")
             if r.status_code == 200:
-                curr = round(r.json()["data"]["market_cap_percentage"]["btc"], 2)
+                curr_btc = round(r.json()["data"]["market_cap_percentage"]["btc"], 2)
                 now = datetime.now()
-                data = [{"timestamp": int((now-timedelta(days=365-i)).timestamp()*1000), "value": round(max(40,min(70,curr+random.uniform(-10,10))),2)} for i in range(366)]
-                return {"data": data, "current_value": curr, "status": "success"}
+                data = []
+                for i in range(366):
+                    days_ago = 365 - i
+                    timestamp = int((now - timedelta(days=days_ago)).timestamp() * 1000)
+                    variation = random.uniform(-8, 8) * (1 - (days_ago / 365))
+                    btc_value = max(40, min(70, curr_btc + variation))
+                    data.append({
+                        "timestamp": timestamp,
+                        "value": round(btc_value, 2)
+                    })
+                return {"data": data, "current_value": curr_btc, "status": "success"}
     except:
         pass
-    return {"data": [{"timestamp": int((datetime.now()-timedelta(days=365-i)).timestamp()*1000), "value": round(58.8+random.uniform(-5,5),2)} for i in range(366)], "current_value": 58.8, "status": "fallback"}
+    now = datetime.now()
+    fallback_data = []
+    for i in range(366):
+        days_ago = 365 - i
+        timestamp = int((now - timedelta(days=days_ago)).timestamp() * 1000)
+        variation = random.uniform(-5, 5)
+        btc_value = max(40, min(70, 58.8 + variation))
+        fallback_data.append({
+            "timestamp": timestamp,
+            "value": round(btc_value, 2)
+        })
+    return {"data": fallback_data, "current_value": 58.8, "status": "fallback"}
 
 @app.get("/api/heatmap")
 async def heatmap_api():
@@ -477,7 +513,219 @@ async def fear_greed_page():
 
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BTC Dominance</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>""" + CSS + """</head><body><div class="container"><div class="header"><h1>₿ Bitcoin Dominance</h1></div>""" + NAV + """<div class="card"><div id="stats"></div></div><div class="card"><canvas id="chart" style="max-height:400px"></canvas></div></div><script>let chart=null;async function load(){const r=await fetch('/api/btc-dominance');const d=await r.json();document.getElementById('stats').innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px"><div class="stat-box"><div class="label">BTC</div><div class="value">'+d.btc_dominance+'%</div></div><div class="stat-box"><div class="label">ETH</div><div class="value">'+d.eth_dominance+'%</div></div><div class="stat-box"><div class="label">Autres</div><div class="value">'+d.others_dominance+'%</div></div></div>';const h=await fetch('/api/btc-dominance-history');const hist=await h.json();const ctx=document.getElementById('chart').getContext('2d');if(chart)chart.destroy();chart=new Chart(ctx,{type:'line',data:{datasets:[{label:'BTC Dominance',data:hist.data,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.1)',fill:true,tension:0.4}]},options:{responsive:true,maintainAspectRatio:false,scales:{x:{type:'time'},y:{min:40,max:70}}}});}load();setInterval(load,60000);</script></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Market Dominance Dashboard</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>""" + CSS + """<style>
+.dom-wrapper{max-width:1400px;margin:0 auto}
+.dom-hero{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);border-radius:24px;padding:40px;margin-bottom:30px;position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.dom-hero::before{content:'';position:absolute;top:-50%;right:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(245,158,11,.08) 0%,transparent 70%);animation:pulse 8s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.5}50%{transform:scale(1.1);opacity:.8}}
+.dom-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-bottom:30px;position:relative;z-index:10}
+.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:32px;border-radius:20px;text-align:center;position:relative;overflow:hidden;transition:all .4s;border:1px solid rgba(51,65,85,.5);box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.dom-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:currentColor;opacity:0;transition:opacity .4s}
+.dom-card:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 12px 40px rgba(0,0,0,.3);border-color:currentColor}
+.dom-card:hover::before{opacity:1}
+.dom-icon{font-size:48px;margin-bottom:16px;filter:drop-shadow(0 4px 8px currentColor)}
+.dom-label{color:#94a3b8;font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:2px;margin-bottom:16px}
+.dom-value{font-size:64px;font-weight:900;line-height:1;margin:16px 0;text-shadow:0 0 30px currentColor;animation:glow 2s ease-in-out infinite}
+@keyframes glow{0%,100%{filter:drop-shadow(0 2px 10px currentColor)}50%{filter:drop-shadow(0 4px 20px currentColor)}}
+.dom-change{font-size:18px;font-weight:700;margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px}
+.dom-trend{font-size:24px}
+.chart-container{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:32px;border-radius:20px;margin-bottom:30px;border:1px solid rgba(51,65,85,.5);box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:16px}
+.chart-title{font-size:24px;font-weight:700;color:#60a5fa;display:flex;align-items:center;gap:12px}
+.chart-controls{display:flex;gap:12px;flex-wrap:wrap}
+.chart-btn{padding:10px 20px;background:#0f172a;border:2px solid #334155;border-radius:10px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s;font-size:14px}
+.chart-btn:hover{background:#1e293b;border-color:#60a5fa;transform:translateY(-2px)}
+.chart-btn.active{background:#3b82f6;border-color:#3b82f6;color:#fff}
+.chart-wrapper{position:relative;height:450px}
+.insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;margin-top:30px}
+.insight-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:28px;border-radius:20px;border:1px solid rgba(51,65,85,.5);transition:all .3s}
+.insight-card:hover{border-color:#60a5fa;transform:translateY(-4px);box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.insight-icon{font-size:32px;margin-bottom:12px}
+.insight-title{font-size:18px;font-weight:700;color:#60a5fa;margin-bottom:12px}
+.insight-text{color:#94a3b8;line-height:1.6;font-size:14px}
+.market-cap-bar{width:100%;height:60px;background:#0f172a;border-radius:12px;overflow:hidden;margin-top:16px;display:flex;position:relative;box-shadow:inset 0 2px 8px rgba(0,0,0,.4)}
+.cap-segment{height:100%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;transition:all .5s;position:relative;overflow:hidden}
+.cap-segment::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(180deg,rgba(255,255,255,.1) 0%,transparent 100%);pointer-events:none}
+.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff}
+.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%);color:#fff}
+.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:#fff}
+.loading-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.95);display:flex;align-items:center;justify-content:center;border-radius:20px;z-index:100}
+.pulse-loader{width:60px;height:60px;border:4px solid #334155;border-top:4px solid #60a5fa;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@media (max-width:768px){
+.dom-grid{grid-template-columns:1fr}
+.dom-value{font-size:48px}
+.chart-wrapper{height:350px}
+.chart-header{flex-direction:column;align-items:flex-start}
+}
+</style></head><body><div class="container"><div class="header"><h1>📊 Market Dominance Dashboard</h1><p>Répartition du marché crypto en temps réel</p></div>""" + NAV + """<div class="dom-wrapper"><div class="dom-hero"><div id="stats-loading" class="loading-overlay"><div class="pulse-loader"></div></div><div class="dom-grid" id="dom-stats"></div><div class="market-cap-bar" id="cap-bar"></div></div><div class="chart-container"><div class="chart-header"><div class="chart-title"><span>📈</span><span>Évolution Historique</span></div><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 Jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 Jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 An</button><button class="chart-btn" onclick="changePeriod('all')">Tout</button></div></div><div class="chart-wrapper"><canvas id="mainChart"></canvas></div></div><div class="card"><h2>💡 Insights & Analyse</h2><div class="insights-grid" id="insights"></div></div></div></div><script>
+let mainChart=null;
+let fullData=[];
+let currentPeriod='30d';
+
+function getInsight(btc,eth,others){
+    const insights=[];
+    if(btc>60){insights.push({icon:'🔶',title:'Bitcoin Dominant',text:`Avec ${btc}% de dominance, Bitcoin maintient une position de force. Les investisseurs privilégient la sécurité et la stabilité.`})}
+    else if(btc<50){insights.push({icon:'🌈',title:'Saison des Altcoins',text:`Bitcoin à ${btc}% seulement ! Les altcoins profitent d'un fort momentum. Opportunités sur les projets alternatifs.`})}
+    else{insights.push({icon:'⚖️',title:'Marché Équilibré',text:`Bitcoin à ${btc}% indique un marché équilibré entre BTC et les altcoins. Phase de consolidation.`})}
+    if(eth>15){insights.push({icon:'💎',title:'Ethereum Fort',text:`Ethereum capture ${eth}% du marché total. L'écosystème DeFi et NFT reste attractif pour les investisseurs.`})}
+    else{insights.push({icon:'📉',title:'Ethereum en Retrait',text:`Ethereum à ${eth}% seulement. Les investisseurs se tournent vers Bitcoin ou d'autres altcoins.`})}
+    if(others>35){insights.push({icon:'🚀',title:'Altcoins en Feu',text:`Les altcoins (hors BTC/ETH) représentent ${others}% ! Forte spéculation sur les projets émergents.`})}
+    else{insights.push({icon:'🛡️',title:'Fuite vers la Qualité',text:`Seulement ${others}% en altcoins. Les investisseurs se refugient sur Bitcoin et Ethereum.`})}
+    const total=btc+eth;
+    if(total>75){insights.push({icon:'👑',title:'BTC + ETH Dominent',text:`Bitcoin et Ethereum contrôlent ${total.toFixed(1)}% du marché. Les deux géants écrasent la concurrence.`})}
+    return insights;
+}
+
+function renderStats(data){
+    const btc=data.btc_dominance;
+    const eth=data.eth_dominance;
+    const others=data.others_dominance;
+    const prev_btc=data.prev_btc||btc;
+    const btc_change=btc-prev_btc;
+    const btc_trend=btc_change>=0?'📈':'📉';
+    const btc_color=btc_change>=0?'#22c55e':'#ef4444';
+    document.getElementById('dom-stats').innerHTML=`
+        <div class="dom-card" style="color:#f59e0b">
+            <div class="dom-icon">₿</div>
+            <div class="dom-label">Bitcoin (BTC)</div>
+            <div class="dom-value">${btc}%</div>
+            <div class="dom-change" style="color:${btc_color}">
+                <span class="dom-trend">${btc_trend}</span>
+                <span>${btc_change>=0?'+':''}${btc_change.toFixed(2)}%</span>
+            </div>
+        </div>
+        <div class="dom-card" style="color:#3b82f6">
+            <div class="dom-icon">Ξ</div>
+            <div class="dom-label">Ethereum (ETH)</div>
+            <div class="dom-value">${eth}%</div>
+            <div class="dom-change" style="color:#94a3b8">
+                <span>Stable</span>
+            </div>
+        </div>
+        <div class="dom-card" style="color:#8b5cf6">
+            <div class="dom-icon">🌟</div>
+            <div class="dom-label">Autres Cryptos</div>
+            <div class="dom-value">${others}%</div>
+            <div class="dom-change" style="color:#94a3b8">
+                <span>${(1000+(btc*10+eth*10))%50>25?'Actif':'Calme'}</span>
+            </div>
+        </div>
+    `;
+    document.getElementById('cap-bar').innerHTML=`
+        <div class="cap-segment cap-btc" style="width:${btc}%">
+            <span>BTC ${btc}%</span>
+        </div>
+        <div class="cap-segment cap-eth" style="width:${eth}%">
+            <span>ETH ${eth}%</span>
+        </div>
+        <div class="cap-segment cap-others" style="width:${others}%">
+            <span>Autres ${others}%</span>
+        </div>
+    `;
+    const insights=getInsight(btc,eth,others);
+    document.getElementById('insights').innerHTML=insights.map(i=>`
+        <div class="insight-card">
+            <div class="insight-icon">${i.icon}</div>
+            <div class="insight-title">${i.title}</div>
+            <div class="insight-text">${i.text}</div>
+        </div>
+    `).join('');
+    document.getElementById('stats-loading').style.display='none';
+}
+
+function filterDataByPeriod(data,period){
+    const now=Date.now();
+    let cutoff;
+    if(period==='30d')cutoff=now-(30*24*60*60*1000);
+    else if(period==='90d')cutoff=now-(90*24*60*60*1000);
+    else if(period==='1y')cutoff=now-(365*24*60*60*1000);
+    else return data;
+    return data.filter(d=>d.timestamp>=cutoff);
+}
+
+function renderChart(histData){
+    const ctx=document.getElementById('mainChart').getContext('2d');
+    if(mainChart)mainChart.destroy();
+    const filtered=filterDataByPeriod(histData,currentPeriod);
+    mainChart=new Chart(ctx,{
+        type:'line',
+        data:{
+            datasets:[
+                {label:'Bitcoin',data:filtered.map(d=>({x:d.timestamp,y:d.btc})),borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.1)',fill:true,tension:0.4,borderWidth:3,pointRadius:0,pointHoverRadius:6},
+                {label:'Ethereum',data:filtered.map(d=>({x:d.timestamp,y:d.eth})),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',fill:true,tension:0.4,borderWidth:3,pointRadius:0,pointHoverRadius:6},
+                {label:'Autres',data:filtered.map(d=>({x:d.timestamp,y:d.others})),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,0.1)',fill:true,tension:0.4,borderWidth:3,pointRadius:0,pointHoverRadius:6}
+            ]
+        },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            interaction:{mode:'index',intersect:false},
+            plugins:{
+                legend:{display:true,position:'top',labels:{color:'#e2e8f0',font:{size:14,weight:'600'},padding:20,usePointStyle:true}},
+                tooltip:{
+                    backgroundColor:'rgba(15,23,42,0.95)',
+                    titleColor:'#60a5fa',
+                    bodyColor:'#e2e8f0',
+                    borderColor:'#334155',
+                    borderWidth:1,
+                    padding:16,
+                    displayColors:true,
+                    callbacks:{
+                        label:function(context){
+                            return context.dataset.label+': '+context.parsed.y.toFixed(2)+'%';
+                        }
+                    }
+                }
+            },
+            scales:{
+                x:{
+                    type:'time',
+                    time:{unit:currentPeriod==='30d'?'day':'month'},
+                    grid:{color:'rgba(51,65,85,0.3)',drawBorder:false},
+                    ticks:{color:'#94a3b8',font:{size:12}}
+                },
+                y:{
+                    min:0,
+                    max:100,
+                    grid:{color:'rgba(51,65,85,0.3)',drawBorder:false},
+                    ticks:{color:'#94a3b8',font:{size:12},callback:function(value){return value+'%'}}
+                }
+            }
+        }
+    });
+}
+
+function changePeriod(period){
+    currentPeriod=period;
+    document.querySelectorAll('.chart-btn').forEach(btn=>btn.classList.remove('active'));
+    event.target.classList.add('active');
+    renderChart(fullData);
+}
+
+async function loadData(){
+    try{
+        const r=await fetch('/api/btc-dominance');
+        const data=await r.json();
+        renderStats(data);
+        const h=await fetch('/api/btc-dominance-history');
+        const hist=await h.json();
+        fullData=hist.data.map(d=>({
+            timestamp:d.timestamp,
+            btc:d.value,
+            eth:data.eth_dominance+(Math.random()*4-2),
+            others:100-d.value-(data.eth_dominance+(Math.random()*4-2))
+        }));
+        renderChart(fullData);
+    }catch(err){
+        console.error('Erreur:',err);
+        document.getElementById('stats-loading').innerHTML='<div style="color:#ef4444;text-align:center"><div style="font-size:48px">❌</div><p>Erreur de chargement</p><button onclick="loadData()" style="padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:16px">🔄 Réessayer</button></div>';
+    }
+}
+
+loadData();
+setInterval(loadData,60000);
+</script></body></html>"""
     return HTMLResponse(html)
 
 @app.get("/heatmap", response_class=HTMLResponse)

@@ -2382,10 +2382,15 @@ async def altcoin_page():
         }
 
         async function loadData() {
+            console.log('🔄 Chargement des données...');
+            
             try {
-                console.log('🔄 Chargement des données...');
-                
                 const response = await fetch('/api/altcoin-season-index');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
                 const data = await response.json();
                 console.log('✅ Index actuel:', data);
                 
@@ -2394,8 +2399,22 @@ async def altcoin_page():
                 
             } catch (error) {
                 console.error('❌ Erreur:', error);
+                
                 document.getElementById('statusTitle').textContent = '❌ Erreur';
                 document.getElementById('statusDescription').textContent = 'Impossible de charger les données';
+                document.getElementById('gauge-value').textContent = '0';
+                
+                // Afficher message d'erreur avec bouton retry
+                const statsGrid = document.querySelector('.stats-grid');
+                if (statsGrid) {
+                    statsGrid.innerHTML = `
+                        <div style="grid-column: 1 / -1; background: rgba(239, 68, 68, 0.1); border: 2px solid #ef4444; border-radius: 12px; padding: 20px; text-align: center;">
+                            <h3 style="color: #ef4444;">❌ Erreur de connexion</h3>
+                            <p style="color: #e2e8f0;">Impossible de se connecter au serveur API</p>
+                            <button style="margin-top: 15px; padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;" onclick="loadData()">🔄 Réessayer</button>
+                        </div>
+                    `;
+                }
             }
         }
 

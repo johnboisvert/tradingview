@@ -1822,18 +1822,16 @@ async def heatmap_page():
 # Remplacer la fonction @app.get("/altcoin-season") par celle-ci
 
 @app.get("/altcoin-season", response_class=HTMLResponse)
-@app.get("/altcoin-season", response_class=HTMLResponse)
 async def altcoin_page():
+    """Page Altcoin Season - Style BlockchainCenter.net avec historique réel"""
     html = """<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Altcoin Season Index</title>
+    <title>Altcoin Season Index - Style BlockchainCenter.net</title>
     """ + CSS + """
     <style>
-        /* STYLES SPÉCIFIQUES ALTCOIN SEASON */
-        /* STYLES SPÉCIFIQUES ALTCOIN SEASON */
         body {
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
         }
@@ -1858,13 +1856,6 @@ async def altcoin_page():
             margin-bottom: 15px;
         }
 
-        .altcoin-header p {
-            color: #94a3b8;
-            font-size: 18px;
-            font-weight: 500;
-        }
-
-        /* CONTENEUR PRINCIPAL */
         .altcoin-container {
             display: grid;
             grid-template-columns: 1fr 2fr;
@@ -1878,7 +1869,6 @@ async def altcoin_page():
             }
         }
         
-        /* JAUGE CIRCULAIRE */
         .gauge-card {
             background: rgba(30, 41, 59, 0.95);
             backdrop-filter: blur(20px);
@@ -1912,14 +1902,6 @@ async def altcoin_page():
             transition: stroke-dasharray 2s ease, stroke 1s ease;
         }
         
-        .gauge-center {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-        }
-        
         .gauge-value {
             font-size: 80px;
             font-weight: 900;
@@ -1927,32 +1909,6 @@ async def altcoin_page():
             text-shadow: 0 0 30px currentColor;
         }
         
-        .gauge-label {
-            font-size: 18px;
-            font-weight: 700;
-            margin-top: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #94a3b8;
-        }
-
-        .gauge-status {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .gauge-status h2 {
-            font-size: 28px;
-            font-weight: 800;
-            margin-bottom: 10px;
-        }
-
-        .gauge-status p {
-            color: #94a3b8;
-            font-size: 16px;
-        }
-        
-        /* GRAPHIQUE HISTORIQUE */
         .chart-card {
             background: rgba(30, 41, 59, 0.95);
             backdrop-filter: blur(20px);
@@ -1967,11 +1923,7 @@ async def altcoin_page():
             font-size: 24px;
             font-weight: 700;
             margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
         }
-
 
         #altcoinChart {
             width: 100% !important;
@@ -1980,7 +1932,6 @@ async def altcoin_page():
             border-radius: 12px;
         }
 
-        /* STATISTIQUES */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -2003,11 +1954,6 @@ async def altcoin_page():
             box-shadow: 0 15px 40px rgba(96, 165, 250, 0.3);
         }
 
-        .stat-card .icon {
-            font-size: 36px;
-            margin-bottom: 15px;
-        }
-        
         .stat-card .value {
             font-size: 32px;
             font-weight: 900;
@@ -2023,7 +1969,6 @@ async def altcoin_page():
             font-weight: 600;
         }
 
-        /* LÉGENDE */
         .legend-box {
             background: rgba(15, 23, 42, 0.8);
             backdrop-filter: blur(10px);
@@ -2031,13 +1976,6 @@ async def altcoin_page():
             border-radius: 12px;
             margin-top: 20px;
             border: 1px solid rgba(96, 165, 250, 0.2);
-        }
-
-        .legend-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: #60a5fa;
-            margin-bottom: 15px;
         }
 
         .legend-items {
@@ -2059,228 +1997,131 @@ async def altcoin_page():
             border-radius: 4px;
             border: 2px solid rgba(255, 255, 255, 0.2);
         }
-
-        .legend-text {
-            font-size: 14px;
-            font-weight: 600;
-            color: #e2e8f0;
-        }
-
-        /* LOADER */
-        .loader {
-            text-align: center;
-            padding: 60px;
-        }
-
-        .spinner {
-            border: 6px solid rgba(96, 165, 250, 0.1);
-            border-top: 6px solid #60a5fa;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- HEADER -->
         <div class="altcoin-header">
             <h1>🌟 Altcoin Season Index</h1>
-            <p>Suivez en temps réel la saison des altcoins vs Bitcoin</p>
+            <p style="color: #94a3b8; font-size: 18px;">Historique réel - Style BlockchainCenter.net</p>
         </div>
 
         """ + NAV + """
 
-        <!-- CONTENEUR PRINCIPAL -->
         <div class="altcoin-container">
-            <!-- JAUGE CIRCULAIRE -->
             <div class="gauge-card">
-                <div class="circular-gauge">
-                    <svg width="280" height="280" viewBox="0 0 280 280">
-                        <circle class="gauge-background" cx="140" cy="140" r="120"></circle>
-                        <circle id="gaugeCircle" class="gauge-fill" cx="140" cy="140" r="120" 
-                                transform="rotate(-90 140 140)"
-                                stroke-dasharray="753.98 753.98"
-                                stroke-dashoffset="753.98"></circle>
-                    </svg>
-                    <div class="gauge-center">
-                        <div id="gaugeValue" class="gauge-value">--</div>
-                        <div class="gauge-label">INDEX</div>
-                    </div>
+                <svg class="circular-gauge" viewBox="0 0 300 300">
+                    <circle class="gauge-background" cx="150" cy="150" r="120" />
+                    <circle id="gauge-fill" class="gauge-fill" cx="150" cy="150" r="120" />
+                </svg>
+                
+                <div style="text-align: center; margin-top: -120px; position: relative; z-index: 10;">
+                    <div id="gauge-value" class="gauge-value" style="color: #60a5fa;">--</div>
+                    <div style="font-size: 18px; color: #94a3b8; font-weight: 700; margin-top: 10px;">INDEX</div>
                 </div>
                 
-                <div class="gauge-status">
-                    <h2 id="statusTitle">Chargement...</h2>
-                    <p id="statusDescription">Analyse en cours...</p>
+                <div style="text-align: center; margin-top: 100px;">
+                    <h2 id="statusTitle" style="font-size: 28px; font-weight: 800; color: #60a5fa; margin-bottom: 10px;">Chargement...</h2>
+                    <p id="statusDescription" style="color: #94a3b8; font-size: 16px;">Analyse en cours</p>
                 </div>
             </div>
-
-            <!-- GRAPHIQUE HISTORIQUE -->
+            
             <div class="chart-card">
-                <h2>
-                    📈 Historique de l'Index
-                </h2>
+                <h2>📊 Historique de l'Index (365 jours)</h2>
                 <canvas id="altcoinChart"></canvas>
                 
-                <!-- Légende -->
                 <div class="legend-box">
-                    <div class="legend-title">🎨 Zones d'Interprétation</div>
                     <div class="legend-items">
                         <div class="legend-item">
-                            <div class="legend-color" style="background: linear-gradient(to bottom, #ef4444, #f87171);"></div>
-                            <div class="legend-text">Altcoin Season (75-100)</div>
+                            <div class="legend-color" style="background: linear-gradient(to right, #d32f2f, #ff6f00);"></div>
+                            <div style="font-size: 14px; color: #e2e8f0;">Altcoin Season (75-100)</div>
                         </div>
                         <div class="legend-item">
-                            <div class="legend-color" style="background: linear-gradient(to bottom, #fbbf24, #fcd34d);"></div>
-                            <div class="legend-text">Zone Mixte (40-75)</div>
+                            <div class="legend-color" style="background: linear-gradient(to right, #ffc107, #4caf50);"></div>
+                            <div style="font-size: 14px; color: #e2e8f0;">Zone Mixte (40-75)</div>
                         </div>
                         <div class="legend-item">
-                            <div class="legend-color" style="background: linear-gradient(to bottom, #3b82f6, #60a5fa);"></div>
-                            <div class="legend-text">Bitcoin Season (0-25)</div>
+                            <div class="legend-color" style="background: linear-gradient(to right, #26c6da, #0d47a1);"></div>
+                            <div style="font-size: 14px; color: #e2e8f0;">Bitcoin Season (0-25)</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- STATISTIQUES -->
         <div class="stats-grid">
             <div class="stat-card">
-                <div class="icon">🎯</div>
-                <div id="stat-alts" class="value">--</div>
-                <div class="label">Altcoins Gagnants</div>
+                <div style="font-size: 36px; margin-bottom: 15px;">📈</div>
+                <div id="stat-alts" class="value">--/50</div>
+                <div class="label">Alts > BTC</div>
             </div>
             <div class="stat-card">
-                <div class="icon">📊</div>
+                <div style="font-size: 36px; margin-bottom: 15px;">📊</div>
                 <div id="stat-trend" class="value">--</div>
-                <div class="label">Tendance Actuelle</div>
+                <div class="label">Tendance</div>
             </div>
             <div class="stat-card">
-                <div class="icon">💰</div>
+                <div style="font-size: 36px; margin-bottom: 15px;">₿</div>
                 <div id="stat-btc" class="value">--</div>
-                <div class="label">BTC Performance 90j</div>
+                <div class="label">BTC 90j</div>
             </div>
             <div class="stat-card">
-                <div class="icon">⚡</div>
+                <div style="font-size: 36px; margin-bottom: 15px;">⚡</div>
                 <div id="stat-momentum" class="value">--</div>
                 <div class="label">Momentum</div>
             </div>
         </div>
     </div>
 
-
-
     <script>
-        // ================================
-        // GRAPHIQUE STYLE BLOCKCHAINCENTER.NET
-        // ================================
-        function createChart() {
+        async function createChart() {
+            console.log('📊 Création du graphique BlockchainCenter style...');
+            
             const canvas = document.getElementById('altcoinChart');
-            if (!canvas) {
-                console.error('❌ Canvas introuvable');
-                return;
-            }
-            
-            // Dimensions réelles du container
             const container = canvas.parentElement;
-            const width = container.offsetWidth - 60; // Enlever le padding
-            const height = 500;
             
+            const width = container.clientWidth;
+            const height = 500;
             canvas.width = width;
             canvas.height = height;
-            
-            console.log('📊 Canvas:', width, 'x', height);
             
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, width, height);
             
-            // Marges (plus d'espace à droite pour les labels)
+            const response = await fetch('/api/altcoin-season-history');
+            const data = await response.json();
+            const historicalData = data.history;
+            
+            console.log('✅ Données reçues:', historicalData.length, 'jours');
+            
             const margin = { top: 40, right: 180, bottom: 60, left: 30 };
             const chartWidth = width - margin.left - margin.right;
             const chartHeight = height - margin.top - margin.bottom;
             
-            // ====================================
-            // GÉNÉRER 365 JOURS D'HISTORIQUE
-            // ====================================
-            const days = 365;
-            const historicalData = [];
-            let currentIndex = 43;
-            
-            for (let i = 0; i < days; i++) {
-                const randomChange = (Math.random() - 0.5) * 10;
-                const trendWave = Math.sin(i / 40) * 12;
-                const volatility = Math.cos(i / 8) * 5;
-                const momentum = Math.sin(i / 20) * 8;
-                
-                currentIndex = Math.max(10, Math.min(90, currentIndex + randomChange + trendWave + volatility + momentum));
-                
-                const date = new Date();
-                date.setDate(date.getDate() - (days - i));
-                
-                historicalData.push({
-                    date: date,
-                    index: currentIndex
-                });
-            }
-            
-            // ====================================
-            // DÉGRADÉ DE FOND (Rouge → Bleu)
-            // ====================================
             const gradient = ctx.createLinearGradient(0, margin.top, 0, height - margin.bottom);
-            
-            // Rouge intense (Altcoin Season 100-75)
             gradient.addColorStop(0, '#d32f2f');
-            gradient.addColorStop(0.05, '#e74c3c');
-            gradient.addColorStop(0.1, '#ef5350');
-            
-            // Orange (75-60)
-            gradient.addColorStop(0.2, '#ff6f00');
-            gradient.addColorStop(0.25, '#ff9800');
-            
-            // Jaune (60-50)
-            gradient.addColorStop(0.35, '#ffa726');
+            gradient.addColorStop(0.1, '#e74c3c');
+            gradient.addColorStop(0.15, '#ff6f00');
+            gradient.addColorStop(0.3, '#ff9800');
             gradient.addColorStop(0.4, '#ffc107');
-            
-            // Vert clair (50-40)
             gradient.addColorStop(0.5, '#66bb6a');
-            gradient.addColorStop(0.55, '#4caf50');
-            
-            // Cyan/Turquoise (40-30)
-            gradient.addColorStop(0.65, '#26c6da');
-            gradient.addColorStop(0.7, '#00acc1');
-            
-            // Bleu clair (30-25)
+            gradient.addColorStop(0.6, '#4caf50');
+            gradient.addColorStop(0.7, '#26c6da');
             gradient.addColorStop(0.75, '#42a5f5');
-            gradient.addColorStop(0.8, '#2196f3');
-            
-            // Bleu foncé (25-0 Bitcoin Season)
-            gradient.addColorStop(0.9, '#1976d2');
+            gradient.addColorStop(0.85, '#2196f3');
             gradient.addColorStop(0.95, '#1565c0');
             gradient.addColorStop(1, '#0d47a1');
             
             ctx.fillStyle = gradient;
             ctx.fillRect(margin.left, margin.top, chartWidth, chartHeight);
             
-            // ====================================
-            // ÉCHELLES
-            // ====================================
+            const days = historicalData.length;
             const xScale = (i) => margin.left + (i / (days - 1)) * chartWidth;
             const yScale = (value) => margin.top + chartHeight - (value / 100) * chartHeight;
             
-            // ====================================
-            // GRILLE HORIZONTALE SUBTILE
-            // ====================================
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
             ctx.lineWidth = 1;
-            
-            for (let value = 10; value <= 90; value += 10) {
+            for (let value = 0; value <= 100; value += 10) {
                 const y = yScale(value);
                 ctx.beginPath();
                 ctx.moveTo(margin.left, y);
@@ -2288,37 +2129,26 @@ async def altcoin_page():
                 ctx.stroke();
             }
             
-            // ====================================
-            // LIGNES DE RÉFÉRENCE PRINCIPALES
-            // ====================================
-            
-            // Ligne Altcoin Season (75) - Ligne bleue
+            const altY = yScale(75);
             ctx.strokeStyle = '#1976d2';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(margin.left, yScale(75));
-            ctx.lineTo(width - margin.right, yScale(75));
+            ctx.moveTo(margin.left, altY);
+            ctx.lineTo(width - margin.right, altY);
             ctx.stroke();
             
-            // Ligne Bitcoin Season (25) - Ligne bleue
+            const btcY = yScale(25);
             ctx.beginPath();
-            ctx.moveTo(margin.left, yScale(25));
-            ctx.lineTo(width - margin.right, yScale(25));
+            ctx.moveTo(margin.left, btcY);
+            ctx.lineTo(width - margin.right, btcY);
             ctx.stroke();
             
-            // Ligne centrale pointillée (valeur actuelle ~43)
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([6, 6]);
-            ctx.beginPath();
-            ctx.moveTo(margin.left, yScale(43));
-            ctx.lineTo(width - margin.right, yScale(43));
-            ctx.stroke();
-            ctx.setLineDash([]);
+            ctx.font = 'bold 14px Arial';
+            ctx.fillStyle = '#1976d2';
+            ctx.textAlign = 'left';
+            ctx.fillText('▲ Altcoin Season - 75', width - margin.right + 25, altY);
+            ctx.fillText('▼ Bitcoin Season - 25', width - margin.right + 25, btcY);
             
-            // ====================================
-            // COURBE PRINCIPALE (NOIRE)
-            // ====================================
             ctx.beginPath();
             ctx.strokeStyle = '#263238';
             ctx.lineWidth = 3;
@@ -2338,146 +2168,72 @@ async def altcoin_page():
             
             ctx.stroke();
             
-            // ====================================
-            // LABELS AVEC TRIANGLES (Style BlockchainCenter)
-            // ====================================
-            
-            // Label "Altcoin Season - 75"
-            const altY = yScale(75);
-            const labelWidth = 160;
-            const labelHeight = 28;
-            
-            // Triangle
-            ctx.fillStyle = '#1976d2';
-            ctx.beginPath();
-            ctx.moveTo(width - margin.right + 5, altY);
-            ctx.lineTo(width - margin.right + 15, altY - 8);
-            ctx.lineTo(width - margin.right + 15, altY + 8);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Rectangle du label
-            ctx.fillStyle = '#1976d2';
-            ctx.fillRect(width - margin.right + 15, altY - labelHeight/2, labelWidth, labelHeight);
-            
-            // Texte
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 13px Arial';
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('▲ Altcoin Season - 75', width - margin.right + 25, altY);
-            
-            // Label "Bitcoin Season - 25"
-            const btcY = yScale(25);
-            
-            // Triangle
-            ctx.fillStyle = '#1976d2';
-            ctx.beginPath();
-            ctx.moveTo(width - margin.right + 5, btcY);
-            ctx.lineTo(width - margin.right + 15, btcY - 8);
-            ctx.lineTo(width - margin.right + 15, btcY + 8);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Rectangle du label
-            ctx.fillStyle = '#1976d2';
-            ctx.fillRect(width - margin.right + 15, btcY - labelHeight/2, labelWidth, labelHeight);
-            
-            // Texte
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText('▼ Bitcoin Season - 25', width - margin.right + 25, btcY);
-            
-            // Valeur actuelle (41) avec ligne pointillée
-            const currentY = yScale(43);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.font = 'bold 14px Arial';
-            ctx.textAlign = 'right';
-            ctx.fillText('41', width - margin.right - 5, currentY);
-            
-            // ====================================
-            // AXE Y (VALEURS À DROITE)
-            // ====================================
-            ctx.fillStyle = '#263238';
-            ctx.font = 'bold 14px Arial';
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'middle';
-            
-            // Valeurs tous les 10 points
-            for (let value = 0; value <= 100; value += 10) {
-                const y = yScale(value);
-                ctx.fillText(value, width - margin.right - 5, y);
-            }
-            
-            // ====================================
-            // AXE X (DATES EN BAS)
-            // ====================================
-            ctx.fillStyle = '#546e7a';
-            ctx.font = '13px Arial';
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#94a3b8';
             ctx.textAlign = 'center';
-            ctx.textBaseline = 'top';
             
-            // Afficher ~12 dates sur l'année (une par mois environ)
-            const monthIndices = [];
-            for (let i = 0; i < 12; i++) {
-                monthIndices.push(Math.floor((i / 11) * (days - 1)));
-            }
+            const monthsToShow = [0, 60, 120, 180, 240, 300, 364];
             
-            monthIndices.forEach(index => {
-                const point = historicalData[index];
-                const x = xScale(index);
-                
-                const monthStr = point.date.toLocaleDateString('fr-FR', { 
-                    month: 'short'
-                }).replace('.', '');
-                
-                ctx.fillText(monthStr, x, height - margin.bottom + 10);
+            monthsToShow.forEach(dayIndex => {
+                if (dayIndex < historicalData.length) {
+                    const x = xScale(dayIndex);
+                    const date = new Date(historicalData[dayIndex].date);
+                    const label = date.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+                    
+                    ctx.fillText(label, x, height - margin.bottom + 25);
+                }
             });
             
-            // Année au milieu
-            ctx.font = 'bold 15px Arial';
-            ctx.fillStyle = '#37474f';
-            const midIndex = Math.floor(days / 2);
-            const midDate = historicalData[midIndex].date;
-            ctx.fillText(midDate.getFullYear(), width / 2, height - margin.bottom + 35);
-            
-            // Date la plus récente à droite
-            const latestDate = historicalData[days - 1].date;
-            const latestDay = latestDate.getDate();
-            ctx.font = 'bold 14px Arial';
-            ctx.fillStyle = '#263238';
             ctx.textAlign = 'right';
-            ctx.fillText(latestDay, width - margin.right - 10, height - margin.bottom + 10);
+            for (let value = 0; value <= 100; value += 20) {
+                const y = yScale(value);
+                ctx.fillText(value, width - margin.right + 10, y + 5);
+            }
             
-            console.log('✅ Graphique BlockchainCenter créé!');
+            const currentPoint = historicalData[historicalData.length - 1];
+            const currentX = xScale(historicalData.length - 1);
+            const currentY = yScale(currentPoint.index);
+            
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, 10, 0, 2 * Math.PI);
+            ctx.fillStyle = 'rgba(96, 165, 250, 0.3)';
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = '#60a5fa';
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            console.log('✅ Graphique créé avec succès');
         }
 
-        // ================================
-        // MISE À JOUR DE LA JAUGE
-        // ================================
         function updateGauge(index) {
-            const circle = document.getElementById('gaugeCircle');
-            const valueElement = document.getElementById('gaugeValue');
-            const circumference = 753.98;
+            const circle = document.getElementById('gauge-fill');
+            const valueElement = document.getElementById('gauge-value');
             
+            const radius = 120;
+            const circumference = 2 * Math.PI * radius;
             const offset = circumference - (index / 100) * circumference;
+            
+            circle.style.strokeDasharray = circumference;
             
             let color;
             if (index >= 75) color = '#ef4444';
             else if (index >= 60) color = '#f59e0b';
-            else if (index >= 40) color = '#fbbf24';
+            else if (index >= 40) color = '#10b981';
             else if (index >= 25) color = '#3b82f6';
             else color = '#1e40af';
             
             circle.style.stroke = color;
             circle.style.strokeDashoffset = offset;
             
-            valueElement.textContent = index;
+            valueElement.textContent = Math.round(index);
             valueElement.style.color = color;
         }
 
-        // ================================
-        // MISE À JOUR DES STATISTIQUES
-        // ================================
         function updateStats(data) {
             updateGauge(data.index);
             
@@ -2508,55 +2264,43 @@ async def altcoin_page():
             document.getElementById('stat-momentum').textContent = data.momentum;
         }
 
-        // ================================
-        // CHARGEMENT DES DONNÉES
-        // ================================
         async function loadData() {
             try {
-                console.log('🔄 Chargement...');
+                console.log('🔄 Chargement des données...');
+                
                 const response = await fetch('/api/altcoin-season-index');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
                 const data = await response.json();
-                console.log('✅ Données:', data);
+                console.log('✅ Index actuel:', data);
                 
                 updateStats(data);
-                createChart();
+                await createChart();
                 
             } catch (error) {
                 console.error('❌ Erreur:', error);
-                // Créer le graphique quand même avec des données simulées
-                createChart();
+                document.getElementById('statusTitle').textContent = '❌ Erreur';
+                document.getElementById('statusDescription').textContent = 'Impossible de charger les données';
             }
         }
 
-        // ================================
-        // REDIMENSIONNEMENT
-        // ================================
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
+
         let resizeTimeout;
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
-                console.log('🔄 Redimensionnement...');
                 createChart();
             }, 250);
         });
 
-        // ================================
-        // INITIALISATION
-        // ================================
-        loadData();
-        setInterval(loadData, 300000); // Refresh toutes les 5 minutes
+        setInterval(loadData, 300000);
 
-        console.log('🌟 Altcoin Season initialisé');
+        console.log('🌟 Altcoin Season Index initialisé (Style BlockchainCenter.net)');
     </script>
 </body>
 </html>"""
     return HTMLResponse(html)
-
 
 @app.get("/nouvelles", response_class=HTMLResponse)
 async def news_page():

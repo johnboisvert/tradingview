@@ -513,83 +513,8 @@ const value=data.current_value;
 const color=getColor(value);
 const className=getClassName(value);
 
-// Calcul direct des coordonnées de la flèche
-const centerX = 200;
-const centerY = 200;
-const radiusStart = 20;
-const radiusEnd = 145;
-const angleRad = (180 - value * 1.8) * Math.PI / 180;
-
-// Point de départ (près du centre)
-const startX = centerX + radiusStart * Math.cos(angleRad);
-const startY = centerY + radiusStart * Math.sin(angleRad);
-
-// Point d'arrivée (sur l'arc)
-const endX = centerX + radiusEnd * Math.cos(angleRad);
-const endY = centerY + radiusEnd * Math.sin(angleRad);
-
-// Pointe de la flèche (un peu au-delà)
-const tipRadius = radiusEnd + 15;
-const tipX = centerX + tipRadius * Math.cos(angleRad);
-const tipY = centerY + tipRadius * Math.sin(angleRad);
-
-// Points du triangle de la flèche
-const arrowSize = 0.2;
-const angle1 = angleRad - arrowSize;
-const angle2 = angleRad + arrowSize;
-const arrow1X = centerX + (radiusEnd - 5) * Math.cos(angle1);
-const arrow1Y = centerY + (radiusEnd - 5) * Math.sin(angle1);
-const arrow2X = centerX + (radiusEnd - 5) * Math.cos(angle2);
-const arrow2Y = centerY + (radiusEnd - 5) * Math.sin(angle2);
-
-// Position de la bulle avec le chiffre (au milieu de la ligne)
-const bubbleRadius = (radiusStart + radiusEnd) / 2;
-const bubbleX = centerX + bubbleRadius * Math.cos(angleRad);
-const bubbleY = centerY + bubbleRadius * Math.sin(angleRad);
-
 const gaugeHTML=`<div class="gauge-box">
-<svg class="gauge-svg" viewBox="0 0 400 250" xmlns="http://www.w3.org/2000/svg">
-<defs>
-<linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
-<stop offset="0%" style="stop-color:#dc2626;stop-opacity:1"/>
-<stop offset="25%" style="stop-color:#f97316;stop-opacity:1"/>
-<stop offset="50%" style="stop-color:#fbbf24;stop-opacity:1"/>
-<stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/>
-<stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/>
-</linearGradient>
-</defs>
-
-<path d="M 50 200 A 150 150 0 0 1 350 200" fill="none" stroke="url(#gradient1)" stroke-width="30" stroke-linecap="round" opacity="0.8"/>
-<path d="M 60 195 A 140 140 0 0 1 340 195" fill="none" stroke="#0f172a" stroke-width="25" stroke-linecap="round"/>
-
-<circle cx="50" cy="200" r="6" fill="#dc2626"/>
-<text x="50" y="230" text-anchor="middle" font-size="14" font-weight="700" fill="#dc2626">0</text>
-
-<circle cx="125" cy="89" r="6" fill="#f97316"/>
-<text x="125" y="75" text-anchor="middle" font-size="14" font-weight="700" fill="#f97316">25</text>
-
-<circle cx="200" cy="50" r="6" fill="#fbbf24"/>
-<text x="200" y="35" text-anchor="middle" font-size="14" font-weight="700" fill="#fbbf24">50</text>
-
-<circle cx="275" cy="89" r="6" fill="#84cc16"/>
-<text x="275" y="75" text-anchor="middle" font-size="14" font-weight="700" fill="#84cc16">75</text>
-
-<circle cx="350" cy="200" r="6" fill="#22c55e"/>
-<text x="350" y="230" text-anchor="middle" font-size="14" font-weight="700" fill="#22c55e">100</text>
-
-<circle cx="200" cy="200" r="14" fill="${color}" opacity="0.3"/>
-<circle cx="200" cy="200" r="10" fill="${color}"/>
-<circle cx="200" cy="200" r="6" fill="white"/>
-
-<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" stroke="${color}" stroke-width="14" stroke-linecap="round" stroke-opacity="1"/>
-<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-opacity="0.5"/>
-
-<polygon points="${tipX},${tipY} ${arrow1X},${arrow1Y} ${arrow2X},${arrow2Y}" fill="${color}" stroke="${color}" stroke-width="2"/>
-
-<circle cx="${bubbleX}" cy="${bubbleY}" r="32" fill="${color}" opacity="1"/>
-<circle cx="${bubbleX}" cy="${bubbleY}" r="28" fill="#0f172a" opacity="1"/>
-<text x="${bubbleX}" y="${bubbleY + 9}" text-anchor="middle" font-size="24" font-weight="900" fill="${color}">${value}</text>
-</svg>
+<canvas id="gaugeCanvas" width="800" height="500" style="width:100%;height:auto;display:block;"></canvas>
 <div class="gauge-center">
 <div class="center-value" style="color:${color}">${value}</div>
 <div class="center-label" style="color:${color}">${className}</div>
@@ -604,8 +529,151 @@ const gaugeHTML=`<div class="gauge-box">
 </div>
 </div>`;
 
-console.log('Needle coords:', {startX, startY, endX, endY, color, value});
-document.getElementById('gauge-display').innerHTML=gaugeHTML;if(data.historical){let historyHTML='';const periods=[{key:'now',label:'Maintenant',icon:'🔴'},{key:'yesterday',label:'Hier',icon:'📅'},{key:'last_week',label:'7 jours',icon:'📊'},{key:'last_month',label:'30 jours',icon:'📈'}];periods.forEach(period=>{const hist=data.historical[period.key];if(hist&&hist.value!==null){const histValue=hist.value;const histColor=getColor(histValue);const histClass=hist.classification;const change=period.key!=='now'&&data.historical.now?histValue-data.historical.now.value:0;const changeText=change!==0?`<div class="hist-change">${change>0?'↑':'↓'} ${Math.abs(change)} points vs aujourd'hui</div>`:'';historyHTML+=`<div class="hist-card" style="color:${histColor}"><div class="hist-icon">${period.icon}</div><div class="hist-label">${period.label}</div><div class="hist-value">${histValue}</div><div class="hist-class">${histClass}</div>${changeText}</div>`}});document.getElementById('history').innerHTML=historyHTML}}async function loadData(){try{const response=await fetch('/api/fear-greed-full');const data=await response.json();console.log('📊 Données:',data);render(data)}catch(error){console.error('Erreur:',error);document.getElementById('gauge-display').innerHTML='<div style="text-align:center;color:#ef4444;padding:60px 20px"><div style="font-size:48px;margin-bottom:20px">❌</div><p>Erreur de chargement</p><button onclick="loadData()" style="padding:12px 24px;background:#3b82f6;color:white;border:none;border-radius:8px;cursor:pointer">🔄 Réessayer</button></div>'}}loadData();setInterval(loadData,60000);</script></body></html>"""
+document.getElementById('gauge-display').innerHTML=gaugeHTML;
+
+setTimeout(()=>{
+const canvas=document.getElementById('gaugeCanvas');
+if(!canvas)return;
+const ctx=canvas.getContext('2d');
+const w=800;
+const h=500;
+const cx=400;
+const cy=400;
+const radius=300;
+
+ctx.clearRect(0,0,w,h);
+
+// Arc avec gradient
+const gradient=ctx.createLinearGradient(100,cy,700,cy);
+gradient.addColorStop(0,'#dc2626');
+gradient.addColorStop(0.25,'#f97316');
+gradient.addColorStop(0.5,'#fbbf24');
+gradient.addColorStop(0.75,'#84cc16');
+gradient.addColorStop(1,'#22c55e');
+
+ctx.beginPath();
+ctx.arc(cx,cy,radius,Math.PI,0,false);
+ctx.lineWidth=60;
+ctx.strokeStyle=gradient;
+ctx.lineCap='round';
+ctx.globalAlpha=0.8;
+ctx.stroke();
+
+// Arc noir par-dessus
+ctx.beginPath();
+ctx.arc(cx,cy,radius-10,Math.PI,0,false);
+ctx.lineWidth=50;
+ctx.strokeStyle='#0f172a';
+ctx.globalAlpha=1;
+ctx.stroke();
+
+// Marqueurs
+const markers=[
+{angle:180,label:'0',color:'#dc2626'},
+{angle:135,label:'25',color:'#f97316'},
+{angle:90,label:'50',color:'#fbbf24'},
+{angle:45,label:'75',color:'#84cc16'},
+{angle:0,label:'100',color:'#22c55e'}
+];
+
+markers.forEach(m=>{
+const rad=m.angle*Math.PI/180;
+const x=cx+radius*Math.cos(rad);
+const y=cy+radius*Math.sin(rad);
+ctx.beginPath();
+ctx.arc(x,y,12,0,2*Math.PI);
+ctx.fillStyle=m.color;
+ctx.fill();
+ctx.fillStyle=m.color;
+ctx.font='bold 28px sans-serif';
+ctx.textAlign='center';
+const ty=m.angle===90?y-30:(m.angle===180||m.angle===0?y+50:y-20);
+ctx.fillText(m.label,x,ty);
+});
+
+// FLÈCHE
+const needleAngle=(180-value*1.8)*Math.PI/180;
+const needleLength=radius-10;
+const needleX=cx+needleLength*Math.cos(needleAngle);
+const needleY=cy+needleLength*Math.sin(needleAngle);
+
+// Ligne de la flèche
+ctx.beginPath();
+ctx.moveTo(cx,cy);
+ctx.lineTo(needleX,needleY);
+ctx.lineWidth=24;
+ctx.strokeStyle=color;
+ctx.lineCap='round';
+ctx.shadowColor=color;
+ctx.shadowBlur=20;
+ctx.stroke();
+ctx.shadowBlur=0;
+
+// Ligne blanche par-dessus
+ctx.beginPath();
+ctx.moveTo(cx,cy);
+ctx.lineTo(needleX,needleY);
+ctx.lineWidth=8;
+ctx.strokeStyle='rgba(255,255,255,0.4)';
+ctx.stroke();
+
+// Triangle pointe
+const tipX=cx+(needleLength+30)*Math.cos(needleAngle);
+const tipY=cy+(needleLength+30)*Math.sin(needleAngle);
+const side1X=cx+(needleLength-10)*Math.cos(needleAngle-0.3);
+const side1Y=cy+(needleLength-10)*Math.sin(needleAngle-0.3);
+const side2X=cx+(needleLength-10)*Math.cos(needleAngle+0.3);
+const side2Y=cy+(needleLength-10)*Math.sin(needleAngle+0.3);
+
+ctx.beginPath();
+ctx.moveTo(tipX,tipY);
+ctx.lineTo(side1X,side1Y);
+ctx.lineTo(side2X,side2Y);
+ctx.closePath();
+ctx.fillStyle=color;
+ctx.fill();
+
+// Bulle avec chiffre
+const bubbleR=(20+needleLength)/2;
+const bubbleX=cx+bubbleR*Math.cos(needleAngle);
+const bubbleY=cy+bubbleR*Math.sin(needleAngle);
+
+ctx.beginPath();
+ctx.arc(bubbleX,bubbleY,64,0,2*Math.PI);
+ctx.fillStyle=color;
+ctx.fill();
+
+ctx.beginPath();
+ctx.arc(bubbleX,bubbleY,56,0,2*Math.PI);
+ctx.fillStyle='#0f172a';
+ctx.fill();
+
+ctx.fillStyle=color;
+ctx.font='bold 48px sans-serif';
+ctx.textAlign='center';
+ctx.textBaseline='middle';
+ctx.fillText(value,bubbleX,bubbleY);
+
+// Centre
+ctx.beginPath();
+ctx.arc(cx,cy,28,0,2*Math.PI);
+ctx.fillStyle=color;
+ctx.globalAlpha=0.3;
+ctx.fill();
+ctx.globalAlpha=1;
+
+ctx.beginPath();
+ctx.arc(cx,cy,20,0,2*Math.PI);
+ctx.fillStyle=color;
+ctx.fill();
+
+ctx.beginPath();
+ctx.arc(cx,cy,12,0,2*Math.PI);
+ctx.fillStyle='white';
+ctx.fill();
+
+console.log('✅ Flèche dessinée avec Canvas!',{value,needleAngle,color});
+},100);if(data.historical){let historyHTML='';const periods=[{key:'now',label:'Maintenant',icon:'🔴'},{key:'yesterday',label:'Hier',icon:'📅'},{key:'last_week',label:'7 jours',icon:'📊'},{key:'last_month',label:'30 jours',icon:'📈'}];periods.forEach(period=>{const hist=data.historical[period.key];if(hist&&hist.value!==null){const histValue=hist.value;const histColor=getColor(histValue);const histClass=hist.classification;const change=period.key!=='now'&&data.historical.now?histValue-data.historical.now.value:0;const changeText=change!==0?`<div class="hist-change">${change>0?'↑':'↓'} ${Math.abs(change)} points vs aujourd'hui</div>`:'';historyHTML+=`<div class="hist-card" style="color:${histColor}"><div class="hist-icon">${period.icon}</div><div class="hist-label">${period.label}</div><div class="hist-value">${histValue}</div><div class="hist-class">${histClass}</div>${changeText}</div>`}});document.getElementById('history').innerHTML=historyHTML}}async function loadData(){try{const response=await fetch('/api/fear-greed-full');const data=await response.json();console.log('📊 Données:',data);render(data)}catch(error){console.error('Erreur:',error);document.getElementById('gauge-display').innerHTML='<div style="text-align:center;color:#ef4444;padding:60px 20px"><div style="font-size:48px;margin-bottom:20px">❌</div><p>Erreur de chargement</p><button onclick="loadData()" style="padding:12px 24px;background:#3b82f6;color:white;border:none;border-radius:8px;cursor:pointer">🔄 Réessayer</button></div>'}}loadData();setInterval(loadData,60000);</script></body></html>"""
     return HTMLResponse(html)
 
 @app.get("/dominance", response_class=HTMLResponse)

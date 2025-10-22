@@ -514,7 +514,7 @@ const color=getColor(value);
 const className=getClassName(value);
 
 const gaugeHTML=`<div class="gauge-box">
-<canvas id="gaugeCanvas" width="700" height="400" style="width:100%;height:auto;display:block;max-width:700px;margin:0 auto;"></canvas>
+<canvas id="gaugeCanvas" width="800" height="550" style="width:100%;height:auto;display:block;max-width:800px;margin:0 auto;"></canvas>
 <div class="gauge-center">
 <div class="center-value" style="color:${color}">${value}</div>
 <div class="center-label" style="color:${color}">${className}</div>
@@ -533,18 +533,18 @@ document.getElementById('gauge-display').innerHTML=gaugeHTML;
 
 setTimeout(()=>{
 const canvas=document.getElementById('gaugeCanvas');
-if(!canvas)return;
+if(!canvas){console.error('Canvas introuvable!');return;}
 const ctx=canvas.getContext('2d');
-const w=700;
-const h=400;
-const cx=350;
-const cy=350;
-const radius=280;
+const w=800;
+const h=550;
+const cx=400;
+const cy=400;
+const radius=300;
 
 ctx.clearRect(0,0,w,h);
 
 // Arc avec gradient
-const gradient=ctx.createLinearGradient(70,cy,630,cy);
+const gradient=ctx.createLinearGradient(100,cy,700,cy);
 gradient.addColorStop(0,'#dc2626');
 gradient.addColorStop(0.25,'#f97316');
 gradient.addColorStop(0.5,'#fbbf24');
@@ -553,7 +553,7 @@ gradient.addColorStop(1,'#22c55e');
 
 ctx.beginPath();
 ctx.arc(cx,cy,radius,Math.PI,0,false);
-ctx.lineWidth=55;
+ctx.lineWidth=60;
 ctx.strokeStyle=gradient;
 ctx.lineCap='round';
 ctx.globalAlpha=0.8;
@@ -561,19 +561,19 @@ ctx.stroke();
 
 // Arc noir par-dessus
 ctx.beginPath();
-ctx.arc(cx,cy,radius-8,Math.PI,0,false);
-ctx.lineWidth=45;
+ctx.arc(cx,cy,radius-10,Math.PI,0,false);
+ctx.lineWidth=50;
 ctx.strokeStyle='#0f172a';
 ctx.globalAlpha=1;
 ctx.stroke();
 
 // Marqueurs
 const markers=[
-{angle:180,label:'0',color:'#dc2626',y:50},
-{angle:135,label:'25',color:'#f97316',y:-20},
-{angle:90,label:'50',color:'#fbbf24',y:-35},
-{angle:45,label:'75',color:'#84cc16',y:-20},
-{angle:0,label:'100',color:'#22c55e',y:50}
+{angle:180,label:'0',color:'#dc2626',yOffset:55},
+{angle:135,label:'25',color:'#f97316',yOffset:-25},
+{angle:90,label:'50',color:'#fbbf24',yOffset:-40},
+{angle:45,label:'75',color:'#84cc16',yOffset:-25},
+{angle:0,label:'100',color:'#22c55e',yOffset:55}
 ];
 
 markers.forEach(m=>{
@@ -581,61 +581,58 @@ const rad=m.angle*Math.PI/180;
 const x=cx+radius*Math.cos(rad);
 const y=cy+radius*Math.sin(rad);
 ctx.beginPath();
-ctx.arc(x,y,10,0,2*Math.PI);
+ctx.arc(x,y,12,0,2*Math.PI);
 ctx.fillStyle=m.color;
 ctx.fill();
 ctx.fillStyle=m.color;
-ctx.font='bold 24px sans-serif';
+ctx.font='bold 28px sans-serif';
 ctx.textAlign='center';
-ctx.fillText(m.label,x,y+m.y);
+ctx.fillText(m.label,x,y+m.yOffset);
 });
 
-// FLÈCHE - SUPER VISIBLE
+// FLÈCHE - SUPER VISIBLE GARANTIE
 const needleAngle=(180-value*1.8)*Math.PI/180;
-const needleLength=radius-15;
+const needleLength=radius-20;
 
-// Point de départ et d'arrivée
-const startX=cx+40*Math.cos(needleAngle);
-const startY=cy+40*Math.sin(needleAngle);
+const startX=cx+50*Math.cos(needleAngle);
+const startY=cy+50*Math.sin(needleAngle);
 const endX=cx+needleLength*Math.cos(needleAngle);
 const endY=cy+needleLength*Math.sin(needleAngle);
 
-console.log('FLECHE:',{value,needleAngle:needleAngle*180/Math.PI,startX,startY,endX,endY,color});
+console.log('🎯 FLECHE:',{value,angle:needleAngle*180/Math.PI+'°',start:[startX.toFixed(0),startY.toFixed(0)],end:[endX.toFixed(0),endY.toFixed(0)],color});
 
-// Ombre de la flèche
-ctx.shadowColor='rgba(0,0,0,0.5)';
-ctx.shadowBlur=15;
-ctx.shadowOffsetX=0;
-ctx.shadowOffsetY=5;
-
-// Ligne PRINCIPALE orange épaisse
+// Ligne PRINCIPALE épaisse
 ctx.beginPath();
 ctx.moveTo(startX,startY);
 ctx.lineTo(endX,endY);
-ctx.lineWidth=20;
+ctx.lineWidth=22;
 ctx.strokeStyle=color;
 ctx.lineCap='round';
+ctx.shadowColor='rgba(0,0,0,0.6)';
+ctx.shadowBlur=18;
+ctx.shadowOffsetX=0;
+ctx.shadowOffsetY=6;
 ctx.stroke();
 
 ctx.shadowBlur=0;
 ctx.shadowOffsetX=0;
 ctx.shadowOffsetY=0;
 
-// Ligne blanche par-dessus pour contraste
+// Ligne blanche par-dessus
 ctx.beginPath();
 ctx.moveTo(startX,startY);
 ctx.lineTo(endX,endY);
-ctx.lineWidth=6;
-ctx.strokeStyle='rgba(255,255,255,0.5)';
+ctx.lineWidth=7;
+ctx.strokeStyle='rgba(255,255,255,0.6)';
 ctx.stroke();
 
-// Triangle pointe de la flèche
-const tipX=cx+(needleLength+25)*Math.cos(needleAngle);
-const tipY=cy+(needleLength+25)*Math.sin(needleAngle);
-const side1X=cx+(needleLength-8)*Math.cos(needleAngle-0.25);
-const side1Y=cy+(needleLength-8)*Math.sin(needleAngle-0.25);
-const side2X=cx+(needleLength-8)*Math.cos(needleAngle+0.25);
-const side2Y=cy+(needleLength-8)*Math.sin(needleAngle+0.25);
+// Triangle pointe
+const tipX=cx+(needleLength+30)*Math.cos(needleAngle);
+const tipY=cy+(needleLength+30)*Math.sin(needleAngle);
+const side1X=cx+(needleLength-10)*Math.cos(needleAngle-0.28);
+const side1Y=cy+(needleLength-10)*Math.sin(needleAngle-0.28);
+const side2X=cx+(needleLength-10)*Math.cos(needleAngle+0.28);
+const side2Y=cy+(needleLength-10)*Math.sin(needleAngle+0.28);
 
 ctx.beginPath();
 ctx.moveTo(tipX,tipY);
@@ -645,46 +642,46 @@ ctx.closePath();
 ctx.fillStyle=color;
 ctx.fill();
 
-// Bulle avec le chiffre au milieu
-const bubbleR=(40+needleLength)/2;
+// Bulle avec chiffre
+const bubbleR=(50+needleLength)/2;
 const bubbleX=cx+bubbleR*Math.cos(needleAngle);
 const bubbleY=cy+bubbleR*Math.sin(needleAngle);
 
 ctx.beginPath();
-ctx.arc(bubbleX,bubbleY,55,0,2*Math.PI);
+ctx.arc(bubbleX,bubbleY,60,0,2*Math.PI);
 ctx.fillStyle=color;
 ctx.fill();
 
 ctx.beginPath();
-ctx.arc(bubbleX,bubbleY,48,0,2*Math.PI);
+ctx.arc(bubbleX,bubbleY,52,0,2*Math.PI);
 ctx.fillStyle='#0f172a';
 ctx.fill();
 
 ctx.fillStyle=color;
-ctx.font='bold 42px sans-serif';
+ctx.font='bold 46px sans-serif';
 ctx.textAlign='center';
 ctx.textBaseline='middle';
 ctx.fillText(value,bubbleX,bubbleY);
 
 // Centre
 ctx.beginPath();
-ctx.arc(cx,cy,24,0,2*Math.PI);
+ctx.arc(cx,cy,28,0,2*Math.PI);
 ctx.fillStyle=color;
 ctx.globalAlpha=0.3;
 ctx.fill();
 ctx.globalAlpha=1;
 
 ctx.beginPath();
-ctx.arc(cx,cy,18,0,2*Math.PI);
+ctx.arc(cx,cy,20,0,2*Math.PI);
 ctx.fillStyle=color;
 ctx.fill();
 
 ctx.beginPath();
-ctx.arc(cx,cy,10,0,2*Math.PI);
+ctx.arc(cx,cy,12,0,2*Math.PI);
 ctx.fillStyle='white';
 ctx.fill();
 
-console.log('✅ Canvas complet avec FLECHE dessinée!');
+console.log('✅ Canvas OK - Flèche dessinée de',Math.round(startX),',',Math.round(startY),'vers',Math.round(endX),',',Math.round(endY));
 },100);if(data.historical){let historyHTML='';const periods=[{key:'now',label:'Maintenant',icon:'🔴'},{key:'yesterday',label:'Hier',icon:'📅'},{key:'last_week',label:'7 jours',icon:'📊'},{key:'last_month',label:'30 jours',icon:'📈'}];periods.forEach(period=>{const hist=data.historical[period.key];if(hist&&hist.value!==null){const histValue=hist.value;const histColor=getColor(histValue);const histClass=hist.classification;const change=period.key!=='now'&&data.historical.now?histValue-data.historical.now.value:0;const changeText=change!==0?`<div class="hist-change">${change>0?'↑':'↓'} ${Math.abs(change)} points vs aujourd'hui</div>`:'';historyHTML+=`<div class="hist-card" style="color:${histColor}"><div class="hist-icon">${period.icon}</div><div class="hist-label">${period.label}</div><div class="hist-value">${histValue}</div><div class="hist-class">${histClass}</div>${changeText}</div>`}});document.getElementById('history').innerHTML=historyHTML}}async function loadData(){try{const response=await fetch('/api/fear-greed-full');const data=await response.json();console.log('📊 Données:',data);render(data)}catch(error){console.error('Erreur:',error);document.getElementById('gauge-display').innerHTML='<div style="text-align:center;color:#ef4444;padding:60px 20px"><div style="font-size:48px;margin-bottom:20px">❌</div><p>Erreur de chargement</p><button onclick="loadData()" style="padding:12px 24px;background:#3b82f6;color:white;border:none;border-radius:8px;cursor:pointer">🔄 Réessayer</button></div>'}}loadData();setInterval(loadData,60000);</script></body></html>"""
     return HTMLResponse(html)
 

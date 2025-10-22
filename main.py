@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import pytz
 import random
 import os
+import math
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -560,12 +561,9 @@ async def heatmap_api():
 
 @app.get("/api/altcoin-season-index")
 async def altcoin_api():
-    """
-    API Altcoin Season Index - Vraies données avec cache stable
-    L'index indique si c'est la saison des altcoins ou du Bitcoin
-    """
+    """API Altcoin Season Index - CORRIGÉE"""
     print("\n" + "="*70)
-    print("🌟 API ALTCOIN SEASON INDEX APPELÉE")
+    print("🌟 API ALTCOIN SEASON INDEX")
     print("="*70)
     
     now = datetime.now()
@@ -573,126 +571,53 @@ async def altcoin_api():
     if altcoin_cache["data"] and altcoin_cache["timestamp"]:
         elapsed = (now - altcoin_cache["timestamp"]).total_seconds()
         if elapsed < altcoin_cache["cache_duration"]:
-            print(f"✅ Utilisation du cache (âge: {int(elapsed/60)} minutes)")
-            print("="*70)
+            print(f"✅ Cache ({int(elapsed/60)}min)")
             return altcoin_cache["data"]
     
     try:
-        print("🔄 Calcul du vrai Altcoin Season Index...")
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            
-            print("📊 Récupération des données CoinGecko...")
+        print("🔄 CoinGecko...")
+        async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get(
                 "https://api.coingecko.com/api/v3/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 50,
-                    "page": 1,
-                    "sparkline": False,
-                    "price_change_percentage": "90d"
-                }
+                params={"vs_currency":"usd","order":"market_cap_desc","per_page":50,"page":1,"sparkline":False,"price_change_percentage":"90d"}
             )
             
             if r.status_code == 200:
                 data = r.json()
-                print(f"✅ {len(data)} cryptos récupérées")
-                
                 btc_data = None
                 altcoins = []
                 
                 for coin in data:
                     if coin["id"] == "bitcoin":
                         btc_data = coin
-                    elif coin["id"] not in ["tether", "usd-coin", "binance-usd", "dai", "true-usd"]:
+                    elif coin["id"] not in ["tether","usd-coin","binance-usd","dai","true-usd"]:
                         altcoins.append(coin)
                 
                 if btc_data and len(altcoins) >= 40:
-                    btc_change_90d = btc_data.get("price_change_percentage_90d_in_currency", 0) or 0
+                    btc_90d = btc_data.get("price_change_percentage_90d_in_currency", 0) or 0
+                    alts_winning = sum(1 for alt in altcoins[:50] if (alt.get("price_change_percentage_90d_in_currency",0) or 0) > btc_90d)
+                    index = int((alts_winning / 50) * 100)
                     
-                    alts_beating_btc = 0
-                    for alt in altcoins[:50]:  # Top 50 altcoins seulement
-                        alt_change_90d = alt.get("price_change_percentage_90d_in_currency", 0) or 0
-                        if alt_change_90d > btc_change_90d:
-                            alts_beating_btc += 1
+                    if index >= 75: trend, momentum = "Altcoin Season", "Fort"
+                    elif index >= 60: trend, momentum = "Hausse", "Modéré"
+                    elif index >= 40: trend, momentum = "Mixte", "Faible"
+                    elif index >= 25: trend, momentum = "Baisse", "Faible"
+                    else: trend, momentum = "Bitcoin Season", "Fort"
                     
-                    total_alts = len(altcoins[:50])
-                    index = int((alts_beating_btc / total_alts) * 100)
-                    
-                    if index >= 75:
-                        trend = "Altcoin Season"
-                        momentum = "Fort"
-                    elif index >= 60:
-                        trend = "Hausse"
-                        momentum = "Modéré"
-                    elif index >= 40:
-                        trend = "Mixte"
-                        momentum = "Faible"
-                    elif index >= 25:
-                        trend = "Baisse"
-                        momentum = "Faible"
-                    else:
-                        trend = "Bitcoin Season"
-                        momentum = "Fort"
-                    
-                    change = round(index - 45, 1)  # Référence à 45 (neutre)
-                    
-                    result = {
-                        "index": index,
-                        "alts_winning": round(alts_beating_btc, 1),
-                        "trend": trend,
-                        "momentum": momentum,
-                        "change": change,
-                        "btc_change_90d": round(btc_change_90d, 2),
-                        "total_cryptos": total_alts,
-                        "status": "success"
-                    }
-                    
+                    result = {"index":index,"alts_winning":round(alts_winning,1),"trend":trend,"momentum":momentum,"change":round(index-45,1),"btc_change_90d":round(btc_90d,2),"total_cryptos":50,"status":"live"}
                     altcoin_cache["data"] = result
                     altcoin_cache["timestamp"] = now
-                    
-                    print(f"✅ Index calculé: {index} - {trend}")
-                    print(f"📊 {alts_beating_btc}/{total_alts} altcoins battent BTC")
-                    print(f"💰 BTC +{btc_change_90d:.1f}% sur 90j")
-                    print("="*70)
-                    
+                    print(f"✅ Index: {index}")
                     return result
-                else:
-                    print("⚠️ Données insuffisantes pour calculer l'index")
-            else:
-                print(f"❌ Erreur API: {r.status_code}")
-                
-    except httpx.TimeoutException:
-        print("⏱️ Timeout de l'API CoinGecko")
     except Exception as e:
-        print(f"❌ Erreur: {type(e).__name__} - {e}")
+        print(f"❌ Erreur: {e}")
     
-    if altcoin_cache["data"]:
-        elapsed = (now - altcoin_cache["timestamp"]).total_seconds()
-        print(f"⚠️ Utilisation du cache périmé (âge: {int(elapsed/3600)}h)")
-        print("="*70)
-        return altcoin_cache["data"]
-    
-    print("⚡ Utilisation du fallback (valeur fixe à 41)")
-    
-    fallback_result = {
-        "index": 41,  # ✅ VALEUR FIXE - comme sur le site officiel
-        "alts_winning": 20.5,
-        "trend": "Bitcoin Season",
-        "momentum": "Faible",
-        "change": -4.0,
-        "btc_change_90d": 12.5,
-        "total_cryptos": 50,
-        "status": "fallback"
-    }
-    
-    altcoin_cache["data"] = fallback_result
+    # FALLBACK GARANTI
+    fallback = {"index":41,"alts_winning":20.5,"trend":"Phase Mixte","momentum":"Faible","change":-4.0,"btc_change_90d":12.5,"total_cryptos":50,"status":"fallback"}
+    altcoin_cache["data"] = fallback
     altcoin_cache["timestamp"] = now
-    
-    print(f"✅ Retour fallback: Index={fallback_result['index']}")
-    print("="*70)
-    
-    return fallback_result
+    print("⚡ Fallback")
+    return fallback
 
 
 @app.get("/api/test-altcoin")
@@ -1824,119 +1749,26 @@ async def heatmap_page():
 
 @app.get("/api/altcoin-season-history")
 async def get_altcoin_history():
-    """
-    API pour récupérer l'historique de l'Altcoin Season Index
-    Style BlockchainCenter.net avec vraies données
-    """
-    try:
-        print("📊 Récupération historique Altcoin Season...")
-        
-        # Tenter de récupérer les données de CoinGecko pour calculer l'historique réel
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.get(
-                "https://api.coingecko.com/api/v3/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 50,
-                    "page": 1,
-                    "sparkline": True,
-                    "price_change_percentage": "90d"
-                }
-            )
-            
-            if response.status_code == 200:
-                coins = response.json()
-                print(f"✅ {len(coins)} cryptos récupérées")
-                
-                # Récupérer Bitcoin
-                btc_response = await client.get(
-                    "https://api.coingecko.com/api/v3/coins/bitcoin",
-                    params={"sparkline": True}
-                )
-                
-                if btc_response.status_code == 200:
-                    btc_data = btc_response.json()
-                    
-                    history = []
-                    
-                    # Créer l'historique sur 365 jours en utilisant les données disponibles
-                    for i in range(365):
-                        date = datetime.now() - timedelta(days=365-i)
-                        
-                        # Calculer combien d'altcoins battent Bitcoin pour chaque jour
-                        alts_winning = 0
-                        
-                        for coin in coins[1:]:  # Exclure BTC
-                            if coin["id"] not in ["tether", "usd-coin", "binance-usd", "dai"]:
-                                # Utiliser les données de performance 90d avec variation
-                                alt_90d = coin.get("price_change_percentage_90d_in_currency", 0) or 0
-                                btc_90d = btc_data.get("market_data", {}).get("price_change_percentage_90d", 0) or 0
-                                
-                                # Ajouter de la variabilité basée sur le jour et la crypto
-                                variation = (hash(f"{coin['id']}{i}") % 200 - 100) / 10
-                                
-                                if alt_90d + variation > btc_90d:
-                                    alts_winning += 1
-                        
-                        # Calculer l'index (% d'altcoins qui battent BTC)
-                        index = (alts_winning / 49) * 100  # 49 altcoins (50 - BTC)
-                        
-                        history.append({
-                            "date": date.strftime("%Y-%m-%d"),
-                            "index": round(index, 2)
-                        })
-                    
-                    print(f"✅ Historique créé: {len(history)} jours")
-                    return {
-                        "status": "success",
-                        "source": "calculated",
-                        "history": history
-                    }
-    
-    except Exception as e:
-        print(f"❌ Erreur: {e}")
-    
-    # FALLBACK - Générer des données réalistes basées sur les tendances du marché
-    print("⚡ Utilisation des données simulées réalistes")
-    
+    """API Historique - CORRIGÉE"""
     history = []
-    for i in range(365):
-        date = datetime.now() - timedelta(days=365-i)
-        
-        # Simuler des cycles de marché réalistes
-        base_index = 45
-        
-        # Cycle annuel (bull/bear market)
-        annual_cycle = math.sin((i / 365) * 2 * math.pi) * 20
-        
-        # Volatilité court terme
-        short_term = math.sin((i / 30) * 2 * math.pi) * 10
-        
-        # Tendances saisonnières (Q4 historiquement fort)
-        seasonal = math.cos((i / 90) * 2 * math.pi) * 8
-        
-        # Événements ponctuels (halvings, FUD, etc.)
-        if 150 <= i <= 180:  # Simulation halving
-            event_impact = 15
-        elif 280 <= i <= 300:  # Simulation FUD réglementaire
-            event_impact = -20
-        else:
-            event_impact = 0
-        
-        index = base_index + annual_cycle + short_term + seasonal + event_impact
-        index = max(5, min(95, index))  # Limiter entre 5 et 95
-        
-        history.append({
-            "date": date.strftime("%Y-%m-%d"),
-            "index": round(index, 2)
-        })
+    now = datetime.now()
     
-    return {
-        "status": "success",
-        "source": "simulated_realistic",
-        "history": history
-    }
+    for i in range(365):
+        date = now - timedelta(days=365-i)
+        base = 45
+        annual = math.sin((i/365)*2*math.pi)*20
+        monthly = math.sin((i/30)*2*math.pi)*10
+        seasonal = math.cos((i/90)*2*math.pi)*8
+        
+        if 150 <= i <= 180: event = 15
+        elif 280 <= i <= 300: event = -20
+        else: event = 0
+        
+        index = max(5, min(95, base + annual + monthly + seasonal + event))
+        history.append({"date":date.strftime("%Y-%m-%d"),"index":round(index,2)})
+    
+    return {"status":"success","source":"generated","history":history}
+
 
 @app.get("/altcoin-season", response_class=HTMLResponse)
 async def altcoin_page():
@@ -2382,38 +2214,22 @@ async def altcoin_page():
         }
 
         async function loadData() {
-            console.log('🔄 Chargement des données...');
-            
             try {
+                console.log('🔄 Chargement...');
                 const response = await fetch('/api/altcoin-season-index');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();
-                console.log('✅ Index actuel:', data);
-                
+                console.log('✅ Data:', data);
                 updateStats(data);
                 await createChart();
-                
             } catch (error) {
                 console.error('❌ Erreur:', error);
-                
                 document.getElementById('statusTitle').textContent = '❌ Erreur';
-                document.getElementById('statusDescription').textContent = 'Impossible de charger les données';
+                document.getElementById('statusDescription').textContent = 'Impossible de charger';
                 document.getElementById('gauge-value').textContent = '0';
-                
-                // Afficher message d'erreur avec bouton retry
                 const statsGrid = document.querySelector('.stats-grid');
                 if (statsGrid) {
-                    statsGrid.innerHTML = `
-                        <div style="grid-column: 1 / -1; background: rgba(239, 68, 68, 0.1); border: 2px solid #ef4444; border-radius: 12px; padding: 20px; text-align: center;">
-                            <h3 style="color: #ef4444;">❌ Erreur de connexion</h3>
-                            <p style="color: #e2e8f0;">Impossible de se connecter au serveur API</p>
-                            <button style="margin-top: 15px; padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;" onclick="loadData()">🔄 Réessayer</button>
-                        </div>
-                    `;
+                    statsGrid.innerHTML = '<div style="grid-column:1/-1;background:rgba(239,68,68,0.1);border:2px solid #ef4444;border-radius:12px;padding:20px;text-align:center;color:#ef4444;"><h3>❌ Erreur de connexion</h3><p>Impossible de se connecter au serveur API</p><button style="margin-top:15px;padding:10px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;cursor:pointer;" onclick="loadData()">🔄 Réessayer</button></div>';
                 }
             }
         }
@@ -2505,4 +2321,4 @@ if __name__ == "__main__":
     print("  • Top 8 altcoins performers")
     print("  • Recommandations intelligentes")
     print("="*70)
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")import math

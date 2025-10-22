@@ -2225,11 +2225,10 @@ async def altcoin_page():
             } catch (error) {
                 console.error('❌ Erreur:', error);
                 document.getElementById('statusTitle').textContent = '❌ Erreur';
-                document.getElementById('statusDescription').textContent = 'Impossible de charger';
-                document.getElementById('gauge-value').textContent = '0';
+                document.getElementById('statusDescription').textContent = 'Connexion impossible';
                 const statsGrid = document.querySelector('.stats-grid');
                 if (statsGrid) {
-                    statsGrid.innerHTML = '<div style="grid-column:1/-1;background:rgba(239,68,68,0.1);border:2px solid #ef4444;border-radius:12px;padding:20px;text-align:center;color:#ef4444;"><h3>❌ Erreur de connexion</h3><p>Impossible de se connecter au serveur API</p><button style="margin-top:15px;padding:10px 20px;background:#3b82f6;color:white;border:none;border-radius:8px;cursor:pointer;" onclick="loadData()">🔄 Réessayer</button></div>';
+                    statsGrid.innerHTML = '<div style="grid-column:1/-1;background:rgba(239,68,68,0.1);border:2px solid #ef4444;border-radius:12px;padding:20px;text-align:center;"><h3 style="color:#ef4444">❌ Erreur</h3><p style="color:#e2e8f0">Serveur inaccessible</p><button style="margin-top:15px;padding:10px 20px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer" onclick="loadData()">🔄 Réessayer</button></div>';
                 }
             }
         }
@@ -2321,4 +2320,4 @@ if __name__ == "__main__":
     print("  • Top 8 altcoins performers")
     print("  • Recommandations intelligentes")
     print("="*70)
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")import math
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

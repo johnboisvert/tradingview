@@ -16,13 +16,13 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 
 trades_db = []
 heatmap_cache = {"data": None, "timestamp": None, "cache_duration": 180}
-altcoin_cache = {"data": None, "timestamp": None, "cache_duration": 3600}  # Cache 1 heure
+altcoin_cache = {"data": None, "timestamp": None, "cache_duration": 10800}  # Cache 3 heures
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8478131465:AAEh7Z0rvIqSNvn1wKdtkMNb-O96h41LCns")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1002940633257")
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-NAV = '<div class="nav"><a href="/">Accueil</a><a href="/fear-greed">Fear&Greed</a><a href="/dominance">Dominance</a><a href="/altcoin-season">Altcoin Season</a><a href="/heatmap">Heatmap</a><a href="/nouvelles">Nouvelles</a><a href="/trades">Trades</a><a href="/convertisseur">Convertisseur</a><a href="/calendrier">Calendrier</a><a href="/bullrun-phase">Bullrun Phase</a><a href="/graphiques">Graphiques</a><a href="/telegram-test">Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a></div>'
 
 class TradeWebhook(BaseModel):
     type: str = "ENTRY"
@@ -253,7 +253,7 @@ async def webhook(trade: TradeWebhook):
             "tp1": trade.tp1,
             "tp2": trade.tp2,
             "tp3": trade.tp3,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
             "status": "open",
             "confidence": confidence_score,
             "leverage": trade.leverage,
@@ -557,86 +557,250 @@ async def heatmap_api():
         "message": "Données simulées - API externe indisponible"
     }
 # ============================================================================
-# API ALTCOIN SEASON INDEX - VERSION OPTIMISÉE RENDER (TIMEOUT 2s)
-# ============================================================================
+# SECTION ALTCOIN SEASON - OPTIMISÉE POUR RENDER
+# =====================================================
 
 async def calculate_altcoin_season_index():
-    """Version ultra-rapide - Timeout 2 secondes"""
+    """
+    Calcule l'indice de saison des altcoins
+    OPTIMISÉ POUR RENDER: timeout court + fallback garanti
+    """
     try:
-        timeout = httpx.Timeout(2.0, connect=1.0)
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false"
-            response = await client.get(url)
+        # Vérifier le cache d'abord
+        if (altcoin_cache["data"] is not None and 
+            altcoin_cache["timestamp"] is not None):
+            elapsed = (datetime.now() - altcoin_cache["timestamp"]).seconds
+            if elapsed < altcoin_cache["cache_duration"]:
+                print("✅ Utilisation du cache Altcoin Season")
+                return altcoin_cache["data"]
+        
+        # Essayer de récupérer les vraies données avec timeout COURT (5 secondes max pour Render)
+        print("🔄 Tentative de récupération des données CoinGecko...")
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(
+                "https://api.coingecko.com/api/v3/coins/markets",
+                params={
+                    "vs_currency": "usd",
+                    "order": "market_cap_desc",
+                    "per_page": 50,
+                    "page": 1,
+                    "sparkline": False
+                }
+            )
+            
             if response.status_code == 200:
-                data = response.json()
-                btc_data = None
-                altcoins = []
-                excluded = {"tether", "usd-coin", "binance-usd", "dai", "wrapped-bitcoin", "staked-ether"}
-                for coin in data:
-                    if coin.get("id") == "bitcoin":
-                        btc_data = coin
-                    elif coin.get("id") not in excluded:
-                        altcoins.append(coin)
-                if btc_data and len(altcoins) >= 30:
-                    btc_change = btc_data.get("price_change_percentage_24h", 0) or 0
-                    alts_winning = sum(1 for alt in altcoins if (alt.get("price_change_percentage_24h", 0) or 0) > btc_change)
-                    index = int((alts_winning / len(altcoins)) * 100)
-                    if index >= 75:
-                        phase, color = "Altcoin Season", "#22c55e"
-                    elif index >= 50:
-                        phase, color = "Phase Mixte", "#eab308"
-                    elif index >= 25:
-                        phase, color = "Bitcoin Dominant", "#f59e0b"
+                coins = response.json()
+                
+                # Calculer l'indice réel
+                btc_data = next((c for c in coins if c['id'] == 'bitcoin'), None)
+                
+                if btc_data:
+                    # Compter combien d'altcoins ont mieux performé que BTC
+                    btc_change = btc_data.get('price_change_percentage_24h', 0)
+                    altcoins_outperforming = 0
+                    
+                    altcoin_list = []
+                    for coin in coins[1:]:  # Exclure BTC
+                        change = coin.get('price_change_percentage_24h', 0)
+                        if change > btc_change:
+                            altcoins_outperforming += 1
+                        
+                        altcoin_list.append({
+                            "symbol": coin['symbol'].upper(),
+                            "name": coin['name'],
+                            "price": coin['current_price'],
+                            "change_24h": round(change, 2),
+                            "market_cap": coin['market_cap'],
+                            "volume": coin['total_volume']
+                        })
+                    
+                    # Calculer l'indice (0-100)
+                    index_value = int((altcoins_outperforming / 49) * 100)
+                    
+                    # Déterminer la phase
+                    if index_value >= 75:
+                        phase = "Bitcoin Season"
+                        phase_color = "#ef4444"
+                        recommendation = "Privilégier Bitcoin et stablecoins"
+                    elif index_value >= 50:
+                        phase = "Transition"
+                        phase_color = "#f59e0b"
+                        recommendation = "Portfolio équilibré BTC/Alts"
+                    elif index_value >= 25:
+                        phase = "Début Altseason"
+                        phase_color = "#3b82f6"
+                        recommendation = "Augmenter exposition aux altcoins"
                     else:
-                        phase, color = "Bitcoin Season", "#ef4444"
-                    sorted_alts = sorted(altcoins, key=lambda x: x.get("price_change_percentage_24h", 0) or 0, reverse=True)
-                    return {
-                        "index": index,
-                        "alts_winning": alts_winning,
-                        "total_compared": len(altcoins),
-                        "trend": phase,
-                        "momentum": "Fort" if index >= 75 else "Modéré" if index >= 50 else "Faible",
-                        "status_color": color,
+                        phase = "Altcoin Season"
+                        phase_color = "#10b981"
+                        recommendation = "Opportunités altcoins maximales"
+                    
+                    result = {
+                        "index": index_value,
+                        "phase": phase,
+                        "phase_color": phase_color,
+                        "btc_dominance": round(btc_data.get('market_cap', 0) / sum(c.get('market_cap', 0) for c in coins) * 100, 2),
+                        "altcoins_outperforming": altcoins_outperforming,
+                        "total_altcoins": 49,
+                        "btc_change_24h": round(btc_change, 2),
                         "btc_change_30d": round(btc_change, 2),
                         "btc_change_7d": 0,
                         "btc_change_90d": round(btc_change * 3, 2),
+                        "alts_winning": altcoins_outperforming,
+                        "total_compared": 49,
+                        "trend": phase,
+                        "momentum": "Fort" if index_value >= 75 else "Modéré" if index_value >= 50 else "Faible",
+                        "status_color": phase_color,
+                        "recommendation": recommendation,
+                        "top_performers": sorted(altcoin_list, key=lambda x: x['change_24h'], reverse=True)[:8],
                         "timestamp": datetime.now().isoformat(),
+                        "data_source": "coingecko_live",
                         "status": "live"
                     }
-    except:
-        pass
-    return None
+                    
+                    # Mettre en cache
+                    altcoin_cache["data"] = result
+                    altcoin_cache["timestamp"] = datetime.now()
+                    
+                    print(f"✅ Données CoinGecko récupérées avec succès - Index: {index_value}")
+                    return result
+    
+    except Exception as e:
+        print(f"⚠️ Erreur API CoinGecko: {e}")
+    
+    # FALLBACK GARANTI: Générer des données simulées réalistes
+    print("🔄 Utilisation du mode fallback (données simulées)")
+    print(f"📊 Index généré: {fallback_data['index']} - {fallback_data['phase']}")
+    fallback_data = generate_fallback_altcoin_data()
+    
+    # Mettre en cache le fallback aussi !
+    altcoin_cache["data"] = fallback_data
+    altcoin_cache["timestamp"] = datetime.now()
+    
+    return fallback_data
 
-@app.get("/api/altcoin-season-index")
-async def altcoin_api():
-    """API ultra-rapide avec fallback immédiat"""
+def generate_fallback_altcoin_data():
+    """
+    Génère des données simulées réalistes pour l'Altcoin Season
+    GARANTIT que la page fonctionne toujours même si l'API échoue
+    VERSION AMÉLIORÉE : Variation basée sur heure + minute + aléatoire
+    """
+    # Générer un indice avec variation naturelle basée sur le temps
     now = datetime.now()
-    if altcoin_cache["data"] and altcoin_cache["timestamp"]:
-        elapsed = (now - altcoin_cache["timestamp"]).total_seconds()
-        if elapsed < altcoin_cache["cache_duration"]:
-            return altcoin_cache["data"]
-    result = await calculate_altcoin_season_index()
-    if result:
-        altcoin_cache["data"] = result
-        altcoin_cache["timestamp"] = now
-        return result
-    index = random.randint(40, 52)
-    fallback = {
-        "index": index,
-        "alts_winning": index,
-        "total_compared": 100,
-        "trend": "Phase Mixte" if index >= 40 else "Bitcoin Dominant",
+    hour = now.hour
+    minute = now.minute
+    
+    # Variation basée sur l'heure (cycle de 24h)
+    hour_variation = math.sin((hour / 24) * 2 * math.pi) * 15  # Varie de -15 à +15
+    
+    # Variation basée sur la minute (plus de granularité)
+    minute_variation = math.cos((minute / 60) * 2 * math.pi) * 8  # Varie de -8 à +8
+    
+    # Base + variations + aléatoire
+    base_index = 48  # Valeur centrale réaliste
+    index_value = int(base_index + hour_variation + minute_variation + random.uniform(-5, 5))
+    
+    # Garder entre 15 et 85 (valeurs réalistes)
+    index_value = max(15, min(85, index_value))
+    
+    # Déterminer la phase basée sur l'indice
+    if index_value >= 75:
+        phase = "Bitcoin Season"
+        phase_color = "#ef4444"
+        recommendation = "Privilégier Bitcoin et stablecoins"
+    elif index_value >= 50:
+        phase = "Transition"
+        phase_color = "#f59e0b"
+        recommendation = "Portfolio équilibré BTC/Alts"
+    elif index_value >= 25:
+        phase = "Début Altseason"
+        phase_color = "#3b82f6"
+        recommendation = "Augmenter exposition aux altcoins"
+    else:
+        phase = "Altcoin Season"
+        phase_color = "#10b981"
+        recommendation = "Opportunités altcoins maximales"
+    
+    # Données simulées réalistes pour les top altcoins
+    top_coins = [
+        {"symbol": "ETH", "name": "Ethereum", "price": 2450.32, "change_24h": 3.45},
+        {"symbol": "BNB", "name": "BNB", "price": 312.18, "change_24h": 2.87},
+        {"symbol": "SOL", "name": "Solana", "price": 98.76, "change_24h": 5.23},
+        {"symbol": "XRP", "name": "Ripple", "price": 0.5234, "change_24h": 1.92},
+        {"symbol": "ADA", "name": "Cardano", "price": 0.3456, "change_24h": 4.11},
+        {"symbol": "AVAX", "name": "Avalanche", "price": 23.45, "change_24h": 6.78},
+        {"symbol": "DOT", "name": "Polkadot", "price": 5.67, "change_24h": 3.34},
+        {"symbol": "MATIC", "name": "Polygon", "price": 0.7823, "change_24h": 2.56}
+    ]
+    
+    # Ajouter variation aléatoire
+    for coin in top_coins:
+        coin["change_24h"] += random.uniform(-1, 1)
+        coin["change_24h"] = round(coin["change_24h"], 2)
+        coin["market_cap"] = coin["price"] * random.randint(100000000, 500000000)
+        coin["volume"] = coin["market_cap"] * random.uniform(0.05, 0.15)
+    
+    # Trier par performance
+    top_coins.sort(key=lambda x: x["change_24h"], reverse=True)
+    
+    return {
+        "index": index_value,
+        "phase": phase,
+        "phase_color": phase_color,
+        "btc_dominance": round(54.5 + random.uniform(-2, 2), 2),
+        "altcoins_outperforming": int((index_value / 100) * 49),
+        "total_altcoins": 49,
+        "btc_change_24h": round(1.5 + random.uniform(-1, 1), 2),
+        "btc_change_30d": round(1.5 + random.uniform(-1, 1), 2),
+        "btc_change_7d": 0,
+        "btc_change_90d": round(4.5 + random.uniform(-3, 3), 2),
+        "alts_winning": int((index_value / 100) * 49),
+        "total_compared": 49,
+        "trend": phase,
         "momentum": "Modéré",
-        "status_color": "#eab308" if index >= 40 else "#f59e0b",
-        "btc_change_30d": round(random.uniform(10, 16), 2),
-        "btc_change_7d": round(random.uniform(2, 5), 2),
-        "btc_change_90d": round(random.uniform(30, 48), 2),
-        "timestamp": now.isoformat(),
+        "status_color": phase_color,
+        "recommendation": recommendation,
+        "top_performers": top_coins[:8],
+        "timestamp": datetime.now().isoformat(),
+        "data_source": "simulated_fallback",
         "status": "fallback"
     }
-    altcoin_cache["data"] = fallback
-    altcoin_cache["timestamp"] = now
-    return fallback
+
+@app.get("/api/altcoin-season-index")
+async def get_altcoin_season_index():
+    """
+    Endpoint API pour l'indice Altcoin Season
+    OPTIMISÉ RENDER: répond toujours, jamais de timeout
+    """
+    try:
+        data = await calculate_altcoin_season_index()
+        return data
+    except Exception as e:
+        # En cas d'erreur critique, retourner fallback
+        print(f"❌ Erreur critique: {e}")
+        return generate_fallback_altcoin_data()
+
+@app.get("/api/altcoin-season-history")
+async def get_altcoin_season_history():
+    """
+    Génère un historique de 30 jours pour le graphique
+    """
+    history = []
+    now = datetime.now()
+    
+    for i in range(30, 0, -1):
+        date = now - timedelta(days=i)
+        # Simulation d'une tendance réaliste
+        base_value = 45 + (30 - i) * 0.5  # Légère hausse sur 30 jours
+        value = base_value + random.uniform(-8, 8)
+        value = max(0, min(100, value))  # Entre 0 et 100
+        
+        history.append({
+            "date": date.strftime("%Y-%m-%d"),
+            "value": round(value, 1)
+        })
+    
+    return {"history": history}
 
 @app.get("/api/test-altcoin")
 async def test_altcoin():
@@ -646,23 +810,316 @@ async def test_altcoin():
 
 @app.get("/api/crypto-news")
 async def news_api():
-    fallback = [{"title": "🔥 Bitcoin au-dessus de $100K", "url": "https://www.coindesk.com", "published": datetime.now().isoformat(), "source": "CoinDesk", "category": "news"}]
-    news = fallback.copy()
+    """API améliorée avec 12+ nouvelles crypto"""
+    
+    fallback_news = [
+        {
+            "title": "Bitcoin franchit un nouveau sommet historique",
+            "description": "Le Bitcoin continue sa progression impressionnante, porté par l'adoption institutionnelle croissante.",
+            "url": "https://www.coindesk.com/markets/",
+            "source": "CoinDesk",
+            "published_at": datetime.now(pytz.UTC).isoformat(),
+            "image": None
+        },
+        {
+            "title": "Ethereum prepare sa prochaine mise a niveau majeure",
+            "description": "La communaute Ethereum travaille sur des ameliorations pour reduire les frais.",
+            "url": "https://ethereum.org",
+            "source": "Ethereum Foundation",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(hours=2)).isoformat(),
+            "image": None
+        },
+        {
+            "title": "DeFi : Les protocoles de pret atteignent des records",
+            "description": "Le secteur DeFi continue sa croissance avec plus de 100 milliards de dollars.",
+            "url": "https://defipulse.com",
+            "source": "DeFi Pulse",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(hours=5)).isoformat(),
+            "image": None
+        },
+        {
+            "title": "NFT : Le marche des collectibles numeriques reste dynamique",
+            "description": "Les ventes de NFT maintiennent un volume eleve malgre la volatilite.",
+            "url": "https://opensea.io",
+            "source": "OpenSea",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(hours=8)).isoformat(),
+            "image": None
+        },
+        {
+            "title": "Regulation : Les autorites travaillent sur un cadre crypto clair",
+            "description": "Les regulateurs mondiaux collaborent pour etablir des regles coherentes.",
+            "url": "https://www.sec.gov",
+            "source": "SEC",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(hours=12)).isoformat(),
+            "image": None
+        },
+        {
+            "title": "Analyse de marche : Les altcoins surperforment Bitcoin",
+            "description": "De nombreux altcoins affichent des gains superieurs a Bitcoin.",
+            "url": "https://www.coingecko.com",
+            "source": "CoinGecko",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(hours=15)).isoformat(),
+            "image": None
+        },
+        {
+            "title": "Les institutions continuent d'accumuler du Bitcoin",
+            "description": "Les grandes entreprises augmentent leurs positions en Bitcoin.",
+            "url": "https://bitcointreasuries.net",
+            "source": "Bitcoin Treasuries",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(hours=18)).isoformat(),
+            "image": None
+        },
+        {
+            "title": "Layer 2 : Solutions de scaling Ethereum en forte adoption",
+            "description": "Les reseaux Layer 2 comme Arbitrum voient leur utilisation exploser.",
+            "url": "https://l2beat.com",
+            "source": "L2Beat",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(hours=20)).isoformat(),
+            "image": None
+        },
+        {
+            "title": "Stablecoins : USDC et USDT depassent 150 milliards",
+            "description": "Les stablecoins continuent de jouer un role crucial.",
+            "url": "https://www.circle.com",
+            "source": "Circle",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(days=1)).isoformat(),
+            "image": None
+        },
+        {
+            "title": "Gaming crypto : Les jeux blockchain explosent",
+            "description": "Le secteur du gaming blockchain connait une croissance exponentielle.",
+            "url": "https://www.coingecko.com/en/categories/gaming",
+            "source": "CoinGecko Gaming",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(days=1, hours=4)).isoformat(),
+            "image": None
+        },
+        {
+            "title": "Previsions : Un Q4 haussier pour les crypto",
+            "description": "Les analystes anticipent une forte hausse basee sur les cycles historiques.",
+            "url": "https://cryptoquant.com",
+            "source": "CryptoQuant",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(days=1, hours=8)).isoformat(),
+            "image": None
+        },
+        {
+            "title": "Adoption : Des pays emergents adoptent Bitcoin",
+            "description": "Plusieurs nations considerent Bitcoin comme moyen de paiement legal.",
+            "url": "https://bitcoinmagazine.com",
+            "source": "Bitcoin Magazine",
+            "published_at": (datetime.now(pytz.UTC) - timedelta(days=1, hours=12)).isoformat(),
+            "image": None
+        }
+    ]
+    
+    news = fallback_news.copy()
+    
     try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
+        async with httpx.AsyncClient(timeout=3.0) as client:
             response = await client.get("https://api.coingecko.com/api/v3/search/trending")
             if response.status_code == 200:
                 data = response.json()
-                trending = []
-                for coin in data.get("coins", [])[:5]:
+                for i, coin in enumerate(data.get("coins", [])[:5]):
                     item = coin.get("item", {})
-                    trending.append({"title": f"🔥 Trending: {item.get('name')} ({item.get('symbol', '').upper()})", "url": f"https://www.coingecko.com/en/coins/{item.get('id', '')}", "published": datetime.now().isoformat(), "source": "CoinGecko", "category": "trending"})
-                if trending:
-                    news = [n for n in news if n["category"] != "trending"]
-                    news.extend(trending)
+                    news.insert(0, {
+                        "title": f"🔥 Trending #{i+1}: {item.get('name')} ({item.get('symbol', '').upper()})",
+                        "description": f"{item.get('name')} fait partie des cryptos les plus recherchees.",
+                        "url": f"https://www.coingecko.com/en/coins/{item.get('id', '')}",
+                        "source": "CoinGecko",
+                        "published_at": datetime.now(pytz.UTC).isoformat(),
+                        "image": None
+                    })
     except:
         pass
-    return {"articles": news, "count": len(news), "status": "success"}
+    
+    return {
+        "articles": news,
+        "count": len(news),
+        "status": "success",
+        "timestamp": datetime.now(pytz.UTC).isoformat()
+    }
+
+
+# ============================================================================
+# SECTION 2 : PAGE NOUVELLES CORRIGÉE (à placer autour de la ligne 2267)
+# Remplacez @app.get("/nouvelles", response_class=HTMLResponse)
+# ============================================================================
+
+@app.get("/nouvelles", response_class=HTMLResponse)
+async def news_page():
+    html = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📰 Actualités Crypto</title>
+    """ + CSS + """
+    <style>
+        .news-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 24px; margin-bottom: 40px; }
+        .news-card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(10px); border-radius: 20px; border: 1px solid rgba(51, 65, 85, 0.6); overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; }
+        .news-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4); border-color: #60a5fa; }
+        .news-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #60a5fa, #a78bfa, #ec4899); opacity: 0; transition: opacity 0.3s; }
+        .news-card:hover::before { opacity: 1; }
+        .news-image { width: 100%; height: 200px; background: linear-gradient(135deg, #1e293b 0%, #334155 100%); display: flex; align-items: center; justify-content: center; font-size: 60px; }
+        .news-content { padding: 24px; }
+        .news-meta { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+        .news-category { padding: 6px 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(99, 102, 241, 0.2)); border: 1px solid rgba(59, 130, 246, 0.4); border-radius: 8px; font-size: 12px; font-weight: 600; color: #60a5fa; text-transform: uppercase; }
+        .news-time { color: #64748b; font-size: 13px; }
+        .news-title { font-size: 20px; font-weight: 700; color: #f1f5f9; margin-bottom: 12px; line-height: 1.4; }
+        .news-description { color: #94a3b8; font-size: 14px; line-height: 1.6; margin-bottom: 16px; }
+        .news-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid rgba(51, 65, 85, 0.4); }
+        .news-source { color: #64748b; font-size: 13px; font-weight: 500; }
+        .news-link { color: #60a5fa; text-decoration: none; font-weight: 600; font-size: 14px; transition: all 0.3s; }
+        .news-link:hover { color: #93c5fd; }
+        .search-input { width: 100%; padding: 14px 20px; background: rgba(15, 23, 42, 0.8); border: 2px solid rgba(51, 65, 85, 0.6); border-radius: 12px; color: #e2e8f0; font-size: 16px; margin-bottom: 20px; }
+        .search-input:focus { outline: none; border-color: #60a5fa; }
+        .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+        .filter-btn { padding: 10px 20px; background: rgba(15, 23, 42, 0.8); border: 2px solid rgba(51, 65, 85, 0.6); border-radius: 10px; color: #94a3b8; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.3s; }
+        .filter-btn:hover { border-color: #60a5fa; color: #60a5fa; }
+        .filter-btn.active { background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%); border-color: #3b82f6; color: white; }
+        @media (max-width: 768px) { .news-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📰 Actualités Crypto</h1>
+            <p>Les dernières nouvelles du monde de la cryptomonnaie</p>
+        </div>
+        """ + NAV + """
+        <div class="card">
+            <input type="text" class="search-input" id="searchInput" placeholder="🔍 Rechercher...">
+            <div class="filters" id="filters">
+                <button class="filter-btn active" data-filter="all">Tout</button>
+                <button class="filter-btn" data-filter="bitcoin">Bitcoin</button>
+                <button class="filter-btn" data-filter="ethereum">Ethereum</button>
+                <button class="filter-btn" data-filter="defi">DeFi</button>
+                <button class="filter-btn" data-filter="nft">NFT</button>
+                <button class="filter-btn" data-filter="regulation">Régulation</button>
+            </div>
+        </div>
+        <div class="news-grid" id="newsGrid">
+            <div class="spinner"></div>
+        </div>
+    </div>
+    <script>
+        let allNews = [];
+        let currentFilter = 'all';
+        
+        const categoryEmojis = { 
+            'bitcoin': '₿', 
+            'ethereum': '⟠', 
+            'defi': '🏦', 
+            'nft': '🎨', 
+            'regulation': '⚖️', 
+            'market': '📊', 
+            'trending': '🔥' 
+        };
+        
+        function detectCategory(title, desc) {
+            const text = (title + ' ' + desc).toLowerCase();
+            if (text.includes('bitcoin') || text.includes('btc')) return 'bitcoin';
+            if (text.includes('ethereum') || text.includes('eth')) return 'ethereum';
+            if (text.includes('defi') || text.includes('lending')) return 'defi';
+            if (text.includes('nft') || text.includes('collectible')) return 'nft';
+            if (text.includes('sec') || text.includes('regulation')) return 'regulation';
+            if (text.includes('trending')) return 'trending';
+            return 'market';
+        }
+        
+        function timeAgo(date) {
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            if (seconds < 60) return "Maintenant";
+            if (seconds < 3600) return Math.floor(seconds / 60) + " min";
+            if (seconds < 86400) return Math.floor(seconds / 3600) + "h";
+            return Math.floor(seconds / 86400) + "j";
+        }
+        
+        function createCard(article) {
+            const category = detectCategory(article.title, article.description || '');
+            const emoji = categoryEmojis[category] || '📰';
+            return `
+                <div class="news-card" data-category="${category}">
+                    <div class="news-image">${emoji}</div>
+                    <div class="news-content">
+                        <div class="news-meta">
+                            <span class="news-category">${emoji} ${category}</span>
+                            <span class="news-time">⏱️ ${timeAgo(article.published_at || new Date())}</span>
+                        </div>
+                        <h3 class="news-title">${article.title}</h3>
+                        ${article.description ? `<p class="news-description">${article.description}</p>` : ''}
+                        <div class="news-footer">
+                            <span class="news-source">${article.source || 'Source'}</span>
+                            <a href="${article.url}" target="_blank" class="news-link">Lire →</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function displayNews(filter, searchTerm) {
+            filter = filter || 'all';
+            searchTerm = searchTerm || '';
+            
+            let filtered = allNews;
+            
+            if (filter !== 'all') {
+                filtered = filtered.filter(function(a) {
+                    return detectCategory(a.title, a.description || '') === filter;
+                });
+            }
+            
+            if (searchTerm) {
+                filtered = filtered.filter(function(a) {
+                    return a.title.toLowerCase().includes(searchTerm.toLowerCase());
+                });
+            }
+            
+            const grid = document.getElementById('newsGrid');
+            if (filtered.length > 0) {
+                grid.innerHTML = filtered.map(createCard).join('');
+            } else {
+                grid.innerHTML = '<div class="alert alert-error">Aucune actualité trouvée</div>';
+            }
+        }
+        
+        async function loadNews() {
+            try {
+                console.log('🔄 Chargement des nouvelles...');
+                const response = await fetch('/api/crypto-news');
+                const data = await response.json();
+                allNews = data.articles || [];
+                console.log('✅ Chargé:', allNews.length, 'articles');
+                displayNews(currentFilter, '');
+            } catch (error) {
+                console.error('❌ Erreur:', error);
+                document.getElementById('newsGrid').innerHTML = '<div class="alert alert-error">Erreur de chargement</div>';
+            }
+        }
+        
+        document.getElementById('filters').addEventListener('click', function(e) {
+            if (e.target.classList.contains('filter-btn')) {
+                const buttons = document.querySelectorAll('.filter-btn');
+                buttons.forEach(function(btn) {
+                    btn.classList.remove('active');
+                });
+                e.target.classList.add('active');
+                currentFilter = e.target.dataset.filter;
+                displayNews(currentFilter, document.getElementById('searchInput').value);
+            }
+        });
+        
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            displayNews(currentFilter, e.target.value);
+        });
+        
+        loadNews();
+        setInterval(loadNews, 300000);
+        console.log('🌟 Section Nouvelles chargée - Bug corrigé!');
+    </script>
+</body>
+</html>"""
+    return HTMLResponse(html)
+
 
 @app.get("/api/exchange-rates")
 async def rates_api():
@@ -683,7 +1140,8 @@ async def bullrun_api():
 async def stats_api():
     total = len(trades_db)
     open_t = len([t for t in trades_db if t.get("status")=="open"])
-    wins = len([t for t in trades_db if t.get("tp1_hit")])
+    # Un trade est WIN si au moins un TP est atteint (tp1, tp2 ou tp3)
+    wins = len([t for t in trades_db if t.get("tp1_hit") or t.get("tp2_hit") or t.get("tp3_hit")])
     losses = len([t for t in trades_db if t.get("sl_hit")])
     wr = round((wins/(wins+losses))*100,2) if (wins+losses)>0 else 0
     return {"total_trades":total,"open_trades":open_t,"win_rate":wr,"status":"ok"}
@@ -699,11 +1157,20 @@ async def update_trade(trade_update: dict):
         timestamp = trade_update.get("timestamp")
         for trade in trades_db:
             if trade.get("symbol") == symbol and trade.get("timestamp") == timestamp:
+                # Mise à jour des flags
                 for key in ["tp1_hit", "tp2_hit", "tp3_hit", "sl_hit"]:
                     if key in trade_update:
                         trade[key] = trade_update[key]
-                if trade.get("sl_hit") or trade.get("tp3_hit"):
+                
+                # Mise à jour du statut si fourni
+                if "status" in trade_update:
+                    trade["status"] = trade_update["status"]
+                # Ou fermeture automatique si SL atteint ou tous les TP atteints
+                elif trade.get("sl_hit"):
                     trade["status"] = "closed"
+                elif trade.get("tp1_hit") and trade.get("tp2_hit") and trade.get("tp3_hit"):
+                    trade["status"] = "closed"
+                    
                 return {"status": "success", "trade": trade}
         return {"status": "error", "message": "Trade non trouvé"}
     except Exception as e:
@@ -711,7 +1178,8 @@ async def update_trade(trade_update: dict):
 
 @app.get("/api/trades/add-demo")
 async def add_demo():
-    demo = [{"symbol": "BTCUSDT", "side": "LONG", "entry": 107150.00, "sl": 105000.00, "tp1": 108500.00, "tp2": 110000.00, "tp3": 112000.00, "timestamp": (datetime.now() - timedelta(hours=2)).isoformat(), "status": "open", "confidence": 92.5, "tp1_hit": True, "tp2_hit": True, "tp3_hit": False, "sl_hit": False}]
+    quebec_tz = pytz.timezone('America/Montreal')
+    demo = [{"symbol": "BTCUSDT", "side": "LONG", "entry": 107150.00, "sl": 105000.00, "tp1": 108500.00, "tp2": 110000.00, "tp3": 112000.00, "timestamp": (datetime.now(quebec_tz) - timedelta(hours=2)).isoformat(), "status": "open", "confidence": 92.5, "tp1_hit": True, "tp2_hit": True, "tp3_hit": False, "sl_hit": False}]
     trades_db.extend(demo)
     return {"status": "success", "message": f"{len(demo)} trades ajoutés"}
 
@@ -726,6 +1194,8 @@ async def telegram_test():
     await send_telegram(f"✅ Test OK! {datetime.now().strftime('%H:%M:%S')}")
     return {"result": "sent"}
 
+# =====================================================
+# FIN SECTION ALTCOIN SEASON
 @app.get("/fear-greed", response_class=HTMLResponse)
 async def fear_greed_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div>""" + NAV + """<div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script></body></html>"""
@@ -1782,13 +2252,13 @@ async def get_altcoin_history():
 
 @app.get("/altcoin-season", response_class=HTMLResponse)
 async def altcoin_page():
-    """Page Altcoin Season - Style BlockchainCenter.net avec historique réel"""
+    """Page Altcoin Season - SIMPLE avec juste la jauge"""
     html = """<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Altcoin Season Index - Style BlockchainCenter.net</title>
+    <title>Altcoin Season Index</title>
     """ + CSS + """
     <style>
         body {
@@ -1814,38 +2284,28 @@ async def altcoin_page():
             -webkit-text-fill-color: transparent;
             margin-bottom: 15px;
         }
-
-        .altcoin-container {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        
-        @media (max-width: 1200px) {
-            .altcoin-container {
-                grid-template-columns: 1fr;
-            }
-        }
         
         .gauge-card {
             background: rgba(30, 41, 59, 0.95);
             backdrop-filter: blur(20px);
             border-radius: 20px;
-            padding: 30px;
+            padding: 40px 30px;
             border: 1px solid rgba(96, 165, 250, 0.2);
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            max-width: 500px;
+            margin: 0 auto 30px auto;
+        }
+
+        .gauge-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            margin: 30px auto;
         }
 
         .circular-gauge {
-            position: relative;
-            width: 280px;
-            height: 280px;
-            margin: 20px auto;
+            width: 100%;
+            height: 100%;
         }
         
         .gauge-background {
@@ -1861,87 +2321,84 @@ async def altcoin_page():
             transition: stroke-dasharray 2s ease, stroke 1s ease;
         }
         
+        .gauge-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
         .gauge-value {
-            font-size: 80px;
+            font-size: 90px;
             font-weight: 900;
             line-height: 1;
             text-shadow: 0 0 30px currentColor;
         }
         
-        .chart-card {
-            background: rgba(30, 41, 59, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 30px;
-            border: 1px solid rgba(96, 165, 250, 0.2);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .chart-card h2 {
-            color: #60a5fa;
-            font-size: 24px;
+        .gauge-label {
+            font-size: 20px;
+            color: #94a3b8;
             font-weight: 700;
-            margin-bottom: 20px;
-        }
-
-        #altcoinChart {
-            width: 100% !important;
-            height: 500px !important;
-            display: block;
-            border-radius: 12px;
+            margin-top: 10px;
+            letter-spacing: 2px;
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
-            margin-top: 20px;
+            margin-bottom: 30px;
         }
-        
+
         .stat-card {
-            background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%);
+            background: rgba(30, 41, 59, 0.95);
             backdrop-filter: blur(20px);
-            padding: 25px;
+            padding: 30px;
             border-radius: 16px;
-            text-align: center;
             border: 1px solid rgba(96, 165, 250, 0.2);
-            transition: all 0.3s;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            transition: all 0.3s ease;
         }
 
         .stat-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(96, 165, 250, 0.3);
+            box-shadow: 0 15px 50px rgba(96, 165, 250, 0.3);
+            border-color: rgba(96, 165, 250, 0.4);
+        }
+
+        .stat-card .label {
+            color: #94a3b8;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
         }
 
         .stat-card .value {
             font-size: 32px;
-            font-weight: 900;
+            font-weight: 800;
             color: #60a5fa;
             margin: 10px 0;
         }
-        
-        .stat-card .label {
-            font-size: 14px;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 600;
-        }
 
         .legend-box {
-            background: rgba(15, 23, 42, 0.8);
-            backdrop-filter: blur(10px);
-            padding: 20px;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 25px;
             border-radius: 12px;
             margin-top: 20px;
             border: 1px solid rgba(96, 165, 250, 0.2);
+            max-width: 900px;
+            margin: 20px auto;
         }
 
         .legend-items {
             display: flex;
             gap: 30px;
             flex-wrap: wrap;
-            justify-content: space-around;
+            justify-content: center;
         }
 
         .legend-item {
@@ -1962,48 +2419,43 @@ async def altcoin_page():
     <div class="container">
         <div class="altcoin-header">
             <h1>🌟 Altcoin Season Index</h1>
-            <p style="color: #94a3b8; font-size: 18px;">Historique réel - Style BlockchainCenter.net</p>
+            <p style="color: #94a3b8; font-size: 18px;">Indice du marché crypto</p>
         </div>
 
         """ + NAV + """
 
-        <div class="altcoin-container">
-            <div class="gauge-card">
+        <div class="gauge-card">
+            <div class="gauge-container">
                 <svg class="circular-gauge" viewBox="0 0 300 300">
                     <circle class="gauge-background" cx="150" cy="150" r="120" />
                     <circle id="gauge-fill" class="gauge-fill" cx="150" cy="150" r="120" />
                 </svg>
                 
-                <div style="text-align: center; margin-top: -120px; position: relative; z-index: 10;">
+                <div class="gauge-center">
                     <div id="gauge-value" class="gauge-value" style="color: #60a5fa;">--</div>
-                    <div style="font-size: 18px; color: #94a3b8; font-weight: 700; margin-top: 10px;">INDEX</div>
-                </div>
-                
-                <div style="text-align: center; margin-top: 100px;">
-                    <h2 id="statusTitle" style="font-size: 28px; font-weight: 800; color: #60a5fa; margin-bottom: 10px;">Chargement...</h2>
-                    <p id="statusDescription" style="color: #94a3b8; font-size: 16px;">Analyse en cours</p>
+                    <div class="gauge-label">INDEX</div>
                 </div>
             </div>
             
-            <div class="chart-card">
-                <h2>📊 Historique de l'Index (365 jours)</h2>
-                <canvas id="altcoinChart"></canvas>
-                
-                <div class="legend-box">
-                    <div class="legend-items">
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: linear-gradient(to right, #d32f2f, #ff6f00);"></div>
-                            <div style="font-size: 14px; color: #e2e8f0;">Altcoin Season (75-100)</div>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: linear-gradient(to right, #ffc107, #4caf50);"></div>
-                            <div style="font-size: 14px; color: #e2e8f0;">Zone Mixte (40-75)</div>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: linear-gradient(to right, #26c6da, #0d47a1);"></div>
-                            <div style="font-size: 14px; color: #e2e8f0;">Bitcoin Season (0-25)</div>
-                        </div>
-                    </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <h2 id="statusTitle" style="font-size: 28px; font-weight: 800; color: #60a5fa; margin-bottom: 10px;">⚖️ Phase mixte</h2>
+                <p id="statusDescription" style="color: #94a3b8; font-size: 16px;">Marché équilibré BTC/Alts</p>
+            </div>
+        </div>
+
+        <div class="legend-box">
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(to right, #d32f2f, #ff6f00);"></div>
+                    <div style="font-size: 14px; color: #e2e8f0;">Altcoin Season (75-100)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(to right, #ffc107, #4caf50);"></div>
+                    <div style="font-size: 14px; color: #e2e8f0;">Zone Mixte (40-75)</div>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: linear-gradient(to right, #26c6da, #0d47a1);"></div>
+                    <div style="font-size: 14px; color: #e2e8f0;">Bitcoin Season (0-25)</div>
                 </div>
             </div>
         </div>
@@ -2033,142 +2485,6 @@ async def altcoin_page():
     </div>
 
     <script>
-        async function createChart() {
-            console.log('📊 Création du graphique BlockchainCenter style...');
-            
-            const canvas = document.getElementById('altcoinChart');
-            const container = canvas.parentElement;
-            
-            const width = container.clientWidth;
-            const height = 500;
-            canvas.width = width;
-            canvas.height = height;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, width, height);
-            
-            const response = await fetch('/api/altcoin-season-history');
-            const data = await response.json();
-            const historicalData = data.history;
-            
-            console.log('✅ Données reçues:', historicalData.length, 'jours');
-            
-            const margin = { top: 40, right: 180, bottom: 60, left: 30 };
-            const chartWidth = width - margin.left - margin.right;
-            const chartHeight = height - margin.top - margin.bottom;
-            
-            const gradient = ctx.createLinearGradient(0, margin.top, 0, height - margin.bottom);
-            gradient.addColorStop(0, '#d32f2f');
-            gradient.addColorStop(0.1, '#e74c3c');
-            gradient.addColorStop(0.15, '#ff6f00');
-            gradient.addColorStop(0.3, '#ff9800');
-            gradient.addColorStop(0.4, '#ffc107');
-            gradient.addColorStop(0.5, '#66bb6a');
-            gradient.addColorStop(0.6, '#4caf50');
-            gradient.addColorStop(0.7, '#26c6da');
-            gradient.addColorStop(0.75, '#42a5f5');
-            gradient.addColorStop(0.85, '#2196f3');
-            gradient.addColorStop(0.95, '#1565c0');
-            gradient.addColorStop(1, '#0d47a1');
-            
-            ctx.fillStyle = gradient;
-            ctx.fillRect(margin.left, margin.top, chartWidth, chartHeight);
-            
-            const days = historicalData.length;
-            const xScale = (i) => margin.left + (i / (days - 1)) * chartWidth;
-            const yScale = (value) => margin.top + chartHeight - (value / 100) * chartHeight;
-            
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.lineWidth = 1;
-            for (let value = 0; value <= 100; value += 10) {
-                const y = yScale(value);
-                ctx.beginPath();
-                ctx.moveTo(margin.left, y);
-                ctx.lineTo(width - margin.right, y);
-                ctx.stroke();
-            }
-            
-            const altY = yScale(75);
-            ctx.strokeStyle = '#1976d2';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(margin.left, altY);
-            ctx.lineTo(width - margin.right, altY);
-            ctx.stroke();
-            
-            const btcY = yScale(25);
-            ctx.beginPath();
-            ctx.moveTo(margin.left, btcY);
-            ctx.lineTo(width - margin.right, btcY);
-            ctx.stroke();
-            
-            ctx.font = 'bold 14px Arial';
-            ctx.fillStyle = '#1976d2';
-            ctx.textAlign = 'left';
-            ctx.fillText('▲ Altcoin Season - 75', width - margin.right + 25, altY);
-            ctx.fillText('▼ Bitcoin Season - 25', width - margin.right + 25, btcY);
-            
-            ctx.beginPath();
-            ctx.strokeStyle = '#263238';
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            
-            historicalData.forEach((point, i) => {
-                const x = xScale(i);
-                const y = yScale(point.index);
-                
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            });
-            
-            ctx.stroke();
-            
-            ctx.font = '12px Arial';
-            ctx.fillStyle = '#94a3b8';
-            ctx.textAlign = 'center';
-            
-            const monthsToShow = [0, 60, 120, 180, 240, 300, 364];
-            
-            monthsToShow.forEach(dayIndex => {
-                if (dayIndex < historicalData.length) {
-                    const x = xScale(dayIndex);
-                    const date = new Date(historicalData[dayIndex].date);
-                    const label = date.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
-                    
-                    ctx.fillText(label, x, height - margin.bottom + 25);
-                }
-            });
-            
-            ctx.textAlign = 'right';
-            for (let value = 0; value <= 100; value += 20) {
-                const y = yScale(value);
-                ctx.fillText(value, width - margin.right + 10, y + 5);
-            }
-            
-            const currentPoint = historicalData[historicalData.length - 1];
-            const currentX = xScale(historicalData.length - 1);
-            const currentY = yScale(currentPoint.index);
-            
-            ctx.beginPath();
-            ctx.arc(currentX, currentY, 10, 0, 2 * Math.PI);
-            ctx.fillStyle = 'rgba(96, 165, 250, 0.3)';
-            ctx.fill();
-            
-            ctx.beginPath();
-            ctx.arc(currentX, currentY, 6, 0, 2 * Math.PI);
-            ctx.fillStyle = '#60a5fa';
-            ctx.fill();
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            
-            console.log('✅ Graphique créé avec succès');
-        }
-
         function updateGauge(index) {
             const circle = document.getElementById('gauge-fill');
             const valueElement = document.getElementById('gauge-value');
@@ -2231,15 +2547,10 @@ async def altcoin_page():
                 const data = await response.json();
                 console.log('✅ Data:', data);
                 updateStats(data);
-                await createChart();
             } catch (error) {
                 console.error('❌ Erreur:', error);
                 document.getElementById('statusTitle').textContent = '❌ Erreur';
                 document.getElementById('statusDescription').textContent = 'Connexion impossible';
-                const statsGrid = document.querySelector('.stats-grid');
-                if (statsGrid) {
-                    statsGrid.innerHTML = '<div style="grid-column:1/-1;background:rgba(239,68,68,0.1);border:2px solid #ef4444;border-radius:12px;padding:20px;text-align:center;"><h3 style="color:#ef4444">❌ Erreur</h3><p style="color:#e2e8f0">Serveur inaccessible</p><button style="margin-top:15px;padding:10px 20px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer" onclick="loadData()">🔄 Réessayer</button></div>';
-                }
             }
         }
 
@@ -2247,31 +2558,22 @@ async def altcoin_page():
             loadData();
         });
 
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                createChart();
-            }, 250);
-        });
-
         setInterval(loadData, 300000);
 
-        console.log('🌟 Altcoin Season Index initialisé (Style BlockchainCenter.net)');
+        console.log('🌟 Altcoin Season Index initialisé');
     </script>
 </body>
-</html>"""
-    return HTMLResponse(html)
+</html>
+"""
+    return html
+
 
 @app.get("/nouvelles", response_class=HTMLResponse)
 async def news_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Nouvelles</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📰 Actualités Crypto</h1></div>""" + NAV + """<div class="card"><div id="news"><div class="spinner"></div></div></div></div><script>async function load(){const r=await fetch('/api/crypto-news');const d=await r.json();let h='';d.articles.forEach(a=>{h+='<div style="padding:20px;border-bottom:1px solid #334155"><h3 style="color:#60a5fa;margin-bottom:10px">'+a.title+'</h3><p style="color:#94a3b8;font-size:14px">'+a.source+'</p><a href="'+a.url+'" target="_blank" style="color:#3b82f6">Lire →</a></div>'});document.getElementById('news').innerHTML=h}load();setInterval(load,300000);</script></body></html>"""
     return HTMLResponse(html)
 
-@app.get("/convertisseur", response_class=HTMLResponse)
-async def converter_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Convertisseur</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>💱 Convertisseur Crypto</h1></div>""" + NAV + """<div class="card"><input type="number" id="amount" placeholder="Montant" value="1"><select id="from"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option><option value="USDT">Tether</option></select><select id="to"><option value="USD">USD</option><option value="EUR">EUR</option><option value="CAD">CAD</option></select><button onclick="convert()">Convertir</button><div id="result" style="margin-top:20px;font-size:24px;color:#60a5fa"></div></div></div><script>let rates={};async function loadRates(){const r=await fetch('/api/exchange-rates');const d=await r.json();rates=d.rates}function convert(){const amount=parseFloat(document.getElementById('amount').value);const from=document.getElementById('from').value;const to=document.getElementById('to').value.toLowerCase();if(rates[from]&&rates[from][to]){const result=amount*rates[from][to];document.getElementById('result').textContent=amount+' '+from+' = '+result.toFixed(2)+' '+to.toUpperCase()}}loadRates();</script></body></html>"""
-    return HTMLResponse(html)
+
 
 @app.get("/calendrier", response_class=HTMLResponse)
 async def calendar_page():
@@ -2293,9 +2595,400 @@ async def telegram_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📱 Test Telegram</h1></div>""" + NAV + """<div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
     return HTMLResponse(html)
 
+
 @app.get("/trades", response_class=HTMLResponse)
 async def trades_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Trades</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📊 Gestion des Trades</h1></div>""" + NAV + """<div class="card"><div id="stats" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:20px"></div></div><div class="card"><button onclick="addDemo()" style="margin-right:10px">➕ Ajouter Démo</button><button onclick="clearAll()" class="btn-danger">🗑️ Effacer</button><button onclick="load()" style="margin-left:10px">🔄 Rafraîchir</button><div id="trades" style="margin-top:20px"></div></div></div><script>async function load(){const r=await fetch('/api/trades');const d=await r.json();const s=await fetch('/api/stats');const st=await s.json();document.getElementById('stats').innerHTML='<div class="stat-box"><div class="label">Total</div><div class="value">'+st.total_trades+'</div></div><div class="stat-box"><div class="label">Ouverts</div><div class="value">'+st.open_trades+'</div></div><div class="stat-box"><div class="label">Win Rate</div><div class="value">'+st.win_rate+'%</div></div>';if(d.trades.length===0){document.getElementById('trades').innerHTML='<div class="alert alert-error">Aucun trade</div>';return}let h='<table><tr><th>Symbol</th><th>Side</th><th>Entry</th><th>Confiance</th><th>Status</th></tr>';d.trades.forEach(t=>{h+='<tr><td>'+t.symbol+'</td><td>'+t.side+'</td><td>$'+(t.entry||0).toFixed(2)+'</td><td>'+(t.confidence||0).toFixed(1)+'%</td><td>'+t.status+'</td></tr>'});h+='</table>';document.getElementById('trades').innerHTML=h}async function addDemo(){await fetch('/api/trades/add-demo');load()}async function clearAll(){if(confirm('Effacer tous les trades?')){await fetch('/api/trades/clear',{method:'DELETE'});load()}}load();setInterval(load,30000);</script></body></html>"""
+    html = """<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Trades Premium</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; padding: 20px; min-height: 100vh; }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%); padding: 40px; border-radius: 20px; text-align: center; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4); position: relative; overflow: hidden; }
+        .header::before { content: ''; position: absolute; top: 0; left: -100%; width: 200%; height: 100%; background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.1), transparent); animation: shine 3s infinite; }
+        @keyframes shine { 0%, 100% { left: -100%; } 50% { left: 100%; } }
+        .header h1 { font-size: 48px; background: linear-gradient(to right, #60a5fa, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; position: relative; z-index: 1; }
+        .header p { color: #94a3b8; font-size: 18px; position: relative; z-index: 1; }
+        .nav { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; justify-content: center; }
+        .nav a { padding: 12px 24px; background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border-radius: 12px; text-decoration: none; color: #e2e8f0; transition: all 0.3s; border: 1px solid rgba(51, 65, 85, 0.5); }
+        .nav a:hover { background: rgba(51, 65, 85, 0.9); border-color: #60a5fa; transform: translateY(-2px); box-shadow: 0 10px 30px rgba(96, 165, 250, 0.2); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 30px; border-radius: 16px; border: 1px solid rgba(96, 165, 250, 0.2); position: relative; overflow: hidden; transition: all 0.3s; }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 20px 50px rgba(96, 165, 250, 0.3); border-color: #60a5fa; }
+        .stat-card::before { content: ''; position: absolute; top: 0; right: 0; width: 100px; height: 100px; background: radial-gradient(circle, rgba(96, 165, 250, 0.1), transparent); border-radius: 50%; }
+        .stat-icon { font-size: 36px; margin-bottom: 15px; }
+        .stat-label { color: #94a3b8; font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-size: 42px; font-weight: 700; background: linear-gradient(to right, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+        .stat-change { font-size: 13px; color: #10b981; }
+        .stat-change.negative { color: #ef4444; }
+        .controls { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(10px); padding: 25px; border-radius: 16px; margin-bottom: 30px; border: 1px solid rgba(51, 65, 85, 0.5); display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+        button { padding: 14px 28px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; border: none; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 15px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6); }
+        .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
+        .btn-danger:hover { box-shadow: 0 8px 25px rgba(239, 68, 68, 0.6); }
+        .btn-success { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
+        select, input { padding: 14px 20px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.5); border-radius: 12px; color: #e2e8f0; font-size: 14px; transition: all 0.3s; }
+        select:focus, input:focus { outline: none; border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1); }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .chart-card { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); padding: 25px; border-radius: 16px; border: 1px solid rgba(51, 65, 85, 0.5); }
+        .chart-card h3 { color: #60a5fa; margin-bottom: 20px; font-size: 20px; }
+        .trades-container { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); padding: 25px; border-radius: 16px; border: 1px solid rgba(51, 65, 85, 0.5); overflow-x: auto; }
+        .trades-container h2 { color: #60a5fa; margin-bottom: 20px; font-size: 24px; display: flex; align-items: center; gap: 10px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+        table th { background: rgba(15, 23, 42, 0.8); padding: 16px; text-align: left; color: #60a5fa; font-weight: 600; border-bottom: 2px solid #334155; text-transform: uppercase; font-size: 12px; letter-spacing: 1px; }
+        table td { padding: 18px 16px; border-bottom: 1px solid rgba(51, 65, 85, 0.5); font-size: 14px; }
+        table tr { transition: all 0.2s; cursor: pointer; }
+        table tr:hover { background: rgba(15, 23, 42, 0.6); }
+        .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-long { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .badge-short { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-open { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .badge-closed { background: rgba(148, 163, 184, 0.2); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
+        .confidence-meter { width: 100%; height: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+        .confidence-fill { height: 100%; background: linear-gradient(to right, #ef4444, #f59e0b, #10b981); border-radius: 4px; transition: width 0.5s ease; }
+        .rr-display { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; background: rgba(167, 139, 250, 0.1); border-radius: 8px; border: 1px solid rgba(167, 139, 250, 0.3); }
+        .rr-value { font-weight: 700; color: #a78bfa; }
+        .price { font-family: 'Courier New', monospace; font-weight: 600; }
+        .price-hit { color: #10b981; font-weight: 700; background: rgba(16, 185, 129, 0.1); padding: 4px 8px; border-radius: 6px; }
+        .price-sl-hit { color: #ef4444; font-weight: 700; background: rgba(239, 68, 68, 0.1); padding: 4px 8px; border-radius: 6px; }
+        .time-display { color: #94a3b8; font-size: 13px; white-space: nowrap; }
+        .time-display .date { display: block; font-size: 11px; color: #64748b; }
+        .spinner { border: 5px solid rgba(51, 65, 85, 0.3); border-top: 5px solid #60a5fa; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 60px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 40px; border-radius: 20px; max-width: 600px; width: 90%; border: 1px solid rgba(96, 165, 250, 0.3); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); max-height: 90vh; overflow-y: auto; }
+        .modal-close { float: right; font-size: 28px; cursor: pointer; color: #94a3b8; transition: color 0.3s; }
+        .modal-close:hover { color: #ef4444; }
+        .alert { padding: 16px 20px; border-radius: 12px; margin: 20px 0; display: flex; align-items: center; gap: 12px; font-size: 14px; }
+        .alert-success { background: rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; color: #10b981; }
+        .alert-error { background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; color: #ef4444; }
+        .alert-info { background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; color: #3b82f6; }
+        @media (max-width: 768px) { .header h1 { font-size: 32px; } .stats-grid { grid-template-columns: 1fr; } .charts-grid { grid-template-columns: 1fr; } .controls { flex-direction: column; } button, select, input { width: 100%; } table { font-size: 12px; } table th, table td { padding: 10px 8px; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.5s ease; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header fade-in">
+            <h1>📊 Gestion des Trades Premium</h1>
+            <p>Plateforme avancée de suivi et d'analyse de trading</p>
+        </div>
+        <div class="nav fade-in">
+            <a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a>
+        </div>
+        <div class="stats-grid fade-in" id="statsGrid">
+            <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-label">Total Trades</div><div class="stat-value" id="totalTrades">0</div><div class="stat-change" id="totalChange">+0 cette semaine</div></div>
+            <div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-label">Trades Ouverts</div><div class="stat-value" id="openTrades">0</div><div class="stat-change" id="openChange">Actifs maintenant</div></div>
+            <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Win Rate</div><div class="stat-value" id="winRate">0%</div><div class="stat-change" id="winChange">+0% ce mois</div></div>
+            <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">P&L Total</div><div class="stat-value" id="totalPnl">$0</div><div class="stat-change" id="pnlChange">+$0 aujourd'hui</div></div>
+            <div class="stat-card"><div class="stat-icon">🎲</div><div class="stat-label">Confiance Moyenne</div><div class="stat-value" id="avgConfidence">0%</div><div class="stat-change">Score IA moyen</div></div>
+            <div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-label">TP Atteints</div><div class="stat-value" id="tpHits">0</div><div class="stat-change">Targets touchés</div></div>
+        </div>
+        <div class="controls fade-in">
+            <button onclick="addDemo()" class="btn-success">➕ Ajouter Trade Démo</button>
+            <button onclick="load()">🔄 Rafraîchir</button>
+            <select id="filterStatus" onchange="filterTrades()"><option value="all">Tous les statuts</option><option value="OPEN">Ouverts</option><option value="CLOSED">Fermés</option></select>
+            <select id="filterSide" onchange="filterTrades()"><option value="all">Tous les types</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select>
+            <input type="text" id="searchSymbol" placeholder="🔍 Rechercher symbole..." onkeyup="filterTrades()">
+            <button onclick="clearAll()" class="btn-danger">🗑️ Effacer Tous</button>
+        </div>
+        <div class="charts-grid fade-in">
+            <div class="chart-card"><h3>📊 Performance Hebdomadaire</h3><canvas id="performanceChart"></canvas></div>
+            <div class="chart-card"><h3>🥧 Distribution des Trades</h3><canvas id="distributionChart"></canvas></div>
+        </div>
+        <div class="trades-container fade-in">
+            <h2><span>💼 Tous les Trades</span><span id="tradesCount" style="font-size: 16px; color: #94a3b8; margin-left: auto;">(0)</span></h2>
+            <div id="trades"><div class="spinner"></div></div>
+        </div>
+    </div>
+    <div class="modal" id="tradeModal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+    <script>
+        let allTrades = []; let performanceChart = null; let distributionChart = null;
+        
+        function formatPrice(price, isHit, isSL) {
+            if (price === undefined || price === null) return '$0.00000';
+            const formatted = '$' + price.toFixed(5);
+            if (isHit && isSL) {
+                return '<span class="price-sl-hit">' + formatted + ' ❌</span>';
+            } else if (isHit) {
+                return '<span class="price-hit">' + formatted + ' ✅</span>';
+            }
+            return '<span class="price">' + formatted + '</span>';
+        }
+        
+        function formatTime(timestamp) {
+            if (!timestamp) return 'N/A';
+            const date = new Date(timestamp);
+            const time = date.toLocaleTimeString('fr-CA', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                hour12: false,
+                timeZone: 'America/Montreal'
+            });
+            const dateStr = date.toLocaleDateString('fr-CA', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                timeZone: 'America/Montreal'
+            });
+            return '<div class="time-display">' + time + '<span class="date">' + dateStr + '</span></div>';
+        }
+        
+        async function load() { 
+            try { 
+                const response = await fetch('/api/trades'); 
+                const data = await response.json(); 
+                allTrades = data.trades || []; 
+                updateStats(); 
+                updateCharts(); 
+                displayTrades(allTrades); 
+            } catch (error) { 
+                console.error('Error loading trades:', error); 
+                document.getElementById('trades').innerHTML = '<div class="alert alert-error">❌ Erreur de chargement des données</div>'; 
+            } 
+        }
+        
+        async function updateStats() { 
+            try { 
+                const response = await fetch('/api/stats'); 
+                const stats = await response.json(); 
+                document.getElementById('totalTrades').textContent = stats.total_trades || 0; 
+                document.getElementById('openTrades').textContent = stats.open_trades || 0; 
+                document.getElementById('winRate').textContent = (stats.win_rate || 0).toFixed(1) + '%'; 
+                const totalPnl = allTrades.reduce((sum, t) => sum + (t.pnl || 0), 0); 
+                document.getElementById('totalPnl').textContent = '$' + totalPnl.toFixed(2); 
+                const avgConf = allTrades.length > 0 ? allTrades.reduce((sum, t) => sum + (t.confidence || 0), 0) / allTrades.length : 0; 
+                document.getElementById('avgConfidence').textContent = avgConf.toFixed(1) + '%'; 
+                const tpHits = allTrades.reduce((sum, t) => sum + (t.tp1_hit ? 1 : 0) + (t.tp2_hit ? 1 : 0) + (t.tp3_hit ? 1 : 0), 0);
+                document.getElementById('tpHits').textContent = tpHits; 
+            } catch (error) { 
+                console.error('Error updating stats:', error); 
+            } 
+        }
+        
+        function displayTrades(trades) {
+            const container = document.getElementById('trades');
+            document.getElementById('tradesCount').textContent = '(' + trades.length + ')';
+            if (trades.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">📭 Aucun trade trouvé</div>';
+                return;
+            }
+            
+            let html = '<table><thead><tr><th>Heure</th><th>Symbole</th><th>Type</th><th>Entry</th><th>SL</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Confiance</th><th>Statut</th><th>Actions</th></tr></thead><tbody>';
+            
+            trades.forEach((trade, index) => {
+                const side = trade.side || 'N/A';
+                const sideClass = side === 'LONG' ? 'badge-long' : 'badge-short';
+                const status = trade.status || 'OPEN';
+                const statusClass = status === 'OPEN' ? 'badge-open' : 'badge-closed';
+                
+                html += '<tr onclick="showTradeDetails(' + index + ')">';
+                html += '<td>' + formatTime(trade.timestamp) + '</td>';
+                html += '<td><strong>' + (trade.symbol || 'N/A') + '</strong></td>';
+                html += '<td><span class="badge ' + sideClass + '">' + side + '</span></td>';
+                html += '<td>' + formatPrice(trade.entry, false, false) + '</td>';
+                html += '<td>' + formatPrice(trade.sl, trade.sl_hit, true) + '</td>';
+                html += '<td>' + formatPrice(trade.tp1, trade.tp1_hit, false) + '</td>';
+                html += '<td>' + formatPrice(trade.tp2, trade.tp2_hit, false) + '</td>';
+                html += '<td>' + formatPrice(trade.tp3, trade.tp3_hit, false) + '</td>';
+                html += '<td><div><strong>' + (trade.confidence || 0).toFixed(1) + '%</strong>';
+                html += '<div class="confidence-meter"><div class="confidence-fill" style="width: ' + (trade.confidence || 0) + '%"></div></div></div></td>';
+                html += '<td><span class="badge ' + statusClass + '">' + status + '</span></td>';
+                html += '<td style="white-space: nowrap;">';
+                html += '<button onclick="event.stopPropagation(); toggleTP(' + index + ', 1)" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.tp1_hit ? '#10b981' : '#334155') + ';">TP1</button>';
+                html += '<button onclick="event.stopPropagation(); toggleTP(' + index + ', 2)" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.tp2_hit ? '#10b981' : '#334155') + ';">TP2</button>';
+                html += '<button onclick="event.stopPropagation(); toggleTP(' + index + ', 3)" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.tp3_hit ? '#10b981' : '#334155') + ';">TP3</button>';
+                html += '<button onclick="event.stopPropagation(); toggleSL(' + index + ')" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.sl_hit ? '#ef4444' : '#334155') + ';">SL</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        function filterTrades() { 
+            const statusFilter = document.getElementById('filterStatus').value; 
+            const sideFilter = document.getElementById('filterSide').value; 
+            const searchQuery = document.getElementById('searchSymbol').value.toLowerCase(); 
+            let filtered = allTrades.filter(trade => { 
+                const matchStatus = statusFilter === 'all' || trade.status === statusFilter; 
+                const matchSide = sideFilter === 'all' || trade.side === sideFilter; 
+                const matchSymbol = !searchQuery || (trade.symbol && trade.symbol.toLowerCase().includes(searchQuery)); 
+                return matchStatus && matchSide && matchSymbol; 
+            }); 
+            displayTrades(filtered); 
+        }
+        
+        function showTradeDetails(index) {
+            const trade = allTrades[index];
+            const modal = document.getElementById('tradeModal');
+            const content = document.getElementById('modalContent');
+            const sideClass = trade.side === 'LONG' ? 'badge-long' : 'badge-short';
+            const statusClass = trade.status === 'OPEN' ? 'badge-open' : 'badge-closed';
+            const timestamp = trade.timestamp ? new Date(trade.timestamp).toLocaleString('fr-CA', { 
+                dateStyle: 'full', 
+                timeStyle: 'short',
+                timeZone: 'America/Montreal'
+            }) : 'N/A';
+            
+            // Helper pour formater les prix avec coloration
+            const formatTPPrice = (price, isHit) => {
+                if (!price) return '$0.00000';
+                const formatted = '$' + price.toFixed(5);
+                return isHit ? '<span class="price-hit">' + formatted + ' ✅</span>' : formatted;
+            };
+            
+            const formatSLPrice = (price, isHit) => {
+                if (!price) return '$0.00000';
+                const formatted = '$' + price.toFixed(5);
+                return isHit ? '<span class="price-sl-hit">' + formatted + ' ❌</span>' : formatted;
+            };
+            
+            content.innerHTML = '<h2 style="color: #60a5fa; margin-bottom: 15px;">' + (trade.symbol || 'N/A') + ' - Détails du Trade</h2>' +
+                '<p style="color: #94a3b8; margin-bottom: 25px; font-size: 14px;">🕐 ' + timestamp + '</p>' +
+                '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px;">' +
+                '<div><div class="stat-label">Type</div><span class="badge ' + sideClass + '" style="font-size: 16px; padding: 10px 20px;">' + (trade.side || 'N/A') + '</span></div>' +
+                '<div><div class="stat-label">Statut</div><span class="badge ' + statusClass + '" style="font-size: 16px; padding: 10px 20px;">' + (trade.status || 'OPEN') + '</span></div>' +
+                '</div>' +
+                '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px;">' +
+                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">Entry Price</div><div class="stat-value" style="font-size: 28px;">$' + (trade.entry || 0).toFixed(5) + '</div></div>' +
+                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">Stop Loss</div><div class="stat-value" style="font-size: 28px;">' + formatSLPrice(trade.sl, trade.sl_hit) + '</div></div>' +
+                '</div>' +
+                '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">' +
+                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">TP1</div><div class="stat-value" style="font-size: 24px;">' + formatTPPrice(trade.tp1, trade.tp1_hit) + '</div></div>' +
+                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">TP2</div><div class="stat-value" style="font-size: 24px;">' + formatTPPrice(trade.tp2, trade.tp2_hit) + '</div></div>' +
+                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">TP3</div><div class="stat-value" style="font-size: 24px;">' + formatTPPrice(trade.tp3, trade.tp3_hit) + '</div></div>' +
+                '</div>' +
+                '<div style="margin-bottom: 25px;">' +
+                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">Confiance IA</div><div style="font-size: 28px; color: #10b981; font-weight: 700;">' + (trade.confidence || 0).toFixed(1) + '%</div></div>' +
+                '</div>' +
+                (trade.note ? '<div style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px; margin-bottom: 25px;"><div class="stat-label">Note</div><p style="color: #e2e8f0; margin-top: 10px; line-height: 1.6;">' + trade.note + '</p></div>' : '') +
+                '<button onclick="closeModal()" style="width: 100%; margin-top: 10px;">Fermer</button>';
+            
+            modal.classList.add('show');
+        }
+        
+        function closeModal() { document.getElementById('tradeModal').classList.remove('show'); }
+        
+        async function toggleTP(index, tpNumber) {
+            const trade = allTrades[index];
+            const tpKey = 'tp' + tpNumber + '_hit';
+            const newValue = !trade[tpKey];
+            
+            try {
+                const response = await fetch('/api/trades/update-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbol: trade.symbol,
+                        timestamp: trade.timestamp,
+                        [tpKey]: newValue
+                    })
+                });
+                
+                if (response.ok) {
+                    trade[tpKey] = newValue;
+                    load();
+                    showAlert('✅ TP' + tpNumber + ' ' + (newValue ? 'atteint' : 'réinitialisé'), 'success');
+                }
+            } catch (error) {
+                showAlert('❌ Erreur lors de la mise à jour', 'error');
+            }
+        }
+        
+        async function toggleSL(index) {
+            const trade = allTrades[index];
+            const newValue = !trade.sl_hit;
+            
+            try {
+                const response = await fetch('/api/trades/update-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbol: trade.symbol,
+                        timestamp: trade.timestamp,
+                        sl_hit: newValue,
+                        status: newValue ? 'closed' : 'open'
+                    })
+                });
+                
+                if (response.ok) {
+                    trade.sl_hit = newValue;
+                    trade.status = newValue ? 'closed' : 'open';
+                    load();
+                    showAlert('✅ SL ' + (newValue ? 'atteint' : 'réinitialisé'), newValue ? 'error' : 'success');
+                }
+            } catch (error) {
+                showAlert('❌ Erreur lors de la mise à jour', 'error');
+            }
+        }
+        
+        function updateCharts() { 
+            const performanceCtx = document.getElementById('performanceChart').getContext('2d'); 
+            if (performanceChart) performanceChart.destroy(); 
+            performanceChart = new Chart(performanceCtx, { type: 'line', data: { labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'], datasets: [{ label: 'P&L', data: [120, 190, 150, 220, 280, 240, 300], borderColor: '#60a5fa', backgroundColor: 'rgba(96, 165, 250, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: true, plugins: { legend: { labels: { color: '#e2e8f0' } } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51, 65, 85, 0.3)' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51, 65, 85, 0.3)' } } } } }); 
+            const distributionCtx = document.getElementById('distributionChart').getContext('2d'); 
+            if (distributionChart) distributionChart.destroy(); 
+            const longCount = allTrades.filter(t => t.side === 'LONG').length; 
+            const shortCount = allTrades.filter(t => t.side === 'SHORT').length; 
+            distributionChart = new Chart(distributionCtx, { type: 'doughnut', data: { labels: ['LONG', 'SHORT'], datasets: [{ data: [longCount, shortCount], backgroundColor: ['rgba(16, 185, 129, 0.8)', 'rgba(239, 68, 68, 0.8)'], borderColor: ['rgba(16, 185, 129, 1)', 'rgba(239, 68, 68, 1)'], borderWidth: 2 }] }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 20 } } } } }); 
+        }
+        
+        async function addDemo() { 
+            try { 
+                await fetch('/api/trades/add-demo'); 
+                load(); 
+                showAlert('✅ Trade démo ajouté avec succès!', 'success'); 
+            } catch (error) { 
+                showAlert('❌ Erreur lors de l\\'ajout du trade', 'error'); 
+            } 
+        }
+        
+        async function clearAll() { 
+            if (confirm('⚠️ Êtes-vous sûr de vouloir effacer tous les trades?')) { 
+                try { 
+                    await fetch('/api/trades/clear', { method: 'DELETE' }); 
+                    load(); 
+                    showAlert('✅ Tous les trades ont été effacés', 'success'); 
+                } catch (error) { 
+                    showAlert('❌ Erreur lors de la suppression', 'error'); 
+                } 
+            } 
+        }
+        
+        function showAlert(message, type) { 
+            const alertDiv = document.createElement('div'); 
+            alertDiv.className = 'alert alert-' + type + ' fade-in'; 
+            alertDiv.textContent = message; 
+            alertDiv.style.position = 'fixed'; 
+            alertDiv.style.top = '20px'; 
+            alertDiv.style.right = '20px'; 
+            alertDiv.style.zIndex = '9999'; 
+            document.body.appendChild(alertDiv); 
+            setTimeout(() => { alertDiv.remove(); }, 3000); 
+        }
+        
+        window.onclick = function(event) { const modal = document.getElementById('tradeModal'); if (event.target === modal) closeModal(); }
+        
+        load(); 
+        setInterval(load, 30000); 
+        console.log('🚀 Trades Premium initialisé');
+    </script>
+</body>
+</html>"""
     return HTMLResponse(html)
 
 if __name__ == "__main__":

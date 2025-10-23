@@ -3511,6 +3511,677 @@ async def trades_page():
 </html>"""
     return HTMLResponse(html)
 
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def calendrier_economique():
+    """Calendrier économique avec événements importants"""
+    
+    # Obtenir la date actuelle en timezone Québec
+    quebec_tz = pytz.timezone('America/Montreal')
+    now = datetime.now(quebec_tz)
+    
+    # Événements économiques (données réelles + structure pour API future)
+    events = [
+        {
+            "date": "2025-10-29",
+            "time": "14:00",
+            "title": "Réunion de la Fed (FOMC)",
+            "description": "Décision sur les taux d'intérêt de la Réserve fédérale américaine",
+            "impact": "high",
+            "category": "fed",
+            "currency": "USD",
+            "forecast": "5.25%",
+            "previous": "5.25%"
+        },
+        {
+            "date": "2025-10-24",
+            "time": "08:30",
+            "title": "PIB Américain (Q3)",
+            "description": "Publication du Produit Intérieur Brut trimestriel des États-Unis",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.8%",
+            "previous": "3.0%"
+        },
+        {
+            "date": "2025-10-25",
+            "time": "07:45",
+            "title": "Décision BCE sur les taux",
+            "description": "Banque Centrale Européenne - Décision de politique monétaire",
+            "impact": "high",
+            "category": "bce",
+            "currency": "EUR",
+            "forecast": "3.75%",
+            "previous": "4.00%"
+        },
+        {
+            "date": "2025-10-24",
+            "time": "08:30",
+            "title": "Demandes d'allocations chômage",
+            "description": "Données hebdomadaires sur le chômage aux États-Unis",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "215K",
+            "previous": "220K"
+        },
+        {
+            "date": "2025-10-28",
+            "time": "10:00",
+            "title": "Confiance des consommateurs",
+            "description": "Indice de confiance des consommateurs américains (Conference Board)",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "103.5",
+            "previous": "102.6"
+        },
+        {
+            "date": "2025-10-30",
+            "time": "08:30",
+            "title": "NFP - Emplois non-agricoles",
+            "description": "Rapport mensuel sur l'emploi américain (Non-Farm Payrolls)",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "180K",
+            "previous": "254K"
+        },
+        {
+            "date": "2025-10-31",
+            "time": "08:30",
+            "title": "Core PCE (Inflation)",
+            "description": "Indice des prix PCE - indicateur d'inflation préféré de la Fed",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.6%",
+            "previous": "2.7%"
+        },
+        {
+            "date": "2025-11-07",
+            "time": "07:00",
+            "title": "Décision BoE (Bank of England)",
+            "description": "Décision de politique monétaire de la Banque d'Angleterre",
+            "impact": "high",
+            "category": "boe",
+            "currency": "GBP",
+            "forecast": "4.75%",
+            "previous": "5.00%"
+        },
+        {
+            "date": "2025-11-12",
+            "time": "08:30",
+            "title": "IPC - Inflation USA",
+            "description": "Indice des Prix à la Consommation (CPI) américain",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.4%",
+            "previous": "2.4%"
+        },
+        {
+            "date": "2025-11-14",
+            "time": "08:30",
+            "title": "Ventes au détail USA",
+            "description": "Données mensuelles sur les ventes au détail aux États-Unis",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "0.3%",
+            "previous": "0.4%"
+        },
+        {
+            "date": "2025-11-20",
+            "time": "14:00",
+            "title": "Minutes du FOMC",
+            "description": "Publication des minutes de la dernière réunion de la Fed",
+            "impact": "medium",
+            "category": "fed",
+            "currency": "USD",
+            "forecast": "-",
+            "previous": "-"
+        },
+        {
+            "date": "2025-12-18",
+            "time": "14:00",
+            "title": "Réunion de la Fed (FOMC)",
+            "description": "Décision sur les taux d'intérêt + projections économiques (Dot Plot)",
+            "impact": "high",
+            "category": "fed",
+            "currency": "USD",
+            "forecast": "4.75%",
+            "previous": "5.25%"
+        },
+        {
+            "date": "2025-12-12",
+            "time": "07:45",
+            "title": "Décision BCE sur les taux",
+            "description": "Dernière réunion BCE de l'année 2025",
+            "impact": "high",
+            "category": "bce",
+            "currency": "EUR",
+            "forecast": "3.50%",
+            "previous": "3.75%"
+        },
+        {
+            "date": "2025-11-06",
+            "time": "20:00",
+            "title": "Décision BoJ (Bank of Japan)",
+            "description": "Décision de politique monétaire de la Banque du Japon",
+            "impact": "medium",
+            "category": "boj",
+            "currency": "JPY",
+            "forecast": "0.25%",
+            "previous": "0.25%"
+        }
+    ]
+    
+    # Trier les événements par date
+    events.sort(key=lambda x: datetime.strptime(x['date'], '%Y-%m-%d'))
+    
+    # Séparer événements passés et futurs
+    today_str = now.strftime('%Y-%m-%d')
+    upcoming_events = [e for e in events if e['date'] >= today_str]
+    
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📅 Calendrier Économique</title>
+    {CSS}
+    <style>
+        .calendar-grid {{
+            display: grid;
+            gap: 20px;
+            margin-top: 30px;
+        }}
+        
+        .event-card {{
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 16px;
+            padding: 25px;
+            border: 2px solid #334155;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .event-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(96, 165, 250, 0.2);
+            border-color: #60a5fa;
+        }}
+        
+        .event-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 6px;
+            height: 100%;
+            background: linear-gradient(180deg, #60a5fa, #a78bfa);
+        }}
+        
+        .event-card.high::before {{
+            background: linear-gradient(180deg, #ef4444, #dc2626);
+        }}
+        
+        .event-card.medium::before {{
+            background: linear-gradient(180deg, #f59e0b, #d97706);
+        }}
+        
+        .event-card.low::before {{
+            background: linear-gradient(180deg, #10b981, #059669);
+        }}
+        
+        .event-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }}
+        
+        .event-date {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #0f172a;
+            padding: 12px 20px;
+            border-radius: 12px;
+            min-width: 120px;
+        }}
+        
+        .event-day {{
+            font-size: 32px;
+            font-weight: 700;
+            color: #60a5fa;
+            line-height: 1;
+        }}
+        
+        .event-month {{
+            font-size: 14px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        
+        .event-time {{
+            font-size: 13px;
+            color: #a78bfa;
+            margin-top: 5px;
+            font-weight: 600;
+        }}
+        
+        .event-info {{
+            flex: 1;
+            margin-left: 20px;
+        }}
+        
+        .event-title {{
+            font-size: 20px;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .event-description {{
+            color: #94a3b8;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }}
+        
+        .event-badges {{
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }}
+        
+        .badge {{
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        
+        .badge-impact {{
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }}
+        
+        .badge-impact.medium {{
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }}
+        
+        .badge-impact.low {{
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }}
+        
+        .badge-category {{
+            background: rgba(96, 165, 250, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(96, 165, 250, 0.3);
+        }}
+        
+        .badge-currency {{
+            background: rgba(167, 139, 250, 0.15);
+            color: #a78bfa;
+            border: 1px solid rgba(167, 139, 250, 0.3);
+        }}
+        
+        .event-stats {{
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #334155;
+        }}
+        
+        .stat-item {{
+            text-align: center;
+        }}
+        
+        .stat-label {{
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }}
+        
+        .stat-value {{
+            font-size: 16px;
+            font-weight: 700;
+            color: #e2e8f0;
+        }}
+        
+        .filter-section {{
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #1e293b;
+            border-radius: 12px;
+        }}
+        
+        .filter-btn {{
+            padding: 10px 20px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            font-size: 14px;
+        }}
+        
+        .filter-btn:hover {{
+            border-color: #60a5fa;
+            color: #60a5fa;
+        }}
+        
+        .filter-btn.active {{
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border-color: #3b82f6;
+            color: #fff;
+        }}
+        
+        .section-title {{
+            font-size: 24px;
+            color: #60a5fa;
+            margin: 30px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #334155;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .countdown {{
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            margin-left: auto;
+        }}
+        
+        .stats-overview {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }}
+        
+        .overview-card {{
+            background: linear-gradient(135deg, #1e293b, #334155);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            text-align: center;
+        }}
+        
+        .overview-value {{
+            font-size: 36px;
+            font-weight: 700;
+            color: #60a5fa;
+            margin-bottom: 5px;
+        }}
+        
+        .overview-label {{
+            font-size: 13px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }}
+        
+        .legend {{
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #1e293b;
+            border-radius: 8px;
+        }}
+        
+        .legend-item {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #94a3b8;
+        }}
+        
+        .legend-dot {{
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }}
+        
+        .legend-dot.high {{ background: #ef4444; }}
+        .legend-dot.medium {{ background: #f59e0b; }}
+        .legend-dot.low {{ background: #10b981; }}
+        
+        @media (max-width: 768px) {{
+            .event-header {{
+                flex-direction: column;
+                gap: 15px;
+            }}
+            
+            .event-info {{
+                margin-left: 0;
+            }}
+            
+            .event-stats {{
+                grid-template-columns: 1fr;
+            }}
+            
+            .filter-section {{
+                flex-direction: column;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 Calendrier Économique</h1>
+            <p>Suivez les événements économiques majeurs qui impactent les marchés</p>
+        </div>
+        
+        {NAV}
+        
+        <div class="card">
+            <div class="stats-overview">
+                <div class="overview-card">
+                    <div class="overview-value">{len(upcoming_events)}</div>
+                    <div class="overview-label">Événements à venir</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-value">{len([e for e in upcoming_events if e['impact'] == 'high'])}</div>
+                    <div class="overview-label">Impact Élevé</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-value">{len([e for e in upcoming_events if e['category'] in ['fed', 'bce', 'boe']])}</div>
+                    <div class="overview-label">Banques Centrales</div>
+                </div>
+                <div class="overview-card">
+                    <div class="overview-value">{len(set([e['date'][:7] for e in upcoming_events]))}</div>
+                    <div class="overview-label">Mois couverts</div>
+                </div>
+            </div>
+            
+            <div class="filter-section">
+                <button class="filter-btn active" onclick="filterEvents('all')">Tous les événements</button>
+                <button class="filter-btn" onclick="filterEvents('high')">🔴 Impact élevé</button>
+                <button class="filter-btn" onclick="filterEvents('fed')">🏦 Fed (USA)</button>
+                <button class="filter-btn" onclick="filterEvents('bce')">🇪🇺 BCE (Europe)</button>
+                <button class="filter-btn" onclick="filterEvents('data')">📊 Données économiques</button>
+                <button class="filter-btn" onclick="filterEvents('this-week')">📅 Cette semaine</button>
+            </div>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot high"></div>
+                    <span>Impact Élevé</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot medium"></div>
+                    <span>Impact Moyen</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot low"></div>
+                    <span>Impact Faible</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2 class="section-title">
+                🔜 Événements à venir
+            </h2>
+            <div class="calendar-grid" id="upcomingEvents">
+"""
+    
+    # Générer les cartes pour les événements à venir
+    for event in upcoming_events:
+        date_obj = datetime.strptime(event['date'], '%Y-%m-%d')
+        day = date_obj.strftime('%d')
+        month = date_obj.strftime('%B')
+        
+        # Calculer le countdown
+        days_until = (date_obj.date() - now.date()).days
+        if days_until == 0:
+            countdown = "Aujourd'hui"
+        elif days_until == 1:
+            countdown = "Demain"
+        else:
+            countdown = f"Dans {days_until} jours"
+        
+        # Emoji selon la catégorie
+        category_emoji = {
+            'fed': '🏦',
+            'bce': '🇪🇺',
+            'boe': '🇬🇧',
+            'boj': '🇯🇵',
+            'data': '📊'
+        }.get(event['category'], '📌')
+        
+        # Label d'impact
+        impact_label = {
+            'high': 'Impact Élevé',
+            'medium': 'Impact Moyen',
+            'low': 'Impact Faible'
+        }.get(event['impact'], 'Impact Moyen')
+        
+        html += f"""
+                <div class="event-card {event['impact']}" data-category="{event['category']}" data-impact="{event['impact']}" data-date="{event['date']}">
+                    <div class="event-header">
+                        <div class="event-date">
+                            <div class="event-day">{day}</div>
+                            <div class="event-month">{month[:3].upper()}</div>
+                            <div class="event-time">⏰ {event['time']} EST</div>
+                        </div>
+                        <div class="event-info">
+                            <div class="event-title">
+                                {category_emoji} {event['title']}
+                                <span class="countdown">{countdown}</span>
+                            </div>
+                            <div class="event-description">{event['description']}</div>
+                            <div class="event-badges">
+                                <span class="badge badge-impact {event['impact']}">{impact_label}</span>
+                                <span class="badge badge-category">{event['category'].upper()}</span>
+                                <span class="badge badge-currency">{event['currency']}</span>
+                            </div>
+                            <div class="event-stats">
+                                <div class="stat-item">
+                                    <div class="stat-label">Prévision</div>
+                                    <div class="stat-value">{event['forecast']}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Précédent</div>
+                                    <div class="stat-value">{event['previous']}</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Monnaie</div>
+                                    <div class="stat-value">{event['currency']}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+"""
+    
+    html += """
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function filterEvents(filter) {
+            const events = document.querySelectorAll('.event-card');
+            const buttons = document.querySelectorAll('.filter-btn');
+            
+            // Update active button
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Get current date for this-week filter
+            const now = new Date();
+            const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            
+            events.forEach(event => {
+                let show = false;
+                
+                if (filter === 'all') {
+                    show = true;
+                } else if (filter === 'high') {
+                    show = event.dataset.impact === 'high';
+                } else if (filter === 'fed' || filter === 'bce') {
+                    show = event.dataset.category === filter;
+                } else if (filter === 'data') {
+                    show = event.dataset.category === 'data';
+                } else if (filter === 'this-week') {
+                    const eventDate = new Date(event.dataset.date);
+                    show = eventDate >= now && eventDate <= weekFromNow;
+                }
+                
+                event.style.display = show ? 'block' : 'none';
+            });
+        }
+        
+        // Auto-refresh every 5 minutes
+        setInterval(() => {
+            location.reload();
+        }, 300000);
+        
+        console.log('📅 Calendrier Économique chargé');
+    </script>
+</body>
+</html>"""
+    
+    return HTMLResponse(html)
+
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
@@ -3528,12 +4199,20 @@ if __name__ == "__main__":
     print("  • Risk/Reward automatique")
     print("  • Recommandations SLBE")
     print("="*70)
-    print("📊 12 PAGES ACTIVES:")
+    print("📊 13 PAGES ACTIVES:")
     print("  • Fear & Greed (flèche SVG)")
     print("  • Dominance BTC, Heatmap")
     print("  • 🌟 ALTCOIN SEASON (NOUVEAU DESIGN!)")
+    print("  • 📅 CALENDRIER ÉCONOMIQUE (NOUVEAU!)")
     print("  • Nouvelles, Trades, Convertisseur")
-    print("  • Et plus encore...")
+    print("  • Bullrun Phase, Graphiques, Telegram")
+    print("="*70)
+    print("📅 CALENDRIER ÉCONOMIQUE:")
+    print("  • 14 événements économiques majeurs")
+    print("  • Fed, BCE, BoE, BoJ, données USA")
+    print("  • Filtres intelligents par impact")
+    print("  • Countdown dynamique")
+    print("  • Design moderne et responsive")
     print("="*70)
     print("🌟 ALTCOIN SEASON:")
     print("  • Jauge circulaire animée")

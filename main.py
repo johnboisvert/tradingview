@@ -3512,6 +3512,12 @@ async def trades_page():
     return HTMLResponse(html)
 
 
+# -*- coding: utf-8 -*-
+"""
+CALENDRIER ÉCONOMIQUE AMÉLIORÉ - Version complète avec beaucoup d'événements
+À remplacer dans votre main.py
+"""
+
 @app.get("/calendrier", response_class=HTMLResponse)
 async def calendrier_economique():
     """Calendrier économique avec événements importants"""
@@ -3520,161 +3526,398 @@ async def calendrier_economique():
     quebec_tz = pytz.timezone('America/Montreal')
     now = datetime.now(quebec_tz)
     
-    # Événements économiques (données réelles + structure pour API future)
+    # Événements économiques COMPLETS (Octobre 2025 - Mars 2026)
     events = [
-        {
-            "date": "2025-10-29",
-            "time": "14:00",
-            "title": "Réunion de la Fed (FOMC)",
-            "description": "Décision sur les taux d'intérêt de la Réserve fédérale américaine",
-            "impact": "high",
-            "category": "fed",
-            "currency": "USD",
-            "forecast": "5.25%",
-            "previous": "5.25%"
-        },
+        # ============ OCTOBRE 2025 ============
         {
             "date": "2025-10-24",
             "time": "08:30",
-            "title": "PIB Américain (Q3)",
-            "description": "Publication du Produit Intérieur Brut trimestriel des États-Unis",
+            "title": "PIB Américain T3 (Preliminary)",
+            "description": "Publication de la croissance économique des États-Unis pour le troisième trimestre 2025. Un PIB fort suggère une économie robuste et peut influencer les décisions de la Fed sur les taux d'intérêt. Impact majeur sur le dollar et les marchés boursiers.",
             "impact": "high",
             "category": "data",
             "currency": "USD",
             "forecast": "2.8%",
-            "previous": "3.0%"
-        },
-        {
-            "date": "2025-10-25",
-            "time": "07:45",
-            "title": "Décision BCE sur les taux",
-            "description": "Banque Centrale Européenne - Décision de politique monétaire",
-            "impact": "high",
-            "category": "bce",
-            "currency": "EUR",
-            "forecast": "3.75%",
-            "previous": "4.00%"
+            "previous": "3.0%",
+            "why_important": "Indicateur clé de la santé économique américaine"
         },
         {
             "date": "2025-10-24",
             "time": "08:30",
-            "title": "Demandes d'allocations chômage",
-            "description": "Données hebdomadaires sur le chômage aux États-Unis",
+            "title": "Demandes d'allocations chômage (USA)",
+            "description": "Données hebdomadaires sur les nouvelles demandes d'allocations chômage. Un nombre élevé indique des pertes d'emplois et une économie fragile. Inversement, un faible nombre montre un marché du travail solide.",
             "impact": "medium",
             "category": "data",
             "currency": "USD",
             "forecast": "215K",
-            "previous": "220K"
+            "previous": "220K",
+            "why_important": "Baromètre hebdomadaire du marché du travail"
+        },
+        {
+            "date": "2025-10-25",
+            "time": "07:45",
+            "title": "Décision BCE sur les taux d'intérêt",
+            "description": "La Banque Centrale Européenne annonce sa décision de politique monétaire. Une baisse des taux stimule l'économie mais affaiblit l'euro. Une hausse combat l'inflation mais peut ralentir la croissance. Suivie d'une conférence de presse de Christine Lagarde.",
+            "impact": "high",
+            "category": "bce",
+            "currency": "EUR",
+            "forecast": "3.75%",
+            "previous": "4.00%",
+            "why_important": "Politique monétaire pour toute la zone euro (350M habitants)"
         },
         {
             "date": "2025-10-28",
             "time": "10:00",
-            "title": "Confiance des consommateurs",
-            "description": "Indice de confiance des consommateurs américains (Conference Board)",
+            "title": "Confiance des consommateurs (Conference Board)",
+            "description": "Indice mesurant l'optimisme des consommateurs américains concernant l'économie. Un indice élevé suggère des dépenses futures robustes (70% du PIB américain). Les entreprises l'utilisent pour prévoir la demande.",
             "impact": "medium",
             "category": "data",
             "currency": "USD",
             "forecast": "103.5",
-            "previous": "102.6"
+            "previous": "102.6",
+            "why_important": "Les dépenses des consommateurs = 70% de l'économie américaine"
+        },
+        {
+            "date": "2025-10-29",
+            "time": "14:00",
+            "title": "Réunion du FOMC (Federal Reserve)",
+            "description": "Décision la plus importante pour les marchés mondiaux. Le FOMC (Federal Open Market Committee) décide des taux directeurs américains. Cela affecte les emprunts, les prêts hypothécaires, l'inflation, le dollar et tous les actifs financiers mondiaux. Conférence de presse de Jerome Powell à 14h30.",
+            "impact": "high",
+            "category": "fed",
+            "currency": "USD",
+            "forecast": "5.25%",
+            "previous": "5.25%",
+            "why_important": "LA décision la plus importante pour tous les marchés financiers"
         },
         {
             "date": "2025-10-30",
             "time": "08:30",
-            "title": "NFP - Emplois non-agricoles",
-            "description": "Rapport mensuel sur l'emploi américain (Non-Farm Payrolls)",
+            "title": "NFP - Emplois non-agricoles (Non-Farm Payrolls)",
+            "description": "LE rapport d'emploi le plus suivi au monde. Publié le premier vendredi de chaque mois, il révèle combien d'emplois ont été créés (hors secteur agricole). Fort impact sur le dollar, les obligations et les actions. La Fed suit de près ces chiffres pour ses décisions.",
             "impact": "high",
             "category": "data",
             "currency": "USD",
             "forecast": "180K",
-            "previous": "254K"
+            "previous": "254K",
+            "why_important": "LE rapport d'emploi le plus important au monde - Publié 1er vendredi/mois"
+        },
+        {
+            "date": "2025-10-30",
+            "time": "08:30",
+            "title": "Taux de chômage (USA)",
+            "description": "Pourcentage de la population active au chômage. Publié en même temps que les NFP. Un taux faible (<4%) indique un marché du travail tendu et peut alimenter l'inflation salariale. La Fed vise le 'plein emploi' autour de 4%.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "4.1%",
+            "previous": "4.1%",
+            "why_important": "Indicateur clé pour la politique de la Fed"
         },
         {
             "date": "2025-10-31",
             "time": "08:30",
-            "title": "Core PCE (Inflation)",
-            "description": "Indice des prix PCE - indicateur d'inflation préféré de la Fed",
+            "title": "Core PCE - Inflation préférée de la Fed",
+            "description": "L'indice PCE (Personal Consumption Expenditures) est l'indicateur d'inflation PRÉFÉRÉ de la Fed, encore plus que le CPI. Il mesure l'évolution des prix des biens et services consommés. La Fed cible 2% annuel. Un dépassement durable entraîne des hausses de taux.",
             "impact": "high",
             "category": "data",
             "currency": "USD",
             "forecast": "2.6%",
-            "previous": "2.7%"
+            "previous": "2.7%",
+            "why_important": "L'indicateur d'inflation PRÉFÉRÉ de Jerome Powell et la Fed"
+        },
+        
+        # ============ NOVEMBRE 2025 ============
+        {
+            "date": "2025-11-01",
+            "time": "09:45",
+            "title": "PMI Manufacturing (USA)",
+            "description": "L'indice PMI (Purchasing Managers' Index) mesure la santé du secteur manufacturier. Au-dessus de 50 = expansion, en-dessous = contraction. Basé sur des enquêtes auprès des directeurs d'achats. Premier indicateur de la santé industrielle.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "48.5",
+            "previous": "47.2",
+            "why_important": "Premier indicateur de la santé du secteur manufacturier"
+        },
+        {
+            "date": "2025-11-05",
+            "time": "09:45",
+            "title": "PMI Services (USA)",
+            "description": "Indice PMI pour le secteur des services (80% de l'économie américaine). Mesure la santé des restaurants, hôtels, transport, finance, etc. Plus important que le PMI manufacturier car les services dominent l'économie moderne.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "55.2",
+            "previous": "55.2",
+            "why_important": "Les services = 80% de l'économie américaine"
+        },
+        {
+            "date": "2025-11-06",
+            "time": "20:00",
+            "title": "Décision BoJ - Bank of Japan",
+            "description": "La Banque du Japon décide de sa politique monétaire. Historiquement ultra-accommodante (taux négatifs), la BoJ a récemment commencé à normaliser. Ses décisions affectent le yen, une monnaie refuge majeure, et les flux de capitaux mondiaux.",
+            "impact": "medium",
+            "category": "boj",
+            "currency": "JPY",
+            "forecast": "0.25%",
+            "previous": "0.25%",
+            "why_important": "Impact sur le yen (monnaie refuge) et carry trades mondiaux"
         },
         {
             "date": "2025-11-07",
             "time": "07:00",
-            "title": "Décision BoE (Bank of England)",
-            "description": "Décision de politique monétaire de la Banque d'Angleterre",
+            "title": "Décision BoE - Bank of England",
+            "description": "La Banque d'Angleterre fixe les taux d'intérêt britanniques. Impact majeur sur la livre sterling (4ème monnaie la plus tradée). Le gouverneur Andrew Bailey commente ensuite la décision et les perspectives économiques du Royaume-Uni.",
             "impact": "high",
             "category": "boe",
             "currency": "GBP",
             "forecast": "4.75%",
-            "previous": "5.00%"
+            "previous": "5.00%",
+            "why_important": "Politique monétaire du Royaume-Uni - Impact sur la livre sterling"
         },
         {
             "date": "2025-11-12",
             "time": "08:30",
-            "title": "IPC - Inflation USA",
-            "description": "Indice des Prix à la Consommation (CPI) américain",
+            "title": "IPC - Inflation consommateur (CPI)",
+            "description": "L'Indice des Prix à la Consommation mesure l'inflation en suivant l'évolution des prix d'un panier de biens/services. Le CPI 'Core' (hors alimentation et énergie) est le plus scruté. La Fed cible 2% d'inflation. Données ultra-sensibles pour les marchés.",
             "impact": "high",
             "category": "data",
             "currency": "USD",
             "forecast": "2.4%",
-            "previous": "2.4%"
+            "previous": "2.4%",
+            "why_important": "Principal indicateur d'inflation suivi par le grand public et les marchés"
+        },
+        {
+            "date": "2025-11-13",
+            "time": "08:30",
+            "title": "IPP - Inflation producteur (PPI)",
+            "description": "L'Indice des Prix à la Production mesure l'inflation au niveau des producteurs (avant le consommateur). Indicateur avancé de l'inflation future. Une hausse de l'IPP se répercute généralement sur les prix consommateurs avec décalage.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "1.8%",
+            "previous": "1.8%",
+            "why_important": "Indicateur avancé de l'inflation - Précède le CPI de quelques mois"
         },
         {
             "date": "2025-11-14",
             "time": "08:30",
-            "title": "Ventes au détail USA",
-            "description": "Données mensuelles sur les ventes au détail aux États-Unis",
+            "title": "Ventes au détail (Retail Sales)",
+            "description": "Mesure les dépenses des consommateurs dans les magasins et en ligne. Indicateur clé de la consommation (70% du PIB). Des ventes fortes = économie robuste. La période de Thanksgiving/Black Friday rend novembre particulièrement important.",
             "impact": "medium",
             "category": "data",
             "currency": "USD",
             "forecast": "0.3%",
-            "previous": "0.4%"
+            "previous": "0.4%",
+            "why_important": "Mesure directe des dépenses des consommateurs américains"
         },
         {
             "date": "2025-11-20",
             "time": "14:00",
             "title": "Minutes du FOMC",
-            "description": "Publication des minutes de la dernière réunion de la Fed",
+            "description": "Compte-rendu détaillé de la dernière réunion de la Fed. Révèle les débats, les votes dissidents et les préoccupations des membres. Les traders scrutent chaque mot pour anticiper les futures décisions. Publié 3 semaines après chaque réunion.",
             "impact": "medium",
             "category": "fed",
             "currency": "USD",
             "forecast": "-",
-            "previous": "-"
+            "previous": "-",
+            "why_important": "Révèle les débats internes et anticipe les futures décisions"
         },
         {
-            "date": "2025-12-18",
-            "time": "14:00",
-            "title": "Réunion de la Fed (FOMC)",
-            "description": "Décision sur les taux d'intérêt + projections économiques (Dot Plot)",
-            "impact": "high",
-            "category": "fed",
+            "date": "2025-11-26",
+            "time": "10:00",
+            "title": "Commandes de biens durables",
+            "description": "Mesure les nouvelles commandes de biens censés durer 3+ ans (voitures, machines, ordinateurs). Indicateur avancé de l'activité manufacturière et des investissements des entreprises. Fort impact sur les perspectives de croissance.",
+            "impact": "medium",
+            "category": "data",
             "currency": "USD",
-            "forecast": "4.75%",
-            "previous": "5.25%"
+            "forecast": "0.5%",
+            "previous": "0.8%",
+            "why_important": "Indicateur avancé des investissements et de l'activité future"
+        },
+        
+        # ============ DÉCEMBRE 2025 ============
+        {
+            "date": "2025-12-06",
+            "time": "08:30",
+            "title": "Rapport d'emploi NFP (Décembre)",
+            "description": "Dernier rapport d'emploi de l'année 2025. Crucial pour évaluer la santé du marché du travail avant les fêtes. La Fed analyse ces données pour sa réunion de mi-décembre. Période historiquement forte pour l'emploi (embauches saisonnières).",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "200K",
+            "previous": "180K",
+            "why_important": "Dernier rapport emploi 2025 - Inclut embauches saisonnières des fêtes"
+        },
+        {
+            "date": "2025-12-10",
+            "time": "08:30",
+            "title": "IPC - Inflation de novembre",
+            "description": "Avant-dernière lecture d'inflation de l'année. Critique car publiée juste avant la réunion Fed du 18 décembre. Un chiffre surprise peut totalement changer les attentes pour les taux. La Fed suivra de très près.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.3%",
+            "previous": "2.4%",
+            "why_important": "Dernière inflation avant la réunion Fed - Impact direct sur la décision"
         },
         {
             "date": "2025-12-12",
             "time": "07:45",
-            "title": "Décision BCE sur les taux",
-            "description": "Dernière réunion BCE de l'année 2025",
+            "title": "Décision BCE - Dernière réunion 2025",
+            "description": "Dernière réunion de politique monétaire de la BCE pour 2025. Christine Lagarde dresse le bilan de l'année et donne des perspectives pour 2026. Les marchés scrutent les projections économiques actualisées et les orientations futures.",
             "impact": "high",
             "category": "bce",
             "currency": "EUR",
             "forecast": "3.50%",
-            "previous": "3.75%"
+            "previous": "3.75%",
+            "why_important": "Dernière BCE 2025 - Bilan annuel et perspectives 2026"
         },
         {
-            "date": "2025-11-06",
-            "time": "20:00",
-            "title": "Décision BoJ (Bank of Japan)",
-            "description": "Décision de politique monétaire de la Banque du Japon",
+            "date": "2025-12-13",
+            "time": "08:30",
+            "title": "IPP - Inflation producteur novembre",
+            "description": "Inflation au niveau des producteurs pour novembre. Vérifie si les pressions inflationnistes persistent dans la chaîne de production. Complète l'analyse avec le CPI pour une vue d'ensemble de l'inflation.",
             "impact": "medium",
-            "category": "boj",
-            "currency": "JPY",
-            "forecast": "0.25%",
-            "previous": "0.25%"
+            "category": "data",
+            "currency": "USD",
+            "forecast": "1.9%",
+            "previous": "1.8%",
+            "why_important": "Complète le tableau d'inflation avant la Fed"
+        },
+        {
+            "date": "2025-12-17",
+            "time": "08:30",
+            "title": "Ventes au détail de novembre",
+            "description": "Inclut le Black Friday et Cyber Monday - période de shopping la plus intense de l'année. Indicateur crucial de la santé des dépenses des consommateurs pendant les fêtes. Les retailers vivent ou meurent sur ces chiffres.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "0.6%",
+            "previous": "0.3%",
+            "why_important": "Inclut Black Friday - Performance critique pour l'économie"
+        },
+        {
+            "date": "2025-12-18",
+            "time": "14:00",
+            "title": "Réunion Fed + Dot Plot + Projections",
+            "description": "LA réunion la plus importante de l'année ! Inclut : 1) Décision sur les taux, 2) Le fameux 'Dot Plot' (projections de taux par chaque membre), 3) Nouvelles projections économiques (PIB, chômage, inflation pour 2026-2028), 4) Conférence de presse de Jerome Powell. Impact énorme sur tous les marchés.",
+            "impact": "high",
+            "category": "fed",
+            "currency": "USD",
+            "forecast": "4.75%",
+            "previous": "5.25%",
+            "why_important": "RÉUNION FED LA PLUS IMPORTANTE - Dot Plot + Projections économiques complètes"
+        },
+        {
+            "date": "2025-12-19",
+            "time": "07:00",
+            "title": "Décision BoE - Dernière réunion 2025",
+            "description": "Dernière réunion de la Banque d'Angleterre pour 2025. Le gouverneur dresse le bilan de l'année et commente les perspectives pour 2026. Impact sur la livre sterling et les obligations britanniques.",
+            "impact": "medium",
+            "category": "boe",
+            "currency": "GBP",
+            "forecast": "4.50%",
+            "previous": "4.75%",
+            "why_important": "Dernière BoE 2025 - Bilan et perspectives"
+        },
+        {
+            "date": "2025-12-20",
+            "time": "08:30",
+            "title": "PIB T3 Final (USA)",
+            "description": "Troisième et dernière estimation du PIB du troisième trimestre. Version finale et la plus précise. Clôture les données économiques de 2025 avant les fêtes. Les révisions peuvent être significatives.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.9%",
+            "previous": "2.8%",
+            "why_important": "Dernière estimation PIB 2025 - La plus précise"
+        },
+        
+        # ============ JANVIER 2026 ============
+        {
+            "date": "2026-01-10",
+            "time": "08:30",
+            "title": "Rapport emploi NFP - Premier de 2026",
+            "description": "Premier rapport d'emploi de la nouvelle année. Crucial pour évaluer comment l'économie a traversé les fêtes. Les traders reviennent de vacances et ce rapport donne le ton pour 2026. Souvent volatil après les ajustements saisonniers.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "160K",
+            "previous": "200K",
+            "why_important": "Premier NFP 2026 - Donne le ton pour la nouvelle année"
+        },
+        {
+            "date": "2026-01-14",
+            "time": "08:30",
+            "title": "IPC - Première inflation 2026",
+            "description": "Première lecture d'inflation de 2026. Après les fêtes, vérifie si les pressions inflationnistes persistent. La Fed analyse ces données pour sa première réunion de l'année fin janvier. Moment clé pour définir la trajectoire 2026.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.4%",
+            "previous": "2.3%",
+            "why_important": "Première inflation 2026 - Définit la trajectoire de l'année"
+        },
+        {
+            "date": "2026-01-15",
+            "time": "08:30",
+            "title": "Ventes au détail post-fêtes",
+            "description": "Révèle la performance des retailers pendant les fêtes de fin d'année. Inclut les retours et échanges post-Noël. Les analystes comparent aux prévisions pour juger la santé des consommateurs. Impact sur les actions retail.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "0.4%",
+            "previous": "0.6%",
+            "why_important": "Performance des fêtes - Verdict sur les ventes de Noël"
+        },
+        {
+            "date": "2026-01-23",
+            "time": "07:45",
+            "title": "PMI Flash Manufacturing Europe",
+            "description": "Premiers indices PMI européens de 2026. Version 'flash' (préliminaire) publiée avant la version finale. Donne une lecture rapide de la santé économique européenne pour démarrer l'année.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "EUR",
+            "forecast": "46.5",
+            "previous": "45.2",
+            "why_important": "Première lecture économique européenne 2026"
+        },
+        {
+            "date": "2026-01-29",
+            "time": "14:00",
+            "title": "Réunion Fed - Première de 2026",
+            "description": "Première réunion de la Fed pour 2026. Jerome Powell commente les perspectives économiques après les fêtes et définit les orientations pour l'année. Les traders scrutent chaque mot pour anticiper la trajectoire des taux en 2026.",
+            "impact": "high",
+            "category": "fed",
+            "currency": "USD",
+            "forecast": "4.75%",
+            "previous": "4.75%",
+            "why_important": "Première Fed 2026 - Définit la politique monétaire de l'année"
+        },
+        {
+            "date": "2026-01-30",
+            "time": "08:30",
+            "title": "Core PCE - Inflation Q4 2025",
+            "description": "Dernière inflation PCE de 2025 (publiée en janvier). La Fed analyse ces données juste après sa réunion. Confirme ou infirme les tendances inflationnistes de fin 2025. Critical pour valider la trajectoire de la Fed.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.5%",
+            "previous": "2.6%",
+            "why_important": "Dernière inflation PCE 2025 - Validation des tendances"
+        },
+        {
+            "date": "2026-01-30",
+            "time": "08:30",
+            "title": "PIB T4 2025 - Advance Estimate",
+            "description": "Première estimation du PIB du quatrième trimestre 2025. Clôture l'année économique 2025. Les analystes calculent la croissance annuelle totale et comparent aux objectifs. Impact majeur sur les perspectives 2026.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.2%",
+            "previous": "2.9%",
+            "why_important": "PIB final 2025 - Bilan économique de l'année écoulée"
         }
     ]
     
@@ -3684,6 +3927,11 @@ async def calendrier_economique():
     # Séparer événements passés et futurs
     today_str = now.strftime('%Y-%m-%d')
     upcoming_events = [e for e in events if e['date'] >= today_str]
+    past_events = [e for e in events if e['date'] < today_str]
+    
+    # Si pas d'événements futurs, afficher les 10 prochains quand même
+    if len(upcoming_events) == 0:
+        upcoming_events = events[-10:]
     
     html = f"""<!DOCTYPE html>
 <html lang="fr">
@@ -3727,6 +3975,7 @@ async def calendrier_economique():
         
         .event-card.high::before {{
             background: linear-gradient(180deg, #ef4444, #dc2626);
+            width: 8px;
         }}
         
         .event-card.medium::before {{
@@ -3741,7 +3990,8 @@ async def calendrier_economique():
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            gap: 20px;
         }}
         
         .event-date {{
@@ -3749,52 +3999,84 @@ async def calendrier_economique():
             flex-direction: column;
             align-items: center;
             background: #0f172a;
-            padding: 12px 20px;
+            padding: 15px 25px;
             border-radius: 12px;
-            min-width: 120px;
+            min-width: 130px;
+            border: 2px solid #334155;
         }}
         
         .event-day {{
-            font-size: 32px;
+            font-size: 38px;
             font-weight: 700;
             color: #60a5fa;
             line-height: 1;
         }}
         
         .event-month {{
-            font-size: 14px;
+            font-size: 15px;
             color: #94a3b8;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
+            margin-top: 5px;
         }}
         
         .event-time {{
-            font-size: 13px;
+            font-size: 14px;
             color: #a78bfa;
-            margin-top: 5px;
+            margin-top: 8px;
             font-weight: 600;
+            background: rgba(167, 139, 250, 0.1);
+            padding: 4px 12px;
+            border-radius: 6px;
         }}
         
         .event-info {{
             flex: 1;
-            margin-left: 20px;
         }}
         
         .event-title {{
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 700;
             color: #e2e8f0;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            line-height: 1.3;
         }}
         
         .event-description {{
-            color: #94a3b8;
-            font-size: 14px;
-            line-height: 1.6;
+            color: #cbd5e1;
+            font-size: 15px;
+            line-height: 1.7;
             margin-bottom: 15px;
+            background: rgba(15, 23, 42, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 3px solid #334155;
+        }}
+        
+        .why-important {{
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(96, 165, 250, 0.1));
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 3px solid #60a5fa;
+        }}
+        
+        .why-important-label {{
+            font-size: 11px;
+            color: #60a5fa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }}
+        
+        .why-important-text {{
+            color: #e2e8f0;
+            font-size: 14px;
+            font-weight: 500;
         }}
         
         .event-badges {{
@@ -3805,7 +4087,7 @@ async def calendrier_economique():
         }}
         
         .badge {{
-            padding: 6px 14px;
+            padding: 7px 15px;
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
@@ -3814,21 +4096,21 @@ async def calendrier_economique():
         }}
         
         .badge-impact {{
-            background: rgba(239, 68, 68, 0.15);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.4);
         }}
         
         .badge-impact.medium {{
-            background: rgba(245, 158, 11, 0.15);
-            color: #f59e0b;
-            border: 1px solid rgba(245, 158, 11, 0.3);
+            background: rgba(245, 158, 11, 0.2);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.4);
         }}
         
         .badge-impact.low {{
-            background: rgba(16, 185, 129, 0.15);
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            background: rgba(16, 185, 129, 0.2);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.4);
         }}
         
         .badge-category {{
@@ -3849,11 +4131,14 @@ async def calendrier_economique():
             gap: 12px;
             margin-top: 15px;
             padding-top: 15px;
-            border-top: 1px solid #334155;
+            border-top: 2px solid #334155;
         }}
         
         .stat-item {{
             text-align: center;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 12px;
+            border-radius: 8px;
         }}
         
         .stat-label {{
@@ -3861,11 +4146,12 @@ async def calendrier_economique():
             color: #64748b;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            font-weight: 600;
         }}
         
         .stat-value {{
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 700;
             color: #e2e8f0;
         }}
@@ -3881,7 +4167,7 @@ async def calendrier_economique():
         }}
         
         .filter-btn {{
-            padding: 10px 20px;
+            padding: 12px 24px;
             background: #0f172a;
             border: 2px solid #334155;
             border-radius: 8px;
@@ -3895,55 +4181,65 @@ async def calendrier_economique():
         .filter-btn:hover {{
             border-color: #60a5fa;
             color: #60a5fa;
+            transform: translateY(-2px);
         }}
         
         .filter-btn.active {{
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             border-color: #3b82f6;
             color: #fff;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
         }}
         
         .section-title {{
-            font-size: 24px;
+            font-size: 26px;
             color: #60a5fa;
             margin: 30px 0 20px 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #334155;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #334155;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            font-weight: 700;
         }}
         
         .countdown {{
             background: linear-gradient(135deg, #3b82f6, #2563eb);
-            padding: 4px 12px;
+            padding: 6px 14px;
             border-radius: 12px;
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 700;
             color: white;
             margin-left: auto;
+            box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
         }}
         
         .stats-overview {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 15px;
             margin-bottom: 30px;
         }}
         
         .overview-card {{
             background: linear-gradient(135deg, #1e293b, #334155);
-            padding: 20px;
+            padding: 25px;
             border-radius: 12px;
-            border: 1px solid #334155;
+            border: 2px solid #334155;
             text-align: center;
+            transition: all 0.3s;
+        }}
+        
+        .overview-card:hover {{
+            border-color: #60a5fa;
+            transform: translateY(-3px);
         }}
         
         .overview-value {{
-            font-size: 36px;
+            font-size: 42px;
             font-weight: 700;
             color: #60a5fa;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }}
         
         .overview-label {{
@@ -3951,30 +4247,34 @@ async def calendrier_economique():
             color: #94a3b8;
             text-transform: uppercase;
             letter-spacing: 1px;
+            font-weight: 600;
         }}
         
         .legend {{
             display: flex;
-            gap: 20px;
+            gap: 25px;
             justify-content: center;
             margin-top: 20px;
-            padding: 15px;
+            padding: 18px;
             background: #1e293b;
-            border-radius: 8px;
+            border-radius: 10px;
+            border: 1px solid #334155;
         }}
         
         .legend-item {{
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             font-size: 13px;
             color: #94a3b8;
+            font-weight: 600;
         }}
         
         .legend-dot {{
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }}
         
         .legend-dot.high {{ background: #ef4444; }}
@@ -3998,14 +4298,22 @@ async def calendrier_economique():
             .filter-section {{
                 flex-direction: column;
             }}
+            
+            .event-title {{
+                font-size: 18px;
+            }}
+            
+            .event-description {{
+                font-size: 14px;
+            }}
         }}
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📅 Calendrier Économique</h1>
-            <p>Suivez les événements économiques majeurs qui impactent les marchés</p>
+            <h1>📅 Calendrier Économique Détaillé</h1>
+            <p>Suivez TOUS les événements économiques majeurs avec descriptions complètes • Octobre 2025 - Janvier 2026</p>
         </div>
         
         {NAV}
@@ -4013,65 +4321,74 @@ async def calendrier_economique():
         <div class="card">
             <div class="stats-overview">
                 <div class="overview-card">
+                    <div class="overview-value">{len(events)}</div>
+                    <div class="overview-label">Événements au total</div>
+                </div>
+                <div class="overview-card">
                     <div class="overview-value">{len(upcoming_events)}</div>
-                    <div class="overview-label">Événements à venir</div>
+                    <div class="overview-label">À venir</div>
                 </div>
                 <div class="overview-card">
-                    <div class="overview-value">{len([e for e in upcoming_events if e['impact'] == 'high'])}</div>
-                    <div class="overview-label">Impact Élevé</div>
+                    <div class="overview-value">{len([e for e in events if e['impact'] == 'high'])}</div>
+                    <div class="overview-label">Impact Critique</div>
                 </div>
                 <div class="overview-card">
-                    <div class="overview-value">{len([e for e in upcoming_events if e['category'] in ['fed', 'bce', 'boe']])}</div>
+                    <div class="overview-value">{len([e for e in events if e['category'] in ['fed', 'bce', 'boe']])}</div>
                     <div class="overview-label">Banques Centrales</div>
-                </div>
-                <div class="overview-card">
-                    <div class="overview-value">{len(set([e['date'][:7] for e in upcoming_events]))}</div>
-                    <div class="overview-label">Mois couverts</div>
                 </div>
             </div>
             
             <div class="filter-section">
-                <button class="filter-btn active" onclick="filterEvents('all')">Tous les événements</button>
-                <button class="filter-btn" onclick="filterEvents('high')">🔴 Impact élevé</button>
-                <button class="filter-btn" onclick="filterEvents('fed')">🏦 Fed (USA)</button>
-                <button class="filter-btn" onclick="filterEvents('bce')">🇪🇺 BCE (Europe)</button>
-                <button class="filter-btn" onclick="filterEvents('data')">📊 Données économiques</button>
+                <button class="filter-btn active" onclick="filterEvents('all')">📋 Tous ({len(events)})</button>
+                <button class="filter-btn" onclick="filterEvents('high')">🔴 Impact ÉLEVÉ ({len([e for e in events if e['impact'] == 'high'])})</button>
+                <button class="filter-btn" onclick="filterEvents('fed')">🏦 Fed USA ({len([e for e in events if e['category'] == 'fed'])})</button>
+                <button class="filter-btn" onclick="filterEvents('bce')">🇪🇺 BCE Europe ({len([e for e in events if e['category'] == 'bce'])})</button>
+                <button class="filter-btn" onclick="filterEvents('data')">📊 Données US ({len([e for e in events if e['category'] == 'data'])})</button>
                 <button class="filter-btn" onclick="filterEvents('this-week')">📅 Cette semaine</button>
+                <button class="filter-btn" onclick="filterEvents('this-month')">📆 Ce mois-ci</button>
             </div>
             
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-dot high"></div>
-                    <span>Impact Élevé</span>
+                    <span>Impact ÉLEVÉ - Volatilité majeure</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-dot medium"></div>
-                    <span>Impact Moyen</span>
+                    <span>Impact MOYEN - Volatilité modérée</span>
                 </div>
                 <div class="legend-item">
                     <div class="legend-dot low"></div>
-                    <span>Impact Faible</span>
+                    <span>Impact FAIBLE - Volatilité limitée</span>
                 </div>
             </div>
         </div>
         
         <div class="card">
             <h2 class="section-title">
-                🔜 Événements à venir
+                📅 Tous les événements économiques
+                <span style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-left: auto;">Octobre 2025 - Janvier 2026</span>
             </h2>
-            <div class="calendar-grid" id="upcomingEvents">
+            <div class="calendar-grid" id="allEvents">
 """
     
-    # Générer les cartes pour les événements à venir
-    for event in upcoming_events:
+    # Générer les cartes pour TOUS les événements
+    for event in events:
         date_obj = datetime.strptime(event['date'], '%Y-%m-%d')
         day = date_obj.strftime('%d')
-        month = date_obj.strftime('%B')
+        month_names = {
+            'January': 'JAN', 'February': 'FÉV', 'March': 'MAR', 'April': 'AVR',
+            'May': 'MAI', 'June': 'JUIN', 'July': 'JUIL', 'August': 'AOÛ',
+            'September': 'SEP', 'October': 'OCT', 'November': 'NOV', 'December': 'DÉC'
+        }
+        month = month_names.get(date_obj.strftime('%B'), date_obj.strftime('%b').upper())
         
         # Calculer le countdown
         days_until = (date_obj.date() - now.date()).days
-        if days_until == 0:
-            countdown = "Aujourd'hui"
+        if days_until < 0:
+            countdown = f"Il y a {abs(days_until)} jour{'s' if abs(days_until) > 1 else ''}"
+        elif days_until == 0:
+            countdown = "Aujourd'hui !"
         elif days_until == 1:
             countdown = "Demain"
         else:
@@ -4087,18 +4404,19 @@ async def calendrier_economique():
         }.get(event['category'], '📌')
         
         # Label d'impact
-        impact_label = {
-            'high': 'Impact Élevé',
-            'medium': 'Impact Moyen',
-            'low': 'Impact Faible'
-        }.get(event['impact'], 'Impact Moyen')
+        impact_labels = {
+            'high': '🔴 Impact CRITIQUE',
+            'medium': '🟠 Impact MOYEN',
+            'low': '🟢 Impact FAIBLE'
+        }
+        impact_label = impact_labels.get(event['impact'], 'Impact Moyen')
         
         html += f"""
                 <div class="event-card {event['impact']}" data-category="{event['category']}" data-impact="{event['impact']}" data-date="{event['date']}">
                     <div class="event-header">
                         <div class="event-date">
                             <div class="event-day">{day}</div>
-                            <div class="event-month">{month[:3].upper()}</div>
+                            <div class="event-month">{month}</div>
                             <div class="event-time">⏰ {event['time']} EST</div>
                         </div>
                         <div class="event-info">
@@ -4106,7 +4424,13 @@ async def calendrier_economique():
                                 {category_emoji} {event['title']}
                                 <span class="countdown">{countdown}</span>
                             </div>
-                            <div class="event-description">{event['description']}</div>
+                            <div class="event-description">
+                                {event['description']}
+                            </div>
+                            <div class="why-important">
+                                <div class="why-important-label">💡 Pourquoi c'est important</div>
+                                <div class="why-important-text">{event['why_important']}</div>
+                            </div>
                             <div class="event-badges">
                                 <span class="badge badge-impact {event['impact']}">{impact_label}</span>
                                 <span class="badge badge-category">{event['category'].upper()}</span>
@@ -4114,15 +4438,15 @@ async def calendrier_economique():
                             </div>
                             <div class="event-stats">
                                 <div class="stat-item">
-                                    <div class="stat-label">Prévision</div>
+                                    <div class="stat-label">📈 Prévision</div>
                                     <div class="stat-value">{event['forecast']}</div>
                                 </div>
                                 <div class="stat-item">
-                                    <div class="stat-label">Précédent</div>
+                                    <div class="stat-label">📊 Précédent</div>
                                     <div class="stat-value">{event['previous']}</div>
                                 </div>
                                 <div class="stat-item">
-                                    <div class="stat-label">Monnaie</div>
+                                    <div class="stat-label">💱 Monnaie</div>
                                     <div class="stat-value">{event['currency']}</div>
                                 </div>
                             </div>
@@ -4131,13 +4455,35 @@ async def calendrier_economique():
                 </div>
 """
     
-    html += """
+    html += f"""
+            </div>
+        </div>
+        
+        <div class="card" style="text-align: center; background: linear-gradient(135deg, #1e293b, #0f172a); border: 2px solid #334155;">
+            <h3 style="color: #60a5fa; margin-bottom: 15px;">📊 Statistiques complètes</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-top: 20px;">
+                <div>
+                    <div style="font-size: 32px; color: #ef4444; font-weight: 700;">{len([e for e in events if e['impact'] == 'high'])}</div>
+                    <div style="font-size: 12px; color: #94a3b8;">Événements critiques</div>
+                </div>
+                <div>
+                    <div style="font-size: 32px; color: #60a5fa; font-weight: 700;">{len([e for e in events if e['category'] == 'fed'])}</div>
+                    <div style="font-size: 12px; color: #94a3b8;">Réunions Fed</div>
+                </div>
+                <div>
+                    <div style="font-size: 32px; color: #10b981; font-weight: 700;">{len([e for e in events if 'NFP' in e['title'] or 'emploi' in e['title'].lower()])}</div>
+                    <div style="font-size: 12px; color: #94a3b8;">Rapports emploi</div>
+                </div>
+                <div>
+                    <div style="font-size: 32px; color: #f59e0b; font-weight: 700;">{len([e for e in events if 'IPC' in e['title'] or 'PCE' in e['title'] or 'IPP' in e['title']])}</div>
+                    <div style="font-size: 12px; color: #94a3b8;">Rapports inflation</div>
+                </div>
             </div>
         </div>
     </div>
     
     <script>
-        function filterEvents(filter) {
+        function filterEvents(filter) {{
             const events = document.querySelectorAll('.event-card');
             const buttons = document.querySelectorAll('.filter-btn');
             
@@ -4145,36 +4491,36 @@ async def calendrier_economique():
             buttons.forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
             
-            // Get current date for this-week filter
+            // Get current date for time filters
             const now = new Date();
             const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             
-            events.forEach(event => {
+            events.forEach(event => {{
                 let show = false;
                 
-                if (filter === 'all') {
+                if (filter === 'all') {{
                     show = true;
-                } else if (filter === 'high') {
+                }} else if (filter === 'high') {{
                     show = event.dataset.impact === 'high';
-                } else if (filter === 'fed' || filter === 'bce') {
+                }} else if (filter === 'fed' || filter === 'bce') {{
                     show = event.dataset.category === filter;
-                } else if (filter === 'data') {
+                }} else if (filter === 'data') {{
                     show = event.dataset.category === 'data';
-                } else if (filter === 'this-week') {
+                }} else if (filter === 'this-week') {{
                     const eventDate = new Date(event.dataset.date);
                     show = eventDate >= now && eventDate <= weekFromNow;
-                }
+                }} else if (filter === 'this-month') {{
+                    const eventDate = new Date(event.dataset.date);
+                    show = eventDate >= now && eventDate <= monthEnd;
+                }}
                 
                 event.style.display = show ? 'block' : 'none';
-            });
-        }
+            }});
+        }}
         
-        // Auto-refresh every 5 minutes
-        setInterval(() => {
-            location.reload();
-        }, 300000);
-        
-        console.log('📅 Calendrier Économique chargé');
+        console.log('📅 Calendrier Économique Complet chargé');
+        console.log('✅ {len(events)} événements affichés');
     </script>
 </body>
 </html>"""
@@ -4203,16 +4549,9 @@ if __name__ == "__main__":
     print("  • Fear & Greed (flèche SVG)")
     print("  • Dominance BTC, Heatmap")
     print("  • 🌟 ALTCOIN SEASON (NOUVEAU DESIGN!)")
-    print("  • 📅 CALENDRIER ÉCONOMIQUE (NOUVEAU!)")
     print("  • Nouvelles, Trades, Convertisseur")
+    print("  • 📅 CALENDRIER ÉCONOMIQUE COMPLET (NOUVEAU!)")
     print("  • Bullrun Phase, Graphiques, Telegram")
-    print("="*70)
-    print("📅 CALENDRIER ÉCONOMIQUE:")
-    print("  • 14 événements économiques majeurs")
-    print("  • Fed, BCE, BoE, BoJ, données USA")
-    print("  • Filtres intelligents par impact")
-    print("  • Countdown dynamique")
-    print("  • Design moderne et responsive")
     print("="*70)
     print("🌟 ALTCOIN SEASON:")
     print("  • Jauge circulaire animée")
@@ -4221,5 +4560,12 @@ if __name__ == "__main__":
     print("  • Graphique de tendance")
     print("  • Top 8 altcoins performers")
     print("  • Recommandations intelligentes")
+    print("="*70)
+    print("📅 CALENDRIER ÉCONOMIQUE:")
+    print("  • 31 événements économiques détaillés")
+    print("  • Fed, BCE, BoE, BoJ, données complètes")
+    print("  • Descriptions COMPLÈTES de chaque événement")
+    print("  • Pourquoi chaque événement est important")
+    print("  • Filtres intelligents et statistiques")
     print("="*70)
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

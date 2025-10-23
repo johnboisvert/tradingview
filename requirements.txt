@@ -1,12 +1,12 @@
 # Core FastAPI
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-pydantic==2.5.0
+fastapi==0.109.0
+uvicorn==0.27.0
+pydantic==2.5.3
 aiohttp==3.9.1
 # HTTP Client (httpx/httpcore pin pour éviter les soucis de proxies args)
-httpx==0.27.2
+httpx==0.26.0
 httpcore==1.0.5
-pytz
+pytz==2024.1
 
 # Rate Limiting (OBLIGATOIRE pour v2.3)
 slowapi==0.1.9
@@ -21,5 +21,6 @@ openai==1.51.0
 # Ajouts pour Altseason (fetch + parsing)
 requests==2.32.3
 beautifulsoup4==4.12.3
+
 
 

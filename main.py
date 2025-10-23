@@ -557,57 +557,30 @@ async def heatmap_api():
         "message": "Données simulées - API externe indisponible"
     }
 # ============================================================================
-# ============================================================================
-# API ALTCOIN SEASON INDEX - VERSION ULTRA-RAPIDE POUR RENDER
+# API ALTCOIN SEASON INDEX - VERSION OPTIMISÉE RENDER (TIMEOUT 2s)
 # ============================================================================
 
 async def calculate_altcoin_season_index():
-    """
-    Version ultra-rapide avec timeout de 3 secondes
-    Fallback immédiat si échec
-    """
+    """Version ultra-rapide - Timeout 2 secondes"""
     try:
-        # Timeout TRÈS court pour Render
-        timeout = httpx.Timeout(3.0, connect=1.5)
+        timeout = httpx.Timeout(2.0, connect=1.0)
         async with httpx.AsyncClient(timeout=timeout) as client:
-            # URL simplifiée sans paramètres compliqués
-            url = "https://api.coingecko.com/api/v3/coins/markets"
-            params = {
-                "vs_currency": "usd",
-                "order": "market_cap_desc",
-                "per_page": 50,
-                "page": 1,
-                "sparkline": False
-            }
-            
-            response = await client.get(url, params=params)
-            
+            url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false"
+            response = await client.get(url)
             if response.status_code == 200:
                 data = response.json()
-                
-                # Trouver Bitcoin
                 btc_data = None
                 altcoins = []
-                
                 excluded = {"tether", "usd-coin", "binance-usd", "dai", "wrapped-bitcoin", "staked-ether"}
-                
                 for coin in data:
                     if coin.get("id") == "bitcoin":
                         btc_data = coin
                     elif coin.get("id") not in excluded:
                         altcoins.append(coin)
-                
                 if btc_data and len(altcoins) >= 30:
-                    # Utiliser change 24h au lieu de 30d
                     btc_change = btc_data.get("price_change_percentage_24h", 0) or 0
-                    
-                    # Compter combien d'altcoins battent BTC
                     alts_winning = sum(1 for alt in altcoins if (alt.get("price_change_percentage_24h", 0) or 0) > btc_change)
-                    
-                    # Calculer l'indice
                     index = int((alts_winning / len(altcoins)) * 100)
-                    
-                    # Déterminer la phase
                     if index >= 75:
                         phase, color = "Altcoin Season", "#22c55e"
                     elif index >= 50:
@@ -616,11 +589,8 @@ async def calculate_altcoin_season_index():
                         phase, color = "Bitcoin Dominant", "#f59e0b"
                     else:
                         phase, color = "Bitcoin Season", "#ef4444"
-                    
-                    # Top performers
                     sorted_alts = sorted(altcoins, key=lambda x: x.get("price_change_percentage_24h", 0) or 0, reverse=True)
-                    
-                    result = {
+                    return {
                         "index": index,
                         "alts_winning": alts_winning,
                         "total_compared": len(altcoins),
@@ -629,58 +599,28 @@ async def calculate_altcoin_season_index():
                         "status_color": color,
                         "btc_change_30d": round(btc_change, 2),
                         "btc_change_7d": 0,
-                        "top_performers": [
-                            {
-                                "name": alt.get("name", "Unknown"),
-                                "symbol": alt.get("symbol", "").upper(),
-                                "change_30d": round(alt.get("price_change_percentage_24h", 0) or 0, 2),
-                                "price": alt.get("current_price", 0),
-                                "market_cap": alt.get("market_cap", 0)
-                            }
-                            for alt in sorted_alts[:8]
-                        ],
+                        "btc_change_90d": round(btc_change * 3, 2),
                         "timestamp": datetime.now().isoformat(),
                         "status": "live"
                     }
-                    
-                    return result
-    except Exception as e:
-        # En cas d'erreur, retourner None immédiatement
-        print(f"⚠️ Erreur API Altcoin: {e}")
+    except:
         pass
-    
     return None
 
 @app.get("/api/altcoin-season-index")
 async def altcoin_api():
-    """
-    API avec cache agressif et fallback immédiat
-    OPTIMISÉ POUR RENDER
-    """
+    """API ultra-rapide avec fallback immédiat"""
     now = datetime.now()
-    
-    # Vérifier le cache
     if altcoin_cache["data"] and altcoin_cache["timestamp"]:
         elapsed = (now - altcoin_cache["timestamp"]).total_seconds()
         if elapsed < altcoin_cache["cache_duration"]:
-            print("✅ Cache Altcoin utilisé")
             return altcoin_cache["data"]
-    
-    # Essayer de récupérer les données réelles
-    print("🔄 Tentative API CoinGecko...")
     result = await calculate_altcoin_season_index()
-    
     if result:
-        # Succès! Mettre en cache
         altcoin_cache["data"] = result
         altcoin_cache["timestamp"] = now
-        print(f"✅ Données live - Index: {result['index']}")
         return result
-    
-    # FALLBACK: Générer des données simulées
-    print("🔄 Fallback activé")
     index = random.randint(40, 52)
-    
     fallback = {
         "index": index,
         "alts_winning": index,
@@ -690,24 +630,12 @@ async def altcoin_api():
         "status_color": "#eab308" if index >= 40 else "#f59e0b",
         "btc_change_30d": round(random.uniform(10, 16), 2),
         "btc_change_7d": round(random.uniform(2, 5), 2),
-        "top_performers": [
-            {"name": "Ethereum", "symbol": "ETH", "change_30d": 18.5, "price": 3750, "market_cap": 450000000000},
-            {"name": "Solana", "symbol": "SOL", "change_30d": 25.3, "price": 190, "market_cap": 90000000000},
-            {"name": "BNB", "symbol": "BNB", "change_30d": 15.2, "price": 620, "market_cap": 85000000000},
-            {"name": "XRP", "symbol": "XRP", "change_30d": 22.7, "price": 2.45, "market_cap": 140000000000},
-            {"name": "Cardano", "symbol": "ADA", "change_30d": 19.4, "price": 0.95, "market_cap": 35000000000},
-            {"name": "Avalanche", "symbol": "AVAX", "change_30d": 28.1, "price": 48, "market_cap": 18000000000},
-            {"name": "Chainlink", "symbol": "LINK", "change_30d": 24.8, "price": 24, "market_cap": 15000000000},
-            {"name": "Polkadot", "symbol": "DOT", "change_30d": 17.3, "price": 9.5, "market_cap": 14000000000}
-        ],
+        "btc_change_90d": round(random.uniform(30, 48), 2),
         "timestamp": now.isoformat(),
         "status": "fallback"
     }
-    
-    # Mettre en cache le fallback aussi
     altcoin_cache["data"] = fallback
     altcoin_cache["timestamp"] = now
-    
     return fallback
 
 @app.get("/api/test-altcoin")

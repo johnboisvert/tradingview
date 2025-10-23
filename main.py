@@ -1121,7 +1121,99 @@ async def news_page():
     return HTMLResponse(html)
 
 
-# CODE À INSÉRER APRÈS LA LIGNE 1127 (après @app.get("/api/exchange-rates"))
+# REMPLACER COMPLÈTEMENT LES 2 FONCTIONS DANS VOTRE MAIN.PY
+
+@app.get("/api/exchange-rates-live")
+async def get_exchange_rates_live():
+    """Récupère les taux de change en temps réel depuis CoinGecko"""
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Liste des cryptos à récupérer
+            crypto_ids = [
+                "bitcoin", "ethereum", "tether", "binancecoin", "solana",
+                "usd-coin", "ripple", "cardano", "dogecoin", "tron",
+                "chainlink", "matic-network", "litecoin", "polkadot", "uniswap",
+                "avalanche-2"
+            ]
+            
+            # Récupérer les prix en USD, EUR, CAD
+            response = await client.get(
+                "https://api.coingecko.com/api/v3/simple/price",
+                params={
+                    "ids": ",".join(crypto_ids),
+                    "vs_currencies": "usd,eur,cad,gbp,jpy,chf,aud,cny"
+                }
+            )
+            
+            if response.status_code == 200:
+                crypto_data = response.json()
+                
+                # Mapper les noms CoinGecko aux symboles
+                mapping = {
+                    "bitcoin": "BTC",
+                    "ethereum": "ETH",
+                    "tether": "USDT",
+                    "binancecoin": "BNB",
+                    "solana": "SOL",
+                    "usd-coin": "USDC",
+                    "ripple": "XRP",
+                    "cardano": "ADA",
+                    "dogecoin": "DOGE",
+                    "tron": "TRX",
+                    "chainlink": "LINK",
+                    "matic-network": "MATIC",
+                    "litecoin": "LTC",
+                    "polkadot": "DOT",
+                    "uniswap": "UNI",
+                    "avalanche-2": "AVAX"
+                }
+                
+                rates = {}
+                for coin_id, symbol in mapping.items():
+                    if coin_id in crypto_data:
+                        rates[symbol] = crypto_data[coin_id]
+                
+                # Ajouter les devises fiat (1 unité = X USD)
+                rates["USD"] = {"usd": 1, "eur": 0.92, "cad": 1.36, "gbp": 0.79, "jpy": 149.50, "chf": 0.88, "aud": 1.52, "cny": 7.24}
+                rates["EUR"] = {"usd": 1.09, "eur": 1, "cad": 1.48, "gbp": 0.86, "jpy": 162.89, "chf": 0.96, "aud": 1.66, "cny": 7.89}
+                rates["CAD"] = {"usd": 0.74, "eur": 0.68, "cad": 1, "gbp": 0.58, "jpy": 110.29, "chf": 0.65, "aud": 1.12, "cny": 5.33}
+                rates["GBP"] = {"usd": 1.27, "eur": 1.16, "cad": 1.72, "gbp": 1, "jpy": 189.87, "chf": 1.12, "aud": 1.93, "cny": 9.19}
+                rates["JPY"] = {"usd": 0.0067, "eur": 0.0061, "cad": 0.0091, "gbp": 0.0053, "jpy": 1, "chf": 0.0059, "aud": 0.0102, "cny": 0.0484}
+                rates["CHF"] = {"usd": 1.14, "eur": 1.04, "cad": 1.55, "gbp": 0.90, "jpy": 170.45, "chf": 1, "aud": 1.73, "cny": 8.25}
+                rates["AUD"] = {"usd": 0.66, "eur": 0.60, "cad": 0.89, "gbp": 0.52, "jpy": 98.04, "chf": 0.58, "aud": 1, "cny": 4.76}
+                rates["CNY"] = {"usd": 0.138, "eur": 0.127, "cad": 0.188, "gbp": 0.109, "jpy": 20.66, "chf": 0.121, "aud": 0.210, "cny": 1}
+                
+                return {
+                    "rates": rates,
+                    "status": "success",
+                    "timestamp": datetime.now().isoformat()
+                }
+            else:
+                # Fallback avec des valeurs statiques si l'API échoue
+                return get_fallback_rates()
+    
+    except Exception as e:
+        print(f"❌ Erreur exchange-rates-live: {e}")
+        return get_fallback_rates()
+
+
+def get_fallback_rates():
+    """Taux de secours si l'API échoue"""
+    return {
+        "rates": {
+            "BTC": {"usd": 107150.00, "eur": 98300.00, "cad": 145500.00},
+            "ETH": {"usd": 3725.00, "eur": 3420.00, "cad": 5060.00},
+            "USDT": {"usd": 1.0, "eur": 0.92, "cad": 1.36},
+            "BNB": {"usd": 695.00, "eur": 638.00, "cad": 945.00},
+            "SOL": {"usd": 245.00, "eur": 225.00, "cad": 333.00},
+            "USD": {"usd": 1, "eur": 0.92, "cad": 1.36},
+            "EUR": {"usd": 1.09, "eur": 1, "cad": 1.48},
+            "CAD": {"usd": 0.74, "eur": 0.68, "cad": 1}
+        },
+        "status": "fallback",
+        "timestamp": datetime.now().isoformat()
+    }
+
 
 @app.get("/convertisseur", response_class=HTMLResponse)
 async def convertisseur_page():
@@ -1168,36 +1260,6 @@ async def convertisseur_page():
             align-items: center;
             margin: 30px 0;
         }}
-        .currency-box {{
-            background: #0f172a;
-            border-radius: 12px;
-            padding: 20px;
-            border: 2px solid #334155;
-            cursor: pointer;
-            transition: all 0.3s;
-        }}
-        .currency-box:hover {{
-            border-color: #60a5fa;
-            transform: translateY(-2px);
-        }}
-        .currency-box.active {{
-            border-color: #3b82f6;
-            background: rgba(59, 130, 246, 0.1);
-        }}
-        .currency-icon {{
-            font-size: 32px;
-            margin-bottom: 10px;
-        }}
-        .currency-code {{
-            font-size: 20px;
-            font-weight: 700;
-            color: #e2e8f0;
-            margin-bottom: 5px;
-        }}
-        .currency-name {{
-            font-size: 13px;
-            color: #94a3b8;
-        }}
         .swap-btn {{
             background: #3b82f6;
             width: 50px;
@@ -1210,6 +1272,7 @@ async def convertisseur_page():
             justify-content: center;
             font-size: 24px;
             transition: all 0.3s;
+            color: white;
         }}
         .swap-btn:hover {{
             background: #2563eb;
@@ -1244,6 +1307,37 @@ async def convertisseur_page():
             color: #94a3b8;
             font-size: 14px;
         }}
+        .select-currency {{
+            width: 100%;
+            padding: 15px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 10px;
+            color: #e2e8f0;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }}
+        .select-currency:hover {{
+            border-color: #60a5fa;
+        }}
+        .select-currency:focus {{
+            outline: none;
+            border-color: #3b82f6;
+        }}
+        .loading {{
+            text-align: center;
+            padding: 20px;
+            color: #94a3b8;
+        }}
+        .error {{
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 15px;
+            color: #ef4444;
+            margin-top: 20px;
+        }}
         .popular-currencies {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -1272,37 +1366,6 @@ async def convertisseur_page():
             font-weight: 600;
             color: #e2e8f0;
         }}
-        .loading {{
-            text-align: center;
-            padding: 20px;
-            color: #94a3b8;
-        }}
-        .error {{
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid #ef4444;
-            border-radius: 8px;
-            padding: 15px;
-            color: #ef4444;
-            margin-top: 20px;
-        }}
-        .select-currency {{
-            width: 100%;
-            padding: 15px;
-            background: #0f172a;
-            border: 2px solid #334155;
-            border-radius: 10px;
-            color: #e2e8f0;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }}
-        .select-currency:hover {{
-            border-color: #60a5fa;
-        }}
-        .select-currency:focus {{
-            outline: none;
-            border-color: #3b82f6;
-        }}
     </style>
 </head>
 <body>
@@ -1326,6 +1389,24 @@ async def convertisseur_page():
                     <div>
                         <label style="display: block; color: #94a3b8; margin-bottom: 10px; font-size: 14px;">De</label>
                         <select id="fromCurrency" class="select-currency">
+                            <optgroup label="₿ Cryptomonnaies">
+                                <option value="BTC">₿ Bitcoin (BTC)</option>
+                                <option value="ETH">Ξ Ethereum (ETH)</option>
+                                <option value="USDT">₮ Tether (USDT)</option>
+                                <option value="BNB">🔸 Binance Coin (BNB)</option>
+                                <option value="SOL">◎ Solana (SOL)</option>
+                                <option value="USDC">💵 USD Coin (USDC)</option>
+                                <option value="XRP">✕ Ripple (XRP)</option>
+                                <option value="ADA">₳ Cardano (ADA)</option>
+                                <option value="DOGE">Ð Dogecoin (DOGE)</option>
+                                <option value="TRX">⬡ Tron (TRX)</option>
+                                <option value="LINK">🔗 Chainlink (LINK)</option>
+                                <option value="MATIC">⬡ Polygon (MATIC)</option>
+                                <option value="LTC">Ł Litecoin (LTC)</option>
+                                <option value="DOT">● Polkadot (DOT)</option>
+                                <option value="UNI">🦄 Uniswap (UNI)</option>
+                                <option value="AVAX">🔺 Avalanche (AVAX)</option>
+                            </optgroup>
                             <optgroup label="💰 Devises Fiduciaires">
                                 <option value="USD" selected>🇺🇸 Dollar américain (USD)</option>
                                 <option value="EUR">🇪🇺 Euro (EUR)</option>
@@ -1336,6 +1417,14 @@ async def convertisseur_page():
                                 <option value="AUD">🇦🇺 Dollar australien (AUD)</option>
                                 <option value="CNY">🇨🇳 Yuan chinois (CNY)</option>
                             </optgroup>
+                        </select>
+                    </div>
+                    
+                    <button class="swap-btn" onclick="swapCurrencies()">⇄</button>
+                    
+                    <div>
+                        <label style="display: block; color: #94a3b8; margin-bottom: 10px; font-size: 14px;">Vers</label>
+                        <select id="toCurrency" class="select-currency">
                             <optgroup label="₿ Cryptomonnaies">
                                 <option value="BTC">₿ Bitcoin (BTC)</option>
                                 <option value="ETH">Ξ Ethereum (ETH)</option>
@@ -1354,14 +1443,6 @@ async def convertisseur_page():
                                 <option value="UNI">🦄 Uniswap (UNI)</option>
                                 <option value="AVAX">🔺 Avalanche (AVAX)</option>
                             </optgroup>
-                        </select>
-                    </div>
-                    
-                    <button class="swap-btn" onclick="swapCurrencies()">⇄</button>
-                    
-                    <div>
-                        <label style="display: block; color: #94a3b8; margin-bottom: 10px; font-size: 14px;">Vers</label>
-                        <select id="toCurrency" class="select-currency">
                             <optgroup label="💰 Devises Fiduciaires">
                                 <option value="USD">🇺🇸 Dollar américain (USD)</option>
                                 <option value="EUR">🇪🇺 Euro (EUR)</option>
@@ -1371,24 +1452,6 @@ async def convertisseur_page():
                                 <option value="CHF">🇨🇭 Franc suisse (CHF)</option>
                                 <option value="AUD">🇦🇺 Dollar australien (AUD)</option>
                                 <option value="CNY">🇨🇳 Yuan chinois (CNY)</option>
-                            </optgroup>
-                            <optgroup label="₿ Cryptomonnaies">
-                                <option value="BTC">₿ Bitcoin (BTC)</option>
-                                <option value="ETH">Ξ Ethereum (ETH)</option>
-                                <option value="USDT">₮ Tether (USDT)</option>
-                                <option value="BNB">🔸 Binance Coin (BNB)</option>
-                                <option value="SOL">◎ Solana (SOL)</option>
-                                <option value="USDC">💵 USD Coin (USDC)</option>
-                                <option value="XRP">✕ Ripple (XRP)</option>
-                                <option value="ADA">₳ Cardano (ADA)</option>
-                                <option value="DOGE">Ð Dogecoin (DOGE)</option>
-                                <option value="TRX">⬡ Tron (TRX)</option>
-                                <option value="LINK">🔗 Chainlink (LINK)</option>
-                                <option value="MATIC">⬡ Polygon (MATIC)</option>
-                                <option value="LTC">Ł Litecoin (LTC)</option>
-                                <option value="DOT">● Polkadot (DOT)</option>
-                                <option value="UNI">🦄 Uniswap (UNI)</option>
-                                <option value="AVAX">🔺 Avalanche (AVAX)</option>
                             </optgroup>
                         </select>
                     </div>
@@ -1414,6 +1477,18 @@ async def convertisseur_page():
             <div class="card" style="margin-top: 30px;">
                 <h3 style="color: #60a5fa; margin-bottom: 20px;">⚡ Conversions rapides</h3>
                 <div class="popular-currencies">
+                    <div class="currency-btn" onclick="setQuickConversion('BTC', 'USD')">
+                        <div class="currency-btn-icon">₿→💵</div>
+                        <div class="currency-btn-code">BTC→USD</div>
+                    </div>
+                    <div class="currency-btn" onclick="setQuickConversion('BTC', 'CAD')">
+                        <div class="currency-btn-icon">₿→🇨🇦</div>
+                        <div class="currency-btn-code">BTC→CAD</div>
+                    </div>
+                    <div class="currency-btn" onclick="setQuickConversion('ETH', 'USD')">
+                        <div class="currency-btn-icon">Ξ→💵</div>
+                        <div class="currency-btn-code">ETH→USD</div>
+                    </div>
                     <div class="currency-btn" onclick="setQuickConversion('USD', 'CAD')">
                         <div class="currency-btn-icon">🇺🇸→🇨🇦</div>
                         <div class="currency-btn-code">USD→CAD</div>
@@ -1421,18 +1496,6 @@ async def convertisseur_page():
                     <div class="currency-btn" onclick="setQuickConversion('CAD', 'USD')">
                         <div class="currency-btn-icon">🇨🇦→🇺🇸</div>
                         <div class="currency-btn-code">CAD→USD</div>
-                    </div>
-                    <div class="currency-btn" onclick="setQuickConversion('EUR', 'USD')">
-                        <div class="currency-btn-icon">🇪🇺→🇺🇸</div>
-                        <div class="currency-btn-code">EUR→USD</div>
-                    </div>
-                    <div class="currency-btn" onclick="setQuickConversion('BTC', 'USD')">
-                        <div class="currency-btn-icon">₿→💵</div>
-                        <div class="currency-btn-code">BTC→USD</div>
-                    </div>
-                    <div class="currency-btn" onclick="setQuickConversion('ETH', 'USD')">
-                        <div class="currency-btn-icon">Ξ→💵</div>
-                        <div class="currency-btn-code">ETH→USD</div>
                     </div>
                     <div class="currency-btn" onclick="setQuickConversion('USDT', 'CAD')">
                         <div class="currency-btn-icon">₮→🇨🇦</div>
@@ -1457,24 +1520,26 @@ async def convertisseur_page():
             
             try {{
                 const response = await fetch('/api/exchange-rates-live');
-                if (!response.ok) throw new Error('Erreur lors de la récupération des taux');
+                if (!response.ok) throw new Error('Erreur API');
                 
                 const data = await response.json();
                 rates = data.rates || {{}};
                 
+                console.log('✅ Taux chargés:', rates);
+                
                 document.getElementById('loading').style.display = 'none';
-                convert(); // Convertir automatiquement
+                convert();
             }} catch (error) {{
-                console.error('Erreur:', error);
+                console.error('❌ Erreur:', error);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = '❌ Erreur lors du chargement des taux. Veuillez réessayer.';
+                document.getElementById('error').textContent = '❌ Erreur lors du chargement des taux. Réessayez.';
             }} finally {{
                 isLoading = false;
             }}
         }}
         
-        // Fonction de conversion
+        // ✅ FONCTION DE CONVERSION CORRIGÉE
         function convert() {{
             const amount = parseFloat(document.getElementById('amount').value) || 0;
             const from = document.getElementById('fromCurrency').value;
@@ -1491,7 +1556,6 @@ async def convertisseur_page():
                 return;
             }}
             
-            // Obtenir le taux de conversion
             let result = 0;
             let rate = 0;
             
@@ -1499,55 +1563,42 @@ async def convertisseur_page():
                 result = amount;
                 rate = 1;
             }} else {{
-                // Convertir via USD comme devise pivot
-                const fromRate = getUSDRate(from);
-                const toRate = getUSDRate(to);
+                // ✅ LOGIQUE CORRIGÉE : Conversion via USD
+                const fromValueInUSD = getValueInUSD(from, 1);
+                const toValueInUSD = getValueInUSD(to, 1);
                 
-                if (fromRate === 0 || toRate === 0) {{
+                if (fromValueInUSD === 0 || toValueInUSD === 0) {{
                     document.getElementById('error').style.display = 'block';
-                    document.getElementById('error').textContent = '❌ Taux de conversion non disponible';
+                    document.getElementById('error').textContent = '❌ Taux non disponible pour ' + from + ' ou ' + to;
                     return;
                 }}
                 
-                const amountInUSD = amount / fromRate;
-                result = amountInUSD * toRate;
-                rate = toRate / fromRate;
+                // Convertir : montant × valeur_from_en_USD ÷ valeur_to_en_USD
+                result = (amount * fromValueInUSD) / toValueInUSD;
+                rate = fromValueInUSD / toValueInUSD;
+                
+                console.log(`Conversion: ${{amount}} ${{from}} → ${{result}} ${{to}}`);
+                console.log(`Rate: 1 ${{from}} = ${{rate}} ${{to}}`);
             }}
             
-            // Afficher le résultat
+            document.getElementById('error').style.display = 'none';
             document.getElementById('resultAmount').textContent = formatNumber(result);
             document.getElementById('resultLabel').textContent = `${{amount}} ${{from}} = ${{formatNumber(result)}} ${{to}}`;
             document.getElementById('resultBox').style.display = 'block';
             
-            // Afficher le taux
             document.getElementById('rateText').textContent = `1 ${{from}} = ${{formatNumber(rate)}} ${{to}}`;
             document.getElementById('rateInfo').style.display = 'block';
         }}
         
-        // Obtenir le taux en USD pour une devise
-        function getUSDRate(currency) {{
-            // Devises fiat hardcodées (vous pouvez les mettre à jour avec une vraie API)
-            const fiatRates = {{
-                'USD': 1,
-                'EUR': 0.92,
-                'CAD': 1.36,
-                'GBP': 0.79,
-                'JPY': 149.50,
-                'CHF': 0.88,
-                'AUD': 1.52,
-                'CNY': 7.24
-            }};
-            
-            if (fiatRates[currency]) {{
-                return fiatRates[currency];
+        // ✅ Obtenir la valeur en USD (combien vaut 1 unité de cette devise en USD)
+        function getValueInUSD(currency, amount = 1) {{
+            if (!rates[currency]) {{
+                console.warn('⚠️ Devise inconnue:', currency);
+                return 0;
             }}
             
-            // Cryptos - chercher dans les taux chargés
-            if (rates[currency] && rates[currency].usd) {{
-                return rates[currency].usd;
-            }}
-            
-            return 0;
+            // La clé 'usd' contient la valeur en USD
+            return rates[currency].usd * amount;
         }}
         
         // Formater les nombres
@@ -1587,99 +1638,14 @@ async def convertisseur_page():
         document.getElementById('fromCurrency').addEventListener('change', convert);
         document.getElementById('toCurrency').addEventListener('change', convert);
         
-        // Charger les taux au démarrage
+        // Charger au démarrage
         loadRates();
         
-        // Recharger les taux toutes les 5 minutes
+        // Recharger toutes les 5 minutes
         setInterval(loadRates, 300000);
     </script>
 </body>
 </html>""")
-
-
-# AMÉLIORER AUSSI L'API /api/exchange-rates POUR QU'ELLE SOIT DYNAMIQUE
-# Remplacer l'ancienne fonction par celle-ci :
-
-@app.get("/api/exchange-rates-live")
-async def get_exchange_rates_live():
-    """Récupère les taux de change en temps réel depuis CoinGecko"""
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            # Liste des cryptos à récupérer
-            crypto_ids = [
-                "bitcoin", "ethereum", "tether", "binancecoin", "solana",
-                "usd-coin", "ripple", "cardano", "dogecoin", "tron",
-                "chainlink", "polygon", "litecoin", "polkadot", "uniswap",
-                "avalanche-2"
-            ]
-            
-            # Récupérer les prix en USD, EUR, CAD
-            response = await client.get(
-                "https://api.coingecko.com/api/v3/simple/price",
-                params={
-                    "ids": ",".join(crypto_ids),
-                    "vs_currencies": "usd,eur,cad"
-                }
-            )
-            
-            if response.status_code == 200:
-                crypto_data = response.json()
-                
-                # Mapper les noms CoinGecko aux symboles
-                mapping = {
-                    "bitcoin": "BTC",
-                    "ethereum": "ETH",
-                    "tether": "USDT",
-                    "binancecoin": "BNB",
-                    "solana": "SOL",
-                    "usd-coin": "USDC",
-                    "ripple": "XRP",
-                    "cardano": "ADA",
-                    "dogecoin": "DOGE",
-                    "tron": "TRX",
-                    "chainlink": "LINK",
-                    "polygon": "MATIC",
-                    "litecoin": "LTC",
-                    "polkadot": "DOT",
-                    "uniswap": "UNI",
-                    "avalanche-2": "AVAX"
-                }
-                
-                rates = {}
-                for coin_id, symbol in mapping.items():
-                    if coin_id in crypto_data:
-                        rates[symbol] = crypto_data[coin_id]
-                
-                return {
-                    "rates": rates,
-                    "status": "success",
-                    "timestamp": datetime.now().isoformat()
-                }
-            else:
-                # Fallback avec des valeurs statiques si l'API échoue
-                return {
-                    "rates": {
-                        "BTC": {"usd": 107150.00, "eur": 98573.00, "cad": 153223.00},
-                        "ETH": {"usd": 3725.00, "eur": 3427.00, "cad": 5327.00},
-                        "USDT": {"usd": 1.0, "eur": 0.92, "cad": 1.43}
-                    },
-                    "status": "fallback",
-                    "timestamp": datetime.now().isoformat()
-                }
-    
-    except Exception as e:
-        print(f"❌ Erreur exchange-rates-live: {e}")
-        # Fallback
-        return {
-            "rates": {
-                "BTC": {"usd": 107150.00, "eur": 98573.00, "cad": 153223.00},
-                "ETH": {"usd": 3725.00, "eur": 3427.00, "cad": 5327.00},
-                "USDT": {"usd": 1.0, "eur": 0.92, "cad": 1.43}
-            },
-            "status": "error",
-            "error": str(e),
-            "timestamp": datetime.now().isoformat()
-        }
 @app.get("/api/economic-calendar")
 async def calendar_api():
     now = datetime.now()

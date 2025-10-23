@@ -1121,6 +1121,8 @@ async def news_page():
     return HTMLResponse(html)
 
 
+# CODE À INSÉRER APRÈS LA LIGNE 1127 (après @app.get("/api/exchange-rates"))
+
 @app.get("/convertisseur", response_class=HTMLResponse)
 async def convertisseur_page():
     """Page du convertisseur de devises et crypto"""
@@ -1678,7 +1680,6 @@ async def get_exchange_rates_live():
             "error": str(e),
             "timestamp": datetime.now().isoformat()
         }
-
 @app.get("/api/economic-calendar")
 async def calendar_api():
     now = datetime.now()

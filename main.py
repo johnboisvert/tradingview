@@ -1121,10 +1121,563 @@ async def news_page():
     return HTMLResponse(html)
 
 
-@app.get("/api/exchange-rates")
-async def rates_api():
-    rates = {"BTC": {"usd": 107150.00, "eur": 98573.00, "cad": 153223.00}, "ETH": {"usd": 3725.00, "eur": 3427.00, "cad": 5327.00}, "USDT": {"usd": 1.0, "eur": 0.92, "cad": 1.43}}
-    return {"rates": rates, "status": "success"}
+@app.get("/convertisseur", response_class=HTMLResponse)
+async def convertisseur_page():
+    """Page du convertisseur de devises et crypto"""
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💱 Convertisseur Crypto & Devises</title>
+    {CSS}
+    <style>
+        .converter-container {{
+            max-width: 800px;
+            margin: 0 auto;
+        }}
+        .converter-box {{
+            background: #1e293b;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border: 1px solid #334155;
+        }}
+        .amount-input {{
+            font-size: 48px;
+            font-weight: 700;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid #60a5fa;
+            color: #e2e8f0;
+            width: 100%;
+            padding: 20px 0;
+            margin-bottom: 30px;
+            text-align: center;
+        }}
+        .amount-input:focus {{
+            outline: none;
+            border-bottom-color: #3b82f6;
+        }}
+        .currency-select {{
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 20px;
+            align-items: center;
+            margin: 30px 0;
+        }}
+        .currency-box {{
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #334155;
+            cursor: pointer;
+            transition: all 0.3s;
+        }}
+        .currency-box:hover {{
+            border-color: #60a5fa;
+            transform: translateY(-2px);
+        }}
+        .currency-box.active {{
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }}
+        .currency-icon {{
+            font-size: 32px;
+            margin-bottom: 10px;
+        }}
+        .currency-code {{
+            font-size: 20px;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 5px;
+        }}
+        .currency-name {{
+            font-size: 13px;
+            color: #94a3b8;
+        }}
+        .swap-btn {{
+            background: #3b82f6;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.3s;
+        }}
+        .swap-btn:hover {{
+            background: #2563eb;
+            transform: rotate(180deg);
+        }}
+        .result-box {{
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            margin-top: 30px;
+            border: 2px solid #60a5fa;
+        }}
+        .result-amount {{
+            font-size: 56px;
+            font-weight: 700;
+            color: #60a5fa;
+            margin-bottom: 10px;
+        }}
+        .result-label {{
+            font-size: 16px;
+            color: #94a3b8;
+        }}
+        .rate-info {{
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+        }}
+        .rate-info-text {{
+            color: #94a3b8;
+            font-size: 14px;
+        }}
+        .popular-currencies {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }}
+        .currency-btn {{
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 15px 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+        }}
+        .currency-btn:hover {{
+            border-color: #60a5fa;
+            background: rgba(96, 165, 250, 0.1);
+        }}
+        .currency-btn-icon {{
+            font-size: 24px;
+            margin-bottom: 5px;
+        }}
+        .currency-btn-code {{
+            font-size: 14px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }}
+        .loading {{
+            text-align: center;
+            padding: 20px;
+            color: #94a3b8;
+        }}
+        .error {{
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 15px;
+            color: #ef4444;
+            margin-top: 20px;
+        }}
+        .select-currency {{
+            width: 100%;
+            padding: 15px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 10px;
+            color: #e2e8f0;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }}
+        .select-currency:hover {{
+            border-color: #60a5fa;
+        }}
+        .select-currency:focus {{
+            outline: none;
+            border-color: #3b82f6;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💱 Convertisseur Universel</h1>
+            <p>Cryptomonnaies et devises fiduciaires en temps réel</p>
+        </div>
+        
+        {NAV}
+        
+        <div class="converter-container">
+            <div class="converter-box">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h2 style="color: #60a5fa; margin: 0;">Montant à convertir</h2>
+                </div>
+                
+                <input type="number" id="amount" class="amount-input" value="1" min="0" step="any" placeholder="0">
+                
+                <div class="currency-select">
+                    <div>
+                        <label style="display: block; color: #94a3b8; margin-bottom: 10px; font-size: 14px;">De</label>
+                        <select id="fromCurrency" class="select-currency">
+                            <optgroup label="💰 Devises Fiduciaires">
+                                <option value="USD" selected>🇺🇸 Dollar américain (USD)</option>
+                                <option value="EUR">🇪🇺 Euro (EUR)</option>
+                                <option value="CAD">🇨🇦 Dollar canadien (CAD)</option>
+                                <option value="GBP">🇬🇧 Livre sterling (GBP)</option>
+                                <option value="JPY">🇯🇵 Yen japonais (JPY)</option>
+                                <option value="CHF">🇨🇭 Franc suisse (CHF)</option>
+                                <option value="AUD">🇦🇺 Dollar australien (AUD)</option>
+                                <option value="CNY">🇨🇳 Yuan chinois (CNY)</option>
+                            </optgroup>
+                            <optgroup label="₿ Cryptomonnaies">
+                                <option value="BTC">₿ Bitcoin (BTC)</option>
+                                <option value="ETH">Ξ Ethereum (ETH)</option>
+                                <option value="USDT">₮ Tether (USDT)</option>
+                                <option value="BNB">🔸 Binance Coin (BNB)</option>
+                                <option value="SOL">◎ Solana (SOL)</option>
+                                <option value="USDC">💵 USD Coin (USDC)</option>
+                                <option value="XRP">✕ Ripple (XRP)</option>
+                                <option value="ADA">₳ Cardano (ADA)</option>
+                                <option value="DOGE">Ð Dogecoin (DOGE)</option>
+                                <option value="TRX">⬡ Tron (TRX)</option>
+                                <option value="LINK">🔗 Chainlink (LINK)</option>
+                                <option value="MATIC">⬡ Polygon (MATIC)</option>
+                                <option value="LTC">Ł Litecoin (LTC)</option>
+                                <option value="DOT">● Polkadot (DOT)</option>
+                                <option value="UNI">🦄 Uniswap (UNI)</option>
+                                <option value="AVAX">🔺 Avalanche (AVAX)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    
+                    <button class="swap-btn" onclick="swapCurrencies()">⇄</button>
+                    
+                    <div>
+                        <label style="display: block; color: #94a3b8; margin-bottom: 10px; font-size: 14px;">Vers</label>
+                        <select id="toCurrency" class="select-currency">
+                            <optgroup label="💰 Devises Fiduciaires">
+                                <option value="USD">🇺🇸 Dollar américain (USD)</option>
+                                <option value="EUR">🇪🇺 Euro (EUR)</option>
+                                <option value="CAD" selected>🇨🇦 Dollar canadien (CAD)</option>
+                                <option value="GBP">🇬🇧 Livre sterling (GBP)</option>
+                                <option value="JPY">🇯🇵 Yen japonais (JPY)</option>
+                                <option value="CHF">🇨🇭 Franc suisse (CHF)</option>
+                                <option value="AUD">🇦🇺 Dollar australien (AUD)</option>
+                                <option value="CNY">🇨🇳 Yuan chinois (CNY)</option>
+                            </optgroup>
+                            <optgroup label="₿ Cryptomonnaies">
+                                <option value="BTC">₿ Bitcoin (BTC)</option>
+                                <option value="ETH">Ξ Ethereum (ETH)</option>
+                                <option value="USDT">₮ Tether (USDT)</option>
+                                <option value="BNB">🔸 Binance Coin (BNB)</option>
+                                <option value="SOL">◎ Solana (SOL)</option>
+                                <option value="USDC">💵 USD Coin (USDC)</option>
+                                <option value="XRP">✕ Ripple (XRP)</option>
+                                <option value="ADA">₳ Cardano (ADA)</option>
+                                <option value="DOGE">Ð Dogecoin (DOGE)</option>
+                                <option value="TRX">⬡ Tron (TRX)</option>
+                                <option value="LINK">🔗 Chainlink (LINK)</option>
+                                <option value="MATIC">⬡ Polygon (MATIC)</option>
+                                <option value="LTC">Ł Litecoin (LTC)</option>
+                                <option value="DOT">● Polkadot (DOT)</option>
+                                <option value="UNI">🦄 Uniswap (UNI)</option>
+                                <option value="AVAX">🔺 Avalanche (AVAX)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="resultBox" class="result-box" style="display: none;">
+                    <div class="result-amount" id="resultAmount">0.00</div>
+                    <div class="result-label" id="resultLabel"></div>
+                </div>
+                
+                <div id="rateInfo" class="rate-info" style="display: none;">
+                    <div class="rate-info-text" id="rateText"></div>
+                </div>
+                
+                <div id="loading" class="loading" style="display: none;">
+                    <div class="spinner" style="width: 40px; height: 40px;"></div>
+                    <p>Chargement des taux...</p>
+                </div>
+                
+                <div id="error" class="error" style="display: none;"></div>
+            </div>
+            
+            <div class="card" style="margin-top: 30px;">
+                <h3 style="color: #60a5fa; margin-bottom: 20px;">⚡ Conversions rapides</h3>
+                <div class="popular-currencies">
+                    <div class="currency-btn" onclick="setQuickConversion('USD', 'CAD')">
+                        <div class="currency-btn-icon">🇺🇸→🇨🇦</div>
+                        <div class="currency-btn-code">USD→CAD</div>
+                    </div>
+                    <div class="currency-btn" onclick="setQuickConversion('CAD', 'USD')">
+                        <div class="currency-btn-icon">🇨🇦→🇺🇸</div>
+                        <div class="currency-btn-code">CAD→USD</div>
+                    </div>
+                    <div class="currency-btn" onclick="setQuickConversion('EUR', 'USD')">
+                        <div class="currency-btn-icon">🇪🇺→🇺🇸</div>
+                        <div class="currency-btn-code">EUR→USD</div>
+                    </div>
+                    <div class="currency-btn" onclick="setQuickConversion('BTC', 'USD')">
+                        <div class="currency-btn-icon">₿→💵</div>
+                        <div class="currency-btn-code">BTC→USD</div>
+                    </div>
+                    <div class="currency-btn" onclick="setQuickConversion('ETH', 'USD')">
+                        <div class="currency-btn-icon">Ξ→💵</div>
+                        <div class="currency-btn-code">ETH→USD</div>
+                    </div>
+                    <div class="currency-btn" onclick="setQuickConversion('USDT', 'CAD')">
+                        <div class="currency-btn-icon">₮→🇨🇦</div>
+                        <div class="currency-btn-code">USDT→CAD</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let rates = {{}};
+        let isLoading = false;
+        
+        // Charger les taux au démarrage
+        async function loadRates() {{
+            if (isLoading) return;
+            isLoading = true;
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+            
+            try {{
+                const response = await fetch('/api/exchange-rates-live');
+                if (!response.ok) throw new Error('Erreur lors de la récupération des taux');
+                
+                const data = await response.json();
+                rates = data.rates || {{}};
+                
+                document.getElementById('loading').style.display = 'none';
+                convert(); // Convertir automatiquement
+            }} catch (error) {{
+                console.error('Erreur:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = '❌ Erreur lors du chargement des taux. Veuillez réessayer.';
+            }} finally {{
+                isLoading = false;
+            }}
+        }}
+        
+        // Fonction de conversion
+        function convert() {{
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            const from = document.getElementById('fromCurrency').value;
+            const to = document.getElementById('toCurrency').value;
+            
+            if (amount === 0) {{
+                document.getElementById('resultBox').style.display = 'none';
+                document.getElementById('rateInfo').style.display = 'none';
+                return;
+            }}
+            
+            if (Object.keys(rates).length === 0) {{
+                loadRates();
+                return;
+            }}
+            
+            // Obtenir le taux de conversion
+            let result = 0;
+            let rate = 0;
+            
+            if (from === to) {{
+                result = amount;
+                rate = 1;
+            }} else {{
+                // Convertir via USD comme devise pivot
+                const fromRate = getUSDRate(from);
+                const toRate = getUSDRate(to);
+                
+                if (fromRate === 0 || toRate === 0) {{
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').textContent = '❌ Taux de conversion non disponible';
+                    return;
+                }}
+                
+                const amountInUSD = amount / fromRate;
+                result = amountInUSD * toRate;
+                rate = toRate / fromRate;
+            }}
+            
+            // Afficher le résultat
+            document.getElementById('resultAmount').textContent = formatNumber(result);
+            document.getElementById('resultLabel').textContent = `${{amount}} ${{from}} = ${{formatNumber(result)}} ${{to}}`;
+            document.getElementById('resultBox').style.display = 'block';
+            
+            // Afficher le taux
+            document.getElementById('rateText').textContent = `1 ${{from}} = ${{formatNumber(rate)}} ${{to}}`;
+            document.getElementById('rateInfo').style.display = 'block';
+        }}
+        
+        // Obtenir le taux en USD pour une devise
+        function getUSDRate(currency) {{
+            // Devises fiat hardcodées (vous pouvez les mettre à jour avec une vraie API)
+            const fiatRates = {{
+                'USD': 1,
+                'EUR': 0.92,
+                'CAD': 1.36,
+                'GBP': 0.79,
+                'JPY': 149.50,
+                'CHF': 0.88,
+                'AUD': 1.52,
+                'CNY': 7.24
+            }};
+            
+            if (fiatRates[currency]) {{
+                return fiatRates[currency];
+            }}
+            
+            // Cryptos - chercher dans les taux chargés
+            if (rates[currency] && rates[currency].usd) {{
+                return rates[currency].usd;
+            }}
+            
+            return 0;
+        }}
+        
+        // Formater les nombres
+        function formatNumber(num) {{
+            if (num >= 1000) {{
+                return num.toFixed(2).replace(/\\B(?=(\\d{{3}})+(?!\\d))/g, " ");
+            }} else if (num >= 1) {{
+                return num.toFixed(2);
+            }} else if (num >= 0.01) {{
+                return num.toFixed(4);
+            }} else {{
+                return num.toFixed(8);
+            }}
+        }}
+        
+        // Échanger les devises
+        function swapCurrencies() {{
+            const from = document.getElementById('fromCurrency').value;
+            const to = document.getElementById('toCurrency').value;
+            
+            document.getElementById('fromCurrency').value = to;
+            document.getElementById('toCurrency').value = from;
+            
+            convert();
+        }}
+        
+        // Conversion rapide
+        function setQuickConversion(from, to) {{
+            document.getElementById('fromCurrency').value = from;
+            document.getElementById('toCurrency').value = to;
+            document.getElementById('amount').value = 1;
+            convert();
+        }}
+        
+        // Événements
+        document.getElementById('amount').addEventListener('input', convert);
+        document.getElementById('fromCurrency').addEventListener('change', convert);
+        document.getElementById('toCurrency').addEventListener('change', convert);
+        
+        // Charger les taux au démarrage
+        loadRates();
+        
+        // Recharger les taux toutes les 5 minutes
+        setInterval(loadRates, 300000);
+    </script>
+</body>
+</html>""")
+
+
+# AMÉLIORER AUSSI L'API /api/exchange-rates POUR QU'ELLE SOIT DYNAMIQUE
+# Remplacer l'ancienne fonction par celle-ci :
+
+@app.get("/api/exchange-rates-live")
+async def get_exchange_rates_live():
+    """Récupère les taux de change en temps réel depuis CoinGecko"""
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Liste des cryptos à récupérer
+            crypto_ids = [
+                "bitcoin", "ethereum", "tether", "binancecoin", "solana",
+                "usd-coin", "ripple", "cardano", "dogecoin", "tron",
+                "chainlink", "polygon", "litecoin", "polkadot", "uniswap",
+                "avalanche-2"
+            ]
+            
+            # Récupérer les prix en USD, EUR, CAD
+            response = await client.get(
+                "https://api.coingecko.com/api/v3/simple/price",
+                params={
+                    "ids": ",".join(crypto_ids),
+                    "vs_currencies": "usd,eur,cad"
+                }
+            )
+            
+            if response.status_code == 200:
+                crypto_data = response.json()
+                
+                # Mapper les noms CoinGecko aux symboles
+                mapping = {
+                    "bitcoin": "BTC",
+                    "ethereum": "ETH",
+                    "tether": "USDT",
+                    "binancecoin": "BNB",
+                    "solana": "SOL",
+                    "usd-coin": "USDC",
+                    "ripple": "XRP",
+                    "cardano": "ADA",
+                    "dogecoin": "DOGE",
+                    "tron": "TRX",
+                    "chainlink": "LINK",
+                    "polygon": "MATIC",
+                    "litecoin": "LTC",
+                    "polkadot": "DOT",
+                    "uniswap": "UNI",
+                    "avalanche-2": "AVAX"
+                }
+                
+                rates = {}
+                for coin_id, symbol in mapping.items():
+                    if coin_id in crypto_data:
+                        rates[symbol] = crypto_data[coin_id]
+                
+                return {
+                    "rates": rates,
+                    "status": "success",
+                    "timestamp": datetime.now().isoformat()
+                }
+            else:
+                # Fallback avec des valeurs statiques si l'API échoue
+                return {
+                    "rates": {
+                        "BTC": {"usd": 107150.00, "eur": 98573.00, "cad": 153223.00},
+                        "ETH": {"usd": 3725.00, "eur": 3427.00, "cad": 5327.00},
+                        "USDT": {"usd": 1.0, "eur": 0.92, "cad": 1.43}
+                    },
+                    "status": "fallback",
+                    "timestamp": datetime.now().isoformat()
+                }
+    
+    except Exception as e:
+        print(f"❌ Erreur exchange-rates-live: {e}")
+        # Fallback
+        return {
+            "rates": {
+                "BTC": {"usd": 107150.00, "eur": 98573.00, "cad": 153223.00},
+                "ETH": {"usd": 3725.00, "eur": 3427.00, "cad": 5327.00},
+                "USDT": {"usd": 1.0, "eur": 0.92, "cad": 1.43}
+            },
+            "status": "error",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
 
 @app.get("/api/economic-calendar")
 async def calendar_api():

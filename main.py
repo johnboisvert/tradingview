@@ -1864,7 +1864,7 @@ function renderChart(histData){
 function changePeriod(period){
     currentPeriod=period;
     document.querySelectorAll('.chart-btn').forEach(btn=>btn.classList.remove('active'));
-    event.target.classList.add('active');
+    buttonElement.classList.add('active');
     renderChart(fullData);
 }
 
@@ -4339,13 +4339,13 @@ async def calendrier_economique():
             </div>
             
             <div class="filter-section">
-                <button class="filter-btn active" onclick="filterEvents('all')">📋 Tous ({len(events)})</button>
-                <button class="filter-btn" onclick="filterEvents('high')">🔴 Impact ÉLEVÉ ({len([e for e in events if e['impact'] == 'high'])})</button>
-                <button class="filter-btn" onclick="filterEvents('fed')">🏦 Fed USA ({len([e for e in events if e['category'] == 'fed'])})</button>
-                <button class="filter-btn" onclick="filterEvents('bce')">🇪🇺 BCE Europe ({len([e for e in events if e['category'] == 'bce'])})</button>
-                <button class="filter-btn" onclick="filterEvents('data')">📊 Données US ({len([e for e in events if e['category'] == 'data'])})</button>
-                <button class="filter-btn" onclick="filterEvents('this-week')">📅 Cette semaine</button>
-                <button class="filter-btn" onclick="filterEvents('this-month')">📆 Ce mois-ci</button>
+                <button class="filter-btn active" onclick="filterEvents('all', this)">📋 Tous ({len(events)})</button>
+                <button class="filter-btn" onclick="filterEvents('high', this)">🔴 Impact ÉLEVÉ ({len([e for e in events if e['impact'] == 'high'])})</button>
+                <button class="filter-btn" onclick="filterEvents('fed', this)">🏦 Fed USA ({len([e for e in events if e['category'] == 'fed'])})</button>
+                <button class="filter-btn" onclick="filterEvents('bce', this)">🇪🇺 BCE Europe ({len([e for e in events if e['category'] == 'bce'])})</button>
+                <button class="filter-btn" onclick="filterEvents('data', this)">📊 Données US ({len([e for e in events if e['category'] == 'data'])})</button>
+                <button class="filter-btn" onclick="filterEvents('this-week', this)">📅 Cette semaine</button>
+                <button class="filter-btn" onclick="filterEvents('this-month', this)">📆 Ce mois-ci</button>
             </div>
             
             <div class="legend">
@@ -4483,39 +4483,41 @@ async def calendrier_economique():
     </div>
     
     <script>
-        function filterEvents(filter) {{
-            const events = document.querySelectorAll('.event-card');
+        function filterEvents(filter, buttonElement) {{
+            const eventCards = document.querySelectorAll('.event-card');
             const buttons = document.querySelectorAll('.filter-btn');
             
             // Update active button
             buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            if (buttonElement) {{
+                buttonElement.classList.add('active');
+            }}
             
             // Get current date for time filters
             const now = new Date();
             const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
             const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             
-            events.forEach(event => {{
+            eventCards.forEach(card => {{
                 let show = false;
                 
                 if (filter === 'all') {{
                     show = true;
                 }} else if (filter === 'high') {{
-                    show = event.dataset.impact === 'high';
+                    show = card.dataset.impact === 'high';
                 }} else if (filter === 'fed' || filter === 'bce') {{
-                    show = event.dataset.category === filter;
+                    show = card.dataset.category === filter;
                 }} else if (filter === 'data') {{
-                    show = event.dataset.category === 'data';
+                    show = card.dataset.category === 'data';
                 }} else if (filter === 'this-week') {{
-                    const eventDate = new Date(event.dataset.date);
+                    const eventDate = new Date(card.dataset.date);
                     show = eventDate >= now && eventDate <= weekFromNow;
                 }} else if (filter === 'this-month') {{
-                    const eventDate = new Date(event.dataset.date);
+                    const eventDate = new Date(card.dataset.date);
                     show = eventDate >= now && eventDate <= monthEnd;
                 }}
                 
-                event.style.display = show ? 'block' : 'none';
+                card.style.display = show ? 'block' : 'none';
             }});
         }}
         

@@ -32,6 +32,7 @@ class TradeWebhook(BaseModel):
     tf_label: Optional[str] = None
     side: Optional[str] = None
     entry: Optional[float] = None
+    current_price: Optional[float] = None  # Prix actuel envoyé par le webhook Pine Script
     sl: Optional[float] = None
     tp1: Optional[float] = None
     tp2: Optional[float] = None
@@ -250,6 +251,7 @@ async def webhook(trade: TradeWebhook):
             "symbol": trade.symbol,
             "side": trade.side,
             "entry": trade.entry,
+            "current_price": trade.current_price,  # Prix actuel du webhook
             "sl": trade.sl,
             "tp1": trade.tp1,
             "tp2": trade.tp2,
@@ -6549,6 +6551,182 @@ async def calendrier_economique():
 </html>"""
     
     return HTMLResponse(html)
+
+
+
+
+# ============================================================================
+# 🤖 SYSTÈME DE DÉTECTION AUTOMATIQUE DES TP/SL
+# Utilise le current_price envoyé par le webhook Pine Script
+# ============================================================================
+
+import asyncio
+
+async def get_current_price_from_trade(trade: dict) -> float:
+    """
+    Récupère le prix actuel depuis le trade ou via une API externe
+    Priorité : current_price du webhook > API CoinGecko (fallback)
+    """
+    try:
+        # Priorité 1 : Utiliser le current_price stocké dans le trade (vient du webhook)
+        if "current_price" in trade and trade["current_price"]:
+            return float(trade["current_price"])
+        
+        # Priorité 2 : Fallback vers API CoinGecko si nécessaire
+        # (au cas où un ancien trade n'a pas current_price)
+        symbol = trade.get("symbol")
+        if not symbol:
+            return None
+        
+        # Mapping basique pour fallback
+        symbol_map = {
+            "BTCUSDT": "bitcoin",
+            "ETHUSDT": "ethereum",
+            "BNBUSDT": "binancecoin",
+            "SOLUSDT": "solana",
+            "XRPUSDT": "ripple"
+        }
+        
+        crypto_id = symbol_map.get(symbol)
+        if not crypto_id:
+            print(f"⚠️ Symbole {symbol} non supporté en fallback")
+            return None
+        
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={crypto_id}&vs_currencies=usd"
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=10.0)
+            if response.status_code == 200:
+                data = response.json()
+                price = data.get(crypto_id, {}).get("usd")
+                if price:
+                    print(f"💰 {symbol}: ${price} (fallback)")
+                    return float(price)
+    except Exception as e:
+        print(f"❌ Erreur get_current_price pour {trade.get('symbol')}: {e}")
+    
+    return None
+
+async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
+    """
+    Vérifie automatiquement si les TP ou SL sont atteints
+    Retourne un dictionnaire avec les mises à jour à appliquer
+    """
+    updates = {}
+    side = trade.get("side", "LONG")
+    symbol = trade.get("symbol")
+    
+    # Vérifier TP1
+    if trade.get("tp1") and not trade.get("tp1_hit"):
+        if (side == "LONG" and current_price >= trade["tp1"]) or \
+           (side == "SHORT" and current_price <= trade["tp1"]):
+            updates["tp1_hit"] = True
+            print(f"🎯 {symbol} - TP1 atteint ! Prix: ${current_price}")
+            await send_telegram_notification(symbol, "TP1", current_price, trade["tp1"])
+    
+    # Vérifier TP2
+    if trade.get("tp2") and not trade.get("tp2_hit"):
+        if (side == "LONG" and current_price >= trade["tp2"]) or \
+           (side == "SHORT" and current_price <= trade["tp2"]):
+            updates["tp2_hit"] = True
+            print(f"🎯🎯 {symbol} - TP2 atteint ! Prix: ${current_price}")
+            await send_telegram_notification(symbol, "TP2", current_price, trade["tp2"])
+    
+    # Vérifier TP3
+    if trade.get("tp3") and not trade.get("tp3_hit"):
+        if (side == "LONG" and current_price >= trade["tp3"]) or \
+           (side == "SHORT" and current_price <= trade["tp3"]):
+            updates["tp3_hit"] = True
+            print(f"🎯🎯🎯 {symbol} - TP3 atteint ! Prix: ${current_price}")
+            await send_telegram_notification(symbol, "TP3", current_price, trade["tp3"])
+    
+    # Vérifier SL
+    if trade.get("sl") and not trade.get("sl_hit"):
+        if (side == "LONG" and current_price <= trade["sl"]) or \
+           (side == "SHORT" and current_price >= trade["sl"]):
+            updates["sl_hit"] = True
+            updates["status"] = "closed"
+            print(f"❌ {symbol} - SL touché ! Prix: ${current_price}")
+            await send_telegram_notification(symbol, "SL", current_price, trade["sl"])
+    
+    return updates
+
+async def send_telegram_notification(symbol: str, target: str, current_price: float, target_price: float):
+    """Envoie une notification Telegram quand un TP ou SL est atteint"""
+    try:
+        emoji = "🎯" if "TP" in target else "❌"
+        color = "✅" if "TP" in target else "🔴"
+        
+        message = f"""
+{emoji} <b>{target} ATTEINT !</b> {color}
+
+💰 <b>{symbol}</b>
+📊 Prix actuel: <code>${current_price:.5f}</code>
+🎯 {target}: <code>${target_price:.5f}</code>
+
+⏰ {datetime.now(pytz.timezone('America/Montreal')).strftime('%H:%M:%S')}
+"""
+        
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                json={"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
+            )
+    except Exception as e:
+        print(f"⚠️ Erreur Telegram: {e}")
+
+
+async def monitor_trades_background():
+    """Tâche de fond - surveillance automatique toutes les 30 secondes"""
+    print("\n" + "="*70)
+    print("🤖 MONITEUR AUTOMATIQUE DES TP/SL DÉMARRÉ")
+    print("   Vérification toutes les 30 secondes")
+    print("   Utilise current_price du webhook Pine Script")
+    print("="*70 + "\n")
+    
+    while True:
+        try:
+            await asyncio.sleep(30)  # Attendre 30 secondes
+            
+            # Récupérer tous les trades ouverts
+            open_trades = [t for t in trades_db if t.get("status") == "open"]
+            
+            if len(open_trades) == 0:
+                print("💤 Aucun trade ouvert")
+                continue
+            
+            print(f"\n🔍 Vérification de {len(open_trades)} trade(s)...")
+            
+            for trade in open_trades:
+                symbol = trade.get("symbol")
+                if not symbol:
+                    continue
+                
+                # Récupérer le prix actuel (current_price du webhook stocké dans le trade)
+                current_price = await get_current_price_from_trade(trade)
+                if current_price is None:
+                    continue
+                
+                # Vérifier les TP/SL
+                updates = await check_tp_sl_automatic(trade, current_price)
+                
+                # Appliquer les mises à jour
+                if updates:
+                    for key, value in updates.items():
+                        trade[key] = value
+                    print(f"✅ Trade {symbol} mis à jour")
+            
+            print("✅ Vérification terminée\n")
+            
+        except Exception as e:
+            print(f"❌ Erreur monitoring: {e}")
+            await asyncio.sleep(30)
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Démarre la tâche de fond au lancement de l'application"""
+    asyncio.create_task(monitor_trades_background())
 
 
 if __name__ == "__main__":

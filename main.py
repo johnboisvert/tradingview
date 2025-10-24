@@ -226,10 +226,6 @@ async def send_telegram(msg: str):
     except Exception as e:
         print(f"❌ Erreur send_telegram: {e}")
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
 @app.post("/tv-webhook")
 async def webhook(trade: TradeWebhook):
     """
@@ -336,8 +332,9 @@ async def webhook(trade: TradeWebhook):
         return {"status": "error", "error": str(e)}
 
 @app.get("/health")
+@app.head("/health")
 async def health_check():
-    """Endpoint pour garder le serveur éveillé (UptimeRobot)"""
+    """Endpoint pour garder le serveur éveillé (UptimeRobot) - Supporte GET et HEAD"""
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
 
 @app.get("/")

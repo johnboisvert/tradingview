@@ -38,6 +38,54 @@ ai_assistant_data = {
     "confidence_history": []
 }
 
+
+# P&L Hebdomadaire
+weekly_pnl = {
+    "monday": 0.0,
+    "tuesday": 0.0,
+    "wednesday": 0.0,
+    "thursday": 0.0,
+    "friday": 0.0,
+    "saturday": 0.0,
+    "sunday": 0.0,
+    "week_start": None,  # Date de début de semaine
+    "last_reset": None
+}
+
+def get_current_week_day():
+    """Retourne le jour de la semaine en anglais (monday, tuesday, etc.)"""
+    days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+    return days[datetime.now().weekday()]
+
+def reset_weekly_pnl_if_needed():
+    """Réinitialise le P&L hebdomadaire si on est dans une nouvelle semaine"""
+    global weekly_pnl
+    
+    now = datetime.now()
+    current_week_start = now - timedelta(days=now.weekday())
+    current_week_start_str = current_week_start.strftime("%Y-%m-%d")
+    
+    # Si c'est une nouvelle semaine ou première utilisation
+    if weekly_pnl["week_start"] != current_week_start_str:
+        weekly_pnl = {
+            "monday": 0.0,
+            "tuesday": 0.0,
+            "wednesday": 0.0,
+            "thursday": 0.0,
+            "friday": 0.0,
+            "saturday": 0.0,
+            "sunday": 0.0,
+            "week_start": current_week_start_str,
+            "last_reset": now.isoformat()
+        }
+        print(f"🔄 P&L hebdomadaire réinitialisé pour la semaine du {current_week_start_str}")
+
+def update_weekly_pnl(pnl_value):
+    """Met à jour le P&L du jour actuel"""
+    reset_weekly_pnl_if_needed()
+    current_day = get_current_week_day()
+    weekly_pnl[current_day] += pnl_value
+
 heatmap_cache = {"data": None, "timestamp": None, "cache_duration": 180}
 altcoin_cache = {"data": None, "timestamp": None, "cache_duration": 10800}  # Cache 3 heures
 bullrun_cache = {"data": None, "timestamp": None, "cache_duration": 1800}  # Cache 30 minutes
@@ -1985,8 +2033,14 @@ async def update_trade(trade_update: dict):
                 # Ou fermeture automatique si SL atteint ou tous les TP atteints
                 elif trade.get("sl_hit"):
                     trade["status"] = "closed"
+                    # Mettre à jour le P&L hebdomadaire
+                    if trade.get("pnl") is not None:
+                        update_weekly_pnl(trade["pnl"])
                 elif trade.get("tp1_hit") and trade.get("tp2_hit") and trade.get("tp3_hit"):
                     trade["status"] = "closed"
+                    # Mettre à jour le P&L hebdomadaire
+                    if trade.get("pnl") is not None:
+                        update_weekly_pnl(trade["pnl"])
                     
                 return {"status": "success", "trade": trade}
         return {"status": "error", "message": "Trade non trouvé"}
@@ -4653,21 +4707,7 @@ async def charts_page():
             <p>Analyse technique avancée et visualisation de données</p>
         </div>
         
-        <!-- Navigation -->
-        <div class="nav">
-            <a href="/">🏠 Accueil</a>
-            <a href="/fear-greed">😱 Fear&Greed</a>
-            <a href="/dominance">👑 Dominance</a>
-            <a href="/altcoin-season">🌟 Altcoin Season</a>
-            <a href="/heatmap">🔥 Heatmap</a>
-            <a href="/nouvelles">📰 Nouvelles</a>
-            <a href="/trades">📊 Trades</a>
-            <a href="/convertisseur">💱 Convertisseur</a>
-            <a href="/calendrier">📅 Calendrier</a>
-            <a href="/bullrun-phase">🚀 Bullrun Phase</a>
-            <a href="/graphiques">📈 Graphiques</a>
-            <a href="/telegram-test">📱 Telegram</a>
-        </div>
+{NAV}
         
         <!-- Tabs -->
         <div class="tabs-container">
@@ -5633,6 +5673,28 @@ async def trades_page():
             <h2><span>💼 Tous les Trades</span><span id="tradesCount" style="font-size: 16px; color: #94a3b8; margin-left: auto;">(0)</span></h2>
             <div id="trades"><div class="spinner"></div></div>
         </div>
+
+        <!-- P&L Hebdomadaire -->
+        <div class="trades-container fade-in" style="margin-top:30px;">
+            <h2><span>📊 P&L de la Semaine</span></h2>
+            <p style="color:#94a3b8;margin-bottom:20px;">Vos performances jour par jour (reset automatique chaque lundi)</p>
+
+            <div id="weeklyPnlContainer" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:15px;margin-bottom:20px;">
+                <div class="spinner"></div>
+            </div>
+
+            <div style="display:flex;gap:15px;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+                <div class="stat-card" style="flex:1;min-width:200px;margin-bottom:0;">
+                    <div class="stat-label">Total de la Semaine</div>
+                    <div class="stat-value" id="weeklyTotal" style="font-size:36px;font-weight:700;color:#e2e8f0;">--</div>
+                </div>
+                <button onclick="resetWeeklyPnl()" class="btn-danger">🔄 Reset Semaine</button>
+            </div>
+
+            <p style="color:#64748b;font-size:12px;margin-top:15px;">
+                ℹ️ Le P&L se met à jour automatiquement quand un trade se ferme. Reset automatique chaque lundi à minuit.
+            </p>
+        </div>
     </div>
     <div class="modal" id="tradeModal">
         <div class="modal-content">
@@ -5987,7 +6049,9 @@ async def trades_page():
         window.onclick = function(event) { const modal = document.getElementById('tradeModal'); if (event.target === modal) closeModal(); }
         
         load(); 
+        loadWeeklyPnl();
         setInterval(load, 30000); 
+        setInterval(loadWeeklyPnl, 30000);
         console.log('🚀 Trades Premium initialisé');
     </script>
 </body>
@@ -7195,6 +7259,65 @@ async def startup_event():
 
 
 
+
+
+# ============= API P&L HEBDOMADAIRE =============
+@app.get("/api/weekly-pnl")
+async def get_weekly_pnl():
+    """Récupérer le P&L de la semaine"""
+    reset_weekly_pnl_if_needed()
+    
+    days_fr = {
+        "monday": "Lundi",
+        "tuesday": "Mardi",
+        "wednesday": "Mercredi",
+        "thursday": "Jeudi",
+        "friday": "Vendredi",
+        "saturday": "Samedi",
+        "sunday": "Dimanche"
+    }
+    
+    weekly_data = []
+    total_week = 0.0
+    
+    for day_en, day_fr in days_fr.items():
+        pnl = weekly_pnl[day_en]
+        total_week += pnl
+        weekly_data.append({
+            "day_en": day_en,
+            "day_fr": day_fr,
+            "pnl": round(pnl, 2)
+        })
+    
+    return {
+        "ok": True,
+        "weekly_data": weekly_data,
+        "total_week": round(total_week, 2),
+        "week_start": weekly_pnl["week_start"],
+        "current_day": get_current_week_day()
+    }
+
+@app.post("/api/weekly-pnl/reset")
+async def reset_weekly_pnl_manual():
+    """Réinitialiser manuellement le P&L hebdomadaire"""
+    global weekly_pnl
+    now = datetime.now()
+    current_week_start = now - timedelta(days=now.weekday())
+    
+    weekly_pnl = {
+        "monday": 0.0,
+        "tuesday": 0.0,
+        "wednesday": 0.0,
+        "thursday": 0.0,
+        "friday": 0.0,
+        "saturday": 0.0,
+        "sunday": 0.0,
+        "week_start": current_week_start.strftime("%Y-%m-%d"),
+        "last_reset": now.isoformat()
+    }
+    
+    return {"ok": True, "message": "P&L hebdomadaire réinitialisé"}
+
 # ============= PAGE RISK MANAGEMENT =============
 @app.get("/risk-management", response_class=HTMLResponse)
 async def risk_management_page():
@@ -7561,6 +7684,56 @@ async def ai_assistant_page():
 </div>
 
 <script>
+
+        // ============= P&L HEBDOMADAIRE =============
+        async function loadWeeklyPnl() {
+            try {
+                const res = await fetch('/api/weekly-pnl');
+                const data = await res.json();
+                
+                if (data.ok) {
+                    let html = '';
+                    data.weekly_data.forEach(day => {
+                        const isToday = day.day_en === data.current_day;
+                        const color = day.pnl > 0 ? '#10b981' : (day.pnl < 0 ? '#ef4444' : '#94a3b8');
+                        const bgColor = isToday ? 'rgba(96, 165, 250, 0.1)' : 'rgba(15, 23, 42, 0.8)';
+                        const border = isToday ? '2px solid #60a5fa' : 'none';
+                        
+                        html += `
+                            <div style="background:${bgColor};padding:15px;border-radius:12px;text-align:center;border:${border};transition:all 0.3s;">
+                                <div style="color:#94a3b8;font-size:11px;margin-bottom:5px;text-transform:uppercase;">${day.day_fr}${isToday ? ' 👈' : ''}</div>
+                                <div style="color:${color};font-size:24px;font-weight:700;">${day.pnl > 0 ? '+' : ''}${day.pnl}%</div>
+                            </div>
+                        `;
+                    });
+                    
+                    document.getElementById('weeklyPnlContainer').innerHTML = html;
+                    
+                    const totalColor = data.total_week > 0 ? '#10b981' : (data.total_week < 0 ? '#ef4444' : '#94a3b8');
+                    document.getElementById('weeklyTotal').innerHTML = `<span style="color:${totalColor}">${data.total_week > 0 ? '+' : ''}${data.total_week}%</span>`;
+                }
+            } catch (error) {
+                console.error('Erreur chargement P&L hebdomadaire:', error);
+                document.getElementById('weeklyPnlContainer').innerHTML = '<p style="color:#ef4444;text-align:center;">❌ Erreur de chargement</p>';
+            }
+        }
+
+        async function resetWeeklyPnl() {
+            if (!confirm('Voulez-vous réinitialiser le P&L de la semaine ?')) return;
+            
+            try {
+                const res = await fetch('/api/weekly-pnl/reset', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.ok) {
+                    alert('✅ P&L hebdomadaire réinitialisé !');
+                    loadWeeklyPnl();
+                }
+            } catch (error) {
+                alert('❌ Erreur lors de la réinitialisation');
+            }
+        }
+
 async function refreshSuggestions() {{
     document.getElementById('suggestionsContainer').innerHTML = '<div class="spinner"></div>';
     

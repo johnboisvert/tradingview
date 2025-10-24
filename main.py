@@ -3095,10 +3095,6 @@ async def news_page():
 
 
 
-@app.get("/calendrier", response_class=HTMLResponse)
-async def calendar_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Calendrier</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📅 Calendrier Économique</h1></div>""" + NAV + """<div class="card"><div id="calendar"><div class="spinner"></div></div></div></div><script>async function load(){const r=await fetch('/api/economic-calendar');const d=await r.json();let h='<table><tr><th>Date</th><th>Heure</th><th>Événement</th><th>Impact</th></tr>';d.events.forEach(e=>{h+='<tr><td>'+e.date+'</td><td>'+e.time+'</td><td>'+e.event+'</td><td>'+e.impact+'</td></tr>'});h+='</table>';document.getElementById('calendar').innerHTML=h}load();</script></body></html>"""
-    return HTMLResponse(html)
 
 @app.get("/bullrun-phase", response_class=HTMLResponse)
 async def bullrun_page():

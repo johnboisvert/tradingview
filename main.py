@@ -269,6 +269,7 @@ async def webhook(trade: TradeWebhook):
             inverse_trade['status'] = 'closed'
             inverse_trade['closed_reason'] = f'Revirement: Signal {new_side} reçu'
             inverse_trade['closed_at'] = now.isoformat()
+            inverse_trade['sl_hit'] = True  # Bouton SL rouge pour indiquer une perte
             
             # 📱 Notification Telegram DÉTAILLÉE du revirement
             reversal_message = (
@@ -5392,6 +5393,31 @@ async def trades_page():
             } 
         }
         
+        function calculateTradePnL(trade) {
+            // Calcul du P&L simplifié : 1R (Risk) = $100
+            // TP1 = +$100, TP2 = +$200, TP3 = +$300, SL/Revirement = -$100
+            
+            if (trade.status !== 'closed') return 0; // Trade ouvert = 0 P&L
+            
+            const RISK_AMOUNT = 100; // 1R = $100
+            
+            // Si SL touché ou revirement sans TP = perte de 1R ($100)
+            if (trade.sl_hit || (trade.closed_reason && trade.closed_reason.includes('Revirement') && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit)) {
+                return -RISK_AMOUNT; // -$100
+            }
+            
+            // Compter les TP atteints (on prend le plus haut)
+            if (trade.tp3_hit) {
+                return RISK_AMOUNT * 3; // +$300
+            } else if (trade.tp2_hit) {
+                return RISK_AMOUNT * 2; // +$200
+            } else if (trade.tp1_hit) {
+                return RISK_AMOUNT * 1; // +$100
+            }
+            
+            return 0; // Trade fermé sans TP ni SL (cas rare)
+        }
+        
         async function updateStats() { 
             try { 
                 const response = await fetch('/api/stats'); 
@@ -5399,8 +5425,11 @@ async def trades_page():
                 document.getElementById('totalTrades').textContent = stats.total_trades || 0; 
                 document.getElementById('openTrades').textContent = stats.open_trades || 0; 
                 document.getElementById('winRate').textContent = (stats.win_rate || 0).toFixed(1) + '%'; 
-                const totalPnl = allTrades.reduce((sum, t) => sum + (t.pnl || 0), 0); 
-                document.getElementById('totalPnl').textContent = '$' + totalPnl.toFixed(2); 
+                const totalPnl = allTrades.reduce((sum, t) => sum + calculateTradePnL(t), 0); 
+                const pnlElement = document.getElementById('totalPnl');
+                pnlElement.textContent = (totalPnl >= 0 ? '+' : '') + '$' + totalPnl.toFixed(2);
+                pnlElement.style.color = totalPnl >= 0 ? '#10b981' : '#ef4444'; // Vert si positif, rouge si négatif
+                
                 const avgConf = allTrades.length > 0 ? allTrades.reduce((sum, t) => sum + (t.confidence || 0), 0) / allTrades.length : 0; 
                 document.getElementById('avgConfidence').textContent = avgConf.toFixed(1) + '%'; 
                 const tpHits = allTrades.reduce((sum, t) => sum + (t.tp1_hit ? 1 : 0) + (t.tp2_hit ? 1 : 0) + (t.tp3_hit ? 1 : 0), 0);

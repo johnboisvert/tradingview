@@ -4126,6 +4126,15 @@ async def charts_page():
         }
         .tradingview-widget-container iframe { border-radius: 12px; }
         
+        /* Canvas Containers - IMPORTANT pour éviter la croissance infinie */
+        .canvas-container { 
+            position: relative; 
+            width: 100%; 
+            height: 350px; 
+        }
+        .canvas-container.small { height: 250px; }
+        .canvas-container.large { height: 450px; }
+        
         /* Stats Grid */
         .stats-grid { 
             display: grid; 
@@ -4356,11 +4365,15 @@ async def charts_page():
             <div class="chart-grid">
                 <div class="chart-card">
                     <h3>📊 Volume de Trading (7 jours)</h3>
-                    <canvas id="volumeChart" height="300"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="volumeChart"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <h3>💹 Évolution des Prix (30 jours)</h3>
-                    <canvas id="priceChart" height="300"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="priceChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4370,17 +4383,23 @@ async def charts_page():
             <div class="chart-grid">
                 <div class="chart-card">
                     <h3>🔄 Comparaison BTC vs ETH vs SOL</h3>
-                    <canvas id="comparisonChart" height="300"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <h3>📊 Performance Relative (30 jours)</h3>
-                    <canvas id="relativeChart" height="300"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="relativeChart"></canvas>
+                    </div>
                 </div>
             </div>
             
             <div class="chart-card">
                 <h3>🏆 Classement par Performance</h3>
-                <canvas id="rankingChart" height="200"></canvas>
+                <div class="canvas-container small">
+                    <canvas id="rankingChart"></canvas>
+                </div>
             </div>
         </div>
         
@@ -4389,11 +4408,15 @@ async def charts_page():
             <div class="chart-grid">
                 <div class="chart-card">
                     <h3>🔗 Matrice de Corrélation</h3>
-                    <canvas id="correlationChart" height="400"></canvas>
+                    <div class="canvas-container large">
+                        <canvas id="correlationChart"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <h3>📉 Dispersion BTC vs Altcoins</h3>
-                    <canvas id="scatterChart" height="400"></canvas>
+                    <div class="canvas-container large">
+                        <canvas id="scatterChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4430,11 +4453,15 @@ async def charts_page():
             <div class="chart-grid">
                 <div class="chart-card">
                     <h3>📈 Performance Multi-Période</h3>
-                    <canvas id="multiPeriodChart" height="300"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="multiPeriodChart"></canvas>
+                    </div>
                 </div>
                 <div class="chart-card">
                     <h3>🎲 Volatilité Historique</h3>
-                    <canvas id="volatilityChart" height="300"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="volatilityChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>

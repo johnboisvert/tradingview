@@ -4712,7 +4712,7 @@ async def charts_page():
             <p>Analyse technique avancée et visualisation de données</p>
         </div>
         
-{NAV}
+        """ + NAV + """
         
         <!-- Tabs -->
         <div class="tabs-container">
@@ -5651,9 +5651,8 @@ async def trades_page():
             <h1>📊 Gestion des Trades Premium</h1>
             <p>Plateforme avancée de suivi et d'analyse de trading</p>
         </div>
-        <div class="nav fade-in">
-            <a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a>
-        </div>
+        """ + NAV + """
+        <div style="height:15px;"></div>
         <div class="stats-grid fade-in" id="statsGrid">
             <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-label">Total Trades</div><div class="stat-value" id="totalTrades">0</div><div class="stat-change" id="totalChange">+0 cette semaine</div></div>
             <div class="stat-card"><div class="stat-icon">🎯</div><div class="stat-label">Trades Ouverts</div><div class="stat-value" id="openTrades">0</div><div class="stat-change" id="openChange">Actifs maintenant</div></div>

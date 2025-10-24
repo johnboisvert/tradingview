@@ -25,6 +25,24 @@ CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Seg
 
 NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a></div>'
 
+def format_price(price: float) -> str:
+    """Formate intelligemment les prix selon leur magnitude"""
+    if price < 0.001:
+        decimals = 8  # Memecoins (SHIB, PEPE, CHEEMS)
+    elif price < 1:
+        decimals = 6  # Petites cryptos
+    elif price < 100:
+        decimals = 4  # Altcoins moyens
+    else:
+        decimals = 2  # BTC, ETH, etc.
+    
+    formatted = f"${price:.{decimals}f}"
+    # Supprimer les zéros inutiles
+    formatted = formatted.rstrip('0').rstrip('.')
+    if formatted.endswith('$'):
+        formatted += '0'
+    return formatted
+
 class TradeWebhook(BaseModel):
     type: str = "ENTRY"
     symbol: str
@@ -6809,11 +6827,15 @@ async def send_telegram_notification(symbol: str, target: str, current_price: fl
 {emoji} <b>{target} ATTEINT !</b> {color}
 
 💰 <b>{symbol}</b>
-📊 Prix actuel: <code>${current_price:.5f}</code>
-🎯 {target}: <code>${target_price:.5f}</code>
+📊 Prix actuel: <code>{format_price(current_price)}</code>
+🎯 {target}: <code>{format_price(target_price)}</code>
 
 ⏰ {datetime.now(pytz.timezone('America/Montreal')).strftime('%H:%M:%S')}
 """
+        
+        # Ajouter message de félicitation pour TP3
+        if target == "TP3":
+            message += "\n🎉🎊 <b>FÉLICITATIONS ! TRADE COMPLÉTÉ !</b> 🎊🎉\n"
         
         async with httpx.AsyncClient() as client:
             await client.post(

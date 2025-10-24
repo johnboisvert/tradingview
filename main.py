@@ -2007,7 +2007,8 @@ function renderChart(histData){
         },
         options:{
             responsive:true,
-            maintainAspectRatio:false,
+            maintainAspectRatio: true,
+            aspectRatio: 2.5,
             interaction:{mode:'index',intersect:false},
             plugins:{
                 legend:{display:true,position:'top',labels:{color:'#e2e8f0',font:{size:14,weight:'600'},padding:20,usePointStyle:true}},
@@ -4642,7 +4643,8 @@ async def charts_page():
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -4708,7 +4710,8 @@ async def charts_page():
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
@@ -4796,7 +4799,8 @@ async def charts_page():
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -4837,7 +4841,8 @@ async def charts_page():
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -4871,7 +4876,8 @@ async def charts_page():
                 options: {
                     indexAxis: 'y',
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
                     plugins: {
                         legend: { display: false }
                     },
@@ -4927,7 +4933,8 @@ async def charts_page():
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -4971,7 +4978,8 @@ async def charts_page():
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -5036,7 +5044,8 @@ async def charts_page():
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -5080,7 +5089,8 @@ async def charts_page():
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2,
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },

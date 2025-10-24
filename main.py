@@ -17,6 +17,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 trades_db = []
 heatmap_cache = {"data": None, "timestamp": None, "cache_duration": 180}
 altcoin_cache = {"data": None, "timestamp": None, "cache_duration": 10800}  # Cache 3 heures
+bullrun_cache = {"data": None, "timestamp": None, "cache_duration": 1800}  # Cache 30 minutes
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8478131465:AAEh7Z0rvIqSNvn1wKdtkMNb-O96h41LCns")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1002940633257")
 
@@ -1652,9 +1653,191 @@ async def calendar_api():
     events = [{"date": (now + timedelta(days=0)).strftime("%Y-%m-%d"), "time": "08:30", "country": "US", "event": "Non-Farm Payrolls", "impact": "high"}]
     return {"events": events, "count": len(events), "status": "success"}
 
+# =====================================================
+# API BULLRUN PHASE AMÉLIORÉE
+# =====================================================
+
+async def fetch_bullrun_data():
+    """Récupère les données en temps réel pour déterminer la phase du bullrun"""
+    try:
+        # Vérifier le cache
+        if bullrun_cache["data"] and bullrun_cache["timestamp"]:
+            elapsed = (datetime.now() - bullrun_cache["timestamp"]).total_seconds()
+            if elapsed < bullrun_cache["cache_duration"]:
+                return bullrun_cache["data"]
+        
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Récupérer Fear & Greed
+            try:
+                fg_response = await client.get("https://api.alternative.me/fng/?limit=2")
+                fg_data = fg_response.json()
+                fear_greed = int(fg_data["data"][0]["value"]) if fg_data.get("data") else 50
+            except:
+                fear_greed = 50
+            
+            # Récupérer BTC Dominance
+            try:
+                btc_response = await client.get("https://api.coingecko.com/api/v3/global")
+                btc_data = btc_response.json()
+                btc_dominance = round(btc_data["data"]["market_cap_percentage"]["btc"], 2)
+                eth_dominance = round(btc_data["data"]["market_cap_percentage"]["eth"], 2)
+                total_market_cap = btc_data["data"]["total_market_cap"]["usd"]
+            except:
+                btc_dominance = 58.0
+                eth_dominance = 12.0
+                total_market_cap = 2500000000000
+            
+            # Récupérer prix BTC
+            try:
+                btc_price_response = await client.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true")
+                btc_price_data = btc_price_response.json()
+                btc_price = btc_price_data["bitcoin"]["usd"]
+                btc_24h_change = round(btc_price_data["bitcoin"]["usd_24h_change"], 2)
+            except:
+                btc_price = 108000
+                btc_24h_change = 2.5
+            
+            # Calculer l'Altcoin Season Index (simplifié)
+            altcoin_season_index = max(0, min(100, 100 - (btc_dominance - 40)))
+            
+            # Déterminer la phase actuelle
+            phase_data = determine_bullrun_phase(
+                btc_dominance, 
+                eth_dominance, 
+                fear_greed, 
+                altcoin_season_index,
+                btc_price,
+                btc_24h_change,
+                total_market_cap
+            )
+            
+            # Mettre en cache
+            bullrun_cache["data"] = phase_data
+            bullrun_cache["timestamp"] = datetime.now()
+            
+            return phase_data
+            
+    except Exception as e:
+        print(f"Erreur fetch_bullrun_data: {e}")
+        return get_fallback_bullrun_data()
+
+def determine_bullrun_phase(btc_dom, eth_dom, fear_greed, alt_index, btc_price, btc_change, market_cap):
+    """Détermine la phase du bullrun basée sur les indicateurs"""
+    
+    # Logique de détermination de phase
+    if btc_dom < 50 and fear_greed < 40 and btc_price < 50000:
+        current_phase = 1
+        phase_name = "Accumulation"
+        phase_description = "Les investisseurs intelligents accumulent à bas prix"
+        confidence = 85
+    elif btc_dom > 58 and fear_greed >= 60 and btc_change > 0:
+        current_phase = 2
+        phase_name = "Bitcoin Rally"
+        phase_description = "Bitcoin domine et monte fort, les institutions achètent"
+        confidence = 92
+    elif 50 <= btc_dom <= 60 and eth_dom > 10 and fear_greed >= 60:
+        current_phase = 3
+        phase_name = "Ethereum & Large Caps"
+        phase_description = "ETH et les grandes capitalisations rattrapent Bitcoin"
+        confidence = 88
+    elif btc_dom < 55 and alt_index > 60 and fear_greed > 70:
+        current_phase = 4
+        phase_name = "Altcoin Season"
+        phase_description = "Les altcoins explosent, c'est la fête !"
+        confidence = 90
+    else:
+        # Phase de transition
+        if btc_dom >= 57:
+            current_phase = 2.5
+            phase_name = "Transition BTC → ETH"
+            phase_description = "Début de rotation du capital vers ETH et large caps"
+            confidence = 78
+        else:
+            current_phase = 3.5
+            phase_name = "Transition ETH → Altcoins"
+            phase_description = "Début de rotation vers les altcoins"
+            confidence = 82
+    
+    # Calculer les signaux
+    signals = []
+    
+    if btc_dom > 60:
+        signals.append({"type": "bullish_btc", "strength": "fort", "message": "Forte dominance BTC"})
+    elif btc_dom < 50:
+        signals.append({"type": "bullish_alt", "strength": "fort", "message": "BTC perd de la dominance"})
+    
+    if fear_greed > 75:
+        signals.append({"type": "warning", "strength": "élevé", "message": "Greed extrême - Attention correction"})
+    elif fear_greed < 25:
+        signals.append({"type": "opportunity", "strength": "élevé", "message": "Fear extrême - Opportunité d'achat"})
+    
+    if alt_index > 75:
+        signals.append({"type": "altcoin_season", "strength": "confirmé", "message": "Altcoin Season en cours !"})
+    
+    # Prédictions next phase
+    if current_phase < 2:
+        next_phase = "Phase 2 - Bitcoin Rally attendu"
+        time_estimate = "1-3 mois"
+    elif current_phase < 3:
+        next_phase = "Phase 3 - Rotation vers ETH et Large Caps"
+        time_estimate = "2-4 semaines"
+    elif current_phase < 4:
+        next_phase = "Phase 4 - Altcoin Season imminente"
+        time_estimate = "1-2 semaines"
+    else:
+        next_phase = "Fin de cycle - Soyez prudent"
+        time_estimate = "Indéterminé"
+    
+    return {
+        "current_phase": current_phase,
+        "phase_name": phase_name,
+        "phase_description": phase_description,
+        "confidence": confidence,
+        "indicators": {
+            "btc_dominance": btc_dom,
+            "eth_dominance": eth_dom,
+            "fear_greed": fear_greed,
+            "altcoin_season_index": alt_index,
+            "btc_price": btc_price,
+            "btc_24h_change": btc_change,
+            "total_market_cap": market_cap
+        },
+        "signals": signals,
+        "next_phase": next_phase,
+        "time_estimate": time_estimate,
+        "timestamp": datetime.now().isoformat()
+    }
+
+def get_fallback_bullrun_data():
+    """Données de secours si l'API échoue"""
+    return {
+        "current_phase": 2.5,
+        "phase_name": "Transition BTC → ETH",
+        "phase_description": "Phase de transition entre dominance Bitcoin et rotation ETH",
+        "confidence": 78,
+        "indicators": {
+            "btc_dominance": 58.5,
+            "eth_dominance": 12.0,
+            "fear_greed": 72,
+            "altcoin_season_index": 45,
+            "btc_price": 108000,
+            "btc_24h_change": 1.5,
+            "total_market_cap": 2500000000000
+        },
+        "signals": [
+            {"type": "bullish_btc", "strength": "modéré", "message": "Dominance BTC stable"},
+            {"type": "neutral", "strength": "moyen", "message": "Marché en consolidation"}
+        ],
+        "next_phase": "Phase 3 - Rotation vers ETH et Large Caps",
+        "time_estimate": "2-4 semaines",
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.get("/api/bullrun-phase")
 async def bullrun_api():
-    return {"current_phase": 2, "phase_name": "Ethereum", "indicators": {"btc_dominance": 58.5, "altcoin_season_index": 35}, "status": "fallback"}
+    """API endpoint pour les données du bullrun"""
+    data = await fetch_bullrun_data()
+    return data
 
 @app.get("/api/stats")
 async def stats_api():
@@ -3098,7 +3281,687 @@ async def news_page():
 
 @app.get("/bullrun-phase", response_class=HTMLResponse)
 async def bullrun_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bullrun Phase</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>🚀 Phase du Bullrun</h1></div>""" + NAV + """<div class="card"><div id="phase"><div class="spinner"></div></div></div></div><script>async function load(){const r=await fetch('/api/bullrun-phase');const d=await r.json();document.getElementById('phase').innerHTML='<div style="text-align:center;padding:40px"><h2 style="font-size:72px;color:#60a5fa">Phase '+d.current_phase+'</h2><h3 style="font-size:36px;color:#94a3b8;margin-top:20px">'+d.phase_name+'</h3></div>'}load();setInterval(load,60000);</script></body></html>"""
+    html = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Bullrun Phase Tracker</title>
+    """ + CSS + """
+    <style>
+        /* Styles spécifiques pour Bullrun Phase */
+        .phase-hero {
+            background: linear-gradient(135deg, #1e1b4b 0%, #1e293b 50%, #0f172a 100%);
+            padding: 60px 40px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #334155;
+        }
+        
+        .phase-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(96, 165, 250, 0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.5; }
+        }
+        
+        .current-phase-display {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .phase-number {
+            font-size: 120px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #ec4899 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            margin-bottom: 20px;
+            text-shadow: 0 0 80px rgba(96, 165, 250, 0.5);
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+        }
+        
+        .phase-title {
+            font-size: 48px;
+            font-weight: 800;
+            color: #e2e8f0;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .phase-subtitle {
+            font-size: 20px;
+            color: #94a3b8;
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+        
+        .confidence-badge {
+            display: inline-block;
+            padding: 12px 30px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 2px solid #10b981;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #10b981;
+            margin-top: 20px;
+        }
+        
+        /* Timeline des 4 phases */
+        .phases-timeline {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 40px 0;
+            position: relative;
+        }
+        
+        .phases-timeline::before {
+            content: '';
+            position: absolute;
+            top: 40px;
+            left: 10%;
+            right: 10%;
+            height: 4px;
+            background: linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899, #f59e0b);
+            z-index: 0;
+        }
+        
+        .phase-card {
+            background: #1e293b;
+            padding: 30px 20px;
+            border-radius: 16px;
+            text-align: center;
+            position: relative;
+            border: 2px solid #334155;
+            transition: all 0.3s ease;
+            z-index: 1;
+        }
+        
+        .phase-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        .phase-card.active {
+            border-color: #60a5fa;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            box-shadow: 0 0 40px rgba(96, 165, 250, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .phase-card.completed {
+            opacity: 0.6;
+            border-color: #10b981;
+        }
+        
+        .phase-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .phase-number-small {
+            font-size: 32px;
+            font-weight: 900;
+            color: #60a5fa;
+            margin-bottom: 10px;
+        }
+        
+        .phase-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #e2e8f0;
+            margin-bottom: 10px;
+        }
+        
+        .phase-desc {
+            font-size: 14px;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+        
+        /* Indicateurs en temps réel */
+        .indicators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .indicator-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            transition: all 0.3s ease;
+        }
+        
+        .indicator-card:hover {
+            border-color: #60a5fa;
+            transform: translateY(-5px);
+        }
+        
+        .indicator-label {
+            font-size: 13px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .indicator-value {
+            font-size: 42px;
+            font-weight: 900;
+            margin: 15px 0;
+        }
+        
+        .indicator-change {
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .neutral { color: #f59e0b; }
+        
+        /* Signaux de marché */
+        .signals-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 30px 0;
+        }
+        
+        .signal-item {
+            padding: 20px 25px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .signal-item:hover {
+            transform: translateX(10px);
+        }
+        
+        .signal-icon {
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+        
+        .signal-content {
+            flex-grow: 1;
+        }
+        
+        .signal-strength {
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        
+        .signal-message {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .signal-bullish-btc {
+            background: rgba(249, 115, 22, 0.1);
+            border-left: 4px solid #f97316;
+        }
+        
+        .signal-bullish-alt {
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 4px solid #10b981;
+        }
+        
+        .signal-warning {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+        }
+        
+        .signal-opportunity {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid #22c55e;
+        }
+        
+        .signal-altcoin-season {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
+            border-left: 4px solid #a855f7;
+        }
+        
+        /* Next Phase Prediction */
+        .next-phase-card {
+            background: linear-gradient(135deg, #312e81 0%, #1e293b 100%);
+            padding: 35px;
+            border-radius: 16px;
+            border: 2px solid #6366f1;
+            margin: 30px 0;
+        }
+        
+        .next-phase-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #818cf8;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .next-phase-content {
+            font-size: 18px;
+            color: #e2e8f0;
+            line-height: 1.8;
+        }
+        
+        .time-estimate {
+            display: inline-block;
+            padding: 8px 16px;
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #818cf8;
+            margin-top: 15px;
+        }
+        
+        /* Graphique de progression */
+        .progress-bar-container {
+            margin: 40px 0;
+            padding: 30px;
+            background: #1e293b;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+        
+        .progress-label {
+            font-size: 16px;
+            color: #94a3b8;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .progress-bar {
+            height: 40px;
+            background: #0f172a;
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            border: 2px solid #334155;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+            border-radius: 20px;
+            transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 15px;
+            font-size: 16px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .phases-timeline {
+                grid-template-columns: 1fr;
+            }
+            
+            .phases-timeline::before {
+                display: none;
+            }
+            
+            .phase-number {
+                font-size: 80px;
+            }
+            
+            .phase-title {
+                font-size: 32px;
+            }
+        }
+        
+        /* Loading état */
+        .loading-state {
+            text-align: center;
+            padding: 100px 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Bullrun Phase Tracker</h1>
+            <p>Analyse en temps réel des 4 phases du cycle haussier crypto</p>
+        </div>
+        
+        """ + NAV + """
+        
+        <div id="loading" class="loading-state">
+            <div class="spinner"></div>
+            <p style="color: #94a3b8; margin-top: 20px;">Chargement des données du marché...</p>
+        </div>
+        
+        <div id="content" style="display: none;">
+            <!-- Phase Actuelle Hero -->
+            <div class="phase-hero">
+                <div class="current-phase-display">
+                    <div class="phase-number" id="current-phase-number">2.5</div>
+                    <div class="phase-title" id="current-phase-title">TRANSITION</div>
+                    <div class="phase-subtitle" id="current-phase-description">
+                        Analyse en cours...
+                    </div>
+                    <div class="confidence-badge" id="confidence-badge">
+                        <span id="confidence-value">85</span>% Confiance
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Timeline des 4 Phases -->
+            <div class="card">
+                <h2>📊 Les 4 Phases du Bullrun</h2>
+                <div class="phases-timeline">
+                    <div class="phase-card" id="phase-1">
+                        <span class="phase-icon">💎</span>
+                        <div class="phase-number-small">Phase 1</div>
+                        <div class="phase-name">Accumulation</div>
+                        <div class="phase-desc">Les investisseurs intelligents accumulent à bas prix pendant le bear market</div>
+                    </div>
+                    
+                    <div class="phase-card" id="phase-2">
+                        <span class="phase-icon">🟠</span>
+                        <div class="phase-number-small">Phase 2</div>
+                        <div class="phase-name">Bitcoin Rally</div>
+                        <div class="phase-desc">Bitcoin monte en premier, dominance BTC augmente, les institutions entrent</div>
+                    </div>
+                    
+                    <div class="phase-card active" id="phase-3">
+                        <span class="phase-icon">💠</span>
+                        <div class="phase-number-small">Phase 3</div>
+                        <div class="phase-name">ETH & Large Caps</div>
+                        <div class="phase-desc">Ethereum et les grandes caps rattrapent, dominance BTC commence à baisser</div>
+                    </div>
+                    
+                    <div class="phase-card" id="phase-4">
+                        <span class="phase-icon">🌈</span>
+                        <div class="phase-number-small">Phase 4</div>
+                        <div class="phase-name">Altcoin Season</div>
+                        <div class="phase-desc">Les altcoins explosent, gains massifs, euphorie maximale</div>
+                    </div>
+                </div>
+                
+                <!-- Barre de progression -->
+                <div class="progress-bar-container">
+                    <div class="progress-label">
+                        <span>Progression du Bullrun</span>
+                        <span id="progress-percentage">62%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill" style="width: 0%">
+                            <span id="progress-text"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Indicateurs en temps réel -->
+            <div class="card">
+                <h2>📈 Indicateurs de Marché en Temps Réel</h2>
+                <div class="indicators-grid" id="indicators-grid">
+                    <!-- Rempli dynamiquement -->
+                </div>
+            </div>
+            
+            <!-- Signaux de Marché -->
+            <div class="card">
+                <h2>🎯 Signaux & Analyse</h2>
+                <div class="signals-container" id="signals-container">
+                    <!-- Rempli dynamiquement -->
+                </div>
+            </div>
+            
+            <!-- Prochaine Phase -->
+            <div class="next-phase-card">
+                <div class="next-phase-title">
+                    🔮 Prochaine Phase Attendue
+                </div>
+                <div class="next-phase-content" id="next-phase-content">
+                    Phase 4 - Altcoin Season imminente
+                </div>
+                <div class="time-estimate" id="time-estimate">
+                    ⏱️ Estimation: 1-2 semaines
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentData = null;
+        
+        async function loadBullrunData() {
+            try {
+                const response = await fetch('/api/bullrun-phase');
+                const data = await response.json();
+                currentData = data;
+                
+                // Masquer loading, afficher contenu
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+                // Mettre à jour l'affichage
+                updateDisplay(data);
+            } catch (error) {
+                console.error('Erreur chargement:', error);
+                document.getElementById('loading').innerHTML = 
+                    '<div class="alert alert-error">Erreur de chargement des données</div>';
+            }
+        }
+        
+        function updateDisplay(data) {
+            // Hero - Phase actuelle
+            const phaseNum = data.current_phase;
+            const phaseDisplay = Math.floor(phaseNum) === phaseNum ? phaseNum : `${Math.floor(phaseNum)}-${Math.ceil(phaseNum)}`;
+            
+            document.getElementById('current-phase-number').textContent = phaseDisplay;
+            document.getElementById('current-phase-title').textContent = data.phase_name;
+            document.getElementById('current-phase-description').textContent = data.phase_description;
+            document.getElementById('confidence-value').textContent = data.confidence;
+            
+            // Mettre à jour les cartes de phase
+            for (let i = 1; i <= 4; i++) {
+                const card = document.getElementById(`phase-${i}`);
+                card.classList.remove('active', 'completed');
+                
+                if (i < Math.floor(phaseNum)) {
+                    card.classList.add('completed');
+                } else if (i === Math.floor(phaseNum) || i === Math.ceil(phaseNum)) {
+                    card.classList.add('active');
+                }
+            }
+            
+            // Barre de progression
+            const progress = ((phaseNum - 1) / 3) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+            document.getElementById('progress-percentage').textContent = Math.round(progress) + '%';
+            document.getElementById('progress-text').textContent = Math.round(progress) + '%';
+            
+            // Indicateurs
+            updateIndicators(data.indicators);
+            
+            // Signaux
+            updateSignals(data.signals);
+            
+            // Next phase
+            document.getElementById('next-phase-content').textContent = data.next_phase;
+            document.getElementById('time-estimate').textContent = '⏱️ ' + data.time_estimate;
+        }
+        
+        function updateIndicators(indicators) {
+            const grid = document.getElementById('indicators-grid');
+            
+            const formatNumber = (num) => {
+                if (num >= 1000000000000) return '$' + (num / 1000000000000).toFixed(2) + 'T';
+                if (num >= 1000000000) return '$' + (num / 1000000000).toFixed(2) + 'B';
+                if (num >= 1000000) return '$' + (num / 1000000).toFixed(2) + 'M';
+                return '$' + num.toFixed(2);
+            };
+            
+            const getColorClass = (value, type) => {
+                if (type === 'btc_dom') {
+                    return value > 60 ? 'positive' : value < 50 ? 'negative' : 'neutral';
+                } else if (type === 'fear') {
+                    return value > 75 ? 'negative' : value < 25 ? 'positive' : 'neutral';
+                } else if (type === 'alt_index') {
+                    return value > 75 ? 'positive' : value < 25 ? 'negative' : 'neutral';
+                }
+                return 'neutral';
+            };
+            
+            grid.innerHTML = `
+                <div class="indicator-card">
+                    <div class="indicator-label">🟠 Bitcoin Dominance</div>
+                    <div class="indicator-value ${getColorClass(indicators.btc_dominance, 'btc_dom')}">
+                        ${indicators.btc_dominance}%
+                    </div>
+                    <div class="indicator-change">
+                        ${indicators.btc_dominance > 60 ? '📈 Fort' : indicators.btc_dominance < 50 ? '📉 Faible' : '➡️ Neutre'}
+                    </div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="indicator-label">💠 Ethereum Dominance</div>
+                    <div class="indicator-value" style="color: #818cf8;">
+                        ${indicators.eth_dominance}%
+                    </div>
+                    <div class="indicator-change">
+                        ${indicators.eth_dominance > 15 ? '📈 Fort' : '➡️ Normal'}
+                    </div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="indicator-label">😱 Fear & Greed Index</div>
+                    <div class="indicator-value ${getColorClass(indicators.fear_greed, 'fear')}">
+                        ${indicators.fear_greed}
+                    </div>
+                    <div class="indicator-change">
+                        ${indicators.fear_greed > 75 ? '🔥 Extreme Greed' : 
+                          indicators.fear_greed > 55 ? '😊 Greed' : 
+                          indicators.fear_greed > 45 ? '😐 Neutral' : 
+                          indicators.fear_greed > 25 ? '😰 Fear' : '😱 Extreme Fear'}
+                    </div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="indicator-label">🌟 Altcoin Season Index</div>
+                    <div class="indicator-value ${getColorClass(indicators.altcoin_season_index, 'alt_index')}">
+                        ${indicators.altcoin_season_index}
+                    </div>
+                    <div class="indicator-change">
+                        ${indicators.altcoin_season_index > 75 ? '🚀 Alt Season!' : 
+                          indicators.altcoin_season_index > 50 ? '📈 Début Alt Season' : '🟠 Bitcoin Season'}
+                    </div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="indicator-label">₿ Prix Bitcoin</div>
+                    <div class="indicator-value" style="color: #f59e0b;">
+                        ${formatNumber(indicators.btc_price)}
+                    </div>
+                    <div class="indicator-change ${indicators.btc_24h_change >= 0 ? 'positive' : 'negative'}">
+                        ${indicators.btc_24h_change >= 0 ? '📈' : '📉'} ${Math.abs(indicators.btc_24h_change)}% (24h)
+                    </div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="indicator-label">💰 Market Cap Total</div>
+                    <div class="indicator-value" style="color: #a78bfa;">
+                        ${formatNumber(indicators.total_market_cap)}
+                    </div>
+                    <div class="indicator-change">
+                        Capitalisation totale
+                    </div>
+                </div>
+            `;
+        }
+        
+        function updateSignals(signals) {
+            const container = document.getElementById('signals-container');
+            
+            if (!signals || signals.length === 0) {
+                container.innerHTML = '<div class="alert alert-info">Aucun signal particulier pour le moment</div>';
+                return;
+            }
+            
+            const getSignalIcon = (type) => {
+                const icons = {
+                    'bullish_btc': '🟠',
+                    'bullish_alt': '🌈',
+                    'warning': '⚠️',
+                    'opportunity': '💎',
+                    'altcoin_season': '🚀',
+                    'neutral': 'ℹ️'
+                };
+                return icons[type] || 'ℹ️';
+            };
+            
+            container.innerHTML = signals.map(signal => `
+                <div class="signal-item signal-${signal.type}">
+                    <span class="signal-icon">${getSignalIcon(signal.type)}</span>
+                    <div class="signal-content">
+                        <div class="signal-strength" style="color: ${
+                            signal.strength === 'fort' || signal.strength === 'confirmé' ? '#10b981' : 
+                            signal.strength === 'élevé' ? '#f59e0b' : '#94a3b8'
+                        }">
+                            ${signal.strength}
+                        </div>
+                        <div class="signal-message">${signal.message}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Charger au démarrage
+        loadBullrunData();
+        
+        // Recharger toutes les 2 minutes
+        setInterval(loadBullrunData, 120000);
+        
+        console.log('🚀 Bullrun Phase Tracker chargé!');
+    </script>
+</body>
+</html>
+"""
+    return HTMLResponse(html)
     return HTMLResponse(html)
 
 @app.get("/graphiques", response_class=HTMLResponse)

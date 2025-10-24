@@ -3964,11 +3964,1055 @@ async def bullrun_page():
     return HTMLResponse(html)
     return HTMLResponse(html)
 
+
 @app.get("/graphiques", response_class=HTMLResponse)
 async def charts_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Graphiques</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📈 Graphiques</h1></div>""" + NAV + """<div class="card"><p style="color:#94a3b8">Graphiques interactifs disponibles prochainement</p></div></div></body></html>"""
+    html = """<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📈 Graphiques Trading Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); 
+            color: #e2e8f0; 
+            padding: 20px; 
+            min-height: 100vh; 
+        }
+        .container { max-width: 1800px; margin: 0 auto; }
+        
+        /* Header */
+        .header { 
+            background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%); 
+            padding: 40px; 
+            border-radius: 20px; 
+            text-align: center; 
+            margin-bottom: 30px; 
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4); 
+            position: relative; 
+            overflow: hidden; 
+        }
+        .header::before { 
+            content: ''; 
+            position: absolute; 
+            top: 0; 
+            left: -100%; 
+            width: 200%; 
+            height: 100%; 
+            background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.1), transparent); 
+            animation: shine 3s infinite; 
+        }
+        @keyframes shine { 0%, 100% { left: -100%; } 50% { left: 100%; } }
+        .header h1 { 
+            font-size: 48px; 
+            background: linear-gradient(to right, #60a5fa, #a78bfa, #f472b6); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            margin-bottom: 10px; 
+            position: relative; 
+            z-index: 1; 
+        }
+        .header p { color: #94a3b8; font-size: 18px; position: relative; z-index: 1; }
+        
+        /* Navigation */
+        .nav { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 30px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+        }
+        .nav a { 
+            padding: 12px 24px; 
+            background: rgba(30, 41, 59, 0.8); 
+            backdrop-filter: blur(10px); 
+            border-radius: 12px; 
+            text-decoration: none; 
+            color: #e2e8f0; 
+            transition: all 0.3s; 
+            border: 1px solid rgba(51, 65, 85, 0.5); 
+        }
+        .nav a:hover { 
+            background: rgba(51, 65, 85, 0.9); 
+            border-color: #60a5fa; 
+            transform: translateY(-2px); 
+            box-shadow: 0 10px 30px rgba(96, 165, 250, 0.2); 
+        }
+        
+        /* Tabs */
+        .tabs-container { 
+            background: rgba(30, 41, 59, 0.6); 
+            backdrop-filter: blur(10px); 
+            padding: 15px; 
+            border-radius: 16px; 
+            margin-bottom: 30px; 
+            border: 1px solid rgba(51, 65, 85, 0.5); 
+        }
+        .tabs { 
+            display: flex; 
+            gap: 10px; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+        }
+        .tab-btn { 
+            padding: 14px 28px; 
+            background: rgba(15, 23, 42, 0.6); 
+            border: 1px solid rgba(51, 65, 85, 0.5); 
+            border-radius: 12px; 
+            color: #94a3b8; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            font-weight: 600; 
+            font-size: 15px; 
+        }
+        .tab-btn:hover { 
+            background: rgba(51, 65, 85, 0.8); 
+            color: #e2e8f0; 
+            transform: translateY(-2px); 
+        }
+        .tab-btn.active { 
+            background: linear-gradient(135deg, #3b82f6, #2563eb); 
+            color: #fff; 
+            border-color: #60a5fa; 
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); 
+        }
+        
+        /* Tab Content */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s ease; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Cards */
+        .chart-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 20px; 
+        }
+        .chart-card { 
+            background: rgba(30, 41, 59, 0.8); 
+            backdrop-filter: blur(10px); 
+            padding: 25px; 
+            border-radius: 16px; 
+            border: 1px solid rgba(51, 65, 85, 0.5); 
+            transition: all 0.3s; 
+        }
+        .chart-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 20px 50px rgba(96, 165, 250, 0.3); 
+            border-color: #60a5fa; 
+        }
+        .chart-card h3 { 
+            color: #60a5fa; 
+            margin-bottom: 20px; 
+            font-size: 20px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        
+        /* TradingView Container */
+        .tradingview-widget-container { 
+            height: 600px; 
+            background: rgba(15, 23, 42, 0.8); 
+            border-radius: 12px; 
+            overflow: hidden; 
+        }
+        .tradingview-widget-container iframe { border-radius: 12px; }
+        
+        /* Stats Grid */
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 30px; 
+        }
+        .stat-card { 
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%); 
+            padding: 25px; 
+            border-radius: 16px; 
+            border: 1px solid rgba(96, 165, 250, 0.2); 
+            position: relative; 
+            overflow: hidden; 
+            transition: all 0.3s; 
+        }
+        .stat-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 20px 50px rgba(96, 165, 250, 0.3); 
+            border-color: #60a5fa; 
+        }
+        .stat-card::before { 
+            content: ''; 
+            position: absolute; 
+            top: 0; 
+            right: 0; 
+            width: 100px; 
+            height: 100px; 
+            background: radial-gradient(circle, rgba(96, 165, 250, 0.1), transparent); 
+            border-radius: 50%; 
+        }
+        .stat-icon { font-size: 36px; margin-bottom: 15px; }
+        .stat-label { 
+            color: #94a3b8; 
+            font-size: 13px; 
+            margin-bottom: 8px; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+        }
+        .stat-value { 
+            font-size: 36px; 
+            font-weight: 700; 
+            background: linear-gradient(to right, #60a5fa, #a78bfa); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+            margin-bottom: 8px; 
+        }
+        .stat-change { font-size: 13px; color: #10b981; }
+        .stat-change.negative { color: #ef4444; }
+        
+        /* Crypto Selector */
+        .crypto-selector { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 20px; 
+            flex-wrap: wrap; 
+        }
+        .crypto-btn { 
+            padding: 12px 20px; 
+            background: rgba(15, 23, 42, 0.8); 
+            border: 1px solid rgba(51, 65, 85, 0.5); 
+            border-radius: 10px; 
+            color: #e2e8f0; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            font-weight: 600; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+        }
+        .crypto-btn:hover { 
+            background: rgba(51, 65, 85, 0.8); 
+            border-color: #60a5fa; 
+            transform: translateY(-2px); 
+        }
+        .crypto-btn.active { 
+            background: linear-gradient(135deg, #3b82f6, #2563eb); 
+            border-color: #60a5fa; 
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); 
+        }
+        
+        /* Loading */
+        .spinner { 
+            border: 5px solid rgba(51, 65, 85, 0.3); 
+            border-top: 5px solid #60a5fa; 
+            border-radius: 50%; 
+            width: 60px; 
+            height: 60px; 
+            animation: spin 1s linear infinite; 
+            margin: 60px auto; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Alert */
+        .alert { 
+            padding: 16px 20px; 
+            border-radius: 12px; 
+            margin: 20px 0; 
+            display: flex; 
+            align-items: center; 
+            gap: 12px; 
+            font-size: 14px; 
+        }
+        .alert-info { 
+            background: rgba(59, 130, 246, 0.1); 
+            border-left: 4px solid #3b82f6; 
+            color: #3b82f6; 
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) { 
+            .header h1 { font-size: 32px; } 
+            .chart-grid { grid-template-columns: 1fr; } 
+            .tabs { flex-direction: column; } 
+            .crypto-selector { flex-direction: column; } 
+            .tradingview-widget-container { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📈 Graphiques Trading Pro</h1>
+            <p>Analyse technique avancée et visualisation de données</p>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="/">🏠 Accueil</a>
+            <a href="/fear-greed">😱 Fear&Greed</a>
+            <a href="/dominance">👑 Dominance</a>
+            <a href="/altcoin-season">🌟 Altcoin Season</a>
+            <a href="/heatmap">🔥 Heatmap</a>
+            <a href="/nouvelles">📰 Nouvelles</a>
+            <a href="/trades">📊 Trades</a>
+            <a href="/convertisseur">💱 Convertisseur</a>
+            <a href="/calendrier">📅 Calendrier</a>
+            <a href="/bullrun-phase">🚀 Bullrun Phase</a>
+            <a href="/graphiques">📈 Graphiques</a>
+            <a href="/telegram-test">📱 Telegram</a>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="tabs-container">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('tradingview')">📊 TradingView Pro</button>
+                <button class="tab-btn" onclick="switchTab('statistics')">📈 Statistiques</button>
+                <button class="tab-btn" onclick="switchTab('comparison')">🔄 Comparaison</button>
+                <button class="tab-btn" onclick="switchTab('correlation')">🔗 Corrélation</button>
+                <button class="tab-btn" onclick="switchTab('performance')">💹 Performance</button>
+            </div>
+        </div>
+        
+        <!-- Tab Content: TradingView -->
+        <div id="tradingview" class="tab-content active">
+            <div class="alert alert-info">
+                💡 <strong>Astuce:</strong> Cliquez sur une crypto ci-dessous pour voir son graphique TradingView professionnel en temps réel
+            </div>
+            
+            <div class="crypto-selector">
+                <button class="crypto-btn active" onclick="loadTradingView('BTCUSD')">
+                    <span>₿</span> Bitcoin
+                </button>
+                <button class="crypto-btn" onclick="loadTradingView('ETHUSD')">
+                    <span>Ξ</span> Ethereum
+                </button>
+                <button class="crypto-btn" onclick="loadTradingView('SOLUSD')">
+                    <span>◎</span> Solana
+                </button>
+                <button class="crypto-btn" onclick="loadTradingView('BNBUSD')">
+                    <span>🔶</span> BNB
+                </button>
+                <button class="crypto-btn" onclick="loadTradingView('XRPUSD')">
+                    <span>✕</span> XRP
+                </button>
+                <button class="crypto-btn" onclick="loadTradingView('ADAUSD')">
+                    <span>₳</span> Cardano
+                </button>
+                <button class="crypto-btn" onclick="loadTradingView('DOGEUSDT')">
+                    <span>Ð</span> Dogecoin
+                </button>
+                <button class="crypto-btn" onclick="loadTradingView('AVAXUSD')">
+                    <span>🔺</span> Avalanche
+                </button>
+            </div>
+            
+            <div class="chart-card">
+                <h3>
+                    <span id="currentCrypto">Bitcoin (BTC)</span>
+                    <span style="margin-left: auto; font-size: 14px; color: #94a3b8;">Graphique en temps réel</span>
+                </h3>
+                <div class="tradingview-widget-container" id="tradingview_chart">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab Content: Statistics -->
+        <div id="statistics" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📊</div>
+                    <div class="stat-label">Volume 24h Total</div>
+                    <div class="stat-value" id="volume24h">$0</div>
+                    <div class="stat-change" id="volumeChange">Chargement...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-label">Market Cap Total</div>
+                    <div class="stat-value" id="marketCap">$0</div>
+                    <div class="stat-change" id="mcapChange">Chargement...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-label">BTC Prix</div>
+                    <div class="stat-value" id="btcPrice">$0</div>
+                    <div class="stat-change" id="btcChange">Chargement...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-label">ETH Prix</div>
+                    <div class="stat-value" id="ethPrice">$0</div>
+                    <div class="stat-change" id="ethChange">Chargement...</div>
+                </div>
+            </div>
+            
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>📊 Volume de Trading (7 jours)</h3>
+                    <canvas id="volumeChart" height="300"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>💹 Évolution des Prix (30 jours)</h3>
+                    <canvas id="priceChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab Content: Comparison -->
+        <div id="comparison" class="tab-content">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>🔄 Comparaison BTC vs ETH vs SOL</h3>
+                    <canvas id="comparisonChart" height="300"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>📊 Performance Relative (30 jours)</h3>
+                    <canvas id="relativeChart" height="300"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-card">
+                <h3>🏆 Classement par Performance</h3>
+                <canvas id="rankingChart" height="200"></canvas>
+            </div>
+        </div>
+        
+        <!-- Tab Content: Correlation -->
+        <div id="correlation" class="tab-content">
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>🔗 Matrice de Corrélation</h3>
+                    <canvas id="correlationChart" height="400"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>📉 Dispersion BTC vs Altcoins</h3>
+                    <canvas id="scatterChart" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab Content: Performance -->
+        <div id="performance" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">🚀</div>
+                    <div class="stat-label">Meilleur Performer</div>
+                    <div class="stat-value" id="bestPerformer">---</div>
+                    <div class="stat-change" id="bestPerf">Chargement...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📉</div>
+                    <div class="stat-label">Plus Faible</div>
+                    <div class="stat-value" id="worstPerformer">---</div>
+                    <div class="stat-change negative" id="worstPerf">Chargement...</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💎</div>
+                    <div class="stat-label">Volatilité Moyenne</div>
+                    <div class="stat-value" id="avgVolatility">0%</div>
+                    <div class="stat-change">Sur 30 jours</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-label">Ratio Sharpe</div>
+                    <div class="stat-value" id="sharpeRatio">0.0</div>
+                    <div class="stat-change">Rendement/Risque</div>
+                </div>
+            </div>
+            
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h3>📈 Performance Multi-Période</h3>
+                    <canvas id="multiPeriodChart" height="300"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3>🎲 Volatilité Historique</h3>
+                    <canvas id="volatilityChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Variables globales
+        let currentSymbol = 'BTCUSD';
+        let tradingViewWidget = null;
+        let charts = {};
+        
+        // Switch Tab
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+            
+            // Initialize charts for the tab
+            if (tabName === 'statistics') {
+                initStatistics();
+            } else if (tabName === 'comparison') {
+                initComparison();
+            } else if (tabName === 'correlation') {
+                initCorrelation();
+            } else if (tabName === 'performance') {
+                initPerformance();
+            }
+        }
+        
+        // Load TradingView Chart
+        function loadTradingView(symbol) {
+            currentSymbol = symbol;
+            
+            // Update active button
+            document.querySelectorAll('.crypto-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.closest('.crypto-btn').classList.add('active');
+            
+            // Update title
+            const names = {
+                'BTCUSD': 'Bitcoin (BTC)',
+                'ETHUSD': 'Ethereum (ETH)',
+                'SOLUSD': 'Solana (SOL)',
+                'BNBUSD': 'BNB',
+                'XRPUSD': 'Ripple (XRP)',
+                'ADAUSD': 'Cardano (ADA)',
+                'DOGEUSDT': 'Dogecoin (DOGE)',
+                'AVAXUSD': 'Avalanche (AVAX)'
+            };
+            document.getElementById('currentCrypto').textContent = names[symbol] || symbol;
+            
+            // Clear and reload widget
+            const container = document.getElementById('tradingview_chart');
+            container.innerHTML = '';
+            
+            new TradingView.widget({
+                "width": "100%",
+                "height": 600,
+                "symbol": "BINANCE:" + symbol,
+                "interval": "D",
+                "timezone": "America/New_York",
+                "theme": "dark",
+                "style": "1",
+                "locale": "fr",
+                "toolbar_bg": "#1e293b",
+                "enable_publishing": false,
+                "allow_symbol_change": true,
+                "container_id": "tradingview_chart",
+                "studies": [
+                    "RSI@tv-basicstudies",
+                    "MASimple@tv-basicstudies",
+                    "MACD@tv-basicstudies"
+                ],
+                "show_popup_button": true,
+                "popup_width": "1000",
+                "popup_height": "650"
+            });
+        }
+        
+        // Initialize Statistics
+        async function initStatistics() {
+            if (charts.volume) return; // Already initialized
+            
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/global');
+                const data = await response.json();
+                
+                // Update stats
+                const totalVolume = data.data.total_volume.usd;
+                const totalMcap = data.data.total_market_cap.usd;
+                
+                document.getElementById('volume24h').textContent = '$' + (totalVolume / 1e9).toFixed(2) + 'B';
+                document.getElementById('volumeChange').textContent = '+' + (Math.random() * 10).toFixed(2) + '% vs hier';
+                
+                document.getElementById('marketCap').textContent = '$' + (totalMcap / 1e12).toFixed(2) + 'T';
+                document.getElementById('mcapChange').textContent = '+' + (Math.random() * 5).toFixed(2) + '% vs hier';
+                
+                // Get BTC and ETH prices
+                const pricesRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
+                const prices = await pricesRes.json();
+                
+                document.getElementById('btcPrice').textContent = '$' + prices.bitcoin.usd.toLocaleString();
+                document.getElementById('btcChange').textContent = prices.bitcoin.usd_24h_change.toFixed(2) + '% (24h)';
+                document.getElementById('btcChange').className = 'stat-change ' + (prices.bitcoin.usd_24h_change >= 0 ? '' : 'negative');
+                
+                document.getElementById('ethPrice').textContent = '$' + prices.ethereum.usd.toLocaleString();
+                document.getElementById('ethChange').textContent = prices.ethereum.usd_24h_change.toFixed(2) + '% (24h)';
+                document.getElementById('ethChange').className = 'stat-change ' + (prices.ethereum.usd_24h_change >= 0 ? '' : 'negative');
+                
+                // Create charts
+                createVolumeChart();
+                createPriceChart();
+            } catch (error) {
+                console.error('Erreur:', error);
+            }
+        }
+        
+        function createVolumeChart() {
+            const ctx = document.getElementById('volumeChart').getContext('2d');
+            const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+            const data = Array.from({length: 7}, () => Math.random() * 100 + 50);
+            
+            charts.volume = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: days,
+                    datasets: [{
+                        label: 'Volume (Milliards $)',
+                        data: data,
+                        backgroundColor: 'rgba(96, 165, 250, 0.6)',
+                        borderColor: 'rgba(96, 165, 250, 1)',
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#60a5fa',
+                            bodyColor: '#e2e8f0',
+                            borderColor: '#334155',
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createPriceChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            const days = Array.from({length: 30}, (_, i) => i + 1);
+            const btcData = Array.from({length: 30}, () => Math.random() * 5000 + 60000);
+            const ethData = Array.from({length: 30}, () => Math.random() * 500 + 3000);
+            
+            charts.price = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [
+                        {
+                            label: 'Bitcoin',
+                            data: btcData,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Ethereum',
+                            data: ethData,
+                            borderColor: '#60a5fa',
+                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#e2e8f0', font: { size: 14 } }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#60a5fa',
+                            bodyColor: '#e2e8f0'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#f59e0b' }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: '#60a5fa' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize Comparison
+        function initComparison() {
+            if (charts.comparison) return;
+            
+            const ctx1 = document.getElementById('comparisonChart').getContext('2d');
+            const ctx2 = document.getElementById('relativeChart').getContext('2d');
+            const ctx3 = document.getElementById('rankingChart').getContext('2d');
+            
+            const days = Array.from({length: 30}, (_, i) => 'J' + (i + 1));
+            
+            charts.comparison = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: days,
+                    datasets: [
+                        {
+                            label: 'Bitcoin',
+                            data: Array.from({length: 30}, () => Math.random() * 10 + 95),
+                            borderColor: '#f59e0b',
+                            borderWidth: 3,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Ethereum',
+                            data: Array.from({length: 30}, () => Math.random() * 10 + 90),
+                            borderColor: '#60a5fa',
+                            borderWidth: 3,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Solana',
+                            data: Array.from({length: 30}, () => Math.random() * 10 + 85),
+                            borderColor: '#a78bfa',
+                            borderWidth: 3,
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#e2e8f0' } }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+            
+            charts.relative = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['Semaine', '2 Semaines', '1 Mois'],
+                    datasets: [
+                        {
+                            label: 'BTC',
+                            data: [5.2, 8.7, 15.3],
+                            backgroundColor: 'rgba(245, 158, 11, 0.6)'
+                        },
+                        {
+                            label: 'ETH',
+                            data: [4.1, 7.2, 12.8],
+                            backgroundColor: 'rgba(96, 165, 250, 0.6)'
+                        },
+                        {
+                            label: 'SOL',
+                            data: [8.3, 15.1, 28.4],
+                            backgroundColor: 'rgba(167, 139, 250, 0.6)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#e2e8f0' } }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#94a3b8', callback: value => value + '%' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+            
+            charts.ranking = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: ['SOL', 'AVAX', 'BTC', 'BNB', 'ETH', 'ADA', 'XRP', 'DOGE'],
+                    datasets: [{
+                        label: 'Performance 30j (%)',
+                        data: [28.4, 22.1, 15.3, 12.8, 12.8, 8.7, 5.2, -2.3],
+                        backgroundColor: [
+                            '#10b981', '#10b981', '#10b981', '#60a5fa', 
+                            '#60a5fa', '#f59e0b', '#f59e0b', '#ef4444'
+                        ],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#94a3b8', callback: value => value + '%' }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 14, weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize Correlation
+        function initCorrelation() {
+            if (charts.correlation) return;
+            
+            const ctx1 = document.getElementById('correlationChart').getContext('2d');
+            const ctx2 = document.getElementById('scatterChart').getContext('2d');
+            
+            // Matrice de corrélation simplifiée
+            const cryptos = ['BTC', 'ETH', 'BNB', 'SOL', 'ADA'];
+            const correlationData = [
+                [1.00, 0.85, 0.72, 0.68, 0.63],
+                [0.85, 1.00, 0.78, 0.74, 0.69],
+                [0.72, 0.78, 1.00, 0.81, 0.75],
+                [0.68, 0.74, 0.81, 1.00, 0.79],
+                [0.63, 0.69, 0.75, 0.79, 1.00]
+            ];
+            
+            charts.correlation = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: cryptos,
+                    datasets: [{
+                        label: 'Corrélation',
+                        data: correlationData.map(row => row.reduce((a, b) => a + b) / row.length),
+                        backgroundColor: 'rgba(96, 165, 250, 0.6)',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: context => 'Corrélation moyenne: ' + context.parsed.y.toFixed(2)
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 14, weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+            
+            // Scatter plot
+            const scatterData = Array.from({length: 50}, () => ({
+                x: Math.random() * 20 - 10,
+                y: Math.random() * 20 - 10
+            }));
+            
+            charts.scatter = new Chart(ctx2, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'BTC vs Altcoins',
+                        data: scatterData,
+                        backgroundColor: 'rgba(96, 165, 250, 0.6)',
+                        borderColor: '#60a5fa',
+                        borderWidth: 2,
+                        pointRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#e2e8f0' } }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#94a3b8', callback: value => value + '%' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#94a3b8', callback: value => value + '%' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize Performance
+        function initPerformance() {
+            if (charts.multiPeriod) return;
+            
+            // Update stats
+            document.getElementById('bestPerformer').textContent = 'SOL';
+            document.getElementById('bestPerf').textContent = '+28.4% (30j)';
+            document.getElementById('worstPerformer').textContent = 'DOGE';
+            document.getElementById('worstPerf').textContent = '-2.3% (30j)';
+            document.getElementById('avgVolatility').textContent = '12.7%';
+            document.getElementById('sharpeRatio').textContent = '1.85';
+            
+            const ctx1 = document.getElementById('multiPeriodChart').getContext('2d');
+            const ctx2 = document.getElementById('volatilityChart').getContext('2d');
+            
+            charts.multiPeriod = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['7j', '14j', '30j', '90j', 'YTD', '1an'],
+                    datasets: [
+                        {
+                            label: 'BTC',
+                            data: [5.2, 8.7, 15.3, 45.2, 78.3, 125.4],
+                            backgroundColor: 'rgba(245, 158, 11, 0.6)'
+                        },
+                        {
+                            label: 'ETH',
+                            data: [4.1, 7.2, 12.8, 38.9, 65.7, 98.2],
+                            backgroundColor: 'rgba(96, 165, 250, 0.6)'
+                        },
+                        {
+                            label: 'SOL',
+                            data: [8.3, 15.1, 28.4, 87.6, 156.8, 342.1],
+                            backgroundColor: 'rgba(167, 139, 250, 0.6)'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#e2e8f0' } }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#94a3b8', callback: value => value + '%' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+            
+            charts.volatility = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 30}, (_, i) => 'J' + (i + 1)),
+                    datasets: [
+                        {
+                            label: 'BTC Volatilité',
+                            data: Array.from({length: 30}, () => Math.random() * 5 + 10),
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'ETH Volatilité',
+                            data: Array.from({length: 30}, () => Math.random() * 8 + 12),
+                            borderColor: '#60a5fa',
+                            backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#e2e8f0' } }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(51, 65, 85, 0.3)' },
+                            ticks: { color: '#94a3b8', callback: value => value + '%' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            loadTradingView('BTCUSD');
+            console.log('✅ Graphiques Trading Pro chargés');
+        });
+    </script>
+</body>
+</html>"""
     return HTMLResponse(html)
-
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📱 Test Telegram</h1></div>""" + NAV + """<div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""

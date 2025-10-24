@@ -4272,11 +4272,11 @@ async def charts_page():
         <!-- Tabs -->
         <div class="tabs-container">
             <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('tradingview')">📊 TradingView Pro</button>
-                <button class="tab-btn" onclick="switchTab('statistics')">📈 Statistiques</button>
-                <button class="tab-btn" onclick="switchTab('comparison')">🔄 Comparaison</button>
-                <button class="tab-btn" onclick="switchTab('correlation')">🔗 Corrélation</button>
-                <button class="tab-btn" onclick="switchTab('performance')">💹 Performance</button>
+                <button class="tab-btn active" onclick="switchTab('tradingview', event)">📊 TradingView Pro</button>
+                <button class="tab-btn" onclick="switchTab('statistics', event)">📈 Statistiques</button>
+                <button class="tab-btn" onclick="switchTab('comparison', event)">🔄 Comparaison</button>
+                <button class="tab-btn" onclick="switchTab('correlation', event)">🔗 Corrélation</button>
+                <button class="tab-btn" onclick="switchTab('performance', event)">💹 Performance</button>
             </div>
         </div>
         
@@ -4287,28 +4287,28 @@ async def charts_page():
             </div>
             
             <div class="crypto-selector">
-                <button class="crypto-btn active" onclick="loadTradingView('BTCUSD')">
+                <button class="crypto-btn active" onclick="loadTradingView('BTCUSD', event)">
                     <span>₿</span> Bitcoin
                 </button>
-                <button class="crypto-btn" onclick="loadTradingView('ETHUSD')">
+                <button class="crypto-btn" onclick="loadTradingView('ETHUSD', event)">
                     <span>Ξ</span> Ethereum
                 </button>
-                <button class="crypto-btn" onclick="loadTradingView('SOLUSD')">
+                <button class="crypto-btn" onclick="loadTradingView('SOLUSD', event)">
                     <span>◎</span> Solana
                 </button>
-                <button class="crypto-btn" onclick="loadTradingView('BNBUSD')">
+                <button class="crypto-btn" onclick="loadTradingView('BNBUSD', event)">
                     <span>🔶</span> BNB
                 </button>
-                <button class="crypto-btn" onclick="loadTradingView('XRPUSD')">
+                <button class="crypto-btn" onclick="loadTradingView('XRPUSD', event)">
                     <span>✕</span> XRP
                 </button>
-                <button class="crypto-btn" onclick="loadTradingView('ADAUSD')">
+                <button class="crypto-btn" onclick="loadTradingView('ADAUSD', event)">
                     <span>₳</span> Cardano
                 </button>
-                <button class="crypto-btn" onclick="loadTradingView('DOGEUSDT')">
+                <button class="crypto-btn" onclick="loadTradingView('DOGEUSDT', event)">
                     <span>Ð</span> Dogecoin
                 </button>
-                <button class="crypto-btn" onclick="loadTradingView('AVAXUSD')">
+                <button class="crypto-btn" onclick="loadTradingView('AVAXUSD', event)">
                     <span>🔺</span> Avalanche
                 </button>
             </div>
@@ -4447,7 +4447,7 @@ async def charts_page():
         let charts = {};
         
         // Switch Tab
-        function switchTab(tabName) {
+        function switchTab(tabName, event) {
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
@@ -4458,7 +4458,16 @@ async def charts_page():
             
             // Show selected tab
             document.getElementById(tabName).classList.add('active');
-            event.target.classList.add('active');
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // Fallback: find button by text
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    if (btn.textContent.toLowerCase().includes(tabName.toLowerCase())) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
             
             // Initialize charts for the tab
             if (tabName === 'statistics') {
@@ -4473,14 +4482,25 @@ async def charts_page():
         }
         
         // Load TradingView Chart
-        function loadTradingView(symbol) {
+        function loadTradingView(symbol, event) {
             currentSymbol = symbol;
             
             // Update active button
             document.querySelectorAll('.crypto-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.closest('.crypto-btn').classList.add('active');
+            
+            // Find and activate the clicked button
+            if (event && event.target) {
+                const clickedBtn = event.target.closest('.crypto-btn');
+                if (clickedBtn) {
+                    clickedBtn.classList.add('active');
+                }
+            } else {
+                // If no event (initial load), activate first button
+                const firstBtn = document.querySelector('.crypto-btn');
+                if (firstBtn) firstBtn.classList.add('active');
+            }
             
             // Update title
             const names = {
@@ -4497,30 +4517,41 @@ async def charts_page():
             
             // Clear and reload widget
             const container = document.getElementById('tradingview_chart');
-            container.innerHTML = '';
+            container.innerHTML = '<div class="spinner"></div>';
             
-            new TradingView.widget({
-                "width": "100%",
-                "height": 600,
-                "symbol": "BINANCE:" + symbol,
-                "interval": "D",
-                "timezone": "America/New_York",
-                "theme": "dark",
-                "style": "1",
-                "locale": "fr",
-                "toolbar_bg": "#1e293b",
-                "enable_publishing": false,
-                "allow_symbol_change": true,
-                "container_id": "tradingview_chart",
-                "studies": [
-                    "RSI@tv-basicstudies",
-                    "MASimple@tv-basicstudies",
-                    "MACD@tv-basicstudies"
-                ],
-                "show_popup_button": true,
-                "popup_width": "1000",
-                "popup_height": "650"
-            });
+            // Wait for TradingView to be loaded
+            if (typeof TradingView === 'undefined') {
+                container.innerHTML = '<div style="color:#ef4444;text-align:center;padding:50px;">Erreur: TradingView non disponible. Vérifiez votre connexion.</div>';
+                return;
+            }
+            
+            try {
+                new TradingView.widget({
+                    "width": "100%",
+                    "height": 600,
+                    "symbol": "BINANCE:" + symbol,
+                    "interval": "D",
+                    "timezone": "America/New_York",
+                    "theme": "dark",
+                    "style": "1",
+                    "locale": "fr",
+                    "toolbar_bg": "#1e293b",
+                    "enable_publishing": false,
+                    "allow_symbol_change": true,
+                    "container_id": "tradingview_chart",
+                    "studies": [
+                        "RSI@tv-basicstudies",
+                        "MASimple@tv-basicstudies",
+                        "MACD@tv-basicstudies"
+                    ],
+                    "show_popup_button": true,
+                    "popup_width": "1000",
+                    "popup_height": "650"
+                });
+            } catch (error) {
+                console.error('Erreur TradingView:', error);
+                container.innerHTML = '<div style="color:#ef4444;text-align:center;padding:50px;">Erreur lors du chargement du graphique. Rafraîchissez la page.</div>';
+            }
         }
         
         // Initialize Statistics
@@ -5005,9 +5036,23 @@ async def charts_page():
         }
         
         // Initialize on page load
+        // Initialize on page load
         window.addEventListener('load', () => {
-            loadTradingView('BTCUSD');
-            console.log('✅ Graphiques Trading Pro chargés');
+            console.log('🔄 Chargement de la page graphiques...');
+            
+            // Wait a bit for TradingView script to load
+            setTimeout(() => {
+                if (typeof TradingView !== 'undefined') {
+                    loadTradingView('BTCUSD');
+                    console.log('✅ Graphiques Trading Pro chargés');
+                } else {
+                    console.error('❌ TradingView non disponible');
+                    const container = document.getElementById('tradingview_chart');
+                    if (container) {
+                        container.innerHTML = '<div style="color:#ef4444;text-align:center;padding:50px;">⚠️ Erreur: Impossible de charger TradingView. Vérifiez votre connexion internet et rafraîchissez la page.</div>';
+                    }
+                }
+            }, 500);
         });
     </script>
 </body>

@@ -5261,8 +5261,27 @@ async def trades_page():
         let allTrades = []; let performanceChart = null; let distributionChart = null;
         
         function formatPrice(price, isHit, isSL) {
-            if (price === undefined || price === null) return '$0.00000';
-            const formatted = '$' + price.toFixed(5);
+            if (price === undefined || price === null) return '$0.00';
+            
+            // Formatage intelligent selon le prix
+            let decimals;
+            const numPrice = parseFloat(price);
+            
+            if (numPrice < 0.001) {
+                decimals = 8;  // Memecoins (SHIB, PEPE, CHEEMS, etc.)
+            } else if (numPrice < 1) {
+                decimals = 6;  // Petites cryptos
+            } else if (numPrice < 100) {
+                decimals = 4;  // Altcoins moyens
+            } else {
+                decimals = 2;  // BTC, ETH, etc.
+            }
+            
+            // Formater et supprimer les zéros inutiles
+            let formatted = '$' + numPrice.toFixed(decimals);
+            formatted = formatted.replace(/\.?0+$/, ''); // Supprimer les zéros à la fin
+            if (formatted.endsWith('.')) formatted = formatted.slice(0, -1); // Supprimer le point si nécessaire
+            
             if (isHit && isSL) {
                 return '<span class="price-sl-hit">' + formatted + ' ❌</span>';
             } else if (isHit) {
@@ -5388,15 +5407,29 @@ async def trades_page():
             }) : 'N/A';
             
             // Helper pour formater les prix avec coloration
+            const smartFormat = (price) => {
+                if (!price) return '$0.00';
+                const numPrice = parseFloat(price);
+                let decimals;
+                if (numPrice < 0.001) decimals = 8;
+                else if (numPrice < 1) decimals = 6;
+                else if (numPrice < 100) decimals = 4;
+                else decimals = 2;
+                let formatted = '$' + numPrice.toFixed(decimals);
+                formatted = formatted.replace(/\.?0+$/, '');
+                if (formatted.endsWith('.')) formatted = formatted.slice(0, -1);
+                return formatted;
+            };
+            
             const formatTPPrice = (price, isHit) => {
-                if (!price) return '$0.00000';
-                const formatted = '$' + price.toFixed(5);
+                if (!price) return '$0.00';
+                const formatted = smartFormat(price);
                 return isHit ? '<span class="price-hit">' + formatted + ' ✅</span>' : formatted;
             };
             
             const formatSLPrice = (price, isHit) => {
-                if (!price) return '$0.00000';
-                const formatted = '$' + price.toFixed(5);
+                if (!price) return '$0.00';
+                const formatted = smartFormat(price);
                 return isHit ? '<span class="price-sl-hit">' + formatted + ' ❌</span>' : formatted;
             };
             
@@ -5407,7 +5440,7 @@ async def trades_page():
                 '<div><div class="stat-label">Statut</div><span class="badge ' + statusClass + '" style="font-size: 16px; padding: 10px 20px;">' + (trade.status || 'OPEN') + '</span></div>' +
                 '</div>' +
                 '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px;">' +
-                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">Entry Price</div><div class="stat-value" style="font-size: 28px;">$' + (trade.entry || 0).toFixed(5) + '</div></div>' +
+                '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">Entry Price</div><div class="stat-value" style="font-size: 28px;">' + smartFormat(trade.entry) + '</div></div>' +
                 '<div class="stat-box" style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px;"><div class="stat-label">Stop Loss</div><div class="stat-value" style="font-size: 28px;">' + formatSLPrice(trade.sl, trade.sl_hit) + '</div></div>' +
                 '</div>' +
                 '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">' +

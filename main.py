@@ -10,9 +10,14 @@ import pytz
 import random
 import os
 import math
+import asyncio
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# Lock pour éviter plusieurs instances du monitoring
+monitor_lock = asyncio.Lock()
+monitor_running = False
 
 trades_db = []
 
@@ -7206,6 +7211,15 @@ async def send_telegram_notification(symbol: str, target: str, current_price: fl
 
 async def monitor_trades_background():
     """Tâche de fond - surveillance automatique toutes les 30 secondes"""
+    global monitor_running
+    
+    # Vérifier si une instance est déjà en cours
+    async with monitor_lock:
+        if monitor_running:
+            print("⚠️ Une instance du moniteur est déjà active, skip")
+            return
+        monitor_running = True
+    
     print("\n" + "="*70)
     print("🤖 MONITEUR AUTOMATIQUE DES TP/SL DÉMARRÉ")
     print("   Vérification toutes les 30 secondes")
@@ -7220,7 +7234,7 @@ async def monitor_trades_background():
             open_trades = [t for t in trades_db if t.get("status") == "open"]
             
             if len(open_trades) == 0:
-                print("💤 Aucun trade ouvert")
+                # Ne rien afficher quand il n'y a pas de trades (réduire le spam)
                 continue
             
             print(f"\n🔍 Vérification de {len(open_trades)} trade(s)...")
@@ -7254,7 +7268,9 @@ async def monitor_trades_background():
 @app.on_event("startup")
 async def startup_event():
     """Démarre la tâche de fond au lancement de l'application"""
-    asyncio.create_task(monitor_trades_background())
+    # Utiliser try_lock pour éviter de bloquer si un autre worker a déjà lancé
+    if not monitor_running:
+        asyncio.create_task(monitor_trades_background())
 
 
 
@@ -7686,53 +7702,53 @@ async def ai_assistant_page():
 <script>
 
         // ============= P&L HEBDOMADAIRE =============
-        async function loadWeeklyPnl() {
-            try {
+        async function loadWeeklyPnl() {{
+            try {{
                 const res = await fetch('/api/weekly-pnl');
                 const data = await res.json();
                 
-                if (data.ok) {
+                if (data.ok) {{
                     let html = '';
-                    data.weekly_data.forEach(day => {
+                    data.weekly_data.forEach(day => {{
                         const isToday = day.day_en === data.current_day;
                         const color = day.pnl > 0 ? '#10b981' : (day.pnl < 0 ? '#ef4444' : '#94a3b8');
                         const bgColor = isToday ? 'rgba(96, 165, 250, 0.1)' : 'rgba(15, 23, 42, 0.8)';
                         const border = isToday ? '2px solid #60a5fa' : 'none';
                         
                         html += `
-                            <div style="background:${bgColor};padding:15px;border-radius:12px;text-align:center;border:${border};transition:all 0.3s;">
-                                <div style="color:#94a3b8;font-size:11px;margin-bottom:5px;text-transform:uppercase;">${day.day_fr}${isToday ? ' 👈' : ''}</div>
-                                <div style="color:${color};font-size:24px;font-weight:700;">${day.pnl > 0 ? '+' : ''}${day.pnl}%</div>
+                            <div style="background:${{bgColor}};padding:15px;border-radius:12px;text-align:center;border:${{border}};transition:all 0.3s;">
+                                <div style="color:#94a3b8;font-size:11px;margin-bottom:5px;text-transform:uppercase;">${{day.day_fr}}${{isToday ? ' 👈' : ''}}</div>
+                                <div style="color:${{color}};font-size:24px;font-weight:700;">${{day.pnl > 0 ? '+' : ''}}${{day.pnl}}%</div>
                             </div>
                         `;
-                    });
+                    }});
                     
                     document.getElementById('weeklyPnlContainer').innerHTML = html;
                     
                     const totalColor = data.total_week > 0 ? '#10b981' : (data.total_week < 0 ? '#ef4444' : '#94a3b8');
-                    document.getElementById('weeklyTotal').innerHTML = `<span style="color:${totalColor}">${data.total_week > 0 ? '+' : ''}${data.total_week}%</span>`;
-                }
-            } catch (error) {
+                    document.getElementById('weeklyTotal').innerHTML = `<span style="color:${{totalColor}}">${{data.total_week > 0 ? '+' : ''}}${{data.total_week}}%</span>`;
+                }}
+            }} catch (error) {{
                 console.error('Erreur chargement P&L hebdomadaire:', error);
                 document.getElementById('weeklyPnlContainer').innerHTML = '<p style="color:#ef4444;text-align:center;">❌ Erreur de chargement</p>';
-            }
-        }
+            }}
+        }}
 
-        async function resetWeeklyPnl() {
+        async function resetWeeklyPnl() {{
             if (!confirm('Voulez-vous réinitialiser le P&L de la semaine ?')) return;
             
-            try {
-                const res = await fetch('/api/weekly-pnl/reset', { method: 'POST' });
+            try {{
+                const res = await fetch('/api/weekly-pnl/reset', {{ method: 'POST' }});
                 const data = await res.json();
                 
-                if (data.ok) {
+                if (data.ok) {{
                     alert('✅ P&L hebdomadaire réinitialisé !');
                     loadWeeklyPnl();
-                }
-            } catch (error) {
+                }}
+            }} catch (error) {{
                 alert('❌ Erreur lors de la réinitialisation');
-            }
-        }
+            }}
+        }}
 
 async function refreshSuggestions() {{
     document.getElementById('suggestionsContainer').innerHTML = '<div class="spinner"></div>';
@@ -7793,8 +7809,8 @@ if __name__ == "__main__":
     print("\n" + "="*70)
     print("🚀 DASHBOARD TRADING - VERSION ULTIME + RISK + WATCHLIST + AI")
     print("="*70)
-    print(f"📡 Port: {port}")
-    print(f"🔗 URL: http://localhost:{port}")
+    print(f"📡 Port: {{port}}")
+    print(f"🔗 URL: http://localhost:{{port}}")
     print("="*70)
     print("✅ BOT TELEGRAM PROFESSIONNEL:")
     print("  • Messages formatés avec emojis")

@@ -15,6 +15,29 @@ app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 trades_db = []
+
+# ============= NOUVELLES BASES DE DONNÉES =============
+# Risk Management
+risk_management_settings = {
+    "total_capital": 10000.0,  # Capital total en USD
+    "risk_per_trade": 2.0,  # Risque par trade en %
+    "max_open_trades": 3,  # Nombre maximum de trades ouverts
+    "max_daily_loss": 5.0,  # Perte maximale par jour en %
+    "daily_loss": 0.0,  # Perte du jour actuel
+    "last_reset": datetime.now().strftime("%Y-%m-%d")
+}
+
+# Watchlist & Alertes
+watchlist_db = []  # Liste des cryptos surveillées
+# Format: {"symbol": "BTCUSDT", "target_price": 70000, "note": "Résistance", "created_at": "..."}
+
+# AI Trading Assistant
+ai_assistant_data = {
+    "suggestions": [],
+    "last_analysis": None,
+    "confidence_history": []
+}
+
 heatmap_cache = {"data": None, "timestamp": None, "cache_duration": 180}
 altcoin_cache = {"data": None, "timestamp": None, "cache_duration": 10800}  # Cache 3 heures
 bullrun_cache = {"data": None, "timestamp": None, "cache_duration": 1800}  # Cache 30 minutes
@@ -23,7 +46,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1002940633257")
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a></div>'
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -1982,6 +2005,277 @@ async def clear_trades():
     count = len(trades_db)
     trades_db.clear()
     return {"status": "success", "message": f"{count} trades effacés"}
+
+
+
+# ============= API RISK MANAGEMENT =============
+@app.get("/api/risk/settings")
+async def get_risk_settings():
+    """Récupérer les paramètres de risk management"""
+    return risk_management_settings
+
+@app.post("/api/risk/update")
+async def update_risk_settings(request: dict):
+    """Mettre à jour les paramètres de risk management"""
+    global risk_management_settings
+    
+    # Mettre à jour les paramètres
+    if "total_capital" in request:
+        risk_management_settings["total_capital"] = float(request["total_capital"])
+    if "risk_per_trade" in request:
+        risk_management_settings["risk_per_trade"] = float(request["risk_per_trade"])
+    if "max_open_trades" in request:
+        risk_management_settings["max_open_trades"] = int(request["max_open_trades"])
+    if "max_daily_loss" in request:
+        risk_management_settings["max_daily_loss"] = float(request["max_daily_loss"])
+    
+    return {"ok": True, "settings": risk_management_settings}
+
+@app.get("/api/risk/position-size")
+async def calculate_position_size(symbol: str, entry: float, sl: float):
+    """Calculer la taille de position idéale basée sur le risk management"""
+    try:
+        capital = risk_management_settings["total_capital"]
+        risk_percent = risk_management_settings["risk_per_trade"]
+        
+        # Montant risqué par trade
+        risk_amount = capital * (risk_percent / 100)
+        
+        # Distance entre entry et SL
+        stop_distance = abs(entry - sl)
+        stop_distance_percent = (stop_distance / entry) * 100
+        
+        # Taille de position
+        position_size = risk_amount / stop_distance
+        position_value = position_size * entry
+        
+        # Vérifier si ça dépasse le capital
+        if position_value > capital:
+            position_size = capital / entry
+            position_value = capital
+        
+        return {
+            "ok": True,
+            "position_size": round(position_size, 8),
+            "position_value": round(position_value, 2),
+            "risk_amount": round(risk_amount, 2),
+            "stop_distance_percent": round(stop_distance_percent, 2)
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.post("/api/risk/reset-daily")
+async def reset_daily_loss():
+    """Réinitialiser la perte quotidienne"""
+    global risk_management_settings
+    risk_management_settings["daily_loss"] = 0.0
+    risk_management_settings["last_reset"] = datetime.now().strftime("%Y-%m-%d")
+    return {"ok": True, "message": "Perte quotidienne réinitialisée"}
+
+
+# ============= API WATCHLIST & ALERTES =============
+@app.get("/api/watchlist")
+async def get_watchlist():
+    """Récupérer la watchlist complète"""
+    return {"ok": True, "watchlist": watchlist_db}
+
+@app.post("/api/watchlist/add")
+async def add_to_watchlist(request: dict):
+    """Ajouter une crypto à la watchlist"""
+    symbol = request.get("symbol", "").upper()
+    target_price = request.get("target_price")
+    note = request.get("note", "")
+    
+    if not symbol:
+        return {"ok": False, "error": "Symbol requis"}
+    
+    # Vérifier si déjà dans la watchlist
+    for item in watchlist_db:
+        if item["symbol"] == symbol:
+            return {"ok": False, "error": f"{symbol} est déjà dans la watchlist"}
+    
+    # Ajouter à la watchlist
+    watchlist_item = {
+        "symbol": symbol,
+        "target_price": float(target_price) if target_price else None,
+        "note": note,
+        "created_at": datetime.now().isoformat(),
+        "alert_triggered": False
+    }
+    
+    watchlist_db.append(watchlist_item)
+    
+    return {"ok": True, "message": f"{symbol} ajouté à la watchlist", "item": watchlist_item}
+
+@app.delete("/api/watchlist/remove")
+async def remove_from_watchlist(symbol: str):
+    """Retirer une crypto de la watchlist"""
+    global watchlist_db
+    symbol = symbol.upper()
+    
+    watchlist_db = [item for item in watchlist_db if item["symbol"] != symbol]
+    
+    return {"ok": True, "message": f"{symbol} retiré de la watchlist"}
+
+@app.get("/api/watchlist/check-alerts")
+async def check_watchlist_alerts():
+    """Vérifier si des alertes doivent être déclenchées"""
+    alerts = []
+    
+    for item in watchlist_db:
+        if not item.get("target_price") or item.get("alert_triggered"):
+            continue
+        
+        symbol = item["symbol"]
+        target = item["target_price"]
+        
+        # Récupérer le prix actuel via CoinGecko (simulation)
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                coin_id = symbol.replace("USDT", "").replace("USD", "").lower()
+                if coin_id == "btc":
+                    coin_id = "bitcoin"
+                elif coin_id == "eth":
+                    coin_id = "ethereum"
+                
+                url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
+                response = await client.get(url)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    current_price = data.get(coin_id, {}).get("usd")
+                    
+                    if current_price:
+                        # Vérifier si le target est atteint (±1%)
+                        tolerance = target * 0.01
+                        if abs(current_price - target) <= tolerance:
+                            item["alert_triggered"] = True
+                            alerts.append({
+                                "symbol": symbol,
+                                "target": target,
+                                "current": current_price,
+                                "note": item.get("note", "")
+                            })
+        except:
+            pass
+    
+    return {"ok": True, "alerts": alerts}
+
+
+# ============= API AI TRADING ASSISTANT =============
+@app.get("/api/ai/suggestions")
+async def get_ai_suggestions():
+    """Obtenir des suggestions IA basées sur les trades"""
+    suggestions = []
+    
+    # Analyser les trades pour générer des suggestions
+    if len(trades_db) >= 3:
+        # Calculer le winrate global
+        closed_trades = [t for t in trades_db if t.get("status") != "open"]
+        if closed_trades:
+            wins = len([t for t in closed_trades if t.get("pnl", 0) > 0])
+            winrate = (wins / len(closed_trades)) * 100
+            
+            # Suggestion basée sur le winrate
+            if winrate < 50:
+                suggestions.append({
+                    "type": "warning",
+                    "title": "⚠️ Winrate faible",
+                    "message": f"Votre winrate est de {winrate:.1f}%. Envisagez de réviser votre stratégie.",
+                    "priority": "high"
+                })
+            elif winrate > 70:
+                suggestions.append({
+                    "type": "success",
+                    "title": "✅ Excellent winrate",
+                    "message": f"Félicitations ! Votre winrate de {winrate:.1f}% est excellent.",
+                    "priority": "info"
+                })
+            
+            # Analyser les paires les plus profitables
+            symbol_stats = {}
+            for trade in closed_trades:
+                symbol = trade.get("symbol", "")
+                pnl = trade.get("pnl", 0)
+                
+                if symbol not in symbol_stats:
+                    symbol_stats[symbol] = {"count": 0, "total_pnl": 0}
+                
+                symbol_stats[symbol]["count"] += 1
+                symbol_stats[symbol]["total_pnl"] += pnl
+            
+            # Trouver la meilleure paire
+            if symbol_stats:
+                best_symbol = max(symbol_stats.items(), key=lambda x: x[1]["total_pnl"])
+                if best_symbol[1]["count"] >= 2:
+                    suggestions.append({
+                        "type": "info",
+                        "title": f"💎 Paire performante: {best_symbol[0]}",
+                        "message": f"Vous avez {best_symbol[1]['count']} trades avec +{best_symbol[1]['total_pnl']:.2f}% de profit total.",
+                        "priority": "medium"
+                    })
+            
+            # Suggestion sur le risk management
+            open_trades = [t for t in trades_db if t.get("status") == "open"]
+            max_trades = risk_management_settings.get("max_open_trades", 3)
+            
+            if len(open_trades) >= max_trades:
+                suggestions.append({
+                    "type": "warning",
+                    "title": "⚠️ Limite de trades atteinte",
+                    "message": f"Vous avez {len(open_trades)} trades ouverts (limite: {max_trades}). Attendez avant d'ouvrir de nouvelles positions.",
+                    "priority": "high"
+                })
+    else:
+        suggestions.append({
+            "type": "info",
+            "title": "🎓 Commencez à trader",
+            "message": "Ajoutez au moins 3 trades pour obtenir des suggestions personnalisées de l'IA.",
+            "priority": "low"
+        })
+    
+    # Mettre à jour les données IA
+    ai_assistant_data["suggestions"] = suggestions
+    ai_assistant_data["last_analysis"] = datetime.now().isoformat()
+    
+    return {"ok": True, "suggestions": suggestions, "last_analysis": ai_assistant_data["last_analysis"]}
+
+@app.get("/api/ai/market-sentiment")
+async def get_market_sentiment():
+    """Analyser le sentiment du marché via Fear & Greed"""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get("https://api.alternative.me/fng/")
+            if response.status_code == 200:
+                data = response.json()
+                value = int(data["data"][0]["value"])
+                
+                if value <= 25:
+                    sentiment = "Extreme Fear - Opportunité d'achat"
+                    color = "#ef4444"
+                elif value <= 45:
+                    sentiment = "Fear - Bon moment pour accumuler"
+                    color = "#f59e0b"
+                elif value <= 55:
+                    sentiment = "Neutral - Marché équilibré"
+                    color = "#94a3b8"
+                elif value <= 75:
+                    sentiment = "Greed - Soyez prudent"
+                    color = "#10b981"
+                else:
+                    sentiment = "Extreme Greed - Prenez vos profits"
+                    color = "#22c55e"
+                
+                return {
+                    "ok": True,
+                    "value": value,
+                    "sentiment": sentiment,
+                    "color": color
+                }
+    except:
+        pass
+    
+    return {"ok": False, "error": "Impossible de récupérer le sentiment"}
 
 @app.get("/api/telegram-test")
 async def telegram_test():
@@ -6899,11 +7193,432 @@ async def startup_event():
     asyncio.create_task(monitor_trades_background())
 
 
+
+
+# ============= PAGE RISK MANAGEMENT =============
+@app.get("/risk-management", response_class=HTMLResponse)
+async def risk_management_page():
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
+<body>
+<div class="container">
+<div class="header"><h1>⚖️ RISK MANAGEMENT</h1><p>Gestion professionnelle du risque</p></div>
+{NAV}
+
+<div class="card">
+<h2>📊 Paramètres de Risque</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-bottom:30px;">
+    <div class="stat-box">
+        <div class="label">Capital Total</div>
+        <div class="value" id="totalCapital">$10,000</div>
+    </div>
+    <div class="stat-box">
+        <div class="label">Risque par Trade</div>
+        <div class="value" id="riskPerTrade">2%</div>
+    </div>
+    <div class="stat-box">
+        <div class="label">Trades Ouverts</div>
+        <div class="value" id="openTrades">0 / 3</div>
+    </div>
+    <div class="stat-box">
+        <div class="label">Perte Quotidienne</div>
+        <div class="value" id="dailyLoss" style="color:#ef4444;">-0%</div>
+    </div>
+</div>
+
+<h3 style="color:#60a5fa;margin-bottom:15px;">⚙️ Modifier les Paramètres</h3>
+<div style="max-width:600px;">
+    <label style="color:#94a3b8;display:block;margin-bottom:5px;">💰 Capital Total (USD)</label>
+    <input type="number" id="inputCapital" value="10000" min="100" step="100">
+    
+    <label style="color:#94a3b8;display:block;margin-bottom:5px;">📉 Risque par Trade (%)</label>
+    <input type="number" id="inputRisk" value="2" min="0.5" max="10" step="0.5">
+    
+    <label style="color:#94a3b8;display:block;margin-bottom:5px;">📊 Trades Ouverts Maximum</label>
+    <input type="number" id="inputMaxTrades" value="3" min="1" max="10">
+    
+    <label style="color:#94a3b8;display:block;margin-bottom:5px;">🚫 Perte Maximale Quotidienne (%)</label>
+    <input type="number" id="inputMaxDailyLoss" value="5" min="1" max="20" step="0.5">
+    
+    <button onclick="saveSettings()" style="width:100%;margin-top:10px;">💾 Sauvegarder</button>
+    <button onclick="resetDaily()" class="btn-danger" style="width:100%;margin-top:10px;">🔄 Réinitialiser Perte Quotidienne</button>
+</div>
+</div>
+
+<div class="card">
+<h2>🧮 Calculateur de Position</h2>
+<div style="max-width:600px;">
+    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Symbol (ex: BTCUSDT)</label>
+    <input type="text" id="calcSymbol" placeholder="BTCUSDT">
+    
+    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Prix d'Entrée</label>
+    <input type="number" id="calcEntry" placeholder="67000" step="0.00000001">
+    
+    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Stop Loss</label>
+    <input type="number" id="calcSL" placeholder="66000" step="0.00000001">
+    
+    <button onclick="calculatePosition()" style="width:100%;">🧮 Calculer la Taille de Position</button>
+</div>
+
+<div id="calcResult" style="margin-top:20px;"></div>
+</div>
+
+<div class="card">
+<h2>📚 Guide du Risk Management</h2>
+<div style="color:#94a3b8;line-height:1.8;">
+    <p style="margin-bottom:15px;"><strong style="color:#60a5fa;">💰 Capital Total:</strong> Le montant total que vous êtes prêt à investir dans le trading.</p>
+    <p style="margin-bottom:15px;"><strong style="color:#60a5fa;">📉 Risque par Trade:</strong> Pourcentage de votre capital que vous risquez sur chaque trade (recommandé: 1-2%).</p>
+    <p style="margin-bottom:15px;"><strong style="color:#60a5fa;">📊 Trades Ouverts Max:</strong> Nombre maximum de positions ouvertes simultanément (recommandé: 3-5).</p>
+    <p style="margin-bottom:15px;"><strong style="color:#60a5fa;">🚫 Perte Max Quotidienne:</strong> Si vous perdez ce % en une journée, arrêtez de trader (recommandé: 5%).</p>
+    <p style="margin-bottom:15px;"><strong style="color:#60a5fa;">🧮 Position Sizing:</strong> Calculez automatiquement la taille idéale de votre position basée sur votre risque.</p>
+</div>
+</div>
+
+</div>
+
+<script>
+async function loadSettings() {{
+    const res = await fetch('/api/risk/settings');
+    const data = await res.json();
+    
+    document.getElementById('totalCapital').textContent = '$' + data.total_capital.toLocaleString();
+    document.getElementById('riskPerTrade').textContent = data.risk_per_trade + '%';
+    document.getElementById('dailyLoss').textContent = '-' + data.daily_loss.toFixed(2) + '%';
+    
+    // Compter les trades ouverts
+    const tradesRes = await fetch('/api/trades');
+    const tradesData = await tradesRes.json();
+    const openCount = tradesData.trades.filter(t => t.status === 'open').length;
+    document.getElementById('openTrades').textContent = openCount + ' / ' + data.max_open_trades;
+    
+    // Remplir les inputs
+    document.getElementById('inputCapital').value = data.total_capital;
+    document.getElementById('inputRisk').value = data.risk_per_trade;
+    document.getElementById('inputMaxTrades').value = data.max_open_trades;
+    document.getElementById('inputMaxDailyLoss').value = data.max_daily_loss;
+}}
+
+async function saveSettings() {{
+    const capital = parseFloat(document.getElementById('inputCapital').value);
+    const risk = parseFloat(document.getElementById('inputRisk').value);
+    const maxTrades = parseInt(document.getElementById('inputMaxTrades').value);
+    const maxLoss = parseFloat(document.getElementById('inputMaxDailyLoss').value);
+    
+    const res = await fetch('/api/risk/update', {{
+        method: 'POST',
+        headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{
+            total_capital: capital,
+            risk_per_trade: risk,
+            max_open_trades: maxTrades,
+            max_daily_loss: maxLoss
+        }})
+    }});
+    
+    const data = await res.json();
+    if (data.ok) {{
+        alert('✅ Paramètres sauvegardés !');
+        loadSettings();
+    }}
+}}
+
+async function resetDaily() {{
+    if (!confirm('Voulez-vous réinitialiser la perte quotidienne ?')) return;
+    
+    const res = await fetch('/api/risk/reset-daily', {{method: 'POST'}});
+    const data = await res.json();
+    
+    if (data.ok) {{
+        alert('✅ Perte quotidienne réinitialisée !');
+        loadSettings();
+    }}
+}}
+
+async function calculatePosition() {{
+    const symbol = document.getElementById('calcSymbol').value;
+    const entry = parseFloat(document.getElementById('calcEntry').value);
+    const sl = parseFloat(document.getElementById('calcSL').value);
+    
+    if (!symbol || !entry || !sl) {{
+        alert('❌ Veuillez remplir tous les champs');
+        return;
+    }}
+    
+    const res = await fetch(`/api/risk/position-size?symbol=${{symbol}}&entry=${{entry}}&sl=${{sl}}`);
+    const data = await res.json();
+    
+    if (data.ok) {{
+        document.getElementById('calcResult').innerHTML = `
+            <div class="alert-success">
+                <h3 style="margin-bottom:15px;">✅ Résultat du Calcul</h3>
+                <p><strong>Taille de Position:</strong> ${{data.position_size.toFixed(8)}} ${{symbol.replace('USDT', '')}}</p>
+                <p><strong>Valeur de la Position:</strong> $${{data.position_value.toLocaleString()}}</p>
+                <p><strong>Montant Risqué:</strong> $${{data.risk_amount.toLocaleString()}}</p>
+                <p><strong>Distance du SL:</strong> ${{data.stop_distance_percent.toFixed(2)}}%</p>
+            </div>
+        `;
+    }} else {{
+        document.getElementById('calcResult').innerHTML = `<div class="alert-error">❌ Erreur: ${{data.error}}</div>`;
+    }}
+}}
+
+loadSettings();
+</script>
+</body></html>""")
+
+
+# ============= PAGE WATCHLIST & ALERTES =============
+@app.get("/watchlist", response_class=HTMLResponse)
+async def watchlist_page():
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
+<body>
+<div class="container">
+<div class="header"><h1>👀 WATCHLIST & ALERTES</h1><p>Surveillez vos cryptos préférées</p></div>
+{NAV}
+
+<div class="card">
+<h2>➕ Ajouter à la Watchlist</h2>
+<div style="max-width:600px;">
+    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Symbol (ex: BTCUSDT)</label>
+    <input type="text" id="addSymbol" placeholder="BTCUSDT">
+    
+    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Prix Cible (optionnel)</label>
+    <input type="number" id="addTarget" placeholder="70000" step="0.00000001">
+    
+    <label style="color:#94a3b8;display:block;margin-bottom:5px;">Note (optionnel)</label>
+    <input type="text" id="addNote" placeholder="Résistance importante">
+    
+    <button onclick="addToWatchlist()" style="width:100%;">➕ Ajouter</button>
+</div>
+</div>
+
+<div class="card">
+<h2>📋 Ma Watchlist</h2>
+<div id="watchlistContainer"></div>
+</div>
+
+<div class="card">
+<h2>🔔 Alertes Actives</h2>
+<div id="alertsContainer"></div>
+<button onclick="checkAlerts()" style="margin-top:15px;">🔍 Vérifier les Alertes</button>
+</div>
+
+</div>
+
+<script>
+async function loadWatchlist() {{
+    const res = await fetch('/api/watchlist');
+    const data = await res.json();
+    
+    if (data.watchlist.length === 0) {{
+        document.getElementById('watchlistContainer').innerHTML = '<p style="color:#94a3b8;">Aucune crypto dans la watchlist</p>';
+        return;
+    }}
+    
+    let html = '<table><thead><tr><th>Symbol</th><th>Prix Cible</th><th>Note</th><th>Ajouté le</th><th>Action</th></tr></thead><tbody>';
+    
+    data.watchlist.forEach(item => {{
+        const date = new Date(item.created_at).toLocaleString('fr-FR');
+        const target = item.target_price ? '$' + item.target_price.toLocaleString() : '-';
+        const alertIcon = item.alert_triggered ? '✅' : '';
+        
+        html += `<tr>
+            <td><strong>${{item.symbol}}</strong> ${{alertIcon}}</td>
+            <td>${{target}}</td>
+            <td>${{item.note || '-'}}</td>
+            <td style="color:#94a3b8;font-size:12px;">${{date}}</td>
+            <td><button class="btn-danger" style="padding:8px 15px;" onclick="removeFromWatchlist('${{item.symbol}}')">❌ Retirer</button></td>
+        </tr>`;
+    }});
+    
+    html += '</tbody></table>';
+    document.getElementById('watchlistContainer').innerHTML = html;
+}}
+
+async function addToWatchlist() {{
+    const symbol = document.getElementById('addSymbol').value.toUpperCase();
+    const target = document.getElementById('addTarget').value;
+    const note = document.getElementById('addNote').value;
+    
+    if (!symbol) {{
+        alert('❌ Veuillez entrer un symbol');
+        return;
+    }}
+    
+    const res = await fetch('/api/watchlist/add', {{
+        method: 'POST',
+        headers: {{'Content-Type': 'application/json'}},
+        body: JSON.stringify({{
+            symbol: symbol,
+            target_price: target || null,
+            note: note
+        }})
+    }});
+    
+    const data = await res.json();
+    
+    if (data.ok) {{
+        alert('✅ ' + data.message);
+        document.getElementById('addSymbol').value = '';
+        document.getElementById('addTarget').value = '';
+        document.getElementById('addNote').value = '';
+        loadWatchlist();
+    }} else {{
+        alert('❌ ' + data.error);
+    }}
+}}
+
+async function removeFromWatchlist(symbol) {{
+    if (!confirm(`Retirer ${{symbol}} de la watchlist ?`)) return;
+    
+    const res = await fetch(`/api/watchlist/remove?symbol=${{symbol}}`, {{method: 'DELETE'}});
+    const data = await res.json();
+    
+    if (data.ok) {{
+        alert('✅ ' + data.message);
+        loadWatchlist();
+    }}
+}}
+
+async function checkAlerts() {{
+    const res = await fetch('/api/watchlist/check-alerts');
+    const data = await res.json();
+    
+    if (data.alerts.length === 0) {{
+        document.getElementById('alertsContainer').innerHTML = '<div class="alert-success">✅ Aucune alerte déclenchée</div>';
+    }} else {{
+        let html = '<div class="alert-error"><h3>🔔 Alertes Déclenchées !</h3>';
+        data.alerts.forEach(alert => {{
+            html += `<p><strong>${{alert.symbol}}</strong> a atteint ${{alert.target}} (prix actuel: ${{alert.current}})</p>`;
+            if (alert.note) html += `<p style="font-size:12px;color:#94a3b8;">Note: ${{alert.note}}</p>`;
+        }});
+        html += '</div>';
+        document.getElementById('alertsContainer').innerHTML = html;
+        
+        // Recharger la watchlist pour montrer les alertes
+        loadWatchlist();
+    }}
+}}
+
+loadWatchlist();
+</script>
+</body></html>""")
+
+
+# ============= PAGE AI TRADING ASSISTANT =============
+@app.get("/ai-assistant", response_class=HTMLResponse)
+async def ai_assistant_page():
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
+<body>
+<div class="container">
+<div class="header"><h1>🤖 AI TRADING ASSISTANT</h1><p>Intelligence artificielle pour optimiser vos trades</p></div>
+{NAV}
+
+<div class="card">
+<h2>🎯 Suggestions Personnalisées</h2>
+<div id="suggestionsContainer"></div>
+<button onclick="refreshSuggestions()" style="margin-top:15px;">🔄 Actualiser les Suggestions</button>
+</div>
+
+<div class="card">
+<h2>📊 Sentiment du Marché</h2>
+<div id="sentimentContainer"></div>
+</div>
+
+<div class="card">
+<h2>📈 Analyses & Recommandations</h2>
+<div style="color:#94a3b8;line-height:1.8;">
+    <div style="background:#0f172a;padding:20px;border-radius:8px;margin-bottom:15px;">
+        <h3 style="color:#60a5fa;margin-bottom:10px;">💡 Comment l'IA vous aide</h3>
+        <p>• <strong>Analyse automatique</strong> de vos performances de trading</p>
+        <p>• <strong>Détection de patterns</strong> dans vos trades gagnants/perdants</p>
+        <p>• <strong>Suggestions personnalisées</strong> basées sur votre historique</p>
+        <p>• <strong>Alertes intelligentes</strong> quand vous atteignez vos limites de risque</p>
+        <p>• <strong>Recommandations</strong> sur les meilleures paires à trader</p>
+    </div>
+    
+    <div style="background:#0f172a;padding:20px;border-radius:8px;margin-bottom:15px;">
+        <h3 style="color:#60a5fa;margin-bottom:10px;">🎓 Conseils de Trading</h3>
+        <p>• Respectez toujours votre <strong>risk management</strong></p>
+        <p>• N'ouvrez pas plus de <strong>3-5 trades simultanés</strong></p>
+        <p>• Prenez vos <strong>profits partiels</strong> (TP1, TP2, TP3)</p>
+        <p>• Utilisez le <strong>Stop Loss Break Even</strong> après TP1</p>
+        <p>• Analysez vos <strong>trades perdants</strong> pour progresser</p>
+    </div>
+    
+    <div style="background:#0f172a;padding:20px;border-radius:8px;">
+        <h3 style="color:#60a5fa;margin-bottom:10px;">⚠️ Avertissements</h3>
+        <p>• Le trading comporte des <strong>risques importants</strong></p>
+        <p>• Ne tradez jamais plus que ce que vous pouvez vous permettre de perdre</p>
+        <p>• L'IA donne des suggestions, <strong>pas des garanties</strong></p>
+        <p>• Faites toujours vos propres recherches (DYOR)</p>
+    </div>
+</div>
+</div>
+
+</div>
+
+<script>
+async function refreshSuggestions() {{
+    document.getElementById('suggestionsContainer').innerHTML = '<div class="spinner"></div>';
+    
+    const res = await fetch('/api/ai/suggestions');
+    const data = await res.json();
+    
+    if (data.suggestions.length === 0) {{
+        document.getElementById('suggestionsContainer').innerHTML = '<p style="color:#94a3b8;">Aucune suggestion pour le moment</p>';
+        return;
+    }}
+    
+    let html = '';
+    data.suggestions.forEach(sug => {{
+        let alertClass = 'alert-success';
+        if (sug.type === 'warning') alertClass = 'alert-error';
+        else if (sug.type === 'info') alertClass = 'alert-success';
+        
+        html += `<div class="${{alertClass}}" style="margin-bottom:15px;">
+            <h3 style="margin-bottom:10px;">${{sug.title}}</h3>
+            <p>${{sug.message}}</p>
+        </div>`;
+    }});
+    
+    const lastUpdate = new Date(data.last_analysis).toLocaleString('fr-FR');
+    html += `<p style="color:#94a3b8;font-size:12px;margin-top:15px;">Dernière analyse: ${{lastUpdate}}</p>`;
+    
+    document.getElementById('suggestionsContainer').innerHTML = html;
+}}
+
+async function loadSentiment() {{
+    const res = await fetch('/api/ai/market-sentiment');
+    const data = await res.json();
+    
+    if (data.ok) {{
+        document.getElementById('sentimentContainer').innerHTML = `
+            <div style="text-align:center;padding:30px;">
+                <div style="font-size:72px;margin-bottom:15px;">${{data.value}}</div>
+                <div style="font-size:24px;font-weight:bold;color:${{data.color}};margin-bottom:10px;">${{data.sentiment}}</div>
+                <div style="width:100%;height:10px;background:#0f172a;border-radius:5px;overflow:hidden;margin-top:20px;">
+                    <div style="width:${{data.value}}%;height:100%;background:${{data.color}};transition:all 0.5s;"></div>
+                </div>
+            </div>
+        `;
+    }} else {{
+        document.getElementById('sentimentContainer').innerHTML = '<p style="color:#ef4444;">❌ Impossible de charger le sentiment</p>';
+    }}
+}}
+
+refreshSuggestions();
+loadSentiment();
+</script>
+</body></html>""")
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     print("\n" + "="*70)
-    print("🚀 DASHBOARD TRADING - VERSION CORRIGÉE & AMÉLIORÉE")
+    print("🚀 DASHBOARD TRADING - VERSION ULTIME + RISK + WATCHLIST + AI")
     print("="*70)
     print(f"📡 Port: {port}")
     print(f"🔗 URL: http://localhost:{port}")
@@ -6916,13 +7631,16 @@ if __name__ == "__main__":
     print("  • Risk/Reward automatique")
     print("  • Recommandations SLBE")
     print("="*70)
-    print("📊 13 PAGES ACTIVES:")
+    print("📊 16 PAGES ACTIVES:")
     print("  • Fear & Greed (flèche SVG)")
     print("  • Dominance BTC, Heatmap")
     print("  • 🌟 ALTCOIN SEASON (NOUVEAU DESIGN!)")
     print("  • Nouvelles, Trades, Convertisseur")
     print("  • 📅 CALENDRIER ÉCONOMIQUE COMPLET (NOUVEAU!)")
     print("  • Bullrun Phase, Graphiques, Telegram")
+    print("  • ⚖️ RISK MANAGEMENT (NOUVEAU!)")
+    print("  • 👀 WATCHLIST & ALERTES (NOUVEAU!)")
+    print("  • 🤖 AI TRADING ASSISTANT (NOUVEAU!)")
     print("="*70)
     print("🌟 ALTCOIN SEASON:")
     print("  • Jauge circulaire animée")
@@ -6938,5 +7656,26 @@ if __name__ == "__main__":
     print("  • Descriptions COMPLÈTES de chaque événement")
     print("  • Pourquoi chaque événement est important")
     print("  • Filtres intelligents et statistiques")
+    print("="*70)
+    print("⚖️ RISK MANAGEMENT:")
+    print("  • Gestion du capital et position sizing automatique")
+    print("  • Calcul du risque par trade (1-2%)")
+    print("  • Limite de perte quotidienne")
+    print("  • Calculateur de taille de position intelligent")
+    print("  • Statistiques en temps réel")
+    print("="*70)
+    print("👀 WATCHLIST & ALERTES:")
+    print("  • Surveillance personnalisée de cryptos")
+    print("  • Alertes automatiques sur prix cibles")
+    print("  • Notes et targets personnalisés")
+    print("  • Vérification intelligente des alertes")
+    print("  • Historique complet")
+    print("="*70)
+    print("🤖 AI TRADING ASSISTANT:")
+    print("  • Suggestions basées sur vos performances")
+    print("  • Analyse du sentiment du marché (Fear & Greed)")
+    print("  • Détection des meilleures paires à trader")
+    print("  • Recommandations personnalisées")
+    print("  • Alertes intelligentes sur limites de risque")
     print("="*70)
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

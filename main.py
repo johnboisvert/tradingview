@@ -232,7 +232,10 @@ async def health():
 
 @app.post("/tv-webhook")
 async def webhook(trade: TradeWebhook):
-    """Webhook TradingView"""
+    """
+    Webhook TradingView avec détection de revirement
+    Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
+    """
     try:
         print(f"\n{'='*60}")
         print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
@@ -243,6 +246,60 @@ async def webhook(trade: TradeWebhook):
         print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
         print(f"{'='*60}\n")
         
+        symbol = trade.symbol
+        new_side = trade.side
+        
+        # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
+        inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
+        
+        # Chercher un trade actif inverse
+        inverse_trade = None
+        for t in trades_db:
+            if (t.get('symbol') == symbol and 
+                t.get('side') == inverse_side and 
+                t.get('status') == 'open'):
+                inverse_trade = t
+                break
+        
+        # 🔄 Si un trade inverse existe, le fermer automatiquement SANS ouvrir le nouveau
+        if inverse_trade:
+            now = datetime.now(pytz.timezone('America/Montreal'))
+            close_time = now.strftime('%H:%M:%S')
+            close_date = now.strftime('%d/%m/%Y')
+            
+            print(f"⚠️ REVIREMENT DÉTECTÉ sur {symbol}! {inverse_side} → {new_side}")
+            
+            # Fermer le trade inverse
+            inverse_trade['status'] = 'closed'
+            inverse_trade['closed_reason'] = f'Revirement: Signal {new_side} reçu'
+            inverse_trade['closed_at'] = now.isoformat()
+            
+            # 📱 Notification Telegram DÉTAILLÉE du revirement
+            reversal_message = (
+                f"🔄 <b>REVIREMENT DE TENDANCE DÉTECTÉ!</b>\n\n"
+                f"💱 Crypto: <b>{symbol}</b>\n"
+                f"❌ Trade <b>{inverse_side}</b> fermé automatiquement\n\n"
+                f"📊 <b>Détails de fermeture:</b>\n"
+                f"├ Entry: {format_price(inverse_trade.get('entry', 0))}\n"
+                f"├ Prix de fermeture: {format_price(trade.entry)}\n"
+                f"├ Heure: {close_time}\n"
+                f"└ Date: {close_date}\n\n"
+                f"🔔 Signal <b>{new_side}</b> reçu mais <b>NON exécuté</b>\n"
+                f"⏳ En attente du prochain signal propre...\n\n"
+                f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
+            )
+            
+            asyncio.create_task(send_telegram_message(reversal_message))
+            print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
+            
+            return {
+                "status": "reversed",
+                "message": f"Trade {inverse_side} fermé, signal {new_side} ignoré",
+                "closed_trade_id": inverse_trade.get('symbol'),
+                "new_trade_created": False
+            }
+        
+        # 📝 Créer le nouveau trade SEULEMENT si pas de revirement
         await send_telegram_advanced(trade)
         
         confidence_score, _ = calculate_confidence_score(trade)
@@ -251,7 +308,7 @@ async def webhook(trade: TradeWebhook):
             "symbol": trade.symbol,
             "side": trade.side,
             "entry": trade.entry,
-            "current_price": trade.current_price,  # Prix actuel du webhook
+            "current_price": trade.current_price,
             "sl": trade.sl,
             "tp1": trade.tp1,
             "tp2": trade.tp2,
@@ -268,7 +325,9 @@ async def webhook(trade: TradeWebhook):
         }
         trades_db.append(trade_data)
         
-        return {"status": "success", "confidence_ai": confidence_score}
+        print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
+        
+        return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
         
     except Exception as e:
         print(f"❌ ERREUR WEBHOOK: {e}")
@@ -276,9 +335,14 @@ async def webhook(trade: TradeWebhook):
         traceback.print_exc()
         return {"status": "error", "error": str(e)}
 
+@app.get("/health")
+async def health_check():
+    """Endpoint pour garder le serveur éveillé (UptimeRobot)"""
+    return {"status": "alive", "timestamp": datetime.now().isoformat()}
+
 @app.get("/")
 async def home():
-    return {"status": "ok", "app": "Trading Dashboard", "endpoints": ["fear-greed", "dominance", "heatmap", "trades", "telegram-test"]}
+    return {"status": "ok", "app": "Trading Dashboard", "endpoints": ["fear-greed", "dominance", "heatmap", "trades", "telegram-test", "health"]}
 
 @app.get("/api/fear-greed-full")
 async def fear_greed_full():
@@ -1847,7 +1911,16 @@ async def stats_api():
     open_t = len([t for t in trades_db if t.get("status")=="open"])
     # Un trade est WIN si au moins un TP est atteint (tp1, tp2 ou tp3)
     wins = len([t for t in trades_db if t.get("tp1_hit") or t.get("tp2_hit") or t.get("tp3_hit")])
-    losses = len([t for t in trades_db if t.get("sl_hit")])
+    # Un trade est LOSS si SL atteint OU revirement sans aucun TP
+    losses = len([t for t in trades_db if (
+        t.get("sl_hit") or 
+        (t.get("status") == "closed" and 
+         t.get("closed_reason") and 
+         "Revirement" in t.get("closed_reason", "") and 
+         not t.get("tp1_hit") and 
+         not t.get("tp2_hit") and 
+         not t.get("tp3_hit"))
+    )])
     wr = round((wins/(wins+losses))*100,2) if (wins+losses)>0 else 0
     return {"total_trades":total,"open_trades":open_t,"win_rate":wr,"status":"ok"}
 
@@ -5348,7 +5421,7 @@ async def trades_page():
                 return;
             }
             
-            let html = '<table><thead><tr><th>Heure</th><th>Symbole</th><th>Type</th><th>Entry</th><th>SL</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Confiance</th><th>Statut</th><th>Actions</th></tr></thead><tbody>';
+            let html = '<table><thead><tr><th>Heure</th><th>Symbole</th><th>Type</th><th>Entry</th><th>SL</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Confiance</th><th>Statut</th><th>Close</th><th>Actions</th></tr></thead><tbody>';
             
             trades.forEach((trade, index) => {
                 const side = trade.side || 'N/A';
@@ -5368,6 +5441,22 @@ async def trades_page():
                 html += '<td><div><strong>' + (trade.confidence || 0).toFixed(1) + '%</strong>';
                 html += '<div class="confidence-meter"><div class="confidence-fill" style="width: ' + (trade.confidence || 0) + '%"></div></div></div></td>';
                 html += '<td><span class="badge ' + statusClass + '">' + status + '</span></td>';
+                
+                // Colonne CLOSE pour les revirements
+                html += '<td>';
+                if (trade.status === 'closed' && trade.closed_reason && trade.closed_reason.includes('Revirement') && !trade.tp3_hit) {
+                    html += '<span class="badge badge-reversal" style="background: #ef4444; color: white; font-weight: 600;">🔄 REVIREMENT</span>';
+                } else if (trade.status === 'closed' && trade.tp3_hit) {
+                    html += '<span class="badge" style="background: #10b981; color: white;">✅ TP3</span>';
+                } else if (trade.status === 'closed' && trade.sl_hit) {
+                    html += '<span class="badge" style="background: #ef4444; color: white;">❌ SL</span>';
+                } else if (trade.status === 'closed') {
+                    html += '<span class="badge" style="background: #64748b; color: white;">CLOSE</span>';
+                } else {
+                    html += '<span style="color: #64748b;">—</span>';
+                }
+                html += '</td>';
+                
                 html += '<td style="white-space: nowrap;">';
                 html += '<button onclick="event.stopPropagation(); toggleTP(' + index + ', 1)" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.tp1_hit ? '#10b981' : '#334155') + ';">TP1</button>';
                 html += '<button onclick="event.stopPropagation(); toggleTP(' + index + ', 2)" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.tp2_hit ? '#10b981' : '#334155') + ';">TP2</button>';

@@ -2007,8 +2007,7 @@ function renderChart(histData){
         },
         options:{
             responsive:true,
-            maintainAspectRatio: true,
-            aspectRatio: 2.5,
+            
             interaction:{mode:'index',intersect:false},
             plugins:{
                 legend:{display:true,position:'top',labels:{color:'#e2e8f0',font:{size:14,weight:'600'},padding:20,usePointStyle:true}},
@@ -4127,14 +4126,20 @@ async def charts_page():
         }
         .tradingview-widget-container iframe { border-radius: 12px; }
         
-        /* Canvas Containers - IMPORTANT pour éviter la croissance infinie */
+        /* Canvas Containers - Tailles fixes pour éviter la croissance infinie */
         .canvas-container { 
             position: relative; 
             width: 100%; 
             height: 350px; 
         }
+        .canvas-container canvas {
+            max-width: 100% !important;
+            height: 350px !important;
+        }
         .canvas-container.small { height: 250px; }
+        .canvas-container.small canvas { height: 250px !important; }
         .canvas-container.large { height: 450px; }
+        .canvas-container.large canvas { height: 450px !important; }
         
         /* Stats Grid */
         .stats-grid { 
@@ -4473,6 +4478,7 @@ async def charts_page():
         let currentSymbol = 'BTCUSD';
         let tradingViewWidget = null;
         let charts = {};
+        let tabsInitialized = {}; // Pour suivre quels onglets ont déjà été initialisés
         
         // Switch Tab
         function switchTab(tabName, event) {
@@ -4497,15 +4503,18 @@ async def charts_page():
                 });
             }
             
-            // Initialize charts for the tab
-            if (tabName === 'statistics') {
-                initStatistics();
-            } else if (tabName === 'comparison') {
-                initComparison();
-            } else if (tabName === 'correlation') {
-                initCorrelation();
-            } else if (tabName === 'performance') {
-                initPerformance();
+            // Initialize charts for the tab ONLY ONCE
+            if (!tabsInitialized[tabName]) {
+                if (tabName === 'statistics') {
+                    initStatistics();
+                } else if (tabName === 'comparison') {
+                    initComparison();
+                } else if (tabName === 'correlation') {
+                    initCorrelation();
+                } else if (tabName === 'performance') {
+                    initPerformance();
+                }
+                tabsInitialized[tabName] = true; // Marquer comme initialisé
             }
         }
         
@@ -4642,9 +4651,8 @@ async def charts_page():
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2,
+                    responsive: false,
+                    
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -4709,9 +4717,8 @@ async def charts_page():
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2,
+                    responsive: false,
+                    
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
@@ -4798,9 +4805,8 @@ async def charts_page():
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2,
+                    responsive: false,
+                    
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -4840,9 +4846,8 @@ async def charts_page():
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2,
+                    responsive: false,
+                    
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -4875,9 +4880,8 @@ async def charts_page():
                 },
                 options: {
                     indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2,
+                    responsive: false,
+                    
                     plugins: {
                         legend: { display: false }
                     },
@@ -4932,9 +4936,8 @@ async def charts_page():
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2,
+                    responsive: false,
+                    
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -4977,9 +4980,8 @@ async def charts_page():
                     }]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2,
+                    responsive: false,
+                    
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -5043,9 +5045,8 @@ async def charts_page():
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2,
+                    responsive: false,
+                    
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -5088,9 +5089,8 @@ async def charts_page():
                     ]
                 },
                 options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2,
+                    responsive: false,
+                    
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -5480,12 +5480,12 @@ async def trades_page():
         function updateCharts() { 
             const performanceCtx = document.getElementById('performanceChart').getContext('2d'); 
             if (performanceChart) performanceChart.destroy(); 
-            performanceChart = new Chart(performanceCtx, { type: 'line', data: { labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'], datasets: [{ label: 'P&L', data: [120, 190, 150, 220, 280, 240, 300], borderColor: '#60a5fa', backgroundColor: 'rgba(96, 165, 250, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: true, plugins: { legend: { labels: { color: '#e2e8f0' } } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51, 65, 85, 0.3)' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51, 65, 85, 0.3)' } } } } }); 
+            performanceChart = new Chart(performanceCtx, { type: 'line', data: { labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'], datasets: [{ label: 'P&L', data: [120, 190, 150, 220, 280, 240, 300], borderColor: '#60a5fa', backgroundColor: 'rgba(96, 165, 250, 0.1)', tension: 0.4, fill: true }] }, options: { responsive: false, plugins: { legend: { labels: { color: '#e2e8f0' } } }, scales: { y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51, 65, 85, 0.3)' } }, x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51, 65, 85, 0.3)' } } } } }); 
             const distributionCtx = document.getElementById('distributionChart').getContext('2d'); 
             if (distributionChart) distributionChart.destroy(); 
             const longCount = allTrades.filter(t => t.side === 'LONG').length; 
             const shortCount = allTrades.filter(t => t.side === 'SHORT').length; 
-            distributionChart = new Chart(distributionCtx, { type: 'doughnut', data: { labels: ['LONG', 'SHORT'], datasets: [{ data: [longCount, shortCount], backgroundColor: ['rgba(16, 185, 129, 0.8)', 'rgba(239, 68, 68, 0.8)'], borderColor: ['rgba(16, 185, 129, 1)', 'rgba(239, 68, 68, 1)'], borderWidth: 2 }] }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 20 } } } } }); 
+            distributionChart = new Chart(distributionCtx, { type: 'doughnut', data: { labels: ['LONG', 'SHORT'], datasets: [{ data: [longCount, shortCount], backgroundColor: ['rgba(16, 185, 129, 0.8)', 'rgba(239, 68, 68, 0.8)'], borderColor: ['rgba(16, 185, 129, 1)', 'rgba(239, 68, 68, 1)'], borderWidth: 2 }] }, options: { responsive: false, plugins: { legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 20 } } } } }); 
         }
         
         async function addDemo() { 

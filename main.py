@@ -4556,8 +4556,6 @@ async def charts_page():
         
         // Initialize Statistics
         async function initStatistics() {
-            if (charts.volume) return; // Already initialized
-            
             try {
                 const response = await fetch('https://api.coingecko.com/api/v3/global');
                 const data = await response.json();
@@ -4593,6 +4591,11 @@ async def charts_page():
         }
         
         function createVolumeChart() {
+            // Destroy existing chart if it exists
+            if (charts.volume) {
+                charts.volume.destroy();
+            }
+            
             const ctx = document.getElementById('volumeChart').getContext('2d');
             const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
             const data = Array.from({length: 7}, () => Math.random() * 100 + 50);
@@ -4639,6 +4642,11 @@ async def charts_page():
         }
         
         function createPriceChart() {
+            // Destroy existing chart if it exists
+            if (charts.price) {
+                charts.price.destroy();
+            }
+            
             const ctx = document.getElementById('priceChart').getContext('2d');
             const days = Array.from({length: 30}, (_, i) => i + 1);
             const btcData = Array.from({length: 30}, () => Math.random() * 5000 + 60000);
@@ -4711,7 +4719,19 @@ async def charts_page():
         
         // Initialize Comparison
         function initComparison() {
-            if (charts.comparison) return;
+            // Destroy existing charts if they exist
+            if (charts.comparison) {
+                charts.comparison.destroy();
+                charts.comparison = null;
+            }
+            if (charts.relative) {
+                charts.relative.destroy();
+                charts.relative = null;
+            }
+            if (charts.ranking) {
+                charts.ranking.destroy();
+                charts.ranking = null;
+            }
             
             const ctx1 = document.getElementById('comparisonChart').getContext('2d');
             const ctx2 = document.getElementById('relativeChart').getContext('2d');
@@ -4844,7 +4864,15 @@ async def charts_page():
         
         // Initialize Correlation
         function initCorrelation() {
-            if (charts.correlation) return;
+            // Destroy existing charts if they exist
+            if (charts.correlation) {
+                charts.correlation.destroy();
+                charts.correlation = null;
+            }
+            if (charts.scatter) {
+                charts.scatter.destroy();
+                charts.scatter = null;
+            }
             
             const ctx1 = document.getElementById('correlationChart').getContext('2d');
             const ctx2 = document.getElementById('scatterChart').getContext('2d');
@@ -4936,7 +4964,15 @@ async def charts_page():
         
         // Initialize Performance
         function initPerformance() {
-            if (charts.multiPeriod) return;
+            // Destroy existing charts if they exist
+            if (charts.multiPeriod) {
+                charts.multiPeriod.destroy();
+                charts.multiPeriod = null;
+            }
+            if (charts.volatility) {
+                charts.volatility.destroy();
+                charts.volatility = null;
+            }
             
             // Update stats
             document.getElementById('bestPerformer').textContent = 'SOL';

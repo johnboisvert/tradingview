@@ -6051,7 +6051,85 @@ async def trades_page():
         }
         
         window.onclick = function(event) { const modal = document.getElementById('tradeModal'); if (event.target === modal) closeModal(); }
-        
+
+        // ============= P&L HEBDOMADAIRE =============
+        async function loadWeeklyPnl() {
+            try {
+                const res = await fetch('/api/weekly-pnl');
+                const data = await res.json();
+                
+                if (!data.ok) {
+                    console.error('❌ Erreur API weekly-pnl:', data.error);
+                    document.getElementById('weeklyPnlContainer').innerHTML = 
+                        '<p style="color:#ef4444;text-align:center;padding:20px;">❌ Erreur de chargement</p>';
+                    return;
+                }
+                
+                console.log('✅ P&L hebdomadaire chargé:', data);
+                
+                let html = '';
+                data.weekly_data.forEach(day => {
+                    const isToday = day.day_en === data.current_day;
+                    const pnlColor = day.pnl > 0 ? '#10b981' : (day.pnl < 0 ? '#ef4444' : '#64748b');
+                    const bgColor = isToday ? 'rgba(96, 165, 250, 0.1)' : 'rgba(15, 23, 42, 0.8)';
+                    const borderColor = isToday ? '#60a5fa' : 'transparent';
+                    
+                    html += `
+                        <div style="
+                            background:${bgColor};
+                            padding:20px;
+                            border-radius:12px;
+                            border:2px solid ${borderColor};
+                            text-align:center;
+                            transition:all 0.3s;
+                            box-shadow:0 2px 8px rgba(0,0,0,0.2);
+                        ">
+                            <div style="color:#94a3b8;font-size:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+                                ${day.day_fr}
+                            </div>
+                            <div style="font-size:26px;font-weight:700;color:${pnlColor};">
+                                ${day.pnl >= 0 ? '+' : ''}${day.pnl.toFixed(2)}%
+                            </div>
+                            ${isToday ? '<div style="color:#60a5fa;font-size:11px;margin-top:5px;">👈 Aujourd\'hui</div>' : ''}
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('weeklyPnlContainer').innerHTML = html;
+                
+                const totalColor = data.total_week > 0 ? '#10b981' : (data.total_week < 0 ? '#ef4444' : '#64748b');
+                document.getElementById('weeklyTotal').innerHTML = 
+                    `<span style="color:${totalColor}">${data.total_week >= 0 ? '+' : ''}${data.total_week.toFixed(2)}%</span>`;
+                
+            } catch (error) {
+                console.error('❌ Erreur loadWeeklyPnl:', error);
+                document.getElementById('weeklyPnlContainer').innerHTML = 
+                    '<p style="color:#ef4444;text-align:center;padding:20px;">❌ Impossible de charger le P&L</p>';
+            }
+        }
+
+        async function resetWeeklyPnl() {
+            if (!confirm('Voulez-vous vraiment réinitialiser le P&L de la semaine ?')) {
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/weekly-pnl/reset', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.ok) {
+                    alert('✅ ' + data.message);
+                    loadWeeklyPnl();
+                } else {
+                    alert('❌ Erreur: ' + data.error);
+                }
+            } catch (error) {
+                console.error('❌ Erreur resetWeeklyPnl:', error);
+                alert('❌ Impossible de réinitialiser le P&L');
+            }
+        }
+
+
         load(); 
         loadWeeklyPnl();
         setInterval(load, 30000); 

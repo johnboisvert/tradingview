@@ -6090,7 +6090,7 @@ async def trades_page():
                             <div style="font-size:26px;font-weight:700;color:${pnlColor};">
                                 ${day.pnl >= 0 ? '+' : ''}${day.pnl.toFixed(2)}%
                             </div>
-                            ${isToday ? '<div style="color:#60a5fa;font-size:11px;margin-top:5px;">👈 Aujourd\'hui</div>' : ''}
+                            ${isToday ? '<div style="color:#60a5fa;font-size:11px;margin-top:5px;">👈 Aujourd&apos;hui</div>' : ''}
                         </div>
                     `;
                 });

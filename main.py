@@ -97,6 +97,11 @@ bullrun_cache = {"data": None, "timestamp": None, "cache_duration": 1800}  # Cac
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8478131465:AAEh7Z0rvIqSNvn1wKdtkMNb-O96h41LCns")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1002940633257")
 
+# Variables globales pour anti-rate-limit Telegram
+last_telegram_message_time = 0
+TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
+
+
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
 NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a></div>'
@@ -330,7 +335,9 @@ def calculate_confidence_score(trade: TradeWebhook):
 
 
 async def send_telegram_advanced(trade: TradeWebhook):
-    """Envoie message Telegram professionnel"""
+    """Envoie message Telegram professionnel avec anti-rate-limit"""
+    global last_telegram_message_time
+    
     try:
         confidence_score, confidence_reason = calculate_confidence_score(trade)
         direction_emoji = "📈" if trade.side == "LONG" else "📉"
@@ -371,24 +378,59 @@ async def send_telegram_advanced(trade: TradeWebhook):
         if trade.note:
             msg += f"\n\n📝 <b>Note:</b> {trade.note}"
         
+        # ============= ANTI-RATE-LIMIT =============
+        # Attendre 3 secondes depuis le dernier message
+        current_time = time.time()
+        time_since_last_message = current_time - last_telegram_message_time
+        
+        if time_since_last_message < TELEGRAM_MESSAGE_DELAY:
+            wait_time = TELEGRAM_MESSAGE_DELAY - time_since_last_message
+            print(f"⏳ Attente de {wait_time:.1f}s pour éviter rate limit...")
+            await asyncio.sleep(wait_time)
+        
+        # ============= ENVOI AVEC RETRY =============
+        max_retries = 3
+        retry_count = 0
+        
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"}
-            )
-            
-            if response.status_code == 200:
-                print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
-                print(f"   Entry: ${trade.entry:.4f} | SL: ${trade.sl:.4f}")
-                print(f"   Confiance IA: {confidence_score}%")
-                print(f"   Heure: {heure}")
-            else:
-                print(f"⚠️ Erreur Telegram: {response.status_code} - {response.text}")
+            while retry_count < max_retries:
+                response = await client.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                    json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"}
+                )
+                
+                if response.status_code == 200:
+                    last_telegram_message_time = time.time()
+                    print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
+                    print(f"   Entry: ${trade.entry:.4f} | SL: ${trade.sl:.4f}")
+                    print(f"   Confiance IA: {confidence_score}%")
+                    print(f"   Heure: {heure}")
+                    break
+                    
+                elif response.status_code == 429:
+                    # Rate limit hit - attendre et réessayer
+                    try:
+                        error_data = response.json()
+                        retry_after = error_data.get("parameters", {}).get("retry_after", 5)
+                    except:
+                        retry_after = 5
+                    
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        print(f"⚠️ Rate limit (429) - Attente de {retry_after}s avant retry {retry_count}/{max_retries}...")
+                        await asyncio.sleep(retry_after)
+                    else:
+                        print(f"❌ Rate limit (429) - Max retries atteint pour {trade.symbol}")
+                        
+                else:
+                    print(f"⚠️ Erreur Telegram: {response.status_code} - {response.text}")
+                    break
                 
     except Exception as e:
         print(f"❌ Erreur Telegram: {e}")
         import traceback
         traceback.print_exc()
+
 
 async def send_telegram(msg: str):
     """Envoie message Telegram simple"""

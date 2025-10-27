@@ -159,94 +159,177 @@ def calc_rr(entry, sl, tp1):
         pass
     return None
 
+
 def calculate_confidence_score(trade: TradeWebhook):
-    """Calcule un score de confiance IA"""
-    score = 85.0
+    """
+    🎯 CALCUL DE CONFIANCE RÉEL ET DYNAMIQUE
+    
+    Ce système calcule un score de confiance RÉALISTE basé sur plusieurs critères,
+    partant d'un score de base de 50% et ajustant significativement selon :
+    - Risk/Reward (poids le plus important)
+    - Distance du Stop Loss
+    - Leverage utilisé
+    - Timeframe
+    - Nombre de targets
+    - Signal technique (si fourni)
+    
+    Plage de confiance finale : 35% à 95%
+    """
+    
+    # ============= SCORE DE BASE =============
+    score = 50.0  # On part de 50%, pas 85% !
     reasons = []
     
+    # ============= 1. RISK/REWARD (POIDS LE PLUS IMPORTANT) =============
+    # C'est le facteur #1 de réussite d'un trade
     if trade.entry and trade.sl and trade.tp1:
         risk = abs(trade.entry - trade.sl)
         reward = abs(trade.tp1 - trade.entry)
         rr_ratio = reward / risk if risk > 0 else 0
         
-        if rr_ratio >= 3:
-            score += 8
-            reasons.append(f"excellent R/R de {rr_ratio:.1f}")
-        elif rr_ratio >= 2:
-            score += 5
-            reasons.append(f"bon R/R de {rr_ratio:.1f}")
+        if rr_ratio >= 4.0:
+            score += 25  # Excellent R/R
+            reasons.append(f"Excellent R/R de {rr_ratio:.1f}:1")
+        elif rr_ratio >= 3.0:
+            score += 18  # Très bon R/R
+            reasons.append(f"Très bon R/R de {rr_ratio:.1f}:1")
+        elif rr_ratio >= 2.5:
+            score += 12  # Bon R/R
+            reasons.append(f"Bon R/R de {rr_ratio:.1f}:1")
+        elif rr_ratio >= 2.0:
+            score += 8   # R/R acceptable
+            reasons.append(f"R/R acceptable de {rr_ratio:.1f}:1")
         elif rr_ratio >= 1.5:
-            score += 2
-            reasons.append(f"R/R acceptable de {rr_ratio:.1f}")
+            score += 2   # R/R moyen
+            reasons.append(f"R/R moyen de {rr_ratio:.1f}:1")
+        elif rr_ratio >= 1.0:
+            score -= 8   # R/R faible
+            reasons.append(f"R/R faible de {rr_ratio:.1f}:1 - risque élevé")
         else:
-            score -= 5
-            reasons.append(f"R/R faible de {rr_ratio:.1f}")
+            score -= 15  # R/R très faible - dangereux
+            reasons.append(f"R/R très faible de {rr_ratio:.1f}:1 - très risqué")
+    else:
+        score -= 10  # Pas de R/R défini = mauvais signe
+        reasons.append("Aucun R/R défini")
     
+    # ============= 2. DISTANCE DU STOP LOSS =============
+    # Un SL serré = meilleure gestion du risque
     if trade.entry and trade.sl:
         sl_distance = abs((trade.sl - trade.entry) / trade.entry * 100)
-        if sl_distance <= 3:
-            score += 5
-            reasons.append("SL serré (gestion de risque optimale)")
-        elif sl_distance <= 5:
-            score += 2
+        
+        if sl_distance <= 1.5:
+            score += 10  # SL très serré - excellent
+            reasons.append("SL très serré (gestion optimale)")
+        elif sl_distance <= 3.0:
+            score += 6   # SL serré - bon
+            reasons.append("SL serré (bonne gestion)")
+        elif sl_distance <= 5.0:
+            score += 2   # SL modéré
             reasons.append("SL bien placé")
-        elif sl_distance > 8:
-            score -= 3
+        elif sl_distance <= 8.0:
+            score -= 3   # SL un peu éloigné
             reasons.append("SL éloigné")
+        else:
+            score -= 8   # SL trop éloigné = risque élevé
+            reasons.append(f"SL trop éloigné ({sl_distance:.1f}%)")
     
-    targets_count = sum([1 for tp in [trade.tp1, trade.tp2, trade.tp3] if tp is not None])
-    if targets_count >= 3:
-        score += 4
-        reasons.append("stratégie de sortie progressive")
-    elif targets_count >= 2:
-        score += 2
-    
+    # ============= 3. LEVERAGE =============
+    # Leverage trop élevé = risque accru
     if trade.leverage:
         try:
-            lev = int(trade.leverage.replace('x', ''))
-            if 10 <= lev <= 20:
-                score += 3
-                reasons.append("leverage modéré et sécuritaire")
-            elif lev > 20:
-                score -= 5
-                reasons.append("leverage élevé - risque accru")
+            lev = int(trade.leverage.replace('x', '').replace('X', ''))
+            
+            if lev <= 5:
+                score += 8   # Leverage conservateur
+                reasons.append("Leverage conservateur")
+            elif lev <= 10:
+                score += 5   # Leverage modéré
+                reasons.append("Leverage modéré")
+            elif lev <= 15:
+                score += 1   # Leverage acceptable
+                reasons.append("Leverage acceptable")
+            elif lev <= 20:
+                score -= 3   # Leverage élevé
+                reasons.append("Leverage élevé")
+            elif lev <= 30:
+                score -= 8   # Leverage très élevé
+                reasons.append("Leverage très élevé - risque accru")
+            else:
+                score -= 15  # Leverage dangereux
+                reasons.append("Leverage dangereux (>30x)")
         except:
             pass
     
+    # ============= 4. TIMEFRAME =============
+    # Les timeframes plus élevés = plus fiables
     if trade.tf:
-        if '15' in trade.tf or '5' in trade.tf:
-            score += 2
-            reasons.append("timeframe court terme - réactif")
-        elif any(x in trade.tf for x in ['1h', '4h', '1H', '4H']):
-            score += 3
-            reasons.append("timeframe moyen terme - plus stable")
+        tf_lower = trade.tf.lower()
+        
+        if any(x in tf_lower for x in ['1d', '4h', 'daily']):
+            score += 8   # Timeframe élevé = plus fiable
+            reasons.append("Timeframe élevé (plus fiable)")
+        elif any(x in tf_lower for x in ['1h', '2h']):
+            score += 5   # Timeframe moyen
+            reasons.append("Timeframe moyen")
+        elif any(x in tf_lower for x in ['15', '30']):
+            score += 1   # Timeframe court
+            reasons.append("Timeframe court (réactif)")
+        elif any(x in tf_lower for x in ['1m', '3m', '5m']):
+            score -= 3   # Timeframe très court = plus de bruit
+            reasons.append("Timeframe très court (volatil)")
     
+    # ============= 5. STRATÉGIE DE SORTIE =============
+    # Plusieurs targets = meilleure gestion des profits
+    targets_count = sum([1 for tp in [trade.tp1, trade.tp2, trade.tp3] if tp is not None])
+    
+    if targets_count >= 3:
+        score += 6
+        reasons.append("Sortie progressive (3+ targets)")
+    elif targets_count >= 2:
+        score += 3
+        reasons.append("2 targets définis")
+    elif targets_count == 1:
+        score -= 2
+        reasons.append("Un seul target")
+    
+    # ============= 6. SIGNAL TECHNIQUE (SI FOURNI) =============
+    # Si Pine Script envoie une confiance technique
     if trade.confidence:
         if trade.confidence >= 90:
-            score += 5
-            reasons.append("signal technique très fort")
+            score += 10
+            reasons.append("Signal technique très fort")
         elif trade.confidence >= 80:
-            score += 3
-            reasons.append("signal technique fort")
+            score += 6
+            reasons.append("Signal technique fort")
         elif trade.confidence >= 70:
-            score += 1
+            score += 3
+            reasons.append("Signal technique bon")
+        elif trade.confidence >= 60:
+            score += 0  # Neutre
         else:
-            score -= 2
+            score -= 5
+            reasons.append("Signal technique faible")
     
-    if trade.note and len(trade.note) > 20:
-        score += 2
-        reasons.append("analyse détaillée fournie")
+    # ============= 7. ANALYSE DÉTAILLÉE =============
+    # Une note détaillée montre de la préparation
+    if trade.note and len(trade.note) > 30:
+        score += 3
+        reasons.append("Analyse détaillée fournie")
     
-    score = max(60.0, min(99.0, score))
+    # ============= LIMITES ET NORMALISATION =============
+    # Score final entre 35% et 95%
+    score = max(35.0, min(95.0, score))
     
+    # ============= CONSTRUCTION DE LA RAISON =============
     if len(reasons) >= 3:
-        reason = ", ".join(reasons[:3])
+        reason = ", ".join(reasons[:3])  # Top 3 raisons
     elif len(reasons) > 0:
         reason = ", ".join(reasons)
     else:
-        reason = "analyse technique standard"
+        reason = "Analyse technique standard"
     
-    return round(score, 2), reason.capitalize()
+    return round(score, 1), reason.capitalize()
+
 
 async def send_telegram_advanced(trade: TradeWebhook):
     """Envoie message Telegram professionnel"""

@@ -159,7 +159,6 @@ def calc_rr(entry, sl, tp1):
         pass
     return None
 
-
 def calculate_confidence_score(trade: TradeWebhook):
     """
     🎯 CALCUL DE CONFIANCE RÉEL ET DYNAMIQUE
@@ -321,9 +320,8 @@ def calculate_confidence_score(trade: TradeWebhook):
     score = max(35.0, min(95.0, score))
     
     # ============= CONSTRUCTION DE LA RAISON =============
-    if len(reasons) >= 3:
-        reason = ", ".join(reasons[:3])  # Top 3 raisons
-    elif len(reasons) > 0:
+    # Afficher toutes les raisons importantes, pas seulement 3
+    if len(reasons) > 0:
         reason = ", ".join(reasons)
     else:
         reason = "Analyse technique standard"

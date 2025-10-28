@@ -25,9 +25,9 @@ trades_db = []
 # Risk Management
 risk_management_settings = {
     "total_capital": 10000.0,  # Capital total en USD
-    "risk_per_trade": 2.0,  # Risque par trade en %
-    "max_open_trades": 3,  # Nombre maximum de trades ouverts
-    "max_daily_loss": 5.0,  # Perte maximale par jour en %
+    "risk_per_trade": 1.0,  # Risque par trade en %
+    "max_open_trades": 2,  # Nombre maximum de trades ouverts
+    "max_daily_loss": 3.0,  # Perte maximale par jour en %
     "daily_loss": 0.0,  # Perte du jour actuel
     "last_reset": datetime.now().strftime("%Y-%m-%d")
 }
@@ -106,12 +106,12 @@ ALTSEASON_NOTIFY_MIN_GAP_MIN = int(os.getenv("ALTSEASON_NOTIFY_MIN_GAP_MIN", "60
 ALTSEASON_POLL_SECONDS = int(os.getenv("ALTSEASON_POLL_SECONDS", "300"))
 
 # Configuration Générale
-CONFIDENCE_MIN = float(os.getenv("CONFIDENCE_MIN", "0.90"))
-COOLDOWN_SEC = int(os.getenv("COOLDOWN_SEC", "800"))
+CONFIDENCE_MIN = float(os.getenv("CONFIDENCE_MIN", "0.70"))
+COOLDOWN_SEC = int(os.getenv("COOLDOWN_SEC", "28800"))
 DB_PATH = os.getenv("DB_PATH", "/tmp/ai_trader/data.db")
 MIN_CONFLUENCE = int(os.getenv("MIN_CONFLUENCE", "0"))
 NEAR_SR_ATR = float(os.getenv("NEAR_SR_ATR", "0.0"))
-RR_MIN = float(os.getenv("RR_MIN", "1.0"))
+RR_MIN = float(os.getenv("RR_MIN", "2.0"))
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "nqgjiebqgiehgq8e78qhefjqez78gfq8eyrg")
 
 # LLM / OpenAI

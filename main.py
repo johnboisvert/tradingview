@@ -548,6 +548,41 @@ async def webhook(request: Request):
         print(f"❌ Erreur webhook: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/tv-webhook")
+async def tv_webhook(request: Request):
+    """
+    Endpoint alternatif pour TradingView (compatibilité)
+    Redirige vers la même logique que /webhook
+    """
+    try:
+        data = await request.json()
+        
+        # Validation basique
+        if not data.get("symbol"):
+            raise HTTPException(status_code=400, detail="Symbol manquant")
+        
+        # Enrichissement
+        data["received_at"] = datetime.now().isoformat()
+        
+        # Stocker en mémoire
+        trades_memory.append(data)
+        
+        # 🆕 Ajouter à la queue avec priorité
+        priority = get_message_priority(data)
+        
+        message_queue.append({
+            "data": {"text": format_telegram_message(data)},
+            "priority": priority
+        })
+        
+        print(f"✅ Alerte reçue [tv-webhook]: {data.get('symbol')} - Priorité {priority} - Queue: {len(message_queue)}")
+        
+        return JSONResponse({"status": "success", "queue_size": len(message_queue)})
+        
+    except Exception as e:
+        print(f"❌ Erreur tv-webhook: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ============================================================================
 # API ENDPOINTS
 # ============================================================================
@@ -556,13 +591,18 @@ async def webhook(request: Request):
 async def root():
     return {
         "status": "running",
-        "version": "2.0 - Optimized",
+        "version": "2.0 - Optimized + Compatible",
         "telegram_enabled": bool(TELEGRAM_ENABLED),
         "min_delay": TG_MIN_DELAY_SEC,
         "max_per_minute": TG_PER_MIN_LIMIT,
         "priority_mode": bool(TG_PRIORITY_MODE),
         "filter_liquidations": bool(TG_FILTER_LIQUIDATIONS),
-        "queue_size": len(message_queue)
+        "queue_size": len(message_queue),
+        "endpoints": {
+            "webhooks": ["/webhook", "/tv-webhook"],
+            "api": ["/api/trades", "/api/stats", "/api/queue"],
+            "legacy": ["/trades", "/stats"]
+        }
     }
 
 @app.get("/api/trades")
@@ -592,6 +632,31 @@ async def get_queue():
     return {
         "queue": message_queue,
         "size": len(message_queue)
+    }
+
+# ============================================================================
+# ENDPOINTS LEGACY (COMPATIBILITÉ)
+# ============================================================================
+
+@app.get("/trades")
+async def get_trades_legacy():
+    """Endpoint legacy pour compatibilité (redirige vers /api/trades)"""
+    return {"trades": trades_memory, "count": len(trades_memory)}
+
+@app.get("/stats")
+async def get_stats_legacy():
+    """Endpoint legacy pour compatibilité (redirige vers /api/stats)"""
+    return {
+        "total_trades": len(trades_memory),
+        "queue_size": len(message_queue),
+        "telegram_enabled": bool(TELEGRAM_ENABLED),
+        "config": {
+            "min_delay_sec": TG_MIN_DELAY_SEC,
+            "max_per_minute": TG_PER_MIN_LIMIT,
+            "max_retry": TG_MAX_RETRY,
+            "priority_mode": bool(TG_PRIORITY_MODE),
+            "filter_liquidations": bool(TG_FILTER_LIQUIDATIONS)
+        }
     }
 
 # ============================================================================

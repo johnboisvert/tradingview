@@ -12,21 +12,438 @@ import os
 import math
 import asyncio
 
-# ✅ CRÉER L'APP EN PREMIER
 app = FastAPI()
-
-# ✅ AJOUT STRATÉGIE ROUTE (3 LIGNES - AU BON ENDROIT)
-from strategie import router as strategie_router
-app.include_router(strategie_router)
-# ✅ FIN AJOUT STRATÉGIE
-
-# ✅ PUIS AJOUTER LES MIDDLEWARES
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# ✅ ROUTE STRATÉGIE MAGIC MIKE (INTÉGRÉE DIRECTEMENT)
+@app.get("/strategie", response_class=HTMLResponse)
+async def strategie_page():
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Magic Mike 1H - Guide ULTIME</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: #333;
+                line-height: 1.6;
+            }
+            
+            .container {
+                max-width: 1000px;
+                margin: 0 auto;
+                padding: 40px 20px;
+            }
+            
+            header {
+                text-align: center;
+                color: white;
+                margin-bottom: 50px;
+                background: rgba(0,0,0,0.2);
+                padding: 40px;
+                border-radius: 15px;
+                backdrop-filter: blur(10px);
+            }
+            
+            header h1 {
+                font-size: 2.5em;
+                margin-bottom: 10px;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            }
+            
+            header p {
+                font-size: 1.2em;
+                opacity: 0.9;
+            }
+            
+            .content {
+                background: white;
+                border-radius: 15px;
+                padding: 50px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                margin-bottom: 40px;
+            }
+            
+            .section {
+                margin-bottom: 50px;
+                padding-bottom: 30px;
+                border-bottom: 3px solid #f0f0f0;
+            }
+            
+            .section:last-child {
+                border-bottom: none;
+            }
+            
+            h2 {
+                color: #667eea;
+                font-size: 2em;
+                margin-bottom: 20px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            h3 {
+                color: #764ba2;
+                font-size: 1.5em;
+                margin: 25px 0 15px 0;
+            }
+            
+            h4 {
+                color: #667eea;
+                font-size: 1.2em;
+                margin: 20px 0 10px 0;
+            }
+            
+            .emoji {
+                font-size: 1.2em;
+            }
+            
+            p {
+                margin-bottom: 15px;
+                font-size: 1.05em;
+            }
+            
+            ul, ol {
+                margin-left: 30px;
+                margin-bottom: 15px;
+            }
+            
+            li {
+                margin-bottom: 10px;
+            }
+            
+            .box {
+                background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+                border-left: 5px solid #667eea;
+                padding: 20px;
+                margin: 20px 0;
+                border-radius: 8px;
+            }
+            
+            .box.success {
+                border-left-color: #00d084;
+                background: linear-gradient(135deg, #00d08415 0%, #00b86f15 100%);
+            }
+            
+            .box.danger {
+                border-left-color: #ff4757;
+                background: linear-gradient(135deg, #ff475715 0%, #ff684415 100%);
+            }
+            
+            .box.warning {
+                border-left-color: #ffa502;
+                background: linear-gradient(135deg, #ffa50215 0%, #ff851515 100%);
+            }
+            
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            
+            th, td {
+                padding: 15px;
+                text-align: left;
+                border: 1px solid #e0e0e0;
+            }
+            
+            th {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                font-weight: bold;
+            }
+            
+            tr:nth-child(even) {
+                background: #f9f9f9;
+            }
+            
+            tr:hover {
+                background: #f0f0f0;
+            }
+            
+            .checklist {
+                background: #f9f9f9;
+                padding: 20px;
+                border-radius: 8px;
+                margin: 20px 0;
+            }
+            
+            .checklist label {
+                display: block;
+                margin-bottom: 12px;
+                cursor: pointer;
+                padding: 8px;
+                border-radius: 4px;
+                transition: 0.3s;
+            }
+            
+            .checklist label:hover {
+                background: #e0e0e0;
+            }
+            
+            .checklist input[type="checkbox"] {
+                margin-right: 10px;
+                cursor: pointer;
+                width: 18px;
+                height: 18px;
+            }
+            
+            .calculator {
+                background: #f0f0f0;
+                padding: 25px;
+                border-radius: 10px;
+                margin: 20px 0;
+                border: 2px solid #667eea;
+            }
+            
+            .calculator input {
+                width: 100%;
+                padding: 12px;
+                margin: 10px 0;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                font-size: 1em;
+            }
+            
+            .calculator button {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 12px 30px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 1em;
+                margin-top: 15px;
+                transition: 0.3s;
+            }
+            
+            .calculator button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            }
+            
+            .result {
+                background: white;
+                padding: 15px;
+                margin-top: 15px;
+                border-radius: 5px;
+                border-left: 4px solid #00d084;
+                display: none;
+            }
+            
+            .result.show {
+                display: block;
+            }
+            
+            .print-btn {
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 15px 25px;
+                border-radius: 50px;
+                cursor: pointer;
+                font-size: 1em;
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+                transition: 0.3s;
+                z-index: 1000;
+            }
+            
+            .print-btn:hover {
+                transform: scale(1.1);
+                box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+            }
+            
+            .level-badge {
+                display: inline-block;
+                background: #667eea;
+                color: white;
+                padding: 5px 15px;
+                border-radius: 20px;
+                font-size: 0.9em;
+                font-weight: bold;
+                margin-bottom: 20px;
+            }
+            
+            .level-badge.level1 { background: #00d084; }
+            .level-badge.level2 { background: #0084ff; }
+            .level-badge.level3 { background: #ff6b35; }
+            .level-badge.level4 { background: #ffa502; }
+            .level-badge.level5 { background: #764ba2; }
+            
+            @media print {
+                .print-btn {
+                    display: none;
+                }
+                body {
+                    background: white;
+                }
+                .container {
+                    padding: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>🎯 MAGIC MIKE 1H - GUIDE ULTIME 🎯</h1>
+                <p>LA STRATÉGIE COMPLÈTE POUR GAGNER AVEC VOTRE INDICATEUR</p>
+            </header>
+            
+            <div class="content">
+                <!-- NIVEAU 1 -->
+                <div class="section">
+                    <span class="level-badge level1">NIVEAU 1</span>
+                    <h2><span class="emoji">🎓</span> COMPRENDRE L'INDICATEUR</h2>
+                    
+                    <h3>L'indicateur Magic Mike expliqué simplement</h3>
+                    <p>Imagine Magic Mike comme un <strong>FEU TRICOLORE pour trader :</strong></p>
+                    
+                    <div class="box success">
+                        <strong>🟢 FEU VERT = ENTRER EN LONG (acheter)</strong>
+                    </div>
+                    <div class="box danger">
+                        <strong>🔴 FEU ROUGE = ENTRER EN SHORT (vendre)</strong>
+                    </div>
+                    <div class="box warning">
+                        <strong>⚪ FEU BLANC = NE PAS TRADER (attendre)</strong>
+                    </div>
+                    
+                    <h3>Les 4 éléments clés du graphique</h3>
+                    
+                    <h4>1️⃣ Les 3 moyennes mobiles (EMAs)</h4>
+                    <ul>
+                        <li><strong>🤍 EMA 20 (BLANCHE)</strong> = Tendance COURT TERME</li>
+                        <li><strong>🟢 EMA 50 (VERTE)</strong> = Tendance MOYEN TERME</li>
+                        <li><strong>🔴 EMA 200 (ROUGE)</strong> = Tendance LONG TERME</li>
+                    </ul>
+                    
+                    <h4>2️⃣ Les signaux d'entrée (TRIANGLES COLORÉS)</h4>
+                    <ul>
+                        <li><strong>Triangle 🟢 VERT + "⚡ LONG"</strong> en haut = Signal BUY</li>
+                        <li><strong>Triangle 🔴 ROUGE + "⚡ SHORT"</strong> en bas = Signal SELL</li>
+                    </ul>
+                    
+                    <h4>3️⃣ Les niveaux (LIGNES HORIZONTALES)</h4>
+                    <ul>
+                        <li><strong>⚡ ENTRY</strong> = Prix exact où entrer</li>
+                        <li><strong>🛡️ SL</strong> = Stop Loss (ta limite de perte, OBLIGATOIRE)</li>
+                        <li><strong>🎯 TP1</strong> = Première sortie (2.5R profit)</li>
+                        <li><strong>💎 TP2</strong> = Deuxième sortie (5.0R profit) ← LE MEILLEUR</li>
+                        <li><strong>🚀 TP3</strong> = Troisième sortie (8.0R profit)</li>
+                    </ul>
+                    
+                    <h4>4️⃣ Le fond coloré (Très important !)</h4>
+                    <ul>
+                        <li><strong>Fond 🟢 VERT TRÈS PÂLE</strong> = 4H + Daily HAUSSIERS → LONG possible</li>
+                        <li><strong>Fond 🔴 ROUGE TRÈS PÂLE</strong> = 4H + Daily BAISSIERS → SHORT possible</li>
+                        <li><strong>Pas de fond</strong> = 4H + Daily PAS alignés → ⛔ NE PAS TRADER</li>
+                    </ul>
+                </div>
+                
+                <!-- NIVEAU 5 : CALCULATEUR -->
+                <div class="section">
+                    <span class="level-badge level5">💰 CALCULATEUR</span>
+                    <h2><span class="emoji">💰</span> Calculateur de ROI</h2>
+                    
+                    <div class="calculator">
+                        <h4>💎 Rentre tes paramètres :</h4>
+                        
+                        <label><strong>Capital de départ ($)</strong></label>
+                        <input type="number" id="capital" placeholder="Ex: 10000" value="10000">
+                        
+                        <label><strong>ROI mensuel estimé (%)</strong></label>
+                        <input type="number" id="roi" placeholder="Ex: 128" value="128">
+                        
+                        <label><strong>Nombre de mois</strong></label>
+                        <input type="number" id="months" placeholder="Ex: 3" value="3">
+                        
+                        <button onclick="calculateROI()">Calculer le ROI 🚀</button>
+                        
+                        <div id="roiResult" class="result"></div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 3px solid #f0f0f0;">
+                    <h2>🏁 BON TRADING & BONNE CHANCE ! 🚀💎</h2>
+                    <p style="font-size: 1.1em; color: #667eea;">
+                        <strong>Succès = Discipline + Patience + Action</strong><br>
+                        Discipline = Respect des 10 règles<br>
+                        Patience = Attendre les bons setups<br>
+                        Action = 30 jours de suivi sérieux
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <button class="print-btn" onclick="window.print()">🖨️ Imprimer</button>
+        
+        <script>
+            function calculateROI() {
+                const capital = parseFloat(document.getElementById('capital').value);
+                const roi = parseFloat(document.getElementById('roi').value);
+                const months = parseInt(document.getElementById('months').value);
+                
+                if (isNaN(capital) || isNaN(roi) || isNaN(months)) {
+                    alert('Remplis tous les champs !');
+                    return;
+                }
+                
+                let currentCapital = capital;
+                let monthDetails = '';
+                
+                for (let i = 1; i <= months; i++) {
+                    const gain = currentCapital * (roi / 100);
+                    currentCapital += gain;
+                    monthDetails += '<strong>Mois ' + i + ':</strong> $' + gain.toFixed(2) + ' → Total: $' + currentCapital.toFixed(2) + '<br>';
+                }
+                
+                const finalROI = ((currentCapital - capital) / capital * 100).toFixed(2);
+                
+                const resultDiv = document.getElementById('roiResult');
+                resultDiv.innerHTML = '<strong>📊 Résultats :</strong><br>' +
+                    monthDetails +
+                    '<strong style="color: #00d084;">Capital initial :</strong> $' + capital.toFixed(2) + '<br>' +
+                    '<strong style="color: #00d084;">Capital final :</strong> $' + currentCapital.toFixed(2) + '<br>' +
+                    '<strong style="color: #667eea;">ROI total :</strong> ' + finalROI + '% 🚀';
+                resultDiv.classList.add('show');
+            }
+            
+            window.onload = function() {
+                calculateROI();
+            };
+        </script>
+    </body>
+    </html>
+    """
+    
+    return html_content
+
+# ✅ FIN ROUTE STRATÉGIE
 
 # Lock pour éviter plusieurs instances du monitoring
 monitor_lock = asyncio.Lock()
 monitor_running = False
 trades_db = []
+
+# ────────────────────────────────────────────────────────────────────────────
+# ⬇️ TON RESTE DU CODE CONTINUE ICI (routes, classes, etc.) ⬇️
+# ────────────────────────────────────────────────────────────────────────────
 
 
 # ============= NOUVELLES BASES DE DONNÉES =============

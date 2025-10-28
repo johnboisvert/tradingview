@@ -21,6 +21,36 @@ import json
 from collections import defaultdict
 
 # ============================================================================
+# HELPER FUNCTIONS POUR VARIABLES D'ENVIRONNEMENT
+# ============================================================================
+
+def safe_int(value: str, default: int = 0) -> int:
+    """
+    Convertit une valeur en entier de manière sécurisée.
+    Gère les cas où la valeur est un texte (comme 'high', 'medium', 'low')
+    """
+    if not value:
+        return default
+    
+    # Si c'est déjà un nombre, le convertir
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    
+    # Gérer les cas textuels pour LLM_REASONING
+    value_lower = value.lower().strip()
+    if value_lower in ['high', 'maximum', 'max']:
+        return 2
+    elif value_lower in ['medium', 'normal', 'standard']:
+        return 1
+    elif value_lower in ['low', 'minimum', 'min', 'off']:
+        return 0
+    
+    # Si rien ne correspond, retourner la valeur par défaut
+    return default
+
+# ============================================================================
 # VARIABLES D'ENVIRONNEMENT - MODIFIÉES POUR FAIBLE LATENCE
 # ============================================================================
 
@@ -61,7 +91,7 @@ NEAR_SR_ATR = float(os.getenv("NEAR_SR_ATR", "0.5"))
 # LLM Configuration
 LLM_ENABLED = int(os.getenv("LLM_ENABLED", "0"))
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4")
-LLM_REASONING = int(os.getenv("LLM_REASONING", "1"))
+LLM_REASONING = safe_int(os.getenv("LLM_REASONING", "1"), default=1)  # Accepte 'high', 'medium', 'low' ou 0/1/2
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 # Vector Configuration

@@ -12,14 +12,22 @@ import os
 import math
 import asyncio
 
+# ✅ CRÉER L'APP EN PREMIER
 app = FastAPI()
+
+# ✅ AJOUT STRATÉGIE ROUTE (3 LIGNES - AU BON ENDROIT)
+from strategie import router as strategie_router
+app.include_router(strategie_router)
+# ✅ FIN AJOUT STRATÉGIE
+
+# ✅ PUIS AJOUTER LES MIDDLEWARES
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # Lock pour éviter plusieurs instances du monitoring
 monitor_lock = asyncio.Lock()
 monitor_running = False
-
 trades_db = []
+
 
 # ============= NOUVELLES BASES DE DONNÉES =============
 # Risk Management

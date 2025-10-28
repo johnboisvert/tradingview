@@ -118,6 +118,67 @@ message_queue = []  # 🆕 Queue avec priorités
 telegram_send_times = []  # Liste des timestamps d'envoi
 
 # ============================================================================
+# 🆕 CALCUL AUTOMATIQUE DES VALEURS MANQUANTES
+# ============================================================================
+
+def auto_calculate_trade_metrics(trade_data: dict) -> dict:
+    """
+    Calcule automatiquement les métriques manquantes si TradingView ne les envoie pas
+    - rr (risk/reward ratio)
+    - sl_distance_pct (distance du SL en %)
+    """
+    # Créer une copie pour ne pas modifier l'original
+    data = trade_data.copy()
+    
+    entry = float(data.get("entry", 0))
+    sl = float(data.get("sl", 0))
+    side = str(data.get("side", "LONG")).upper()
+    
+    # Vérifier qu'on a les données minimales
+    if entry <= 0 or sl <= 0:
+        return data
+    
+    # 1. CALCULER LA DISTANCE DU STOP LOSS EN %
+    if "sl_distance_pct" not in data or data.get("sl_distance_pct") == 0:
+        sl_distance = abs(entry - sl) / entry * 100
+        data["sl_distance_pct"] = round(sl_distance, 2)
+    
+    # 2. CALCULER LE RISK/REWARD RATIO
+    if "rr" not in data or data.get("rr") == 0:
+        # Trouver le premier TP disponible
+        first_tp = None
+        for i in range(1, 6):
+            tp_value = data.get(f"tp{i}")
+            if tp_value and float(tp_value) > 0:
+                first_tp = float(tp_value)
+                break
+        
+        if first_tp:
+            # Calculer le risk (distance entry-sl)
+            risk = abs(entry - sl)
+            
+            # Calculer le reward (distance entry-tp)
+            if side == "LONG":
+                reward = abs(first_tp - entry)
+            else:  # SHORT
+                reward = abs(entry - first_tp)
+            
+            # R:R = reward / risk
+            if risk > 0:
+                rr = reward / risk
+                data["rr"] = round(rr, 2)
+            else:
+                data["rr"] = 0
+        else:
+            data["rr"] = 0
+    
+    # 3. TIMEFRAME PAR DÉFAUT SI VIDE
+    if not data.get("timeframe") or data.get("timeframe") == "":
+        data["timeframe"] = "N/A"
+    
+    return data
+
+# ============================================================================
 # 🆕 SYSTÈME DE PRIORITÉ DES MESSAGES
 # ============================================================================
 
@@ -403,9 +464,10 @@ def calculate_confidence_v2(trade_data: dict) -> tuple:
     elif tf in ["15M", "30M"]:
         confidence -= 2
         reasons.append(f"TF court ({tf})")
-    else:
+    elif tf and tf not in ["N/A", ""]:
         confidence -= 5
         reasons.append(f"TF très court ({tf})")
+    # Si timeframe vide ou N/A, on n'ajoute pas de raison (neutre)
     
     # 5. NOMBRE DE TARGETS ±7%
     targets = []
@@ -526,6 +588,9 @@ async def webhook(request: Request):
         if not data.get("symbol"):
             raise HTTPException(status_code=400, detail="Symbol manquant")
         
+        # 🆕 CALCULER AUTOMATIQUEMENT LES MÉTRIQUES MANQUANTES
+        data = auto_calculate_trade_metrics(data)
+        
         # Enrichissement
         data["received_at"] = datetime.now().isoformat()
         
@@ -560,6 +625,9 @@ async def tv_webhook(request: Request):
         # Validation basique
         if not data.get("symbol"):
             raise HTTPException(status_code=400, detail="Symbol manquant")
+        
+        # 🆕 CALCULER AUTOMATIQUEMENT LES MÉTRIQUES MANQUANTES
+        data = auto_calculate_trade_metrics(data)
         
         # Enrichissement
         data["received_at"] = datetime.now().isoformat()

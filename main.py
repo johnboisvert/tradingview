@@ -15,6 +15,11 @@ import asyncio
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
+# ✅ DÉFINITIONS OBLIGATOIRES (AVANT les routes !)
+monitor_lock = asyncio.Lock()
+monitor_running = False
+trades_db = []
+
 # ✅ ROUTE STRATÉGIE MAGIC MIKE COMPLÈTE (tous les 5 niveaux)
 @app.get("/strategie", response_class=HTMLResponse)
 async def strategie_page():
@@ -683,6 +688,12 @@ async def strategie_page():
     """
     
     return html_content
+
+# ✅ FIN ROUTE STRATÉGIE COMPLÈTE
+
+# ────────────────────────────────────────────────────────────────────────────
+# TON RESTE DU CODE CONTINUE ICI (toutes tes autres routes, etc.)
+# ────────────────────────────────────────────────────────────────────────────
 # ✅ FIN ROUTE STRATÉGIE COMPLÈTE
 
 # ============= NOUVELLES BASES DE DONNÉES =============

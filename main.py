@@ -423,6 +423,42 @@ async def strategie_page():
                             <li>⚪ Signal 1H + Pas de fond = 4H + Daily pas alignés = ❌ NO TRADE</li>
                         </ul>
                     </div>
+                    
+                    <h3>⏰ Meilleurs moments pour trader</h3>
+                    <div class="box success">
+                        <h4>🔥 Meilleurs moments (plus de volatilité) :</h4>
+                        <ul style="margin-top: 10px;">
+                            <li><strong>08h-11h</strong> : Ouverture Europe 🇪🇺</li>
+                            <li><strong>14h-17h</strong> : Ouverture Wall Street 🇺🇸</li>
+                            <li><strong>19h-22h</strong> : Session active US/Asie</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box warning">
+                        <h4>😴 Moments calmes (peu de signaux) :</h4>
+                        <ul style="margin-top: 10px;">
+                            <li><strong>00h-06h</strong> : Nuit asiatique</li>
+                            <li><strong>Weekend</strong> : Volume plus faible</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box">
+                        <h4>📊 Semaine Normale avec 12 paires :</h4>
+                        <ul style="margin-top: 10px;">
+                            <li><strong>Lundi</strong> : 4-6 signaux</li>
+                            <li><strong>Mardi</strong> : 5-8 signaux</li>
+                            <li><strong>Mercredi</strong> : 6-10 signaux</li>
+                            <li><strong>Jeudi</strong> : 5-8 signaux</li>
+                            <li><strong>Vendredi</strong> : 4-7 signaux</li>
+                            <li><strong>Weekend</strong> : 2-4 signaux</li>
+                        </ul>
+                        <p style="margin-top: 15px;"><strong>📈 Total/semaine : 26-43 signaux / mois mais efficace.</strong></p>
+                    </div>
+                    
+                    <div class="box danger">
+                        <h4>⚠️ RAPPEL IMPORTANT :</h4>
+                        <p style="margin-top: 10px;"><strong>N'oubliez jamais toujours un SL au départ et déplacer votre SL graduellement</strong></p>
+                    </div>
                 </div>
                 
                 <!-- NIVEAU 3 : EXÉCUTER -->

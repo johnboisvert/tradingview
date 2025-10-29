@@ -824,7 +824,7 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/calculatrice">🧮 Calculatrice</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a></div>'
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -8728,6 +8728,723 @@ refreshSuggestions();
 loadSentiment();
 </script>
 </body></html>""")
+
+# ============= PAGE CALCULATRICE DE TRADES =============
+@app.get("/calculatrice", response_class=HTMLResponse)
+async def calculatrice_trades():
+    """Calculatrice de trades professionnelle en français"""
+    return HTMLResponse("""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧮 Calculatrice de Trades</title>
+    """ + CSS + """
+    <style>
+        .calc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .calc-section {
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+        
+        .calc-section h3 {
+            color: #60a5fa;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #334155;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #94a3b8;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .input-hint {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 400;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #60a5fa;
+            font-size: 18px;
+            pointer-events: none;
+        }
+        
+        input[type="number"].calc-input, input[type="text"].calc-input {
+            width: 100%;
+            padding: 14px 15px 14px 45px;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        input[type="number"].calc-input:focus, input[type="text"].calc-input:focus {
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }
+        
+        .direction-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .direction-btn {
+            padding: 15px;
+            border: 2px solid #334155;
+            background: #0f172a;
+            color: #94a3b8;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 16px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .direction-btn:hover {
+            border-color: #60a5fa;
+            transform: translateY(-2px);
+        }
+        
+        .direction-btn.active.long {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-color: #10b981;
+            color: white;
+        }
+        
+        .direction-btn.active.short {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border-color: #ef4444;
+            color: white;
+        }
+        
+        .tp-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .tp-input {
+            position: relative;
+        }
+        
+        .tp-label {
+            position: absolute;
+            top: -8px;
+            left: 12px;
+            background: #1e293b;
+            padding: 0 5px;
+            color: #60a5fa;
+            font-size: 11px;
+            font-weight: 700;
+            z-index: 1;
+        }
+        
+        .result-box {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border: 2px solid #334155;
+            transition: all 0.3s;
+        }
+        
+        .result-box:hover {
+            border-color: #60a5fa;
+            transform: translateY(-2px);
+        }
+        
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+        }
+        
+        .result-row:last-child {
+            border-bottom: none;
+        }
+        
+        .result-label {
+            color: #94a3b8;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .result-value {
+            color: #e2e8f0;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .result-value.positive {
+            color: #10b981;
+        }
+        
+        .result-value.negative {
+            color: #ef4444;
+        }
+        
+        .result-highlight {
+            background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%);
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid #60a5fa;
+            margin: 20px 0;
+        }
+        
+        .result-highlight-label {
+            color: #94a3b8;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .result-highlight-value {
+            font-size: 42px;
+            font-weight: 900;
+            color: #60a5fa;
+            text-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
+        }
+        
+        .rr-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .rr-excellent {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .rr-good {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+        
+        .rr-fair {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        
+        .rr-poor {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+        
+        .warning-box {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #fca5a5;
+            font-size: 14px;
+        }
+        
+        .info-box {
+            background: rgba(96, 165, 250, 0.1);
+            border-left: 4px solid #60a5fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            color: #93c5fd;
+            font-size: 14px;
+        }
+        
+        .profit-breakdown {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .profit-card {
+            background: #0f172a;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #334155;
+        }
+        
+        .profit-card-label {
+            color: #60a5fa;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .profit-card-value {
+            font-size: 24px;
+            font-weight: 900;
+            color: #10b981;
+        }
+        
+        @media (max-width: 968px) {
+            .calc-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .profit-breakdown {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧮 Calculatrice de Trades</h1>
+            <p>Calculez votre position, risque et profits potentiels</p>
+        </div>
+        
+        """ + NAV + """
+        
+        <div class="calc-grid">
+            <!-- SECTION 1: PARAMÈTRES DU TRADE -->
+            <div class="calc-section">
+                <h3>📊 Paramètres du Trade</h3>
+                
+                <div class="input-group">
+                    <div class="input-label">
+                        <span>Direction</span>
+                    </div>
+                    <div class="direction-toggle">
+                        <button class="direction-btn active long" onclick="setDirection('LONG')">
+                            📈 LONG
+                        </button>
+                        <button class="direction-btn short" onclick="setDirection('SHORT')">
+                            📉 SHORT
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <div class="input-label">
+                        <span>Symbol / Paire</span>
+                        <span class="input-hint">Ex: BTCUSDT</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <span class="input-icon">💱</span>
+                        <input type="text" id="symbol" class="calc-input" value="BTCUSDT" placeholder="BTCUSDT">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <div class="input-label">
+                        <span>Prix d'Entrée</span>
+                        <span class="input-hint">USD</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <span class="input-icon">💰</span>
+                        <input type="number" id="entry" class="calc-input" value="67000" step="0.00000001" oninput="calculate()">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <div class="input-label">
+                        <span>Stop Loss</span>
+                        <span class="input-hint">USD</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <span class="input-icon">🛑</span>
+                        <input type="number" id="stopLoss" class="calc-input" value="66000" step="0.00000001" oninput="calculate()">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <div class="input-label">
+                        <span>Take Profits</span>
+                        <span class="input-hint">USD</span>
+                    </div>
+                    <div class="tp-group">
+                        <div class="tp-input">
+                            <div class="tp-label">TP1</div>
+                            <input type="number" id="tp1" class="calc-input" value="68000" step="0.00000001" oninput="calculate()">
+                        </div>
+                        <div class="tp-input">
+                            <div class="tp-label">TP2</div>
+                            <input type="number" id="tp2" class="calc-input" value="69000" step="0.00000001" oninput="calculate()">
+                        </div>
+                        <div class="tp-input">
+                            <div class="tp-label">TP3</div>
+                            <input type="number" id="tp3" class="calc-input" value="70000" step="0.00000001" oninput="calculate()">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SECTION 2: GESTION DU RISQUE -->
+            <div class="calc-section">
+                <h3>⚖️ Gestion du Risque</h3>
+                
+                <div class="input-group">
+                    <div class="input-label">
+                        <span>Capital Total</span>
+                        <span class="input-hint">USD</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <span class="input-icon">💵</span>
+                        <input type="number" id="capital" class="calc-input" value="10000" step="100" oninput="calculate()">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <div class="input-label">
+                        <span>Risque par Trade</span>
+                        <span class="input-hint">%</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <span class="input-icon">📊</span>
+                        <input type="number" id="riskPercent" class="calc-input" value="1" step="0.1" min="0.1" max="10" oninput="calculate()">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <div class="input-label">
+                        <span>Leverage</span>
+                        <span class="input-hint">x</span>
+                    </div>
+                    <div class="input-wrapper">
+                        <span class="input-icon">⚡</span>
+                        <input type="number" id="leverage" class="calc-input" value="10" step="1" min="1" max="125" oninput="calculate()">
+                    </div>
+                </div>
+                
+                <div class="result-highlight">
+                    <div class="result-highlight-label">Risk/Reward Ratio</div>
+                    <div class="result-highlight-value" id="rrRatio">0:1</div>
+                    <div id="rrBadge"></div>
+                </div>
+                
+                <div class="info-box">
+                    <strong>💡 Conseil:</strong> Un bon R/R est ≥ 2:1. Plus c'est élevé, mieux c'est !
+                </div>
+            </div>
+        </div>
+        
+        <!-- SECTION 3: RÉSULTATS -->
+        <div class="card">
+            <h2>📈 Résultats du Calcul</h2>
+            
+            <div class="calc-grid">
+                <div class="result-box">
+                    <h3 style="color: #60a5fa; margin-bottom: 15px;">💼 Position & Risque</h3>
+                    
+                    <div class="result-row">
+                        <span class="result-label">📏 Taille de Position</span>
+                        <span class="result-value" id="positionSize">0 USDT</span>
+                    </div>
+                    
+                    <div class="result-row">
+                        <span class="result-label">🪙 Quantité</span>
+                        <span class="result-value" id="quantity">0</span>
+                    </div>
+                    
+                    <div class="result-row">
+                        <span class="result-label">⚠️ Montant Risqué</span>
+                        <span class="result-value negative" id="riskAmount">$0</span>
+                    </div>
+                    
+                    <div class="result-row">
+                        <span class="result-label">📉 Distance SL</span>
+                        <span class="result-value" id="slDistance">0%</span>
+                    </div>
+                    
+                    <div class="result-row">
+                        <span class="result-label">💥 Prix de Liquidation</span>
+                        <span class="result-value negative" id="liquidationPrice">$0</span>
+                    </div>
+                </div>
+                
+                <div class="result-box">
+                    <h3 style="color: #10b981; margin-bottom: 15px;">💰 Profits Potentiels</h3>
+                    
+                    <div class="result-row">
+                        <span class="result-label">🎯 TP1 (40%)</span>
+                        <span class="result-value positive" id="profitTP1">$0</span>
+                    </div>
+                    
+                    <div class="result-row">
+                        <span class="result-label">🎯 TP2 (40%)</span>
+                        <span class="result-value positive" id="profitTP2">$0</span>
+                    </div>
+                    
+                    <div class="result-row">
+                        <span class="result-label">🎯 TP3 (20%)</span>
+                        <span class="result-value positive" id="profitTP3">$0</span>
+                    </div>
+                    
+                    <div class="result-row" style="border-top: 2px solid #334155; padding-top: 15px; margin-top: 10px;">
+                        <span class="result-label"><strong>💎 Profit Total</strong></span>
+                        <span class="result-value positive" id="totalProfit" style="font-size: 24px;">$0</span>
+                    </div>
+                    
+                    <div class="result-row">
+                        <span class="result-label">📊 ROI Total</span>
+                        <span class="result-value positive" id="totalROI">+0%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="profit-breakdown">
+                <div class="profit-card">
+                    <div class="profit-card-label">Distance TP1</div>
+                    <div class="profit-card-value" id="tp1Distance">+0%</div>
+                </div>
+                <div class="profit-card">
+                    <div class="profit-card-label">Distance TP2</div>
+                    <div class="profit-card-value" id="tp2Distance">+0%</div>
+                </div>
+                <div class="profit-card">
+                    <div class="profit-card-label">Distance TP3</div>
+                    <div class="profit-card-value" id="tp3Distance">+0%</div>
+                </div>
+            </div>
+            
+            <div id="warningBox" class="warning-box" style="display: none;">
+                ⚠️ <strong>Attention:</strong> <span id="warningText"></span>
+            </div>
+        </div>
+        
+        <!-- SECTION 4: GUIDE -->
+        <div class="card">
+            <h2>📚 Guide d'Utilisation</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+                <div style="background: #0f172a; padding: 20px; border-radius: 10px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">✅ Bonnes Pratiques</h3>
+                    <ul style="color: #94a3b8; line-height: 1.8;">
+                        <li>Risquez <strong>1-2%</strong> de votre capital par trade</li>
+                        <li>Visez un R/R minimum de <strong>2:1</strong></li>
+                        <li>Utilisez le leverage avec prudence</li>
+                        <li>Sortez progressivement (TP1, TP2, TP3)</li>
+                        <li>Placez votre SL en Break Even après TP1</li>
+                    </ul>
+                </div>
+                
+                <div style="background: #0f172a; padding: 20px; border-radius: 10px; border-left: 4px solid #ef4444;">
+                    <h3 style="color: #ef4444; margin-bottom: 10px;">❌ Erreurs à Éviter</h3>
+                    <ul style="color: #94a3b8; line-height: 1.8;">
+                        <li>Ne risquez <strong>JAMAIS</strong> plus de 5%</li>
+                        <li>N'utilisez pas de leverage >20x en débutant</li>
+                        <li>Ne déplacez jamais votre Stop Loss</li>
+                        <li>Ne prenez pas de trades avec R/R < 1.5:1</li>
+                        <li>N'ouvrez pas trop de positions simultanées</li>
+                    </ul>
+                </div>
+                
+                <div style="background: #0f172a; padding: 20px; border-radius: 10px; border-left: 4px solid #60a5fa;">
+                    <h3 style="color: #60a5fa; margin-bottom: 10px;">📊 Formules Utilisées</h3>
+                    <ul style="color: #94a3b8; line-height: 1.8;">
+                        <li><strong>Risque:</strong> Capital × (Risk%)</li>
+                        <li><strong>Position:</strong> Risque ÷ (Entry - SL)%</li>
+                        <li><strong>Quantité:</strong> Position ÷ Entry Price</li>
+                        <li><strong>Profit:</strong> (TP - Entry) × Quantité × %</li>
+                        <li><strong>R/R:</strong> Profit Total ÷ Risque</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentDirection = 'LONG';
+        
+        function setDirection(direction) {
+            currentDirection = direction;
+            
+            // Update UI
+            document.querySelectorAll('.direction-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            if (direction === 'LONG') {
+                document.querySelector('.direction-btn.long').classList.add('active');
+            } else {
+                document.querySelector('.direction-btn.short').classList.add('active');
+            }
+            
+            calculate();
+        }
+        
+        function calculate() {
+            // Get inputs
+            const entry = parseFloat(document.getElementById('entry').value) || 0;
+            const stopLoss = parseFloat(document.getElementById('stopLoss').value) || 0;
+            const tp1 = parseFloat(document.getElementById('tp1').value) || 0;
+            const tp2 = parseFloat(document.getElementById('tp2').value) || 0;
+            const tp3 = parseFloat(document.getElementById('tp3').value) || 0;
+            const capital = parseFloat(document.getElementById('capital').value) || 0;
+            const riskPercent = parseFloat(document.getElementById('riskPercent').value) || 1;
+            const leverage = parseFloat(document.getElementById('leverage').value) || 1;
+            
+            // Validate inputs
+            if (entry === 0 || stopLoss === 0 || capital === 0) {
+                return;
+            }
+            
+            // Check direction validity
+            let isValid = true;
+            let warningMsg = '';
+            
+            if (currentDirection === 'LONG') {
+                if (stopLoss >= entry) {
+                    isValid = false;
+                    warningMsg = 'Pour un LONG, le Stop Loss doit être INFÉRIEUR au prix d\\'entrée!';
+                }
+                if (tp1 <= entry || tp2 <= entry || tp3 <= entry) {
+                    isValid = false;
+                    warningMsg = 'Pour un LONG, les Take Profits doivent être SUPÉRIEURS au prix d\\'entrée!';
+                }
+            } else {
+                if (stopLoss <= entry) {
+                    isValid = false;
+                    warningMsg = 'Pour un SHORT, le Stop Loss doit être SUPÉRIEUR au prix d\\'entrée!';
+                }
+                if (tp1 >= entry || tp2 >= entry || tp3 >= entry) {
+                    isValid = false;
+                    warningMsg = 'Pour un SHORT, les Take Profits doivent être INFÉRIEURS au prix d\\'entrée!';
+                }
+            }
+            
+            if (!isValid) {
+                document.getElementById('warningBox').style.display = 'block';
+                document.getElementById('warningText').textContent = warningMsg;
+                return;
+            } else {
+                document.getElementById('warningBox').style.display = 'none';
+            }
+            
+            // Calculate risk amount
+            const riskAmount = capital * (riskPercent / 100);
+            
+            // Calculate SL distance
+            const slDistance = Math.abs((entry - stopLoss) / entry * 100);
+            
+            // Calculate position size
+            const positionSize = (riskAmount / (slDistance / 100)) * leverage;
+            
+            // Calculate quantity
+            const quantity = positionSize / entry;
+            
+            // Calculate liquidation price
+            let liquidationPrice;
+            if (currentDirection === 'LONG') {
+                liquidationPrice = entry * (1 - (1 / leverage) * 0.9);
+            } else {
+                liquidationPrice = entry * (1 + (1 / leverage) * 0.9);
+            }
+            
+            // Calculate profits
+            const profitTP1 = Math.abs(tp1 - entry) * quantity * 0.4; // 40%
+            const profitTP2 = Math.abs(tp2 - entry) * quantity * 0.4; // 40%
+            const profitTP3 = Math.abs(tp3 - entry) * quantity * 0.2; // 20%
+            const totalProfit = profitTP1 + profitTP2 + profitTP3;
+            
+            // Calculate R/R
+            const rrRatio = totalProfit / riskAmount;
+            
+            // Calculate ROI
+            const totalROI = (totalProfit / positionSize) * 100;
+            
+            // Calculate TP distances
+            const tp1Distance = Math.abs((tp1 - entry) / entry * 100);
+            const tp2Distance = Math.abs((tp2 - entry) / entry * 100);
+            const tp3Distance = Math.abs((tp3 - entry) / entry * 100);
+            
+            // Update UI
+            document.getElementById('positionSize').textContent = positionSize.toFixed(2) + ' USDT';
+            document.getElementById('quantity').textContent = quantity.toFixed(8) + ' ' + document.getElementById('symbol').value.replace('USDT', '');
+            document.getElementById('riskAmount').textContent = '$' + riskAmount.toFixed(2);
+            document.getElementById('slDistance').textContent = slDistance.toFixed(2) + '%';
+            document.getElementById('liquidationPrice').textContent = '$' + liquidationPrice.toFixed(2);
+            
+            document.getElementById('profitTP1').textContent = '+$' + profitTP1.toFixed(2);
+            document.getElementById('profitTP2').textContent = '+$' + profitTP2.toFixed(2);
+            document.getElementById('profitTP3').textContent = '+$' + profitTP3.toFixed(2);
+            document.getElementById('totalProfit').textContent = '+$' + totalProfit.toFixed(2);
+            document.getElementById('totalROI').textContent = '+' + totalROI.toFixed(2) + '%';
+            
+            document.getElementById('tp1Distance').textContent = '+' + tp1Distance.toFixed(2) + '%';
+            document.getElementById('tp2Distance').textContent = '+' + tp2Distance.toFixed(2) + '%';
+            document.getElementById('tp3Distance').textContent = '+' + tp3Distance.toFixed(2) + '%';
+            
+            // Update R/R
+            document.getElementById('rrRatio').textContent = rrRatio.toFixed(2) + ':1';
+            
+            // Update R/R badge
+            let badge = '';
+            if (rrRatio >= 3) {
+                badge = '<div class="rr-badge rr-excellent">🌟 Excellent R/R!</div>';
+            } else if (rrRatio >= 2) {
+                badge = '<div class="rr-badge rr-good">✅ Bon R/R</div>';
+            } else if (rrRatio >= 1.5) {
+                badge = '<div class="rr-badge rr-fair">⚠️ R/R Acceptable</div>';
+            } else {
+                badge = '<div class="rr-badge rr-poor">❌ R/R Trop Faible</div>';
+            }
+            document.getElementById('rrBadge').innerHTML = badge;
+            
+            // Warning for high leverage
+            if (leverage > 20) {
+                document.getElementById('warningBox').style.display = 'block';
+                document.getElementById('warningText').textContent = 'Leverage >20x est très risqué! Prix de liquidation proche: $' + liquidationPrice.toFixed(2);
+            }
+        }
+        
+        // Calculate on page load
+        calculate();
+    </script>
+</body>
+</html>""")
 
 if __name__ == "__main__":
     import uvicorn

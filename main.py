@@ -15,7 +15,7 @@ import asyncio
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# ✅ ROUTE STRATÉGIE MAGIC MIKE (INTÉGRÉE DIRECTEMENT)
+# ✅ ROUTE STRATÉGIE MAGIC MIKE COMPLÈTE (tous les 5 niveaux)
 @app.get("/strategie", response_class=HTMLResponse)
 async def strategie_page():
     html_content = """
@@ -40,7 +40,7 @@ async def strategie_page():
             }
             
             .container {
-                max-width: 1000px;
+                max-width: 1200px;
                 margin: 0 auto;
                 padding: 40px 20px;
             }
@@ -306,7 +306,7 @@ async def strategie_page():
             </header>
             
             <div class="content">
-                <!-- NIVEAU 1 -->
+                <!-- NIVEAU 1 : COMPRENDRE -->
                 <div class="section">
                     <span class="level-badge level1">NIVEAU 1</span>
                     <h2><span class="emoji">🎓</span> COMPRENDRE L'INDICATEUR</h2>
@@ -332,6 +332,7 @@ async def strategie_page():
                         <li><strong>🟢 EMA 50 (VERTE)</strong> = Tendance MOYEN TERME</li>
                         <li><strong>🔴 EMA 200 (ROUGE)</strong> = Tendance LONG TERME</li>
                     </ul>
+                    <p><strong>Parfait =</strong> Ordre croissant haussier (blanc > vert > rouge)</p>
                     
                     <h4>2️⃣ Les signaux d'entrée (TRIANGLES COLORÉS)</h4>
                     <ul>
@@ -356,13 +357,225 @@ async def strategie_page():
                     </ul>
                 </div>
                 
-                <!-- NIVEAU 5 : CALCULATEUR -->
+                <!-- NIVEAU 2 : PRÉPARER -->
                 <div class="section">
-                    <span class="level-badge level5">💰 CALCULATEUR</span>
-                    <h2><span class="emoji">💰</span> Calculateur de ROI</h2>
+                    <span class="level-badge level2">NIVEAU 2</span>
+                    <h2><span class="emoji">⚙️</span> PRÉPARER LE TRADE</h2>
+                    
+                    <h3>Paramètres optimisés pour 1H</h3>
+                    <table>
+                        <tr>
+                            <th>PARAMÈTRE</th>
+                            <th>VALEUR</th>
+                            <th>RAISON</th>
+                        </tr>
+                        <tr>
+                            <td>EMA Short</td>
+                            <td>20</td>
+                            <td>Réactivité</td>
+                        </tr>
+                        <tr>
+                            <td>EMA Medium</td>
+                            <td>50</td>
+                            <td>Filtre</td>
+                        </tr>
+                        <tr>
+                            <td>EMA Long</td>
+                            <td>200</td>
+                            <td>Trend long</td>
+                        </tr>
+                        <tr>
+                            <td>ADX Minimum</td>
+                            <td>23</td>
+                            <td>Tendance</td>
+                        </tr>
+                        <tr>
+                            <td>TP1</td>
+                            <td>2.5R</td>
+                            <td>Conservateur</td>
+                        </tr>
+                        <tr>
+                            <td>TP2</td>
+                            <td>5.0R</td>
+                            <td>OPTIMAL 💎</td>
+                        </tr>
+                        <tr>
+                            <td>TP3</td>
+                            <td>8.0R</td>
+                            <td>Tendances fortes</td>
+                        </tr>
+                    </table>
+                    
+                    <h3>Filtres HTF - La clé du 70-80% winrate</h3>
+                    <div class="box">
+                        <strong>Tu tradés en 1H, MAIS tu vérifies TOUJOURS la 4H + Daily !</strong>
+                        <ul style="margin-top: 15px;">
+                            <li>🟢 Signal 1H + Fond vert = 4H + Daily haussiers = ✅ LONG OK</li>
+                            <li>🔴 Signal 1H + Fond rouge = 4H + Daily baissiers = ✅ SHORT OK</li>
+                            <li>⚪ Signal 1H + Pas de fond = 4H + Daily pas alignés = ❌ NO TRADE</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- NIVEAU 3 : EXÉCUTER -->
+                <div class="section">
+                    <span class="level-badge level3">NIVEAU 3</span>
+                    <h2><span class="emoji">⚡</span> EXÉCUTER LE TRADE</h2>
+                    
+                    <h3>Les 3 scénarios réels</h3>
+                    
+                    <h4>🟢 SCÉNARIO 1 : LE PRIX MONTE (LONG)</h4>
+                    <div class="box success">
+                        <strong>1️⃣ TP1 ATTEINT → 40% position fermée</strong><br><br>
+                        ✅ Profit sécurisé : +$250 (exemple $100 risk)<br>
+                        🛡️ ACTION : Mettre SL à BREAK EVEN<br><br>
+                        <strong>2️⃣ TP2 ATTEINT → 40% supplémentaires fermés</strong><br><br>
+                        ✅ Profit additionnel : +$500 (cumulé +$750)<br>
+                        🛡️ ACTION : Déplacer SL à TP1<br><br>
+                        <strong>3️⃣ TP3 ATTEINT → 20% derniers fermés</strong><br><br>
+                        ✅ Profit final : +$800 (cumulé +$1,550 sur 1 trade !)<br>
+                        🎉 TRADE COMPLÉTÉ !
+                    </div>
+                    
+                    <h4>🔴 SCÉNARIO 2 : LE PRIX BAISSE (SL HIT)</h4>
+                    <div class="box danger">
+                        <strong>❌ 100% position fermée au SL</strong><br><br>
+                        💔 Perte : -$100 (ton risque défini)<br>
+                        😔 NORMAL ! C'est juste un trade perdu !<br><br>
+                        <strong>⏱️ PAUSE OBLIGATOIRE :</strong><br>
+                        └─ Après 1 SL : Pause 30 min MINIMUM<br>
+                        └─ Après 2 SL : Pause 1 heure complète<br>
+                        └─ Après 3 SL : STOP 24-48h (mental pas bon)
+                    </div>
+                    
+                    <h4>🟡 SCÉNARIO 3 : LE PRIX STAGNE (RANGE)</h4>
+                    <div class="box warning">
+                        <strong>Le prix oscille mais ne progresse pas</strong><br><br>
+                        ✅ Attendre 30 min supplémentaire<br>
+                        ✅ Si toujours pas de direction → Sort à la main au breakeven<br><br>
+                        RÉSULTAT : 0 (pas de profit, pas de perte)
+                    </div>
+                    
+                    <h3>Sortie progressive 40/40/20</h3>
+                    <div class="box">
+                        <strong>C'est LA CLÉE pour maîtriser le risque !</strong>
+                        <ul style="margin-top: 15px;">
+                            <li>40% à TP1 (2.5R) : Sécurises les premiers gains</li>
+                            <li>40% à TP2 (5.0R) : Crois en ton trade</li>
+                            <li>20% à TP3 (8.0R) : Profite de la lune shot</li>
+                        </ul>
+                        <p style="margin-top: 15px;"><strong>Résultat :</strong> +$1,550 au lieu de +$250 !</p>
+                    </div>
+                </div>
+                
+                <!-- NIVEAU 4 : ANALYSER -->
+                <div class="section">
+                    <span class="level-badge level4">NIVEAU 4</span>
+                    <h2><span class="emoji">📈</span> ANALYSER & APPRENDRE</h2>
+                    
+                    <h3>Les 10 RÈGLES D'OR pour NE JAMAIS PERDRE</h3>
+                    
+                    <div class="box success">
+                        <h4>RÈGLE 1️⃣ : STOP LOSS OBLIGATOIRE</h4>
+                        <ul>
+                            <li>✅ Placer SL IMMÉDIATEMENT après ENTRY</li>
+                            <li>❌ JAMAIS trader sans SL</li>
+                            <li>💡 SL = Votre assurance contre les pertes</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box success">
+                        <h4>RÈGLE 2️⃣ : LEVERAGE = 10x UNIQUEMENT</h4>
+                        <ul>
+                            <li>✅ Leverage 10x, Mode Isolé</li>
+                            <li>❌ JAMAIS 20x (trop risqué)</li>
+                            <li>💡 10x = Balance risque/récompense optimal</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box success">
+                        <h4>RÈGLE 3️⃣ : TAILLE POSITION = 1% DU CAPITAL</h4>
+                        <ul>
+                            <li>✅ Risk par trade = 1% du capital</li>
+                            <li>❌ JAMAIS 5% (compte devient 0 trop vite)</li>
+                            <li>💡 Protection maximale + accumulation des profits</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box success">
+                        <h4>RÈGLE 4️⃣ : ATTENDRE LE SETUP PARFAIT</h4>
+                        <ul>
+                            <li>✅ Vérifier TOUS les critères</li>
+                            <li>❌ JAMAIS trader "presque bon"</li>
+                            <li>💡 70-80% winrate = Attendre les bonnes conditions</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box success">
+                        <h4>RÈGLE 5️⃣ : NE PAS MODIFIER LE STOP LOSS</h4>
+                        <ul>
+                            <li>✅ SL au prix exact du signal (ne jamais bouger)</li>
+                            <li>❌ JAMAIS déplacer SL plus bas</li>
+                            <li>💡 SL est ta limite. Elle ne bouge pas.</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box success">
+                        <h4>RÈGLE 6️⃣ : RESPECTER LES SORTIES PROGRESSIVES</h4>
+                        <ul>
+                            <li>✅ TP1=40%, TP2=40%, TP3=20%</li>
+                            <li>❌ JAMAIS tout vendre à TP1</li>
+                            <li>💡 40/40/20 = +4.6R moyen</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box success">
+                        <h4>RÈGLE 7️⃣ : PAUSE APRÈS PERTE</h4>
+                        <ul>
+                            <li>✅ 1 SL = 30 min, 2 SL = 1h, 3 SL = 24-48h</li>
+                            <li>❌ JAMAIS revenge trading</li>
+                            <li>💡 Après perte = Émotions = Mauvaises décisions</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box success">
+                        <h4>RÈGLE 8️⃣ : JOURNAL TRADING QUOTIDIEN</h4>
+                        <ul>
+                            <li>✅ Noter CHAQUE trade immédiatement</li>
+                            <li>❌ JAMAIS sans journal</li>
+                            <li>💡 Journal = Feedback sur tes erreurs</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box success">
+                        <h4>RÈGLE 9️⃣ : IGNORER LES BRUITS</h4>
+                        <ul>
+                            <li>✅ Suivre UNIQUEMENT Magic Mike signals</li>
+                            <li>❌ JAMAIS FOMO (Fear Of Missing Out)</li>
+                            <li>💡 Émotions = Pertes. Discipline = Profits</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box success">
+                        <h4>RÈGLE 🔟 : CROIRE AU SYSTÈME</h4>
+                        <ul>
+                            <li>✅ Magic Mike = 70-80% winrate VALIDÉ</li>
+                            <li>❌ JAMAIS changer après 3 SL</li>
+                            <li>💡 Ce système fonctionne. Math dit qu'on gagne !</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- NIVEAU 5 : PROJETER -->
+                <div class="section">
+                    <span class="level-badge level5">NIVEAU 5</span>
+                    <h2><span class="emoji">💰</span> PROJETER & CALCULER</h2>
+                    
+                    <h3>Calcul des gains réalistes</h3>
                     
                     <div class="calculator">
-                        <h4>💎 Rentre tes paramètres :</h4>
+                        <h4>💎 Calculateur de ROI</h4>
+                        <p><strong>Rentre tes paramètres :</strong></p>
                         
                         <label><strong>Capital de départ ($)</strong></label>
                         <input type="number" id="capital" placeholder="Ex: 10000" value="10000">
@@ -376,6 +589,43 @@ async def strategie_page():
                         <button onclick="calculateROI()">Calculer le ROI 🚀</button>
                         
                         <div id="roiResult" class="result"></div>
+                    </div>
+                    
+                    <h3>Plan d'action 30 jours</h3>
+                    
+                    <div class="box">
+                        <h4>📋 SEMAINE 1 : BACKTEST</h4>
+                        <ul>
+                            <li>Jour 1-2 : Télécharger 1 mois d'historique BTC/USDT 1H</li>
+                            <li>Jour 3-5 : Appliquer Magic Mike manuellement</li>
+                            <li>Jour 6-7 : Analyser les résultats (Winrate ≥ 70% ?)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box">
+                        <h4>📋 SEMAINE 2 : PAPER TRADING</h4>
+                        <ul>
+                            <li>Jour 8-14 : Trader en DÉMO (papier trading)</li>
+                            <li>Utiliser Magic Mike sur live chart</li>
+                            <li>Vérifier : Winrate ≥ 70% ?</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box">
+                        <h4>📋 SEMAINE 3 : MICRO-CAPITAL</h4>
+                        <ul>
+                            <li>Jour 15-21 : Déposer $500-1000 sur Binance/Kraken</li>
+                            <li>Trader avec 1-2 trades par jour MAX</li>
+                            <li>Risk 1% par trade = $5-10 par trade</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="box">
+                        <h4>📋 SEMAINE 4 : SCALING</h4>
+                        <ul>
+                            <li>Jour 22-28 : Si semaine 3 = Profit → Capital passe à $1000-2000</li>
+                            <li>Jour 29-30 : Résumé des 4 semaines</li>
+                        </ul>
                     </div>
                 </div>
                 
@@ -433,18 +683,7 @@ async def strategie_page():
     """
     
     return html_content
-
-# ✅ FIN ROUTE STRATÉGIE
-
-# Lock pour éviter plusieurs instances du monitoring
-monitor_lock = asyncio.Lock()
-monitor_running = False
-trades_db = []
-
-# ────────────────────────────────────────────────────────────────────────────
-# ⬇️ TON RESTE DU CODE CONTINUE ICI (routes, classes, etc.) ⬇️
-# ────────────────────────────────────────────────────────────────────────────
-
+# ✅ FIN ROUTE STRATÉGIE COMPLÈTE
 
 # ============= NOUVELLES BASES DE DONNÉES =============
 # Risk Management

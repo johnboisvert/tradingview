@@ -3547,7 +3547,8 @@ async def spot_trading_page():
         document.addEventListener('DOMContentLoaded', function() {
             initializeDCAComparisonChart();
         });
-
+    </script>
+    </body>
     </html>
     """
     return HTMLResponse(content=html_content)

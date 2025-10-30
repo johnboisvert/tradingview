@@ -3074,7 +3074,7 @@ async def spot_trading_page():
                     <div class="box info">
                         <h4>🎯 Qu'est-ce que le DCA ?</h4>
                         <p><strong>DCA = Acheter une quantité fixe de crypto à intervalles réguliers, indépendamment du prix</strong></p>
-                        <p>Exemple: Acheter 100€ de Bitcoin chaque semaine pendant 52 semaines, peu importe le prix actuel.</p>
+                        <p>Exemple: Acheter 100$ de Bitcoin chaque semaine pendant 52 semaines, peu importe le prix actuel.</p>
                     </div>
                     
                     <!-- GRAPHIQUE COMPARATIF 3 SCÉNARIOS -->
@@ -3188,8 +3188,8 @@ async def spot_trading_page():
                     <div class="strategy-step" data-step="1">
                         <p><strong>Acheter une montant FIXE à intervalle RÉGULIER</strong></p>
                         <ul>
-                            <li>100€ chaque semaine</li>
-                            <li>500€ chaque mois</li>
+                            <li>100$ chaque semaine</li>
+                            <li>500$ chaque mois</li>
                             <li>Automatiser sur l'exchange (recurring buy sur Binance/Kraken)</li>
                             <li>S'en tenir au plan, peu importe les prix</li>
                         </ul>
@@ -3199,9 +3199,9 @@ async def spot_trading_page():
                     <div class="strategy-step" data-step="2">
                         <p><strong>Augmenter les achats quand le prix baisse</strong></p>
                         <ul>
-                            <li>Prix normal (50k$) → Achat 100€</li>
-                            <li>Prix baisse 20% (40k$) → Achat 200€ (2x plus)</li>
-                            <li>Prix baisse 40% (30k$) → Achat 400€ (4x plus)</li>
+                            <li>Prix normal (50k$) → Achat 100$</li>
+                            <li>Prix baisse 20% (40k$) → Achat 200$ (2x plus)</li>
+                            <li>Prix baisse 40% (30k$) → Achat 400$ (4x plus)</li>
                             <li>Utiliser Fear & Greed Index pour déclencher les boosts</li>
                         </ul>
                     </div>
@@ -3212,7 +3212,7 @@ async def spot_trading_page():
                         <ul>
                             <li>DCA régulier: 70% du capital (fondation)</li>
                             <li>Trading spot: 30% du capital (opportunités)</li>
-                            <li>Exemple: 700€/mois en DCA, 300€ pour swing trading</li>
+                            <li>Exemple: 700$/mois en DCA, 300$ pour swing trading</li>
                             <li>Best of both worlds: accumulation + profits</li>
                         </ul>
                     </div>
@@ -3221,7 +3221,7 @@ async def spot_trading_page():
                     <div class="strategy-step" data-step="4">
                         <p><strong>DCA normal MAIS avec conditions de prix</strong></p>
                         <ul>
-                            <li>Achat 100€ chaque semaine SI prix &lt; moyenne mobile 50 semaines</li>
+                            <li>Achat 100$ chaque semaine SI prix &lt; moyenne mobile 50 semaines</li>
                             <li>Utiliser Magic Mike 1H: acheter seulement si signal LONG</li>
                             <li>Vérifier Fear & Greed: acheter si &lt; 60 (pas de euphorie)</li>
                             <li>Combine discipline + opportunité</li>
@@ -3240,37 +3240,37 @@ async def spot_trading_page():
                         </tr>
                         <tr>
                             <td>2015-2016 (1 an)</td>
-                            <td>100€ BTC</td>
-                            <td>1,200€</td>
-                            <td>1,890€</td>
+                            <td>100$ BTC</td>
+                            <td>1,200$</td>
+                            <td>1,890$</td>
                             <td>+57%</td>
                         </tr>
                         <tr>
                             <td>2016-2017 (Bull)</td>
-                            <td>100€ BTC</td>
-                            <td>1,200€</td>
-                            <td>15,400€</td>
+                            <td>100$ BTC</td>
+                            <td>1,200$</td>
+                            <td>15,400$</td>
                             <td>+1,183%</td>
                         </tr>
                         <tr>
                             <td>2018 (Bear Market)</td>
-                            <td>100€ BTC</td>
-                            <td>1,200€</td>
-                            <td>890€</td>
+                            <td>100$ BTC</td>
+                            <td>1,200$</td>
+                            <td>890$</td>
                             <td>-26%</td>
                         </tr>
                         <tr>
                             <td>2018-2021 (4 ans)</td>
-                            <td>100€ BTC</td>
-                            <td>4,800€</td>
-                            <td>98,500€</td>
+                            <td>100$ BTC</td>
+                            <td>4,800$</td>
+                            <td>98,500$</td>
                             <td>+1,950%</td>
                         </tr>
                     </table>
                     
                     <div class="box success">
                         <h4>🎯 Conclusion sur les données historiques</h4>
-                        <p><strong>Sur 4 ans (2018-2021), DCA 100€/mois aurait transformé 4,800€ en 98,500€ !!</strong></p>
+                        <p><strong>Sur 4 ans (2018-2021), DCA 100$/mois aurait transformé 4,800$ en 98,500$ !!</strong></p>
                         <p>Même pendant le bear market 2018, continuer à acheter régulièrement a été rentable à long terme.</p>
                     </div>
                     
@@ -3300,9 +3300,9 @@ async def spot_trading_page():
                             <div>
                                 <strong>Capital/Mois?</strong><br/>
                                 <select id="aiCapital" style="width: 100%; padding: 8px; margin-top: 5px;">
-                                    <option value="small">100-500€</option>
-                                    <option value="medium">500-2000€ (RECOMMANDÉ)</option>
-                                    <option value="large">2000€+</option>
+                                    <option value="small">100-500$</option>
+                                    <option value="medium">500-2000$ (RECOMMANDÉ)</option>
+                                    <option value="large">2000$+</option>
                                 </select>
                             </div>
                             <div>
@@ -3439,21 +3439,21 @@ async def spot_trading_page():
                     <h3>🚀 DCA vs All-In: Simulation</h3>
                     
                     <div class="example-box">
-                        <h4>Scénario: Investir 10,000€</h4>
+                        <h4>Scénario: Investir 10,000$</h4>
                         
                         <p><strong>Option 1: All-In en Janvier 2021</strong></p>
                         <ul>
-                            <li>Achat: 10,000€ en BTC à 40,000$/coin = 0.25 BTC</li>
+                            <li>Achat: 10,000$ en BTC à 40,000$/coin = 0.25 BTC</li>
                             <li>Prix atteint: 68,000$ en Nov 2021</li>
-                            <li>Valeur: 0.25 × 68,000$ = 17,000€</li>
+                            <li>Valeur: 0.25 × 68,000$ = 17,000$</li>
                             <li>Profit: +70% 📈</li>
                             <li>Mais: Aurait vu -50% en 2022 (stress émotionnel) 😰</li>
                         </ul>
                         
-                        <p><strong>Option 2: DCA 833€/mois pendant 12 mois</strong></p>
+                        <p><strong>Option 2: DCA 833$/mois pendant 12 mois</strong></p>
                         <ul>
-                            <li>Janvier: 833€ à 40,000$/coin = 0.0208 BTC (coût: 40,000$)</li>
-                            <li>Février: 833€ à 35,000$/coin = 0.0238 BTC (coût: 35,000$)</li>
+                            <li>Janvier: 833$ à 40,000$/coin = 0.0208 BTC (coût: 40,000$)</li>
+                            <li>Février: 833$ à 35,000$/coin = 0.0238 BTC (coût: 35,000$)</li>
                             <li>... (10 mois de plus)</li>
                             <li>Coût moyen final: ~45,000$/coin</li>
                             <li>Total: 0.222 BTC (légèrement moins mais...)</li>
@@ -3803,11 +3803,11 @@ async def spot_trading_page():
             let rec = '';
             
             if (risk === 'conservative' || horizon === 'short') {
-                rec = '🛡️ CONSERVATEUR: 100-300€/mois, chaque semaine, 70% BTC + 30% ETH. Priorité: Sécurité!';
+                rec = '🛡️ CONSERVATEUR: 100-300$/mois, chaque semaine, 70% BTC + 30% ETH. Priorité: Sécurité!';
             } else if (risk === 'aggressive') {
-                rec = '🚀 AGRESSIF: 1000-2000€/mois, quotidiennement, 40% BTC + 30% ETH + 30% Alts. Profitez des dips!';
+                rec = '🚀 AGRESSIF: 1000-2000$/mois, quotidiennement, 40% BTC + 30% ETH + 30% Alts. Profitez des dips!';
             } else {
-                rec = '⚖️ ÉQUILIBRÉ (MEILLEUR POUR DCA): 500-1000€/mois, 2x/semaine, 50% BTC + 30% ETH + 20% Alts. Régulier = Clé!';
+                rec = '⚖️ ÉQUILIBRÉ (MEILLEUR POUR DCA): 500-1000$/mois, 2x/semaine, 50% BTC + 30% ETH + 20% Alts. Régulier = Clé!';
             }
             
             document.getElementById('aiRecText').textContent = rec;
@@ -10981,13 +10981,13 @@ async def calendrier_economique():
             "date": "2025-10-25",
             "time": "07:45",
             "title": "Décision BCE sur les taux d'intérêt",
-            "description": "La Banque Centrale Européenne annonce sa décision de politique monétaire. Une baisse des taux stimule l'économie mais affaiblit l'euro. Une hausse combat l'inflation mais peut ralentir la croissance. Suivie d'une conférence de presse de Christine Lagarde.",
+            "description": "La Banque Centrale Européenne annonce sa décision de politique monétaire. Une baisse des taux stimule l'économie mais affaiblit l'USD. Une hausse combat l'inflation mais peut ralentir la croissance. Suivie d'une conférence de presse de Christine Lagarde.",
             "impact": "high",
             "category": "bce",
             "currency": "EUR",
             "forecast": "3.75%",
             "previous": "4.00%",
-            "why_important": "Politique monétaire pour toute la zone euro (350M habitants)"
+            "why_important": "Politique monétaire pour toute la zone USD (350M habitants)"
         },
         {
             "date": "2025-10-28",
@@ -11299,13 +11299,13 @@ async def calendrier_economique():
             "date": "2026-01-23",
             "time": "07:45",
             "title": "PMI Flash Manufacturing Europe",
-            "description": "Premiers indices PMI européens de 2026. Version 'flash' (préliminaire) publiée avant la version finale. Donne une lecture rapide de la santé économique européenne pour démarrer l'année.",
+            "description": "Premiers indices PMI USDpéens de 2026. Version 'flash' (préliminaire) publiée avant la version finale. Donne une lecture rapide de la santé économique USDpéenne pour démarrer l'année.",
             "impact": "medium",
             "category": "data",
             "currency": "EUR",
             "forecast": "46.5",
             "previous": "45.2",
-            "why_important": "Première lecture économique européenne 2026"
+            "why_important": "Première lecture économique USDpéenne 2026"
         },
         {
             "date": "2026-01-29",
@@ -13000,14 +13000,14 @@ async def success_stories():
                 <div class="story-stats">
                     <div class="stat-box">
                         <div class="stat-label">💰 DCA Mensuel</div>
-                        <div class="stat-value">500 €</div>
+                        <div class="stat-value">500 $</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">💎 Résultat</div>
-                        <div class="stat-value">50K €</div>
+                        <div class="stat-value">50K $</div>
                     </div>
                 </div>
-                <div class="story-description">Marc a investi 500€/mois pendant 4 ans. Malgré les crashes en 2022, il a continué son DCA. Aujourd'hui, son portefeuille vaut 50 000€!</div>
+                <div class="story-description">Marc a investi 500$/mois pendant 4 ans. Malgré les crashes en 2022, il a continué son DCA. Aujourd'hui, son portefeuille vaut 50 000$!</div>
                 <div class="badges">
                     <span class="badge">🔥 +10x Retour</span>
                     <span class="badge">⏱️ 4 ans</span>
@@ -13025,11 +13025,11 @@ async def success_stories():
                 <div class="story-stats">
                     <div class="stat-box">
                         <div class="stat-label">💰 DCA Mensuel</div>
-                        <div class="stat-value">1000 €</div>
+                        <div class="stat-value">1000 $</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">💎 Résultat</div>
-                        <div class="stat-value">75K €</div>
+                        <div class="stat-value">75K $</div>
                     </div>
                 </div>
                 <div class="story-description">Sophie a démarré avec plus capital. Elle a résisté à la panique en 2022 et a continué à acheter bas. Ses émotions contrôlées = succès!</div>
@@ -13050,14 +13050,14 @@ async def success_stories():
                 <div class="story-stats">
                     <div class="stat-box">
                         <div class="stat-label">💰 DCA Mensuel</div>
-                        <div class="stat-value">300 €</div>
+                        <div class="stat-value">300 $</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">💎 Résultat</div>
-                        <div class="stat-value">30K €</div>
+                        <div class="stat-value">30K $</div>
                     </div>
                 </div>
-                <div class="story-description">Jérôme a commencé en 2019 avec 300€/mois. Il n'a jamais vendu, jamais paniqué. 5 années de constance = fortune!</div>
+                <div class="story-description">Jérôme a commencé en 2019 avec 300$/mois. Il n'a jamais vendu, jamais paniqué. 5 années de constance = fortune!</div>
                 <div class="badges">
                     <span class="badge">🏆 +12x Retour</span>
                     <span class="badge">⏱️ 5 ans</span>
@@ -13075,11 +13075,11 @@ async def success_stories():
                 <div class="story-stats">
                     <div class="stat-box">
                         <div class="stat-label">💰 DCA Mensuel</div>
-                        <div class="stat-value">750 €</div>
+                        <div class="stat-value">750 $</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">💎 Résultat</div>
-                        <div class="stat-value">65K €</div>
+                        <div class="stat-value">65K $</div>
                     </div>
                 </div>
                 <div class="story-description">Julie a augmenté son DCA quand le prix baissait. Elle a utilisé le risque à son avantage. Résultat: rendements exceptionnels!</div>
@@ -13100,11 +13100,11 @@ async def success_stories():
                 <div class="story-stats">
                     <div class="stat-box">
                         <div class="stat-label">💰 DCA Mensuel</div>
-                        <div class="stat-value">600 €</div>
+                        <div class="stat-value">600 $</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">💎 Résultat</div>
-                        <div class="stat-value">55K €</div>
+                        <div class="stat-value">55K $</div>
                     </div>
                 </div>
                 <div class="story-description">Antoine a suivi le plan. Pas d'émotions, pas de FOMO, pas de panique. Juste DCA régulier. La patience paie toujours!</div>
@@ -13123,7 +13123,7 @@ async def success_stories():
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
                     <h3>2020 - Les Débuts</h3>
-                    <p>Marc commence son DCA à 500€/mois. Bitcoin = 10 000€. Il achète 0.05 BTC.</p>
+                    <p>Marc commence son DCA à 500$/mois. Bitcoin = 10 000$. Il achète 0.05 BTC.</p>
                 </div>
             </div>
             
@@ -13131,7 +13131,7 @@ async def success_stories():
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
                     <h3>2021 - Bull Run</h3>
-                    <p>Bitcoin monte à 60 000€. Marc continue son DCA. Son portefeuille vaut 15 000€.</p>
+                    <p>Bitcoin monte à 60 000$. Marc continue son DCA. Son portefeuille vaut 15 000$.</p>
                 </div>
             </div>
             
@@ -13139,7 +13139,7 @@ async def success_stories():
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
                     <h3>2022 - Le Crash (Test d'émotions)</h3>
-                    <p>Bitcoin chute à 20 000€. Marc ne vend PAS! Il CONTINUE son DCA. Achète plus de BTC!</p>
+                    <p>Bitcoin chute à 20 000$. Marc ne vend PAS! Il CONTINUE son DCA. Achète plus de BTC!</p>
                 </div>
             </div>
             
@@ -13147,7 +13147,7 @@ async def success_stories():
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
                     <h3>2023 - La Récupération</h3>
-                    <p>Bitcoin remonte à 40 000€. Marc a accumulé 1.5 BTC. Son portefeuille = 60 000€.</p>
+                    <p>Bitcoin remonte à 40 000$. Marc a accumulé 1.5 BTC. Son portefeuille = 60 000$.</p>
                 </div>
             </div>
             
@@ -13155,7 +13155,7 @@ async def success_stories():
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
                     <h3>2024 - Le Succès</h3>
-                    <p>Bitcoin à 65 000€. Marc possède 2.5 BTC = 162 500€. DCA total investi = 24 000€. ROI = +575%!</p>
+                    <p>Bitcoin à 65 000$. Marc possède 2.5 BTC = 162 500$. DCA total investi = 24 000$. ROI = +575%!</p>
                 </div>
             </div>
         </div>
@@ -14417,7 +14417,7 @@ if __name__ == "__main__":
     print("="*70)
     print("🌟 SUCCESS STORIES (NOUVEAU!):")
     print("  • 5 histoires vraies de DCA réussies")
-    print("  • Cas: Marc (500€/mois = 50K€ en 4 ans)")
+    print("  • Cas: Marc (500$/mois = 50K$ en 4 ans)")
     print("  • Timeline interactive 2020-2024")
     print("  • Badges de réussite & statistiques")
     print("  • Inspiration & motivation pour vos investissements")

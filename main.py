@@ -3658,6 +3658,10 @@ async def spot_trading_page():
             const container = document.getElementById('heatmapContainer');
             const months = 60;
             
+            // Calculer la date de début (aujourd'hui)
+            const startDate = new Date();
+            const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+            
             // Génération de prix réalistes avec volatilité
             const prices = [];
             for (let i = 0; i < months; i++) {
@@ -3691,6 +3695,13 @@ async def spot_trading_page():
                     border: 2px solid rgba(0,0,0,0.2);
                     position: relative;
                 `;
+                
+                // Calculer la date du mois
+                const monthDate = new Date(startDate);
+                monthDate.setMonth(monthDate.getMonth() + index);
+                const monthName = monthNames[monthDate.getMonth()];
+                const year = monthDate.getFullYear();
+                const dateStr = `${monthName} ${year}`;
                 
                 // Déterminer la couleur selon le prix
                 let color = '#eab308'; // Neutre par défaut
@@ -3749,8 +3760,8 @@ async def spot_trading_page():
                     `;
                     
                     popup.innerHTML = `
-                        <strong>Mois ${index + 1}</strong><br/>
-                        Prix: $${Math.round(price)}<br/>
+                        <strong>Mois ${index + 1} - ${dateStr}</strong><br/>
+                        Prix: $${Math.round(price).toLocaleString()}<br/>
                         <span style="color: ${color}; font-weight: bold;">${action}</span>
                     `;
                     
@@ -3769,7 +3780,7 @@ async def spot_trading_page():
                 
                 // Aussi clickable pour afficher l'info
                 cell.addEventListener('click', function() {
-                    alert(`MOIS ${index + 1}\n\nPrix: $${Math.round(price)}\nAction: ${action}`);
+                    alert(`MOIS ${index + 1} - ${dateStr}\n\nPrix: $${Math.round(price).toLocaleString()}\nAction: ${action}`);
                 });
                 
                 container.appendChild(cell);

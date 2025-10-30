@@ -12484,21 +12484,23 @@ async def stats_dashboard():
         .nav {{
             background: rgba(0,0,0,0.5);
             border-bottom: 2px solid #00ff88;
-            padding: 12px;
+            padding: 8px 4px;
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 10px;
+            gap: 4px;
             position: sticky;
             top: 0;
             z-index: 100;
+            max-height: auto;
+            overflow-y: auto;
         }}
         .nav a {{
             color: #fff;
             text-decoration: none;
-            padding: 8px 14px;
-            border-radius: 6px;
-            font-size: 0.9em;
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-size: 0.75em;
             white-space: nowrap;
             border: 1px solid transparent;
         }}
@@ -12587,13 +12589,26 @@ async def stats_dashboard():
         <a href="/fear-greed">😱 Fear&Greed</a>
         <a href="/dominance">👑 Dominance</a>
         <a href="/altcoin-season">🌟 Altcoin</a>
-        <a href="/spot-trading">💎 Spot</a>
+        <a href="/heatmap">🔥 Heatmap</a>
         <a href="/strategie">📚 Stratégie</a>
+        <a href="/spot-trading">💎 Spot</a>
+        <a href="/calculatrice">🧮 Calc</a>
+        <a href="/nouvelles">📰 Nouvelles</a>
+        <a href="/trades">📊 Trades</a>
+        <a href="/risk-management">⚖️ Risk</a>
+        <a href="/watchlist">👀 Watchlist</a>
+        <a href="/ai-assistant">🤖 AI</a>
         <a href="/ai-opportunity-scanner">🎯 Scanner</a>
+        <a href="/ai-market-regime">🌊 Regime</a>
         <a href="/ai-whale-watcher">🐋 Whale</a>
         <a href="/stats-dashboard" class="active">$ Stats $</a>
         <a href="/market-simulation">📈 Simulation</a>
         <a href="/success-stories">🌟 Stories</a>
+        <a href="/convertisseur">💱 Convertir</a>
+        <a href="/calendrier">📅 Calendrier</a>
+        <a href="/bullrun-phase">🚀 Bullrun</a>
+        <a href="/graphiques">📈 Graphiques</a>
+        <a href="/telegram-test">📱 Telegram</a>
     </div>
 
     <div class="container">

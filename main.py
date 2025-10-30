@@ -50,18 +50,92 @@ http_client = httpx.AsyncClient(timeout=30.0)
 # ============================================================================
 
 async def calculate_altcoin_season_index():
-    """Calcule l'indice Altcoin Season RÉEL (0-100) depuis CoinGecko API"""
+    """
+    🔥 ALTCOIN SEASON INDEX - VRAIES DONNÉES EN TEMPS RÉEL
+    Formule: (Alt Market Cap / BTC Market Cap) × Facteurs
+    Source: CoinGecko API
+    """
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
+            # Récupérer données globales
             gr = await client.get('https://api.coingecko.com/api/v3/global')
             gd = gr.json()['data']
-            mr = await client.get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=24h,7d,90d')
-            md = mr.json()
-            btcd = gd.get('market_cap_percentage', {}).get('btc', 40)
-            ethd = gd.get('market_cap_percentage', {}).get('eth', 20)
-            otd = 100 - btcd - ethd
-            btc_data = next((c for c in md if c['symbol'].lower() == 'btc'), None)
-            if not btc_data: return generate_fallback_altcoin_data()
+            
+            # Récupérer top 300 cryptos (2 pages de 250)
+            mr1 = await client.get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=true&price_change_percentage=24h,7d,90d')
+            md1 = mr1.json()
+            
+            mr2 = await client.get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=2&sparkline=true&price_change_percentage=24h,7d,90d')
+            md2 = mr2.json()
+            
+            all_cryptos = md1 + md2
+            
+            # Extraire BTC et ETH
+            btc_data = next((c for c in all_cryptos if c['symbol'].lower() == 'btc'), None)
+            eth_data = next((c for c in all_cryptos if c['symbol'].lower() == 'eth'), None)
+            if not btc_data or not eth_data: return generate_fallback_altcoin_data()
+            
+            # Market caps
+            btc_mc = btc_data.get('market_cap', 0) or 0
+            eth_mc = eth_data.get('market_cap', 0) or 0
+            alt_mc = sum(c.get('market_cap', 0) or 0 for c in all_cryptos if c['symbol'].lower() not in ['btc', 'eth'])
+            
+            # FORMULE PRINCIPALE: (Alt MC / BTC MC) × 50
+            alt_btc_ratio = (alt_mc / btc_mc * 50) if btc_mc > 0 else 50
+            base_idx = min(100, alt_btc_ratio)
+            
+            # Dominance BTC
+            btcd = gd.get('market_cap_percentage', {}).get('btc', 50)
+            ethd = gd.get('market_cap_percentage', {}).get('eth', 15)
+            
+            # Ajustement dominance
+            dom_factor = (100 - btcd) / 2
+            idx = (base_idx * 0.6) + (dom_factor * 0.4)
+            
+            # Altcoins > BTC
+            btc7d = btc_data.get('price_change_percentage_7d_in_currency', 0) or 0
+            alts_win = sum(1 for c in all_cryptos[2:] if c.get('price_change_percentage_7d_in_currency', 0) or 0 > btc7d)
+            alt_pct = (alts_win / (len(all_cryptos) - 2) * 100) if len(all_cryptos) > 2 else 0
+            
+            # Momentum
+            if alt_pct > 70: mom_boost, mom = 15, "🚀 EXPLOSIF!"
+            elif alt_pct > 50: mom_boost, mom = 10, "🔥 HOT"
+            elif alt_pct > 40: mom_boost, mom = 5, "⚡ ACTIF"
+            else: mom_boost, mom = 0, "😴 FAIBLE"
+            
+            final_idx = max(0, min(100, idx + mom_boost))
+            
+            # Phase
+            if final_idx > 70: phase, desc = "🔥 ALTCOIN SEASON", "Les altcoins EXPLOSENT"
+            elif final_idx > 50: phase, desc = "📈 ROTATION VERS ALTS", "Bonne performance altcoins"
+            elif final_idx > 30: phase, desc = "⚖️ ÉQUILIBRE", "Marché mixte BTC/Alts"
+            else: phase, desc = "❄️ BITCOIN SEASON", "Bitcoin domine"
+            
+            btc24h = btc_data.get('price_change_percentage_24h', 0) or 0
+            btc90d = btc_data.get('price_change_percentage_90d_in_currency', 0) or 0
+            
+            print(f"✅ ALTCOIN INDEX: {final_idx:.1f} | {phase} | Alt/BTC: {alt_btc_ratio:.1f}")
+            
+            return {
+                "index": round(final_idx, 1),
+                "phase": phase,
+                "description": desc,
+                "alts_winning": alts_win,
+                "momentum": mom,
+                "btc_dominance": round(btcd, 2),
+                "eth_dominance": round(ethd, 2),
+                "alt_market_cap_billions": round(alt_mc/1e9, 2),
+                "btc_market_cap_billions": round(btc_mc/1e9, 2),
+                "alt_btc_ratio": round(alt_btc_ratio, 2),
+                "btc_change_24h": round(btc24h, 2),
+                "btc_change_90d": round(btc90d, 2),
+                "status": "success",
+                "source": "CoinGecko Real-time",
+                "timestamp": datetime.now().isoformat()
+            }
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        return generate_fallback_altcoin_data()
             btc90 = btc_data.get('price_change_percentage_90d_in_currency', 0) or 0
             btc7 = btc_data.get('price_change_percentage_7d_in_currency', 0) or 0
             alts_win = sum(1 for c in md[2:] if c.get('price_change_percentage_7d_in_currency', 0) > btc7)
@@ -4124,7 +4198,7 @@ async def ai_whale_watcher():
             }
             
             .whale-transaction {
-                background: white;
+    background: white;
                 border-radius: 10px;
                 padding: 20px;
                 margin-bottom: 15px;
@@ -7998,7 +8072,7 @@ async def bullrun_page():
                     <div class="indicator-label">💠 Ethereum Dominance</div>
                     <div class="indicator-value" style="color: #818cf8;">
                         ${indicators.eth_dominance}%
-                        </div>
+                    </div>
                     <div class="indicator-change">
                         ${indicators.eth_dominance > 15 ? '📈 Fort' : '➡️ Normal'}
                     </div>

@@ -370,58 +370,142 @@ async def strategie_page():
                     <span class="level-badge level2">NIVEAU 2</span>
                     <h2><span class="emoji">⚙️</span> PRÉPARER LE TRADE</h2>
                     
-                    <h3>Paramètres optimisés pour 1H</h3>
+                    <h3>🎯 Quel timeframe choisir ?</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                        <div class="box success" style="border-left: 5px solid #667eea;">
+                            <h4 style="color: #667eea;">✅ CHOISIS 1H SI :</h4>
+                            <ul style="margin-top: 10px;">
+                                <li>📱 Tu as un job à temps plein</li>
+                                <li>😌 Tu préfères moins de stress</li>
+                                <li>💼 Tu peux vérifier toutes les 1-2h</li>
+                                <li>🎯 Tu veux des trades de qualité (26-43/semaine)</li>
+                                <li>💎 Tu vises des profits plus larges (2.5-8R)</li>
+                                <li>⏰ Parfait pour débutants</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="box warning" style="border-left: 5px solid #00d084;">
+                            <h4 style="color: #00d084;">⚡ CHOISIS 15MIN SI :</h4>
+                            <ul style="margin-top: 10px;">
+                                <li>💻 Tu peux surveiller constamment</li>
+                                <li>🚀 Tu aimes l'action et la vitesse</li>
+                                <li>👀 Tu es devant ton écran toute la journée</li>
+                                <li>⚡ Tu veux plus de signaux (80-150/semaine)</li>
+                                <li>🎲 Tu es discipliné et expérimenté</li>
+                                <li>⚠️ Attention : Plus stressant !</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="box" style="background: linear-gradient(135deg, #ffa50215 0%, #ff851515 100%); border-left: 5px solid #ffa502;">
+                        <h4>💡 CONSEIL D'EXPERT :</h4>
+                        <p><strong>Commence TOUJOURS par le 1H pour apprendre la stratégie.</strong> Une fois que tu maîtrises le 1H avec un winrate de 70%+, tu peux essayer le 15min. Ne fais pas l'erreur de commencer par le 15min - tu vas te brûler !</p>
+                    </div>
+                    
+                    <h3>⏱️ Paramètres optimisés : 1H vs 15min</h3>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                        <div class="box" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 5px solid #667eea;">
+                            <h4 style="color: #667eea; margin-bottom: 15px;">⏰ TIMEFRAME 1H (SWING)</h4>
+                            <p><strong>🎯 Profil :</strong> Trader patient, moins de stress</p>
+                            <p><strong>⏳ Surveillance :</strong> Toutes les 1-2 heures</p>
+                            <p><strong>📊 Signaux/semaine :</strong> 26-43 signaux</p>
+                            <p><strong>💡 Idéal pour :</strong> Job à temps plein</p>
+                        </div>
+                        
+                        <div class="box" style="background: linear-gradient(135deg, #00d08415 0%, #00b86f15 100%); border-left: 5px solid #00d084;">
+                            <h4 style="color: #00d084; margin-bottom: 15px;">⚡ TIMEFRAME 15MIN (SCALP)</h4>
+                            <p><strong>🎯 Profil :</strong> Trader actif, réactif</p>
+                            <p><strong>⏳ Surveillance :</strong> Constante (15-30 min)</p>
+                            <p><strong>📊 Signaux/semaine :</strong> 80-150 signaux</p>
+                            <p><strong>💡 Idéal pour :</strong> Trader à plein temps</p>
+                        </div>
+                    </div>
+                    
                     <table>
                         <tr>
                             <th>PARAMÈTRE</th>
-                            <th>VALEUR</th>
+                            <th style="background: #667eea;">⏰ 1H</th>
+                            <th style="background: #00d084;">⚡ 15MIN</th>
                             <th>RAISON</th>
                         </tr>
                         <tr>
-                            <td>EMA Short</td>
+                            <td><strong>EMA Short</strong></td>
                             <td>20</td>
-                            <td>Réactivité</td>
+                            <td>10</td>
+                            <td>15min = plus réactif</td>
                         </tr>
                         <tr>
-                            <td>EMA Medium</td>
+                            <td><strong>EMA Medium</strong></td>
                             <td>50</td>
-                            <td>Filtre</td>
+                            <td>25</td>
+                            <td>Filtre de tendance</td>
                         </tr>
                         <tr>
-                            <td>EMA Long</td>
+                            <td><strong>EMA Long</strong></td>
                             <td>200</td>
-                            <td>Trend long</td>
+                            <td>100</td>
+                            <td>Contexte long terme</td>
                         </tr>
                         <tr>
-                            <td>ADX Minimum</td>
+                            <td><strong>ADX Minimum</strong></td>
                             <td>23</td>
-                            <td>Tendance</td>
+                            <td>25-28</td>
+                            <td>15min = éviter le bruit</td>
                         </tr>
                         <tr>
-                            <td>TP1</td>
+                            <td><strong>TP1</strong></td>
                             <td>2.5R</td>
-                            <td>Conservateur</td>
+                            <td>1.5R</td>
+                            <td>Mouvements plus courts</td>
                         </tr>
                         <tr>
-                            <td>TP2</td>
+                            <td><strong>TP2 💎</strong></td>
                             <td>5.0R</td>
-                            <td>OPTIMAL 💎</td>
+                            <td>3.0R</td>
+                            <td>Target optimal</td>
                         </tr>
                         <tr>
-                            <td>TP3</td>
+                            <td><strong>TP3</strong></td>
                             <td>8.0R</td>
+                            <td>5.0R</td>
                             <td>Tendances fortes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Leverage</strong></td>
+                            <td>10x-15x</td>
+                            <td>10x MAX</td>
+                            <td>15min = plus risqué</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Risk/Trade</strong></td>
+                            <td>1-2%</td>
+                            <td>0.5-1%</td>
+                            <td>Plus de trades = moins de risk</td>
                         </tr>
                     </table>
                     
                     <h3>Filtres HTF - La clé du 70-80% winrate</h3>
-                    <div class="box">
-                        <strong>Tu tradés en 1H, MAIS tu vérifies TOUJOURS la 4H + Daily !</strong>
-                        <ul style="margin-top: 15px;">
-                            <li>🟢 Signal 1H + Fond vert = 4H + Daily haussiers = ✅ LONG OK</li>
-                            <li>🔴 Signal 1H + Fond rouge = 4H + Daily baissiers = ✅ SHORT OK</li>
-                            <li>⚪ Signal 1H + Pas de fond = 4H + Daily pas alignés = ❌ NO TRADE</li>
-                        </ul>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div class="box" style="border-left: 5px solid #667eea;">
+                            <h4 style="color: #667eea;">⏰ Pour 1H :</h4>
+                            <p><strong>Tu tradés en 1H, MAIS tu vérifies TOUJOURS la 4H + Daily !</strong></p>
+                            <ul style="margin-top: 10px;">
+                                <li>🟢 Signal 1H + Fond vert = 4H + Daily haussiers = ✅ LONG OK</li>
+                                <li>🔴 Signal 1H + Fond rouge = 4H + Daily baissiers = ✅ SHORT OK</li>
+                                <li>⚪ Signal 1H + Pas de fond = 4H + Daily pas alignés = ❌ NO TRADE</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="box" style="border-left: 5px solid #00d084;">
+                            <h4 style="color: #00d084;">⚡ Pour 15MIN :</h4>
+                            <p><strong>Tu tradés en 15min, MAIS tu vérifies TOUJOURS la 1H + 4H !</strong></p>
+                            <ul style="margin-top: 10px;">
+                                <li>🟢 Signal 15min + Fond vert = 1H + 4H haussiers = ✅ LONG OK</li>
+                                <li>🔴 Signal 15min + Fond rouge = 1H + 4H baissiers = ✅ SHORT OK</li>
+                                <li>⚪ Signal 15min + Pas de fond = 1H + 4H pas alignés = ❌ NO TRADE</li>
+                            </ul>
+                        </div>
                     </div>
                     
                     <h3>⏰ Meilleurs moments pour trader</h3>
@@ -442,17 +526,33 @@ async def strategie_page():
                         </ul>
                     </div>
                     
-                    <div class="box">
-                        <h4>📊 Semaine Normale avec 12 paires :</h4>
-                        <ul style="margin-top: 10px;">
-                            <li><strong>Lundi</strong> : 4-6 signaux</li>
-                            <li><strong>Mardi</strong> : 5-8 signaux</li>
-                            <li><strong>Mercredi</strong> : 6-10 signaux</li>
-                            <li><strong>Jeudi</strong> : 5-8 signaux</li>
-                            <li><strong>Vendredi</strong> : 4-7 signaux</li>
-                            <li><strong>Weekend</strong> : 2-4 signaux</li>
-                        </ul>
-                        <p style="margin-top: 15px;"><strong>📈 Total/semaine : 26-43 signaux / mois mais efficace.</strong></p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div class="box" style="border-left: 5px solid #667eea;">
+                            <h4 style="color: #667eea;">📊 Semaine Normale 1H (12 paires) :</h4>
+                            <ul style="margin-top: 10px;">
+                                <li><strong>Lundi</strong> : 4-6 signaux</li>
+                                <li><strong>Mardi</strong> : 5-8 signaux</li>
+                                <li><strong>Mercredi</strong> : 6-10 signaux</li>
+                                <li><strong>Jeudi</strong> : 5-8 signaux</li>
+                                <li><strong>Vendredi</strong> : 4-7 signaux</li>
+                                <li><strong>Weekend</strong> : 2-4 signaux</li>
+                            </ul>
+                            <p style="margin-top: 15px;"><strong>📈 Total/semaine : 26-43 signaux efficaces</strong></p>
+                        </div>
+                        
+                        <div class="box success" style="border-left: 5px solid #00d084;">
+                            <h4 style="color: #00d084;">📊 Semaine Normale 15MIN (12 paires) :</h4>
+                            <ul style="margin-top: 10px;">
+                                <li><strong>Lundi</strong> : 12-20 signaux</li>
+                                <li><strong>Mardi</strong> : 15-25 signaux</li>
+                                <li><strong>Mercredi</strong> : 18-30 signaux</li>
+                                <li><strong>Jeudi</strong> : 15-25 signaux</li>
+                                <li><strong>Vendredi</strong> : 12-22 signaux</li>
+                                <li><strong>Weekend</strong> : 8-15 signaux</li>
+                            </ul>
+                            <p style="margin-top: 15px;"><strong>🚀 Total/semaine : 80-150 signaux actifs</strong></p>
+                            <p style="margin-top: 10px; color: #ff6b35;"><em>⚠️ Attention : Plus de signaux = Nécessite plus de temps et discipline</em></p>
+                        </div>
                     </div>
                     
                     <div class="box danger">

@@ -5088,19 +5088,83 @@ async def get_real_ethereum_whales():
 
 @app.get("/ai-whale-watcher", response_class=HTMLResponse)
 async def ai_whale_watcher():
-    """🐋 WHALE WATCHER AVEC VRAIES DONNÉES BLOCKCHAIN.COM"""
+    """🐋 WHALE WATCHER AVEC VRAIES DONNÉES BLOCKCHAIN.COM OU DÉMO"""
     
     # Récupérer les vraies données
     real_whales = await get_real_whale_transactions()
     
-    if real_whales:
-        whale_data_json = json.dumps(real_whales)
+    # Données de DÉMONSTRATION si l'API échoue
+    demo_whales = [
+        {
+            'txid': '3e7d4c2b9a1f...',
+            'full_txid': '3e7d4c2b9a1f5e8b1c6d4a2f9e3d1c5b7a8f9e0d1c2b3a4f5e6d7c8b9a',
+            'amount': 25.5,
+            'usd_value': 1097500,
+            'inputs': 8,
+            'outputs': 2,
+            'is_bullish': True,
+            'time_ago': '3 min ago',
+            'type': 'Accumulation'
+        },
+        {
+            'txid': '2f5a8b1c9e3d...',
+            'full_txid': '2f5a8b1c9e3d7b2a5f1e4c8d9a2b3f5e7d1c6a9b8e2f4d7a0c3b5e8f1a2d4',
+            'amount': 30.75,
+            'usd_value': 1322250,
+            'inputs': 2,
+            'outputs': 8,
+            'is_bullish': False,
+            'time_ago': '8 min ago',
+            'type': 'Distribution'
+        },
+        {
+            'txid': '1a2b3c4d5e6f...',
+            'full_txid': '1a2b3c4d5e6f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5',
+            'amount': 12.5,
+            'usd_value': 537500,
+            'inputs': 5,
+            'outputs': 1,
+            'is_bullish': True,
+            'time_ago': '12 min ago',
+            'type': 'Accumulation'
+        },
+        {
+            'txid': '7c8d9e0f1a2b...',
+            'full_txid': '7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7',
+            'amount': 18.3,
+            'usd_value': 787290,
+            'inputs': 3,
+            'outputs': 6,
+            'is_bullish': False,
+            'time_ago': '15 min ago',
+            'type': 'Distribution'
+        },
+        {
+            'txid': '5e6f7a8b9c0d...',
+            'full_txid': '5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5',
+            'amount': 22.1,
+            'usd_value': 950300,
+            'inputs': 7,
+            'outputs': 1,
+            'is_bullish': True,
+            'time_ago': '22 min ago',
+            'type': 'Accumulation'
+        }
+    ]
+    
+    if real_whales and len(real_whales) > 0:
+        whale_data = real_whales
         status_badge = "✅ VRAIES DONNÉES EN DIRECT"
         source_text = "Source: Blockchain.com API (TEMPS RÉEL)"
+        print("✅ Données Blockchain.com reçues!")
     else:
-        whale_data_json = json.dumps([])
-        status_badge = "⚠️ API Blockchain indisponible"
-        source_text = "Données de démonstration"
+        whale_data = demo_whales
+        status_badge = "⚠️ Mode DÉMONSTRATION (API unavailable)"
+        source_text = "Données de démonstration - Attendez 30s pour actualiser"
+        print("⚠️ API Blockchain indisponible - Utilisation des données de démo")
+    
+    # Convertir en JSON de manière sûre
+    whale_data_json = json.dumps(whale_data)
     
     html_content = """
     <!DOCTYPE html>
@@ -5436,11 +5500,12 @@ async def ai_whale_watcher():
         </div>
         
         <script>
-            // ✅ VRAIES DONNÉES DE BLOCKCHAIN.COM
-            const realWhaleData = """ + whale_data_json + """;
+            // ✅ DONNÉES DIRECTEMENT INTÉGRÉES EN JSON
+            window.whaleData = """ + whale_data_json + """;
+            console.log('🐋 Whale Data loaded:', JSON.parse(window.whaleData).length, 'transactions');
             
             function renderWhaleTransactions() {
-                const whaleData = JSON.parse(realWhaleData);
+                const whaleData = JSON.parse(window.whaleData);
                 const feed = document.getElementById('whaleFeed');
                 
                 if (!whaleData || whaleData.length === 0) {
@@ -5505,7 +5570,7 @@ async def ai_whale_watcher():
             }
             
             function generateTopWhales() {
-                const whaleData = JSON.parse(realWhaleData);
+                const whaleData = JSON.parse(window.whaleData);
                 
                 if (!whaleData || whaleData.length === 0) return;
                 

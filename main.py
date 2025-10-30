@@ -3357,6 +3357,67 @@ async def spot_trading_page():
                         </div>
                     </div>
                     
+                    <!-- SECTION 3: TIMELINE INTERACTIVE - HEATMAP BUYING MOMENTS -->
+                    <h3>📅 Timeline Interactive - Meilleurs Moments pour Acheter</h3>
+                    
+                    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%); border-radius: 12px; padding: 20px; margin: 20px 0; border: 2px solid #f59e0b;">
+                        <p style="margin: 0 0 15px 0; color: #92400e; font-weight: bold;">📊 Calendrier 60 mois: Quand acheter le DCA selon le marché</p>
+                        
+                        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <!-- Légende -->
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 20px; height: 20px; background: #22c55e; border-radius: 4px;"></div>
+                                    <span style="font-size: 0.9em;"><strong>ACHETEZ!</strong> (Peur)</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 20px; height: 20px; background: #eab308; border-radius: 4px;"></div>
+                                    <span style="font-size: 0.9em;"><strong>Neutre</strong> (Normal)</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 20px; height: 20px; background: #f59e0b; border-radius: 4px;"></div>
+                                    <span style="font-size: 0.9em;"><strong>Attention</strong> (Hausse)</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 20px; height: 20px; background: #ef4444; border-radius: 4px;"></div>
+                                    <span style="font-size: 0.9em;"><strong>ATTENDRE</strong> (Euphorie)</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Heatmap Calendrier -->
+                            <div id="heatmapContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(35px, 1fr)); gap: 5px; margin-bottom: 15px;">
+                                <!-- Les cellules seront générées par JavaScript -->
+                            </div>
+                        </div>
+                        
+                        <!-- Stats et Info -->
+                        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #22c55e;">
+                            <p style="margin: 0 0 8px 0; font-weight: bold; color: #065f46;">📊 Statistiques</p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                                <div>
+                                    <p style="margin: 0; color: #6b7280;">🟢 Acheter</p>
+                                    <p id="countBuy" style="margin: 0; font-weight: bold; color: #22c55e;">-</p>
+                                </div>
+                                <div>
+                                    <p style="margin: 0; color: #6b7280;">🟡 Neutre</p>
+                                    <p id="countNeutral" style="margin: 0; font-weight: bold; color: #eab308;">-</p>
+                                </div>
+                                <div>
+                                    <p style="margin: 0; color: #6b7280;">🟠 Attention</p>
+                                    <p id="countWarn" style="margin: 0; font-weight: bold; color: #f59e0b;">-</p>
+                                </div>
+                                <div>
+                                    <p style="margin: 0; color: #6b7280;">🔴 Attendre</p>
+                                    <p id="countWait" style="margin: 0; font-weight: bold; color: #ef4444;">-</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: #fef2f2; padding: 12px; border-radius: 8px; margin-top: 12px; border-left: 3px solid #ef4444; font-size: 0.9em; color: #7f1d1d;">
+                            <strong>💡 Conseil:</strong> Augmentez vos achats DCA sur les mois 🟢 VERTS! Cela maximise votre accumulation.
+                        </div>
+                    </div>
+                    
                     <h3>📋 Checklist DCA</h3>
                     
                     <div class="box warning">
@@ -3592,6 +3653,96 @@ async def spot_trading_page():
             });
         }
         
+        // FONCTION HEATMAP CALENDRIER - TIMELINE INTERACTIVE
+        function generateHeatmap() {
+            const container = document.getElementById('heatmapContainer');
+            const months = 60;
+            
+            // Génération de prix réalistes avec volatilité
+            const prices = [];
+            for (let i = 0; i < months; i++) {
+                const progress = i / (months - 1);
+                const basePrice = 50000 + (100000 - 50000) * progress;
+                const volatility = Math.sin(i * 0.3) * 15000 + Math.cos(i * 0.1) * 8000;
+                prices.push(Math.max(20000, basePrice + volatility));
+            }
+            
+            // Calculer prix min et max
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            const avgPrice = (minPrice + maxPrice) / 2;
+            
+            let countBuy = 0, countNeutral = 0, countWarn = 0, countWait = 0;
+            
+            // Générer les cellules
+            prices.forEach((price, index) => {
+                const cell = document.createElement('div');
+                cell.style.cssText = `
+                    width: 100%;
+                    aspect-ratio: 1;
+                    border-radius: 4px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 0.7em;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    border: 1px solid rgba(0,0,0,0.1);
+                `;
+                
+                // Déterminer la couleur selon le prix
+                let color = '#eab308'; // Neutre par défaut
+                let label = 'N';
+                
+                const pricePercent = (price - minPrice) / (maxPrice - minPrice);
+                
+                if (pricePercent < 0.3) {
+                    // Prix bas = ACHETER!
+                    color = '#22c55e';
+                    label = '🟢';
+                    countBuy++;
+                } else if (pricePercent < 0.5) {
+                    // Prix bas-moyen = Neutre
+                    color = '#eab308';
+                    label = '🟡';
+                    countNeutral++;
+                } else if (pricePercent < 0.75) {
+                    // Prix moyen-haut = Attention
+                    color = '#f59e0b';
+                    label = '🟠';
+                    countWarn++;
+                } else {
+                    // Prix très haut = ATTENDRE
+                    color = '#ef4444';
+                    label = '🔴';
+                    countWait++;
+                }
+                
+                cell.style.backgroundColor = color;
+                cell.textContent = label;
+                
+                // Hover effect
+                cell.addEventListener('mouseover', function() {
+                    this.style.transform = 'scale(1.2)';
+                    this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+                    this.style.zIndex = '10';
+                });
+                cell.addEventListener('mouseout', function() {
+                    this.style.transform = 'scale(1)';
+                    this.style.boxShadow = 'none';
+                });
+                
+                container.appendChild(cell);
+            });
+            
+            // Mettre à jour les stats
+            document.getElementById('countBuy').textContent = countBuy + ' mois';
+            document.getElementById('countNeutral').textContent = countNeutral + ' mois';
+            document.getElementById('countWarn').textContent = countWarn + ' mois';
+            document.getElementById('countWait').textContent = countWait + ' mois';
+        }
+        
         // FONCTION IA PROFILER SIMPLIFIÉ
         function analyzeAIProfile() {
             const horizon = document.getElementById('aiHorizon')?.value;
@@ -3613,9 +3764,10 @@ async def spot_trading_page():
             document.getElementById('aiResults').style.display = 'block';
         }
         
-        // Lancer le graphique au chargement de la page
+        // Lancer le graphique et heatmap au chargement de la page
         document.addEventListener('DOMContentLoaded', function() {
             initializeDCAComparisonChart();
+            generateHeatmap();
         });
     </script>
     </body>

@@ -2165,6 +2165,7 @@ async def spot_trading_page():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Trading SPOT - Guide Complet</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
         """ + CSS + """
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -3076,6 +3077,32 @@ async def spot_trading_page():
                         <p>Exemple: Acheter 100€ de Bitcoin chaque semaine pendant 52 semaines, peu importe le prix actuel.</p>
                     </div>
                     
+                    <!-- GRAPHIQUE COMPARATIF 3 SCÉNARIOS -->
+                    <h3>📈 Graphique Comparatif : DCA vs All-In vs Timing Parfait</h3>
+                    
+                    <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border-radius: 12px; padding: 25px; margin: 20px 0; border: 2px solid #10b981;">
+                        <p style="margin-top: 0; color: #059669; font-weight: bold;">🎯 Comparaison sur 60 mois d'investissement crypto</p>
+                        
+                        <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px;">
+                            <canvas id="dcaComparisonChart" style="max-height: 400px;"></canvas>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                            <div style="background: #dcfce7; padding: 12px; border-radius: 8px; border-left: 4px solid #22c55e;">
+                                <p style="margin: 0 0 8px 0; font-weight: bold; color: #15803d;">🟢 DCA Régulier</p>
+                                <p style="margin: 0; font-size: 0.9em; color: #166534;">Investissement mensuel régulier sans timing du marché</p>
+                            </div>
+                            <div style="background: #dbeafe; padding: 12px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                                <p style="margin: 0 0 8px 0; font-weight: bold; color: #1e40af;">🔵 All-In Jour 1</p>
+                                <p style="margin: 0; font-size: 0.9em; color: #1e3a8a;">Tout investir dès le départ (risqué mais peut être rentable)</p>
+                            </div>
+                            <div style="background: #fed7aa; padding: 12px; border-radius: 8px; border-left: 4px solid #f97316;">
+                                <p style="margin: 0 0 8px 0; font-weight: bold; color: #92400e;">🟠 Timing Parfait</p>
+                                <p style="margin: 0; font-size: 0.9em; color: #b45309;">Acheter aux plus bas (impossible en réalité)</p>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <h3>💡 Comment fonctionne le DCA?</h3>
                     
                     <div class="example-box">
@@ -3373,7 +3400,154 @@ async def spot_trading_page():
             document.getElementById('dcaProfitPercent').textContent = profitPercent.toFixed(1);
             document.getElementById('dcaResults').style.display = 'block';
         }
-    </script>
+        
+        // FONCTION GRAPHIQUE COMPARATIF 3 SCÉNARIOS
+        function initializeDCAComparisonChart() {
+            const ctx = document.getElementById('dcaComparisonChart');
+            if (!ctx) return;
+            
+            // Données réalistes pour 60 mois (5 ans)
+            const months = 60;
+            const monthlyAmount = 500; // 500$ par mois
+            const startPrice = 50000;
+            const endPrice = 100000;
+            
+            // Générer prix réaliste avec volatilité
+            const prices = [];
+            let basePrice = startPrice;
+            for (let i = 0; i < months; i++) {
+                const progress = i / (months - 1);
+                // Tendance générale + volatilité réaliste
+                const volatility = Math.sin(i * 0.3) * 10000 + Math.cos(i * 0.1) * 5000;
+                const currentPrice = startPrice + (endPrice - startPrice) * progress + volatility;
+                prices.push(Math.max(20000, currentPrice)); // Min 20k
+            }
+            
+            // SCÉNARIO 1: DCA Régulier (500$ chaque mois)
+            let dcaCumulative = 0;
+            let dcaCoins = 0;
+            const dcaData = [];
+            for (let i = 0; i < months; i++) {
+                dcaCumulative += monthlyAmount;
+                dcaCoins += monthlyAmount / prices[i];
+                dcaData.push((dcaCoins * prices[i]).toFixed(0));
+            }
+            
+            // SCÉNARIO 2: All-In au mois 1
+            const totalInvest = monthlyAmount * months;
+            let allInCoins = totalInvest / prices[0];
+            const allInData = prices.map(p => (allInCoins * p).toFixed(0));
+            
+            // SCÉNARIO 3: Timing Parfait (achète à chaque bas)
+            let perfectCoins = 0;
+            const perfectData = [];
+            for (let i = 0; i < months; i++) {
+                if (i === 0 || prices[i] < prices[i-1]) {
+                    perfectCoins += monthlyAmount / prices[i];
+                }
+                perfectData.push((perfectCoins * prices[i]).toFixed(0));
+            }
+            
+            // Labels (mois)
+            const labels = Array.from({length: months}, (_, i) => `M${i+1}`);
+            
+            // Créer le graphique Chart.js
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '🟢 DCA Régulier (500$/mois)',
+                            data: dcaData,
+                            borderColor: '#22c55e',
+                            backgroundColor: 'rgba(34, 197, 94, 0.05)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#22c55e'
+                        },
+                        {
+                            label: '🔵 All-In Jour 1',
+                            data: allInData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#3b82f6'
+                        },
+                        {
+                            label: '🟠 Timing Parfait (Impossible)',
+                            data: perfectData,
+                            borderColor: '#f97316',
+                            backgroundColor: 'rgba(249, 115, 22, 0.05)',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#f97316',
+                            borderDash: [5, 5]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 12, weight: 'bold' },
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            titleFont: { size: 13, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + parseInt(context.parsed.y).toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + (value / 1000).toFixed(0) + 'K';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Lancer le graphique au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDCAComparisonChart();
+        });
+
     </html>
     """
     return HTMLResponse(content=html_content)

@@ -3308,6 +3308,162 @@ async def spot_trading_page():
                         </div>
                     </div>
                     
+                    <!-- SECTION 2: IA PROFILER - RECOMMANDATION PERSONNALISÉE -->
+                    <h3>🤖 IA Profiler - Recommandation Personnalisée</h3>
+                    
+                    <div style="background: linear-gradient(135deg, #ede9fe 0%, #f3e8ff 100%); border-radius: 12px; padding: 25px; margin: 20px 0; border: 2px solid #c084fc;">
+                        <p style="margin-top: 0; color: #7e22ce; font-weight: bold;">🎯 Répondez à 5 questions rapides pour obtenir une recommandation IA personnalisée</p>
+                        
+                        <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px;">
+                            
+                            <!-- QUESTION 1 -->
+                            <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 8px;">
+                                <p style="margin: 0 0 10px 0; font-weight: bold; color: #111827;">1️⃣ Quel est votre horizon d'investissement?</p>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="horizon" value="short" style="margin-right: 8px;"> 
+                                        <span>Moins de 1 an (court terme)</span>
+                                    </label>
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="horizon" value="medium" style="margin-right: 8px;"> 
+                                        <span>1-3 ans (moyen terme)</span>
+                                    </label>
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="horizon" value="long" style="margin-right: 8px;" checked> 
+                                        <span>3+ ans (long terme) ⭐</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- QUESTION 2 -->
+                            <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 8px;">
+                                <p style="margin: 0 0 10px 0; font-weight: bold; color: #111827;">2️⃣ Quel est votre profil de risque?</p>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="riskProfile" value="conservative" style="margin-right: 8px;"> 
+                                        <span>Conservateur (Je dors bien la nuit 😴)</span>
+                                    </label>
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="riskProfile" value="balanced" style="margin-right: 8px;" checked> 
+                                        <span>Équilibré (Risque/Profit moyen) ⭐</span>
+                                    </label>
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="riskProfile" value="aggressive" style="margin-right: 8px;"> 
+                                        <span>Agressif (Max profits!) 🚀</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- QUESTION 3 -->
+                            <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 8px;">
+                                <p style="margin: 0 0 10px 0; font-weight: bold; color: #111827;">3️⃣ Combien pouvez-vous investir par mois?</p>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="capital" value="small" style="margin-right: 8px;"> 
+                                        <span>100-500€ (petit capital)</span>
+                                    </label>
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="capital" value="medium" style="margin-right: 8px;" checked> 
+                                        <span>500-2000€ (moyen capital) ⭐</span>
+                                    </label>
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="capital" value="large" style="margin-right: 8px;"> 
+                                        <span>2000€+ (large capital)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- QUESTION 4 -->
+                            <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 8px;">
+                                <p style="margin: 0 0 10px 0; font-weight: bold; color: #111827;">4️⃣ Quelle est votre expérience en crypto?</p>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="experience" value="beginner" style="margin-right: 8px;"> 
+                                        <span>Débutant (1ère fois)</span>
+                                    </label>
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="experience" value="intermediate" style="margin-right: 8px;" checked> 
+                                        <span>Intermédiaire (6+ mois) ⭐</span>
+                                    </label>
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="experience" value="advanced" style="margin-right: 8px;"> 
+                                        <span>Avancé (2+ ans)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- QUESTION 5 -->
+                            <div style="margin-bottom: 20px; padding: 15px; background: #f3f4f6; border-radius: 8px;">
+                                <p style="margin: 0 0 10px 0; font-weight: bold; color: #111827;">5️⃣ Quel est votre objectif principal?</p>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="objective" value="safety" style="margin-right: 8px;"> 
+                                        <span>Sécurité (Protéger mon capital)</span>
+                                    </label>
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="objective" value="balanced" style="margin-right: 8px;" checked> 
+                                        <span>Équilibré (Croissance modérée) ⭐</span>
+                                    </label>
+                                    <label style="cursor: pointer; display: flex; align-items: center;">
+                                        <input type="radio" name="objective" value="growth" style="margin-right: 8px;"> 
+                                        <span>Croissance (Max retours!)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- BOUTON ANALYSE -->
+                            <button onclick="analyzeProfile()" style="width: 100%; padding: 15px; background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%); color: white; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; font-weight: bold; margin-top: 15px;">
+                                🤖 Analyser mon Profil & Obtenir Recommandations
+                            </button>
+                        </div>
+                        
+                        <!-- RÉSULTATS IA -->
+                        <div id="aiResults" style="margin-top: 20px; padding: 20px; background: white; border-radius: 8px; border-left: 5px solid #c084fc; display: none;">
+                            
+                            <!-- Score de confiance animé -->
+                            <div style="text-align: center; margin-bottom: 25px;">
+                                <p style="margin: 0 0 10px 0; font-weight: bold; color: #7e22ce; font-size: 1.05em;">Score de Confiance IA</p>
+                                <div style="width: 100%; background: #e5e7eb; height: 30px; border-radius: 15px; overflow: hidden; position: relative;">
+                                    <div id="confidenceBar" style="height: 100%; background: linear-gradient(90deg, #c084fc 0%, #a855f7 100%); width: 0%; transition: width 0.8s ease; display: flex; align-items: center; justify-content: center;">
+                                        <span id="confidencePercent" style="color: white; font-weight: bold; font-size: 0.9em;">0%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Profil détecté -->
+                            <div style="background: #f3e8ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #c084fc;">
+                                <p style="margin: 0 0 8px 0; font-weight: bold; color: #7e22ce;">📊 Votre Profil IA</p>
+                                <p id="profileType" style="margin: 0; font-size: 1.05em; font-weight: bold; color: #111827;">-</p>
+                                <p id="profileDescription" style="margin: 5px 0 0 0; font-size: 0.95em; color: #4b5563;">-</p>
+                            </div>
+                            
+                            <!-- Recommandations -->
+                            <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+                                <p style="margin: 0 0 12px 0; font-weight: bold; color: #065f46;">💡 Recommandations Personnalisées</p>
+                                <div id="recommendations" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                                    <div style="background: white; padding: 12px; border-radius: 6px; border-left: 3px solid #10b981;">
+                                        <p style="margin: 0 0 5px 0; font-size: 0.85em; color: #6b7280;">Montant/Mois Optimal</p>
+                                        <p id="recAmount" style="margin: 0; font-weight: bold; font-size: 1.1em; color: #10b981;">-</p>
+                                    </div>
+                                    <div style="background: white; padding: 12px; border-radius: 6px; border-left: 3px solid #10b981;">
+                                        <p style="margin: 0 0 5px 0; font-size: 0.85em; color: #6b7280;">Fréquence</p>
+                                        <p id="recFrequency" style="margin: 0; font-weight: bold; font-size: 1.1em; color: #10b981;">-</p>
+                                    </div>
+                                    <div style="background: white; padding: 12px; border-radius: 6px; border-left: 3px solid #10b981; grid-column: 1/-1;">
+                                        <p style="margin: 0 0 5px 0; font-size: 0.85em; color: #6b7280;">Allocation BTC/ETH/Alts</p>
+                                        <p id="recAllocation" style="margin: 0; font-weight: bold; font-size: 1em; color: #10b981;">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Conseil final -->
+                            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                                <p style="margin: 0 0 8px 0; font-weight: bold; color: #d97706;">🎯 Conseil Final</p>
+                                <p id="finalAdvice" style="margin: 0; color: #92400e; line-height: 1.5;">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <h3>📋 Checklist DCA</h3>
                     
                     <div class="box warning">
@@ -3541,6 +3697,109 @@ async def spot_trading_page():
                     }
                 }
             });
+        }
+        
+        // FONCTION ANALYSE PROFIL IA
+        function analyzeProfile() {
+            // Récupérer les réponses
+            const horizon = document.querySelector('input[name="horizon"]:checked')?.value;
+            const riskProfile = document.querySelector('input[name="riskProfile"]:checked')?.value;
+            const capital = document.querySelector('input[name="capital"]:checked')?.value;
+            const experience = document.querySelector('input[name="experience"]:checked')?.value;
+            const objective = document.querySelector('input[name="objective"]:checked')?.value;
+            
+            if (!horizon || !riskProfile || !capital || !experience || !objective) {
+                alert('⚠️ Veuillez répondre à toutes les questions!');
+                return;
+            }
+            
+            // Calculer le score de confiance
+            let confidenceScore = 50; // Base 50
+            if (experience === 'advanced') confidenceScore += 20;
+            else if (experience === 'intermediate') confidenceScore += 10;
+            
+            if (horizon === 'long') confidenceScore += 15;
+            else if (horizon === 'medium') confidenceScore += 8;
+            
+            confidenceScore = Math.min(99, confidenceScore); // Max 99%
+            
+            // Animer la barre de confiance
+            animateConfidenceBar(confidenceScore);
+            
+            // Déterminer le profil
+            let profileType = '';
+            let profileDesc = '';
+            let recAmount = '';
+            let recFrequency = '';
+            let recAllocation = '';
+            let finalAdvice = '';
+            
+            // LOGIQUE PROFIL
+            if (riskProfile === 'conservative' || objective === 'safety') {
+                profileType = '🛡️ PROFIL CONSERVATEUR - Capital Sécurisé';
+                profileDesc = 'Priorité: Sécurité et stabilité. Vous préférez dormir tranquille plutôt que de maximiser les profits.';
+                
+                if (capital === 'small') recAmount = '100-200€/mois';
+                else if (capital === 'medium') recAmount = '300-500€/mois';
+                else recAmount = '500-1000€/mois';
+                
+                recFrequency = 'Hebdomadaire (vous étalez le risque)';
+                recAllocation = '60% BTC + 30% ETH + 10% Large Caps (peu d\'alts)';
+                finalAdvice = 'Continuez régulièrement, peu importe les prix. Le temps est votre allié. Ne regardez pas votre portefeuille plus d\'une fois par semaine!';
+            }
+            else if (riskProfile === 'aggressive' && objective === 'growth') {
+                profileType = '🚀 PROFIL AGRESSIF - Max Retours';
+                profileDesc = 'Priorité: Croissance maximale. Vous avez une haute tolérance au risque et cherchez les meilleures opportunités.';
+                
+                if (capital === 'small') recAmount = '300-500€/mois';
+                else if (capital === 'medium') recAmount = '1000-2000€/mois';
+                else recAmount = '2000€+/mois';
+                
+                recFrequency = 'Quotidienne ou 2x par jour (profiter des dips)';
+                recAllocation = '40% BTC + 30% ETH + 30% Mid/Small Caps (diversification)';
+                finalAdvice = 'DCA régulier + profitez des crashs pour doubler vos achats. Utilisez Fear & Greed Index pour les achats bonus. Rebalancez chaque 3 mois!';
+            }
+            else {
+                profileType = '⚖️ PROFIL ÉQUILIBRÉ - Meilleur Ratio';
+                profileDesc = 'Priorité: Équilibre entre croissance et sécurité. Vous cherchez des retours solides avec un risque maîtrisé.';
+                
+                if (capital === 'small') recAmount = '150-300€/mois';
+                else if (capital === 'medium') recAmount = '500-1000€/mois';
+                else recAmount = '1000-2000€/mois';
+                
+                recFrequency = 'Bi-hebdomadaire (2x par mois)';
+                recAllocation = '50% BTC + 30% ETH + 20% Altcoins performants';
+                finalAdvice = 'C\'est le profil IDÉAL pour DCA! Continuez de façon constante. Ajoutez 50% extra quand Fear & Greed < 30. Revoyez votre stratégie tous les 6 mois.';
+            }
+            
+            // Afficher les résultats
+            document.getElementById('profileType').textContent = profileType;
+            document.getElementById('profileDescription').textContent = profileDesc;
+            document.getElementById('recAmount').textContent = recAmount;
+            document.getElementById('recFrequency').textContent = recFrequency;
+            document.getElementById('recAllocation').textContent = recAllocation;
+            document.getElementById('finalAdvice').textContent = finalAdvice;
+            document.getElementById('aiResults').style.display = 'block';
+            
+            // Scroller vers les résultats
+            document.getElementById('aiResults').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // FONCTION ANIMATION BARRE CONFIANCE
+        function animateConfidenceBar(score) {
+            const bar = document.getElementById('confidenceBar');
+            const percent = document.getElementById('confidencePercent');
+            let current = 0;
+            
+            const interval = setInterval(() => {
+                current += score / 20;
+                if (current >= score) {
+                    current = score;
+                    clearInterval(interval);
+                }
+                bar.style.width = current + '%';
+                percent.textContent = Math.round(current) + '%';
+            }, 30);
         }
         
         // Lancer le graphique au chargement de la page

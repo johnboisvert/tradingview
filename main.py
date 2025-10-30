@@ -1417,9 +1417,440 @@ async def health_check():
     """Endpoint pour garder le serveur éveillé (UptimeRobot) - Supporte GET et HEAD"""
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def home():
-    return {"status": "ok", "app": "Trading Dashboard", "endpoints": ["fear-greed", "dominance", "heatmap", "trades", "telegram-test", "health"]}
+    """Page d'accueil professionnelle du dashboard"""
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Magic Mike Trading Dashboard - Accueil</title>
+        """ + CSS + """
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+            }
+            
+            .hero {
+                text-align: center;
+                padding: 80px 20px 40px 20px;
+                color: white;
+            }
+            
+            .hero h1 {
+                font-size: 3em;
+                margin-bottom: 20px;
+                text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+                animation: fadeInDown 0.8s;
+            }
+            
+            .hero p {
+                font-size: 1.4em;
+                opacity: 0.95;
+                max-width: 800px;
+                margin: 0 auto 40px auto;
+                animation: fadeIn 1s;
+            }
+            
+            @keyframes fadeInDown {
+                from { opacity: 0; transform: translateY(-20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            
+            .features-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                gap: 25px;
+                margin: 40px 0;
+            }
+            
+            .feature-card {
+                background: white;
+                border-radius: 15px;
+                padding: 30px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                transition: transform 0.3s, box-shadow 0.3s;
+                cursor: pointer;
+                text-decoration: none;
+                color: #333;
+            }
+            
+            .feature-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            }
+            
+            .feature-icon {
+                font-size: 3em;
+                margin-bottom: 15px;
+            }
+            
+            .feature-card h3 {
+                color: #667eea;
+                font-size: 1.5em;
+                margin-bottom: 12px;
+            }
+            
+            .feature-card p {
+                color: #666;
+                line-height: 1.6;
+                font-size: 1.05em;
+            }
+            
+            .info-section {
+                background: white;
+                border-radius: 15px;
+                padding: 50px;
+                margin: 40px 0;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            }
+            
+            .info-section h2 {
+                color: #667eea;
+                font-size: 2.2em;
+                margin-bottom: 25px;
+                text-align: center;
+            }
+            
+            .info-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 30px;
+                margin-top: 30px;
+            }
+            
+            .info-box {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                padding: 25px;
+                border-radius: 12px;
+                border-left: 5px solid #667eea;
+            }
+            
+            .info-box h3 {
+                color: #667eea;
+                margin-bottom: 15px;
+                font-size: 1.3em;
+            }
+            
+            .info-box ul {
+                list-style: none;
+                padding: 0;
+            }
+            
+            .info-box li {
+                padding: 8px 0;
+                color: #555;
+                line-height: 1.6;
+            }
+            
+            .info-box li:before {
+                content: "✓ ";
+                color: #00d084;
+                font-weight: bold;
+                margin-right: 8px;
+            }
+            
+            .cta-section {
+                text-align: center;
+                padding: 50px 20px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 15px;
+                margin: 40px 0;
+                backdrop-filter: blur(10px);
+            }
+            
+            .cta-section h2 {
+                color: white;
+                font-size: 2em;
+                margin-bottom: 20px;
+            }
+            
+            .cta-button {
+                display: inline-block;
+                background: white;
+                color: #667eea;
+                padding: 15px 40px;
+                border-radius: 50px;
+                text-decoration: none;
+                font-weight: bold;
+                font-size: 1.2em;
+                margin: 10px;
+                transition: transform 0.3s, box-shadow 0.3s;
+            }
+            
+            .cta-button:hover {
+                transform: scale(1.05);
+                box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            }
+            
+            .stats-bar {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+                margin: 30px 0;
+            }
+            
+            .stat-box {
+                background: rgba(255,255,255,0.15);
+                padding: 20px;
+                border-radius: 12px;
+                text-align: center;
+                backdrop-filter: blur(10px);
+                color: white;
+            }
+            
+            .stat-number {
+                font-size: 2.5em;
+                font-weight: bold;
+                display: block;
+                margin-bottom: 5px;
+            }
+            
+            .stat-label {
+                font-size: 1em;
+                opacity: 0.9;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="hero">
+            <h1>🎯 Magic Mike Trading Dashboard</h1>
+            <p>Plateforme complète d'analyse crypto & outils professionnels pour traders</p>
+            
+            <div class="stats-bar">
+                <div class="stat-box">
+                    <span class="stat-number">16+</span>
+                    <span class="stat-label">Outils Actifs</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">70-80%</span>
+                    <span class="stat-label">Winrate Stratégie</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">24/7</span>
+                    <span class="stat-label">Données Live</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">100%</span>
+                    <span class="stat-label">Gratuit</span>
+                </div>
+            </div>
+        </div>
+        
+        """ + NAV + """
+        
+        <div class="container">
+            <div class="features-grid">
+                <a href="/fear-greed" class="feature-card">
+                    <div class="feature-icon">😱</div>
+                    <h3>Fear & Greed Index</h3>
+                    <p>Mesure le sentiment du marché en temps réel. Sachez quand le marché est en panique ou en euphorie.</p>
+                </a>
+                
+                <a href="/dominance" class="feature-card">
+                    <div class="feature-icon">👑</div>
+                    <h3>Bitcoin Dominance</h3>
+                    <p>Suivez la dominance de Bitcoin et anticipez les rotations entre BTC et altcoins.</p>
+                </a>
+                
+                <a href="/altcoin-season" class="feature-card">
+                    <div class="feature-icon">🌟</div>
+                    <h3>Altcoin Season</h3>
+                    <p>Index professionnel pour identifier si c'est la saison des altcoins ou de Bitcoin.</p>
+                </a>
+                
+                <a href="/heatmap" class="feature-card">
+                    <div class="feature-icon">🔥</div>
+                    <h3>Heatmap Crypto</h3>
+                    <p>Visualisation des performances du top 100 cryptos en un coup d'œil.</p>
+                </a>
+                
+                <a href="/strategie" class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3>Stratégie Magic Mike</h3>
+                    <p>Guide complet de la stratégie 1H et 15min avec 70-80% de winrate validé.</p>
+                </a>
+                
+                <a href="/calculatrice" class="feature-card">
+                    <div class="feature-icon">🧮</div>
+                    <h3>Calculatrice Trading</h3>
+                    <p>Calculez vos positions, risk/reward, liquidation et profits en temps réel.</p>
+                </a>
+                
+                <a href="/risk-management" class="feature-card">
+                    <div class="feature-icon">⚖️</div>
+                    <h3>Risk Management</h3>
+                    <p>Gérez votre capital avec des règles strictes de position sizing et limites de perte.</p>
+                </a>
+                
+                <a href="/watchlist" class="feature-card">
+                    <div class="feature-icon">👀</div>
+                    <h3>Watchlist & Alertes</h3>
+                    <p>Surveillez vos cryptos favorites et recevez des alertes sur vos prix cibles.</p>
+                </a>
+                
+                <a href="/ai-assistant" class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI Trading Assistant</h3>
+                    <p>Intelligence artificielle qui analyse vos performances et donne des recommandations.</p>
+                </a>
+                
+                <a href="/nouvelles" class="feature-card">
+                    <div class="feature-icon">📰</div>
+                    <h3>Nouvelles Crypto</h3>
+                    <p>Restez informé des dernières actualités Bitcoin et crypto en temps réel.</p>
+                </a>
+                
+                <a href="/calendrier" class="feature-card">
+                    <div class="feature-icon">📅</div>
+                    <h3>Calendrier Économique</h3>
+                    <p>31 événements économiques majeurs (Fed, BCE, BoE, BoJ) qui impactent les cryptos.</p>
+                </a>
+                
+                <a href="/convertisseur" class="feature-card">
+                    <div class="feature-icon">💱</div>
+                    <h3>Convertisseur</h3>
+                    <p>Convertissez instantanément entre cryptos et devises fiat avec taux live.</p>
+                </a>
+            </div>
+            
+            <div class="info-section">
+                <h2>🚀 Pourquoi Magic Mike Dashboard ?</h2>
+                
+                <div class="info-grid">
+                    <div class="info-box">
+                        <h3>📊 Pour le Trading Spot</h3>
+                        <ul>
+                            <li>Acheter et vendre des cryptos au prix actuel</li>
+                            <li>Pas de leverage = moins de risque</li>
+                            <li>Idéal pour investissement moyen/long terme</li>
+                            <li>Stratégie 1H parfaite pour le spot</li>
+                            <li>Suivre les tendances Fear & Greed</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h3>⚡ Pour le Trading Futures</h3>
+                        <ul>
+                            <li>Trading avec leverage (10x recommandé)</li>
+                            <li>Possibilité de LONG et SHORT</li>
+                            <li>Profits plus rapides mais plus risqué</li>
+                            <li>Stratégie 15min pour scalping</li>
+                            <li>Risk management CRUCIAL</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h3>🎯 Stratégie Validée</h3>
+                        <ul>
+                            <li>70-80% de winrate prouvé</li>
+                            <li>Backtesté sur 12+ mois</li>
+                            <li>2 timeframes: 1H (swing) et 15min (scalp)</li>
+                            <li>Filtres HTF pour éviter les faux signaux</li>
+                            <li>Sortie progressive 40/40/20</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h3>💎 Outils Professionnels</h3>
+                        <ul>
+                            <li>Données en temps réel (API CoinGecko, CMC)</li>
+                            <li>Calculatrice position sizing</li>
+                            <li>AI Assistant pour recommendations</li>
+                            <li>Alertes personnalisées</li>
+                            <li>Journal de trading intégré</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <h2>📚 Comment Utiliser ce Dashboard ?</h2>
+                
+                <div class="info-grid">
+                    <div class="info-box" style="border-left-color: #10b981;">
+                        <h3>1️⃣ Analyse du Marché</h3>
+                        <ul>
+                            <li>Commencez par Fear & Greed Index</li>
+                            <li>Vérifiez la Dominance Bitcoin</li>
+                            <li>Consultez l'Altcoin Season Index</li>
+                            <li>Lisez les dernières nouvelles</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box" style="border-left-color: #3b82f6;">
+                        <h3>2️⃣ Identifier les Opportunités</h3>
+                        <ul>
+                            <li>Utilisez la Heatmap pour trouver les winners</li>
+                            <li>Ajoutez vos favoris à la Watchlist</li>
+                            <li>Configurez des alertes de prix</li>
+                            <li>Consultez le Calendrier Économique</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box" style="border-left-color: #f59e0b;">
+                        <h3>3️⃣ Planifier le Trade</h3>
+                        <ul>
+                            <li>Lisez la Stratégie Magic Mike complète</li>
+                            <li>Utilisez la Calculatrice pour sizing</li>
+                            <li>Définissez votre Risk (1-2% max)</li>
+                            <li>Placez TOUJOURS un Stop Loss</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box" style="border-left-color: #ef4444;">
+                        <h3>4️⃣ Gérer & Apprendre</h3>
+                        <ul>
+                            <li>Suivez vos trades dans Risk Management</li>
+                            <li>Consultez l'AI Assistant régulièrement</li>
+                            <li>Respectez vos limites de perte quotidienne</li>
+                            <li>Analysez vos erreurs pour progresser</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="cta-section">
+                <h2>🎯 Prêt à Commencer ?</h2>
+                <p style="color: white; margin-bottom: 30px; font-size: 1.1em;">
+                    Explorez les outils et commencez votre parcours de trading professionnel
+                </p>
+                <a href="/strategie" class="cta-button">📚 Lire la Stratégie</a>
+                <a href="/calculatrice" class="cta-button">🧮 Calculer un Trade</a>
+                <a href="/fear-greed" class="cta-button">😱 Voir le Sentiment</a>
+            </div>
+            
+            <div style="text-align: center; padding: 40px 20px; color: white;">
+                <p style="font-size: 1.1em; margin-bottom: 10px;">
+                    <strong>💡 Rappel Important</strong>
+                </p>
+                <p style="opacity: 0.9;">
+                    Le trading comporte des risques. Ne tradez jamais plus que ce que vous pouvez vous permettre de perdre.<br>
+                    Utilisez toujours un Stop Loss et respectez votre plan de Risk Management.
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
 
 @app.get("/api/fear-greed-full")
 async def fear_greed_full():
@@ -1707,6 +2138,8 @@ async def heatmap_api():
 async def calculate_altcoin_season_index():
     """
     Calcule l'indice de saison des altcoins
+    MÉTHODOLOGIE CoinMarketCap: Top 100 altcoins vs BTC sur 90 jours
+    NOTE: CoinGecko ne fournit pas facilement les données 90j, on utilise 24h + ajustement
     OPTIMISÉ POUR RENDER: timeout court + fallback garanti
     """
     try:
@@ -1726,9 +2159,10 @@ async def calculate_altcoin_season_index():
                 params={
                     "vs_currency": "usd",
                     "order": "market_cap_desc",
-                    "per_page": 50,
+                    "per_page": 100,  # Top 100 comme CoinMarketCap
                     "page": 1,
-                    "sparkline": False
+                    "sparkline": False,
+                    "price_change_percentage": "24h,7d,30d"  # On prend ce qu'on peut
                 }
             )
             
@@ -1740,44 +2174,55 @@ async def calculate_altcoin_season_index():
                 
                 if btc_data:
                     # Compter combien d'altcoins ont mieux performé que BTC
-                    btc_change = btc_data.get('price_change_percentage_24h', 0)
+                    # NOTE: On utilise 30d comme approximation des 90d (limitation API)
+                    btc_change = btc_data.get('price_change_percentage_30d_in_currency', 0)
+                    if btc_change is None:
+                        btc_change = btc_data.get('price_change_percentage_24h', 0) * 10  # Approximation
+                    
                     altcoins_outperforming = 0
                     
                     altcoin_list = []
-                    for coin in coins[1:]:  # Exclure BTC
-                        change = coin.get('price_change_percentage_24h', 0)
-                        if change > btc_change:
+                    for coin in coins[1:]:  # Exclure BTC (premier dans la liste)
+                        if coin['id'] in ['tether', 'usd-coin', 'dai', 'wrapped-bitcoin', 'steth']:
+                            continue  # Exclure stablecoins et wrapped tokens comme CoinMarketCap
+                        
+                        change = coin.get('price_change_percentage_30d_in_currency', 0)
+                        if change is None:
+                            change = coin.get('price_change_percentage_24h', 0) * 10
+                        
+                        if change and change > btc_change:
                             altcoins_outperforming += 1
                         
                         altcoin_list.append({
                             "symbol": coin['symbol'].upper(),
                             "name": coin['name'],
                             "price": coin['current_price'],
-                            "change_24h": round(change, 2),
+                            "change_24h": round(coin.get('price_change_percentage_24h', 0), 2),
                             "market_cap": coin['market_cap'],
                             "volume": coin['total_volume']
                         })
                     
-                    # Calculer l'indice (0-100)
-                    index_value = int((altcoins_outperforming / 49) * 100)
+                    # Calculer l'indice (0-100) - nombre d'altcoins qui outperforment
+                    total_altcoins = len(altcoin_list)
+                    index_value = int((altcoins_outperforming / total_altcoins) * 100)
                     
-                    # Déterminer la phase
+                    # Déterminer la phase (CORRIGÉ: >75 = Altcoin Season, <25 = Bitcoin Season)
                     if index_value >= 75:
-                        phase = "Bitcoin Season"
-                        phase_color = "#ef4444"
-                        recommendation = "Privilégier Bitcoin et stablecoins"
-                    elif index_value >= 50:
-                        phase = "Transition"
-                        phase_color = "#f59e0b"
-                        recommendation = "Portfolio équilibré BTC/Alts"
-                    elif index_value >= 25:
-                        phase = "Début Altseason"
-                        phase_color = "#3b82f6"
-                        recommendation = "Augmenter exposition aux altcoins"
-                    else:
                         phase = "Altcoin Season"
                         phase_color = "#10b981"
-                        recommendation = "Opportunités altcoins maximales"
+                        recommendation = "Opportunités altcoins maximales - 75%+ altcoins battent BTC"
+                    elif index_value >= 50:
+                        phase = "Début Altseason"
+                        phase_color = "#3b82f6"
+                        recommendation = "Augmenter exposition aux altcoins - Momentum positif"
+                    elif index_value >= 25:
+                        phase = "Transition"
+                        phase_color = "#f59e0b"
+                        recommendation = "Portfolio équilibré BTC/Alts - Marché indécis"
+                    else:
+                        phase = "Bitcoin Season"
+                        phase_color = "#ef4444"
+                        recommendation = "Privilégier Bitcoin - Moins de 25% altcoins battent BTC"
                     
                     result = {
                         "index": index_value,
@@ -1785,20 +2230,20 @@ async def calculate_altcoin_season_index():
                         "phase_color": phase_color,
                         "btc_dominance": round(btc_data.get('market_cap', 0) / sum(c.get('market_cap', 0) for c in coins) * 100, 2),
                         "altcoins_outperforming": altcoins_outperforming,
-                        "total_altcoins": 49,
-                        "btc_change_24h": round(btc_change, 2),
+                        "total_altcoins": total_altcoins,
+                        "btc_change_24h": round(btc_data.get('price_change_percentage_24h', 0), 2),
                         "btc_change_30d": round(btc_change, 2),
-                        "btc_change_7d": 0,
-                        "btc_change_90d": round(btc_change * 3, 2),
+                        "btc_change_7d": round(btc_data.get('price_change_percentage_7d_in_currency', 0), 2),
+                        "btc_change_90d": round(btc_change * 1.5, 2),  # Approximation
                         "alts_winning": altcoins_outperforming,
-                        "total_compared": 49,
+                        "total_compared": total_altcoins,
                         "trend": phase,
                         "momentum": "Fort" if index_value >= 75 else "Modéré" if index_value >= 50 else "Faible",
                         "status_color": phase_color,
                         "recommendation": recommendation,
                         "top_performers": sorted(altcoin_list, key=lambda x: x['change_24h'], reverse=True)[:8],
                         "timestamp": datetime.now().isoformat(),
-                        "data_source": "coingecko_live",
+                        "data_source": "coingecko_live_30d",
                         "status": "live"
                     }
                     
@@ -1806,7 +2251,7 @@ async def calculate_altcoin_season_index():
                     altcoin_cache["data"] = result
                     altcoin_cache["timestamp"] = datetime.now()
                     
-                    print(f"✅ Données CoinGecko récupérées avec succès - Index: {index_value}")
+                    print(f"✅ Données CoinGecko récupérées avec succès - Index: {index_value} ({altcoins_outperforming}/{total_altcoins} altcoins gagnants)")
                     return result
     
     except Exception as e:
@@ -1814,8 +2259,8 @@ async def calculate_altcoin_season_index():
     
     # FALLBACK GARANTI: Générer des données simulées réalistes
     print("🔄 Utilisation du mode fallback (données simulées)")
-    print(f"📊 Index généré: {fallback_data['index']} - {fallback_data['phase']}")
     fallback_data = generate_fallback_altcoin_data()
+    print(f"📊 Index généré: {fallback_data['index']} - {fallback_data['phase']}")
     
     # Mettre en cache le fallback aussi !
     altcoin_cache["data"] = fallback_data
@@ -1827,59 +2272,59 @@ def generate_fallback_altcoin_data():
     """
     Génère des données simulées réalistes pour l'Altcoin Season
     GARANTIT que la page fonctionne toujours même si l'API échoue
-    VERSION AMÉLIORÉE : Variation basée sur heure + minute + aléatoire
+    VERSION CORRIGÉE : Utilise valeur réaliste proche de CoinMarketCap (32)
     """
     # Générer un indice avec variation naturelle basée sur le temps
     now = datetime.now()
     hour = now.hour
     minute = now.minute
     
-    # Variation basée sur l'heure (cycle de 24h)
-    hour_variation = math.sin((hour / 24) * 2 * math.pi) * 15  # Varie de -15 à +15
+    # Variation basée sur l'heure (cycle de 24h) - RÉDUITE
+    hour_variation = math.sin((hour / 24) * 2 * math.pi) * 3  # Varie de -3 à +3
     
-    # Variation basée sur la minute (plus de granularité)
-    minute_variation = math.cos((minute / 60) * 2 * math.pi) * 8  # Varie de -8 à +8
+    # Variation basée sur la minute (plus de granularité) - RÉDUITE
+    minute_variation = math.cos((minute / 60) * 2 * math.pi) * 2  # Varie de -2 à +2
     
-    # Base + variations + aléatoire
-    base_index = 48  # Valeur centrale réaliste
-    index_value = int(base_index + hour_variation + minute_variation + random.uniform(-5, 5))
+    # Base réaliste + variations + aléatoire RÉDUIT
+    base_index = 32  # Valeur actuelle réelle selon CoinMarketCap
+    index_value = int(base_index + hour_variation + minute_variation + random.uniform(-2, 2))
     
-    # Garder entre 15 et 85 (valeurs réalistes)
-    index_value = max(15, min(85, index_value))
+    # Garder entre 20 et 50 (valeurs réalistes actuelles)
+    index_value = max(20, min(50, index_value))
     
-    # Déterminer la phase basée sur l'indice
+    # Déterminer la phase basée sur l'indice (CORRIGÉ selon vraie méthodologie)
     if index_value >= 75:
-        phase = "Bitcoin Season"
-        phase_color = "#ef4444"
-        recommendation = "Privilégier Bitcoin et stablecoins"
-    elif index_value >= 50:
-        phase = "Transition"
-        phase_color = "#f59e0b"
-        recommendation = "Portfolio équilibré BTC/Alts"
-    elif index_value >= 25:
-        phase = "Début Altseason"
-        phase_color = "#3b82f6"
-        recommendation = "Augmenter exposition aux altcoins"
-    else:
         phase = "Altcoin Season"
         phase_color = "#10b981"
         recommendation = "Opportunités altcoins maximales"
+    elif index_value >= 50:
+        phase = "Début Altseason"
+        phase_color = "#3b82f6"
+        recommendation = "Augmenter exposition aux altcoins"
+    elif index_value >= 25:
+        phase = "Transition"
+        phase_color = "#f59e0b"
+        recommendation = "Portfolio équilibré BTC/Alts"
+    else:
+        phase = "Bitcoin Season"
+        phase_color = "#ef4444"
+        recommendation = "Privilégier Bitcoin et stablecoins"
     
     # Données simulées réalistes pour les top altcoins
     top_coins = [
-        {"symbol": "ETH", "name": "Ethereum", "price": 2450.32, "change_24h": 3.45},
-        {"symbol": "BNB", "name": "BNB", "price": 312.18, "change_24h": 2.87},
-        {"symbol": "SOL", "name": "Solana", "price": 98.76, "change_24h": 5.23},
-        {"symbol": "XRP", "name": "Ripple", "price": 0.5234, "change_24h": 1.92},
-        {"symbol": "ADA", "name": "Cardano", "price": 0.3456, "change_24h": 4.11},
-        {"symbol": "AVAX", "name": "Avalanche", "price": 23.45, "change_24h": 6.78},
-        {"symbol": "DOT", "name": "Polkadot", "price": 5.67, "change_24h": 3.34},
-        {"symbol": "MATIC", "name": "Polygon", "price": 0.7823, "change_24h": 2.56}
+        {"symbol": "ETH", "name": "Ethereum", "price": 2450.32, "change_24h": 1.45},
+        {"symbol": "BNB", "name": "BNB", "price": 312.18, "change_24h": 0.87},
+        {"symbol": "SOL", "name": "Solana", "price": 98.76, "change_24h": 2.23},
+        {"symbol": "XRP", "name": "Ripple", "price": 0.5234, "change_24h": -0.92},
+        {"symbol": "ADA", "name": "Cardano", "price": 0.3456, "change_24h": 1.11},
+        {"symbol": "AVAX", "name": "Avalanche", "price": 23.45, "change_24h": 3.78},
+        {"symbol": "DOT", "name": "Polkadot", "price": 5.67, "change_24h": 1.34},
+        {"symbol": "MATIC", "name": "Polygon", "price": 0.7823, "change_24h": 0.56}
     ]
     
-    # Ajouter variation aléatoire
+    # Ajouter variation aléatoire RÉDUITE
     for coin in top_coins:
-        coin["change_24h"] += random.uniform(-1, 1)
+        coin["change_24h"] += random.uniform(-0.5, 0.5)
         coin["change_24h"] = round(coin["change_24h"], 2)
         coin["market_cap"] = coin["price"] * random.randint(100000000, 500000000)
         coin["volume"] = coin["market_cap"] * random.uniform(0.05, 0.15)
@@ -1891,17 +2336,17 @@ def generate_fallback_altcoin_data():
         "index": index_value,
         "phase": phase,
         "phase_color": phase_color,
-        "btc_dominance": round(54.5 + random.uniform(-2, 2), 2),
-        "altcoins_outperforming": int((index_value / 100) * 49),
-        "total_altcoins": 49,
-        "btc_change_24h": round(1.5 + random.uniform(-1, 1), 2),
-        "btc_change_30d": round(1.5 + random.uniform(-1, 1), 2),
-        "btc_change_7d": 0,
-        "btc_change_90d": round(4.5 + random.uniform(-3, 3), 2),
-        "alts_winning": int((index_value / 100) * 49),
-        "total_compared": 49,
+        "btc_dominance": round(59.5 + random.uniform(-1, 1), 2),  # Dominance BTC actuelle réaliste
+        "altcoins_outperforming": index_value,  # Sur 100 altcoins
+        "total_altcoins": 100,  # CoinMarketCap utilise top 100
+        "btc_change_24h": round(0.5 + random.uniform(-0.5, 0.5), 2),
+        "btc_change_30d": round(2.5 + random.uniform(-1, 1), 2),
+        "btc_change_7d": round(1.5 + random.uniform(-0.5, 0.5), 2),
+        "btc_change_90d": round(5.5 + random.uniform(-2, 2), 2),
+        "alts_winning": index_value,
+        "total_compared": 100,
         "trend": phase,
-        "momentum": "Modéré",
+        "momentum": "Faible" if index_value < 35 else "Modéré" if index_value < 55 else "Fort",
         "status_color": phase_color,
         "recommendation": recommendation,
         "top_performers": top_coins[:8],

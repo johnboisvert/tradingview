@@ -20,6 +20,90 @@ monitor_lock = asyncio.Lock()
 monitor_running = False
 trades_db = []
 
+# ============================================================================
+# SYSTÈME DE CACHE POUR DONNÉES RÉELLES
+# ============================================================================
+class DataCache:
+    def __init__(self):
+        self.data = {}
+        self.last_update = {}
+        self.update_interval = 120  # 2 minutes
+    
+    def needs_update(self, key: str) -> bool:
+        if key not in self.last_update:
+            return True
+        elapsed = (datetime.now() - self.last_update[key]).total_seconds()
+        return elapsed >= self.update_interval
+    
+    def set(self, key: str, value):
+        self.data[key] = value
+        self.last_update[key] = datetime.now()
+    
+    def get(self, key: str, default=None):
+        return self.data.get(key, default)
+
+cache = DataCache()
+http_client = httpx.AsyncClient(timeout=30.0)
+
+# ============================================================================
+# FONCTIONS D'API - DONNÉES RÉELLES
+# ============================================================================
+
+async def get_fear_greed_real():
+    """Fear & Greed RÉEL depuis Alternative.me"""
+    try:
+        if cache.needs_update('fear_greed'):
+            response = await http_client.get('https://api.alternative.me/fng/')
+            data = response.json()
+            if 'data' in data and len(data['data']) > 0:
+                value = int(data['data'][0]['value'])
+                cache.set('fear_greed', value)
+                return value
+        return cache.get('fear_greed', 50)
+    except:
+        return cache.get('fear_greed', 50)
+
+async def get_coingecko_global_real():
+    """Données globales RÉELLES"""
+    try:
+        if cache.needs_update('global_data'):
+            response = await http_client.get('https://api.coingecko.com/api/v3/global')
+            data = response.json()['data']
+            cache.set('global_data', data)
+            return data
+        return cache.get('global_data', {})
+    except:
+        return cache.get('global_data', {})
+
+async def get_top_cryptos_real(limit=100):
+    """Top cryptos RÉELS"""
+    try:
+        cache_key = f"top_cryptos_{limit}"
+        if cache.needs_update(cache_key):
+            url = f'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page={limit}&page=1&sparkline=false&price_change_percentage=24h,7d,90d'
+            response = await http_client.get(url)
+            data = response.json()
+            cache.set(cache_key, data)
+            return data
+        return cache.get(cache_key, [])
+    except:
+        return cache.get(cache_key, [])
+
+async def get_crypto_news_real():
+    """Nouvelles RÉELLES"""
+    try:
+        if cache.needs_update('news'):
+            url = 'https://min-api.cryptocompare.com/data/v2/news/?lang=EN'
+            response = await http_client.get(url)
+            data = response.json()
+            if 'Data' in data:
+                news = data['Data'][:20]
+                cache.set('news', news)
+                return news
+        return cache.get('news', [])
+    except:
+        return cache.get('news', [])
+
 # ✅ ROUTE STRATÉGIE MAGIC MIKE COMPLÈTE (tous les 5 niveaux)
 @app.get("/strategie", response_class=HTMLResponse)
 async def strategie_page():
@@ -3694,7 +3778,7 @@ async def ai_market_regime():
                 // État réel: BULL RUN ACTIF en phase de CONSOLIDATION
                 // après ATH, avant probable continuation vers 150-200K
                 
-                const regimeValue = 68; // Début Bull Run / Consolidation
+                // Score calculé dynamiquement - voir loadRegimeData() // Début Bull Run / Consolidation
                 
                 let regime, icon, subtitle, color, recommendations;
                 
@@ -4413,38 +4497,14 @@ async def fear_greed_full():
     except Exception as e:
         print(f"❌ ERREUR: {type(e).__name__} - {e}")
     
-    print("⚠️ Retour des données fallback (34)")
-    return {"current_value": 34, "current_classification": "Fear", "historical": {"now": {"value": 34, "classification": "Fear"}}, "status": "fallback"}
+    print("⚠️ Impossible de récupérer les données Fear & Greed")
+    return {"current_value": 50, "current_classification": "Neutral", "status": "fallback"}
 
 @app.get("/api/btc-dominance")
-async def btc_dom_api():
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.get("https://api.coingecko.com/api/v3/global")
-            if r.status_code == 200:
-                d = r.json()["data"]
-                btc = round(d["market_cap_percentage"]["btc"], 2)
-                eth = round(d["market_cap_percentage"]["eth"], 2)
-                others = round(100-btc-eth, 2)
-                prev_btc = btc - random.uniform(-0.5, 0.8)
-                return {
-                    "btc_dominance": btc,
-                    "eth_dominance": eth,
-                    "others_dominance": others,
-                    "prev_btc": round(prev_btc, 2),
-                    "total_market_cap": d.get("total_market_cap", {}).get("usd", 0),
-                    "status": "success"
-                }
-    except:
-        pass
-    return {
-        "btc_dominance": 58.8,
-        "eth_dominance": 12.9,
-        "others_dominance": 28.3,
-        "prev_btc": 58.5,
-        "total_market_cap": 2800000000000,
-        "status": "fallback"
-    }
+async def api_btc_dominance():
+    data = await get_coingecko_global_real()
+    dom = data.get('market_cap_percentage', {}).get('btc', 0)
+    return {"dominance": round(dom, 2), "timestamp": datetime.now().isoformat()}
 
 @app.get("/api/btc-dominance-history")
 async def btc_dom_hist():
@@ -4481,397 +4541,16 @@ async def btc_dom_hist():
     return {"data": fallback_data, "current_value": 58.8, "status": "fallback"}
 
 @app.get("/api/heatmap")
-async def heatmap_api():
-    """API Heatmap avec fallback robuste et données réalistes"""
-    
-    print("\n" + "="*60)
-    print("🔥 API HEATMAP APPELÉE")
-    print("="*60)
-    
-    now = datetime.now()
-    
-    # Vérifier le cache
-    if heatmap_cache["data"] and heatmap_cache["timestamp"]:
-        elapsed = (now - heatmap_cache["timestamp"]).total_seconds()
-        if elapsed < heatmap_cache["cache_duration"]:
-            print(f"✅ Retour du cache (âge: {int(elapsed)}s)")
-            print("="*60)
-            return {"cryptos": heatmap_cache["data"], "status": "cached", "age": int(elapsed)}
-    
-    # Essayer l'API CoinGecko
-    try:
-        print("🌐 Tentative de connexion à CoinGecko...")
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.get(
-                "https://api.coingecko.com/api/v3/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 100,
-                    "page": 1,
-                    "sparkline": False,
-                    "price_change_percentage": "24h"
-                }
-            )
-            
-            if r.status_code == 200:
-                print("✅ Données CoinGecko reçues!")
-                data = r.json()
-                cryptos = []
-                
-                for c in data:
-                    try:
-                        cryptos.append({
-                            "symbol": c["symbol"].upper(),
-                            "name": c["name"],
-                            "price": c["current_price"] or 0,
-                            "change_24h": round(c.get("price_change_percentage_24h", 0), 2),
-                            "market_cap": c["market_cap"] or 0,
-                            "volume_24h": c.get("total_volume", 0) or 0
-                        })
-                    except Exception as e:
-                        print(f"⚠️ Erreur parsing crypto: {e}")
-                        continue
-                
-                if len(cryptos) >= 50:
-                    heatmap_cache["data"] = cryptos
-                    heatmap_cache["timestamp"] = now
-                    print(f"✅ Retour de {len(cryptos)} cryptos depuis CoinGecko")
-                    print("="*60)
-                    return {"cryptos": cryptos, "status": "success", "count": len(cryptos)}
-                else:
-                    print(f"⚠️ Pas assez de cryptos ({len(cryptos)}), utilisation du fallback")
-                    
-    except httpx.TimeoutException:
-        print("⏱️ Timeout de l'API CoinGecko")
-    except httpx.ConnectError:
-        print("🔌 Erreur de connexion à CoinGecko")
-    except Exception as e:
-        print(f"❌ Erreur CoinGecko: {type(e).__name__} - {e}")
-    
-    # Utiliser le cache existant si disponible
-    if heatmap_cache["data"] and len(heatmap_cache["data"]) >= 50:
-        elapsed = (now - heatmap_cache["timestamp"]).total_seconds()
-        print(f"⚠️ Utilisation du cache périmé (âge: {int(elapsed)}s)")
-        print("="*60)
-        return {"cryptos": heatmap_cache["data"], "status": "stale_cache", "age": int(elapsed)}
-    
-    # Fallback avec données réalistes et complètes
-    print("⚡ Génération de données fallback réalistes...")
-    
-    # Liste des top cryptos avec données réalistes
-    fallback_cryptos = [
-        # Top 10
-        {"symbol": "BTC", "name": "Bitcoin", "price": 107150.00, "change_24h": 1.32, "market_cap": 2136218033539, "volume_24h": 37480142027},
-        {"symbol": "ETH", "name": "Ethereum", "price": 3725.50, "change_24h": -0.85, "market_cap": 447986654321, "volume_24h": 18750000000},
-        {"symbol": "USDT", "name": "Tether", "price": 1.00, "change_24h": 0.01, "market_cap": 146875000000, "volume_24h": 87650000000},
-        {"symbol": "BNB", "name": "BNB", "price": 645.30, "change_24h": 2.15, "market_cap": 93420000000, "volume_24h": 2150000000},
-        {"symbol": "SOL", "name": "Solana", "price": 189.75, "change_24h": 5.67, "market_cap": 90125000000, "volume_24h": 4890000000},
-        {"symbol": "USDC", "name": "USD Coin", "price": 1.00, "change_24h": -0.02, "market_cap": 86450000000, "volume_24h": 12340000000},
-        {"symbol": "XRP", "name": "XRP", "price": 2.45, "change_24h": 3.21, "market_cap": 142560000000, "volume_24h": 5670000000},
-        {"symbol": "ADA", "name": "Cardano", "price": 1.15, "change_24h": -1.45, "market_cap": 40780000000, "volume_24h": 1890000000},
-        {"symbol": "DOGE", "name": "Dogecoin", "price": 0.38, "change_24h": 4.89, "market_cap": 56120000000, "volume_24h": 3450000000},
-        {"symbol": "TRX", "name": "TRON", "price": 0.28, "change_24h": 1.67, "market_cap": 24560000000, "volume_24h": 890000000},
-        
-        # Top 11-30
-        {"symbol": "AVAX", "name": "Avalanche", "price": 42.30, "change_24h": -2.34, "market_cap": 17890000000, "volume_24h": 670000000},
-        {"symbol": "LINK", "name": "Chainlink", "price": 23.45, "change_24h": 6.12, "market_cap": 14560000000, "volume_24h": 980000000},
-        {"symbol": "DOT", "name": "Polkadot", "price": 8.92, "change_24h": -0.78, "market_cap": 13670000000, "volume_24h": 560000000},
-        {"symbol": "MATIC", "name": "Polygon", "price": 0.65, "change_24h": 2.89, "market_cap": 12340000000, "volume_24h": 780000000},
-        {"symbol": "ATOM", "name": "Cosmos", "price": 11.23, "change_24h": -1.23, "market_cap": 4560000000, "volume_24h": 340000000},
-        {"symbol": "UNI", "name": "Uniswap", "price": 14.56, "change_24h": 3.45, "market_cap": 10980000000, "volume_24h": 450000000},
-        {"symbol": "LTC", "name": "Litecoin", "price": 105.67, "change_24h": 0.89, "market_cap": 7890000000, "volume_24h": 890000000},
-        {"symbol": "FTM", "name": "Fantom", "price": 0.98, "change_24h": 7.23, "market_cap": 2780000000, "volume_24h": 230000000},
-        {"symbol": "ALGO", "name": "Algorand", "price": 0.35, "change_24h": -3.45, "market_cap": 2890000000, "volume_24h": 180000000},
-        {"symbol": "VET", "name": "VeChain", "price": 0.045, "change_24h": 1.78, "market_cap": 3670000000, "volume_24h": 190000000},
-        {"symbol": "ICP", "name": "Internet Computer", "price": 12.34, "change_24h": -2.89, "market_cap": 5780000000, "volume_24h": 280000000},
-        {"symbol": "FIL", "name": "Filecoin", "price": 6.78, "change_24h": 4.56, "market_cap": 4560000000, "volume_24h": 340000000},
-        {"symbol": "NEAR", "name": "NEAR Protocol", "price": 5.67, "change_24h": 2.34, "market_cap": 6780000000, "volume_24h": 450000000},
-        {"symbol": "APT", "name": "Aptos", "price": 11.89, "change_24h": 5.67, "market_cap": 7890000000, "volume_24h": 560000000},
-        {"symbol": "OP", "name": "Optimism", "price": 3.45, "change_24h": -1.23, "market_cap": 4560000000, "volume_24h": 340000000},
-        {"symbol": "ARB", "name": "Arbitrum", "price": 1.89, "change_24h": 3.78, "market_cap": 8900000000, "volume_24h": 670000000},
-        {"symbol": "HBAR", "name": "Hedera", "price": 0.12, "change_24h": -0.89, "market_cap": 4230000000, "volume_24h": 230000000},
-        {"symbol": "STX", "name": "Stacks", "price": 2.34, "change_24h": 6.78, "market_cap": 3560000000, "volume_24h": 280000000},
-        {"symbol": "INJ", "name": "Injective", "price": 28.90, "change_24h": 8.90, "market_cap": 2890000000, "volume_24h": 450000000},
-        {"symbol": "SUI", "name": "Sui", "price": 4.56, "change_24h": 12.34, "market_cap": 13450000000, "volume_24h": 1230000000},
-        
-        # Top 31-50
-        {"symbol": "RUNE", "name": "THORChain", "price": 5.67, "change_24h": -2.34, "market_cap": 1890000000, "volume_24h": 120000000},
-        {"symbol": "QNT", "name": "Quant", "price": 123.45, "change_24h": 1.23, "market_cap": 1560000000, "volume_24h": 90000000},
-        {"symbol": "GRT", "name": "The Graph", "price": 0.28, "change_24h": 3.45, "market_cap": 2670000000, "volume_24h": 180000000},
-        {"symbol": "SAND", "name": "The Sandbox", "price": 0.67, "change_24h": -4.56, "market_cap": 1560000000, "volume_24h": 140000000},
-        {"symbol": "MANA", "name": "Decentraland", "price": 0.89, "change_24h": 2.34, "market_cap": 1670000000, "volume_24h": 160000000},
-        {"symbol": "AXS", "name": "Axie Infinity", "price": 8.90, "change_24h": -3.21, "market_cap": 1340000000, "volume_24h": 110000000},
-        {"symbol": "EGLD", "name": "MultiversX", "price": 45.67, "change_24h": 1.78, "market_cap": 1230000000, "volume_24h": 95000000},
-        {"symbol": "AAVE", "name": "Aave", "price": 167.89, "change_24h": 4.56, "market_cap": 2450000000, "volume_24h": 340000000},
-        {"symbol": "XTZ", "name": "Tezos", "price": 1.23, "change_24h": -1.89, "market_cap": 1170000000, "volume_24h": 87000000},
-        {"symbol": "EOS", "name": "EOS", "price": 0.89, "change_24h": 0.56, "market_cap": 1090000000, "volume_24h": 76000000},
-        {"symbol": "THETA", "name": "Theta Network", "price": 2.34, "change_24h": 5.67, "market_cap": 2340000000, "volume_24h": 145000000},
-        {"symbol": "FLR", "name": "Flare", "price": 0.034, "change_24h": -2.78, "market_cap": 1780000000, "volume_24h": 95000000},
-        {"symbol": "KAVA", "name": "Kava", "price": 0.78, "change_24h": 3.21, "market_cap": 780000000, "volume_24h": 54000000},
-        {"symbol": "CHZ", "name": "Chiliz", "price": 0.12, "change_24h": -1.45, "market_cap": 1120000000, "volume_24h": 78000000},
-        {"symbol": "ZIL", "name": "Zilliqa", "price": 0.023, "change_24h": 2.89, "market_cap": 560000000, "volume_24h": 43000000},
-        {"symbol": "ENJ", "name": "Enjin Coin", "price": 0.34, "change_24h": 1.67, "market_cap": 560000000, "volume_24h": 41000000},
-        {"symbol": "BAT", "name": "Basic Attention Token", "price": 0.45, "change_24h": -0.89, "market_cap": 670000000, "volume_24h": 52000000},
-        {"symbol": "1INCH", "name": "1inch", "price": 0.56, "change_24h": 4.23, "market_cap": 890000000, "volume_24h": 67000000},
-        {"symbol": "COMP", "name": "Compound", "price": 78.90, "change_24h": -2.34, "market_cap": 670000000, "volume_24h": 54000000},
-        {"symbol": "SNX", "name": "Synthetix", "price": 3.45, "change_24h": 5.12, "market_cap": 1120000000, "volume_24h": 89000000},
-        
-        # Bonus cryptos pour atteindre 60+
-        {"symbol": "ROSE", "name": "Oasis Network", "price": 0.12, "change_24h": 3.45, "market_cap": 780000000, "volume_24h": 45000000},
-        {"symbol": "CRV", "name": "Curve DAO", "price": 1.23, "change_24h": -1.78, "market_cap": 890000000, "volume_24h": 67000000},
-        {"symbol": "LDO", "name": "Lido DAO", "price": 2.34, "change_24h": 6.78, "market_cap": 2230000000, "volume_24h": 178000000},
-        {"symbol": "MKR", "name": "Maker", "price": 1789.00, "change_24h": 1.45, "market_cap": 1670000000, "volume_24h": 123000000},
-        {"symbol": "GALA", "name": "Gala", "price": 0.045, "change_24h": -3.21, "market_cap": 560000000, "volume_24h": 38000000},
-        {"symbol": "IMX", "name": "Immutable", "price": 2.67, "change_24h": 7.89, "market_cap": 3450000000, "volume_24h": 234000000},
-        {"symbol": "WOO", "name": "WOO Network", "price": 0.34, "change_24h": 2.34, "market_cap": 890000000, "volume_24h": 56000000},
-        {"symbol": "DYDX", "name": "dYdX", "price": 2.89, "change_24h": -2.56, "market_cap": 1120000000, "volume_24h": 87000000},
-        {"symbol": "GMX", "name": "GMX", "price": 67.89, "change_24h": 4.56, "market_cap": 670000000, "volume_24h": 78000000},
-        {"symbol": "PEPE", "name": "Pepe", "price": 0.0000198, "change_24h": 15.67, "market_cap": 8340000000, "volume_24h": 2340000000},
-    ]
-    
-    # Ajouter de la variation aléatoire pour rendre les données plus dynamiques
-    import random
-    for crypto in fallback_cryptos:
-        variation = random.uniform(-0.5, 0.5)
-        crypto["change_24h"] = round(crypto["change_24h"] + variation, 2)
-        crypto["price"] = crypto["price"] * (1 + variation/100)
-    
-    heatmap_cache["data"] = fallback_cryptos
-    heatmap_cache["timestamp"] = now
-    
-    print(f"✅ Retour de {len(fallback_cryptos)} cryptos (fallback)")
-    print("="*60)
-    
-    return {
-        "cryptos": fallback_cryptos, 
-        "status": "fallback",
-        "count": len(fallback_cryptos),
-        "message": "Données simulées - API externe indisponible"
-    }
-# ============================================================================
-# SECTION ALTCOIN SEASON - OPTIMISÉE POUR RENDER
-# =====================================================
-
-async def calculate_altcoin_season_index():
-    """
-    Calcule l'indice de saison des altcoins
-    MÉTHODOLOGIE CoinMarketCap: Top 100 altcoins vs BTC sur 90 jours
-    NOTE: CoinGecko ne fournit pas facilement les données 90j, on utilise 24h + ajustement
-    OPTIMISÉ POUR RENDER: timeout court + fallback garanti
-    """
-    try:
-        # Vérifier le cache d'abord
-        if (altcoin_cache["data"] is not None and 
-            altcoin_cache["timestamp"] is not None):
-            elapsed = (datetime.now() - altcoin_cache["timestamp"]).seconds
-            if elapsed < altcoin_cache["cache_duration"]:
-                print("✅ Utilisation du cache Altcoin Season")
-                return altcoin_cache["data"]
-        
-        # Essayer de récupérer les vraies données avec timeout COURT (5 secondes max pour Render)
-        print("🔄 Tentative de récupération des données CoinGecko...")
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(
-                "https://api.coingecko.com/api/v3/coins/markets",
-                params={
-                    "vs_currency": "usd",
-                    "order": "market_cap_desc",
-                    "per_page": 100,  # Top 100 comme CoinMarketCap
-                    "page": 1,
-                    "sparkline": False,
-                    "price_change_percentage": "24h,7d,30d"  # On prend ce qu'on peut
-                }
-            )
-            
-            if response.status_code == 200:
-                coins = response.json()
-                
-                # Calculer l'indice réel
-                btc_data = next((c for c in coins if c['id'] == 'bitcoin'), None)
-                
-                if btc_data:
-                    # Compter combien d'altcoins ont mieux performé que BTC
-                    # NOTE: On utilise 30d comme approximation des 90d (limitation API)
-                    btc_change = btc_data.get('price_change_percentage_30d_in_currency', 0)
-                    if btc_change is None:
-                        btc_change = btc_data.get('price_change_percentage_24h', 0) * 10  # Approximation
-                    
-                    altcoins_outperforming = 0
-                    
-                    altcoin_list = []
-                    for coin in coins[1:]:  # Exclure BTC (premier dans la liste)
-                        if coin['id'] in ['tether', 'usd-coin', 'dai', 'wrapped-bitcoin', 'steth']:
-                            continue  # Exclure stablecoins et wrapped tokens comme CoinMarketCap
-                        
-                        change = coin.get('price_change_percentage_30d_in_currency', 0)
-                        if change is None:
-                            change = coin.get('price_change_percentage_24h', 0) * 10
-                        
-                        if change and change > btc_change:
-                            altcoins_outperforming += 1
-                        
-                        altcoin_list.append({
-                            "symbol": coin['symbol'].upper(),
-                            "name": coin['name'],
-                            "price": coin['current_price'],
-                            "change_24h": round(coin.get('price_change_percentage_24h', 0), 2),
-                            "market_cap": coin['market_cap'],
-                            "volume": coin['total_volume']
-                        })
-                    
-                    # Calculer l'indice (0-100) - nombre d'altcoins qui outperforment
-                    total_altcoins = len(altcoin_list)
-                    index_value = int((altcoins_outperforming / total_altcoins) * 100)
-                    
-                    # Déterminer la phase (CORRIGÉ: >75 = Altcoin Season, <25 = Bitcoin Season)
-                    if index_value >= 75:
-                        phase = "Altcoin Season"
-                        phase_color = "#10b981"
-                        recommendation = "Opportunités altcoins maximales - 75%+ altcoins battent BTC"
-                    elif index_value >= 50:
-                        phase = "Début Altseason"
-                        phase_color = "#3b82f6"
-                        recommendation = "Augmenter exposition aux altcoins - Momentum positif"
-                    elif index_value >= 25:
-                        phase = "Transition"
-                        phase_color = "#f59e0b"
-                        recommendation = "Portfolio équilibré BTC/Alts - Marché indécis"
-                    else:
-                        phase = "Bitcoin Season"
-                        phase_color = "#ef4444"
-                        recommendation = "Privilégier Bitcoin - Moins de 25% altcoins battent BTC"
-                    
-                    result = {
-                        "index": index_value,
-                        "phase": phase,
-                        "phase_color": phase_color,
-                        "btc_dominance": round(btc_data.get('market_cap', 0) / sum(c.get('market_cap', 0) for c in coins) * 100, 2),
-                        "altcoins_outperforming": altcoins_outperforming,
-                        "total_altcoins": total_altcoins,
-                        "btc_change_24h": round(btc_data.get('price_change_percentage_24h', 0), 2),
-                        "btc_change_30d": round(btc_change, 2),
-                        "btc_change_7d": round(btc_data.get('price_change_percentage_7d_in_currency', 0), 2),
-                        "btc_change_90d": round(btc_change * 1.5, 2),  # Approximation
-                        "alts_winning": altcoins_outperforming,
-                        "total_compared": total_altcoins,
-                        "trend": phase,
-                        "momentum": "Fort" if index_value >= 75 else "Modéré" if index_value >= 50 else "Faible",
-                        "status_color": phase_color,
-                        "recommendation": recommendation,
-                        "top_performers": sorted(altcoin_list, key=lambda x: x['change_24h'], reverse=True)[:8],
-                        "timestamp": datetime.now().isoformat(),
-                        "data_source": "coingecko_live_30d",
-                        "status": "live"
-                    }
-                    
-                    # Mettre en cache
-                    altcoin_cache["data"] = result
-                    altcoin_cache["timestamp"] = datetime.now()
-                    
-                    print(f"✅ Données CoinGecko récupérées avec succès - Index: {index_value} ({altcoins_outperforming}/{total_altcoins} altcoins gagnants)")
-                    return result
-    
-    except Exception as e:
-        print(f"⚠️ Erreur API CoinGecko: {e}")
-    
-    # FALLBACK GARANTI: Générer des données simulées réalistes
-    print("🔄 Utilisation du mode fallback (données simulées)")
-    fallback_data = generate_fallback_altcoin_data()
-    print(f"📊 Index généré: {fallback_data['index']} - {fallback_data['phase']}")
-    
-    # Mettre en cache le fallback aussi !
-    altcoin_cache["data"] = fallback_data
-    altcoin_cache["timestamp"] = datetime.now()
-    
-    return fallback_data
-
-def generate_fallback_altcoin_data():
-    """
-    Génère des données simulées réalistes pour l'Altcoin Season
-    GARANTIT que la page fonctionne toujours même si l'API échoue
-    VERSION CORRIGÉE : Utilise valeur réaliste proche de CoinMarketCap (32)
-    """
-    # Générer un indice avec variation naturelle basée sur le temps
-    now = datetime.now()
-    hour = now.hour
-    minute = now.minute
-    
-    # Variation basée sur l'heure (cycle de 24h) - RÉDUITE
-    hour_variation = math.sin((hour / 24) * 2 * math.pi) * 3  # Varie de -3 à +3
-    
-    # Variation basée sur la minute (plus de granularité) - RÉDUITE
-    minute_variation = math.cos((minute / 60) * 2 * math.pi) * 2  # Varie de -2 à +2
-    
-    # Base réaliste + variations + aléatoire RÉDUIT
-    base_index = 32  # Valeur actuelle réelle selon CoinMarketCap
-    index_value = int(base_index + hour_variation + minute_variation + random.uniform(-2, 2))
-    
-    # Garder entre 20 et 50 (valeurs réalistes actuelles)
-    index_value = max(20, min(50, index_value))
-    
-    # Déterminer la phase basée sur l'indice (CORRIGÉ selon vraie méthodologie)
-    if index_value >= 75:
-        phase = "Altcoin Season"
-        phase_color = "#10b981"
-        recommendation = "Opportunités altcoins maximales"
-    elif index_value >= 50:
-        phase = "Début Altseason"
-        phase_color = "#3b82f6"
-        recommendation = "Augmenter exposition aux altcoins"
-    elif index_value >= 25:
-        phase = "Transition"
-        phase_color = "#f59e0b"
-        recommendation = "Portfolio équilibré BTC/Alts"
-    else:
-        phase = "Bitcoin Season"
-        phase_color = "#ef4444"
-        recommendation = "Privilégier Bitcoin et stablecoins"
-    
-    # Données simulées réalistes pour les top altcoins
-    top_coins = [
-        {"symbol": "ETH", "name": "Ethereum", "price": 2450.32, "change_24h": 1.45},
-        {"symbol": "BNB", "name": "BNB", "price": 312.18, "change_24h": 0.87},
-        {"symbol": "SOL", "name": "Solana", "price": 98.76, "change_24h": 2.23},
-        {"symbol": "XRP", "name": "Ripple", "price": 0.5234, "change_24h": -0.92},
-        {"symbol": "ADA", "name": "Cardano", "price": 0.3456, "change_24h": 1.11},
-        {"symbol": "AVAX", "name": "Avalanche", "price": 23.45, "change_24h": 3.78},
-        {"symbol": "DOT", "name": "Polkadot", "price": 5.67, "change_24h": 1.34},
-        {"symbol": "MATIC", "name": "Polygon", "price": 0.7823, "change_24h": 0.56}
-    ]
-    
-    # Ajouter variation aléatoire RÉDUITE
-    for coin in top_coins:
-        coin["change_24h"] += random.uniform(-0.5, 0.5)
-        coin["change_24h"] = round(coin["change_24h"], 2)
-        coin["market_cap"] = coin["price"] * random.randint(100000000, 500000000)
-        coin["volume"] = coin["market_cap"] * random.uniform(0.05, 0.15)
-    
-    # Trier par performance
-    top_coins.sort(key=lambda x: x["change_24h"], reverse=True)
-    
-    return {
-        "index": index_value,
-        "phase": phase,
-        "phase_color": phase_color,
-        "btc_dominance": round(59.5 + random.uniform(-1, 1), 2),  # Dominance BTC actuelle réaliste
-        "altcoins_outperforming": index_value,  # Sur 100 altcoins
-        "total_altcoins": 100,  # CoinMarketCap utilise top 100
-        "btc_change_24h": round(0.5 + random.uniform(-0.5, 0.5), 2),
-        "btc_change_30d": round(2.5 + random.uniform(-1, 1), 2),
-        "btc_change_7d": round(1.5 + random.uniform(-0.5, 0.5), 2),
-        "btc_change_90d": round(5.5 + random.uniform(-2, 2), 2),
-        "alts_winning": index_value,
-        "total_compared": 100,
-        "trend": phase,
-        "momentum": "Faible" if index_value < 35 else "Modéré" if index_value < 55 else "Fort",
-        "status_color": phase_color,
-        "recommendation": recommendation,
-        "top_performers": top_coins[:8],
-        "timestamp": datetime.now().isoformat(),
-        "data_source": "simulated_fallback",
-        "status": "fallback"
-    }
+async def api_heatmap():
+    cryptos = await get_top_cryptos_real(100)
+    return [{
+        'symbol': c['symbol'].upper(),
+        'name': c['name'],
+        'price': c['current_price'],
+        'change_24h': round(c.get('price_change_percentage_24h', 0) or 0, 2),
+        'market_cap': c.get('market_cap', 0),
+        'volume_24h': c.get('total_volume', 0)
+    } for c in cryptos]
 
 @app.get("/api/altcoin-season-index")
 async def get_altcoin_season_index():
@@ -4917,8 +4596,33 @@ async def test_altcoin():
 
 @app.get("/api/crypto-news")
 async def news_api():
-    """API améliorée avec 12+ nouvelles crypto"""
+    """✅ CORRIGÉE: Retourne les VRAIES actualités crypto depuis CryptoCompare"""
     
+    # Essayer d'abord de récupérer les vraies données
+    try:
+        news = await get_crypto_news_real()
+        if news and len(news) > 0:
+            formatted_news = []
+            for item in news:
+                formatted_news.append({
+                    "title": item.get("title", ""),
+                    "description": item.get("body", "")[:150],
+                    "url": item.get("url", ""),
+                    "source": item.get("source_info", "CryptoCompare"),
+                    "published_at": datetime.fromtimestamp(item.get("published_on", 0), pytz.UTC).isoformat() if item.get("published_on") else datetime.now(pytz.UTC).isoformat(),
+                    "image": item.get("imageurl", "")
+                })
+            return {
+                "articles": formatted_news,
+                "count": len(formatted_news),
+                "status": "success",
+                "source": "CryptoCompare - VRAIES DONNÉES",
+                "timestamp": datetime.now(pytz.UTC).isoformat()
+            }
+    except Exception as e:
+        print(f"Erreur récupération vraies données: {e}")
+    
+    # Fallback seulement si vraies données échouent
     fallback_news = [
         {
             "title": "Bitcoin franchit un nouveau sommet historique",
@@ -5018,30 +4722,13 @@ async def news_api():
         }
     ]
     
+    # Si on arrive ici, retourner le fallback
     news = fallback_news.copy()
-    
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            response = await client.get("https://api.coingecko.com/api/v3/search/trending")
-            if response.status_code == 200:
-                data = response.json()
-                for i, coin in enumerate(data.get("coins", [])[:5]):
-                    item = coin.get("item", {})
-                    news.insert(0, {
-                        "title": f"🔥 Trending #{i+1}: {item.get('name')} ({item.get('symbol', '').upper()})",
-                        "description": f"{item.get('name')} fait partie des cryptos les plus recherchees.",
-                        "url": f"https://www.coingecko.com/en/coins/{item.get('id', '')}",
-                        "source": "CoinGecko",
-                        "published_at": datetime.now(pytz.UTC).isoformat(),
-                        "image": None
-                    })
-    except:
-        pass
     
     return {
         "articles": news,
         "count": len(news),
-        "status": "success",
+        "status": "fallback",
         "timestamp": datetime.now(pytz.UTC).isoformat()
     }
 

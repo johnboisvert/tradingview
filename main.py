@@ -3087,12 +3087,7 @@ async def spot_trading_page():
 async def ai_opportunity_scanner():
     """
     Scanner IA des meilleures opportunités de trading en temps réel
-    
-    ⚠️ DONNÉES RÉELLES OCTOBRE 2025 ⚠️
-    - Prix basés sur les vraies cryptos: BTC ~110K, ETH ~4.1K, SOL ~169$, etc.
-    - Scores basés sur performances réelles YTD
-    - Raisons IA basées sur événements actuels (ETFs, adoptions, TVL, etc.)
-    - Variation de prix limitée à ±2% pour rester réaliste
+    ✅ DONNÉES RÉELLES EN TEMPS RÉEL DE COINGECKO API (Pas de données simulées!)
     """
     html_content = """
     <!DOCTYPE html>
@@ -3392,175 +3387,154 @@ async def ai_opportunity_scanner():
             <div class="content">
                 <div class="refresh-bar">
                     <span class="live-indicator"></span>
-                    <strong>Scanner en temps réel</strong> - Dernière analyse : <span id="lastUpdate"></span>
+                    <strong>Scanner en temps réel (données CoinGecko)</strong> - Dernière analyse : <span id="lastUpdate">-</span>
                     <button onclick="refreshOpportunities()">🔄 Actualiser</button>
+                    <div class="data-source" style="font-size: 0.85em; color: #666; margin-top: 10px;">
+                        📡 Source: CoinGecko API (mise à jour auto toutes les 2 minutes)
+                    </div>
                 </div>
                 
                 <div class="stats-bar">
                     <div class="stat-box">
-                        <span class="stat-value" id="totalOpportunities">5</span>
+                        <span class="stat-value" id="totalOpportunities">-</span>
                         <span class="stat-label">Opportunités Détectées</span>
                     </div>
                     <div class="stat-box">
-                        <span class="stat-value" id="avgScore">78</span>
+                        <span class="stat-value" id="avgScore">-</span>
                         <span class="stat-label">Score Moyen</span>
                     </div>
                     <div class="stat-box">
-                        <span class="stat-value" id="hotDeals">2</span>
+                        <span class="stat-value" id="hotDeals">-</span>
                         <span class="stat-label">Opportunités Chaudes (>85)</span>
                     </div>
                     <div class="stat-box">
-                        <span class="stat-value" id="marketSentiment">Positif</span>
+                        <span class="stat-value" id="marketSentiment">-</span>
                         <span class="stat-label">Sentiment Global</span>
                     </div>
                 </div>
                 
-                <div class="opportunities-grid" id="opportunitiesGrid">
+                <div id="loadingDiv" class="loading" style="text-align: center; padding: 40px; color: #666;">
+                    <p>⏳ Chargement des données en temps réel...</p>
+                </div>
+                
+                <div class="opportunities-grid" id="opportunitiesGrid" style="display:none;">
                     <!-- Filled by JavaScript -->
                 </div>
             </div>
         </div>
         
         <script>
-            function generateOpportunities() {
-                const now = new Date();
-                const hour = now.getHours();
-                const minute = now.getMinutes();
-                
-                // Base de données RÉELLE des cryptos (oct 2025)
-                const cryptos = [
-                    {symbol: 'BTC', name: 'Bitcoin', baseScore: 72, basePrice: 110000},
-                    {symbol: 'ETH', name: 'Ethereum', baseScore: 75, basePrice: 4100},
-                    {symbol: 'SOL', name: 'Solana', baseScore: 82, basePrice: 169},
-                    {symbol: 'XRP', name: 'Ripple', baseScore: 85, basePrice: 2.63},
-                    {symbol: 'BNB', name: 'BNB', baseScore: 78, basePrice: 580},
-                    {symbol: 'ADA', name: 'Cardano', baseScore: 70, basePrice: 0.95},
-                    {symbol: 'AVAX', name: 'Avalanche', baseScore: 76, basePrice: 32},
-                    {symbol: 'LINK', name: 'Chainlink', baseScore: 73, basePrice: 14.5},
-                    {symbol: 'TRX', name: 'TRON', baseScore: 68, basePrice: 0.33},
-                    {symbol: 'SUI', name: 'Sui', baseScore: 80, basePrice: 3.1}
-                ];
-                
-                const categories = ['Breakout', 'Oversold', 'Momentum', 'Consolidation'];
-                const timeframes = ['15min', '1H', '4H'];
-                
-                // Sélectionner 5 cryptos avec petite variation réaliste
-                const seed = Math.floor(Date.now() / 600000); // Change toutes les 10 min
-                const selectedCryptos = [];
-                
-                for (let i = 0; i < 5; i++) {
-                    const index = (seed + i * 13) % cryptos.length;
-                    const crypto = {...cryptos[index]};
-                    
-                    // Score avec petite variation réaliste (-5 à +5)
-                    const scoreVariation = ((seed + i * 7) % 11) - 5;
-                    crypto.score = Math.max(60, Math.min(92, crypto.baseScore + scoreVariation));
-                    
-                    // Catégorie basée sur le score
-                    if (crypto.score >= 80) crypto.category = 'Momentum';
-                    else if (crypto.score >= 75) crypto.category = 'Breakout';
-                    else if (crypto.score >= 68) crypto.category = 'Consolidation';
-                    else crypto.category = 'Oversold';
-                    
-                    // Timeframe
-                    crypto.timeframe = timeframes[(seed + i * 11) % timeframes.length];
-                    
-                    // Prix avec petite variation réaliste (±2%)
-                    const priceVariation = (((seed + i * 17) % 400) - 200) / 10000; // -2% à +2%
-                    crypto.price = crypto.basePrice * (1 + priceVariation);
-                    
-                    // Entry/SL/TP réalistes
-                    crypto.entry = crypto.price.toFixed(crypto.price > 100 ? 0 : crypto.price > 10 ? 2 : 4);
-                    crypto.sl = (crypto.price * 0.95).toFixed(crypto.price > 100 ? 0 : crypto.price > 10 ? 2 : 4);
-                    crypto.tp = (crypto.price * 1.12).toFixed(crypto.price > 100 ? 0 : crypto.price > 10 ? 2 : 4);
-                    
-                    // RR
-                    const rrValue = (crypto.tp - crypto.entry) / (crypto.entry - crypto.sl);
-                    crypto.rr = rrValue.toFixed(1);
-                    
-                    // Raisons IA RÉALISTES basées sur oct 2025
-                    const allReasons = {
-                        'BTC': [
-                            'Consolidation après ATH de 126K, zone d\'accumulation active',
-                            'ETF inflows positifs (+300M$/jour récemment)',
-                            'Support fort à 108K-110K, résistance 116K',
-                            'Fear & Greed Index: Neutre (51) - équilibre marché'
-                        ],
-                        'ETH': [
-                            'ETFs Ethereum actifs, intérêt institutionnel croissant',
-                            'DeFi TVL en hausse, Layer 2 en forte expansion',
-                            'Objectif 7K-8K possible pour Q4 2025',
-                            'Support solide à 3800-4000$'
-                        ],
-                        'SOL': [
-                            'Performance +31% en Q2 2025, momentum fort',
-                            'DeFi en expansion, Jupiter DEX en croissance',
-                            'Firedancer upgrade améliore scalabilité',
-                            'Écosystème gaming et NFT très actif'
-                        ],
-                        'XRP': [
-                            '+380% YTD - meilleur performer 2025',
-                            '8 ETF XRP en attente d\'approbation SEC',
-                            'RippleNet adoption institutionnelle forte',
-                            'Paiements transfrontaliers en expansion'
-                        ],
-                        'BNB': [
-                            'Large cap stable, liquidité élevée',
-                            'Écosystème BSC très actif',
-                            'Burn token régulier augmente rareté',
-                            'Support fort de Binance Exchange'
-                        ],
-                        'ADA': [
-                            'Hydra scaling solution en déploiement',
-                            'Adoption en Afrique en croissance',
-                            'Governance améliorée, DeFi actif',
-                            'Développement méthodique validé'
-                        ],
-                        'AVAX': [
-                            'Tokenisation d\'actifs réels en hausse',
-                            'Adoption institutionnelle forte',
-                            'Subnets custom pour entreprises',
-                            'Vitesse de transaction excellente'
-                        ],
-                        'LINK': [
-                            'Infrastructure oracle indispensable DeFi',
-                            'Adoption cross-chain en expansion',
-                            'Partenariats institutionnels solides',
-                            'Staking LINK actif et rentable'
-                        ],
-                        'TRX': [
-                            'Leader stablecoins: 80.7B$ USDT sur TRON',
-                            '+20B$ transferts globaux/mois',
-                            'Fees ultra-faibles, idéal paiements',
-                            'ETF TRON en application Nasdaq'
-                        ],
-                        'SUI': [
-                            'DeFi émergent, TVL en croissance',
-                            'SuiDEX lance, innovation forte',
-                            'Layer 1 nouvelle génération',
-                            'Communauté dev très active'
-                        ]
-                    };
-                    
-                    crypto.reasons = (allReasons[crypto.symbol] || [
-                        `Signal Magic Mike ${crypto.timeframe} détecté`,
-                        'Analyse technique favorable',
-                        'Momentum positif confirmé',
-                        'Volume en hausse significative'
-                    ]).slice(0, 3 + (i % 2));
-                    
-                    selectedCryptos.push(crypto);
+            async function fetchRealData() {
+                try {
+                    // Récupérer les top 50 cryptos avec données actuelles
+                    const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h,7d,30d');
+                    const data = await response.json();
+                    return data;
+                } catch (error) {
+                    console.error('Erreur lors du chargement des données:', error);
+                    return null;
                 }
-                
-                // Trier par score
-                selectedCryptos.sort((a, b) => b.score - a.score);
-                
-                return selectedCryptos;
             }
             
-            function renderOpportunities() {
-                const opportunities = generateOpportunities();
+            function calculateScore(crypto) {
+                let score = 50; // Base
+                
+                // Changement 24h (volatilité positive)
+                const change24h = crypto.price_change_percentage_24h || 0;
+                if (change24h > 5) score += 15;
+                else if (change24h > 2) score += 10;
+                else if (change24h > -2) score += 5;
+                else if (change24h > -5) score += 2;
+                
+                // Changement 7j
+                const change7d = crypto.price_change_percentage_7d_in_currency || 0;
+                if (change7d > 15) score += 12;
+                else if (change7d > 5) score += 8;
+                else if (change7d > -5) score += 5;
+                
+                // Market cap (stabilité)
+                if (crypto.market_cap_rank && crypto.market_cap_rank <= 10) score += 15;
+                else if (crypto.market_cap_rank && crypto.market_cap_rank <= 50) score += 8;
+                else if (crypto.market_cap_rank && crypto.market_cap_rank <= 200) score += 5;
+                
+                // Volume (liquidité)
+                if (crypto.total_volume && crypto.market_cap) {
+                    const volumeRatio = crypto.total_volume / crypto.market_cap;
+                    if (volumeRatio > 0.3) score += 10;
+                    else if (volumeRatio > 0.1) score += 5;
+                }
+                
+                return Math.min(99, Math.max(60, score));
+            }
+            
+            function generateAIReasons(crypto) {
+                const reasons = [];
+                const change24h = crypto.price_change_percentage_24h || 0;
+                const change7d = crypto.price_change_percentage_7d_in_currency || 0;
+                
+                if (change24h > 5) reasons.push(`📈 Hausse 24h: +${change24h.toFixed(2)}%`);
+                if (change7d > 10) reasons.push(`📊 Momentum 7j: +${change7d.toFixed(2)}%`);
+                if (crypto.market_cap_rank && crypto.market_cap_rank <= 20) reasons.push(`👑 Top ${crypto.market_cap_rank} par capitalisation`);
+                if (crypto.total_volume && crypto.market_cap) {
+                    const vol = (crypto.total_volume / crypto.market_cap * 100).toFixed(1);
+                    reasons.push(`💧 Volume/MCap: ${vol}% (liquidité)`);
+                }
+                if (crypto.ath_change_percentage && crypto.ath_change_percentage > -20) {
+                    reasons.push(`🎯 À ${(100 + crypto.ath_change_percentage).toFixed(1)}% du sommet`);
+                }
+                
+                return reasons.length > 0 ? reasons : ['📍 Prix actuel intéressant', '✅ Analyse technique favorable'];
+            }
+            
+            async function generateOpportunities(cryptoData) {
+                if (!cryptoData) return [];
+                
+                // Filtrer et scorer
+                const opportunities = cryptoData
+                    .filter(c => c.current_price && c.market_cap)
+                    .map(c => ({
+                        symbol: c.symbol.toUpperCase(),
+                        name: c.name,
+                        price: c.current_price,
+                        change24h: c.price_change_percentage_24h || 0,
+                        change7d: c.price_change_percentage_7d_in_currency || 0,
+                        marketCapRank: c.market_cap_rank,
+                        ath: c.ath,
+                        athChange: c.ath_change_percentage || 0,
+                        score: calculateScore(c),
+                        volume: c.total_volume,
+                        marketCap: c.market_cap,
+                        reasons: generateAIReasons(c)
+                    }))
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 5);
+                
+                // Ajouter Entry/SL/TP
+                opportunities.forEach(opp => {
+                    opp.entry = opp.price.toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
+                    opp.sl = (opp.price * 0.95).toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
+                    opp.tp = (opp.price * 1.12).toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
+                    const rrValue = (parseFloat(opp.tp) - parseFloat(opp.entry)) / (parseFloat(opp.entry) - parseFloat(opp.sl));
+                    opp.rr = rrValue.toFixed(1);
+                });
+                
+                return opportunities;
+            }
+            
+            async function renderOpportunities() {
+                const loadingDiv = document.getElementById('loadingDiv');
                 const grid = document.getElementById('opportunitiesGrid');
+                
+                loadingDiv.style.display = 'block';
+                grid.style.display = 'none';
+                
+                const cryptoData = await fetchRealData();
+                const opportunities = await generateOpportunities(cryptoData);
+                
+                if (opportunities.length === 0) {
+                    loadingDiv.innerHTML = '<p>❌ Impossible de charger les données</p>';
+                    return;
+                }
                 
                 let html = '';
                 let totalScore = 0;
@@ -3571,7 +3545,6 @@ async def ai_opportunity_scanner():
                     if (opp.score >= 85) hotCount++;
                     
                     const scoreClass = opp.score >= 85 ? 'hot' : opp.score >= 75 ? 'good' : 'moderate';
-                    const categoryClass = opp.category.toLowerCase().replace(' ', '');
                     
                     html += `
                         <div class="opportunity-card ${scoreClass}">
@@ -3583,16 +3556,21 @@ async def ai_opportunity_scanner():
                                     </div>
                                 </div>
                                 <div class="score-circle ${scoreClass}">
-                                    ${opp.score}
+                                    ${Math.round(opp.score)}
                                 </div>
                             </div>
                             
                             <div>
-                                <span class="badge ${categoryClass}">${opp.category}</span>
-                                <span class="badge" style="background: #f3f4f6; color: #1f2937;">${opp.timeframe}</span>
+                                <span class="badge momentum">⚡ Temps Réel</span>
+                                <span class="badge" style="background: #f3f4f6; color: #1f2937;">#${opp.marketCapRank}</span>
+                                <span class="badge" style="background: #f0f0f0; color: #666;">${opp.change24h > 0 ? '📈' : '📉'} ${opp.change24h.toFixed(2)}%</span>
                             </div>
                             
                             <div class="opportunity-details">
+                                <div class="detail-box">
+                                    <div class="detail-label">Prix Actuel</div>
+                                    <div class="detail-value">$${opp.price.toLocaleString('fr-FR', {maximumFractionDigits: opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4})}</div>
+                                </div>
                                 <div class="detail-box">
                                     <div class="detail-label">Entry</div>
                                     <div class="detail-value">$${opp.entry}</div>
@@ -3602,17 +3580,13 @@ async def ai_opportunity_scanner():
                                     <div class="detail-value" style="color: #ef4444;">$${opp.sl}</div>
                                 </div>
                                 <div class="detail-box">
-                                    <div class="detail-label">Take Profit</div>
-                                    <div class="detail-value" style="color: #10b981;">$${opp.tp}</div>
-                                </div>
-                                <div class="detail-box">
                                     <div class="detail-label">Risk/Reward</div>
                                     <div class="detail-value">${opp.rr}:1</div>
                                 </div>
                             </div>
                             
                             <div class="ai-reasoning">
-                                <h4>🤖 Analyse IA - Pourquoi maintenant ?</h4>
+                                <h4>🤖 Analyse IA en Temps Réel</h4>
                                 <ul>
                                     ${opp.reasons.map(r => `<li>${r}</li>`).join('')}
                                 </ul>
@@ -3627,19 +3601,21 @@ async def ai_opportunity_scanner():
                 });
                 
                 grid.innerHTML = html;
+                grid.style.display = 'grid';
+                loadingDiv.style.display = 'none';
                 
                 // Mettre à jour les stats
                 document.getElementById('totalOpportunities').textContent = opportunities.length;
                 document.getElementById('avgScore').textContent = Math.round(totalScore / opportunities.length);
                 document.getElementById('hotDeals').textContent = hotCount;
                 document.getElementById('marketSentiment').textContent = 
-                    (totalScore / opportunities.length) >= 80 ? 'Très Positif' :
-                    (totalScore / opportunities.length) >= 70 ? 'Positif' : 'Neutre';
+                    (totalScore / opportunities.length) >= 80 ? '📈 Très Positif' :
+                    (totalScore / opportunities.length) >= 70 ? '📊 Positif' : '⚖️ Neutre';
                 
                 // Dernière mise à jour
                 const now = new Date();
                 document.getElementById('lastUpdate').textContent = 
-                    now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+                    now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
             }
             
             function refreshOpportunities() {

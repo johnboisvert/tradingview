@@ -960,7 +960,7 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/calculatrice">🧮 Calculatrice</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot Trading</a><a href="/calculatrice">🧮 Calculatrice</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a></div>'
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -1688,6 +1688,12 @@ async def home():
                     <p>Guide complet de la stratégie 1H et 15min avec 70-80% de winrate validé.</p>
                 </a>
                 
+                <a href="/spot-trading" class="feature-card">
+                    <div class="feature-icon">💎</div>
+                    <h3>Spot Trading</h3>
+                    <p>Guide ultime du trading au comptant : fonctionnement, stratégies, coins recommandés et gestion de risque.</p>
+                </a>
+                
                 <a href="/calculatrice" class="feature-card">
                     <div class="feature-icon">🧮</div>
                     <h3>Calculatrice Trading</h3>
@@ -1845,6 +1851,933 @@ async def home():
                     Le trading comporte des risques. Ne tradez jamais plus que ce que vous pouvez vous permettre de perdre.<br>
                     Utilisez toujours un Stop Loss et respectez votre plan de Risk Management.
                 </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+@app.get("/spot-trading", response_class=HTMLResponse)
+async def spot_trading_page():
+    """Page complète et professionnelle sur le trading SPOT"""
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Trading SPOT - Guide Complet</title>
+        """ + CSS + """
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: #333;
+                line-height: 1.6;
+            }
+            
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 40px 20px;
+            }
+            
+            header {
+                text-align: center;
+                color: white;
+                margin-bottom: 50px;
+                background: rgba(0,0,0,0.2);
+                padding: 40px;
+                border-radius: 15px;
+                backdrop-filter: blur(10px);
+            }
+            
+            header h1 {
+                font-size: 2.8em;
+                margin-bottom: 15px;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            }
+            
+            header p {
+                font-size: 1.3em;
+                opacity: 0.95;
+            }
+            
+            .content {
+                background: white;
+                border-radius: 15px;
+                padding: 50px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                margin-bottom: 40px;
+            }
+            
+            .section {
+                margin-bottom: 50px;
+                padding-bottom: 30px;
+                border-bottom: 3px solid #f0f0f0;
+            }
+            
+            .section:last-child { border-bottom: none; }
+            
+            h2 {
+                color: #10b981;
+                font-size: 2em;
+                margin-bottom: 20px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            h3 {
+                color: #059669;
+                font-size: 1.5em;
+                margin: 25px 0 15px 0;
+            }
+            
+            h4 {
+                color: #10b981;
+                font-size: 1.2em;
+                margin: 20px 0 10px 0;
+            }
+            
+            p { margin-bottom: 15px; font-size: 1.05em; }
+            
+            ul, ol {
+                margin-left: 30px;
+                margin-bottom: 15px;
+            }
+            
+            li { margin-bottom: 10px; }
+            
+            .box {
+                background: linear-gradient(135deg, #10b98115 0%, #05966915 100%);
+                border-left: 5px solid #10b981;
+                padding: 20px;
+                margin: 20px 0;
+                border-radius: 8px;
+            }
+            
+            .box.success {
+                border-left-color: #10b981;
+                background: linear-gradient(135deg, #10b98115 0%, #05966915 100%);
+            }
+            
+            .box.danger {
+                border-left-color: #ef4444;
+                background: linear-gradient(135deg, #ef444415 0%, #dc262615 100%);
+            }
+            
+            .box.warning {
+                border-left-color: #f59e0b;
+                background: linear-gradient(135deg, #f59e0b15 0%, #d9770615 100%);
+            }
+            
+            .box.info {
+                border-left-color: #3b82f6;
+                background: linear-gradient(135deg, #3b82f615 0%, #2563eb15 100%);
+            }
+            
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            }
+            
+            th, td {
+                padding: 15px;
+                text-align: left;
+                border: 1px solid #e0e0e0;
+            }
+            
+            th {
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+                font-weight: bold;
+            }
+            
+            tr:nth-child(even) { background: #f9f9f9; }
+            tr:hover { background: #f0f0f0; }
+            
+            .comparison-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 25px;
+                margin: 30px 0;
+            }
+            
+            .comparison-card {
+                background: #f8f9fa;
+                border-radius: 12px;
+                padding: 25px;
+                border: 3px solid #e0e0e0;
+            }
+            
+            .comparison-card.spot {
+                border-color: #10b981;
+                background: linear-gradient(135deg, #10b98110 0%, #05966910 100%);
+            }
+            
+            .comparison-card.futures {
+                border-color: #ef4444;
+                background: linear-gradient(135deg, #ef444410 0%, #dc262610 100%);
+            }
+            
+            .comparison-card h3 { margin-top: 0; }
+            
+            .pros-cons {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin: 20px 0;
+            }
+            
+            .pros {
+                background: #f0fdf4;
+                padding: 20px;
+                border-radius: 10px;
+                border-left: 5px solid #10b981;
+            }
+            
+            .cons {
+                background: #fef2f2;
+                padding: 20px;
+                border-radius: 10px;
+                border-left: 5px solid #ef4444;
+            }
+            
+            .example-box {
+                background: #fef3c7;
+                border: 2px solid #f59e0b;
+                border-radius: 10px;
+                padding: 25px;
+                margin: 20px 0;
+            }
+            
+            .example-box h4 {
+                color: #d97706;
+                margin-top: 0;
+            }
+            
+            .coin-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin: 20px 0;
+            }
+            
+            .coin-card {
+                background: white;
+                border: 2px solid #e0e0e0;
+                border-radius: 10px;
+                padding: 20px;
+                transition: transform 0.3s, box-shadow 0.3s;
+            }
+            
+            .coin-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            }
+            
+            .coin-card h4 {
+                margin-top: 0;
+                font-size: 1.3em;
+            }
+            
+            .badge {
+                display: inline-block;
+                padding: 5px 12px;
+                border-radius: 20px;
+                font-size: 0.85em;
+                font-weight: bold;
+                margin: 5px 5px 5px 0;
+            }
+            
+            .badge.low-risk { background: #d1fae5; color: #065f46; }
+            .badge.medium-risk { background: #fed7aa; color: #92400e; }
+            .badge.high-risk { background: #fecaca; color: #991b1b; }
+            .badge.long-term { background: #dbeafe; color: #1e40af; }
+            .badge.mid-term { background: #e9d5ff; color: #6b21a8; }
+            
+            .strategy-step {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border-left: 5px solid #10b981;
+                padding: 20px;
+                margin: 15px 0;
+                border-radius: 8px;
+                position: relative;
+            }
+            
+            .strategy-step::before {
+                content: attr(data-step);
+                position: absolute;
+                left: -30px;
+                top: 15px;
+                width: 40px;
+                height: 40px;
+                background: #10b981;
+                color: white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 1.2em;
+            }
+            
+            @media (max-width: 768px) {
+                .comparison-grid, .pros-cons, .coin-grid {
+                    grid-template-columns: 1fr;
+                }
+                
+                .strategy-step::before {
+                    position: static;
+                    margin-bottom: 10px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>💎 TRADING SPOT - GUIDE COMPLET</h1>
+                <p>Tout ce que vous devez savoir sur le trading au comptant (Spot)</p>
+            </header>
+            
+            """ + NAV + """
+            
+            <div class="content">
+                <!-- SECTION 1: QU'EST-CE QUE LE SPOT -->
+                <div class="section">
+                    <h2>📖 Qu'est-ce que le Trading SPOT ?</h2>
+                    
+                    <p>Le <strong>trading SPOT</strong> (ou trading au comptant) est la forme la plus simple et la plus directe d'achat et de vente de cryptomonnaies. Contrairement au trading à terme (Futures), vous achetez réellement les actifs et les possédez dans votre portefeuille.</p>
+                    
+                    <div class="box info">
+                        <h4>🎯 Définition Simple</h4>
+                        <p><strong>SPOT = Acheter et posséder la crypto immédiatement au prix actuel du marché</strong></p>
+                        <ul>
+                            <li>Vous payez le prix complet de l'actif</li>
+                            <li>Vous devenez propriétaire réel de la crypto</li>
+                            <li>Vous pouvez la retirer, la transférer ou la conserver</li>
+                            <li>Pas de leverage, pas de liquidation, pas de frais de financement</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>🔄 Comment ça fonctionne ?</h3>
+                    
+                    <div class="example-box">
+                        <h4>📊 Exemple Concret</h4>
+                        <p><strong>Scénario :</strong> Vous voulez acheter 1 ETH au prix actuel de 2,500 USDT</p>
+                        
+                        <ol>
+                            <li><strong>Dépôt :</strong> Vous déposez 2,500 USDT sur votre compte Binance/Kraken</li>
+                            <li><strong>Achat :</strong> Vous achetez 1 ETH au prix spot de 2,500 USDT</li>
+                            <li><strong>Propriété :</strong> Vous possédez maintenant 1 ETH réel dans votre wallet</li>
+                            <li><strong>Attente :</strong> Le prix monte à 3,000 USDT</li>
+                            <li><strong>Vente :</strong> Vous vendez votre 1 ETH à 3,000 USDT</li>
+                            <li><strong>Profit :</strong> +500 USDT (20% de gain) 🎉</li>
+                        </ol>
+                        
+                        <p style="margin-top: 15px;"><strong>💰 Calcul :</strong> (3,000 - 2,500) = +500 USDT de profit net (moins frais ~0.1%)</p>
+                    </div>
+                </div>
+                
+                <!-- SECTION 2: SPOT VS FUTURES -->
+                <div class="section">
+                    <h2>⚖️ SPOT vs FUTURES - Différences Majeures</h2>
+                    
+                    <div class="comparison-grid">
+                        <div class="comparison-card spot">
+                            <h3>💎 TRADING SPOT</h3>
+                            <ul>
+                                <li>✅ Vous possédez réellement la crypto</li>
+                                <li>✅ Pas de risque de liquidation</li>
+                                <li>✅ Pas de frais de financement</li>
+                                <li>✅ Peut retirer vers wallet externe</li>
+                                <li>✅ Idéal moyen/long terme</li>
+                                <li>✅ Moins stressant mentalement</li>
+                                <li>⚠️ Capital complet nécessaire</li>
+                                <li>⚠️ Profits plus lents (pas de leverage)</li>
+                                <li>⚠️ Que des positions LONG (achat)</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="comparison-card futures">
+                            <h3>⚡ TRADING FUTURES</h3>
+                            <ul>
+                                <li>✅ Leverage jusqu'à 125x</li>
+                                <li>✅ Peut LONG et SHORT</li>
+                                <li>✅ Profits plus rapides</li>
+                                <li>✅ Moins de capital requis</li>
+                                <li>⚠️ Risque de liquidation élevé</li>
+                                <li>⚠️ Frais de financement (funding rates)</li>
+                                <li>⚠️ Contrats, pas de vraies cryptos</li>
+                                <li>⚠️ Très stressant mentalement</li>
+                                <li>⚠️ Risque de perte totale rapide</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Critère</th>
+                                <th>SPOT 💎</th>
+                                <th>FUTURES ⚡</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Propriété</strong></td>
+                                <td>Vraie crypto</td>
+                                <td>Contrat dérivé</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Capital requis</strong></td>
+                                <td>100% du prix</td>
+                                <td>Marge (5-20%)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Leverage</strong></td>
+                                <td>1x (aucun)</td>
+                                <td>1x à 125x</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Directions</strong></td>
+                                <td>LONG uniquement</td>
+                                <td>LONG + SHORT</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Liquidation</strong></td>
+                                <td>Impossible</td>
+                                <td>Très possible</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Frais financement</strong></td>
+                                <td>0%</td>
+                                <td>Oui (toutes les 8h)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Retrait externe</strong></td>
+                                <td>Oui</td>
+                                <td>Non</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Horizon</strong></td>
+                                <td>Moyen/Long terme</td>
+                                <td>Court terme</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Risque</strong></td>
+                                <td>Modéré</td>
+                                <td>Très élevé</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pour qui ?</strong></td>
+                                <td>Débutants + Investisseurs</td>
+                                <td>Traders expérimentés</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- SECTION 3: AVANTAGES & INCONVÉNIENTS -->
+                <div class="section">
+                    <h2>⚖️ Avantages & Inconvénients du SPOT</h2>
+                    
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h3>✅ AVANTAGES</h3>
+                            <ul>
+                                <li><strong>Sécurité maximale</strong> : Impossible d'être liquidé</li>
+                                <li><strong>Propriété réelle</strong> : Vous possédez vraiment vos cryptos</li>
+                                <li><strong>Flexibilité</strong> : Retirez vers wallet froid quand vous voulez</li>
+                                <li><strong>Pas de frais cachés</strong> : Pas de funding rates</li>
+                                <li><strong>Moins de stress</strong> : Pas de pression temporelle</li>
+                                <li><strong>Simplicité</strong> : Facile à comprendre pour débutants</li>
+                                <li><strong>Accumulation</strong> : Parfait pour le HODLing long terme</li>
+                                <li><strong>Staking possible</strong> : Générez des revenus passifs</li>
+                                <li><strong>Airdrops</strong> : Éligible aux distributions gratuites</li>
+                                <li><strong>Governance</strong> : Peut voter si le token le permet</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="cons">
+                            <h3>❌ INCONVÉNIENTS</h3>
+                            <ul>
+                                <li><strong>Capital important</strong> : Nécessite le prix complet</li>
+                                <li><strong>Profits plus lents</strong> : Pas de leverage pour amplifier</li>
+                                <li><strong>LONG seulement</strong> : Ne peut pas profiter des baisses</li>
+                                <li><strong>Opportunité coût</strong> : Capital immobilisé longtemps</li>
+                                <li><strong>Volatilité subie</strong> : -50% = -50% (pas de SL automatique)</li>
+                                <li><strong>Frais de transaction</strong> : 0.1% achat + 0.1% vente</li>
+                                <li><strong>Moins flexible</strong> : Changement de position plus lent</li>
+                                <li><strong>Fiscalité</strong> : Taxé à chaque vente (selon pays)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SECTION 4: MEILLEURS COINS POUR SPOT -->
+                <div class="section">
+                    <h2>🏆 Meilleurs Coins pour Trading SPOT</h2>
+                    
+                    <p>Tous les coins ne sont pas égaux pour le trading spot. Voici les catégories recommandées selon votre profil de risque et horizon temporel.</p>
+                    
+                    <h3>💎 Tier 1 - Blue Chips (Risque Faible)</h3>
+                    <div class="coin-grid">
+                        <div class="coin-card">
+                            <h4>₿ Bitcoin (BTC)</h4>
+                            <p><span class="badge low-risk">Risque Faible</span><span class="badge long-term">Long Terme</span></p>
+                            <ul>
+                                <li><strong>Cap:</strong> ~1.2T USD</li>
+                                <li><strong>Liquide:</strong> Très élevée</li>
+                                <li><strong>Volatilité:</strong> Modérée (±15%)</li>
+                                <li><strong>Horizon:</strong> 1-5 ans</li>
+                                <li><strong>Pourquoi:</strong> Or numérique, adoption institutionnelle</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="coin-card">
+                            <h4>Ξ Ethereum (ETH)</h4>
+                            <p><span class="badge low-risk">Risque Faible</span><span class="badge long-term">Long Terme</span></p>
+                            <ul>
+                                <li><strong>Cap:</strong> ~300B USD</li>
+                                <li><strong>Liquide:</strong> Très élevée</li>
+                                <li><strong>Volatilité:</strong> Moyenne (±20%)</li>
+                                <li><strong>Horizon:</strong> 1-5 ans</li>
+                                <li><strong>Pourquoi:</strong> Smart contracts, DeFi, NFTs, staking</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="coin-card">
+                            <h4>◉ BNB (Binance Coin)</h4>
+                            <p><span class="badge low-risk">Risque Faible</span><span class="badge mid-term">Moyen Terme</span></p>
+                            <ul>
+                                <li><strong>Cap:</strong> ~50B USD</li>
+                                <li><strong>Liquide:</strong> Élevée</li>
+                                <li><strong>Volatilité:</strong> Moyenne (±25%)</li>
+                                <li><strong>Horizon:</strong> 6 mois-2 ans</li>
+                                <li><strong>Pourquoi:</strong> Exchange token, BSC ecosystem</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h3>🚀 Tier 2 - Large Caps (Risque Modéré)</h3>
+                    <div class="coin-grid">
+                        <div class="coin-card">
+                            <h4>◎ Solana (SOL)</h4>
+                            <p><span class="badge medium-risk">Risque Modéré</span><span class="badge mid-term">Moyen Terme</span></p>
+                            <ul>
+                                <li><strong>Cap:</strong> ~40B USD</li>
+                                <li><strong>Volatilité:</strong> Élevée (±40%)</li>
+                                <li><strong>Pourquoi:</strong> Haute performance, NFTs, DeFi rapide</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="coin-card">
+                            <h4>✖ XRP (Ripple)</h4>
+                            <p><span class="badge medium-risk">Risque Modéré</span><span class="badge mid-term">Moyen Terme</span></p>
+                            <ul>
+                                <li><strong>Cap:</strong> ~120B USD</li>
+                                <li><strong>Volatilité:</strong> Très élevée (±50%)</li>
+                                <li><strong>Pourquoi:</strong> Paiements internationaux, adoption bancaire</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="coin-card">
+                            <h4>₳ Cardano (ADA)</h4>
+                            <p><span class="badge medium-risk">Risque Modéré</span><span class="badge long-term">Long Terme</span></p>
+                            <ul>
+                                <li><strong>Cap:</strong> ~20B USD</li>
+                                <li><strong>Volatilité:</strong> Élevée (±35%)</li>
+                                <li><strong>Pourquoi:</strong> Recherche académique, staking</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="coin-card">
+                            <h4>🔗 Chainlink (LINK)</h4>
+                            <p><span class="badge medium-risk">Risque Modéré</span><span class="badge mid-term">Moyen Terme</span></p>
+                            <ul>
+                                <li><strong>Cap:</strong> ~10B USD</li>
+                                <li><strong>Volatilité:</strong> Très élevée (±45%)</li>
+                                <li><strong>Pourquoi:</strong> Oracles décentralisés, DeFi infrastructure</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="box warning">
+                        <h4>⚠️ Coins à ÉVITER pour le SPOT</h4>
+                        <ul>
+                            <li><strong>Memecoins</strong> (DOGE, SHIB, PEPE) : Trop volatils, pas de fondamentaux</li>
+                            <li><strong>Micro-caps</strong> (&lt;10M USD) : Risque de pump & dump, illiquides</li>
+                            <li><strong>Tokens inflationnaires</strong> : Supply illimité = dévaluation</li>
+                            <li><strong>Projets morts</strong> : Pas de développement depuis 6+ mois</li>
+                            <li><strong>Scams évidents</strong> : Promesses irréalistes (1000x en 1 mois)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- SECTION 5: STRATÉGIES SPOT -->
+                <div class="section">
+                    <h2>🎯 Stratégies de Trading SPOT</h2>
+                    
+                    <h3>1️⃣ DCA (Dollar Cost Averaging) - Pour Débutants</h3>
+                    <div class="strategy-step" data-step="1">
+                        <h4>📊 Principe</h4>
+                        <p>Acheter un montant fixe à intervalles réguliers, indépendamment du prix.</p>
+                        
+                        <div class="example-box">
+                            <h4>Exemple Concret</h4>
+                            <p><strong>Capital:</strong> 1,200 USD | <strong>Durée:</strong> 12 mois | <strong>Crypto:</strong> ETH</p>
+                            <p><strong>Plan:</strong> Acheter 100 USD d'ETH chaque mois, quel que soit le prix</p>
+                            
+                            <table>
+                                <tr><th>Mois</th><th>Prix ETH</th><th>Achat USD</th><th>ETH acheté</th></tr>
+                                <tr><td>Jan</td><td>2,000</td><td>100</td><td>0.050</td></tr>
+                                <tr><td>Fev</td><td>1,800</td><td>100</td><td>0.056</td></tr>
+                                <tr><td>Mar</td><td>2,200</td><td>100</td><td>0.045</td></tr>
+                                <tr><td>...</td><td>...</td><td>...</td><td>...</td></tr>
+                                <tr><td><strong>Total</strong></td><td><strong>Moy: 2,100</strong></td><td><strong>1,200</strong></td><td><strong>0.571 ETH</strong></td></tr>
+                            </table>
+                            
+                            <p><strong>✅ Avantages:</strong> Réduit l'impact de la volatilité, discipline automatique, pas de timing du marché</p>
+                        </div>
+                    </div>
+                    
+                    <h3>2️⃣ Buy The Dip - Pour Intermédiaires</h3>
+                    <div class="strategy-step" data-step="2">
+                        <h4>📊 Principe</h4>
+                        <p>Acheter uniquement lors des corrections significatives du marché (-15% à -30%).</p>
+                        
+                        <div class="box success">
+                            <h4>Règles d'Entrée</h4>
+                            <ul>
+                                <li>Attendre une baisse de 15-20% depuis le dernier ATH</li>
+                                <li>Vérifier que Fear & Greed Index &lt; 30 (peur/panique)</li>
+                                <li>Confirmer avec Magic Mike 1H : signal LONG + filtres HTF alignés</li>
+                                <li>Acheter en 3 tranches : 40% maintenant, 30% si -10% de plus, 30% si -15% de plus</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="box danger">
+                            <h4>⚠️ Pièges à Éviter</h4>
+                            <ul>
+                                <li><strong>Catching a falling knife:</strong> Ne pas acheter pendant un crash (-50%+)</li>
+                                <li><strong>FOMO inversé:</strong> Attendre une baisse qui ne vient jamais</li>
+                                <li><strong>All-in:</strong> Toujours garder du cash pour moyenner si ça baisse encore</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h3>3️⃣ Swing Trading SPOT - Pour Avancés</h3>
+                    <div class="strategy-step" data-step="3">
+                        <h4>📊 Principe</h4>
+                        <p>Utiliser Magic Mike 1H pour acheter au spot, viser 15-30% de profit, tenir 2-6 semaines.</p>
+                        
+                        <div class="box info">
+                            <h4>Méthodologie</h4>
+                            <ol>
+                                <li><strong>Signal Magic Mike 1H</strong> : Triangle vert LONG + fond vert (4H+Daily haussiers)</li>
+                                <li><strong>Entry</strong> : Acheter au prix indiqué par l'indicateur</li>
+                                <li><strong>Stop Mental</strong> : -12% max (pas de SL automatique en spot, mais discipline)</li>
+                                <li><strong>Target 1</strong> : +15% → Vendre 50%</li>
+                                <li><strong>Target 2</strong> : +30% → Vendre 40%</li>
+                                <li><strong>Target 3</strong> : +50% → Vendre 10% (moonshot)</li>
+                            </ol>
+                        </div>
+                        
+                        <p><strong>💡 Astuce:</strong> En spot, vous pouvez tenir même si ça descend temporairement. Patience &gt; tout.</p>
+                    </div>
+                    
+                    <h3>4️⃣ Portfolio Allocation - Pour Tous</h3>
+                    <div class="strategy-step" data-step="4">
+                        <h4>📊 Allocation Recommandée</h4>
+                        
+                        <table>
+                            <tr>
+                                <th>Profil</th>
+                                <th>BTC</th>
+                                <th>ETH</th>
+                                <th>Large Caps</th>
+                                <th>Mid Caps</th>
+                                <th>Stablecoins</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Conservateur</strong></td>
+                                <td>50%</td>
+                                <td>30%</td>
+                                <td>10%</td>
+                                <td>0%</td>
+                                <td>10%</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Équilibré</strong></td>
+                                <td>40%</td>
+                                <td>30%</td>
+                                <td>15%</td>
+                                <td>10%</td>
+                                <td>5%</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Agressif</strong></td>
+                                <td>25%</td>
+                                <td>25%</td>
+                                <td>25%</td>
+                                <td>20%</td>
+                                <td>5%</td>
+                            </tr>
+                        </table>
+                        
+                        <p><strong>🔄 Rebalancing:</strong> Rééquilibrer tous les 3-6 mois pour maintenir l'allocation cible.</p>
+                    </div>
+                </div>
+                
+                <!-- SECTION 6: GESTION DE RISQUE SPOT -->
+                <div class="section">
+                    <h2>🛡️ Gestion de Risque en SPOT</h2>
+                    
+                    <div class="box danger">
+                        <h4>🚨 Règles d'Or du Trading SPOT</h4>
+                        <ol>
+                            <li><strong>Ne jamais investir plus que ce que vous pouvez perdre</strong></li>
+                            <li><strong>Diversifier</strong> : Minimum 5 coins différents</li>
+                            <li><strong>Pas de FOMO</strong> : Attendre les bons setups</li>
+                            <li><strong>Stop Loss mental</strong> : Définir à l'avance (-15% max par position)</li>
+                            <li><strong>Garder du cash</strong> : 10-20% en stablecoins pour opportunités</li>
+                            <li><strong>Rebalancer régulièrement</strong> : Prendre profits sur winners, couper losers</li>
+                            <li><strong>Ignorer le bruit</strong> : Pas de trades émotionnels sur Twitter</li>
+                            <li><strong>Journal de trading</strong> : Noter chaque entrée/sortie et raison</li>
+                        </ol>
+                    </div>
+                    
+                    <h3>💰 Position Sizing en SPOT</h3>
+                    
+                    <table>
+                        <tr>
+                            <th>Capital Total</th>
+                            <th>Par Position (Tier 1)</th>
+                            <th>Par Position (Tier 2)</th>
+                            <th>Nombre Positions Max</th>
+                        </tr>
+                        <tr>
+                            <td>1,000 USD</td>
+                            <td>200-300 USD (20-30%)</td>
+                            <td>100-150 USD (10-15%)</td>
+                            <td>5-7 positions</td>
+                        </tr>
+                        <tr>
+                            <td>5,000 USD</td>
+                            <td>750-1,000 USD (15-20%)</td>
+                            <td>500-750 USD (10-15%)</td>
+                            <td>7-10 positions</td>
+                        </tr>
+                        <tr>
+                            <td>10,000 USD</td>
+                            <td>1,500-2,000 USD (15-20%)</td>
+                            <td>800-1,200 USD (8-12%)</td>
+                            <td>8-12 positions</td>
+                        </tr>
+                        <tr>
+                            <td>50,000 USD</td>
+                            <td>5,000-7,500 USD (10-15%)</td>
+                            <td>3,000-5,000 USD (6-10%)</td>
+                            <td>10-15 positions</td>
+                        </tr>
+                    </table>
+                    
+                    <p><strong>💡 Principe:</strong> Plus vous avez de capital, plus vous pouvez diversifier. Ne jamais mettre plus de 20% sur un seul coin.</p>
+                </div>
+                
+                <!-- SECTION 7: TIMEFRAMES POUR SPOT -->
+                <div class="section">
+                    <h2>⏰ Timeframes Optimaux pour SPOT</h2>
+                    
+                    <p>Le trading spot se prête mieux aux timeframes plus élevés. Voici les recommandations:</p>
+                    
+                    <table>
+                        <tr>
+                            <th>Timeframe</th>
+                            <th>Adapté SPOT?</th>
+                            <th>Horizon</th>
+                            <th>Fréquence Checks</th>
+                            <th>Pourquoi</th>
+                        </tr>
+                        <tr>
+                            <td>1 minute</td>
+                            <td>❌ Non</td>
+                            <td>-</td>
+                            <td>-</td>
+                            <td>Trop de bruit, frais élevés</td>
+                        </tr>
+                        <tr>
+                            <td>5-15 minutes</td>
+                            <td>⚠️ Peu</td>
+                            <td>Scalping</td>
+                            <td>Constante</td>
+                            <td>Mieux en Futures</td>
+                        </tr>
+                        <tr>
+                            <td>1 heure</td>
+                            <td>✅ Oui</td>
+                            <td>2-6 semaines</td>
+                            <td>2x/jour</td>
+                            <td>Bon compromis swing</td>
+                        </tr>
+                        <tr>
+                            <td>4 heures</td>
+                            <td>✅✅ Excellent</td>
+                            <td>1-3 mois</td>
+                            <td>1x/jour</td>
+                            <td>Idéal pour SPOT</td>
+                        </tr>
+                        <tr>
+                            <td>Daily</td>
+                            <td>✅✅✅ Parfait</td>
+                            <td>3-12 mois</td>
+                            <td>1x/semaine</td>
+                            <td>MEILLEUR pour SPOT</td>
+                        </tr>
+                        <tr>
+                            <td>Weekly</td>
+                            <td>✅✅ Très bon</td>
+                            <td>6 mois-2 ans</td>
+                            <td>1x/mois</td>
+                            <td>Investissement long terme</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="box success">
+                        <h4>🎯 Recommandation Magic Mike pour SPOT</h4>
+                        <p><strong>Utiliser l'indicateur Magic Mike 1H</strong> mais avec une approche SPOT adaptée:</p>
+                        <ul>
+                            <li>Signal 1H LONG + Fond vert → <strong>Acheter au spot</strong></li>
+                            <li>Ignorer les TP1/TP2/TP3 à court terme</li>
+                            <li>Viser plutôt <strong>+20-50% sur 4-12 semaines</strong></li>
+                            <li>Si ça descend = <strong>patience ou moyenne à la baisse</strong></li>
+                            <li>Vendre uniquement sur signal 1H SHORT + Fond rouge (renversement confirmé)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- SECTION 8: PLATEFORMES RECOMMANDÉES -->
+                <div class="section">
+                    <h2>🏦 Meilleures Plateformes pour SPOT</h2>
+                    
+                    <table>
+                        <tr>
+                            <th>Exchange</th>
+                            <th>Frais SPOT</th>
+                            <th>Coins Disponibles</th>
+                            <th>Avantages</th>
+                            <th>Inconvénients</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Binance</strong></td>
+                            <td>0.1% (0.075% avec BNB)</td>
+                            <td>600+</td>
+                            <td>Plus grand exchange, liquidité maximale, staking</td>
+                            <td>Complexe pour débutants</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Kraken</strong></td>
+                            <td>0.16-0.26%</td>
+                            <td>200+</td>
+                            <td>Régulé, sécurisé, bon pour fiat</td>
+                            <td>Frais un peu élevés</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Coinbase</strong></td>
+                            <td>0.5% (0.35% Pro)</td>
+                            <td>250+</td>
+                            <td>Interface simple, assurance dépôts</td>
+                            <td>Frais très élevés</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bybit</strong></td>
+                            <td>0.1%</td>
+                            <td>400+</td>
+                            <td>Interface moderne, bonuses</td>
+                            <td>Moins régulé</td>
+                        </tr>
+                        <tr>
+                            <td><strong>OKX</strong></td>
+                            <td>0.08-0.1%</td>
+                            <td>350+</td>
+                            <td>Frais compétitifs, web3 wallet</td>
+                            <td>Moins populaire</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="box info">
+                        <h4>💡 Conseils de Sécurité</h4>
+                        <ul>
+                            <li>✅ Activer 2FA (Google Authenticator) sur tous les comptes</li>
+                            <li>✅ Utiliser un wallet froid (Ledger/Trezor) pour stockage long terme (&gt;1 an)</li>
+                            <li>✅ Ne jamais garder plus de 20% de votre portfolio sur un seul exchange</li>
+                            <li>✅ Vérifier les adresses de retrait DEUX fois avant d'envoyer</li>
+                            <li>⚠️ Attention aux faux sites (phishing) - toujours vérifier l'URL</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- SECTION 9: ERREURS À ÉVITER -->
+                <div class="section">
+                    <h2>🚫 Top 10 Erreurs en Trading SPOT</h2>
+                    
+                    <div class="box danger">
+                        <ol>
+                            <li><strong>Acheter par FOMO au sommet</strong> : Attendre une correction est toujours mieux</li>
+                            <li><strong>Ne pas diversifier</strong> : All-in sur un seul coin = risque maximum</li>
+                            <li><strong>Vendre en panique</strong> : Les corrections sont normales (-20-30%)</li>
+                            <li><strong>Trader sur émotions</strong> : Suivre un plan > réagir aux news</li>
+                            <li><strong>Ignorer les frais</strong> : 10 trades = 2% de frais = -2% de profit</li>
+                            <li><strong>Ne pas sécuriser les profits</strong> : Vendre 30-50% sur +100% est intelligent</li>
+                            <li><strong>Tomber dans les scams</strong> : Si c'est trop beau pour être vrai, c'est un scam</li>
+                            <li><strong>Trader sans plan</strong> : Pas d'objectif = pas de succès</li>
+                            <li><strong>Overtrading</strong> : Trop de trades = frais + erreurs</li>
+                            <li><strong>Ne pas apprendre</strong> : Répéter les mêmes erreurs encore et encore</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <!-- SECTION 10: CHECKLIST -->
+                <div class="section">
+                    <h2>✅ Checklist AVANT d'acheter en SPOT</h2>
+                    
+                    <div class="box success">
+                        <h4>📋 Vérifications Obligatoires</h4>
+                        <ul>
+                            <li>☐ <strong>Fondamentaux</strong> : Le projet a-t-il un use case réel ?</li>
+                            <li>☐ <strong>Market Cap</strong> : Est-il dans le top 100 ? (&gt;100M USD minimum)</li>
+                            <li>☐ <strong>Volume 24h</strong> : Volume &gt; 10M USD pour liquidité ?</li>
+                            <li>☐ <strong>Signal technique</strong> : Magic Mike 1H montre LONG + filtres verts ?</li>
+                            <li>☐ <strong>Sentiment</strong> : Fear & Greed &lt; 60 (pas de FOMO extrême) ?</li>
+                            <li>☐ <strong>Dominance BTC</strong> : En baisse = altseason possible ?</li>
+                            <li>☐ <strong>Position sizing</strong> : &lt; 15-20% du capital sur cette position ?</li>
+                            <li>☐ <strong>Stop mental défini</strong> : À quel prix je coupe si erreur ?</li>
+                            <li>☐ <strong>Target défini</strong> : À quel profit je vends (min +20%) ?</li>
+                            <li>☐ <strong>Capital disponible</strong> : Ai-je gardé 10-20% en stablecoins ?</li>
+                        </ul>
+                        
+                        <p style="margin-top: 20px;"><strong>Si TOUS les points sont ✅ → ACHETEZ</strong></p>
+                        <p><strong>Si UN SEUL point est ❌ → ATTENDEZ un meilleur moment</strong></p>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 3px solid #f0f0f0;">
+                    <h2>💎 Conclusion : Le SPOT pour Construire sa Richesse Crypto</h2>
+                    <p style="font-size: 1.1em; color: #059669; max-width: 800px; margin: 20px auto;">
+                        Le trading SPOT est la fondation de tout portfolio crypto réussi. C'est moins sexy que le leverage 100x, mais c'est ce qui permet de <strong>construire une richesse durable</strong> sans risquer de tout perdre en une journée.
+                    </p>
+                    <p style="font-size: 1.05em; margin-top: 20px;">
+                        <strong>Patience, Discipline et Recherche</strong> sont vos meilleurs alliés. 🚀
+                    </p>
+                </div>
             </div>
         </div>
     </body>
@@ -10044,16 +10977,29 @@ if __name__ == "__main__":
     print("  • Risk/Reward automatique")
     print("  • Recommandations SLBE")
     print("="*70)
-    print("📊 16 PAGES ACTIVES:")
+    print("📊 17 PAGES ACTIVES:")
+    print("  • 🏠 ACCUEIL PROFESSIONNEL (NOUVEAU!)")
     print("  • Fear & Greed (flèche SVG)")
     print("  • Dominance BTC, Heatmap")
-    print("  • 🌟 ALTCOIN SEASON (NOUVEAU DESIGN!)")
+    print("  • 🌟 ALTCOIN SEASON (INDEX CORRIGÉ!)")
+    print("  • 📚 STRATÉGIE (1H + 15min détaillé)")
+    print("  • 💎 SPOT TRADING COMPLET (NOUVEAU!)")
     print("  • Nouvelles, Trades, Convertisseur")
-    print("  • 📅 CALENDRIER ÉCONOMIQUE COMPLET (NOUVEAU!)")
+    print("  • 📅 CALENDRIER ÉCONOMIQUE COMPLET")
     print("  • Bullrun Phase, Graphiques, Telegram")
-    print("  • ⚖️ RISK MANAGEMENT (NOUVEAU!)")
-    print("  • 👀 WATCHLIST & ALERTES (NOUVEAU!)")
-    print("  • 🤖 AI TRADING ASSISTANT (NOUVEAU!)")
+    print("  • ⚖️ RISK MANAGEMENT")
+    print("  • 👀 WATCHLIST & ALERTES")
+    print("  • 🤖 AI TRADING ASSISTANT")
+    print("="*70)
+    print("💎 SPOT TRADING (NOUVEAU):")
+    print("  • Guide complet du trading au comptant")
+    print("  • Comparaison détaillée SPOT vs FUTURES")
+    print("  • 10 sections professionnelles")
+    print("  • Meilleurs coins par catégorie (Tier 1, 2)")
+    print("  • 4 stratégies détaillées (DCA, Buy Dip, Swing, Portfolio)")
+    print("  • Gestion de risque spécifique au SPOT")
+    print("  • Timeframes optimaux et plateformes recommandées")
+    print("  • Top 10 erreurs à éviter + Checklist complète")
     print("="*70)
     print("🌟 ALTCOIN SEASON:")
     print("  • Jauge circulaire animée")

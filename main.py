@@ -3680,57 +3680,96 @@ async def spot_trading_page():
                 cell.style.cssText = `
                     width: 100%;
                     aspect-ratio: 1;
-                    border-radius: 4px;
+                    border-radius: 6px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 0.7em;
+                    font-size: 0.8em;
                     font-weight: bold;
                     cursor: pointer;
-                    transition: all 0.2s;
-                    border: 1px solid rgba(0,0,0,0.1);
+                    transition: all 0.3s;
+                    border: 2px solid rgba(0,0,0,0.2);
+                    position: relative;
                 `;
                 
                 // Déterminer la couleur selon le prix
                 let color = '#eab308'; // Neutre par défaut
                 let label = 'N';
+                let action = 'Normal';
                 
                 const pricePercent = (price - minPrice) / (maxPrice - minPrice);
                 
                 if (pricePercent < 0.3) {
-                    // Prix bas = ACHETER!
                     color = '#22c55e';
                     label = '🟢';
+                    action = 'ACHETEZ +50%!';
                     countBuy++;
                 } else if (pricePercent < 0.5) {
-                    // Prix bas-moyen = Neutre
                     color = '#eab308';
                     label = '🟡';
+                    action = 'Achat normal';
                     countNeutral++;
                 } else if (pricePercent < 0.75) {
-                    // Prix moyen-haut = Attention
                     color = '#f59e0b';
                     label = '🟠';
+                    action = 'Achat régulier';
                     countWarn++;
                 } else {
-                    // Prix très haut = ATTENDRE
                     color = '#ef4444';
                     label = '🔴';
+                    action = 'Pause/Attendre';
                     countWait++;
                 }
                 
                 cell.style.backgroundColor = color;
                 cell.textContent = label;
                 
-                // Hover effect
-                cell.addEventListener('mouseover', function() {
-                    this.style.transform = 'scale(1.2)';
-                    this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
-                    this.style.zIndex = '10';
+                // Créer la popup au hover
+                cell.addEventListener('mouseover', function(e) {
+                    this.style.transform = 'scale(1.4)';
+                    this.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)';
+                    this.style.zIndex = '100';
+                    
+                    // Créer la popup
+                    const popup = document.createElement('div');
+                    popup.style.cssText = `
+                        position: absolute;
+                        bottom: 100%;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: white;
+                        padding: 10px 12px;
+                        border-radius: 8px;
+                        font-size: 0.85em;
+                        white-space: nowrap;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        border: 2px solid ${color};
+                        margin-bottom: 5px;
+                        z-index: 200;
+                    `;
+                    
+                    popup.innerHTML = `
+                        <strong>Mois ${index + 1}</strong><br/>
+                        Prix: $${Math.round(price)}<br/>
+                        <span style="color: ${color}; font-weight: bold;">${action}</span>
+                    `;
+                    
+                    this.appendChild(popup);
+                    this.popup = popup;
                 });
+                
                 cell.addEventListener('mouseout', function() {
                     this.style.transform = 'scale(1)';
                     this.style.boxShadow = 'none';
+                    if (this.popup) {
+                        this.popup.remove();
+                        this.popup = null;
+                    }
+                });
+                
+                // Aussi clickable pour afficher l'info
+                cell.addEventListener('click', function() {
+                    alert(`MOIS ${index + 1}\n\nPrix: $${Math.round(price)}\nAction: ${action}`);
                 });
                 
                 container.appendChild(cell);

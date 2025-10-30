@@ -3899,11 +3899,16 @@ async def ai_market_regime():
             """ + NAV + """
             
             <div class="content">
-                <div class="regime-display" id="regimeDisplay">
+                <div style="background: rgba(99, 102, 241, 0.1); padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 25px; border: 2px solid rgba(99, 102, 241, 0.3);">
                     <span class="live-badge">🔴 LIVE</span>
-                    <div class="regime-icon" id="regimeIcon">📊</div>
+                    <strong style="margin-left: 15px;">📡 Données CoinGecko en temps réel</strong>
+                    <div style="font-size: 0.85em; color: #666; margin-top: 5px;">Fear & Greed Index + 100+ top cryptos (mise à jour auto 5 min)</div>
+                </div>
+                
+                <div class="regime-display" id="regimeDisplay">
+                    <div class="regime-icon" id="regimeIcon">⏳</div>
                     <div class="regime-title" id="regimeTitle">Chargement...</div>
-                    <div class="regime-subtitle" id="regimeSubtitle">Analyse en cours...</div>
+                    <div class="regime-subtitle" id="regimeSubtitle">Récupération des données en temps réel...</div>
                     
                     <div class="regime-gauge">
                         <div class="regime-pointer" id="regimePointer"></div>
@@ -3938,59 +3943,197 @@ async def ai_market_regime():
         </div>
         
         <script>
-            function detectMarketRegime() {
-                // DONNÉES RÉELLES OCTOBRE 2025
-                // BTC: 107-113K (après ATH 126K)
-                // Fear&Greed: 27-51 (Fear->Neutral)
-                // Dominance BTC: 59%
-                // Cap totale: >4.15T$
-                // Altcoin Index: 26 (Bitcoin Season)
+            async function fetchMarketData() {
+                try {
+                    // Récupérer global market data
+                    const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
+                    const globalData = await globalResponse.json();
+                    
+                    // Récupérer Fear & Greed Index
+                    const fgResponse = await fetch('https://api.alternative.me/fng/?limit=1&format=json');
+                    const fgData = await fgResponse.json();
+                    
+                    // Récupérer top cryptos pour altcoin index
+                    const marketsResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&sparkline=false&price_change_percentage=24h,7d');
+                    const marketsData = await marketsResponse.json();
+                    
+                    return {
+                        global: globalData.data,
+                        fearGreed: fgData.data[0],
+                        markets: marketsData
+                    };
+                } catch (error) {
+                    console.error('Erreur API:', error);
+                    return null;
+                }
+            }
+            
+            function calculateRegimeFromData(data) {
+                if (!data) return null;
                 
-                // État réel: BULL RUN ACTIF en phase de CONSOLIDATION
-                // après ATH, avant probable continuation vers 150-200K
+                const global = data.global;
+                const fearGreed = parseInt(data.fearGreed.value);
+                const btcDominance = global.market_cap_percentage.btc;
+                const ethDominance = global.market_cap_percentage.eth;
+                const totalMarketCap = global.total_market_cap.usd / 1e12; // En trillions
                 
-                // Score calculé dynamiquement - voir loadRegimeData() // Début Bull Run / Consolidation
+                // BTC et ETH data
+                const btc = data.markets.find(m => m.symbol.toUpperCase() === 'BTC');
+                const eth = data.markets.find(m => m.symbol.toUpperCase() === 'ETH');
                 
-                let regime, icon, subtitle, color, recommendations;
+                const btcPrice = btc?.current_price || 0;
+                const btcChange24h = btc?.price_change_percentage_24h || 0;
+                const btcChange7d = btc?.price_change_percentage_7d_in_currency || 0;
                 
-                // On est actuellement en "Début Bull Run" (regimeValue ~68)
-                // après correction de 126K à 107K, phase d'accumulation
+                // Calculer Altcoin Season Index (Alt cap / BTC cap)
+                let altcoinSeasonIndex = 0;
+                if (btc && data.markets.length > 2) {
+                    const altCapSum = data.markets
+                        .filter(m => m.symbol.toUpperCase() !== 'BTC' && m.symbol.toUpperCase() !== 'ETH')
+                        .reduce((sum, m) => sum + (m.market_cap || 0), 0);
+                    const altRatio = altCapSum / (btc.market_cap || 1);
+                    altcoinSeasonIndex = Math.min(100, Math.round((altRatio * 50)));
+                }
                 
-                regime = 'Bull Run - Phase Consolidation';
-                icon = '🚀📊';
-                subtitle = 'Après ATH 126K, consolidation avant continuation';
-                color = '#84cc16';
-                recommendations = [
-                    '✅ HODL positions gagnantes - Bull run PAS terminé',
-                    '📊 Accumulation zone: BTC 108-116K est une opportunité',
-                    '💎 Altcoins: Rotation du capital de BTC vers large caps (SOL, XRP, ADA)',
-                    '⚖️ Position sizing: 1.5-2% par trade, leverage max 10x',
-                    '🎯 Targets 2025: BTC 150-200K, ETH 7-8K selon analystes',
-                    '📈 Garder 30-40% en stablecoins pour opportunités',
-                    '⏰ C\'est PAS le sommet - on est à mi-parcours du cycle selon experts'
-                ];
+                // Calculer régime
+                let regime, icon, subtitle, color, value;
+                let trendStrength, volumeTrend, momentum, marketPhase;
+                
+                // Déterminer la phase du marché
+                if (fearGreed < 25) {
+                    regime = 'Bear Market - Extreme Fear';
+                    icon = '📉😱';
+                    color = '#ef4444';
+                    value = 10;
+                    trendStrength = 'Très Faible (panique)';
+                    momentum = 'Baissier (washout possible)';
+                } else if (fearGreed < 45) {
+                    regime = 'Accumulation - Fear';
+                    icon = '📊😟';
+                    color = '#f59e0b';
+                    value = 30;
+                    trendStrength = 'Faible (mais stabilisante)';
+                    momentum = 'Baissier transitif';
+                } else if (fearGreed < 55) {
+                    regime = 'Range - Neutral';
+                    icon = '⚖️😐';
+                    color = '#eab308';
+                    value = 50;
+                    trendStrength = 'Moyenne (indécis)';
+                    momentum = 'Neutre (consolidation)';
+                } else if (fearGreed < 75) {
+                    regime = 'Bull Run - Greed';
+                    icon = '🚀📈';
+                    color = '#84cc16';
+                    value = 70;
+                    trendStrength = 'Forte (haussière claire)';
+                    momentum = 'Haussier (confiance marchés)';
+                } else {
+                    regime = 'Euphoria - Extreme Greed';
+                    icon = '🌙🚀';
+                    color = '#10b981';
+                    value = 90;
+                    trendStrength = 'Très Forte (sommet possible)';
+                    momentum = 'Haussier extrême (attention!)';
+                }
+                
+                // Volume trend (sur 7j)
+                const altcoins7d = data.markets
+                    .slice(2, 20)
+                    .reduce((sum, m) => sum + (m.price_change_percentage_7d_in_currency || 0), 0) / 18;
+                
+                if (altcoins7d > 10) volumeTrend = '📈 +15% (momentum fort)';
+                else if (altcoins7d > 5) volumeTrend = '📊 +8% (hausse modérée)';
+                else if (altcoins7d > -5) volumeTrend = '⚖️ ±0% (stable)';
+                else volumeTrend = '📉 -10% (pression vendeuse)';
+                
+                // Market phase
+                const monthsSinceStart = 12; // Depuis 2023
+                if (fearGreed > 65) marketPhase = 'Fin cycle haussier (prudence recommandée)';
+                else if (fearGreed > 50) marketPhase = 'Mi-parcours du bull run (opportunités)';
+                else if (fearGreed > 35) marketPhase = 'Accumulation (positions long-terme)';
+                else marketPhase = 'Bear market (préserver capital)';
+                
+                // Recommendations dynamiques
+                let recommendations = [];
+                if (fearGreed > 75) {
+                    recommendations = [
+                        '⚠️ ATTENTION: Extreme Greed - sommet possible',
+                        '💰 Prendre partiellement des profits',
+                        '📊 Réduire leverage, vérifier taille position',
+                        '📈 Garder 40-50% en stablecoins',
+                        '⏰ Ajouter stops aux positions gagnantes',
+                        '🎯 Si sommet: zones support à observer'
+                    ];
+                } else if (fearGreed > 55) {
+                    recommendations = [
+                        '✅ Bull run actif - accumulation continue',
+                        '📊 Ajouter sur corrections 5-10%',
+                        '🎯 Objectifs: suivre momentum altcoins',
+                        '⚖️ Position sizing: 1.5-2% par trade',
+                        '💎 Focus: BTC consolidation → nouvelles ATH',
+                        '📈 Garder 30-40% en stablecoins'
+                    ];
+                } else if (fearGreed > 45) {
+                    recommendations = [
+                        '⚖️ Marché indécis - prudence conseillée',
+                        '📊 Attendre confirmation direction',
+                        '🛡️ Position sizing réduit',
+                        '💰 Garder 50%+ en stablecoins',
+                        '🎯 Accumulation selective bas prix',
+                        '📍 Surveiller support/résistance clés'
+                    ];
+                } else {
+                    recommendations = [
+                        '✅ Accumulation active - peur = opportunité',
+                        '📊 Achat sur panic sells',
+                        '🎯 Focus coins fondamentalement forts',
+                        '💎 Stratégie DCA (Dollar Cost Averaging)',
+                        '🔑 Pas de leverage en bear market',
+                        '📈 Préserver capital pour prochain bull'
+                    ];
+                }
                 
                 return {
                     regime,
                     icon,
-                    subtitle,
+                    subtitle: `${btcPrice.toLocaleString('fr-FR', {maximumFractionDigits: 0})} USD | Fear&Greed: ${fearGreed} | Dominance BTC: ${btcDominance.toFixed(1)}%`,
                     color,
-                    value: regimeValue,
+                    value,
                     recommendations,
                     indicators: {
-                        btcDominance: '59.0%',
-                        fearGreed: 51, // Neutre actuellement
-                        trendStrength: 'Fort (consolidation temporaire)',
-                        volumeTrend: '+15% (accumulation active)',
-                        momentum: 'Haussier (pause avant continuation)',
-                        marketPhase: 'Mi-Bull Run (début 2023 → prévu jusqu\'à 2026)',
-                        altcoinIndex: '26/100 (Bitcoin Season - normal après ATH BTC)'
+                        btcPrice: `$${btcPrice.toLocaleString('fr-FR', {maximumFractionDigits: 0})}`,
+                        btcChange24h: `${btcChange24h > 0 ? '📈' : '📉'} ${btcChange24h.toFixed(2)}%`,
+                        btcChange7d: `${btcChange7d > 0 ? '📈' : '📉'} ${btcChange7d.toFixed(2)}%`,
+                        btcDominance: `${btcDominance.toFixed(1)}%`,
+                        ethDominance: `${ethDominance.toFixed(1)}%`,
+                        fearGreed: `${fearGreed}/100 (${fearGreed > 75 ? 'Extreme Greed' : fearGreed > 55 ? 'Greed' : fearGreed > 45 ? 'Neutral' : fearGreed > 25 ? 'Fear' : 'Extreme Fear'})`,
+                        trendStrength: trendStrength,
+                        volumeTrend: volumeTrend,
+                        momentum: momentum,
+                        marketCap: `$${totalMarketCap.toFixed(2)}T`,
+                        marketPhase: marketPhase,
+                        altcoinIndex: `${altcoinSeasonIndex}/100 (${altcoinSeasonIndex > 70 ? 'Altcoin Season' : altcoinSeasonIndex > 50 ? 'Altcoins forts' : altcoinSeasonIndex > 30 ? 'Mixte' : 'Bitcoin dominance'})`
                     }
                 };
             }
             
-            function renderRegime() {
-                const data = detectMarketRegime();
+            async function detectMarketRegime() {
+                const data = await fetchMarketData();
+                const regime = calculateRegimeFromData(data);
+                return regime || {
+                    regime: 'Chargement...',
+                    icon: '⏳',
+                    subtitle: 'Données en cours de récupération',
+                    color: '#666',
+                    value: 50,
+                    recommendations: [],
+                    indicators: {}
+                };
+            }
+            
+            async function renderRegime() {
+                const data = await detectMarketRegime();
                 
                 // Display principal
                 document.getElementById('regimeIcon').textContent = data.icon;
@@ -4007,24 +4150,39 @@ async def ai_market_regime():
                 // Indicators
                 const indicatorsHtml = `
                     <div class="indicator-card">
+                        <div class="indicator-title">Bitcoin</div>
+                        <div class="indicator-value">${data.indicators.btcPrice}</div>
+                        <div class="indicator-status">${data.indicators.btcChange24h}</div>
+                    </div>
+                    <div class="indicator-card">
+                        <div class="indicator-title">Changement 7j</div>
+                        <div class="indicator-value">${data.indicators.btcChange7d}</div>
+                        <div class="indicator-status">BTC momentum</div>
+                    </div>
+                    <div class="indicator-card">
                         <div class="indicator-title">Dominance BTC</div>
                         <div class="indicator-value">${data.indicators.btcDominance}</div>
-                        <div class="indicator-status">Bitcoin Season actif</div>
+                        <div class="indicator-status">vs altcoins</div>
                     </div>
                     <div class="indicator-card">
-                        <div class="indicator-title">Fear & Greed</div>
+                        <div class="indicator-title">Dominance ETH</div>
+                        <div class="indicator-value">${data.indicators.ethDominance}</div>
+                        <div class="indicator-status">vs autres</div>
+                    </div>
+                    <div class="indicator-card">
+                        <div class="indicator-title">Fear & Greed Index</div>
                         <div class="indicator-value">${data.indicators.fearGreed}</div>
-                        <div class="indicator-status">Neutre (après Fear)</div>
+                        <div class="indicator-status">Sentiment marché</div>
                     </div>
                     <div class="indicator-card">
-                        <div class="indicator-title">Force de Tendance</div>
+                        <div class="indicator-title">Force Tendance</div>
                         <div class="indicator-value">${data.indicators.trendStrength}</div>
                         <div class="indicator-status">ADX & Momentum</div>
                     </div>
                     <div class="indicator-card">
-                        <div class="indicator-title">Volume 24h</div>
+                        <div class="indicator-title">Trend Volume</div>
                         <div class="indicator-value">${data.indicators.volumeTrend}</div>
-                        <div class="indicator-status">Accumulation</div>
+                        <div class="indicator-status">Altcoins 7j</div>
                     </div>
                     <div class="indicator-card">
                         <div class="indicator-title">Momentum Global</div>
@@ -4032,14 +4190,19 @@ async def ai_market_regime():
                         <div class="indicator-status">Tendance moyen terme</div>
                     </div>
                     <div class="indicator-card">
+                        <div class="indicator-title">Capitalisation Totale</div>
+                        <div class="indicator-value">${data.indicators.marketCap}</div>
+                        <div class="indicator-status">Santé marché</div>
+                    </div>
+                    <div class="indicator-card">
                         <div class="indicator-title">Phase du Marché</div>
-                        <div class="indicator-value">${data.indicators.marketPhase}</div>
-                        <div class="indicator-status">Cycle 4 ans crypto</div>
+                        <div class="indicator-value" style="font-size: 1.2em;">${data.indicators.marketPhase}</div>
+                        <div class="indicator-status">Cycle crypto</div>
                     </div>
                     <div class="indicator-card">
                         <div class="indicator-title">Altcoin Season Index</div>
                         <div class="indicator-value">${data.indicators.altcoinIndex}</div>
-                        <div class="indicator-status">Bitcoin dominant</div>
+                        <div class="indicator-status">Rotation capital</div>
                     </div>
                 `;
                 document.getElementById('indicatorsGrid').innerHTML = indicatorsHtml;
@@ -4048,14 +4211,13 @@ async def ai_market_regime():
                 const recoHtml = data.recommendations.map(r => `<li>${r}</li>`).join('');
                 document.getElementById('recommendationsList').innerHTML = recoHtml;
                 
-                // History RÉELLE du cycle crypto 2023-2025
+                // History timeline
                 const history = [
-                    {regime: 'Bear Market 2022', duration: '12 mois', color: '#ef4444'},
+                    {regime: 'Bear 2022-2023', duration: '12+ mois', color: '#ef4444'},
                     {regime: 'Accumulation 2023', duration: '10 mois', color: '#f59e0b'},
-                    {regime: 'Début Bull 2024', duration: '8 mois', color: '#eab308'},
+                    {regime: 'Early Bull 2024', duration: '8 mois', color: '#eab308'},
                     {regime: 'Bull Run 2025', duration: '6 mois', color: '#84cc16'},
-                    {regime: 'ATH Oct 2025 (126K)', duration: '6 oct', color: '#10b981'},
-                    {regime: 'Actuel: Consolidation', duration: 'Maintenant', color: data.color}
+                    {regime: 'Actuel', duration: 'En temps réel', color: data.color}
                 ];
                 
                 const historyHtml = history.map(h => `

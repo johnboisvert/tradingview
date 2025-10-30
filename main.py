@@ -215,11 +215,12 @@ async def generate_real_opportunities(crypto_data: dict, fear_greed: dict):
             timeframe = "4H"
         
         # Raisons basées sur les vraies données
+        signal_type = "d'achat" if fg_value < 50 else "neutre"
         reasons = [
             f"Prix actuel: ${current_price:,.2f} ({price_change:+.2f}% 24h)",
             f"Volume 24h: ${data['volume_24h']:,.0f} - {'Fort' if data['volume_24h'] > 500_000_000 else 'Modéré'}",
             f"Market Cap: ${data['market_cap']:,.0f} - Rank #{data['market_cap_rank']}",
-            f"Fear & Greed: {fg_value} ({fear_greed['classification']}) - Signal {'d\\'achat' if fg_value < 50 else 'neutre'}"
+            f"Fear & Greed: {fg_value} ({fear_greed['classification']}) - Signal {signal_type}"
         ]
         
         opportunities.append({

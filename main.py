@@ -136,21 +136,6 @@ async def calculate_altcoin_season_index():
     except Exception as e:
         print(f"❌ Erreur: {e}")
         return generate_fallback_altcoin_data()
-            btc90 = btc_data.get('price_change_percentage_90d_in_currency', 0) or 0
-            btc7 = btc_data.get('price_change_percentage_7d_in_currency', 0) or 0
-            alts_win = sum(1 for c in md[2:] if c.get('price_change_percentage_7d_in_currency', 0) > btc7)
-            df = (100 - btcd) * 0.4
-            rp = (alts_win / 48) * 100 * 0.3
-            of = min(100, otd * 0.5) * 0.2
-            bf = max(0, (btc_data.get('price_change_percentage_24h', 0) or 0) * -0.5) * 0.1
-            idx = max(0, min(100, df + rp + of + bf))
-            trend = "🔥 Hausse" if alts_win > 40 else ("📈 Stable" if alts_win > 25 else "📉 Baisse")
-            mom = "🚀 Explosif" if idx > 60 else ("⚡ Actif" if idx > 40 else "😴 Faible")
-            print(f"✅ Altcoin Index: {idx:.1f} | BTC: {btcd:.1f}% | Alts: {alts_win}/48")
-            return {"index": round(idx, 1), "alts_winning": alts_win, "trend": trend, "btc_change_90d": round(btc90, 2), "momentum": mom, "btc_dominance": round(btcd, 2), "eth_dominance": round(ethd, 2), "others_dominance": round(otd, 2), "status": "success", "timestamp": datetime.now().isoformat()}
-    except Exception as e:
-        print(f"❌ Erreur altcoin: {e}")
-        return generate_fallback_altcoin_data()
 
 def generate_fallback_altcoin_data():
     """Données fallback réalistes"""

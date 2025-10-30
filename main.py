@@ -3066,6 +3066,266 @@ async def spot_trading_page():
                     </div>
                 </div>
                 
+                <!-- SECTION 11: STRATÉGIE DCA (DOLLAR COST AVERAGING) -->
+                <div class="section">
+                    <h2>📊 DCA - Dollar Cost Averaging : Stratégie Passive Gagnante</h2>
+                    
+                    <div class="box info">
+                        <h4>🎯 Qu'est-ce que le DCA ?</h4>
+                        <p><strong>DCA = Acheter une quantité fixe de crypto à intervalles réguliers, indépendamment du prix</strong></p>
+                        <p>Exemple: Acheter 100€ de Bitcoin chaque semaine pendant 52 semaines, peu importe le prix actuel.</p>
+                    </div>
+                    
+                    <h3>💡 Comment fonctionne le DCA?</h3>
+                    
+                    <div class="example-box">
+                        <h4>📊 Exemple Concret avec Bitcoin</h4>
+                        <table>
+                            <tr>
+                                <th>Semaine</th>
+                                <th>Prix BTC</th>
+                                <th>Investissement</th>
+                                <th>Quantité Achetée</th>
+                                <th>Total BTC</th>
+                                <th>Coût Moyen</th>
+                            </tr>
+                            <tr>
+                                <td>Semaine 1</td>
+                                <td>50,000 $</td>
+                                <td>500 $</td>
+                                <td>0.01 BTC</td>
+                                <td>0.01</td>
+                                <td>50,000 $</td>
+                            </tr>
+                            <tr>
+                                <td>Semaine 2</td>
+                                <td>45,000 $</td>
+                                <td>500 $</td>
+                                <td>0.0111 BTC</td>
+                                <td>0.0211</td>
+                                <td>47,393 $</td>
+                            </tr>
+                            <tr>
+                                <td>Semaine 3</td>
+                                <td>55,000 $</td>
+                                <td>500 $</td>
+                                <td>0.0091 BTC</td>
+                                <td>0.0302</td>
+                                <td>49,668 $</td>
+                            </tr>
+                            <tr>
+                                <td>Semaine 4</td>
+                                <td>48,000 $</td>
+                                <td>500 $</td>
+                                <td>0.0104 BTC</td>
+                                <td>0.0406</td>
+                                <td>49,261 $</td>
+                            </tr>
+                        </table>
+                        <p style="margin-top: 15px;"><strong>💰 Résultat:</strong> Vous avez 0.0406 BTC au coût moyen de 49,261$, au lieu de 50,000$ la première semaine.</p>
+                    </div>
+                    
+                    <h3>✅ Avantages du DCA</h3>
+                    
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <h4>Avantages</h4>
+                            <ul>
+                                <li><strong>Élimine l'émotionnel</strong> : Pas besoin de timer le marché</li>
+                                <li><strong>Réduit le timing risk</strong> : Vous achetez à différents prix</li>
+                                <li><strong>Moyenne les prix à la baisse</strong> : Plus le prix baisse, plus vous achetez</li>
+                                <li><strong>Discipline automatique</strong> : Achat régulier sans jugement</li>
+                                <li><strong>Rentabilité long terme</strong> : Prouvé sur 10+ ans</li>
+                                <li><strong>Pas de stress</strong> : Set and forget strategy</li>
+                                <li><strong>Frais réduits</strong> : Moins de transactions que le trading actif</li>
+                                <li><strong>Accumulation progressive</strong> : Construction lente et durable</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="cons">
+                            <h4>Inconvénients</h4>
+                            <ul>
+                                <li><strong>Profits plus lents</strong> : Pas d'effet de levier</li>
+                                <li><strong>Pas optimal en bull run</strong> : Vous auriez pu acheter earlier</li>
+                                <li><strong>Demande de discipline</strong> : Continuer même en bear market</li>
+                                <li><strong>Capital immobilisé</strong> : Vous devez vous engager à long terme</li>
+                                <li><strong>Pas flexible</strong> : Impossible d'adapter rapidement</li>
+                                <li><strong>Petites positions</strong> : Accumulation lente au début</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <h3>🔄 Stratégies DCA Avancées</h3>
+                    
+                    <h4>1️⃣ DCA Simple (Pour Débutants)</h4>
+                    <div class="strategy-step" data-step="1">
+                        <p><strong>Acheter une montant FIXE à intervalle RÉGULIER</strong></p>
+                        <ul>
+                            <li>100€ chaque semaine</li>
+                            <li>500€ chaque mois</li>
+                            <li>Automatiser sur l'exchange (recurring buy sur Binance/Kraken)</li>
+                            <li>S'en tenir au plan, peu importe les prix</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>2️⃣ DCA Inversé (Pour Avancés)</h4>
+                    <div class="strategy-step" data-step="2">
+                        <p><strong>Augmenter les achats quand le prix baisse</strong></p>
+                        <ul>
+                            <li>Prix normal (50k$) → Achat 100€</li>
+                            <li>Prix baisse 20% (40k$) → Achat 200€ (2x plus)</li>
+                            <li>Prix baisse 40% (30k$) → Achat 400€ (4x plus)</li>
+                            <li>Utiliser Fear & Greed Index pour déclencher les boosts</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>3️⃣ DCA + SPOT Trading (Hybride)</h4>
+                    <div class="strategy-step" data-step="3">
+                        <p><strong>Combiner l'accumulation régulière + opportunités ponctuelles</strong></p>
+                        <ul>
+                            <li>DCA régulier: 70% du capital (fondation)</li>
+                            <li>Trading spot: 30% du capital (opportunités)</li>
+                            <li>Exemple: 700€/mois en DCA, 300€ pour swing trading</li>
+                            <li>Best of both worlds: accumulation + profits</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>4️⃣ DCA avec Thresholds (Pour Prudents)</h4>
+                    <div class="strategy-step" data-step="4">
+                        <p><strong>DCA normal MAIS avec conditions de prix</strong></p>
+                        <ul>
+                            <li>Achat 100€ chaque semaine SI prix &lt; moyenne mobile 50 semaines</li>
+                            <li>Utiliser Magic Mike 1H: acheter seulement si signal LONG</li>
+                            <li>Vérifier Fear & Greed: acheter si &lt; 60 (pas de euphorie)</li>
+                            <li>Combine discipline + opportunité</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>📈 Résultats Historiques du DCA</h3>
+                    
+                    <table>
+                        <tr>
+                            <th>Période</th>
+                            <th>Achat Chaque Mois</th>
+                            <th>Investissement Total</th>
+                            <th>Valeur Finale</th>
+                            <th>ROI %</th>
+                        </tr>
+                        <tr>
+                            <td>2015-2016 (1 an)</td>
+                            <td>100€ BTC</td>
+                            <td>1,200€</td>
+                            <td>1,890€</td>
+                            <td>+57%</td>
+                        </tr>
+                        <tr>
+                            <td>2016-2017 (Bull)</td>
+                            <td>100€ BTC</td>
+                            <td>1,200€</td>
+                            <td>15,400€</td>
+                            <td>+1,183%</td>
+                        </tr>
+                        <tr>
+                            <td>2018 (Bear Market)</td>
+                            <td>100€ BTC</td>
+                            <td>1,200€</td>
+                            <td>890€</td>
+                            <td>-26%</td>
+                        </tr>
+                        <tr>
+                            <td>2018-2021 (4 ans)</td>
+                            <td>100€ BTC</td>
+                            <td>4,800€</td>
+                            <td>98,500€</td>
+                            <td>+1,950%</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="box success">
+                        <h4>🎯 Conclusion sur les données historiques</h4>
+                        <p><strong>Sur 4 ans (2018-2021), DCA 100€/mois aurait transformé 4,800€ en 98,500€ !!</strong></p>
+                        <p>Même pendant le bear market 2018, continuer à acheter régulièrement a été rentable à long terme.</p>
+                    </div>
+                    
+                    <h3>🛠️ Calculateur DCA Simple</h3>
+                    
+                    <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin: 20px 0;">
+                        <h4 style="margin-top: 0;">Calculez votre DCA potentiel</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label style="font-weight: bold;">Investissement par mois ($):</label>
+                                <input type="number" id="dcaAmount" value="500" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; margin-top: 5px;">
+                            </div>
+                            <div>
+                                <label style="font-weight: bold;">Période (mois):</label>
+                                <input type="number" id="dcaPeriod" value="60" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; margin-top: 5px;">
+                            </div>
+                            <div>
+                                <label style="font-weight: bold;">Prix de départ (BTC $):</label>
+                                <input type="number" id="dcaStartPrice" value="50000" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; margin-top: 5px;">
+                            </div>
+                            <div>
+                                <label style="font-weight: bold;">Prix final (BTC $):</label>
+                                <input type="number" id="dcaEndPrice" value="100000" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; margin-top: 5px;">
+                            </div>
+                        </div>
+                        
+                        <button onclick="calculateDCA()" style="margin-top: 15px; padding: 12px 30px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 1.05em; cursor: pointer; font-weight: bold;">Calculer</button>
+                        
+                        <div id="dcaResults" style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border-left: 5px solid #10b981; display: none;">
+                            <p><strong>💰 Investissement Total:</strong> <span id="dcaTotalInvest">0</span>$</p>
+                            <p><strong>📊 Montants Achetés:</strong> <span id="dcaTotalCoins">0</span> BTC</p>
+                            <p><strong>💸 Coût Moyen par BTC:</strong> <span id="dcaAvgCost">0</span>$</p>
+                            <p><strong>📈 Valeur Finale (au prix final):</strong> <span id="dcaFinalValue">0</span>$</p>
+                            <p style="font-size: 1.2em; color: #10b981; font-weight: bold;">🎉 <strong>Profit Total:</strong> <span id="dcaProfit">0</span>$ (+<span id="dcaProfitPercent">0</span>%)</p>
+                        </div>
+                    </div>
+                    
+                    <h3>📋 Checklist DCA</h3>
+                    
+                    <div class="box warning">
+                        <h4>✅ Avant de commencer votre DCA</h4>
+                        <ul>
+                            <li>☐ <strong>Horizon minimum 2-3 ans</strong> : Plus c'est long, mieux c'est</li>
+                            <li>☐ <strong>Capital régulier disponible</strong> : Pouvoir investir chaque mois sans pression</li>
+                            <li>☐ <strong>Fonds d'urgence séparé</strong> : Votre DCA ne doit pas impacter votre cash disponible</li>
+                            <li>☐ <strong>Exchange sécurisé</strong> : Binance, Kraken, OKX, Bybit</li>
+                            <li>☐ <strong>2FA activé</strong> : Sécurité maximale de votre compte</li>
+                            <li>☐ <strong>Plan d'exit défini</strong> : Quand venez-vous ? (+100%, +200%, date fixe?)</li>
+                            <li>☐ <strong>Automatisation activée</strong> : Recurring buy pour ne rien oublier</li>
+                            <li>☐ <strong>Pas de day trading en parallèle</strong> : DCA ≠ Trading actif</li>
+                            <li>☐ <strong>Résistance émotionnelle</strong> : Continuer en bear market est clé</li>
+                            <li>☐ <strong>Frais minimisés</strong> : Utiliser les réductions (coins limit order, etc.)</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>🚀 DCA vs All-In: Simulation</h3>
+                    
+                    <div class="example-box">
+                        <h4>Scénario: Investir 10,000€</h4>
+                        
+                        <p><strong>Option 1: All-In en Janvier 2021</strong></p>
+                        <ul>
+                            <li>Achat: 10,000€ en BTC à 40,000$/coin = 0.25 BTC</li>
+                            <li>Prix atteint: 68,000$ en Nov 2021</li>
+                            <li>Valeur: 0.25 × 68,000$ = 17,000€</li>
+                            <li>Profit: +70% 📈</li>
+                            <li>Mais: Aurait vu -50% en 2022 (stress émotionnel) 😰</li>
+                        </ul>
+                        
+                        <p><strong>Option 2: DCA 833€/mois pendant 12 mois</strong></p>
+                        <ul>
+                            <li>Janvier: 833€ à 40,000$/coin = 0.0208 BTC (coût: 40,000$)</li>
+                            <li>Février: 833€ à 35,000$/coin = 0.0238 BTC (coût: 35,000$)</li>
+                            <li>... (10 mois de plus)</li>
+                            <li>Coût moyen final: ~45,000$/coin</li>
+                            <li>Total: 0.222 BTC (légèrement moins mais...)</li>
+                            <li>Avantage: Vous aviez du cash pour acheter plus en Mai 2021 crash! 📍</li>
+                            <li>Stress: Minime, achat régulier 😌</li>
+                        </ul>
+                    </div>
+                </div>
+                
                 <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 3px solid #f0f0f0;">
                     <h2>💎 Conclusion : Le SPOT pour Construire sa Richesse Crypto</h2>
                     <p style="font-size: 1.1em; color: #059669; max-width: 800px; margin: 20px auto;">
@@ -3078,6 +3338,42 @@ async def spot_trading_page():
             </div>
         </div>
     </body>
+    <script>
+        function calculateDCA() {
+            const amount = parseFloat(document.getElementById('dcaAmount').value) || 0;
+            const period = parseFloat(document.getElementById('dcaPeriod').value) || 0;
+            const startPrice = parseFloat(document.getElementById('dcaStartPrice').value) || 0;
+            const endPrice = parseFloat(document.getElementById('dcaEndPrice').value) || 0;
+            
+            if (amount <= 0 || period <= 0 || startPrice <= 0 || endPrice <= 0) {
+                alert('Veuillez remplir tous les champs avec des valeurs positives');
+                return;
+            }
+            
+            let totalInvested = amount * period;
+            let totalCoins = 0;
+            
+            for (let month = 0; month < period; month++) {
+                const progress = period > 1 ? month / (period - 1) : 0;
+                const currentPrice = startPrice + (endPrice - startPrice) * progress;
+                const coinsBought = amount / currentPrice;
+                totalCoins += coinsBought;
+            }
+            
+            const avgCost = totalInvested / totalCoins;
+            const finalValue = totalCoins * endPrice;
+            const profit = finalValue - totalInvested;
+            const profitPercent = (profit / totalInvested) * 100;
+            
+            document.getElementById('dcaTotalInvest').textContent = totalInvested.toFixed(0);
+            document.getElementById('dcaTotalCoins').textContent = totalCoins.toFixed(8);
+            document.getElementById('dcaAvgCost').textContent = avgCost.toFixed(2);
+            document.getElementById('dcaFinalValue').textContent = finalValue.toFixed(0);
+            document.getElementById('dcaProfit').textContent = profit.toFixed(0);
+            document.getElementById('dcaProfitPercent').textContent = profitPercent.toFixed(1);
+            document.getElementById('dcaResults').style.display = 'block';
+        }
+    </script>
     </html>
     """
     return HTMLResponse(content=html_content)

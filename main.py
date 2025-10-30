@@ -12761,15 +12761,65 @@ async def stats_dashboard():
 </html>"""
     
     return HTMLResponse(html)
+# ============================================================================
+# 🔥 NOUVELLE ROUTE API - Récupérer données historiques Top 10 Crypto
+# ============================================================================
+@app.get("/get-crypto-prices/{crypto_id}")
+async def get_crypto_prices(crypto_id: str):
+    """
+    Récupère les prix historiques d'une crypto (90 derniers jours)
+    Format: bitcoin, ethereum, cardano, etc.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Récupérer les données historiques (90 jours)
+            url = f"https://api.coingecko.com/api/v3/coins/{crypto_id}/market_chart?vs_currency=usd&days=90"
+            r = await client.get(url)
+            
+            if r.status_code != 200:
+                return {"status": "error", "message": f"Crypto {crypto_id} non trouvée"}
+            
+            data = r.json()
+            prices = data.get('prices', [])
+            
+            if not prices:
+                return {"status": "error", "message": "Pas de données"}
+            
+            # Convertir en prix mensuel (tous les 30 jours)
+            monthly_prices = []
+            for i in range(0, len(prices), 3):  # ~3 jours = 1 point (90 jours = 30 points)
+                monthly_prices.append(prices[i][1])
+            
+            # Normaliser les prix (première valeur = base 100)
+            if monthly_prices:
+                base = monthly_prices[0]
+                normalized = [p / base * 1000 for p in monthly_prices]
+            else:
+                normalized = []
+            
+            return {
+                "status": "success",
+                "crypto": crypto_id,
+                "prices": normalized[:12],  # Retourner 12 mois de données
+                "data_source": "CoinGecko - 90 jours réels"
+            }
+    except Exception as e:
+        print(f"❌ Erreur crypto {crypto_id}: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+# ============================================================================
+# 📈 SIMULATION MARCHÉ RÉALISTE - VERSION 2: TOP 10 CRYPTO + VRAIES DONNÉES
+# ============================================================================
 @app.get("/market-simulation", response_class=HTMLResponse)
 async def market_simulation():
-    """Simulation réaliste avec cycles bull/bear et DCA discipline"""
+    """Simulation réaliste avec cycles bull/bear et DCA discipline - Top 10 Crypto"""
     return HTMLResponse("""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📈 Simulation Marché Réaliste</title>
+    <title>📈 Simulation Marché Top 10 Crypto</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12781,7 +12831,8 @@ async def market_simulation():
             padding: 20px;
         }
         .container { max-width: 1200px; margin: 0 auto; }
-        h1 { text-align: center; margin: 30px 0; color: #00ff88; }
+        h1 { text-align: center; margin: 30px 0 10px 0; color: #00ff88; }
+        .subtitle { text-align: center; margin-bottom: 30px; color: #aaa; font-size: 0.95em; }
         
         .controls {
             background: rgba(255,255,255,0.05);
@@ -12809,7 +12860,11 @@ async def market_simulation():
             color: #fff;
             font-size: 1em;
         }
-        input:focus, select:focus { outline: none; border-color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.3); }
+        input:focus, select:focus { 
+            outline: none; 
+            border-color: #00ff88; 
+            box-shadow: 0 0 10px rgba(0,255,136,0.3); 
+        }
         
         button {
             background: linear-gradient(45deg, #00ff88, #00d4ff);
@@ -12823,6 +12878,25 @@ async def market_simulation():
             transition: all 0.3s;
         }
         button:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(0,255,136,0.5); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .crypto-badge {
+            display: inline-block;
+            background: rgba(0,255,136,0.2);
+            border: 1px solid #00ff88;
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin: 10px 0;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .data-source {
+            font-size: 0.85em;
+            color: #888;
+            margin-top: 10px;
+            font-style: italic;
+        }
         
         .chart-container {
             background: rgba(255,255,255,0.05);
@@ -12853,14 +12927,41 @@ async def market_simulation():
         
         .warning { background: rgba(255,100,100,0.1); border-left-color: #ff6464; }
         .success { background: rgba(0,255,136,0.2); border-left-color: #00ff88; }
+        
+        .loading { 
+            text-align: center; 
+            color: #00ff88; 
+            padding: 20px;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📈 SIMULATION DE MARCHÉ RÉALISTE - Impact DCA vs Émotions</h1>
+        <h1>📈 SIMULATION DE MARCHÉ - Top 10 Crypto</h1>
+        <p class="subtitle">Comparez l'impact du DCA vs Émotions sur les cryptos réelles</p>
+        
+        """ + NAV + """
         
         <div class="controls">
             <div class="control-group">
+                <div>
+                    <label>🪙 Sélectionner Crypto</label>
+                    <select id="cryptoSelect" onchange="onCryptoChange()">
+                        <option value="generic">🎲 Générique (Simulation)</option>
+                        <option value="bitcoin">₿ Bitcoin</option>
+                        <option value="ethereum">Ξ Ethereum</option>
+                        <option value="binancecoin">Ξ Binance Coin</option>
+                        <option value="cardano">₳ Cardano</option>
+                        <option value="solana">◎ Solana</option>
+                        <option value="polkadot">● Polkadot</option>
+                        <option value="dogecoin">Ð Dogecoin</option>
+                        <option value="ripple">✕ Ripple</option>
+                        <option value="litecoin">Ł Litecoin</option>
+                        <option value="chainlink">⬡ Chainlink</option>
+                    </select>
+                    <div class="data-source" id="dataSourceInfo"></div>
+                </div>
                 <div>
                     <label>💰 Capital Initial ($)</label>
                     <input type="number" id="initialCapital" value="10000" min="1000" step="1000">
@@ -12873,15 +12974,19 @@ async def market_simulation():
                     <label>📊 Durée (années)</label>
                     <input type="number" id="duration" value="4" min="1" max="10" step="1">
                 </div>
-                <div>
-                    <label>🎲 Volatilité (%)</label>
-                    <input type="number" id="volatility" value="45" min="10" max="100" step="5">
-                </div>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="runSimulation()">🚀 Lancer Simulation</button>
+            
+            <div id="volatilityControl" style="display: none;">
+                <label>🎲 Volatilité (%) - Simulation Générique</label>
+                <input type="number" id="volatility" value="45" min="10" max="100" step="5">
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button id="runBtn" onclick="runSimulation()">🚀 Lancer Simulation</button>
                 <button onclick="resetSimulation()" style="background: rgba(255,100,100,0.6);">🔄 Réinitialiser</button>
             </div>
+            
+            <div id="cryptoBadge" class="crypto-badge" style="display: none;"></div>
         </div>
         
         <div class="chart-container">
@@ -12898,7 +13003,7 @@ async def market_simulation():
                 <div class="result-value" id="noDcaFinal">$0</div>
             </div>
             <div class="result-card success">
-                <div class="result-label">🎯 Différence Résultats</div>
+                <div class="result-label">🎯 Avantage DCA</div>
                 <div class="result-value" id="difference">+$0</div>
             </div>
             <div class="result-card">
@@ -12910,21 +13015,76 @@ async def market_simulation():
     
     <script>
         let chart = null;
+        let currentCryptoData = null;
+        
+        const cryptoIds = {
+            'bitcoin': '₿ Bitcoin',
+            'ethereum': 'Ξ Ethereum',
+            'binancecoin': 'Ξ Binance Coin',
+            'cardano': '₳ Cardano',
+            'solana': '◎ Solana',
+            'polkadot': '● Polkadot',
+            'dogecoin': 'Ð Dogecoin',
+            'ripple': '✕ Ripple',
+            'litecoin': 'Ł Litecoin',
+            'chainlink': '⬡ Chainlink'
+        };
+        
+        async function onCryptoChange() {
+            const selected = document.getElementById('cryptoSelect').value;
+            document.getElementById('volatilityControl').style.display = 
+                selected === 'generic' ? 'block' : 'none';
+            
+            if (selected !== 'generic') {
+                await loadRealCryptoPrices(selected);
+            } else {
+                currentCryptoData = null;
+                document.getElementById('dataSourceInfo').innerHTML = '🎲 Données: Simulation aléatoire';
+                document.getElementById('cryptoBadge').style.display = 'none';
+            }
+        }
+        
+        async function loadRealCryptoPrices(cryptoId) {
+            document.getElementById('runBtn').disabled = true;
+            document.getElementById('dataSourceInfo').innerHTML = '<div class="loading">⏳ Chargement des données...</div>';
+            
+            try {
+                const response = await fetch(`/get-crypto-prices/${cryptoId}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    currentCryptoData = data.prices;
+                    document.getElementById('dataSourceInfo').innerHTML = 
+                        '✅ Données réelles: CoinGecko (90 derniers jours)';
+                    
+                    const badge = document.getElementById('cryptoBadge');
+                    badge.innerHTML = `🪙 ${cryptoIds[cryptoId]} - ${data.prices.length} mois de données`;
+                    badge.style.display = 'inline-block';
+                } else {
+                    currentCryptoData = null;
+                    document.getElementById('dataSourceInfo').innerHTML = 
+                        '⚠️ Fallback: Simulation aléatoire (données indisponibles)';
+                    document.getElementById('cryptoBadge').style.display = 'none';
+                }
+            } catch (error) {
+                currentCryptoData = null;
+                document.getElementById('dataSourceInfo').innerHTML = 
+                    '⚠️ Erreur réseau: Simulation aléatoire';
+                console.error('Erreur:', error);
+            }
+            
+            document.getElementById('runBtn').disabled = false;
+        }
         
         function generateRealisticPrices(months, initialPrice, volatility) {
             let prices = [initialPrice];
             let trend = 0;
             
             for (let i = 1; i < months; i++) {
-                // Cycles bull/bear automatiques
-                trend = Math.sin(i / 12) * 0.02; // Cycle tous les 12 mois
-                
-                // Prix aléatoire réaliste
+                trend = Math.sin(i / 12) * 0.02;
                 const randomChange = (Math.random() - 0.5) * (volatility / 100);
                 const newPrice = prices[i-1] * (1 + trend + randomChange);
-                
-                // Crashes occasionnels (-30%)
-                const shouldCrash = Math.random() < 0.02; // 2% chance par mois
+                const shouldCrash = Math.random() < 0.02;
                 prices.push(shouldCrash ? newPrice * 0.7 : newPrice);
             }
             return prices;
@@ -12937,42 +13097,48 @@ async def market_simulation():
             const volatility = parseFloat(document.getElementById('volatility').value);
             
             const months = Math.floor(years * 12);
-            const prices = generateRealisticPrices(months, 1000, volatility);
             
-            // Simulation DCA
+            let prices;
+            if (currentCryptoData && currentCryptoData.length > 0) {
+                prices = [];
+                for (let i = 0; i < months; i++) {
+                    const index = Math.floor((i / months) * (currentCryptoData.length - 1));
+                    prices.push(currentCryptoData[index]);
+                }
+            } else {
+                prices = generateRealisticPrices(months, 1000, volatility);
+            }
+            
             let dcaCoins = 0;
             let dcaValue = initialCapital;
             const dcaValues = [];
             const labels = [];
             
-            // Simulation Sans DCA
             let noDcaCoins = initialCapital / 1000;
             const noDcaValues = [];
             
             for (let month = 0; month < months; month++) {
-                // DCA: acheter tous les mois
                 dcaCoins += dcaAmount / prices[month];
-                dcaValue = initialCapital + (month + 1) * dcaAmount + (dcaCoins * prices[month] - (initialCapital + (month + 1) * dcaAmount));
+                dcaValue = initialCapital + (month + 1) * dcaAmount + 
+                          (dcaCoins * prices[month] - (initialCapital + (month + 1) * dcaAmount));
                 dcaValues.push(dcaValue);
                 
-                // Sans DCA: juste le prix qui monte/descend
                 noDcaValues.push(initialCapital + noDcaCoins * prices[month] - initialCapital);
                 
                 labels.push(`M${month + 1}`);
             }
             
-            const dcaFinal = initialCapital + (months * dcaAmount) + (dcaCoins * prices[months-1] - (initialCapital + (months * dcaAmount)));
+            const dcaFinal = initialCapital + (months * dcaAmount) + 
+                           (dcaCoins * prices[months-1] - (initialCapital + (months * dcaAmount)));
             const noDcaFinal = initialCapital + noDcaCoins * (prices[months-1] - 1000);
             const difference = dcaFinal - noDcaFinal;
             const gains = (difference / noDcaFinal) * 100;
             
-            // Afficher résultats
             document.getElementById('dcaFinal').textContent = '$' + dcaFinal.toFixed(0);
             document.getElementById('noDcaFinal').textContent = '$' + noDcaFinal.toFixed(0);
             document.getElementById('difference').textContent = '$' + difference.toFixed(0);
             document.getElementById('gains').textContent = (gains > 0 ? '+' : '') + gains.toFixed(1) + '%';
             
-            // Graphique
             if (chart) chart.destroy();
             
             const ctx = document.getElementById('simulationChart').getContext('2d');
@@ -12982,20 +13148,20 @@ async def market_simulation():
                     labels: labels,
                     datasets: [
                         {
-                            label: 'Avec DCA (Discipline)',
+                            label: 'Avec DCA (Discipline) ✅',
                             data: dcaValues,
                             borderColor: '#00ff88',
                             backgroundColor: 'rgba(0,255,136,0.1)',
-                            borderWidth: 2,
+                            borderWidth: 2.5,
                             fill: true,
                             tension: 0.3
                         },
                         {
-                            label: 'Sans DCA (Émotions)',
+                            label: 'Sans DCA (Émotions) ❌',
                             data: noDcaValues,
                             borderColor: '#ff6464',
                             backgroundColor: 'rgba(255,100,100,0.1)',
-                            borderWidth: 2,
+                            borderWidth: 2.5,
                             fill: true,
                             tension: 0.3
                         }
@@ -13004,7 +13170,20 @@ async def market_simulation():
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: { intersect: false, mode: 'index' }
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { labels: { color: '#fff', font: { size: 12 } } }
+                    },
+                    scales: {
+                        y: { 
+                            ticks: { color: '#aaa' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        x: { 
+                            ticks: { color: '#aaa' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        }
+                    }
                 }
             });
         }
@@ -13014,14 +13193,16 @@ async def market_simulation():
             document.getElementById('dcaAmount').value = '500';
             document.getElementById('duration').value = '4';
             document.getElementById('volatility').value = '45';
+            document.getElementById('cryptoSelect').value = 'generic';
+            onCryptoChange();
             if (chart) chart.destroy();
         }
         
-        // Lancer automatiquement
         setTimeout(() => runSimulation(), 500);
     </script>
 </body>
 </html>""")
+
 
 
 # ============================================================================

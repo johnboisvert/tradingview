@@ -24,27 +24,37 @@ trades_db = []
 # ============================================================================
 # SYSTÈME DE CACHE POUR DONNÉES RÉELLES
 # ============================================================================
-class DataCache:
+class SmartCache:
     def __init__(self):
-        self.data = {}
-        self.last_update = {}
-        self.update_interval = 120  # 2 minutes
+        self.prices_cache = {}
+        self.prices_timestamp = {}
+        self.whale_cache = {}
+        self.whale_timestamp = {}
+        self.cache_duration = 60
     
-    def needs_update(self, key: str) -> bool:
-        if key not in self.last_update:
-            return True
-        elapsed = (datetime.now() - self.last_update[key]).total_seconds()
-        return elapsed >= self.update_interval
+    def get_price_cache(self, key):
+        if key in self.prices_cache:
+            elapsed = (datetime.now() - self.prices_timestamp.get(key, datetime.now())).total_seconds()
+            if elapsed < self.cache_duration:
+                return self.prices_cache[key]
+        return None
     
-    def set(self, key: str, value):
-        self.data[key] = value
-        self.last_update[key] = datetime.now()
+    def set_price_cache(self, key, value):
+        self.prices_cache[key] = value
+        self.prices_timestamp[key] = datetime.now()
     
-    def get(self, key: str, default=None):
-        return self.data.get(key, default)
+    def get_whale_cache(self):
+        elapsed = (datetime.now() - self.whale_timestamp.get('data', datetime.now())).total_seconds()
+        if 'data' in self.whale_cache and elapsed < self.cache_duration * 2:
+            return self.whale_cache['data']
+        return None
+    
+    def set_whale_cache(self, value):
+        self.whale_cache['data'] = value
+        self.whale_timestamp['data'] = datetime.now()
 
-cache = DataCache()
-http_client = httpx.AsyncClient(timeout=30.0)
+cache = SmartCache()
+http_client = httpx.AsyncClient(timeout=10.0)
 
 # ============================================================================
 # CALCUL REAL-TIME ALTCOIN SEASON & DOMINANCE (VRAIES DONNÉES)
@@ -57,7 +67,7 @@ async def calculate_altcoin_season_index():
     Source: CoinGecko API
     """
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             # Récupérer données globales
             gr = await client.get('https://api.coingecko.com/api/v3/global')
             gd = gr.json()['data']
@@ -5009,17 +5019,16 @@ async def get_real_whale_transactions():
     Récupère les transactions Bitcoin importantes EN DIRECT
     ✅ Prix BTC ACTUALISÉ + VRAIES TRANSACTIONS BLOCKCHAIN
     """
-    btc_price = 43000  # Valeur par défaut
-    
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             # 1️⃣ Récupérer le prix BTC EN DIRECT (CoinGecko - TRÈS FIABLE)
+            btc_price = 43000  # Valeur par défaut
             price_url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
             try:
                 price_response = await client.get(price_url, timeout=8.0)
                 if price_response.status_code == 200:
                     price_data = price_response.json()
-                    btc_price = float(price_data.get('bitcoin', {}).get('usd', 43000))
+                    btc_price = price_data.get('bitcoin', {}).get('usd', 43000)
                     print(f"✅ Prix BTC LIVE: ${btc_price:,.0f}")
                 else:
                     print("⚠️ CoinGecko indisponible, utilisant prix fallback")
@@ -5030,65 +5039,68 @@ async def get_real_whale_transactions():
             whale_txs = []
             try:
                 blockchain_url = "https://blockchain.info/unconfirmed-transactions?format=json"
-                tx_response = await client.get(blockchain_url, timeout=12.0)
+                tx_response = await client.get(blockchain_url, timeout=8.0)
                 
-                if tx_response.status_code == 200:
+                if tx_response.status_code == 200 and tx_response.headers.get('content-type', '').startswith('application/json'):
                     try:
                         tx_data = tx_response.json()
                         transactions = tx_data.get('txs', []) if isinstance(tx_data, dict) else []
-                        
-                        print(f"✅ {len(transactions)} transactions reçues de Blockchain.info")
-                        
-                        # Filtrer les grosses transactions (whales > 1 BTC)
-                        for tx in transactions[:50]:  # Analyser les 50 premières
-                            try:
-                                # Calculer le montant total en BTC
-                                total_output = sum(out.get('value', 0) for out in tx.get('out', []))
-                                btc_amount = total_output / 100000000  # Satoshi vers BTC
-                                
-                                # Si c'est une grosse transaction (whale >= 1 BTC)
-                                if btc_amount >= 1.0:
-                                    inputs_count = len(tx.get('inputs', []))
-                                    outputs_count = len(tx.get('out', []))
-                                    
-                                    # Déterminer si bullish (accumulation) ou bearish (distribution)
-                                    is_bullish = inputs_count > outputs_count
-                                    
-                                    # Calculer le temps écoulé
-                                    tx_time = tx.get('time', 0)
-                                    if tx_time > 0:
-                                        time_diff = int((datetime.now().timestamp() - tx_time) / 60)
-                                        time_ago = f"{time_diff} min ago" if time_diff > 0 else "Just now"
-                                    else:
-                                        time_ago = "Just now"
-                                    
-                                    whale_txs.append({
-                                        'txid': tx.get('hash', 'N/A')[:16] + '...',
-                                        'full_txid': tx.get('hash', 'N/A'),
-                                        'amount': round(btc_amount, 4),
-                                        'usd_value': round(btc_amount * btc_price, 0),
-                                        'inputs': inputs_count,
-                                        'outputs': outputs_count,
-                                        'is_bullish': is_bullish,
-                                        'time_ago': time_ago,
-                                        'type': 'Accumulation 🟢' if is_bullish else 'Distribution 🔴',
-                                        'confidence': f"{random.randint(75, 95)}%",
-                                        'btc_price': f"${btc_price:,.0f}"
-                                    })
-                                    
-                                    # Limiter à 12 transactions whale
-                                    if len(whale_txs) >= 12:
-                                        break
-                            except Exception as e:
-                                continue
-                        
-                        if whale_txs:
-                            print(f"✅ {len(whale_txs)} transactions whale détectées!")
-                            return whale_txs
-                        else:
-                            print("⚠️ Aucune whale détectée, génération données réalistes")
                     except Exception as json_err:
-                        print(f"⚠️ Erreur parsing JSON Blockchain: {json_err}")
+                        print(f"⚠️ Erreur parsing JSON: {json_err}")
+                        transactions = []
+                else:
+                    transactions = []
+                    
+                    print(f"✅ {len(transactions)} transactions reçues de Blockchain.info")
+                    
+                    # Filtrer les grosses transactions (whales > 1 BTC)
+                    for tx in transactions[:50]:  # Analyser les 50 premières
+                        try:
+                            # Calculer le montant total en BTC
+                            total_output = sum(out.get('value', 0) for out in tx.get('out', []))
+                            btc_amount = total_output / 100000000  # Satoshi vers BTC
+                            
+                            # Si c'est une grosse transaction (whale >= 1 BTC)
+                            if btc_amount >= 1.0:
+                                inputs_count = len(tx.get('inputs', []))
+                                outputs_count = len(tx.get('out', []))
+                                
+                                # Déterminer si bullish (accumulation) ou bearish (distribution)
+                                is_bullish = inputs_count > outputs_count
+                                
+                                # Calculer le temps écoulé
+                                tx_time = tx.get('time', 0)
+                                if tx_time > 0:
+                                    time_diff = int((datetime.now().timestamp() - tx_time) / 60)
+                                    time_ago = f"{time_diff} min ago" if time_diff > 0 else "Just now"
+                                else:
+                                    time_ago = "Just now"
+                                
+                                whale_txs.append({
+                                    'txid': tx.get('hash', 'N/A')[:16] + '...',
+                                    'full_txid': tx.get('hash', 'N/A'),
+                                    'amount': round(btc_amount, 4),
+                                    'usd_value': round(btc_amount * btc_price, 0),
+                                    'inputs': inputs_count,
+                                    'outputs': outputs_count,
+                                    'is_bullish': is_bullish,
+                                    'time_ago': time_ago,
+                                    'type': 'Accumulation 🟢' if is_bullish else 'Distribution 🔴',
+                                    'confidence': f"{random.randint(75, 95)}%",
+                                    'btc_price': f"${btc_price:,.0f}"
+                                })
+                                
+                                # Limiter à 12 transactions whale
+                                if len(whale_txs) >= 12:
+                                    break
+                        except Exception as e:
+                            continue
+                    
+                    if whale_txs:
+                        print(f"✅ {len(whale_txs)} transactions whale détectées!")
+                        return whale_txs
+                    else:
+                        print("⚠️ Aucune whale détectée, génération données réalistes")
                         
             except Exception as e:
                 print(f"⚠️ Erreur Blockchain.info: {e}")
@@ -5812,7 +5824,7 @@ async def ai_whale_watcher():
 async def fear_greed_full():
     try:
         print("🔄 Tentative de connexion à l'API Fear & Greed...")
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get("https://api.alternative.me/fng/?limit=30")
             print(f"📡 Status code: {r.status_code}")
             
@@ -6326,7 +6338,7 @@ async def news_page():
 async def get_exchange_rates_live():
     """Récupère les taux de change en temps réel depuis CoinGecko"""
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             # Liste des cryptos à récupérer
             crypto_ids = [
                 "bitcoin", "ethereum", "tether", "binancecoin", "solana",
@@ -12495,7 +12507,7 @@ async def stats_dashboard():
     
     # ========== RÉCUPÉRATION DONNÉES MARCHÉ RÉELLES ==========
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             # Fear & Greed (30 derniers jours)
             fg_resp = await client.get("https://api.alternative.me/fng/?limit=30")
             fg_val = 55
@@ -12744,7 +12756,7 @@ async def get_crypto_prices(crypto_id: str):
     Format: bitcoin, ethereum, cardano, etc.
     """
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=8.0) as client:
             # Récupérer les données historiques (90 jours)
             url = f"https://api.coingecko.com/api/v3/coins/{crypto_id}/market_chart?vs_currency=usd&days=90"
             r = await client.get(url)

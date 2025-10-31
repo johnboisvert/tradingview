@@ -5265,7 +5265,7 @@ async def ai_whale_watcher():
     if real_whales and len(real_whales) > 0:
         whale_data = real_whales
         status_badge = "✅ VRAIES DONNÉES EN DIRECT"
-        source_text = f"Source: Mempool.space API (TEMPS RÉEL) | BTC: ${btc_price:,.0f}"
+        source_text = f"Source: Blockchain.info API (TEMPS RÉEL) | BTC: ${btc_price:,.0f}"
         print(f"✅ Données réelles reçues! BTC: ${btc_price:,.0f}")
     else:
         whale_data = demo_whales
@@ -5273,12 +5273,10 @@ async def ai_whale_watcher():
         source_text = f"Données démo avec prix LIVE | BTC: ${btc_price:,.0f} | Actualiser dans 30s"
         print(f"⚠️ APIs indisponibles - Mode démo | BTC: ${btc_price:,.0f}")
     
-    # Convertir en JSON
-    # MÉTHODE ULTRA-SÉCURISÉE - Utilise .replace() au lieu de f-string
-    whale_data_json_safe = json.dumps(whale_data).replace("<\\/", "<\\\\/")
+    # Convertir en JSON - méthode sécurisée
+    whale_data_json = json.dumps(whale_data)
     
-    
-    
+    # Créer le HTML avec les données directement intégrées
     html_content = """
     <!DOCTYPE html>
     <html lang="fr">
@@ -5614,8 +5612,7 @@ async def ai_whale_watcher():
         
         <script>
             // ✅ DONNÉES DIRECTEMENT INTÉGRÉES EN JSON
-            // ✅ DONNÉES - PLACEHOLDER SERA REMPLACÉ
-            window.whaleData = __WHALE_DATA_JSON__;
+            window.whaleData = """ + whale_data_json + """;
             console.log('🐋 Whale Data loaded:', window.whaleData.length, 'transactions');
             
             function renderWhaleTransactions() {
@@ -5793,16 +5790,14 @@ async def ai_whale_watcher():
             }
             }
             
-            // ✅ Data Source: BLOCKCHAIN.COM API (VRAIES DONNÉES)
-            console.log('🐋 Whale Watcher connecté à Blockchain.com API');
+            // ✅ Data Source: BLOCKCHAIN.INFO API (VRAIES DONNÉES)
+            console.log('🐋 Whale Watcher connecté à Blockchain.info API');
             console.log('""" + status_badge + """');
         </script>
     </body>
     </html>
     """
-    html_content = html_content.replace("__WHALE_DATA_JSON__", whale_data_json_safe)
-    # Remplacer le placeholder par les vraies données JSON
-
+    
     return HTMLResponse(content=html_content)
 
 @app.get("/api/fear-greed-full")

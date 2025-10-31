@@ -5009,16 +5009,17 @@ async def get_real_whale_transactions():
     Récupère les transactions Bitcoin importantes EN DIRECT
     ✅ Prix BTC ACTUALISÉ + VRAIES TRANSACTIONS BLOCKCHAIN
     """
+    btc_price = 43000  # Valeur par défaut
+    
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             # 1️⃣ Récupérer le prix BTC EN DIRECT (CoinGecko - TRÈS FIABLE)
-            btc_price = 43000  # Valeur par défaut
             price_url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
             try:
                 price_response = await client.get(price_url, timeout=8.0)
                 if price_response.status_code == 200:
                     price_data = price_response.json()
-                    btc_price = price_data.get('bitcoin', {}).get('usd', 43000)
+                    btc_price = float(price_data.get('bitcoin', {}).get('usd', 43000))
                     print(f"✅ Prix BTC LIVE: ${btc_price:,.0f}")
                 else:
                     print("⚠️ CoinGecko indisponible, utilisant prix fallback")
@@ -5032,59 +5033,62 @@ async def get_real_whale_transactions():
                 tx_response = await client.get(blockchain_url, timeout=12.0)
                 
                 if tx_response.status_code == 200:
-                    tx_data = tx_response.json()
-                    transactions = tx_data.get('txs', [])
-                    
-                    print(f"✅ {len(transactions)} transactions reçues de Blockchain.info")
-                    
-                    # Filtrer les grosses transactions (whales > 1 BTC)
-                    for tx in transactions[:50]:  # Analyser les 50 premières
-                        try:
-                            # Calculer le montant total en BTC
-                            total_output = sum(out.get('value', 0) for out in tx.get('out', []))
-                            btc_amount = total_output / 100000000  # Satoshi vers BTC
-                            
-                            # Si c'est une grosse transaction (whale >= 1 BTC)
-                            if btc_amount >= 1.0:
-                                inputs_count = len(tx.get('inputs', []))
-                                outputs_count = len(tx.get('out', []))
+                    try:
+                        tx_data = tx_response.json()
+                        transactions = tx_data.get('txs', []) if isinstance(tx_data, dict) else []
+                        
+                        print(f"✅ {len(transactions)} transactions reçues de Blockchain.info")
+                        
+                        # Filtrer les grosses transactions (whales > 1 BTC)
+                        for tx in transactions[:50]:  # Analyser les 50 premières
+                            try:
+                                # Calculer le montant total en BTC
+                                total_output = sum(out.get('value', 0) for out in tx.get('out', []))
+                                btc_amount = total_output / 100000000  # Satoshi vers BTC
                                 
-                                # Déterminer si bullish (accumulation) ou bearish (distribution)
-                                is_bullish = inputs_count > outputs_count
-                                
-                                # Calculer le temps écoulé
-                                tx_time = tx.get('time', 0)
-                                if tx_time > 0:
-                                    time_diff = int((datetime.now().timestamp() - tx_time) / 60)
-                                    time_ago = f"{time_diff} min ago" if time_diff > 0 else "Just now"
-                                else:
-                                    time_ago = "Just now"
-                                
-                                whale_txs.append({
-                                    'txid': tx.get('hash', 'N/A')[:16] + '...',
-                                    'full_txid': tx.get('hash', 'N/A'),
-                                    'amount': round(btc_amount, 4),
-                                    'usd_value': round(btc_amount * btc_price, 0),
-                                    'inputs': inputs_count,
-                                    'outputs': outputs_count,
-                                    'is_bullish': is_bullish,
-                                    'time_ago': time_ago,
-                                    'type': 'Accumulation 🟢' if is_bullish else 'Distribution 🔴',
-                                    'confidence': f"{random.randint(75, 95)}%",
-                                    'btc_price': f"${btc_price:,.0f}"
-                                })
-                                
-                                # Limiter à 12 transactions whale
-                                if len(whale_txs) >= 12:
-                                    break
-                        except Exception as e:
-                            continue
-                    
-                    if whale_txs:
-                        print(f"✅ {len(whale_txs)} transactions whale détectées!")
-                        return whale_txs
-                    else:
-                        print("⚠️ Aucune whale détectée, génération données réalistes")
+                                # Si c'est une grosse transaction (whale >= 1 BTC)
+                                if btc_amount >= 1.0:
+                                    inputs_count = len(tx.get('inputs', []))
+                                    outputs_count = len(tx.get('out', []))
+                                    
+                                    # Déterminer si bullish (accumulation) ou bearish (distribution)
+                                    is_bullish = inputs_count > outputs_count
+                                    
+                                    # Calculer le temps écoulé
+                                    tx_time = tx.get('time', 0)
+                                    if tx_time > 0:
+                                        time_diff = int((datetime.now().timestamp() - tx_time) / 60)
+                                        time_ago = f"{time_diff} min ago" if time_diff > 0 else "Just now"
+                                    else:
+                                        time_ago = "Just now"
+                                    
+                                    whale_txs.append({
+                                        'txid': tx.get('hash', 'N/A')[:16] + '...',
+                                        'full_txid': tx.get('hash', 'N/A'),
+                                        'amount': round(btc_amount, 4),
+                                        'usd_value': round(btc_amount * btc_price, 0),
+                                        'inputs': inputs_count,
+                                        'outputs': outputs_count,
+                                        'is_bullish': is_bullish,
+                                        'time_ago': time_ago,
+                                        'type': 'Accumulation 🟢' if is_bullish else 'Distribution 🔴',
+                                        'confidence': f"{random.randint(75, 95)}%",
+                                        'btc_price': f"${btc_price:,.0f}"
+                                    })
+                                    
+                                    # Limiter à 12 transactions whale
+                                    if len(whale_txs) >= 12:
+                                        break
+                            except Exception as e:
+                                continue
+                        
+                        if whale_txs:
+                            print(f"✅ {len(whale_txs)} transactions whale détectées!")
+                            return whale_txs
+                        else:
+                            print("⚠️ Aucune whale détectée, génération données réalistes")
+                    except Exception as json_err:
+                        print(f"⚠️ Erreur parsing JSON Blockchain: {json_err}")
                         
             except Exception as e:
                 print(f"⚠️ Erreur Blockchain.info: {e}")

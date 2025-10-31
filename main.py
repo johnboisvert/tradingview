@@ -5276,7 +5276,7 @@ async def ai_whale_watcher():
     # Convertir en JSON - méthode sécurisée
     whale_data_json = json.dumps(whale_data)
     
-    # Créer le HTML avec les données directement intégrées
+    # Créer le HTML avec un PLACEHOLDER
     html_content = """
     <!DOCTYPE html>
     <html lang="fr">
@@ -5612,7 +5612,7 @@ async def ai_whale_watcher():
         
         <script>
             // ✅ DONNÉES DIRECTEMENT INTÉGRÉES EN JSON
-            window.whaleData = """ + whale_data_json + """;
+            window.whaleData = WHALE_DATA_PLACEHOLDER;
             console.log('🐋 Whale Data loaded:', window.whaleData.length, 'transactions');
             
             function renderWhaleTransactions() {
@@ -5792,11 +5792,15 @@ async def ai_whale_watcher():
             
             // ✅ Data Source: BLOCKCHAIN.INFO API (VRAIES DONNÉES)
             console.log('🐋 Whale Watcher connecté à Blockchain.info API');
-            console.log('""" + status_badge + """');
+            console.log('STATUS_BADGE_PLACEHOLDER');
         </script>
     </body>
     </html>
     """
+    
+    # Remplacer les placeholders par les vraies données
+    html_content = html_content.replace('WHALE_DATA_PLACEHOLDER', whale_data_json)
+    html_content = html_content.replace('STATUS_BADGE_PLACEHOLDER', status_badge)
     
     return HTMLResponse(content=html_content)
 

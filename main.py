@@ -12482,35 +12482,39 @@ async def stats_dashboard():
             min-height: 100vh;
         }}
         .nav {{
-            background: rgba(0,0,0,0.5);
-            border-bottom: 2px solid #00ff88;
-            padding: 8px 4px;
             display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 4px;
             position: sticky;
             top: 0;
             z-index: 100;
-            max-height: auto;
-            overflow-y: auto;
+            background: rgba(15, 23, 42, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
         }}
         .nav a {{
-            color: #fff;
+            padding: 12px 20px;
+            background: #1e293b;
+            border-radius: 8px;
             text-decoration: none;
-            padding: 6px 10px;
-            border-radius: 5px;
-            font-size: 0.75em;
+            color: #e2e8f0;
+            transition: all 0.3s;
+            border: 1px solid #334155;
+            font-size: 0.95em;
             white-space: nowrap;
-            border: 1px solid transparent;
         }}
         .nav a:hover {{
-            background: rgba(0,255,136,0.2);
-            border-color: #00ff88;
+            background: #334155;
+            border-color: #60a5fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
         }}
         .nav a.active {{
-            background: rgba(0,255,136,0.3);
-            border-color: #00ff88;
+            background: #334155;
+            border-color: #60a5fa;
         }}
         .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
         h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}

@@ -5569,7 +5569,8 @@ async def ai_whale_watcher():
         
         <script>
             // ✅ DONNÉES DIRECTEMENT INTÉGRÉES EN JSON
-            window.whaleData = {whale_data_json_safe};
+            // ✅ DONNÉES DIRECTEMENT INTÉGRÉES EN JSON (MÉTHODE ULTRA-SÉCURISÉE)
+            window.whaleData = WHALE_DATA_PLACEHOLDER;
             console.log('🐋 Whale Data loaded:', window.whaleData.length, 'transactions');
             
             function renderWhaleTransactions() {
@@ -5754,6 +5755,9 @@ async def ai_whale_watcher():
     </body>
     </html>
     """
+    # Remplacer le placeholder par les vraies données
+    html_content = html_content.replace("WHALE_DATA_PLACEHOLDER", whale_data_json_safe)
+
     return HTMLResponse(content=html_content)
 
 @app.get("/api/fear-greed-full")

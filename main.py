@@ -10783,10 +10783,18 @@ async def trades_page():
                 updateStats(); 
                 updateCharts(); 
                 displayTrades(allTrades); 
+                checkTPSLHits(); // Vérifier immédiatement après le chargement
             } catch (error) { 
                 console.error('Error loading trades:', error); 
                 document.getElementById('trades').innerHTML = '<div class="alert alert-error">❌ Erreur de chargement des données</div>'; 
             } 
+        }
+        
+        // 🟢🔴 Mettre à jour les TP/SL toutes les 10 secondes
+        let checkInterval;
+        function startRealTimeChecks() {
+            checkTPSLHits(); // Vérifier immédiatement
+            checkInterval = setInterval(checkTPSLHits, 10000); // Puis toutes les 10 secondes
         }
         
         function calculateTradePnL(trade) {
@@ -10814,7 +10822,141 @@ async def trades_page():
             return 0; // Trade fermé sans TP ni SL (cas rare)
         }
         
-        async function updateStats() { 
+        // 🟢🔴 NOUVELLE FONCTION: Vérifier automatiquement les TP/SL en temps réel
+        async function checkTPSLHits() {
+            try {
+                // Récupérer les symboles uniques
+                const symbols = [...new Set(allTrades.filter(t => t.status === 'open').map(t => t.symbol))];
+                if (symbols.length === 0) return;
+                
+                // Récupérer les prix actuels (max 250 à la fois)
+                const priceMap = {};
+                const chunkSize = 250;
+                
+                for (let i = 0; i < symbols.length; i += chunkSize) {
+                    const chunk = symbols.slice(i, i + chunkSize);
+                    const ids = chunk.map(s => s.toLowerCase().replace('usdt', '')).join(',');
+                    
+                    try {
+                        const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            for (const [key, value] of Object.entries(data)) {
+                                priceMap[key.toUpperCase() + 'USDT'] = value.usd;
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Prix API indisponible, utilisant cache');
+                    }
+                }
+                
+                // Vérifier chaque trade ouvert
+                allTrades.forEach((trade, index) => {
+                    if (trade.status !== 'open') return;
+                    
+                    const currentPrice = priceMap[trade.symbol] || trade.entry;
+                    const row = document.querySelector(`tr[data-trade-index="${index}"]`);
+                    if (!row) return;
+                    
+                    // ✅ Vérifier TP1, TP2, TP3
+                    if (trade.side === 'LONG') {
+                        // LONG: Prix monte
+                        if (currentPrice >= trade.tp1 && !trade.tp1_hit) {
+                            trade.tp1_hit = true;
+                            updateTradeRow(trade, index);
+                        }
+                        if (currentPrice >= trade.tp2 && !trade.tp2_hit) {
+                            trade.tp2_hit = true;
+                            updateTradeRow(trade, index);
+                        }
+                        if (currentPrice >= trade.tp3 && !trade.tp3_hit) {
+                            trade.tp3_hit = true;
+                            updateTradeRow(trade, index);
+                        }
+                        
+                        // 🔴 SL seulement si aucun TP1 atteint
+                        if (currentPrice <= trade.sl && !trade.sl_hit && !trade.tp1_hit) {
+                            trade.sl_hit = true;
+                            trade.status = 'closed';
+                            updateTradeRow(trade, index);
+                        }
+                    } else if (trade.side === 'SHORT') {
+                        // SHORT: Prix descend
+                        if (currentPrice <= trade.tp1 && !trade.tp1_hit) {
+                            trade.tp1_hit = true;
+                            updateTradeRow(trade, index);
+                        }
+                        if (currentPrice <= trade.tp2 && !trade.tp2_hit) {
+                            trade.tp2_hit = true;
+                            updateTradeRow(trade, index);
+                        }
+                        if (currentPrice <= trade.tp3 && !trade.tp3_hit) {
+                            trade.tp3_hit = true;
+                            updateTradeRow(trade, index);
+                        }
+                        
+                        // 🔴 SL seulement si aucun TP1 atteint
+                        if (currentPrice >= trade.sl && !trade.sl_hit && !trade.tp1_hit) {
+                            trade.sl_hit = true;
+                            trade.status = 'closed';
+                            updateTradeRow(trade, index);
+                        }
+                    }
+                });
+                
+                updateStats();
+            } catch (error) {
+                console.log('Vérification TP/SL:', error);
+            }
+        }
+        
+        function updateTradeRow(trade, index) {
+            const row = document.querySelector(`tr[data-trade-index="${index}"]`);
+            if (!row) return;
+            
+            // Mettre à jour la cellule SL
+            const slCell = row.cells[4];
+            if (slCell) {
+                slCell.innerHTML = formatPrice(trade.sl, trade.sl_hit, trade.sl_hit);
+            }
+            
+            // Mettre à jour les cellules TP
+            const tp1Cell = row.cells[5];
+            if (tp1Cell) {
+                tp1Cell.innerHTML = formatPrice(trade.tp1, trade.tp1_hit, false);
+                tp1Cell.style.background = trade.tp1_hit ? 'rgba(16, 185, 129, 0.2)' : '';
+            }
+            
+            const tp2Cell = row.cells[6];
+            if (tp2Cell) {
+                tp2Cell.innerHTML = formatPrice(trade.tp2, trade.tp2_hit, false);
+                tp2Cell.style.background = trade.tp2_hit ? 'rgba(16, 185, 129, 0.2)' : '';
+            }
+            
+            const tp3Cell = row.cells[7];
+            if (tp3Cell) {
+                tp3Cell.innerHTML = formatPrice(trade.tp3, trade.tp3_hit, false);
+                tp3Cell.style.background = trade.tp3_hit ? 'rgba(16, 185, 129, 0.2)' : '';
+            }
+            
+            // Mettre à jour le statut
+            const statusCell = row.cells[9];
+            if (statusCell) {
+                if (trade.status === 'closed') {
+                    const reason = trade.sl_hit ? '❌ SL HIT' : (trade.tp3_hit ? '✅ TP3' : (trade.tp2_hit ? '✅ TP2' : (trade.tp1_hit ? '✅ TP1' : 'CLOSED')));
+                    statusCell.innerHTML = '<span class="badge badge-closed">' + reason + '</span>';
+                }
+            }
+            
+            // Mettre à jour la ligne en rouge si SL
+            if (trade.sl_hit) {
+                row.style.background = 'rgba(239, 68, 68, 0.1)';
+            } else if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit) {
+                row.style.background = 'rgba(16, 185, 129, 0.1)';
+            }
+        } 
+        
+        async function updateStats() {
             try { 
                 const response = await fetch('/api/stats'); 
                 const stats = await response.json(); 
@@ -10851,7 +10993,7 @@ async def trades_page():
                 const status = trade.status || 'OPEN';
                 const statusClass = status === 'OPEN' ? 'badge-open' : 'badge-closed';
                 
-                html += '<tr onclick="showTradeDetails(' + index + ')">';
+                html += '<tr data-trade-index="' + index + '" onclick="showTradeDetails(' + index + ')">';
                 html += '<td>' + formatTime(trade.timestamp) + '</td>';
                 html += '<td><strong>' + (trade.symbol || 'N/A') + '</strong></td>';
                 html += '<td><span class="badge ' + sideClass + '">' + side + '</span></td>';
@@ -11149,6 +11291,7 @@ async def trades_page():
 
 
         load(); 
+        startRealTimeChecks(); // Démarrer la vérification en temps réel des TP/SL
         loadWeeklyPnl();
         setInterval(load, 30000); 
         setInterval(loadWeeklyPnl, 30000);

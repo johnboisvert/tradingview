@@ -303,7 +303,7 @@ async def get_crypto_news_real():
 # ✅ ROUTE STRATÉGIE MAGIC MIKE COMPLÈTE (tous les 5 niveaux)
 @app.get("/strategie", response_class=HTMLResponse)
 async def strategie_page():
-    html_content = """
+    html_content = f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -5230,8 +5230,8 @@ async def ai_whale_watcher():
         source_text = f"Données démo avec prix LIVE | BTC: ${btc_price:,.0f} | Actualiser dans 30s"
         print(f"⚠️ APIs indisponibles - Mode démo | BTC: ${btc_price:,.0f}")
     
-    # Convertir en JSON
-    whale_data_json = json.dumps(whale_data)
+    # Convertir en JSON (MÉTHODE SÉCURISÉE - FIX APPLIQUÉ)
+    whale_data_json_safe = json.dumps(whale_data).replace("<\/", "<\\/")
     
     
     html_content = """
@@ -5569,11 +5569,11 @@ async def ai_whale_watcher():
         
         <script>
             // ✅ DONNÉES DIRECTEMENT INTÉGRÉES EN JSON
-            window.whaleData = """ + whale_data_json + """;
-            console.log('🐋 Whale Data loaded:', JSON.parse(window.whaleData).length, 'transactions');
+            window.whaleData = {whale_data_json_safe};
+            console.log('🐋 Whale Data loaded:', window.whaleData.length, 'transactions');
             
             function renderWhaleTransactions() {
-                const whaleData = JSON.parse(window.whaleData);
+                const whaleData = window.whaleData;
                 const feed = document.getElementById('whaleFeed');
                 
                 if (!whaleData || whaleData.length === 0) {
@@ -5638,7 +5638,7 @@ async def ai_whale_watcher():
             }
             
             function generateTopWhales() {
-                const whaleData = JSON.parse(window.whaleData);
+                const whaleData = window.whaleData;
                 
                 if (!whaleData || whaleData.length === 0) return;
                 

@@ -5660,7 +5660,7 @@ async def ai_whale_watcher():
                             <div class="transaction-header">
                                 <div class="transaction-coin">₿ BTC / ${tx.type}</div>
                                 <div class="transaction-amount ${impactClass}">
-                                    ${impactEmoji} $${'${tx.usd_value.toLocaleString()}'}
+                                    ${impactEmoji} $${tx.usd_value.toLocaleString()}
                                 </div>
                             </div>
                             <div class="transaction-details">
@@ -5704,21 +5704,21 @@ async def ai_whale_watcher():
                 const topWhales = whaleData.slice(0, 10);
                 const container = document.getElementById('topWhales');
                 
-                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">';
+                let html = '';
                 
                 topWhales.forEach((whale, idx) => {
                     html += `
                         <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 15px; border-radius: 10px; border: 2px solid #0284c7;">
                             <div style="font-weight: bold; color: #0284c7; margin-bottom: 10px;">🐋 Top #${idx + 1}</div>
                             <div style="font-size: 0.9em; margin-bottom: 5px;"><strong>Montant:</strong> ${whale.amount} BTC</div>
-                            <div style="font-size: 0.9em; margin-bottom: 5px;"><strong>Valeur:</strong> $${'${whale.usd_value.toLocaleString()}'}</div>
+                            <div style="font-size: 0.9em; margin-bottom: 5px;"><strong>Valeur:</strong> $${whale.usd_value.toLocaleString()}</div>
                             <div style="font-size: 0.85em; color: #666; word-break: break-all;">${whale.txid}</div>
                             <div style="font-size: 0.8em; color: #888; margin-top: 8px;">⏱️ ${whale.time_ago}</div>
                         </div>
                     `;
                 });
                 
-                html += '</div>';
+                html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">${html}</div>`;
                 container.innerHTML = html;
             }
             
@@ -5738,36 +5738,6 @@ async def ai_whale_watcher():
             function refreshWhaleData() {
                 location.reload();
             }
-
-                                <div class="detail-item">
-                                    <div class="detail-label">Montant</div>
-                                    <div class="detail-value">${tx.amount} ${tx.coin}</div>
-                                </div>
-                                <div class="detail-item">
-                                    <div class="detail-label">Mouvement</div>
-                                    <div class="detail-value">${tx.movement}</div>
-                                </div>
-                                <div class="detail-item">
-                                    <div class="detail-label">Il y a</div>
-                                    <div class="detail-value">${tx.timeAgo}</div>
-                                </div>
-                            </div>
-                            <div class="impact-badge ${tx.isBullish ? 'bullish' : 'bearish'}">
-                                ${tx.impact}
-                            </div>
-                            <p style="margin-top: 10px; color: #666; font-size: 0.9em;">
-                                💡 ${tx.reason}
-                            </p>
-                        </div>
-                    `;
-                });
-                
-                feed.innerHTML = html;
-                
-                // Update stats
-                document.getElementById('whaleCount').textContent = transactions.length;
-                document.getElementById('totalVolume').textContent = '$' + totalVol.toFixed(1) + 'B';
-                document.getElementById('bullishCount').textContent = bullishCount;
                 document.getElementById('bearishCount').textContent = bearishCount;
                 
                 // Alert banner

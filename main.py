@@ -5804,7 +5804,6 @@ async def ai_whale_watcher():
                     `;
                 }
             }
-            }
             
             // ✅ Data Source: BLOCKCHAIN.INFO API (VRAIES DONNÉES)
             console.log('🐋 Whale Watcher connecté à Blockchain.info API');

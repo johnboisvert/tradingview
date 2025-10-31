@@ -12834,6 +12834,36 @@ async def market_simulation():
         h1 { text-align: center; margin: 30px 0 10px 0; color: #00ff88; }
         .subtitle { text-align: center; margin-bottom: 30px; color: #aaa; font-size: 0.95em; }
         
+        /* NAV stylisé pour correspondre aux autres sections */
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 15px;
+            border-radius: 12px;
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        .nav a {
+            padding: 10px 18px;
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 8px;
+            text-decoration: none;
+            color: #e2e8f0;
+            transition: all 0.3s;
+            border: 1px solid rgba(51, 65, 85, 0.5);
+            font-size: 0.95em;
+        }
+        .nav a:hover {
+            background: #334155;
+            border-color: #60a5fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+        }
+        
         .controls {
             background: rgba(255,255,255,0.05);
             border: 2px solid rgba(0,255,136,0.3);
@@ -12850,20 +12880,51 @@ async def market_simulation():
             margin-bottom: 20px;
         }
         
-        label { display: block; font-weight: bold; margin-bottom: 8px; color: #aaa; }
+        label { 
+            display: block; 
+            font-weight: bold; 
+            margin-bottom: 8px; 
+            color: #00ff88;
+            font-size: 1.05em;
+        }
+        
         input, select {
             width: 100%;
-            padding: 12px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(0,255,136,0.5);
-            border-radius: 8px;
+            padding: 14px 16px;
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px solid rgba(0,255,136,0.5);
+            border-radius: 10px;
             color: #fff;
-            font-size: 1em;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
         }
+        
+        /* Style amélioré pour le select */
+        select {
+            background: rgba(15, 23, 42, 0.98);
+            padding-right: 40px;
+        }
+        
+        /* Style des options du select pour meilleure lisibilité */
+        select option {
+            background: #0f172a;
+            color: #fff;
+            padding: 12px;
+            font-size: 1.05em;
+            font-weight: 600;
+        }
+        
+        select option:hover {
+            background: #1e293b;
+        }
+        
         input:focus, select:focus { 
             outline: none; 
             border-color: #00ff88; 
-            box-shadow: 0 0 10px rgba(0,255,136,0.3); 
+            box-shadow: 0 0 15px rgba(0,255,136,0.5);
+            background: rgba(15, 23, 42, 1);
         }
         
         button {

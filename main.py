@@ -10863,19 +10863,22 @@ async def trades_page():
                         // LONG: Prix monte
                         if (currentPrice >= trade.tp1 && !trade.tp1_hit) {
                             trade.tp1_hit = true;
+                            trade.status = 'closed';
                             updateTradeRow(trade, index);
                         }
                         if (currentPrice >= trade.tp2 && !trade.tp2_hit) {
                             trade.tp2_hit = true;
+                            trade.status = 'closed';
                             updateTradeRow(trade, index);
                         }
                         if (currentPrice >= trade.tp3 && !trade.tp3_hit) {
                             trade.tp3_hit = true;
+                            trade.status = 'closed';
                             updateTradeRow(trade, index);
                         }
                         
-                        // 🔴 SL seulement si aucun TP1 atteint
-                        if (currentPrice <= trade.sl && !trade.sl_hit && !trade.tp1_hit) {
+                        // 🔴 SL seulement si AUCUN TP atteint
+                        if (currentPrice <= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
                             trade.sl_hit = true;
                             trade.status = 'closed';
                             updateTradeRow(trade, index);
@@ -10884,19 +10887,22 @@ async def trades_page():
                         // SHORT: Prix descend
                         if (currentPrice <= trade.tp1 && !trade.tp1_hit) {
                             trade.tp1_hit = true;
+                            trade.status = 'closed';
                             updateTradeRow(trade, index);
                         }
                         if (currentPrice <= trade.tp2 && !trade.tp2_hit) {
                             trade.tp2_hit = true;
+                            trade.status = 'closed';
                             updateTradeRow(trade, index);
                         }
                         if (currentPrice <= trade.tp3 && !trade.tp3_hit) {
                             trade.tp3_hit = true;
+                            trade.status = 'closed';
                             updateTradeRow(trade, index);
                         }
                         
-                        // 🔴 SL seulement si aucun TP1 atteint
-                        if (currentPrice >= trade.sl && !trade.sl_hit && !trade.tp1_hit) {
+                        // 🔴 SL seulement si AUCUN TP atteint
+                        if (currentPrice >= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
                             trade.sl_hit = true;
                             trade.status = 'closed';
                             updateTradeRow(trade, index);
@@ -10914,10 +10920,11 @@ async def trades_page():
             const row = document.querySelector(`tr[data-trade-index="${index}"]`);
             if (!row) return;
             
-            // Mettre à jour la cellule SL
+            // Mettre à jour la cellule SL (ne pas afficher en rouge si un TP est atteint)
             const slCell = row.cells[4];
             if (slCell) {
-                slCell.innerHTML = formatPrice(trade.sl, trade.sl_hit, trade.sl_hit);
+                const shouldShowSLHit = trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit;
+                slCell.innerHTML = formatPrice(trade.sl, shouldShowSLHit, true);
             }
             
             // Mettre à jour les cellules TP
@@ -10939,20 +10946,27 @@ async def trades_page():
                 tp3Cell.style.background = trade.tp3_hit ? 'rgba(16, 185, 129, 0.2)' : '';
             }
             
-            // Mettre à jour le statut
-            const statusCell = row.cells[9];
-            if (statusCell) {
-                if (trade.status === 'closed') {
-                    const reason = trade.sl_hit ? '❌ SL HIT' : (trade.tp3_hit ? '✅ TP3' : (trade.tp2_hit ? '✅ TP2' : (trade.tp1_hit ? '✅ TP1' : 'CLOSED')));
-                    statusCell.innerHTML = '<span class="badge badge-closed">' + reason + '</span>';
+            // Mettre à jour la colonne CLOSE (index 10)
+            const closeCell = row.cells[10];
+            if (closeCell) {
+                if (trade.tp3_hit) {
+                    closeCell.innerHTML = '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP3</span>';
+                } else if (trade.tp2_hit) {
+                    closeCell.innerHTML = '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP2</span>';
+                } else if (trade.tp1_hit) {
+                    closeCell.innerHTML = '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP1</span>';
+                } else if (trade.sl_hit) {
+                    closeCell.innerHTML = '<span class="badge" style="background: #ef4444; color: white; font-weight: 700;">❌ ÉCHOUÉ</span>';
                 }
             }
             
-            // Mettre à jour la ligne en rouge si SL
-            if (trade.sl_hit) {
-                row.style.background = 'rgba(239, 68, 68, 0.1)';
-            } else if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit) {
-                row.style.background = 'rgba(16, 185, 129, 0.1)';
+            // Mettre à jour la couleur de la ligne (vert si TP, rouge si SL seulement)
+            if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit) {
+                row.style.background = 'rgba(16, 185, 129, 0.1)'; // Vert si TP atteint
+            } else if (trade.sl_hit) {
+                row.style.background = 'rgba(239, 68, 68, 0.1)'; // Rouge si SL atteint
+            } else {
+                row.style.background = ''; // Normal sinon
             }
         } 
         
@@ -10998,7 +11012,7 @@ async def trades_page():
                 html += '<td><strong>' + (trade.symbol || 'N/A') + '</strong></td>';
                 html += '<td><span class="badge ' + sideClass + '">' + side + '</span></td>';
                 html += '<td>' + formatPrice(trade.entry, false, false) + '</td>';
-                html += '<td>' + formatPrice(trade.sl, trade.sl_hit, true) + '</td>';
+                html += '<td>' + formatPrice(trade.sl, (trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit), true) + '</td>';
                 html += '<td>' + formatPrice(trade.tp1, trade.tp1_hit, false) + '</td>';
                 html += '<td>' + formatPrice(trade.tp2, trade.tp2_hit, false) + '</td>';
                 html += '<td>' + formatPrice(trade.tp3, trade.tp3_hit, false) + '</td>';
@@ -11006,16 +11020,22 @@ async def trades_page():
                 html += '<div class="confidence-meter"><div class="confidence-fill" style="width: ' + (trade.confidence || 0) + '%"></div></div></div></td>';
                 html += '<td><span class="badge ' + statusClass + '">' + status + '</span></td>';
                 
-                // Colonne CLOSE pour les revirements
+                // Colonne CLOSE avec messages clairs
                 html += '<td>';
-                if (trade.status === 'closed' && trade.closed_reason && trade.closed_reason.includes('Revirement') && !trade.tp3_hit) {
-                    html += '<span class="badge badge-reversal" style="background: #ef4444; color: white; font-weight: 600;">🔄 REVIREMENT</span>';
-                } else if (trade.status === 'closed' && trade.tp3_hit) {
-                    html += '<span class="badge" style="background: #10b981; color: white;">✅ TP3</span>';
-                } else if (trade.status === 'closed' && trade.sl_hit) {
-                    html += '<span class="badge" style="background: #ef4444; color: white;">❌ SL</span>';
-                } else if (trade.status === 'closed') {
-                    html += '<span class="badge" style="background: #64748b; color: white;">CLOSE</span>';
+                if (trade.status === 'closed') {
+                    if (trade.tp3_hit) {
+                        html += '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP3</span>';
+                    } else if (trade.tp2_hit) {
+                        html += '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP2</span>';
+                    } else if (trade.tp1_hit) {
+                        html += '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP1</span>';
+                    } else if (trade.sl_hit) {
+                        html += '<span class="badge" style="background: #ef4444; color: white; font-weight: 700;">❌ ÉCHOUÉ</span>';
+                    } else if (trade.closed_reason && trade.closed_reason.includes('Revirement')) {
+                        html += '<span class="badge" style="background: #f59e0b; color: white; font-weight: 700;">🔄 REVIREMENT</span>';
+                    } else {
+                        html += '<span class="badge" style="background: #64748b; color: white;">CLOSED</span>';
+                    }
                 } else {
                     html += '<span style="color: #64748b;">—</span>';
                 }

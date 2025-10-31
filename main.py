@@ -303,7 +303,7 @@ async def get_crypto_news_real():
 # ✅ ROUTE STRATÉGIE MAGIC MIKE COMPLÈTE (tous les 5 niveaux)
 @app.get("/strategie", response_class=HTMLResponse)
 async def strategie_page():
-    html_content = f"""
+    html_content = """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -5230,11 +5230,13 @@ async def ai_whale_watcher():
         source_text = f"Données démo avec prix LIVE | BTC: ${btc_price:,.0f} | Actualiser dans 30s"
         print(f"⚠️ APIs indisponibles - Mode démo | BTC: ${btc_price:,.0f}")
     
-    # Convertir en JSON (MÉTHODE SÉCURISÉE - FIX APPLIQUÉ)
-    whale_data_json_safe = json.dumps(whale_data).replace("<\/", "<\\/")
+    # Convertir en JSON
+    # MÉTHODE ULTRA-SÉCURISÉE - Utilise .replace() au lieu de f-string
+    whale_data_json_safe = json.dumps(whale_data).replace("<\\/", "<\\\\/")
     
     
-    html_content = f"""
+    
+    html_content = """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -5569,8 +5571,8 @@ async def ai_whale_watcher():
         
         <script>
             // ✅ DONNÉES DIRECTEMENT INTÉGRÉES EN JSON
-            // ✅ DONNÉES DIRECTEMENT INTÉGRÉES EN JSON (MÉTHODE ULTRA-SÉCURISÉE)
-            window.whaleData = WHALE_DATA_PLACEHOLDER;
+            // ✅ DONNÉES - PLACEHOLDER SERA REMPLACÉ
+            window.whaleData = __WHALE_DATA_JSON__;
             console.log('🐋 Whale Data loaded:', window.whaleData.length, 'transactions');
             
             function renderWhaleTransactions() {
@@ -5755,8 +5757,8 @@ async def ai_whale_watcher():
     </body>
     </html>
     """
-    # Remplacer le placeholder par les vraies données
-    html_content = html_content.replace("WHALE_DATA_PLACEHOLDER", whale_data_json_safe)
+    html_content = html_content.replace("__WHALE_DATA_JSON__", whale_data_json_safe)
+    # Remplacer le placeholder par les vraies données JSON
 
     return HTMLResponse(content=html_content)
 

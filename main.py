@@ -5738,42 +5738,6 @@ async def ai_whale_watcher():
             function refreshWhaleData() {
                 location.reload();
             }
-                document.getElementById('bearishCount').textContent = bearishCount;
-                
-                // Alert banner
-                const alertBanner = document.getElementById('alertBanner');
-                if (bullishCount > bearishCount + 2) {
-                    alertBanner.innerHTML = `
-                        <div class="alert-banner success">
-                            <div class="alert-icon">📈</div>
-                            <div class="alert-content">
-                                <h3>Signal Haussier Fort</h3>
-                                <p>${bullishCount} baleines accumulent hors exchanges - Potentiel mouvement haussier imminent</p>
-                            </div>
-                        </div>
-                    `;
-                } else if (bearishCount > bullishCount + 2) {
-                    alertBanner.innerHTML = `
-                        <div class="alert-banner">
-                            <div class="alert-icon">📉</div>
-                            <div class="alert-content">
-                                <h3>Signal Baissier - Prudence</h3>
-                                <p>${bearishCount} baleines transfèrent vers exchanges - Possible pression vendeuse</p>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    alertBanner.innerHTML = `
-                        <div class="alert-banner warning">
-                            <div class="alert-icon">⚖️</div>
-                            <div class="alert-content">
-                                <h3>Marché Équilibré</h3>
-                                <p>Mouvements haussiers et baissiers équilibrés - Attendre signal plus clair</p>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
             
             // ✅ Data Source: BLOCKCHAIN.INFO API (VRAIES DONNÉES)
             console.log('🐋 Whale Watcher connecté à Blockchain.info API');

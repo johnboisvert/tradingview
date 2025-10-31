@@ -5234,7 +5234,7 @@ async def ai_whale_watcher():
     whale_data_json_safe = json.dumps(whale_data).replace("<\/", "<\\/")
     
     
-    html_content = """
+    html_content = f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>

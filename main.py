@@ -1687,7 +1687,8 @@ async def webhook(trade: TradeWebhook):
             "tp1_hit": False,
             "tp2_hit": False,
             "tp3_hit": False,
-            "sl_hit": False
+            "sl_hit": False,
+            "pnl": 0.0
         }
         trades_db.append(trade_data)
         
@@ -7010,31 +7011,61 @@ async def update_trade(trade_update: dict):
     try:
         symbol = trade_update.get("symbol")
         timestamp = trade_update.get("timestamp")
+        
+        print(f"🔄 Mise à jour du trade: {symbol} à {timestamp}")
+        print(f"   Données reçues: {trade_update}")
+        
+        trade_found = False
         for trade in trades_db:
             if trade.get("symbol") == symbol and trade.get("timestamp") == timestamp:
-                # Mise à jour des flags
+                trade_found = True
+                
+                # Mise à jour des flags TP/SL
                 for key in ["tp1_hit", "tp2_hit", "tp3_hit", "sl_hit"]:
                     if key in trade_update:
+                        old_value = trade.get(key)
                         trade[key] = trade_update[key]
+                        if old_value != trade[key]:
+                            print(f"   ✅ {key}: {old_value} → {trade[key]}")
                 
-                # Mise à jour du statut si fourni
+                # Mise à jour du statut
                 if "status" in trade_update:
+                    old_status = trade.get("status")
                     trade["status"] = trade_update["status"]
-                # Ou fermeture automatique si SL atteint ou tous les TP atteints
-                elif trade.get("sl_hit"):
-                    trade["status"] = "closed"
-                    # Mettre à jour le P&L hebdomadaire
-                    if trade.get("pnl") is not None:
-                        update_weekly_pnl(trade["pnl"])
-                elif trade.get("tp1_hit") and trade.get("tp2_hit") and trade.get("tp3_hit"):
-                    trade["status"] = "closed"
-                    # Mettre à jour le P&L hebdomadaire
-                    if trade.get("pnl") is not None:
-                        update_weekly_pnl(trade["pnl"])
+                    print(f"   ✅ Status: {old_status} → {trade['status']}")
                     
-                return {"status": "success", "trade": trade}
-        return {"status": "error", "message": "Trade non trouvé"}
+                    # Calculer et sauvegarder le P&L si le trade est fermé
+                    if trade["status"] == "closed":
+                        RISK_AMOUNT = 100
+                        pnl = 0
+                        
+                        if trade.get("sl_hit"):
+                            pnl = -RISK_AMOUNT
+                        elif trade.get("tp3_hit"):
+                            pnl = RISK_AMOUNT * 3
+                        elif trade.get("tp2_hit"):
+                            pnl = RISK_AMOUNT * 2
+                        elif trade.get("tp1_hit"):
+                            pnl = RISK_AMOUNT * 1
+                        
+                        trade["pnl"] = pnl
+                        print(f"   💰 P&L calculé: ${pnl}")
+                        
+                        # Mettre à jour le P&L hebdomadaire
+                        if pnl != 0:
+                            update_weekly_pnl(pnl)
+                
+                print(f"✅ Trade {symbol} mis à jour avec succès")
+                return {"status": "success", "trade": trade, "message": "Trade mis à jour"}
+        
+        if not trade_found:
+            print(f"❌ Trade non trouvé: {symbol} à {timestamp}")
+            return {"status": "error", "message": f"Trade non trouvé: {symbol}"}
+            
     except Exception as e:
+        print(f"❌ Erreur lors de la mise à jour: {e}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "error": str(e)}
 
 @app.get("/api/trades/add-demo")
@@ -7049,6 +7080,47 @@ async def clear_trades():
     count = len(trades_db)
     trades_db.clear()
     return {"status": "success", "message": f"{count} trades effacés"}
+
+@app.get("/api/trades/debug")
+async def debug_trades():
+    """Endpoint de débogage pour voir l'état des trades"""
+    trades_summary = []
+    
+    for trade in trades_db:
+        trades_summary.append({
+            "symbol": trade.get("symbol"),
+            "side": trade.get("side"),
+            "status": trade.get("status"),
+            "entry": trade.get("entry"),
+            "tp1_hit": trade.get("tp1_hit", False),
+            "tp2_hit": trade.get("tp2_hit", False),
+            "tp3_hit": trade.get("tp3_hit", False),
+            "sl_hit": trade.get("sl_hit", False),
+            "pnl": trade.get("pnl", 0)
+        })
+    
+    # Calculer les statistiques
+    total = len(trades_db)
+    open_trades = len([t for t in trades_db if t.get("status") == "open"])
+    closed_trades = len([t for t in trades_db if t.get("status") == "closed"])
+    
+    wins = len([t for t in trades_db if t.get("tp1_hit") or t.get("tp2_hit") or t.get("tp3_hit")])
+    losses = len([t for t in trades_db if t.get("sl_hit")])
+    
+    total_pnl = sum(t.get("pnl", 0) for t in trades_db)
+    
+    return {
+        "status": "success",
+        "summary": {
+            "total_trades": total,
+            "open_trades": open_trades,
+            "closed_trades": closed_trades,
+            "wins": wins,
+            "losses": losses,
+            "total_pnl": round(total_pnl, 2)
+        },
+        "trades": trades_summary
+    }
 
 
 
@@ -10846,73 +10918,115 @@ async def trades_page():
                             }
                         }
                     } catch (e) {
-                        console.log('Prix API indisponible, utilisant cache');
+                        console.log('Prix API indisponible');
                     }
                 }
                 
                 // Vérifier chaque trade ouvert
-                allTrades.forEach((trade, index) => {
-                    if (trade.status !== 'open') return;
+                for (let index = 0; index < allTrades.length; index++) {
+                    const trade = allTrades[index];
+                    if (trade.status !== 'open') continue;
                     
                     const currentPrice = priceMap[trade.symbol] || trade.entry;
-                    const row = document.querySelector(`tr[data-trade-index="${index}"]`);
-                    if (!row) return;
+                    let tradeModified = false;
                     
-                    // ✅ Vérifier TP1, TP2, TP3
+                    // Préparer l'objet de mise à jour
+                    const updateData = {
+                        symbol: trade.symbol,
+                        timestamp: trade.timestamp,
+                        tp1_hit: trade.tp1_hit || false,
+                        tp2_hit: trade.tp2_hit || false,
+                        tp3_hit: trade.tp3_hit || false,
+                        sl_hit: trade.sl_hit || false,
+                        status: trade.status
+                    };
+                    
+                    // Vérifier TP/SL
                     if (trade.side === 'LONG') {
                         // LONG: Prix monte
                         if (currentPrice >= trade.tp1 && !trade.tp1_hit) {
                             trade.tp1_hit = true;
-                            trade.status = 'closed';
-                            updateTradeRow(trade, index);
+                            updateData.tp1_hit = true;
+                            tradeModified = true;
                         }
                         if (currentPrice >= trade.tp2 && !trade.tp2_hit) {
                             trade.tp2_hit = true;
-                            trade.status = 'closed';
-                            updateTradeRow(trade, index);
+                            updateData.tp2_hit = true;
+                            tradeModified = true;
                         }
                         if (currentPrice >= trade.tp3 && !trade.tp3_hit) {
                             trade.tp3_hit = true;
-                            trade.status = 'closed';
-                            updateTradeRow(trade, index);
+                            updateData.tp3_hit = true;
+                            tradeModified = true;
                         }
                         
-                        // 🔴 SL seulement si AUCUN TP atteint
+                        // SL seulement si AUCUN TP atteint
                         if (currentPrice <= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
                             trade.sl_hit = true;
-                            trade.status = 'closed';
-                            updateTradeRow(trade, index);
+                            updateData.sl_hit = true;
+                            tradeModified = true;
                         }
                     } else if (trade.side === 'SHORT') {
                         // SHORT: Prix descend
                         if (currentPrice <= trade.tp1 && !trade.tp1_hit) {
                             trade.tp1_hit = true;
-                            trade.status = 'closed';
-                            updateTradeRow(trade, index);
+                            updateData.tp1_hit = true;
+                            tradeModified = true;
                         }
                         if (currentPrice <= trade.tp2 && !trade.tp2_hit) {
                             trade.tp2_hit = true;
-                            trade.status = 'closed';
-                            updateTradeRow(trade, index);
+                            updateData.tp2_hit = true;
+                            tradeModified = true;
                         }
                         if (currentPrice <= trade.tp3 && !trade.tp3_hit) {
                             trade.tp3_hit = true;
-                            trade.status = 'closed';
-                            updateTradeRow(trade, index);
+                            updateData.tp3_hit = true;
+                            tradeModified = true;
                         }
                         
-                        // 🔴 SL seulement si AUCUN TP atteint
+                        // SL seulement si AUCUN TP atteint
                         if (currentPrice >= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
                             trade.sl_hit = true;
-                            trade.status = 'closed';
-                            updateTradeRow(trade, index);
+                            updateData.sl_hit = true;
+                            tradeModified = true;
                         }
                     }
-                });
+                    
+                    // Si un TP atteint, fermer le trade
+                    if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit || trade.sl_hit) {
+                        trade.status = 'closed';
+                        updateData.status = 'closed';
+                    }
+                    
+                    // 🔥 CRITIQUE: Envoyer la mise à jour au serveur
+                    if (tradeModified) {
+                        try {
+                            const response = await fetch('/api/trades/update-status', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(updateData)
+                            });
+                            
+                            const result = await response.json();
+                            if (result.status === 'success') {
+                                console.log(`✅ Trade ${trade.symbol} mis à jour sur le serveur`);
+                                updateTradeRow(trade, index);
+                            } else {
+                                console.error(`❌ Erreur mise à jour ${trade.symbol}:`, result.message);
+                            }
+                        } catch (error) {
+                            console.error('❌ Erreur lors de la synchronisation:', error);
+                        }
+                    }
+                }
                 
-                updateStats();
+                // Recharger les statistiques après vérification
+                await updateStats();
+                
             } catch (error) {
-                console.log('Vérification TP/SL:', error);
+                console.error('❌ Erreur dans checkTPSLHits:', error);
             }
         }
         

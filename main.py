@@ -4353,6 +4353,10 @@ async def ai_opportunity_scanner():
                                     <div class="detail-value" style="color: #ef4444;">$${opp.sl}</div>
                                 </div>
                                 <div class="detail-box">
+                                    <div class="detail-label">Take Profit</div>
+                                    <div class="detail-value" style="color: #10b981;">$${opp.tp}</div>
+                                </div>
+                                <div class="detail-box">
                                     <div class="detail-label">Risk/Reward</div>
                                     <div class="detail-value">${opp.rr}:1</div>
                                 </div>
@@ -15153,3 +15157,5 @@ if __name__ == "__main__":
     print("  📍 Accès: /success-stories")
     print("="*70)
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+
+

@@ -1544,11 +1544,28 @@ async def send_telegram_advanced(trade: TradeWebhook):
         max_retries = 3
         retry_count = 0
         
+        # 🔥 NOUVEAU: Ajouter un bouton de lien vers le dashboard
+        telegram_payload = {
+            "chat_id": TELEGRAM_CHAT_ID, 
+            "text": msg, 
+            "parse_mode": TG_PARSE,
+            "reply_markup": {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "📊 Ouvrir Dashboard",
+                            "url": "https://tradingview-production-9618.up.railway.app/"
+                        }
+                    ]
+                ]
+            }
+        }
+        
         async with httpx.AsyncClient(timeout=10.0) as client:
             while retry_count < max_retries:
                 response = await client.post(
                     f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                    json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": TG_PARSE}
+                    json=telegram_payload
                 )
                 
                 if response.status_code == 200:
@@ -12611,10 +12628,27 @@ async def send_telegram_notification(symbol: str, target: str, current_price: fl
         if target == "TP3":
             message += "\n🎉🎊 <b>FÉLICITATIONS ! TRADE COMPLÉTÉ !</b> 🎊🎉\n"
         
+        # 🔥 NOUVEAU: Ajouter un bouton de lien vers le dashboard
+        telegram_payload = {
+            "chat_id": TELEGRAM_CHAT_ID, 
+            "text": message, 
+            "parse_mode": "HTML",
+            "reply_markup": {
+                "inline_keyboard": [
+                    [
+                        {
+                            "text": "📊 Voir le Dashboard",
+                            "url": "https://tradingview-production-9618.up.railway.app/"
+                        }
+                    ]
+                ]
+            }
+        }
+        
         async with httpx.AsyncClient() as client:
             await client.post(
                 f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
+                json=telegram_payload
             )
     except Exception as e:
         print(f"⚠️ Erreur Telegram: {e}")

@@ -1544,7 +1544,10 @@ async def send_telegram_advanced(trade: TradeWebhook):
         max_retries = 3
         retry_count = 0
         
-        # 🔥 NOUVEAU: Ajouter un bouton de lien vers le dashboard
+        # 🔥 NOUVEAU: Ajouter boutons dashboard + TradingView
+        # Construire l'URL TradingView avec le symbole
+        tradingview_url = f"https://www.tradingview.com/chart/?symbol=BINANCE:{trade.symbol}"
+        
         telegram_payload = {
             "chat_id": TELEGRAM_CHAT_ID, 
             "text": msg, 
@@ -1553,8 +1556,12 @@ async def send_telegram_advanced(trade: TradeWebhook):
                 "inline_keyboard": [
                     [
                         {
-                            "text": "📊 Ouvrir Dashboard",
+                            "text": "📊 Dashboard",
                             "url": "https://tradingview-production-9618.up.railway.app/"
+                        },
+                        {
+                            "text": "📈 TradingView",
+                            "url": tradingview_url
                         }
                     ]
                 ]
@@ -12628,7 +12635,9 @@ async def send_telegram_notification(symbol: str, target: str, current_price: fl
         if target == "TP3":
             message += "\n🎉🎊 <b>FÉLICITATIONS ! TRADE COMPLÉTÉ !</b> 🎊🎉\n"
         
-        # 🔥 NOUVEAU: Ajouter un bouton de lien vers le dashboard
+        # 🔥 NOUVEAU: Ajouter boutons dashboard + TradingView
+        tradingview_url = f"https://www.tradingview.com/chart/?symbol=BINANCE:{symbol}"
+        
         telegram_payload = {
             "chat_id": TELEGRAM_CHAT_ID, 
             "text": message, 
@@ -12637,8 +12646,12 @@ async def send_telegram_notification(symbol: str, target: str, current_price: fl
                 "inline_keyboard": [
                     [
                         {
-                            "text": "📊 Voir le Dashboard",
+                            "text": "📊 Dashboard",
                             "url": "https://tradingview-production-9618.up.railway.app/"
+                        },
+                        {
+                            "text": "📈 TradingView",
+                            "url": tradingview_url
                         }
                     ]
                 ]

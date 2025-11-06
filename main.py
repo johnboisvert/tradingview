@@ -30,7 +30,7 @@ class SmartCache:
         self.prices_timestamp = {}
         self.whale_cache = {}
         self.whale_timestamp = {}
-        self.cache_duration = 60
+        self.cache_duration = 30  # ⚡ OPTIMISÉ: 30 secondes au lieu de 60
     
     def get_price_cache(self, key):
         if key in self.prices_cache:
@@ -12960,6 +12960,11 @@ async def stats_dashboard():
     <div class="container">
         <h1>$ 📊 STATISTIQUES - 100% DONNÉES RÉELLES $</h1>
         
+        <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;">
+            <div id="last-refresh" class="data-badge" style="background: rgba(0, 255, 136, 0.15); border: 2px solid #00ff88; color: #00ff88;">⏰ --:--:--</div>
+            <div id="refresh-badge" class="data-badge" style="background: rgba(0, 212, 255, 0.15); border: 2px solid #00d4ff; color: #00d4ff;">🔄 30s</div>
+        </div>
+        
         <div class="data-badge">
             ✅ TOUTES DONNÉES 100% RÉELLES | API CoinGecko + Alternative.me + Votre Historique de Trades
         </div>
@@ -13040,6 +13045,39 @@ async def stats_dashboard():
         new Chart(document.getElementById('dom'), {{type: 'doughnut', data: {{labels: ['BTC','ETH','Autres'], datasets: [{{data: [{btc_dom}, {eth_dom}, {round(100-btc_dom-eth_dom, 1)}], backgroundColor: ['#ff9900','#627eea','#00ff88']}}]}}, options: {{responsive: true, maintainAspectRatio: false, plugins: {{legend: {{display: true, labels: {{color: '#fff'}}}}}}}} }});
         
         new Chart(document.getElementById('vol'), {{type: 'bar', data: {{labels: ['Volume 24h'], datasets: [{{label: 'Milliards $', data: [{round(total_volume/1e9, 1)}], backgroundColor: 'rgba(0,212,255,0.6)', borderColor: '#00d4ff', borderWidth: 2}}]}}, options: {{responsive: true, maintainAspectRatio: false, plugins: {{legend: {{display: true, labels: {{color: '#fff'}}}}}}, scales: {{y: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}, x: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}}}}} }});
+        
+        // 🔄 AUTO-REFRESH TOUTES LES 30 SECONDES
+        let refreshCounter = 30;
+        
+        function updateRefreshCounter() {{
+            refreshCounter--;
+            const badge = document.getElementById('refresh-badge');
+            if (badge) {{
+                badge.textContent = '🔄 ' + refreshCounter + 's';
+                if (refreshCounter <= 10) {{
+                    badge.style.color = '#ef4444';
+                }}
+            }}
+        }}
+        
+        function updateLastRefreshTime() {{
+            const now = new Date();
+            const time = now.toLocaleTimeString('fr-FR');
+            const badge = document.getElementById('last-refresh');
+            if (badge) {{
+                badge.textContent = '⏰ ' + time;
+            }}
+        }}
+        
+        // Mettre à jour le compteur chaque seconde
+        setInterval(updateRefreshCounter, 1000);
+        updateLastRefreshTime();
+        setInterval(updateLastRefreshTime, 1000);
+        
+        // AUTO-REFRESH DE LA PAGE TOUTES LES 30 SECONDES
+        setTimeout(function() {{
+            location.reload();
+        }}, 30000);
     </script>
 </body>
 </html>"""
@@ -13798,9 +13836,53 @@ async def success_stories():
         .story-card:nth-child(3) { animation-delay: 0.2s; }
         .story-card:nth-child(4) { animation-delay: 0.3s; }
         .story-card:nth-child(5) { animation-delay: 0.4s; }
+        
+        /* Navigation Bar */
+        .nav {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.95);
+            padding: 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .nav a {
+            padding: 12px 20px;
+            background: #1e293b;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #e2e8f0;
+            transition: all 0.3s;
+            border: 1px solid #334155;
+            font-size: 0.95em;
+            white-space: nowrap;
+        }
+        
+        .nav a:hover {
+            background: #334155;
+            border-color: #60a5fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+        }
+        
+        .nav a.active {
+            background: #334155;
+            border-color: #60a5fa;
+        }
     </style>
 </head>
 <body>
+    <div class="nav">
+        <a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot</a><a href="/calculatrice">🧮 Calc</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI</a><a href="/ai-opportunity-scanner">🎯 Scanner</a><a href="/ai-market-regime">🌊 Regime</a><a href="/ai-whale-watcher">🐋 Whale</a><a href="/stats-dashboard">$ Stats $</a><a href="/market-simulation">📈 Simulation</a><a href="/success-stories" class="active">🌟 Stories</a><a href="/convertisseur">💱 Convertir</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a>
+    </div>
+
     <div class="container">
         <h1>🌟 SUCCESS STORIES - Histoires Vraies de DCA</h1>
         

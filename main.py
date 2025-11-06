@@ -10905,7 +10905,7 @@ async def trades_page():
                 const symbols = [...new Set(allTrades.filter(t => t.status === 'open').map(t => t.symbol))];
                 if (symbols.length === 0) return;
                 
-                // Récupérer les prix actuels (max 250 à la fois)
+                // Récupérer les prix actuels EN TEMPS RÉEL (max 250 à la fois)
                 const priceMap = {};
                 const chunkSize = 250;
                 
@@ -10918,11 +10918,14 @@ async def trades_page():
                         if (response.ok) {
                             const data = await response.json();
                             for (const [key, value] of Object.entries(data)) {
-                                priceMap[key.toUpperCase() + 'USDT'] = value.usd;
+                                // 🔥 IMPORTANT: Reconstruire le symbole correctement
+                                const symbol = key.toUpperCase() + 'USDT';
+                                priceMap[symbol] = value.usd;
+                                console.log(`💹 Prix ACTUEL ${symbol}: $${value.usd}`);
                             }
                         }
                     } catch (e) {
-                        console.log('Prix API indisponible');
+                        console.log('⚠️ Prix API indisponible');
                     }
                 }
                 
@@ -10931,7 +10934,13 @@ async def trades_page():
                     const trade = allTrades[index];
                     if (trade.status !== 'open') continue;
                     
-                    const currentPrice = priceMap[trade.symbol] || trade.entry;
+                    // 🔥 TOUJOURS utiliser le prix ACTUEL de l'API, JAMAIS le prix du webhook
+                    const currentPrice = priceMap[trade.symbol];
+                    if (!currentPrice) {
+                        console.log(`⚠️ Pas de prix pour ${trade.symbol}`);
+                        continue;
+                    }
+                    
                     let tradeModified = false;
                     
                     // Préparer l'objet de mise à jour
@@ -10942,7 +10951,8 @@ async def trades_page():
                         tp2_hit: trade.tp2_hit || false,
                         tp3_hit: trade.tp3_hit || false,
                         sl_hit: trade.sl_hit || false,
-                        status: trade.status
+                        status: trade.status,
+                        current_price: currentPrice  // 🔥 Mettre à jour le prix stocké
                     };
                     
                     // Vérifier TP/SL
@@ -10952,20 +10962,24 @@ async def trades_page():
                             trade.tp1_hit = true;
                             updateData.tp1_hit = true;
                             tradeModified = true;
+                            console.log(`🎯 ${trade.symbol} TP1 ATTEINT à $${currentPrice}`);
                         }
                         if (currentPrice >= trade.tp2 && !trade.tp2_hit) {
                             trade.tp2_hit = true;
                             updateData.tp2_hit = true;
                             tradeModified = true;
+                            console.log(`🎯🎯 ${trade.symbol} TP2 ATTEINT à $${currentPrice}`);
                         }
                         if (currentPrice >= trade.tp3 && !trade.tp3_hit) {
                             trade.tp3_hit = true;
                             updateData.tp3_hit = true;
                             tradeModified = true;
+                            console.log(`🎯🎯🎯 ${trade.symbol} TP3 ATTEINT à $${currentPrice}`);
                         }
                         
                         // SL seulement si AUCUN TP atteint
                         if (currentPrice <= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
+                            console.warn(`❌ ${trade.symbol} SL ATTEINT à $${currentPrice} (seuil: $${trade.sl})`);
                             trade.sl_hit = true;
                             updateData.sl_hit = true;
                             tradeModified = true;
@@ -10976,20 +10990,24 @@ async def trades_page():
                             trade.tp1_hit = true;
                             updateData.tp1_hit = true;
                             tradeModified = true;
+                            console.log(`🎯 ${trade.symbol} TP1 ATTEINT à $${currentPrice}`);
                         }
                         if (currentPrice <= trade.tp2 && !trade.tp2_hit) {
                             trade.tp2_hit = true;
                             updateData.tp2_hit = true;
                             tradeModified = true;
+                            console.log(`🎯🎯 ${trade.symbol} TP2 ATTEINT à $${currentPrice}`);
                         }
                         if (currentPrice <= trade.tp3 && !trade.tp3_hit) {
                             trade.tp3_hit = true;
                             updateData.tp3_hit = true;
                             tradeModified = true;
+                            console.log(`🎯🎯🎯 ${trade.symbol} TP3 ATTEINT à $${currentPrice}`);
                         }
                         
                         // SL seulement si AUCUN TP atteint
                         if (currentPrice >= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
+                            console.warn(`❌ ${trade.symbol} SL ATTEINT à $${currentPrice} (seuil: $${trade.sl})`);
                             trade.sl_hit = true;
                             updateData.sl_hit = true;
                             tradeModified = true;
@@ -12469,33 +12487,48 @@ import asyncio
 
 async def get_current_price_from_trade(trade: dict) -> float:
     """
-    Récupère le prix actuel depuis le trade ou via une API externe
-    Priorité : current_price du webhook > API CoinGecko (fallback)
+    Récupère le prix actuel EN TEMPS RÉEL via API (jamais le prix du webhook!)
+    ✅ FIX: Utiliser TOUJOURS l'API pour avoir le prix ACTUEL, pas un prix figé du webhook
     """
     try:
-        # Priorité 1 : Utiliser le current_price stocké dans le trade (vient du webhook)
-        if "current_price" in trade and trade["current_price"]:
-            return float(trade["current_price"])
-        
-        # Priorité 2 : Fallback vers API CoinGecko si nécessaire
-        # (au cas où un ancien trade n'a pas current_price)
         symbol = trade.get("symbol")
         if not symbol:
             return None
         
-        # Mapping basique pour fallback
+        # ✅ TOUJOURS utiliser CoinGecko pour avoir le prix ACTUEL
+        # Mapping complet pour la plupart des cryptos populaires
         symbol_map = {
             "BTCUSDT": "bitcoin",
             "ETHUSDT": "ethereum",
             "BNBUSDT": "binancecoin",
             "SOLUSDT": "solana",
-            "XRPUSDT": "ripple"
+            "XRPUSDT": "ripple",
+            "ADAUSDT": "cardano",
+            "DOGEUSDT": "dogecoin",
+            "LTCUSDT": "litecoin",
+            "LINKUSDT": "chainlink",
+            "AVAXUSDT": "avalanche-2",
+            "ZENEUSDT": "zenes",  # Pour ZEN
+            "ZENUSDT": "zen",     # Pour ZEN (alias)
+            "POLKAUSDT": "polkadot",
+            "UNIUSDT": "uniswap",
+            "MATICUSDT": "matic-network",
+            "FTMUSDT": "fantom",
+            "ARBUSDT": "arbitrum",
+            "OPTIMUSDT": "optimism",
+            "NEARUSDT": "near",
+            "ATOMUSDT": "cosmos",
+            "SUIUSDT": "sui",
+            "APUSDT": "aptos",
+            "MANAUSDT": "decentraland",
+            "SANDUSDT": "the-sandbox"
         }
         
         crypto_id = symbol_map.get(symbol)
         if not crypto_id:
-            print(f"⚠️ Symbole {symbol} non supporté en fallback")
-            return None
+            print(f"⚠️ Symbole {symbol} non mappé - tentative de fallback direct")
+            # Essayer avec le symbole directement (sans USDT)
+            crypto_id = symbol.replace("USDT", "").lower()
         
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={crypto_id}&vs_currencies=usd"
         
@@ -12504,9 +12537,11 @@ async def get_current_price_from_trade(trade: dict) -> float:
             if response.status_code == 200:
                 data = response.json()
                 price = data.get(crypto_id, {}).get("usd")
-                if price:
-                    print(f"💰 {symbol}: ${price} (fallback)")
+                if price and price > 0:
+                    print(f"📊 {symbol}: ${price:.6f} (PRIX ACTUEL EN TEMPS RÉEL)")
                     return float(price)
+                else:
+                    print(f"❌ Pas de prix retourné pour {crypto_id}")
     except Exception as e:
         print(f"❌ Erreur get_current_price pour {trade.get('symbol')}: {e}")
     
@@ -15157,5 +15192,3 @@ if __name__ == "__main__":
     print("  📍 Accès: /success-stories")
     print("="*70)
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
-
-

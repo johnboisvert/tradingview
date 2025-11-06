@@ -21,6 +21,36 @@ monitor_lock = asyncio.Lock()
 monitor_running = False
 trades_db = []
 
+# 💾 FICHIER DE PERSISTANCE DES TRADES
+TRADES_FILE = "trades_database.json"
+
+def load_trades_from_file():
+    """📂 Charger les trades depuis le fichier JSON"""
+    global trades_db
+    try:
+        if os.path.exists(TRADES_FILE):
+            with open(TRADES_FILE, 'r', encoding='utf-8') as f:
+                trades_db = json.load(f)
+                print(f"✅ {len(trades_db)} trades chargés depuis {TRADES_FILE}")
+        else:
+            trades_db = []
+            print(f"📄 Fichier {TRADES_FILE} créé (nouveau)")
+    except Exception as e:
+        print(f"❌ Erreur chargement trades: {e}")
+        trades_db = []
+
+def save_trades_to_file():
+    """💾 Sauvegarder les trades dans le fichier JSON"""
+    try:
+        with open(TRADES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(trades_db, f, indent=2, ensure_ascii=False)
+            print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
+    except Exception as e:
+        print(f"❌ Erreur sauvegarde trades: {e}")
+
+# 🚀 Charger les trades au démarrage
+load_trades_from_file()
+
 # ============================================================================
 # SYSTÈME DE CACHE POUR DONNÉES RÉELLES
 # ============================================================================
@@ -1715,6 +1745,7 @@ async def webhook(trade: TradeWebhook):
             "pnl": 0.0
         }
         trades_db.append(trade_data)
+        save_trades_to_file()  # 💾 Sauvegarder immédiatement
         
         print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
         
@@ -7084,6 +7115,7 @@ async def update_trade(trade_update: dict):
                             update_weekly_pnl(pnl)
                 
                 print(f"✅ Trade {symbol} mis à jour avec succès")
+                save_trades_to_file()  # 💾 Sauvegarder immédiatement
                 return {"status": "success", "trade": trade, "message": "Trade mis à jour"}
         
         if not trade_found:
@@ -7101,12 +7133,14 @@ async def add_demo():
     quebec_tz = pytz.timezone('America/Montreal')
     demo = [{"symbol": "BTCUSDT", "side": "LONG", "entry": 107150.00, "sl": 105000.00, "tp1": 108500.00, "tp2": 110000.00, "tp3": 112000.00, "timestamp": (datetime.now(quebec_tz) - timedelta(hours=2)).isoformat(), "status": "open", "confidence": 92.5, "tp1_hit": True, "tp2_hit": True, "tp3_hit": False, "sl_hit": False}]
     trades_db.extend(demo)
+    save_trades_to_file()  # 💾 Sauvegarder immédiatement
     return {"status": "success", "message": f"{len(demo)} trades ajoutés"}
 
 @app.delete("/api/trades/clear")
 async def clear_trades():
     count = len(trades_db)
     trades_db.clear()
+    save_trades_to_file()  # 💾 Sauvegarder immédiatement (vide)
     return {"status": "success", "message": f"{count} trades effacés"}
 
 @app.get("/api/trades/debug")

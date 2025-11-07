@@ -7079,6 +7079,25 @@ async def update_trade(trade_update: dict):
             if trade.get("symbol") == symbol and trade.get("timestamp") == timestamp:
                 trade_found = True
                 
+                # ⚠️ VALIDATION IMPORTANTE: Vérifier SL hit est valide
+                if trade_update.get("sl_hit") and not trade_update.get("tp1_hit") and not trade_update.get("tp2_hit") and not trade_update.get("tp3_hit"):
+                    # Si on marque SL HIT, vérifier que c'est cohérent avec le side
+                    side = trade.get("side")
+                    entry = float(trade.get("entry", 0))
+                    sl = float(trade.get("sl", 0))
+                    current_price = float(trade_update.get("current_price", entry))
+                    
+                    if side == "LONG":
+                        # Pour un LONG, SL est inférieur à entry, et price doit être <= SL pour hit
+                        if current_price > sl:
+                            print(f"   ⚠️ ATTENTION: SL marqué mais prix ({current_price}) n'a pas touché SL ({sl})")
+                            return {"status": "warning", "message": f"Prix {current_price} > SL {sl} - SL non validé"}
+                    else:  # SHORT
+                        # Pour un SHORT, SL est supérieur à entry, et price doit être >= SL pour hit
+                        if current_price < sl:
+                            print(f"   ⚠️ ATTENTION: SL marqué mais prix ({current_price}) n'a pas touché SL ({sl})")
+                            return {"status": "warning", "message": f"Prix {current_price} < SL {sl} - SL non validé"}
+                
                 # Mise à jour des flags TP/SL
                 for key in ["tp1_hit", "tp2_hit", "tp3_hit", "sl_hit"]:
                     if key in trade_update:
@@ -7142,6 +7161,78 @@ async def clear_trades():
     trades_db.clear()
     save_trades_to_file()  # 💾 Sauvegarder immédiatement (vide)
     return {"status": "success", "message": f"{count} trades effacés"}
+
+@app.get("/api/trades/validate-sl")
+async def validate_sl_hits():
+    """🔍 Valider et nettoyer les SL hits incorrects"""
+    issues_found = []
+    
+    for idx, trade in enumerate(trades_db):
+        if trade.get("sl_hit") and not trade.get("tp1_hit") and not trade.get("tp2_hit") and not trade.get("tp3_hit"):
+            side = trade.get("side")
+            entry = float(trade.get("entry", 0))
+            sl = float(trade.get("sl", 0))
+            
+            is_valid = False
+            if side == "LONG":
+                # Pour LONG: SL doit être < entry
+                if sl < entry:
+                    is_valid = True
+                else:
+                    issues_found.append({
+                        "symbol": trade.get("symbol"),
+                        "issue": f"LONG: SL ({sl}) >= Entry ({entry})",
+                        "action": "SL marqué mais SL mal configuré"
+                    })
+            else:  # SHORT
+                # Pour SHORT: SL doit être > entry
+                if sl > entry:
+                    is_valid = True
+                else:
+                    issues_found.append({
+                        "symbol": trade.get("symbol"),
+                        "issue": f"SHORT: SL ({sl}) <= Entry ({entry})",
+                        "action": "SL marqué mais SL mal configuré"
+                    })
+    
+    return {
+        "status": "success",
+        "total_trades": len(trades_db),
+        "issues_found": len(issues_found),
+        "details": issues_found if issues_found else "Tous les SL hits sont valides ✅"
+    }
+
+@app.post("/api/trades/fix-incorrect-sl")
+async def fix_incorrect_sl(trade_symbol: str = None):
+    """🔧 Corriger les SL hits incorrects"""
+    fixed_count = 0
+    
+    for trade in trades_db:
+        if trade.get("sl_hit"):
+            side = trade.get("side")
+            entry = float(trade.get("entry", 0))
+            sl = float(trade.get("sl", 0))
+            
+            # Vérifier si SL est mal configuré
+            if side == "LONG" and sl >= entry:
+                print(f"❌ LONG trade mal configuré: SL >= Entry")
+                trade["sl_hit"] = False
+                trade["status"] = "open"
+                trade["pnl"] = 0.0
+                fixed_count += 1
+            elif side == "SHORT" and sl <= entry:
+                print(f"❌ SHORT trade mal configuré: SL <= Entry")
+                trade["sl_hit"] = False
+                trade["status"] = "open"
+                trade["pnl"] = 0.0
+                fixed_count += 1
+    
+    save_trades_to_file()
+    return {
+        "status": "success",
+        "fixed_trades": fixed_count,
+        "message": f"{fixed_count} trades corrigés ✅"
+    }
 
 @app.get("/api/trades/debug")
 async def debug_trades():

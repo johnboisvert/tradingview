@@ -12,6 +12,7 @@ import os
 import math
 import asyncio
 import json
+import sqlite3
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -23,6 +24,17 @@ trades_db = []
 
 # 💾 FICHIER DE PERSISTANCE DES TRADES
 TRADES_FILE = "trades_database.json"
+
+# 📲 TELEGRAM CONFIGURATION
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+
+# 🌐 MEXC API CONFIGURATION
+MEXC_API_BASE = "https://api.mexc.com"
+MEXC_PRICE_ENDPOINT = f"{MEXC_API_BASE}/api/v3/ticker/price"
+
+# 🔄 Background Monitor
+monitor_running = False
 
 def load_trades_from_file():
     """📂 Charger les trades depuis le fichier JSON"""
@@ -47,6 +59,169 @@ def save_trades_to_file():
             print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
     except Exception as e:
         print(f"❌ Erreur sauvegarde trades: {e}")
+
+# ============================================================================
+# 🚀 MEXC API - AUTO-DETECTION TP/SL
+# ============================================================================
+
+async def get_mexc_price(symbol: str) -> Optional[float]:
+    """Get current price from MEXC API"""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            url = f"{MEXC_PRICE_ENDPOINT}?symbol={symbol}"
+            response = await client.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                price = float(data.get('price', 0))
+                return price
+            else:
+                return None
+    except Exception as e:
+        print(f"⚠️  MEXC Error {symbol}: {e}")
+        return None
+
+async def send_telegram_notification(message: str):
+    """Send notification to Telegram"""
+    try:
+        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+            return
+        
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message,
+            "parse_mode": "HTML"
+        }
+        
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(url, json=payload)
+    except Exception as e:
+        print(f"⚠️  Telegram Error: {e}")
+
+async def check_tp_sl_hits():
+    """🔍 SERVER-SIDE TP/SL DETECTION - Checks every 10 seconds"""
+    global trades_db
+    
+    if not trades_db:
+        return
+    
+    for trade in trades_db:
+        if trade.get('status') == 'closed':
+            continue
+        
+        symbol = trade.get('symbol')
+        side = trade.get('side')
+        entry = float(trade.get('entry'))
+        sl = float(trade.get('sl'))
+        tp1 = float(trade.get('tp1'))
+        tp2 = float(trade.get('tp2'))
+        tp3 = float(trade.get('tp3'))
+        
+        current_price = await get_mexc_price(symbol)
+        if current_price is None:
+            continue
+        
+        if trade.get('tp1_hit') or trade.get('tp2_hit') or trade.get('tp3_hit') or trade.get('sl_hit'):
+            continue
+        
+        # LONG TRADES
+        if side == "LONG":
+            if current_price >= tp3 and not trade.get('tp3_hit'):
+                trade['tp3_hit'] = True
+                trade['status'] = 'closed'
+                trade['closed_at'] = datetime.now().isoformat()
+                pnl = (tp3 - entry) / entry * 100
+                trade['pnl'] = pnl
+                msg = f"🚀 TP3 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP3: ${tp3:.4f}\nPnL: +{pnl:.2f}%"
+                await send_telegram_notification(msg)
+                print(f"✅ {symbol} TP3 HIT!")
+            
+            elif current_price >= tp2 and not trade.get('tp2_hit'):
+                trade['tp2_hit'] = True
+                pnl = (tp2 - entry) / entry * 100
+                trade['pnl'] = pnl
+                msg = f"💎 TP2 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP2: ${tp2:.4f}\nPnL: +{pnl:.2f}%"
+                await send_telegram_notification(msg)
+                print(f"✅ {symbol} TP2 HIT!")
+            
+            elif current_price >= tp1 and not trade.get('tp1_hit'):
+                trade['tp1_hit'] = True
+                pnl = (tp1 - entry) / entry * 100
+                trade['pnl'] = pnl
+                msg = f"🎯 TP1 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP1: ${tp1:.4f}\nPnL: +{pnl:.2f}%"
+                await send_telegram_notification(msg)
+                print(f"✅ {symbol} TP1 HIT!")
+            
+            elif current_price <= sl and not trade.get('sl_hit'):
+                trade['sl_hit'] = True
+                trade['status'] = 'closed'
+                trade['closed_at'] = datetime.now().isoformat()
+                pnl = (sl - entry) / entry * 100
+                trade['pnl'] = pnl
+                msg = f"🛑 STOP LOSS HIT! {symbol} LONG\nEntry: ${entry:.4f}\nSL: ${sl:.4f}\nPnL: {pnl:.2f}%"
+                await send_telegram_notification(msg)
+                print(f"❌ {symbol} SL HIT!")
+        
+        # SHORT TRADES
+        elif side == "SHORT":
+            if current_price <= tp3 and not trade.get('tp3_hit'):
+                trade['tp3_hit'] = True
+                trade['status'] = 'closed'
+                trade['closed_at'] = datetime.now().isoformat()
+                pnl = (entry - tp3) / entry * 100
+                trade['pnl'] = pnl
+                msg = f"🚀 TP3 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP3: ${tp3:.4f}\nPnL: +{pnl:.2f}%"
+                await send_telegram_notification(msg)
+                print(f"✅ {symbol} TP3 HIT!")
+            
+            elif current_price <= tp2 and not trade.get('tp2_hit'):
+                trade['tp2_hit'] = True
+                pnl = (entry - tp2) / entry * 100
+                trade['pnl'] = pnl
+                msg = f"💎 TP2 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP2: ${tp2:.4f}\nPnL: +{pnl:.2f}%"
+                await send_telegram_notification(msg)
+                print(f"✅ {symbol} TP2 HIT!")
+            
+            elif current_price <= tp1 and not trade.get('tp1_hit'):
+                trade['tp1_hit'] = True
+                pnl = (entry - tp1) / entry * 100
+                trade['pnl'] = pnl
+                msg = f"🎯 TP1 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP1: ${tp1:.4f}\nPnL: +{pnl:.2f}%"
+                await send_telegram_notification(msg)
+                print(f"✅ {symbol} TP1 HIT!")
+            
+            elif current_price >= sl and not trade.get('sl_hit'):
+                trade['sl_hit'] = True
+                trade['status'] = 'closed'
+                trade['closed_at'] = datetime.now().isoformat()
+                pnl = (entry - sl) / entry * 100
+                trade['pnl'] = pnl
+                msg = f"🛑 STOP LOSS HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nSL: ${sl:.4f}\nPnL: {pnl:.2f}%"
+                await send_telegram_notification(msg)
+                print(f"❌ {symbol} SL HIT!")
+        
+        save_trades_to_file()
+
+async def background_monitor():
+    """Background task - monitors TP/SL every 10 seconds"""
+    global monitor_running
+    monitor_running = True
+    print("🟢 Background MEXC monitor started")
+    try:
+        while monitor_running:
+            await asyncio.sleep(10)
+            await check_tp_sl_hits()
+    except Exception as e:
+        print(f"❌ Monitor error: {e}")
+    finally:
+        monitor_running = False
+
+def start_background_monitor():
+    """Start background monitor"""
+    global monitor_running
+    if not monitor_running:
+        asyncio.create_task(background_monitor())
+
 
 # 🚀 Charger les trades au démarrage
 load_trades_from_file()
@@ -12854,6 +13029,9 @@ async def startup_event():
     # Utiliser try_lock pour éviter de bloquer si un autre worker a déjà lancé
     if not monitor_running:
         asyncio.create_task(monitor_trades_background())
+    
+    # 🚀 Démarrer le monitoring MEXC pour auto-détection TP/SL
+    start_background_monitor()
 
 
 

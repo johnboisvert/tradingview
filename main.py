@@ -7238,7 +7238,9 @@ async def stats_api():
 
 @app.get("/api/trades")
 async def trades_api():
-    return {"trades": trades_db, "count": len(trades_db), "status": "success"}
+    # Trier les trades du plus récent au plus ancien
+    sorted_trades = sorted(trades_db, key=lambda x: x.get('timestamp', ''), reverse=True)
+    return {"trades": sorted_trades, "count": len(sorted_trades), "status": "success"}
 
 @app.post("/api/trades/update-status")
 async def update_trade(trade_update: dict):

@@ -371,7 +371,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 USE_POSTGRESQL = POSTGRESQL_AVAILABLE and DATABASE_URL is not None
 
 # Base de données des utilisateurs et sessions
-USERS_DB = f"{DATA_DIR}/users.db"  # Utilisé seulement si pas de PostgreSQL
+USERS_DB = "/tmp/users.db"  # Force /tmp pour Railway
 active_sessions = {}  # {token: username}
 
 class DatabaseManager:

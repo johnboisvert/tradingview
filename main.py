@@ -16,6 +16,9 @@ import sqlite3
 import hashlib
 import secrets
 
+# 💾 Système SQL pour les trades
+import sql_trades_system as sql_trades
+
 # PostgreSQL support
 try:
     import psycopg2
@@ -337,28 +340,34 @@ def require_admin(session_token: Optional[str] = Cookie(None)):
 
 
 def load_trades_from_file():
-    """📂 Charger les trades depuis le fichier JSON"""
+    """📂 Charger les trades depuis la base SQL"""
     global trades_db
     try:
+        # 💾 Charger depuis SQL
+        trades_db = sql_trades.get_all_trades(order_by="timestamp DESC")
+        print(f"✅ {len(trades_db)} trades chargés depuis SQL")
+        
+        # 🔄 Migration automatique: Si le fichier JSON existe encore, migrer une fois
         if os.path.exists(TRADES_FILE):
-            with open(TRADES_FILE, 'r', encoding='utf-8') as f:
-                trades_db = json.load(f)
-                print(f"✅ {len(trades_db)} trades chargés depuis {TRADES_FILE}")
-        else:
-            trades_db = []
-            print(f"📄 Fichier {TRADES_FILE} créé (nouveau)")
+            print("📦 Fichier JSON détecté - Migration vers SQL...")
+            migrated = sql_trades.migrate_from_json(TRADES_FILE)
+            if migrated > 0:
+                # Recharger après migration
+                trades_db = sql_trades.get_all_trades(order_by="timestamp DESC")
+                # Renommer le fichier JSON en backup
+                backup_file = TRADES_FILE + ".backup"
+                os.rename(TRADES_FILE, backup_file)
+                print(f"✅ Migration réussie! {migrated} trades importés")
+                print(f"📦 Ancien fichier sauvegardé: {backup_file}")
     except Exception as e:
         print(f"❌ Erreur chargement trades: {e}")
         trades_db = []
 
 def save_trades_to_file():
-    """💾 Sauvegarder les trades dans le fichier JSON"""
-    try:
-        with open(TRADES_FILE, 'w', encoding='utf-8') as f:
-            json.dump(trades_db, f, indent=2, ensure_ascii=False)
-            print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
-    except Exception as e:
-        print(f"❌ Erreur sauvegarde trades: {e}")
+    """💾 Sauvegarder les trades (maintenant géré automatiquement par SQL)"""
+    # Cette fonction n'est plus nécessaire avec SQL
+    # Les données sont automatiquement persistées dans la base
+    pass
 
 # ============================================================================
 # 🚀 MEXC API - AUTO-DETECTION TP/SL
@@ -2625,10 +2634,12 @@ async def webhook(trade: TradeWebhook):
             "sl_hit": False,
             "pnl": 0.0
         }
-        trades_db.append(trade_data)
-        save_trades_to_file()  # 💾 Sauvegarder immédiatement
+        # 💾 Sauvegarder dans la base SQL
+        trade_id = sql_trades.create_trade(trade_data)
+        trade_data['id'] = trade_id  # Ajouter l'ID pour référence
+        trades_db.append(trade_data)  # Garder aussi en cache mémoire
         
-        print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
+        print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry} (ID: {trade_id})")
         
         return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
         
@@ -7944,9 +7955,12 @@ async def stats_api():
 
 @app.get("/api/trades")
 async def trades_api():
-    # Trier les trades du plus récent au plus ancien
-    sorted_trades = sorted(trades_db, key=lambda x: x.get('timestamp', ''), reverse=True)
-    return {"trades": sorted_trades, "count": len(sorted_trades), "status": "success"}
+    # 💾 Charger depuis SQL (déjà trié par timestamp DESC)
+    all_trades = sql_trades.get_all_trades(order_by="timestamp DESC")
+    # Mettre à jour le cache mémoire
+    global trades_db
+    trades_db = all_trades
+    return {"trades": all_trades, "count": len(all_trades), "status": "success"}
 
 @app.post("/api/trades/update-status")
 async def update_trade(trade_update: dict):

@@ -7,9 +7,9 @@ aiohttp==3.9.1
 # HTTP Client (httpx/httpcore pin pour éviter les soucis de proxies args)
 httpcore==1.0.5
 pytz==2024.2
-psycopg2-binary==2.9.9
 # Rate Limiting (OBLIGATOIRE pour v2.3)
 slowapi==0.1.9
+psycopg2-binary
 
 # Utilities
 python-dotenv==1.0.1
@@ -21,6 +21,7 @@ openai==1.51.0
 # Ajouts pour Altseason (fetch + parsing)
 requests==2.32.3
 beautifulsoup4==4.12.3
+
 
 
 

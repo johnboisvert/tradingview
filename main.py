@@ -52,7 +52,7 @@ monitor_running = False
 trades_db = []
 
 # 💾 FICHIER DE PERSISTANCE DES TRADES
-TRADES_FILE = "trades_database.json"
+TRADES_FILE = "/tmp/trades_database.json"
 
 # 📲 TELEGRAM CONFIGURATION
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -70,7 +70,7 @@ monitor_running = False
 # ============================================================================
 
 # Base de données des utilisateurs et sessions
-USERS_DB = "users.db"
+USERS_DB = "/tmp/users.db"
 active_sessions = {}  # {token: username}
 
 def init_users_db():

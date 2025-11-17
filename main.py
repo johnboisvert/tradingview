@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import Optional, Any
@@ -13,9 +13,38 @@ import math
 import asyncio
 import json
 import sqlite3
+import hashlib
+import secrets
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# 🔐 Middleware d'authentification
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Vérifier l'authentification sur toutes les routes sauf /login"""
+    # Routes publiques (pas besoin d'authentification)
+    public_paths = ["/login", "/health", "/tv-webhook"]
+    
+    # Si c'est une route publique, laisser passer
+    if any(request.url.path.startswith(path) for path in public_paths):
+        return await call_next(request)
+    
+    # Vérifier le token de session
+    session_token = request.cookies.get("session_token")
+    user = get_user_from_token(session_token)
+    
+    # Si pas authentifié, rediriger vers login
+    if not user:
+        if request.url.path.startswith("/api/"):
+            # Pour les routes API, retourner 401
+            return Response(content="Non authentifié", status_code=401)
+        else:
+            # Pour les routes HTML, rediriger vers login
+            return RedirectResponse(url="/login", status_code=303)
+    
+    # Utilisateur authentifié, continuer
+    return await call_next(request)
 
 # ✅ DÉFINITIONS OBLIGATOIRES (AVANT les routes !)
 monitor_lock = asyncio.Lock()
@@ -35,6 +64,97 @@ MEXC_PRICE_ENDPOINT = f"{MEXC_API_BASE}/api/v3/ticker/price"
 
 # 🔄 Background Monitor
 monitor_running = False
+
+# ============================================================================
+# 🔐 SYSTÈME D'AUTHENTIFICATION
+# ============================================================================
+
+# Base de données des utilisateurs et sessions
+USERS_DB = "users.db"
+active_sessions = {}  # {token: username}
+
+def init_users_db():
+    """Initialiser la base de données des utilisateurs"""
+    conn = sqlite3.connect(USERS_DB)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users
+                 (username TEXT PRIMARY KEY, 
+                  password_hash TEXT, 
+                  role TEXT,
+                  created_at TEXT)''')
+    
+    # Créer un compte admin par défaut si n'existe pas
+    c.execute("SELECT * FROM users WHERE username = 'admin'")
+    if not c.fetchone():
+        default_password = "admin123"  # À changer après la première connexion
+        password_hash = hashlib.sha256(default_password.encode()).hexdigest()
+        c.execute("INSERT INTO users VALUES (?, ?, ?, ?)", 
+                  ("admin", password_hash, "admin", datetime.now().isoformat()))
+        print("✅ Compte admin par défaut créé: admin / admin123")
+    
+    conn.commit()
+    conn.close()
+
+def hash_password(password: str) -> str:
+    """Hasher un mot de passe"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_user(username: str, password: str) -> bool:
+    """Vérifier les identifiants d'un utilisateur"""
+    conn = sqlite3.connect(USERS_DB)
+    c = conn.cursor()
+    c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
+    result = c.fetchone()
+    conn.close()
+    
+    if result:
+        password_hash = hash_password(password)
+        return result[0] == password_hash
+    return False
+
+def create_session(username: str) -> str:
+    """Créer une session pour un utilisateur"""
+    token = secrets.token_urlsafe(32)
+    active_sessions[token] = username
+    return token
+
+def get_user_from_token(token: Optional[str]) -> Optional[str]:
+    """Récupérer l'utilisateur depuis un token de session"""
+    if token:
+        return active_sessions.get(token)
+    return None
+
+def get_current_user(session_token: Optional[str] = Cookie(None)) -> Optional[str]:
+    """Dépendance FastAPI pour récupérer l'utilisateur actuel"""
+    return get_user_from_token(session_token)
+
+def require_auth(session_token: Optional[str] = Cookie(None)):
+    """Dépendance FastAPI pour exiger une authentification"""
+    user = get_user_from_token(session_token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    return user
+
+def get_user_role(username: str) -> str:
+    """Obtenir le rôle d'un utilisateur"""
+    conn = sqlite3.connect(USERS_DB)
+    c = conn.cursor()
+    c.execute("SELECT role FROM users WHERE username = ?", (username,))
+    result = c.fetchone()
+    conn.close()
+    return result[0] if result else "user"
+
+def require_admin(session_token: Optional[str] = Cookie(None)):
+    """Dépendance FastAPI pour exiger un rôle admin"""
+    username = require_auth(session_token)
+    role = get_user_role(username)
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Accès refusé - Admin requis")
+    return username
+
+# Initialiser la DB au démarrage
+init_users_db()
+
 
 def load_trades_from_file():
     """📂 Charger les trades depuis le fichier JSON"""
@@ -514,6 +634,430 @@ async def get_crypto_news_real():
         return cache.get('news', [])
     except:
         return cache.get('news', [])
+
+# ============================================================================
+# 🔐 ROUTES D'AUTHENTIFICATION
+# ============================================================================
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, error: str = None):
+    """Page de connexion"""
+    error_msg = ""
+    if error:
+        error_msg = '<div class="alert alert-error">❌ Identifiants incorrects</div>'
+    
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Connexion - Trading Dashboard</title>
+    {CSS}
+    <style>
+        .login-container {{
+            max-width: 450px;
+            margin: 100px auto;
+            padding: 40px;
+            background: #1e293b;
+            border-radius: 16px;
+            border: 1px solid #334155;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }}
+        
+        .login-header {{
+            text-align: center;
+            margin-bottom: 30px;
+        }}
+        
+        .login-header h1 {{
+            font-size: 32px;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }}
+        
+        .login-header p {{
+            color: #94a3b8;
+            font-size: 14px;
+        }}
+        
+        .form-group {{
+            margin-bottom: 20px;
+        }}
+        
+        .form-group label {{
+            display: block;
+            color: #94a3b8;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }}
+        
+        .form-group input {{
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            transition: all 0.3s;
+        }}
+        
+        .form-group input:focus {{
+            outline: none;
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }}
+        
+        .login-btn {{
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }}
+        
+        .login-btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }}
+        
+        .default-creds {{
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #94a3b8;
+        }}
+        
+        .default-creds strong {{
+            color: #60a5fa;
+        }}
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🔐 Connexion</h1>
+            <p>Accédez à votre dashboard de trading</p>
+        </div>
+        
+        {error_msg}
+        
+        <form method="POST" action="/login">
+            <div class="form-group">
+                <label for="username">👤 Nom d'utilisateur</label>
+                <input type="text" id="username" name="username" required autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">🔑 Mot de passe</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+            
+            <button type="submit" class="login-btn">Se connecter</button>
+        </form>
+        
+        <div class="default-creds">
+            <strong>📝 Identifiants par défaut:</strong><br>
+            Username: <strong>admin</strong><br>
+            Password: <strong>admin123</strong><br>
+            <em>⚠️ Changez le mot de passe après la première connexion</em>
+        </div>
+    </div>
+</body>
+</html>""")
+
+@app.post("/login")
+async def login(request: Request, response: Response):
+    """Traiter la connexion"""
+    form_data = await request.form()
+    username = form_data.get("username")
+    password = form_data.get("password")
+    
+    if verify_user(username, password):
+        token = create_session(username)
+        redirect = RedirectResponse(url="/", status_code=303)
+        redirect.set_cookie(
+            key="session_token",
+            value=token,
+            max_age=86400 * 7,  # 7 jours
+            httponly=True,
+            samesite="lax"
+        )
+        return redirect
+    else:
+        return RedirectResponse(url="/login?error=1", status_code=303)
+
+@app.get("/logout")
+async def logout(response: Response, session_token: Optional[str] = Cookie(None)):
+    """Déconnexion"""
+    if session_token and session_token in active_sessions:
+        del active_sessions[session_token]
+    
+    redirect = RedirectResponse(url="/login", status_code=303)
+    redirect.delete_cookie("session_token")
+    return redirect
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_panel(username: str = Depends(require_admin)):
+    """Panel d'administration pour gérer les utilisateurs"""
+    
+    # Récupérer tous les utilisateurs
+    conn = sqlite3.connect(USERS_DB)
+    c = conn.cursor()
+    c.execute("SELECT username, role, created_at FROM users ORDER BY created_at DESC")
+    users = c.fetchall()
+    conn.close()
+    
+    users_html = ""
+    for user in users:
+        users_html += f"""
+        <tr>
+            <td>{user[0]}</td>
+            <td><span class="badge badge-{user[1]}">{user[1].upper()}</span></td>
+            <td>{user[2][:10]}</td>
+            <td>
+                <button onclick="deleteUser('{user[0]}')" class="btn-danger btn-sm">🗑️ Supprimer</button>
+            </td>
+        </tr>
+        """
+    
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👑 Panel Admin</title>
+    {CSS}
+    <style>
+        .badge {{
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }}
+        .badge-admin {{
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }}
+        .badge-user {{
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }}
+        .btn-sm {{
+            padding: 6px 12px;
+            font-size: 13px;
+        }}
+        .form-inline {{
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }}
+        .form-inline > div {{
+            flex: 1;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👑 Panel d'Administration</h1>
+            <p>Gérez les accès au dashboard</p>
+        </div>
+        
+        {NAV}
+        
+        <div class="card">
+            <h2>➕ Ajouter un utilisateur</h2>
+            <form id="addUserForm" class="form-inline">
+                <div>
+                    <label>Nom d'utilisateur</label>
+                    <input type="text" id="newUsername" required>
+                </div>
+                <div>
+                    <label>Mot de passe</label>
+                    <input type="password" id="newPassword" required>
+                </div>
+                <div>
+                    <label>Rôle</label>
+                    <select id="newRole">
+                        <option value="user">Utilisateur</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" style="margin-top: 25px;">Ajouter</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>👥 Utilisateurs ({len(users)})</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nom d'utilisateur</th>
+                        <th>Rôle</th>
+                        <th>Créé le</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {users_html}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="card">
+            <h2>🔑 Changer mon mot de passe</h2>
+            <form id="changePasswordForm" class="form-inline">
+                <div>
+                    <label>Nouveau mot de passe</label>
+                    <input type="password" id="newPasswordChange" required>
+                </div>
+                <div>
+                    <label>Confirmer</label>
+                    <input type="password" id="confirmPassword" required>
+                </div>
+                <div>
+                    <button type="submit" style="margin-top: 25px;">Changer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Ajouter un utilisateur
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {{
+            e.preventDefault();
+            const username = document.getElementById('newUsername').value;
+            const password = document.getElementById('newPassword').value;
+            const role = document.getElementById('newRole').value;
+            
+            const response = await fetch('/admin/add-user', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{username, password, role}})
+            }});
+            
+            if (response.ok) {{
+                alert('✅ Utilisateur ajouté!');
+                location.reload();
+            }} else {{
+                alert('❌ Erreur lors de l\'ajout');
+            }}
+        }});
+        
+        // Supprimer un utilisateur
+        async function deleteUser(username) {{
+            if (!confirm(`Supprimer l'utilisateur ${{username}}?`)) return;
+            
+            const response = await fetch('/admin/delete-user', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{username}})
+            }});
+            
+            if (response.ok) {{
+                alert('✅ Utilisateur supprimé!');
+                location.reload();
+            }} else {{
+                alert('❌ Erreur lors de la suppression');
+            }}
+        }}
+        
+        // Changer le mot de passe
+        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {{
+            e.preventDefault();
+            const newPassword = document.getElementById('newPasswordChange').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {{
+                alert('❌ Les mots de passe ne correspondent pas');
+                return;
+            }}
+            
+            const response = await fetch('/admin/change-password', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{newPassword}})
+            }});
+            
+            if (response.ok) {{
+                alert('✅ Mot de passe changé!');
+                document.getElementById('changePasswordForm').reset();
+            }} else {{
+                alert('❌ Erreur lors du changement');
+            }}
+        }});
+    </script>
+</body>
+</html>""")
+
+@app.post("/admin/add-user")
+async def add_user(request: Request, username: str = Depends(require_admin)):
+    """Ajouter un nouvel utilisateur"""
+    data = await request.json()
+    new_username = data.get("username")
+    password = data.get("password")
+    role = data.get("role", "user")
+    
+    conn = sqlite3.connect(USERS_DB)
+    c = conn.cursor()
+    
+    try:
+        password_hash = hash_password(password)
+        c.execute("INSERT INTO users VALUES (?, ?, ?, ?)",
+                  (new_username, password_hash, role, datetime.now().isoformat()))
+        conn.commit()
+        conn.close()
+        return {{"status": "success", "message": "Utilisateur ajouté"}}
+    except sqlite3.IntegrityError:
+        conn.close()
+        raise HTTPException(status_code=400, detail="Utilisateur déjà existant")
+
+@app.post("/admin/delete-user")
+async def delete_user(request: Request, username: str = Depends(require_admin)):
+    """Supprimer un utilisateur"""
+    data = await request.json()
+    user_to_delete = data.get("username")
+    
+    if user_to_delete == "admin":
+        raise HTTPException(status_code=400, detail="Impossible de supprimer l'admin principal")
+    
+    conn = sqlite3.connect(USERS_DB)
+    c = conn.cursor()
+    c.execute("DELETE FROM users WHERE username = ?", (user_to_delete,))
+    conn.commit()
+    conn.close()
+    
+    return {{"status": "success", "message": "Utilisateur supprimé"}}
+
+@app.post("/admin/change-password")
+async def change_password(request: Request, username: str = Depends(require_auth)):
+    """Changer son propre mot de passe"""
+    data = await request.json()
+    new_password = data.get("newPassword")
+    
+    conn = sqlite3.connect(USERS_DB)
+    c = conn.cursor()
+    password_hash = hash_password(new_password)
+    c.execute("UPDATE users SET password_hash = ? WHERE username = ?", 
+              (password_hash, username))
+    conn.commit()
+    conn.close()
+    
+    return {{"status": "success", "message": "Mot de passe changé"}}
 
 # ✅ ROUTE STRATÉGIE MAGIC MIKE COMPLÈTE (tous les 5 niveaux)
 @app.get("/strategie", response_class=HTMLResponse)
@@ -1455,7 +1999,7 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot Trading</a><a href="/calculatrice">🧮 Calculatrice</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/prediction-ia">🤖 Prédiction IA</a><a href="/ai-opportunity-scanner">🎯 AI Scanner</a><a href="/ai-market-regime">🌊 Market Regime</a><a href="/ai-whale-watcher">🐋 Whale Watcher</a><a href="/stats-dashboard">$ 📊 Stats Avancées $</a><a href="/market-simulation">📈 Simulation</a><a href="/success-stories">🌟 Success Stories</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a></div>'
+NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot Trading</a><a href="/calculatrice">🧮 Calculatrice</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/prediction-ia">🤖 Prédiction IA</a><a href="/ai-opportunity-scanner">🎯 AI Scanner</a><a href="/ai-market-regime">🌊 Market Regime</a><a href="/ai-whale-watcher">🐋 Whale Watcher</a><a href="/stats-dashboard">$ 📊 Stats Avancées $</a><a href="/market-simulation">📈 Simulation</a><a href="/success-stories">🌟 Success Stories</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a><a href="/admin">👑 Admin</a><a href="/logout">🚪 Déconnexion</a></div>'
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""

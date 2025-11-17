@@ -16,9 +16,6 @@ import sqlite3
 import hashlib
 import secrets
 
-# 💾 Système SQL pour les trades
-import sql_trades_system as sql_trades
-
 # PostgreSQL support
 try:
     import psycopg2
@@ -27,6 +24,255 @@ try:
 except ImportError:
     POSTGRESQL_AVAILABLE = False
     print("⚠️  psycopg2 non installé - utilisation de SQLite en fallback")
+
+# ============================================================================
+# 💾 SYSTÈME SQL POUR LES TRADES - Intégré directement
+# ============================================================================
+
+def get_db_config():
+    """Détecte PostgreSQL (Railway) ou SQLite (local)"""
+    database_url = os.getenv("DATABASE_URL")
+    if database_url and POSTGRESQL_AVAILABLE:
+        print("✅ PostgreSQL (Railway)")
+        return {"type": "postgres", "url": database_url}
+    print("⚠️ SQLite fallback")
+    return {"type": "sqlite", "path": "/tmp/trades.db" if os.path.exists("/tmp") else "./trades.db"}
+
+DB_CONFIG = get_db_config()
+
+def get_db_connection():
+    """Retourne une connexion selon le type de DB"""
+    if DB_CONFIG["type"] == "postgres":
+        return psycopg2.connect(DB_CONFIG["url"])
+    return sqlite3.connect(DB_CONFIG["path"], timeout=30.0)
+
+def init_trades_db():
+    """Crée la table trades"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS trades (
+                id SERIAL PRIMARY KEY, symbol TEXT, side TEXT, entry REAL, current_price REAL,
+                sl REAL, tp1 REAL, tp2 REAL, tp3 REAL, timestamp TEXT, status TEXT DEFAULT 'open',
+                confidence REAL, leverage INT, timeframe TEXT, tp1_hit BOOLEAN DEFAULT FALSE,
+                tp2_hit BOOLEAN DEFAULT FALSE, tp3_hit BOOLEAN DEFAULT FALSE,
+                sl_hit BOOLEAN DEFAULT FALSE, pnl REAL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS trades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, symbol TEXT, side TEXT, entry REAL,
+                current_price REAL, sl REAL, tp1 REAL, tp2 REAL, tp3 REAL, timestamp TEXT,
+                status TEXT DEFAULT 'open', confidence REAL, leverage INT, timeframe TEXT,
+                tp1_hit INT DEFAULT 0, tp2_hit INT DEFAULT 0, tp3_hit INT DEFAULT 0,
+                sl_hit INT DEFAULT 0, pnl REAL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        conn.commit()
+        conn.close()
+        print(f"✅ Table trades OK ({DB_CONFIG['type']})")
+        return True
+    except Exception as e:
+        print(f"❌ Init trades: {e}")
+        return False
+
+def sql_create_trade(trade_data):
+    """Crée un nouveau trade en SQL"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""INSERT INTO trades (symbol,side,entry,current_price,sl,tp1,tp2,tp3,
+                timestamp,status,confidence,leverage,timeframe,tp1_hit,tp2_hit,tp3_hit,sl_hit,pnl)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+                (trade_data.get('symbol',''),trade_data.get('side',''),trade_data.get('entry',0),
+                trade_data.get('current_price'),trade_data.get('sl'),trade_data.get('tp1'),
+                trade_data.get('tp2'),trade_data.get('tp3'),
+                trade_data.get('timestamp',datetime.now().isoformat()),trade_data.get('status','open'),
+                trade_data.get('confidence'),trade_data.get('leverage'),trade_data.get('timeframe'),
+                bool(trade_data.get('tp1_hit')),bool(trade_data.get('tp2_hit')),
+                bool(trade_data.get('tp3_hit')),bool(trade_data.get('sl_hit')),trade_data.get('pnl',0)))
+            trade_id = c.fetchone()[0]
+        else:
+            c.execute("""INSERT INTO trades (symbol,side,entry,current_price,sl,tp1,tp2,tp3,
+                timestamp,status,confidence,leverage,timeframe,tp1_hit,tp2_hit,tp3_hit,sl_hit,pnl)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (trade_data.get('symbol',''),trade_data.get('side',''),trade_data.get('entry',0),
+                trade_data.get('current_price'),trade_data.get('sl'),trade_data.get('tp1'),
+                trade_data.get('tp2'),trade_data.get('tp3'),
+                trade_data.get('timestamp',datetime.now().isoformat()),trade_data.get('status','open'),
+                trade_data.get('confidence'),trade_data.get('leverage'),trade_data.get('timeframe'),
+                1 if trade_data.get('tp1_hit') else 0,1 if trade_data.get('tp2_hit') else 0,
+                1 if trade_data.get('tp3_hit') else 0,1 if trade_data.get('sl_hit') else 0,
+                trade_data.get('pnl',0)))
+            trade_id = c.lastrowid
+        conn.commit()
+        conn.close()
+        return trade_id
+    except Exception as e:
+        print(f"❌ Create trade: {e}")
+        return None
+
+def sql_get_all_trades(limit=None, order_by="timestamp DESC"):
+    """Récupère tous les trades"""
+    try:
+        conn = get_db_connection()
+        if DB_CONFIG["type"] == "postgres":
+            c = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+        q = f"SELECT * FROM trades ORDER BY {order_by}"
+        if limit: q += f" LIMIT {limit}"
+        c.execute(q)
+        rows = c.fetchall()
+        conn.close()
+        trades = []
+        for r in rows:
+            t = dict(r)
+            if DB_CONFIG["type"] == "sqlite":
+                t['tp1_hit']=bool(t['tp1_hit'])
+                t['tp2_hit']=bool(t['tp2_hit'])
+                t['tp3_hit']=bool(t['tp3_hit'])
+                t['sl_hit']=bool(t['sl_hit'])
+            trades.append(t)
+        return trades
+    except Exception as e:
+        print(f"❌ Get all trades: {e}")
+        return []
+
+def sql_get_open_trades():
+    """Récupère les trades ouverts"""
+    try:
+        conn = get_db_connection()
+        if DB_CONFIG["type"] == "postgres":
+            c = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+        c.execute("SELECT * FROM trades WHERE status='open' ORDER BY timestamp DESC")
+        rows = c.fetchall()
+        conn.close()
+        trades = []
+        for r in rows:
+            t = dict(r)
+            if DB_CONFIG["type"] == "sqlite":
+                t['tp1_hit']=bool(t['tp1_hit'])
+                t['tp2_hit']=bool(t['tp2_hit'])
+                t['tp3_hit']=bool(t['tp3_hit'])
+                t['sl_hit']=bool(t['sl_hit'])
+            trades.append(t)
+        return trades
+    except Exception as e:
+        print(f"❌ Get open trades: {e}")
+        return []
+
+def sql_update_trade(trade_id, updates):
+    """Met à jour un trade"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        set_c, v = [], []
+        for k, val in updates.items():
+            if DB_CONFIG["type"] == "sqlite" and k in ['tp1_hit','tp2_hit','tp3_hit','sl_hit']:
+                val = 1 if val else 0
+            set_c.append(f"{k}={'%s' if DB_CONFIG['type']=='postgres' else '?'}")
+            v.append(val)
+        set_c.append("updated_at=CURRENT_TIMESTAMP")
+        v.append(trade_id)
+        q = f"UPDATE trades SET {','.join(set_c)} WHERE id={'%s' if DB_CONFIG['type']=='postgres' else '?'}"
+        c.execute(q, v)
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"❌ Update trade: {e}")
+        return False
+
+def sql_mark_tp_hit(trade_id, tp_level):
+    """Marque un TP atteint"""
+    return sql_update_trade(trade_id, {f"tp{tp_level}_hit": True})
+
+def sql_mark_sl_hit(trade_id):
+    """Marque le SL atteint"""
+    return sql_update_trade(trade_id, {"sl_hit": True, "status": "closed"})
+
+def sql_get_trade_stats():
+    """Statistiques des trades"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM trades")
+        tot = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM trades WHERE status='open'")
+        op = c.fetchone()[0]
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("SELECT COUNT(*) FROM trades WHERE tp1_hit=TRUE OR tp2_hit=TRUE OR tp3_hit=TRUE")
+            w = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM trades WHERE sl_hit=TRUE AND tp1_hit=FALSE AND tp2_hit=FALSE AND tp3_hit=FALSE")
+            l = c.fetchone()[0]
+        else:
+            c.execute("SELECT COUNT(*) FROM trades WHERE tp1_hit=1 OR tp2_hit=1 OR tp3_hit=1")
+            w = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM trades WHERE sl_hit=1 AND tp1_hit=0 AND tp2_hit=0 AND tp3_hit=0")
+            l = c.fetchone()[0]
+        c.execute("SELECT SUM(pnl) FROM trades")
+        p = c.fetchone()[0] or 0
+        conn.close()
+        cl = w + l
+        wr = (w/cl*100) if cl > 0 else 0
+        return {"total":tot,"open":op,"closed":cl,"wins":w,"losses":l,"win_rate":round(wr,2),"total_pnl":round(p,2)}
+    except Exception as e:
+        print(f"❌ Get stats: {e}")
+        return {"total":0,"open":0,"closed":0,"wins":0,"losses":0,"win_rate":0,"total_pnl":0}
+
+def sql_migrate_from_json(json_path):
+    """Migre depuis JSON"""
+    if not os.path.exists(json_path): return 0
+    try:
+        with open(json_path,'r') as f: trades = json.load(f)
+        if not trades: return 0
+        conn = get_db_connection()
+        c = conn.cursor()
+        m = 0
+        for t in trades:
+            try:
+                if DB_CONFIG["type"]=="postgres":
+                    c.execute("SELECT COUNT(*) FROM trades WHERE symbol=%s AND timestamp=%s",(t.get('symbol'),t.get('timestamp')))
+                else:
+                    c.execute("SELECT COUNT(*) FROM trades WHERE symbol=? AND timestamp=?",(t.get('symbol'),t.get('timestamp')))
+                if c.fetchone()[0]>0: continue
+                if DB_CONFIG["type"]=="postgres":
+                    c.execute("INSERT INTO trades (symbol,side,entry,current_price,sl,tp1,tp2,tp3,timestamp,status,confidence,leverage,timeframe,tp1_hit,tp2_hit,tp3_hit,sl_hit,pnl) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                        (t.get('symbol',''),t.get('side',''),t.get('entry',0),t.get('current_price'),t.get('sl'),t.get('tp1'),t.get('tp2'),t.get('tp3'),
+                        t.get('timestamp',datetime.now().isoformat()),t.get('status','open'),t.get('confidence'),t.get('leverage'),t.get('timeframe'),
+                        bool(t.get('tp1_hit')),bool(t.get('tp2_hit')),bool(t.get('tp3_hit')),bool(t.get('sl_hit')),t.get('pnl',0)))
+                else:
+                    c.execute("INSERT INTO trades (symbol,side,entry,current_price,sl,tp1,tp2,tp3,timestamp,status,confidence,leverage,timeframe,tp1_hit,tp2_hit,tp3_hit,sl_hit,pnl) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (t.get('symbol',''),t.get('side',''),t.get('entry',0),t.get('current_price'),t.get('sl'),t.get('tp1'),t.get('tp2'),t.get('tp3'),
+                        t.get('timestamp',datetime.now().isoformat()),t.get('status','open'),t.get('confidence'),t.get('leverage'),t.get('timeframe'),
+                        1 if t.get('tp1_hit') else 0,1 if t.get('tp2_hit') else 0,1 if t.get('tp3_hit') else 0,1 if t.get('sl_hit') else 0,t.get('pnl',0)))
+                m+=1
+            except: continue
+        conn.commit()
+        conn.close()
+        print(f"✅ Migrated: {m} trades")
+        return m
+    except Exception as e:
+        print(f"❌ Migration: {e}")
+        return 0
+
+# Initialiser au démarrage
+try:
+    init_trades_db()
+    stats = sql_get_trade_stats()
+    print(f"✅ SQL Ready! Trades: {stats['total']}")
+except Exception as e:
+    print(f"❌ SQL Init error: {e}")
+
+# ============================================================================
+# FIN DU SYSTÈME SQL INTÉGRÉ
+# ============================================================================
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -340,34 +586,28 @@ def require_admin(session_token: Optional[str] = Cookie(None)):
 
 
 def load_trades_from_file():
-    """📂 Charger les trades depuis la base SQL"""
+    """📂 Charger les trades depuis le fichier JSON"""
     global trades_db
     try:
-        # 💾 Charger depuis SQL
-        trades_db = sql_trades.get_all_trades(order_by="timestamp DESC")
-        print(f"✅ {len(trades_db)} trades chargés depuis SQL")
-        
-        # 🔄 Migration automatique: Si le fichier JSON existe encore, migrer une fois
         if os.path.exists(TRADES_FILE):
-            print("📦 Fichier JSON détecté - Migration vers SQL...")
-            migrated = sql_trades.migrate_from_json(TRADES_FILE)
-            if migrated > 0:
-                # Recharger après migration
-                trades_db = sql_trades.get_all_trades(order_by="timestamp DESC")
-                # Renommer le fichier JSON en backup
-                backup_file = TRADES_FILE + ".backup"
-                os.rename(TRADES_FILE, backup_file)
-                print(f"✅ Migration réussie! {migrated} trades importés")
-                print(f"📦 Ancien fichier sauvegardé: {backup_file}")
+            with open(TRADES_FILE, 'r', encoding='utf-8') as f:
+                trades_db = json.load(f)
+                print(f"✅ {len(trades_db)} trades chargés depuis {TRADES_FILE}")
+        else:
+            trades_db = []
+            print(f"📄 Fichier {TRADES_FILE} créé (nouveau)")
     except Exception as e:
         print(f"❌ Erreur chargement trades: {e}")
         trades_db = []
 
 def save_trades_to_file():
-    """💾 Sauvegarder les trades (maintenant géré automatiquement par SQL)"""
-    # Cette fonction n'est plus nécessaire avec SQL
-    # Les données sont automatiquement persistées dans la base
-    pass
+    """💾 Sauvegarder les trades dans le fichier JSON"""
+    try:
+        with open(TRADES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(trades_db, f, indent=2, ensure_ascii=False)
+            print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
+    except Exception as e:
+        print(f"❌ Erreur sauvegarde trades: {e}")
 
 # ============================================================================
 # 🚀 MEXC API - AUTO-DETECTION TP/SL
@@ -2634,12 +2874,10 @@ async def webhook(trade: TradeWebhook):
             "sl_hit": False,
             "pnl": 0.0
         }
-        # 💾 Sauvegarder dans la base SQL
-        trade_id = sql_trades.create_trade(trade_data)
-        trade_data['id'] = trade_id  # Ajouter l'ID pour référence
-        trades_db.append(trade_data)  # Garder aussi en cache mémoire
+        trades_db.append(trade_data)
+        save_trades_to_file()  # 💾 Sauvegarder immédiatement
         
-        print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry} (ID: {trade_id})")
+        print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
         
         return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
         
@@ -7955,12 +8193,9 @@ async def stats_api():
 
 @app.get("/api/trades")
 async def trades_api():
-    # 💾 Charger depuis SQL (déjà trié par timestamp DESC)
-    all_trades = sql_trades.get_all_trades(order_by="timestamp DESC")
-    # Mettre à jour le cache mémoire
-    global trades_db
-    trades_db = all_trades
-    return {"trades": all_trades, "count": len(all_trades), "status": "success"}
+    # Trier les trades du plus récent au plus ancien
+    sorted_trades = sorted(trades_db, key=lambda x: x.get('timestamp', ''), reverse=True)
+    return {"trades": sorted_trades, "count": len(sorted_trades), "status": "success"}
 
 @app.post("/api/trades/update-status")
 async def update_trade(trade_update: dict):

@@ -1,418 +1,241 @@
 # -*- coding: utf-8 -*-
-"""
-💾 SYSTÈME SQL POUR LES TRADES - AI Trader Pro
-Migration de trades_db (liste JSON) vers une vraie base de données SQL
-"""
-
-import sqlite3
-import json
+"""Support PostgreSQL + SQLite"""
+import json, os
 from datetime import datetime
 from typing import List, Dict, Optional
-import os
 
-# ============================================================================
-# 📁 CONFIGURATION
-# ============================================================================
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    POSTGRES_AVAILABLE = True
+except:
+    POSTGRES_AVAILABLE = False
 
-def get_db_path():
-    """Détermine le chemin de la base de données"""
-    # Utiliser le même système que DATA_DIR dans main.py
-    if os.path.exists("/data"):
-        return "/data/trades.db"
-    elif os.path.exists("/tmp"):
-        return "/tmp/trades.db"
-    else:
-        return "trades.db"
+import sqlite3
 
-DB_PATH = get_db_path()
-print(f"📁 Base de données SQL: {DB_PATH}")
+def get_db_config():
+    database_url = os.getenv("DATABASE_URL")
+    if database_url and POSTGRES_AVAILABLE:
+        print("✅ PostgreSQL (Railway)")
+        return {"type": "postgres", "url": database_url}
+    print("⚠️ SQLite fallback")
+    return {"type": "sqlite", "path": "/tmp/trades.db" if os.path.exists("/tmp") else "./trades.db"}
 
-# ============================================================================
-# 🗄️ INITIALISATION DE LA BASE DE DONNÉES
-# ============================================================================
+DB_CONFIG = get_db_config()
+
+def get_connection():
+    if DB_CONFIG["type"] == "postgres":
+        return psycopg2.connect(DB_CONFIG["url"])
+    return sqlite3.connect(DB_CONFIG["path"], timeout=30.0)
 
 def init_trades_db():
-    """Crée la table trades si elle n'existe pas"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS trades (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            symbol TEXT NOT NULL,
-            side TEXT NOT NULL,
-            entry REAL NOT NULL,
-            current_price REAL,
-            sl REAL,
-            tp1 REAL,
-            tp2 REAL,
-            tp3 REAL,
-            timestamp TEXT NOT NULL,
-            status TEXT DEFAULT 'open',
-            confidence REAL,
-            leverage INTEGER,
-            timeframe TEXT,
-            tp1_hit INTEGER DEFAULT 0,
-            tp2_hit INTEGER DEFAULT 0,
-            tp3_hit INTEGER DEFAULT 0,
-            sl_hit INTEGER DEFAULT 0,
-            pnl REAL DEFAULT 0.0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    # Index pour améliorer les performances
-    c.execute('CREATE INDEX IF NOT EXISTS idx_symbol ON trades(symbol)')
-    c.execute('CREATE INDEX IF NOT EXISTS idx_status ON trades(status)')
-    c.execute('CREATE INDEX IF NOT EXISTS idx_timestamp ON trades(timestamp DESC)')
-    
-    conn.commit()
-    conn.close()
-    print("✅ Table 'trades' initialisée avec succès")
-
-# ============================================================================
-# 📥 MIGRATION DEPUIS JSON (pour importer les anciens trades)
-# ============================================================================
-
-def migrate_from_json(json_file_path: str):
-    """
-    Migre les trades depuis un fichier JSON vers la base SQL
-    À utiliser une seule fois pour importer les anciens trades
-    """
-    if not os.path.exists(json_file_path):
-        print(f"⚠️  Fichier JSON introuvable: {json_file_path}")
-        return 0
-    
     try:
-        with open(json_file_path, 'r', encoding='utf-8') as f:
-            trades = json.load(f)
-        
-        if not trades:
-            print("ℹ️  Aucun trade à migrer")
-            return 0
-        
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_connection()
         c = conn.cursor()
-        
-        migrated = 0
-        for trade in trades:
-            # Vérifier si le trade existe déjà (éviter les doublons)
-            c.execute('''
-                SELECT COUNT(*) FROM trades 
-                WHERE symbol = ? AND timestamp = ? AND entry = ?
-            ''', (trade['symbol'], trade['timestamp'], trade['entry']))
-            
-            if c.fetchone()[0] > 0:
-                continue  # Trade déjà existant
-            
-            # Insérer le trade
-            c.execute('''
-                INSERT INTO trades (
-                    symbol, side, entry, current_price, sl, tp1, tp2, tp3,
-                    timestamp, status, confidence, leverage, timeframe,
-                    tp1_hit, tp2_hit, tp3_hit, sl_hit, pnl
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                trade['symbol'],
-                trade['side'],
-                trade['entry'],
-                trade.get('current_price'),
-                trade.get('sl'),
-                trade.get('tp1'),
-                trade.get('tp2'),
-                trade.get('tp3'),
-                trade['timestamp'],
-                trade.get('status', 'open'),
-                trade.get('confidence'),
-                trade.get('leverage'),
-                trade.get('timeframe'),
-                1 if trade.get('tp1_hit') else 0,
-                1 if trade.get('tp2_hit') else 0,
-                1 if trade.get('tp3_hit') else 0,
-                1 if trade.get('sl_hit') else 0,
-                trade.get('pnl', 0.0)
-            ))
-            migrated += 1
-        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS trades (
+                id SERIAL PRIMARY KEY, symbol TEXT NOT NULL, side TEXT NOT NULL,
+                entry REAL NOT NULL, current_price REAL, sl REAL, tp1 REAL, tp2 REAL, tp3 REAL,
+                timestamp TEXT NOT NULL, status TEXT DEFAULT 'open', confidence REAL,
+                leverage INTEGER, timeframe TEXT, tp1_hit BOOLEAN DEFAULT FALSE,
+                tp2_hit BOOLEAN DEFAULT FALSE, tp3_hit BOOLEAN DEFAULT FALSE,
+                sl_hit BOOLEAN DEFAULT FALSE, pnl REAL DEFAULT 0.0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS trades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, symbol TEXT NOT NULL, side TEXT NOT NULL,
+                entry REAL NOT NULL, current_price REAL, sl REAL, tp1 REAL, tp2 REAL, tp3 REAL,
+                timestamp TEXT NOT NULL, status TEXT DEFAULT 'open', confidence REAL,
+                leverage INTEGER, timeframe TEXT, tp1_hit INTEGER DEFAULT 0,
+                tp2_hit INTEGER DEFAULT 0, tp3_hit INTEGER DEFAULT 0,
+                sl_hit INTEGER DEFAULT 0, pnl REAL DEFAULT 0.0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
         conn.commit()
         conn.close()
-        
-        print(f"✅ Migration réussie: {migrated} trades importés depuis {json_file_path}")
-        return migrated
-        
+        print(f"✅ Table trades OK ({DB_CONFIG['type']})")
+        return True
     except Exception as e:
-        print(f"❌ Erreur lors de la migration: {e}")
+        print(f"❌ Erreur: {e}")
+        return False
+
+def create_trade(d):
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""INSERT INTO trades (symbol,side,entry,current_price,sl,tp1,tp2,tp3,
+                timestamp,status,confidence,leverage,timeframe,tp1_hit,tp2_hit,tp3_hit,sl_hit,pnl)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) RETURNING id""",
+                (d.get('symbol',''),d.get('side',''),d.get('entry',0),d.get('current_price'),
+                d.get('sl'),d.get('tp1'),d.get('tp2'),d.get('tp3'),
+                d.get('timestamp',datetime.now().isoformat()),d.get('status','open'),
+                d.get('confidence'),d.get('leverage'),d.get('timeframe'),
+                bool(d.get('tp1_hit')),bool(d.get('tp2_hit')),bool(d.get('tp3_hit')),
+                bool(d.get('sl_hit')),d.get('pnl',0.0)))
+            trade_id = c.fetchone()[0]
+        else:
+            c.execute("""INSERT INTO trades (symbol,side,entry,current_price,sl,tp1,tp2,tp3,
+                timestamp,status,confidence,leverage,timeframe,tp1_hit,tp2_hit,tp3_hit,sl_hit,pnl)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (d.get('symbol',''),d.get('side',''),d.get('entry',0),d.get('current_price'),
+                d.get('sl'),d.get('tp1'),d.get('tp2'),d.get('tp3'),
+                d.get('timestamp',datetime.now().isoformat()),d.get('status','open'),
+                d.get('confidence'),d.get('leverage'),d.get('timeframe'),
+                1 if d.get('tp1_hit') else 0,1 if d.get('tp2_hit') else 0,
+                1 if d.get('tp3_hit') else 0,1 if d.get('sl_hit') else 0,d.get('pnl',0.0)))
+            trade_id = c.lastrowid
+        conn.commit()
+        conn.close()
+        return trade_id
+    except Exception as e:
+        print(f"❌ create_trade: {e}")
+        return None
+
+def get_all_trades(limit=None, order_by="timestamp DESC"):
+    try:
+        conn = get_connection()
+        if DB_CONFIG["type"] == "postgres":
+            c = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+        q = f"SELECT * FROM trades ORDER BY {order_by}"
+        if limit: q += f" LIMIT {limit}"
+        c.execute(q)
+        rows = c.fetchall()
+        conn.close()
+        trades = []
+        for row in rows:
+            t = dict(row)
+            if DB_CONFIG["type"] == "sqlite":
+                t['tp1_hit']=bool(t['tp1_hit'])
+                t['tp2_hit']=bool(t['tp2_hit'])
+                t['tp3_hit']=bool(t['tp3_hit'])
+                t['sl_hit']=bool(t['sl_hit'])
+            trades.append(t)
+        return trades
+    except Exception as e:
+        print(f"❌ get_all: {e}")
+        return []
+
+def get_open_trades():
+    try:
+        conn = get_connection()
+        if DB_CONFIG["type"] == "postgres":
+            c = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+        c.execute("SELECT * FROM trades WHERE status='open' ORDER BY timestamp DESC")
+        rows = c.fetchall()
+        conn.close()
+        trades = []
+        for row in rows:
+            t = dict(row)
+            if DB_CONFIG["type"] == "sqlite":
+                t['tp1_hit']=bool(t['tp1_hit'])
+                t['tp2_hit']=bool(t['tp2_hit'])
+                t['tp3_hit']=bool(t['tp3_hit'])
+                t['sl_hit']=bool(t['sl_hit'])
+            trades.append(t)
+        return trades
+    except Exception as e:
+        print(f"❌ get_open: {e}")
+        return []
+
+def update_trade(tid, updates):
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        set_c, vals = [], []
+        for k, v in updates.items():
+            if DB_CONFIG["type"] == "sqlite" and k in ['tp1_hit','tp2_hit','tp3_hit','sl_hit']:
+                v = 1 if v else 0
+            set_c.append(f"{k}={'%s' if DB_CONFIG['type']=='postgres' else '?'}")
+            vals.append(v)
+        set_c.append("updated_at=CURRENT_TIMESTAMP")
+        vals.append(tid)
+        q = f"UPDATE trades SET {','.join(set_c)} WHERE id={'%s' if DB_CONFIG['type']=='postgres' else '?'}"
+        c.execute(q, vals)
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"❌ update: {e}")
+        return False
+
+def mark_tp_hit(tid, lvl):
+    return update_trade(tid, {f"tp{lvl}_hit": True})
+
+def mark_sl_hit(tid):
+    return update_trade(tid, {"sl_hit": True, "status": "closed"})
+
+def get_trade_stats():
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("SELECT COUNT(*) FROM trades")
+        total = c.fetchone()[0]
+        c.execute("SELECT COUNT(*) FROM trades WHERE status='open'")
+        open_t = c.fetchone()[0]
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("SELECT COUNT(*) FROM trades WHERE tp1_hit=TRUE OR tp2_hit=TRUE OR tp3_hit=TRUE")
+            wins = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM trades WHERE sl_hit=TRUE AND tp1_hit=FALSE AND tp2_hit=FALSE AND tp3_hit=FALSE")
+            losses = c.fetchone()[0]
+        else:
+            c.execute("SELECT COUNT(*) FROM trades WHERE tp1_hit=1 OR tp2_hit=1 OR tp3_hit=1")
+            wins = c.fetchone()[0]
+            c.execute("SELECT COUNT(*) FROM trades WHERE sl_hit=1 AND tp1_hit=0 AND tp2_hit=0 AND tp3_hit=0")
+            losses = c.fetchone()[0]
+        c.execute("SELECT SUM(pnl) FROM trades")
+        pnl = c.fetchone()[0] or 0.0
+        conn.close()
+        closed = wins + losses
+        wr = (wins / closed * 100) if closed > 0 else 0
+        return {"total":total,"open":open_t,"closed":closed,"wins":wins,"losses":losses,"win_rate":round(wr,2),"total_pnl":round(pnl,2)}
+    except Exception as e:
+        print(f"❌ stats: {e}")
+        return {"total":0,"open":0,"closed":0,"wins":0,"losses":0,"win_rate":0,"total_pnl":0}
+
+def migrate_from_json(path):
+    if not os.path.exists(path): return 0
+    try:
+        with open(path,'r') as f: trades = json.load(f)
+        if not trades: return 0
+        conn = get_connection()
+        c = conn.cursor()
+        m = 0
+        for t in trades:
+            try:
+                if DB_CONFIG["type"]=="postgres":
+                    c.execute("SELECT COUNT(*) FROM trades WHERE symbol=%s AND timestamp=%s AND entry=%s",(t.get('symbol'),t.get('timestamp'),t.get('entry')))
+                else:
+                    c.execute("SELECT COUNT(*) FROM trades WHERE symbol=? AND timestamp=? AND entry=?",(t.get('symbol'),t.get('timestamp'),t.get('entry')))
+                if c.fetchone()[0]>0: continue
+                if DB_CONFIG["type"]=="postgres":
+                    c.execute("INSERT INTO trades (symbol,side,entry,current_price,sl,tp1,tp2,tp3,timestamp,status,confidence,leverage,timeframe,tp1_hit,tp2_hit,tp3_hit,sl_hit,pnl) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                        (t.get('symbol',''),t.get('side',''),t.get('entry',0),t.get('current_price'),t.get('sl'),t.get('tp1'),t.get('tp2'),t.get('tp3'),t.get('timestamp',datetime.now().isoformat()),
+                        t.get('status','open'),t.get('confidence'),t.get('leverage'),t.get('timeframe'),bool(t.get('tp1_hit')),bool(t.get('tp2_hit')),bool(t.get('tp3_hit')),bool(t.get('sl_hit')),t.get('pnl',0.0)))
+                else:
+                    c.execute("INSERT INTO trades (symbol,side,entry,current_price,sl,tp1,tp2,tp3,timestamp,status,confidence,leverage,timeframe,tp1_hit,tp2_hit,tp3_hit,sl_hit,pnl) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (t.get('symbol',''),t.get('side',''),t.get('entry',0),t.get('current_price'),t.get('sl'),t.get('tp1'),t.get('tp2'),t.get('tp3'),t.get('timestamp',datetime.now().isoformat()),
+                        t.get('status','open'),t.get('confidence'),t.get('leverage'),t.get('timeframe'),1 if t.get('tp1_hit') else 0,1 if t.get('tp2_hit') else 0,1 if t.get('tp3_hit') else 0,1 if t.get('sl_hit') else 0,t.get('pnl',0.0)))
+                m+=1
+            except: continue
+        conn.commit()
+        conn.close()
+        print(f"✅ Migration: {m} trades")
+        return m
+    except Exception as e:
+        print(f"❌ migration: {e}")
         return 0
 
-# ============================================================================
-# ➕ CRÉER UN TRADE
-# ============================================================================
-
-def create_trade(trade_data: Dict) -> int:
-    """
-    Crée un nouveau trade dans la base de données
-    Retourne l'ID du trade créé
-    """
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    c.execute('''
-        INSERT INTO trades (
-            symbol, side, entry, current_price, sl, tp1, tp2, tp3,
-            timestamp, status, confidence, leverage, timeframe,
-            tp1_hit, tp2_hit, tp3_hit, sl_hit, pnl
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        trade_data['symbol'],
-        trade_data['side'],
-        trade_data['entry'],
-        trade_data.get('current_price'),
-        trade_data.get('sl'),
-        trade_data.get('tp1'),
-        trade_data.get('tp2'),
-        trade_data.get('tp3'),
-        trade_data['timestamp'],
-        trade_data.get('status', 'open'),
-        trade_data.get('confidence'),
-        trade_data.get('leverage'),
-        trade_data.get('timeframe'),
-        1 if trade_data.get('tp1_hit') else 0,
-        1 if trade_data.get('tp2_hit') else 0,
-        1 if trade_data.get('tp3_hit') else 0,
-        1 if trade_data.get('sl_hit') else 0,
-        trade_data.get('pnl', 0.0)
-    ))
-    
-    trade_id = c.lastrowid
-    conn.commit()
-    conn.close()
-    
-    return trade_id
-
-# ============================================================================
-# 📖 LIRE LES TRADES
-# ============================================================================
-
-def get_all_trades(limit: Optional[int] = None, order_by: str = "timestamp DESC") -> List[Dict]:
-    """Récupère tous les trades (ou limité à X trades)"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # Pour avoir des dictionnaires
-    c = conn.cursor()
-    
-    query = f"SELECT * FROM trades ORDER BY {order_by}"
-    if limit:
-        query += f" LIMIT {limit}"
-    
-    c.execute(query)
-    rows = c.fetchall()
-    conn.close()
-    
-    # Convertir en liste de dictionnaires avec conversion des booléens
-    trades = []
-    for row in rows:
-        trade = dict(row)
-        # Convertir les entiers en booléens pour tp1_hit, tp2_hit, etc.
-        trade['tp1_hit'] = bool(trade['tp1_hit'])
-        trade['tp2_hit'] = bool(trade['tp2_hit'])
-        trade['tp3_hit'] = bool(trade['tp3_hit'])
-        trade['sl_hit'] = bool(trade['sl_hit'])
-        trades.append(trade)
-    
-    return trades
-
-def get_trade_by_id(trade_id: int) -> Optional[Dict]:
-    """Récupère un trade par son ID"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    
-    c.execute("SELECT * FROM trades WHERE id = ?", (trade_id,))
-    row = c.fetchone()
-    conn.close()
-    
-    if row:
-        trade = dict(row)
-        trade['tp1_hit'] = bool(trade['tp1_hit'])
-        trade['tp2_hit'] = bool(trade['tp2_hit'])
-        trade['tp3_hit'] = bool(trade['tp3_hit'])
-        trade['sl_hit'] = bool(trade['sl_hit'])
-        return trade
-    return None
-
-def get_open_trades() -> List[Dict]:
-    """Récupère uniquement les trades ouverts"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    
-    c.execute("SELECT * FROM trades WHERE status = 'open' ORDER BY timestamp DESC")
-    rows = c.fetchall()
-    conn.close()
-    
-    trades = []
-    for row in rows:
-        trade = dict(row)
-        trade['tp1_hit'] = bool(trade['tp1_hit'])
-        trade['tp2_hit'] = bool(trade['tp2_hit'])
-        trade['tp3_hit'] = bool(trade['tp3_hit'])
-        trade['sl_hit'] = bool(trade['sl_hit'])
-        trades.append(trade)
-    
-    return trades
-
-def get_trades_by_symbol(symbol: str) -> List[Dict]:
-    """Récupère tous les trades d'un symbole spécifique"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
-    
-    c.execute("SELECT * FROM trades WHERE symbol = ? ORDER BY timestamp DESC", (symbol,))
-    rows = c.fetchall()
-    conn.close()
-    
-    trades = []
-    for row in rows:
-        trade = dict(row)
-        trade['tp1_hit'] = bool(trade['tp1_hit'])
-        trade['tp2_hit'] = bool(trade['tp2_hit'])
-        trade['tp3_hit'] = bool(trade['tp3_hit'])
-        trade['sl_hit'] = bool(trade['sl_hit'])
-        trades.append(trade)
-    
-    return trades
-
-# ============================================================================
-# ✏️ METTRE À JOUR UN TRADE
-# ============================================================================
-
-def update_trade(trade_id: int, updates: Dict):
-    """Met à jour un trade existant"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # Construire la requête UPDATE dynamiquement
-    set_clause = []
-    values = []
-    
-    for key, value in updates.items():
-        if key in ['tp1_hit', 'tp2_hit', 'tp3_hit', 'sl_hit']:
-            # Convertir les booléens en entiers
-            value = 1 if value else 0
-        set_clause.append(f"{key} = ?")
-        values.append(value)
-    
-    # Ajouter updated_at automatiquement
-    set_clause.append("updated_at = CURRENT_TIMESTAMP")
-    
-    values.append(trade_id)
-    
-    query = f"UPDATE trades SET {', '.join(set_clause)} WHERE id = ?"
-    c.execute(query, values)
-    
-    conn.commit()
-    conn.close()
-
-def update_trade_status(trade_id: int, new_status: str):
-    """Met à jour le statut d'un trade (open, closed, cancelled)"""
-    update_trade(trade_id, {"status": new_status})
-
-def mark_tp_hit(trade_id: int, tp_level: int):
-    """Marque un TP comme atteint (1, 2, ou 3)"""
-    field = f"tp{tp_level}_hit"
-    update_trade(trade_id, {field: True})
-
-def mark_sl_hit(trade_id: int):
-    """Marque le SL comme atteint"""
-    update_trade(trade_id, {"sl_hit": True, "status": "closed"})
-
-# ============================================================================
-# 🗑️ SUPPRIMER DES TRADES
-# ============================================================================
-
-def delete_trade(trade_id: int):
-    """Supprime un trade par son ID"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("DELETE FROM trades WHERE id = ?", (trade_id,))
-    conn.commit()
-    conn.close()
-
-def delete_all_trades():
-    """Supprime TOUS les trades (à utiliser avec précaution!)"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("DELETE FROM trades")
-    count = c.rowcount
-    conn.commit()
-    conn.close()
-    return count
-
-# ============================================================================
-# 📊 STATISTIQUES
-# ============================================================================
-
-def get_trade_stats() -> Dict:
-    """Calcule les statistiques globales des trades"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    
-    # Total trades
-    c.execute("SELECT COUNT(*) FROM trades")
-    total = c.fetchone()[0]
-    
-    # Trades ouverts
-    c.execute("SELECT COUNT(*) FROM trades WHERE status = 'open'")
-    open_trades = c.fetchone()[0]
-    
-    # Wins (au moins un TP atteint)
-    c.execute("SELECT COUNT(*) FROM trades WHERE tp1_hit = 1 OR tp2_hit = 1 OR tp3_hit = 1")
-    wins = c.fetchone()[0]
-    
-    # Losses (SL atteint sans aucun TP)
-    c.execute("""
-        SELECT COUNT(*) FROM trades 
-        WHERE sl_hit = 1 AND tp1_hit = 0 AND tp2_hit = 0 AND tp3_hit = 0
-    """)
-    losses = c.fetchone()[0]
-    
-    # PnL total
-    c.execute("SELECT SUM(pnl) FROM trades")
-    total_pnl = c.fetchone()[0] or 0.0
-    
-    conn.close()
-    
-    # Calculer le win rate
-    closed_trades = wins + losses
-    win_rate = (wins / closed_trades * 100) if closed_trades > 0 else 0
-    
-    return {
-        "total": total,
-        "open": open_trades,
-        "closed": closed_trades,
-        "wins": wins,
-        "losses": losses,
-        "win_rate": round(win_rate, 2),
-        "total_pnl": round(total_pnl, 2)
-    }
-
-# ============================================================================
-# 🔄 COMPATIBILITÉ AVEC L'ANCIEN SYSTÈME (trades_db)
-# ============================================================================
-
-def load_trades_to_memory() -> List[Dict]:
-    """
-    Charge tous les trades en mémoire (pour compatibilité avec l'ancien code)
-    UTILISE get_all_trades() à la place dans le nouveau code
-    """
-    return get_all_trades()
-
-# ============================================================================
-# 🚀 INITIALISATION AU DÉMARRAGE
-# ============================================================================
-
-# Créer la table au chargement du module
-init_trades_db()
-
-print("✅ Système SQL pour les trades initialisé!")
-print(f"📊 Statistiques: {get_trade_stats()}")
+try:
+    init_trades_db()
+    stats = get_trade_stats()
+    print(f"✅ SQL OK! Trades: {stats['total']}")
+except Exception as e:
+    print(f"❌ Init: {e}")

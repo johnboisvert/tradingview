@@ -16576,7 +16576,7 @@ async def prediction_ia():
         <div class="prediction-container">
             <iframe 
                 class="prediction-frame"
-                src="https://htmlpreview.github.io/?https://github.com/johnboisvert1985-prog/crypto-prediction-api/blob/main/prediction.html"
+                src="https://htmlpreview.github.io/?https://github.com/johnboisvert1985-prog/crypto-prediction-api/blob/main/prediction.html?api=https://crypto-prediction-api-5763.onrender.com"
                 title="Prédiction Crypto IA"
                 allowfullscreen>
             </iframe>

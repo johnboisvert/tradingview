@@ -17,7 +17,7 @@ import hashlib
 import secrets
 
 # 💾 Système SQL pour les trades
- import sql_trades_system as sql_trades
+import sql_trades_system as sql_trades
 
 # PostgreSQL support
 try:

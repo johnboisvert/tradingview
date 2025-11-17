@@ -16,6 +16,15 @@ import sqlite3
 import hashlib
 import secrets
 
+# PostgreSQL support
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    POSTGRESQL_AVAILABLE = True
+except ImportError:
+    POSTGRESQL_AVAILABLE = False
+    print("⚠️  psycopg2 non installé - utilisation de SQLite en fallback")
+
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
@@ -51,8 +60,47 @@ monitor_lock = asyncio.Lock()
 monitor_running = False
 trades_db = []
 
+# ============================================================================
+# 💾 CONFIGURATION DES CHEMINS PERSISTANTS
+# ============================================================================
+
+def get_data_directory():
+    """
+    Détermine le meilleur répertoire pour stocker les données persistantes.
+    Priorité: /data (Railway Volume) > /tmp (temporaire)
+    """
+    # Option 1: Variable d'environnement personnalisée
+    env_data_dir = os.getenv("DATA_DIR")
+    if env_data_dir and os.path.exists(env_data_dir):
+        return env_data_dir
+    
+    # Option 2: Railway Volume monté sur /data
+    if os.path.exists("/data"):
+        return "/data"
+    
+    # Option 3: Essayer de créer /data si possible
+    try:
+        os.makedirs("/data", exist_ok=True)
+        # Tester si on peut écrire
+        test_file = "/data/.test_write"
+        with open(test_file, 'w') as f:
+            f.write("test")
+        os.remove(test_file)
+        print("✅ Utilisation de /data pour le stockage persistant")
+        return "/data"
+    except (PermissionError, OSError):
+        pass
+    
+    # Fallback: /tmp (données non persistantes)
+    print("⚠️  Utilisation de /tmp - Les données seront perdues au redémarrage!")
+    print("   Pour persister les données, configure un Railway Volume sur /data")
+    return "/tmp"
+
+# Déterminer le répertoire de données au démarrage
+DATA_DIR = get_data_directory()
+
 # 💾 FICHIER DE PERSISTANCE DES TRADES
-TRADES_FILE = "/tmp/trades_database.json"
+TRADES_FILE = f"{DATA_DIR}/trades_database.json"
 
 # 📲 TELEGRAM CONFIGURATION
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -66,50 +114,190 @@ MEXC_PRICE_ENDPOINT = f"{MEXC_API_BASE}/api/v3/ticker/price"
 monitor_running = False
 
 # ============================================================================
-# 🔐 SYSTÈME D'AUTHENTIFICATION
+# 🔐 SYSTÈME D'AUTHENTIFICATION AVEC POSTGRESQL
 # ============================================================================
 
+# Détection de PostgreSQL
+DATABASE_URL = os.getenv("DATABASE_URL")
+USE_POSTGRESQL = POSTGRESQL_AVAILABLE and DATABASE_URL is not None
+
 # Base de données des utilisateurs et sessions
-USERS_DB = "/tmp/users.db"
+USERS_DB = f"{DATA_DIR}/users.db"  # Utilisé seulement si pas de PostgreSQL
 active_sessions = {}  # {token: username}
 
-def init_users_db():
-    """Initialiser la base de données des utilisateurs"""
-    conn = sqlite3.connect(USERS_DB)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (username TEXT PRIMARY KEY, 
-                  password_hash TEXT, 
-                  role TEXT,
-                  created_at TEXT)''')
+class DatabaseManager:
+    """Gestionnaire de base de données universel (PostgreSQL ou SQLite)"""
     
-    # Créer un compte admin par défaut si n'existe pas
-    c.execute("SELECT * FROM users WHERE username = 'admin'")
-    if not c.fetchone():
-        default_password = "admin123"  # À changer après la première connexion
-        password_hash = hashlib.sha256(default_password.encode()).hexdigest()
-        c.execute("INSERT INTO users VALUES (?, ?, ?, ?)", 
-                  ("admin", password_hash, "admin", datetime.now().isoformat()))
-        print("✅ Compte admin par défaut créé: admin / admin123")
+    def __init__(self):
+        self.use_postgresql = USE_POSTGRESQL
+        if self.use_postgresql:
+            print(f"✅ Utilisation de PostgreSQL pour l'authentification")
+            self.init_postgresql()
+        else:
+            print(f"⚠️  Utilisation de SQLite pour l'authentification: {USERS_DB}")
+            self.init_sqlite()
     
-    conn.commit()
-    conn.close()
+    def get_connection(self):
+        """Obtenir une connexion à la base de données"""
+        if self.use_postgresql:
+            return psycopg2.connect(DATABASE_URL)
+        else:
+            return sqlite3.connect(USERS_DB)
+    
+    def init_postgresql(self):
+        """Initialiser les tables PostgreSQL"""
+        conn = self.get_connection()
+        c = conn.cursor()
+        
+        # Créer la table users
+        c.execute('''CREATE TABLE IF NOT EXISTS users (
+            username VARCHAR(255) PRIMARY KEY,
+            password_hash VARCHAR(255) NOT NULL,
+            role VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP NOT NULL
+        )''')
+        
+        # Créer un compte admin par défaut si n'existe pas
+        c.execute("SELECT * FROM users WHERE username = 'admin'")
+        if not c.fetchone():
+            default_password = "admin123"
+            password_hash = hashlib.sha256(default_password.encode()).hexdigest()
+            c.execute("INSERT INTO users VALUES (%s, %s, %s, %s)", 
+                      ("admin", password_hash, "admin", datetime.now()))
+            print("✅ Compte admin par défaut créé: admin / admin123")
+        
+        conn.commit()
+        conn.close()
+    
+    def init_sqlite(self):
+        """Initialiser les tables SQLite"""
+        conn = self.get_connection()
+        c = conn.cursor()
+        
+        c.execute('''CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY, 
+            password_hash TEXT, 
+            role TEXT,
+            created_at TEXT
+        )''')
+        
+        # Créer un compte admin par défaut si n'existe pas
+        c.execute("SELECT * FROM users WHERE username = 'admin'")
+        if not c.fetchone():
+            default_password = "admin123"
+            password_hash = hashlib.sha256(default_password.encode()).hexdigest()
+            c.execute("INSERT INTO users VALUES (?, ?, ?, ?)", 
+                      ("admin", password_hash, "admin", datetime.now().isoformat()))
+            print("✅ Compte admin par défaut créé: admin / admin123")
+        
+        conn.commit()
+        conn.close()
+    
+    def verify_user(self, username: str, password: str) -> bool:
+        """Vérifier les identifiants d'un utilisateur"""
+        conn = self.get_connection()
+        c = conn.cursor()
+        
+        if self.use_postgresql:
+            c.execute("SELECT password_hash FROM users WHERE username = %s", (username,))
+        else:
+            c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
+        
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            password_hash = hashlib.sha256(password.encode()).hexdigest()
+            return result[0] == password_hash
+        return False
+    
+    def get_user_role(self, username: str) -> str:
+        """Obtenir le rôle d'un utilisateur"""
+        conn = self.get_connection()
+        c = conn.cursor()
+        
+        if self.use_postgresql:
+            c.execute("SELECT role FROM users WHERE username = %s", (username,))
+        else:
+            c.execute("SELECT role FROM users WHERE username = ?", (username,))
+        
+        result = c.fetchone()
+        conn.close()
+        
+        return result[0] if result else "user"
+    
+    def get_all_users(self):
+        """Récupérer tous les utilisateurs"""
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT username, role, created_at FROM users ORDER BY created_at DESC")
+        users = c.fetchall()
+        conn.close()
+        return users
+    
+    def add_user(self, username: str, password: str, role: str = "user"):
+        """Ajouter un nouvel utilisateur"""
+        conn = self.get_connection()
+        c = conn.cursor()
+        
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        
+        try:
+            if self.use_postgresql:
+                c.execute("INSERT INTO users VALUES (%s, %s, %s, %s)",
+                          (username, password_hash, role, datetime.now()))
+            else:
+                c.execute("INSERT INTO users VALUES (?, ?, ?, ?)",
+                          (username, password_hash, role, datetime.now().isoformat()))
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            conn.close()
+            return False
+    
+    def delete_user(self, username: str):
+        """Supprimer un utilisateur"""
+        conn = self.get_connection()
+        c = conn.cursor()
+        
+        if self.use_postgresql:
+            c.execute("DELETE FROM users WHERE username = %s", (username,))
+        else:
+            c.execute("DELETE FROM users WHERE username = ?", (username,))
+        
+        conn.commit()
+        conn.close()
+    
+    def change_password(self, username: str, new_password: str):
+        """Changer le mot de passe d'un utilisateur"""
+        conn = self.get_connection()
+        c = conn.cursor()
+        
+        password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+        
+        if self.use_postgresql:
+            c.execute("UPDATE users SET password_hash = %s WHERE username = %s", 
+                      (password_hash, username))
+        else:
+            c.execute("UPDATE users SET password_hash = ? WHERE username = ?", 
+                      (password_hash, username))
+        
+        conn.commit()
+        conn.close()
 
+# Initialiser le gestionnaire de base de données
+db_manager = DatabaseManager()
+
+# Fonctions de compatibilité pour le code existant
 def hash_password(password: str) -> str:
     """Hasher un mot de passe"""
     return hashlib.sha256(password.encode()).hexdigest()
 
 def verify_user(username: str, password: str) -> bool:
     """Vérifier les identifiants d'un utilisateur"""
-    conn = sqlite3.connect(USERS_DB)
-    c = conn.cursor()
-    c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
-    result = c.fetchone()
-    conn.close()
-    
-    if result:
-        password_hash = hash_password(password)
-        return result[0] == password_hash
+    return db_manager.verify_user(username, password)
+
     return False
 
 def create_session(username: str) -> str:
@@ -137,12 +325,7 @@ def require_auth(session_token: Optional[str] = Cookie(None)):
 
 def get_user_role(username: str) -> str:
     """Obtenir le rôle d'un utilisateur"""
-    conn = sqlite3.connect(USERS_DB)
-    c = conn.cursor()
-    c.execute("SELECT role FROM users WHERE username = ?", (username,))
-    result = c.fetchone()
-    conn.close()
-    return result[0] if result else "user"
+    return db_manager.get_user_role(username)
 
 def require_admin(session_token: Optional[str] = Cookie(None)):
     """Dépendance FastAPI pour exiger un rôle admin"""
@@ -151,9 +334,6 @@ def require_admin(session_token: Optional[str] = Cookie(None)):
     if role != "admin":
         raise HTTPException(status_code=403, detail="Accès refusé - Admin requis")
     return username
-
-# Initialiser la DB au démarrage
-init_users_db()
 
 
 def load_trades_from_file():
@@ -813,19 +993,21 @@ async def admin_panel(username: str = Depends(require_admin)):
     """Panel d'administration pour gérer les utilisateurs"""
     
     # Récupérer tous les utilisateurs
-    conn = sqlite3.connect(USERS_DB)
-    c = conn.cursor()
-    c.execute("SELECT username, role, created_at FROM users ORDER BY created_at DESC")
-    users = c.fetchall()
-    conn.close()
+    users = db_manager.get_all_users()
     
     users_html = ""
     for user in users:
+        # Formater la date selon le type de base de données
+        if isinstance(user[2], str):
+            created_date = user[2][:10]
+        else:
+            created_date = user[2].strftime('%Y-%m-%d')
+        
         users_html += f"""
         <tr>
             <td>{user[0]}</td>
             <td><span class="badge badge-{user[1]}">{user[1].upper()}</span></td>
-            <td>{user[2][:10]}</td>
+            <td>{created_date}</td>
             <td>
                 <button onclick="deleteUser('{user[0]}')" class="btn-danger btn-sm">🗑️ Supprimer</button>
             </td>
@@ -1012,18 +1194,9 @@ async def add_user(request: Request, username: str = Depends(require_admin)):
     password = data.get("password")
     role = data.get("role", "user")
     
-    conn = sqlite3.connect(USERS_DB)
-    c = conn.cursor()
-    
-    try:
-        password_hash = hash_password(password)
-        c.execute("INSERT INTO users VALUES (?, ?, ?, ?)",
-                  (new_username, password_hash, role, datetime.now().isoformat()))
-        conn.commit()
-        conn.close()
-        return {{"status": "success", "message": "Utilisateur ajouté"}}
-    except sqlite3.IntegrityError:
-        conn.close()
+    if db_manager.add_user(new_username, password, role):
+        return {"status": "success", "message": "Utilisateur ajouté"}
+    else:
         raise HTTPException(status_code=400, detail="Utilisateur déjà existant")
 
 @app.post("/admin/delete-user")
@@ -1035,13 +1208,8 @@ async def delete_user(request: Request, username: str = Depends(require_admin)):
     if user_to_delete == "admin":
         raise HTTPException(status_code=400, detail="Impossible de supprimer l'admin principal")
     
-    conn = sqlite3.connect(USERS_DB)
-    c = conn.cursor()
-    c.execute("DELETE FROM users WHERE username = ?", (user_to_delete,))
-    conn.commit()
-    conn.close()
-    
-    return {{"status": "success", "message": "Utilisateur supprimé"}}
+    db_manager.delete_user(user_to_delete)
+    return {"status": "success", "message": "Utilisateur supprimé"}
 
 @app.post("/admin/change-password")
 async def change_password(request: Request, username: str = Depends(require_auth)):
@@ -1049,15 +1217,9 @@ async def change_password(request: Request, username: str = Depends(require_auth
     data = await request.json()
     new_password = data.get("newPassword")
     
-    conn = sqlite3.connect(USERS_DB)
-    c = conn.cursor()
-    password_hash = hash_password(new_password)
-    c.execute("UPDATE users SET password_hash = ? WHERE username = ?", 
-              (password_hash, username))
-    conn.commit()
-    conn.close()
-    
-    return {{"status": "success", "message": "Mot de passe changé"}}
+    db_manager.change_password(username, new_password)
+    return {"status": "success", "message": "Mot de passe changé"}
+
 
 # ✅ ROUTE STRATÉGIE MAGIC MIKE COMPLÈTE (tous les 5 niveaux)
 @app.get("/strategie", response_class=HTMLResponse)
@@ -16178,10 +16340,31 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))
     print("\n" + "="*70)
-    print("🚀 DASHBOARD TRADING - VERSION ULTIME + RISK + WATCHLIST + AI")
+    print("🚀 DASHBOARD TRADING - VERSION ULTIME + AUTH + PERSISTANCE")
     print("="*70)
-    print(f"📡 Port: {{port}}")
-    print(f"🔗 URL: http://localhost:{{port}}")
+    print(f"📡 Port: {port}")
+    print(f"🔗 URL: http://localhost:{port}")
+    print("="*70)
+    print("🔐 SYSTÈME D'AUTHENTIFICATION:")
+    if USE_POSTGRESQL:
+        print(f"  • Type: PostgreSQL (✅ PERSISTANT)")
+        print(f"  • Base de données: Railway PostgreSQL")
+    else:
+        print(f"  • Type: SQLite (fichier local)")
+        print(f"  • Base de données: {USERS_DB}")
+    print(f"  • Compte par défaut: admin / admin123")
+    print(f"  • Panel admin: /admin")
+    print("="*70)
+    print("💾 STOCKAGE DES DONNÉES:")
+    print(f"  • Répertoire: {DATA_DIR}")
+    print(f"  • Trades: {TRADES_FILE}")
+    if DATA_DIR == "/data":
+        print("  ✅ PERSISTANCE FICHIERS ACTIVÉE (Railway Volume)")
+    elif DATA_DIR == "/tmp":
+        print("  ⚠️  Fichiers temporaires (pertes au redémarrage)")
+    if USE_POSTGRESQL:
+        print("  ✅ PERSISTANCE BASE DE DONNÉES ACTIVÉE (PostgreSQL)")
+
     print("="*70)
     print("✅ BOT TELEGRAM PROFESSIONNEL:")
     print("  • Messages formatés avec emojis")

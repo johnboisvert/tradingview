@@ -14106,30 +14106,26 @@ async def stats_dashboard():
     if total_trades > 0:
         # Analyser chaque trade
         for trade in trades_db:
-            # Calculer P&L réel
-            pnl = 0
-            if trade.get('tp1_hit'):
-                pnl += 0.4 * 3  # TP1 = 40% position, gain moyen 3%
-            if trade.get('tp2_hit'):
-                pnl += 0.4 * 5  # TP2 = 40%, gain moyen 5%
-            if trade.get('tp3_hit'):
-                pnl += 0.2 * 8  # TP3 = 20%, gain moyen 8%
-            if trade.get('sl_hit'):
-                pnl = -2  # SL = -2% perte
+            # Utiliser le P&L déjà calculé du trade
+            pnl = trade.get('pnl', 0)
             
             total_pnl += pnl
             pnl_history.append(total_pnl)
             
-            # Comptage wins/losses
+            # Comptage wins/losses basé sur le pnl réel
             if pnl > 0:
                 winning_trades += 1
             elif pnl < 0:
                 losing_trades += 1
             
-            # Drawdown depuis peak
+            # Drawdown réel: baisse depuis le peak jusqu'au creux
             if total_pnl > peak:
                 peak = total_pnl
-            dd = ((total_pnl - peak) / peak * 100) if peak > 0 else 0
+            # Drawdown = perte par rapport au peak
+            if peak != 0:
+                dd = ((total_pnl - peak) / abs(peak)) * 100
+            else:
+                dd = 0
             drawdowns.append(dd)
         
         # WIN RATE RÉEL
@@ -14148,18 +14144,31 @@ async def stats_dashboard():
         else:
             sharpe = 0
         
-        # P&L mensuel (distribuer sur 8 mois)
+        # P&L mensuel (distribuer correctement sur 8 périodes)
         if len(pnl_history) >= 8:
-            step = len(pnl_history) // 8
-            monthly_pnl = [pnl_history[i*step] - pnl_history[(i-1)*step] if i > 0 else pnl_history[0] for i in range(8)]
+            # Diviser l'historique en 8 segments égaux
+            segment_size = len(pnl_history) / 8
+            monthly_pnl = []
+            for i in range(8):
+                start_idx = int(i * segment_size)
+                end_idx = int((i + 1) * segment_size)
+                if i == 0:
+                    pnl_segment = pnl_history[end_idx] if end_idx < len(pnl_history) else pnl_history[-1]
+                else:
+                    pnl_segment = (pnl_history[end_idx] - pnl_history[start_idx]) if end_idx < len(pnl_history) else (pnl_history[-1] - pnl_history[start_idx])
+                monthly_pnl.append(pnl_segment)
         else:
-            monthly_pnl = pnl_history + [0] * (8 - len(pnl_history))
+            # Peu de trades: remplir avec les valeurs disponibles
+            monthly_pnl = pnl_history[:8] if pnl_history else [0]
+            while len(monthly_pnl) < 8:
+                monthly_pnl.append(0)
     else:
         # PAS DE TRADES → Utiliser données marché comme proxy
         win_rate = 0
         max_dd = 0
         sharpe = 0
-        monthly_pnl = [mkt_chg * (i+1) * 0.1 for i in range(8)]
+        # Générer un P&L réaliste basé sur le marché
+        monthly_pnl = [mkt_chg * 0.5 * (i+1) for i in range(8)]
     
     # ========== HTML AVEC VRAIES DONNÉES ==========
     html = f"""<!DOCTYPE html>

@@ -14753,25 +14753,35 @@ async def market_simulation():
             const dcaValues = [];
             const labels = [];
             
-            let noDcaCoins = initialCapital / 1000;
+            let noDcaCoins = initialCapital / prices[0];  // Prix initial réel, pas 1000!
             const noDcaValues = [];
             
             for (let month = 0; month < months; month++) {
+                // DCA: ajouter le DCA mensuel et calculer la valeur totale
                 dcaCoins += dcaAmount / prices[month];
-                dcaValue = initialCapital + (month + 1) * dcaAmount + 
-                          (dcaCoins * prices[month] - (initialCapital + (month + 1) * dcaAmount));
-                dcaValues.push(dcaValue);
+                const totalInvested = initialCapital + (month + 1) * dcaAmount;
+                const portfolioValue = dcaCoins * prices[month];
+                dcaValues.push(portfolioValue);
                 
-                noDcaValues.push(initialCapital + noDcaCoins * prices[month] - initialCapital);
+                // Sans DCA: juste la valeur initiale investie au prix du jour
+                const noDcaValue = initialCapital + noDcaCoins * (prices[month] - prices[0]);
+                noDcaValues.push(noDcaValue);
                 
                 labels.push(`M${month + 1}`);
             }
             
-            const dcaFinal = initialCapital + (months * dcaAmount) + 
-                           (dcaCoins * prices[months-1] - (initialCapital + (months * dcaAmount)));
-            const noDcaFinal = initialCapital + noDcaCoins * (prices[months-1] - 1000);
+            // Calculs finaux corrects
+            const dcaFinal = dcaCoins * prices[months-1];
+            const noDcaFinal = initialCapital + noDcaCoins * (prices[months-1] - prices[0]);
             const difference = dcaFinal - noDcaFinal;
-            const gains = (difference / noDcaFinal) * 100;
+            
+            // Calcul des gains plus robuste (éviter division par zéro)
+            let gains = 0;
+            if (noDcaFinal > 0) {
+                gains = (difference / noDcaFinal) * 100;
+            } else if (difference !== 0) {
+                gains = 100;  // Si noDcaFinal <= 0 mais difference > 0, c'est un gain infini
+            }
             
             document.getElementById('dcaFinal').textContent = '$' + dcaFinal.toFixed(0);
             document.getElementById('noDcaFinal').textContent = '$' + noDcaFinal.toFixed(0);

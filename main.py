@@ -862,13 +862,11 @@ async def calculate_altcoin_season_index():
             alts_win = sum(1 for c in all_cryptos[2:] if c.get('price_change_percentage_7d_in_currency', 0) or 0 > btc7d)
             alt_pct = (alts_win / (len(all_cryptos) - 2) * 100) if len(all_cryptos) > 2 else 0
             
-            # Momentum
-            if alt_pct > 70: mom_boost, mom = 15, "🚀 EXPLOSIF!"
-            elif alt_pct > 50: mom_boost, mom = 10, "🔥 HOT"
-            elif alt_pct > 40: mom_boost, mom = 5, "⚡ ACTIF"
-            else: mom_boost, mom = 0, "😴 FAIBLE"
-            
-            final_idx = max(0, min(100, idx + mom_boost))
+            # Momentum basé sur l'INDEX FINAL (pas alt_pct)
+            if final_idx > 70: mom = "🚀 EXPLOSIF!"
+            elif final_idx > 50: mom = "🔥 HOT"
+            elif final_idx > 30: mom = "⚡ ACTIF"
+            else: mom = "😴 FAIBLE"
             
             # Phase
             if final_idx > 70: phase, desc = "🔥 ALTCOIN SEASON", "Les altcoins EXPLOSENT"
@@ -9961,11 +9959,6 @@ async def altcoin_page():
                 <div class="label">Tendance</div>
             </div>
             <div class="stat-card">
-                <div style="font-size: 36px; margin-bottom: 15px;">₿</div>
-                <div id="stat-btc" class="value">--</div>
-                <div class="label">BTC 90j</div>
-            </div>
-            <div class="stat-card">
                 <div style="font-size: 36px; margin-bottom: 15px;">⚡</div>
                 <div id="stat-momentum" class="value">--</div>
                 <div class="label">Momentum</div>
@@ -10032,8 +10025,6 @@ async def altcoin_page():
             
             document.getElementById('stat-alts').textContent = (data.alts_winning ? Math.round(data.alts_winning) : '--') + '/50';
             document.getElementById('stat-trend').textContent = data.trend || '--';
-            document.getElementById('stat-btc').textContent = data.btc_change_90d ? 
-                ((data.btc_change_90d >= 0 ? '+' : '') + data.btc_change_90d.toFixed(1) + '%') : '--';
             document.getElementById('stat-momentum').textContent = data.momentum || '--';
         }
 

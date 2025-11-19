@@ -3124,8 +3124,8 @@ async def home():
                     <span class="stat-label">Données Live</span>
                 </div>
                 <div class="stat-box">
-                    <span class="stat-number">Intelligence</span>
-                    <span class="stat-label">Artificielle (IA)</span>
+                    <span class="stat-number">AI</span>
+                    <span class="stat-label">Intelligence Artificielle</span>
                 </div>
             </div>
         </div>

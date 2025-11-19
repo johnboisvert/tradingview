@@ -822,18 +822,15 @@ async def calculate_altcoin_season_index():
     """
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
-            # Headers pour éviter le blocage
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            
             # Récupérer données globales
-            gr = await client.get('https://api.coingecko.com/api/v3/global', headers=headers)
+            gr = await client.get('https://api.coingecko.com/api/v3/global')
             gd = gr.json()['data']
             
             # Récupérer top 300 cryptos (2 pages de 250)
-            mr1 = await client.get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=true&price_change_percentage=24h,7d,90d', headers=headers)
+            mr1 = await client.get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=true&price_change_percentage=24h,7d,90d')
             md1 = mr1.json()
             
-            mr2 = await client.get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=2&sparkline=true&price_change_percentage=24h,7d,90d', headers=headers)
+            mr2 = await client.get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=2&sparkline=true&price_change_percentage=24h,7d,90d')
             md2 = mr2.json()
             
             all_cryptos = md1 + md2

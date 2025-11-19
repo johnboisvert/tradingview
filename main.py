@@ -8259,9 +8259,8 @@ async def update_trade(trade_update: dict):
                         trade["pnl"] = pnl
                         print(f"   💰 P&L calculé: ${pnl}")
                         
-                        # Mettre à jour le P&L hebdomadaire
-                        if pnl != 0:
-                            update_weekly_pnl(pnl)
+                        # Mettre à jour le P&L hebdomadaire (toujours, même si pnl = 0)
+                        update_weekly_pnl(pnl)
                 
                 print(f"✅ Trade {symbol} mis à jour avec succès")
                 save_trades_to_file()  # 💾 Sauvegarder immédiatement
@@ -12676,7 +12675,7 @@ async def trades_page():
                                 ${day.day_fr}
                             </div>
                             <div style="font-size:26px;font-weight:700;color:${pnlColor};">
-                                ${day.pnl >= 0 ? '+' : ''}${day.pnl.toFixed(2)}%
+                                ${day.pnl >= 0 ? '+' : ''}$${day.pnl.toFixed(2)}
                             </div>
                             ${isToday ? '<div style="color:#60a5fa;font-size:11px;margin-top:5px;">👈 Aujourd&apos;hui</div>' : ''}
                         </div>
@@ -12687,7 +12686,7 @@ async def trades_page():
                 
                 const totalColor = data.total_week > 0 ? '#10b981' : (data.total_week < 0 ? '#ef4444' : '#64748b');
                 document.getElementById('weeklyTotal').innerHTML = 
-                    `<span style="color:${totalColor}">${data.total_week >= 0 ? '+' : ''}${data.total_week.toFixed(2)}%</span>`;
+                    `<span style="color:${totalColor}">${data.total_week >= 0 ? '+' : ''}$${data.total_week.toFixed(2)}</span>`;
                 
             } catch (error) {
                 console.error('❌ Erreur loadWeeklyPnl:', error);

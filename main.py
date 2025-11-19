@@ -816,8 +816,8 @@ http_client = httpx.AsyncClient(timeout=10.0)
 
 async def calculate_altcoin_season_index():
     """
-    🔥 ALTCOIN SEASON INDEX - VRAIES DONNÉES EN TEMPS RÉEL
-    Formule: (Alt Market Cap / BTC Market Cap) × Facteurs
+    🔥 ALTCOIN SEASON INDEX - MÉTHODOLOGIE COINMARKETCAP
+    Formule: % des top 100 altcoins qui outperforment BTC sur 90 jours
     Source: CoinGecko API
     """
     try:
@@ -826,86 +826,87 @@ async def calculate_altcoin_season_index():
             gr = await client.get('https://api.coingecko.com/api/v3/global')
             gd = gr.json()['data']
             
-            # Récupérer top 300 cryptos (2 pages de 250)
-            mr1 = await client.get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=true&price_change_percentage=24h,7d,90d')
+            # Récupérer top 250 cryptos (pour avoir au moins top 100 altcoins après BTC)
+            mr1 = await client.get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false&price_change_percentage=24h,7d,90d')
             md1 = mr1.json()
             
-            mr2 = await client.get('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=2&sparkline=true&price_change_percentage=24h,7d,90d')
-            md2 = mr2.json()
+            all_cryptos = md1
             
-            all_cryptos = md1 + md2
-            
-            # Extraire BTC et ETH
+            # Extraire BTC
             btc_data = next((c for c in all_cryptos if c['symbol'].lower() == 'btc'), None)
-            eth_data = next((c for c in all_cryptos if c['symbol'].lower() == 'eth'), None)
-            if not btc_data or not eth_data: return generate_fallback_altcoin_data()
+            if not btc_data: return generate_fallback_altcoin_data()
             
-            # Market caps
-            btc_mc = btc_data.get('market_cap', 0) or 0
-            eth_mc = eth_data.get('market_cap', 0) or 0
-            alt_mc = sum(c.get('market_cap', 0) or 0 for c in all_cryptos if c['symbol'].lower() not in ['btc', 'eth'])
+            # Performance BTC 90 jours
+            btc_90d = btc_data.get('price_change_percentage_90d_in_currency', 0) or 0
+            btc24h = btc_data.get('price_change_percentage_24h', 0) or 0
             
-            # FORMULE PRINCIPALE: (Alt MC / BTC MC) × 50
-            alt_btc_ratio = (alt_mc / btc_mc * 50) if btc_mc > 0 else 50
-            base_idx = min(100, alt_btc_ratio)
+            # STABLECOINS ET WRAPPED TOKENS À EXCLURE
+            stablecoins = {'usdt', 'usdc', 'busd', 'tusd', 'usdd', 'usdp', 'dai', 'husd', 'gyen', 'eurs'}
+            wrapped_tokens = {'wbtc', 'weth', 'steth', 'clink', 'alink', 'cbeth'}
+            
+            # Obtenir les top 100 altcoins (excl. BTC, stablecoins, wrapped tokens)
+            altcoins = []
+            for c in all_cryptos:
+                symbol = c['symbol'].lower()
+                # Exclure BTC
+                if symbol == 'btc':
+                    continue
+                # Exclure stablecoins et wrapped tokens
+                if symbol in stablecoins or symbol in wrapped_tokens:
+                    continue
+                altcoins.append(c)
+                # Stopper à 100 altcoins
+                if len(altcoins) >= 100:
+                    break
+            
+            if len(altcoins) < 100:
+                print(f"⚠️ Seulement {len(altcoins)} altcoins trouvés, procédure fallback")
+                return generate_fallback_altcoin_data()
+            
+            # Compter combien d'altcoins outperforment BTC sur 90 jours (méthodologie CMC)
+            alts_outperforming = sum(1 for c in altcoins if (c.get('price_change_percentage_90d_in_currency', 0) or 0) > btc_90d)
+            
+            # INDEX = (nombre outperformant / 100) × 100 = pourcentage
+            final_idx = (alts_outperforming / 100) * 100
+            
+            # Phase basée sur l'index
+            if final_idx >= 75: phase, desc = "🔥 ALTCOIN SEASON", "Les altcoins dominent!"
+            elif final_idx >= 50: phase, desc = "📈 ROTATION VERS ALTS", "Bonne performance altcoins"
+            elif final_idx >= 25: phase, desc = "⚖️ ÉQUILIBRE", "Marché mixte BTC/Alts"
+            else: phase, desc = "❄️ BITCOIN SEASON", "Bitcoin domine"
             
             # Dominance BTC
             btcd = gd.get('market_cap_percentage', {}).get('btc', 50)
-            ethd = gd.get('market_cap_percentage', {}).get('eth', 15)
             
-            # Ajustement dominance
-            dom_factor = (100 - btcd) / 2
-            idx = (base_idx * 0.6) + (dom_factor * 0.4)
-            
-            # Altcoins > BTC
-            btc7d = btc_data.get('price_change_percentage_7d_in_currency', 0) or 0
-            alts_win = sum(1 for c in all_cryptos[2:] if c.get('price_change_percentage_7d_in_currency', 0) or 0 > btc7d)
-            alt_pct = (alts_win / (len(all_cryptos) - 2) * 100) if len(all_cryptos) > 2 else 0
-            
-            # Momentum
-            if alt_pct > 70: mom_boost, mom = 15, "🚀 EXPLOSIF!"
-            elif alt_pct > 50: mom_boost, mom = 10, "🔥 HOT"
-            elif alt_pct > 40: mom_boost, mom = 5, "⚡ ACTIF"
-            else: mom_boost, mom = 0, "😴 FAIBLE"
-            
-            final_idx = max(0, min(100, idx + mom_boost))
-            
-            # Phase
-            if final_idx > 70: phase, desc = "🔥 ALTCOIN SEASON", "Les altcoins EXPLOSENT"
-            elif final_idx > 50: phase, desc = "📈 ROTATION VERS ALTS", "Bonne performance altcoins"
-            elif final_idx > 30: phase, desc = "⚖️ ÉQUILIBRE", "Marché mixte BTC/Alts"
-            else: phase, desc = "❄️ BITCOIN SEASON", "Bitcoin domine"
-            
-            btc24h = btc_data.get('price_change_percentage_24h', 0) or 0
-            btc90d = btc_data.get('price_change_percentage_90d_in_currency', 0) or 0
-            
-            print(f"✅ ALTCOIN INDEX: {final_idx:.1f} | {phase} | Alt/BTC: {alt_btc_ratio:.1f}")
+            print(f"✅ ALTCOIN INDEX: {final_idx:.1f} | {alts_outperforming}/100 alts > BTC 90j | {phase}")
             
             # Déterminer la tendance
-            trend = "🔥 Altcoin Season!" if final_idx > 70 else (
-                "📈 Altcoins en hausse" if final_idx > 55 else (
-                    "⚖️ Phase mixte" if final_idx > 40 else (
-                        "📉 Bitcoin domine" if final_idx > 25 else "❄️ Bitcoin Season"
+            trend = "🔥 Altcoin Season!" if final_idx >= 75 else (
+                "📈 Altcoins en hausse" if final_idx >= 60 else (
+                    "⚖️ Phase mixte" if final_idx >= 40 else (
+                        "📉 Bitcoin domine" if final_idx >= 25 else "❄️ Bitcoin Season"
                     )
                 )
             )
+            
+            # Momentum (basé sur le pourcentage d'alts outperformant)
+            if final_idx >= 75: mom = "🚀 EXPLOSIF!"
+            elif final_idx >= 60: mom = "🔥 HOT"
+            elif final_idx >= 40: mom = "⚡ ACTIF"
+            else: mom = "😴 FAIBLE"
             
             return {
                 "index": round(final_idx, 1),
                 "phase": phase,
                 "description": desc,
-                "alts_winning": alts_win,
+                "alts_winning": alts_outperforming,
                 "trend": trend,
                 "momentum": mom,
                 "btc_dominance": round(btcd, 2),
-                "eth_dominance": round(ethd, 2),
-                "alt_market_cap_billions": round(alt_mc/1e9, 2),
-                "btc_market_cap_billions": round(btc_mc/1e9, 2),
-                "alt_btc_ratio": round(alt_btc_ratio, 2),
                 "btc_change_24h": round(btc24h, 2),
-                "btc_change_90d": round(btc90d, 2),
+                "btc_change_90d": round(btc_90d, 2),
                 "status": "success",
-                "source": "CoinGecko Real-time",
+                "source": "CoinGecko Real-time (CMC Methodology)",
                 "timestamp": datetime.now().isoformat()
             }
     except Exception as e:
@@ -3124,8 +3125,8 @@ async def home():
                     <span class="stat-label">Données Live</span>
                 </div>
                 <div class="stat-box">
-                    <span class="stat-number">AI</span>
-                    <span class="stat-label">Intelligence Artificielle</span>
+                    <span class="stat-number">100%</span>
+                    <span class="stat-label">Gratuit</span>
                 </div>
             </div>
         </div>
@@ -9952,8 +9953,8 @@ async def altcoin_page():
         <div class="stats-grid">
             <div class="stat-card">
                 <div style="font-size: 36px; margin-bottom: 15px;">📈</div>
-                <div id="stat-alts" class="value">--/50</div>
-                <div class="label">Alts > BTC</div>
+                <div id="stat-alts" class="value">--/100</div>
+                <div class="label">Alts > BTC (90j)</div>
             </div>
             <div class="stat-card">
                 <div style="font-size: 36px; margin-bottom: 15px;">📊</div>
@@ -10030,7 +10031,7 @@ async def altcoin_page():
             document.getElementById('statusTitle').textContent = title;
             document.getElementById('statusDescription').textContent = description;
             
-            document.getElementById('stat-alts').textContent = (data.alts_winning ? Math.round(data.alts_winning) : '--') + '/50';
+            document.getElementById('stat-alts').textContent = (data.alts_winning ? Math.round(data.alts_winning) : '--') + '/100';
             document.getElementById('stat-trend').textContent = data.trend || '--';
             document.getElementById('stat-btc').textContent = data.btc_change_90d ? 
                 ((data.btc_change_90d >= 0 ? '+' : '') + data.btc_change_90d.toFixed(1) + '%') : '--';

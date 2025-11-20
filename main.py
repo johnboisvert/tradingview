@@ -15,6 +15,10 @@ import json
 import sqlite3
 import hashlib
 import secrets
+import hmac
+import hashlib
+from coinbase_commerce import Client
+from datetime import datetime
 
 # ===== NOUVEAU: Système d'abonnement (import optionnel) =====
 try:

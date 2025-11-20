@@ -7989,7 +7989,10 @@ async def calendar_api():
 # =====================================================
 
 async def fetch_bullrun_data():
-    """Récupère les données en temps réel pour déterminer la phase du bullrun"""
+    """
+    Récupère les données RÉELLES en temps réel pour déterminer la phase du bullrun
+    ⚠️ CORRECTION MAJEURE (19 NOV 2025): Données actualisées selon marché réel
+    """
     try:
         # Vérifier le cache
         if bullrun_cache["data"] and bullrun_cache["timestamp"]:
@@ -7998,15 +8001,15 @@ async def fetch_bullrun_data():
                 return bullrun_cache["data"]
         
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # Récupérer Fear & Greed
+            # Récupérer Fear & Greed Index
             try:
                 fg_response = await client.get("https://api.alternative.me/fng/?limit=2")
                 fg_data = fg_response.json()
-                fear_greed = int(fg_data["data"][0]["value"]) if fg_data.get("data") else 50
+                fear_greed = int(fg_data["data"][0]["value"]) if fg_data.get("data") else 15
             except:
-                fear_greed = 50
+                fear_greed = 15  # ⚠️ CORRIGÉ: Fallback vers valeur réelle (Extreme Fear)
             
-            # Récupérer BTC Dominance
+            # Récupérer BTC Dominance et market data
             try:
                 btc_response = await client.get("https://api.coingecko.com/api/v3/global")
                 btc_data = btc_response.json()
@@ -8014,9 +8017,9 @@ async def fetch_bullrun_data():
                 eth_dominance = round(btc_data["data"]["market_cap_percentage"]["eth"], 2)
                 total_market_cap = btc_data["data"]["total_market_cap"]["usd"]
             except:
-                btc_dominance = 58.0
-                eth_dominance = 12.0
-                total_market_cap = 2500000000000
+                btc_dominance = 58.5  # ⚠️ CORRIGÉ: Valeur réelle actuelle
+                eth_dominance = 11.4
+                total_market_cap = 3100000000000  # $3.1T
             
             # Récupérer prix BTC
             try:
@@ -8025,13 +8028,13 @@ async def fetch_bullrun_data():
                 btc_price = btc_price_data["bitcoin"]["usd"]
                 btc_24h_change = round(btc_price_data["bitcoin"]["usd_24h_change"], 2)
             except:
-                btc_price = 108000
-                btc_24h_change = 2.5
+                btc_price = 91000  # ⚠️ CORRIGÉ: Valeur réelle
+                btc_24h_change = -3.5
             
-            # Calculer l'Altcoin Season Index (simplifié)
+            # Calculer l'Altcoin Season Index
             altcoin_season_index = max(0, min(100, 100 - (btc_dominance - 40)))
             
-            # Déterminer la phase actuelle
+            # ⚠️ CORRECTION CRITIQUE: Nouvelle logique de phase
             phase_data = determine_bullrun_phase(
                 btc_dominance, 
                 eth_dominance, 
@@ -8053,71 +8056,126 @@ async def fetch_bullrun_data():
         return get_fallback_bullrun_data()
 
 def determine_bullrun_phase(btc_dom, eth_dom, fear_greed, alt_index, btc_price, btc_change, market_cap):
-    """Détermine la phase du bullrun basée sur les indicateurs"""
+    """
+    Détermine la phase du bullrun basée sur les indicateurs RÉELS
+    ⚠️ LOGIQUE COMPLÈTEMENT CORRIGÉE (19 NOV 2025)
     
-    # Logique de détermination de phase
-    if btc_dom < 50 and fear_greed < 40 and btc_price < 50000:
+    PHASES AVEC SEUILS CORRECTS:
+    1. Accumulation: BTC <$70k, Fear <30
+    1.5. Correction: Fear <20, BTC en baisse (PHASE ACTUELLE)
+    2. Bitcoin Rally: BTC dom >58%, BTC monte
+    2.5. Transition BTC→ETH: BTC dom 55-60%
+    3. ETH & Large Caps: BTC dom 50-55%
+    3.5. Transition ETH→Alts: BTC dom <52%, Alt Index 50-75
+    4. Altcoin Season: BTC dom <50%, Alt Index >75 (SEUIL CRITIQUE!)
+    """
+    
+    # Vérifier si correction majeure (Fear <20, BTC en baisse)
+    if fear_greed < 20 and btc_change < 0:
+        current_phase = 1.5
+        phase_name = "Correction / Ré-accumulation"
+        phase_description = "Correction majeure depuis ATH $126k. Fear extrême. Opportunité d'accumulation long-terme."
+        confidence = 88
+    
+    # Phase 1: Accumulation
+    elif btc_dom < 55 and fear_greed < 30 and btc_price < 70000:
         current_phase = 1
         phase_name = "Accumulation"
-        phase_description = "Les investisseurs intelligents accumulent à bas prix"
+        phase_description = "Bear market, investisseurs intelligents accumulent à bas prix"
         confidence = 85
-    elif btc_dom > 58 and fear_greed >= 60 and btc_change > 0:
+    
+    # Phase 2: Bitcoin Rally
+    elif btc_dom >= 58 and btc_price > 80000 and btc_change > 5:
         current_phase = 2
         phase_name = "Bitcoin Rally"
         phase_description = "Bitcoin domine et monte fort, les institutions achètent"
         confidence = 92
-    elif 50 <= btc_dom <= 60 and eth_dom > 10 and fear_greed >= 60:
+    
+    # Transition BTC → ETH
+    elif 55 <= btc_dom <= 60 and eth_dom > 10 and fear_greed >= 20:
+        current_phase = 2.5
+        phase_name = "Transition BTC → ETH"
+        phase_description = "Début de rotation du capital vers ETH et large caps"
+        confidence = 78
+    
+    # Phase 3: ETH & Large Caps
+    elif 50 <= btc_dom < 55 and eth_dom > 12 and fear_greed >= 50:
         current_phase = 3
         phase_name = "Ethereum & Large Caps"
-        phase_description = "ETH et les grandes capitalisations rattrapent Bitcoin"
+        phase_description = "ETH et les grandes caps rattrapent Bitcoin"
         confidence = 88
-    elif btc_dom < 55 and alt_index > 60 and fear_greed > 70:
+    
+    # Transition ETH → Altcoins
+    elif btc_dom < 52 and alt_index > 50 and fear_greed > 60:
+        current_phase = 3.5
+        phase_name = "Transition ETH → Altcoins"
+        phase_description = "Début de rotation vers les altcoins"
+        confidence = 82
+    
+    # Phase 4: Altcoin Season (⚠️ CORRECTION CRITIQUE: Seuil >75%)
+    elif btc_dom < 50 and alt_index > 75 and fear_greed > 70:
         current_phase = 4
         phase_name = "Altcoin Season"
         phase_description = "Les altcoins explosent, c'est la fête !"
         confidence = 90
-    else:
-        # Phase de transition
-        if btc_dom >= 57:
-            current_phase = 2.5
-            phase_name = "Transition BTC → ETH"
-            phase_description = "Début de rotation du capital vers ETH et large caps"
-            confidence = 78
-        else:
-            current_phase = 3.5
-            phase_name = "Transition ETH → Altcoins"
-            phase_description = "Début de rotation vers les altcoins"
-            confidence = 82
     
-    # Calculer les signaux
+    else:
+        # Par défaut: correction/accumulation
+        current_phase = 1.5
+        phase_name = "Correction de marché"
+        phase_description = "Marché en correction. Phase d'accumulation pour investisseurs patients."
+        confidence = 75
+    
+    # Calculer les signaux RÉELS
     signals = []
     
+    # Signaux BTC Dominance
     if btc_dom > 60:
-        signals.append({"type": "bullish_btc", "strength": "fort", "message": "Forte dominance BTC"})
+        signals.append({"type": "bullish_btc", "strength": "fort", "message": f"Forte dominance BTC ({btc_dom}%)"})
     elif btc_dom < 50:
-        signals.append({"type": "bullish_alt", "strength": "fort", "message": "BTC perd de la dominance"})
+        signals.append({"type": "bullish_alt", "strength": "fort", "message": f"BTC perd dominance ({btc_dom}%)"})
+    elif 55 <= btc_dom <= 60:
+        signals.append({"type": "neutral", "strength": "modéré", "message": f"BTC dominance neutre ({btc_dom}%)"})
     
+    # Signaux Fear & Greed (⚠️ CORRIGÉ pour Extreme Fear)
     if fear_greed > 75:
         signals.append({"type": "warning", "strength": "élevé", "message": "Greed extrême - Attention correction"})
     elif fear_greed < 25:
-        signals.append({"type": "opportunity", "strength": "élevé", "message": "Fear extrême - Opportunité d'achat"})
+        signals.append({"type": "opportunity", "strength": "extrême", "message": f"Fear extrême ({fear_greed}) - OPPORTUNITÉ!"})
+    elif 25 <= fear_greed <= 45:
+        signals.append({"type": "accumulation", "strength": "modéré", "message": "Zone de fear - Bon moment pour DCA"})
     
+    # Signaux Altcoin Season Index (⚠️ CORRIGÉ: seuil 75%)
     if alt_index > 75:
-        signals.append({"type": "altcoin_season", "strength": "confirmé", "message": "Altcoin Season en cours !"})
+        signals.append({"type": "altcoin_season", "strength": "confirmé", "message": f"Altcoin Season confirmée! ({alt_index}/100)"})
+    elif alt_index > 50:
+        signals.append({"type": "altcoin_warming", "strength": "modéré", "message": f"Altcoins se réchauffent ({alt_index}/100)"})
+    else:
+        signals.append({"type": "bitcoin_season", "strength": "actif", "message": f"Bitcoin Season ({alt_index}/100)"})
+    
+    # Signal correction
+    if btc_price < 95000 and btc_change < -2:
+        signals.append({"type": "correction", "strength": "actif", "message": f"Correction: BTC ${btc_price:,.0f}"})
     
     # Prédictions next phase
     if current_phase < 2:
-        next_phase = "Phase 2 - Bitcoin Rally attendu"
+        next_phase = "Phase 2 - Bitcoin Rally"
         time_estimate = "1-3 mois"
+    elif current_phase < 2.5:
+        next_phase = "Phase 2.5 - Transition vers ETH"
+        time_estimate = "2-8 semaines"
     elif current_phase < 3:
-        next_phase = "Phase 3 - Rotation vers ETH et Large Caps"
-        time_estimate = "2-4 semaines"
+        next_phase = "Phase 3 - ETH & Large Caps"
+        time_estimate = "1-2 mois"
+    elif current_phase < 3.5:
+        next_phase = "Phase 3.5 - Préparation Altseason"
+        time_estimate = "2-6 semaines"
     elif current_phase < 4:
-        next_phase = "Phase 4 - Altcoin Season imminente"
-        time_estimate = "1-2 semaines"
+        next_phase = "Phase 4 - Altcoin Season"
+        time_estimate = "1-3 semaines"
     else:
-        next_phase = "Fin de cycle - Soyez prudent"
-        time_estimate = "Indéterminé"
+        next_phase = "Sommet du cycle - Prendre profits"
+        time_estimate = "En cours"
     
     return {
         "current_phase": current_phase,
@@ -8140,27 +8198,32 @@ def determine_bullrun_phase(btc_dom, eth_dom, fear_greed, alt_index, btc_price, 
     }
 
 def get_fallback_bullrun_data():
-    """Données de secours si l'API échoue"""
+    """
+    Données de secours CORRIGÉES si l'API échoue
+    ⚠️ Basées sur les données réelles du 19 novembre 2025
+    """
     return {
-        "current_phase": 2.5,
-        "phase_name": "Transition BTC → ETH",
-        "phase_description": "Phase de transition entre dominance Bitcoin et rotation ETH",
-        "confidence": 78,
+        "current_phase": 1.5,  # ⚠️ CORRIGÉ: Phase 1-2, PAS 2.5!
+        "phase_name": "Correction / Ré-accumulation",
+        "phase_description": "Correction majeure depuis ATH $126k. Fear extrême (10-15). Opportunité d'accumulation long-terme.",
+        "confidence": 88,
         "indicators": {
-            "btc_dominance": 58.5,
-            "eth_dominance": 12.0,
-            "fear_greed": 72,
-            "altcoin_season_index": 45,
-            "btc_price": 108000,
-            "btc_24h_change": 1.5,
-            "total_market_cap": 2500000000000
+            "btc_dominance": 58.5,  # ⚠️ CORRIGÉ: Valeur réelle
+            "eth_dominance": 11.4,
+            "fear_greed": 15,  # ⚠️ CORRIGÉ: 15 pas 72!
+            "altcoin_season_index": 35,  # ⚠️ CORRIGÉ: 35 pas 45!
+            "btc_price": 91000,
+            "btc_24h_change": -3.5,
+            "total_market_cap": 3100000000000  # $3.1T
         },
         "signals": [
-            {"type": "bullish_btc", "strength": "modéré", "message": "Dominance BTC stable"},
-            {"type": "neutral", "strength": "moyen", "message": "Marché en consolidation"}
+            {"type": "opportunity", "strength": "extrême", "message": "Fear extrême (15) - OPPORTUNITÉ HISTORIQUE"},
+            {"type": "neutral", "strength": "modéré", "message": "BTC dominance 58.5% - Zone de transition"},
+            {"type": "bitcoin_season", "strength": "actif", "message": "Bitcoin Season (35/100)"},
+            {"type": "correction", "strength": "actif", "message": "Correction -27% depuis ATH"}
         ],
-        "next_phase": "Phase 3 - Rotation vers ETH et Large Caps",
-        "time_estimate": "2-4 semaines",
+        "next_phase": "Phase 2 - Bitcoin Rally",
+        "time_estimate": "1-3 mois",
         "timestamp": datetime.now().isoformat()
     }
 

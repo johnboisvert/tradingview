@@ -16681,10 +16681,17 @@ if __name__ == "__main__":
     print("  📍 Accès: /success-stories")
     print("="*70)
     
-    # ===== NOUVEAU: Init tables abonnement =====
+   print("="*70)
+
+# ===== NOUVEAU: Init tables abonnement =====
+if SUBSCRIPTION_ENABLED:
     print("🔧 Initialisation du système d'abonnement...")
-    init_subscription_tables()
-    print("="*70)
-    # ===========================================
-    
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    try:
+        init_subscription_tables()
+        print("✅ Système d'abonnement initialisé")
+    except Exception as e:
+        print(f"⚠️  Erreur init abonnement: {e}")
+print("="*70)
+# ===========================================
+
+uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

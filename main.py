@@ -1,11 +1,12 @@
-# Test import (temporaire)
-try:
-    import subscription_system
-    print("✅ subscription_system importé avec succès!")
-except Exception as e:
-    print(f"❌ Erreur import subscription_system: {e}")
-    import traceback
-    traceback.print_exc()
+# -*- coding: utf-8 -*-
+# DEBUG: Voir les fichiers présents
+import os
+print("📂 Fichiers dans /app:")
+for f in os.listdir('/app'):
+    print(f"  - {f}")
+print("="*70)
+
+from fastapi import FastAPI...
     
 # -*- coding: utf-8 -*-
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie

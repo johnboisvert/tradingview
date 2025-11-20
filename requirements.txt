@@ -10,6 +10,7 @@ pytz==2024.2
 # Rate Limiting (OBLIGATOIRE pour v2.3)
 slowapi==0.1.9
 psycopg2-binary
+stripe>=5.0.0
 
 # Utilities
 python-dotenv==1.0.1
@@ -21,6 +22,7 @@ openai==1.51.0
 # Ajouts pour Altseason (fetch + parsing)
 requests==2.32.3
 beautifulsoup4==4.12.3
+
 
 
 

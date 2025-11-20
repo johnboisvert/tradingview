@@ -326,10 +326,6 @@ async def debug_files():
 
 # ===== NOUVEAU: Monter les routeurs d'abonnement =====
 if SUBSCRIPTION_ENABLED:
-```
-
-# ===== NOUVEAU: Monter les routeurs d'abonnement =====
-if SUBSCRIPTION_ENABLED:
     app.include_router(subscription_router)
     app.include_router(admin_pricing_router)
     print("✅ Routes d'abonnement activées")

@@ -16,10 +16,22 @@ import sqlite3
 import hashlib
 import secrets
 
-# ===== NOUVEAU: Système d'abonnement =====
-from subscription_system import subscription_router, init_subscription_tables
-from admin_pricing import admin_pricing_router
-# =========================================
+# ===== NOUVEAU: Système d'abonnement (import optionnel) =====
+try:
+    from subscription_system import subscription_router, init_subscription_tables
+    from admin_pricing import admin_pricing_router
+    SUBSCRIPTION_ENABLED = True
+    print("✅ Modules d'abonnement chargés")
+except ImportError as e:
+    print(f"⚠️  Modules d'abonnement non disponibles: {e}")
+    SUBSCRIPTION_ENABLED = False
+    subscription_router = None
+    admin_pricing_router = None
+    def init_subscription_tables():
+        pass
+# ===========================================================
+
+# PostgreSQL support
 
 # PostgreSQL support
 try:

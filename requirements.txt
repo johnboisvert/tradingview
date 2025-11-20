@@ -11,6 +11,9 @@ pytz==2024.2
 slowapi==0.1.9
 psycopg2-binary
 stripe>=5.0.0
+psycopg2-binary==2.9.9
+coinbase-commerce==1.0.1
+reportlab==4.0.7
 
 # Utilities
 python-dotenv==1.0.1
@@ -22,6 +25,7 @@ openai==1.51.0
 # Ajouts pour Altseason (fetch + parsing)
 requests==2.32.3
 beautifulsoup4==4.12.3
+
 
 
 

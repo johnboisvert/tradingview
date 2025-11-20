@@ -15103,6 +15103,104 @@ async def coinbase_webhook(request: Request):
         print(f"❌ Webhook erreur: {e}")
         return {"success": False, "message": str(e)}
 
+# ============================================================================
+# 💳 ENDPOINTS STRIPE + COINBASE CHECKOUT
+# ============================================================================
+
+@app.post("/api/stripe-checkout")
+async def stripe_checkout(request: Request):
+    """Crée une session Stripe Checkout"""
+    try:
+        data = await request.json()
+        plan = data.get('plan', 'monthly')
+        email = data.get('email', 'user@example.com')
+        
+        if not STRIPE_AVAILABLE or not STRIPE_SECRET_KEY:
+            return JSONResponse({
+                "success": False,
+                "message": "Stripe non configuré"
+            }, status_code=500)
+        
+        if not PAYMENT_SYSTEM_AVAILABLE:
+            return JSONResponse({
+                "success": False,
+                "message": "Payment system non disponible"
+            }, status_code=500)
+        
+        # URLs
+        base_url = "https://tradingview-production-5763.up.railway.app"
+        success_url = f"{base_url}/payment-success?plan={plan}"
+        cancel_url = f"{base_url}/payment-cancel?plan={plan}"
+        
+        # Créer session
+        checkout_url, error = create_stripe_checkout_session(
+            plan, email, success_url, cancel_url
+        )
+        
+        if error:
+            return JSONResponse({
+                "success": False,
+                "message": error
+            }, status_code=400)
+        
+        print(f"✅ Session Stripe créée: {plan} pour {email}")
+        return JSONResponse({
+            "success": True,
+            "checkout_url": checkout_url
+        })
+    
+    except Exception as e:
+        print(f"❌ Stripe error: {e}")
+        return JSONResponse({
+            "success": False,
+            "message": str(e)
+        }, status_code=500)
+
+@app.post("/api/coinbase-checkout")
+async def coinbase_checkout(request: Request):
+    """Crée un paiement Coinbase Commerce"""
+    try:
+        data = await request.json()
+        plan = data.get('plan', 'monthly')
+        email = data.get('email', 'user@example.com')
+        
+        if not COINBASE_AVAILABLE or not coinbase_client:
+            return JSONResponse({
+                "success": False,
+                "message": "Coinbase Commerce non configuré"
+            }, status_code=500)
+        
+        if not PAYMENT_SYSTEM_AVAILABLE:
+            return JSONResponse({
+                "success": False,
+                "message": "Payment system non disponible"
+            }, status_code=500)
+        
+        # Créer paiement
+        charge, error = create_coinbase_payment(plan, email, coinbase_client)
+        
+        if error:
+            return JSONResponse({
+                "success": False,
+                "message": error
+            }, status_code=400)
+        
+        print(f"✅ Paiement Coinbase créé: {plan} pour {email}")
+        return JSONResponse({
+            "success": True,
+            "charge_id": charge.id,
+            "hosted_url": charge.hosted_url,
+            "address": charge.address,
+            "plan": plan
+        })
+    
+    except Exception as e:
+        print(f"❌ Coinbase error: {e}")
+        return JSONResponse({
+            "success": False,
+            "message": str(e)
+        }, status_code=500)
+
 @app.post("/api/test-payment")
 async def test_payment(request: Request):
     """Endpoint de test pour simuler un paiement simple"""

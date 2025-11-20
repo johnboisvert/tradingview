@@ -17,9 +17,16 @@ import hashlib
 import secrets
 import hmac
 import hashlib
-from coinbase_commerce import Client
-from datetime import datetime
 
+# ===== NOUVEAU: Coinbase Commerce (import optionnel) =====
+try:
+    from coinbase_commerce import Client
+    COINBASE_AVAILABLE = True
+except ImportError:
+    COINBASE_AVAILABLE = False
+    print("⚠️  coinbase_commerce non installé - Coinbase désactivé")
+    Client = None
+# ================================================
 
 # ============================================================================
 # 💳 SYSTÈME COINBASE COMMERCE - NOUVEAU!
@@ -30,7 +37,7 @@ COINBASE_WEBHOOK_SECRET = os.getenv("COINBASE_WEBHOOK_SECRET", "")
 
 # Initialiser le client Coinbase Commerce
 coinbase_client = None
-if COINBASE_API_KEY:
+if COINBASE_AVAILABLE and COINBASE_API_KEY and Client:
     try:
         coinbase_client = Client(api_key=COINBASE_API_KEY)
         print("✅ Coinbase Commerce initialisé")
@@ -14231,6 +14238,9 @@ async def create_charge(req: CreateChargeRequest, token: Optional[str] = Cookie(
     if not token:
         raise HTTPException(status_code=401, detail="Non authentifié")
     
+    if not COINBASE_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Coinbase Commerce non installé - pip install coinbase-commerce")
+    
     if not coinbase_client:
         raise HTTPException(status_code=500, detail="Coinbase Commerce non configuré")
     
@@ -14280,6 +14290,9 @@ async def get_charge_status(charge_id: str, token: Optional[str] = Cookie(None))
     """Récupère le statut d'une charge"""
     if not token:
         raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    if not COINBASE_AVAILABLE:
+        raise HTTPException(status_code=500, detail="Coinbase Commerce non installé - pip install coinbase-commerce")
     
     if not coinbase_client:
         raise HTTPException(status_code=500, detail="Coinbase Commerce non configuré")

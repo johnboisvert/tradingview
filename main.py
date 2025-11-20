@@ -14289,8 +14289,8 @@ async def create_charge(req: CreateChargeRequest, request: Request):
         print(f"❌ Create charge: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/pricing", response_class=HTMLResponse)
-async def pricing_page(request: Request):
+@app.get("/pricing-new", response_class=HTMLResponse)
+async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
     return HTMLResponse("""<!DOCTYPE html>
 <html lang="fr">

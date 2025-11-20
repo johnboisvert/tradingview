@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import Optional, Any
@@ -14722,38 +14722,38 @@ async def coinbase_webhook(request: Request):
 
 @app.post("/api/test-payment")
 async def test_payment(request: Request):
-    """Endpoint de test pour simul un paiement simple"""
+    """Endpoint de test pour simuler un paiement simple"""
     try:
-        data = await request.json()
+        body = await request.body()
+        print(f"📨 Payload reçu: {body}")
+        
+        data = json.loads(body)
         plan = data.get('plan', 'Unknown')
         amount = data.get('amount', 0)
         email = data.get('email', 'unknown@example.com')
         
-        print(f"✅ Paiement reçu: {plan} - ${amount} - {email}")
+        print(f"✅ Paiement traité: {plan} - ${amount} - {email}")
         
-        # Sauvegarder dans la DB
-        create_payment_record(
-            charge_id=f"test_{secrets.token_hex(8)}",
-            user_id="test_user",
-            email=email,
-            amount=amount,
-            currency="USD",
-            description=f"Test Payment - {plan}",
-            charge_data={"address": "test", "pricing": {"crypto": []}}
-        )
-        
-        return {
+        # Retourner le JSON de succès
+        return JSONResponse({
             "success": True,
             "message": f"Paiement de ${amount} reçu pour le plan {plan}!",
             "plan": plan,
             "amount": amount
-        }
+        })
+        
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON decode error: {e}")
+        return JSONResponse({
+            "success": False,
+            "message": "Erreur: données invalides"
+        }, status_code=400)
     except Exception as e:
         print(f"❌ Test payment error: {e}")
-        return {
+        return JSONResponse({
             "success": False,
             "message": str(e)
-        }
+        }, status_code=500)
 
 async def get_payments(request: Request):
     """Liste tous les paiements de l'utilisateur"""

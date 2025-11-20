@@ -14658,7 +14658,7 @@ async def pricing_complete():
                 if (data.success && data.hosted_url) {
                     window.location.href = data.hosted_url;
                 } else {
-                    alert('Erreur: ' + (data.message || 'Impossible'));
+                    alert('Erreur: ' + (data.message || 'Impossible de créer le paiement'));
                     btn.disabled = false;
                     btn.textContent = '₿ Crypto';
                 }
@@ -15186,16 +15186,26 @@ async def coinbase_checkout(request: Request):
             }, status_code=400)
         
         print(f"✅ Paiement Coinbase créé: {plan} pour {email}")
-        return JSONResponse({
+        
+        # Construire la réponse
+        response_data = {
             "success": True,
             "charge_id": charge.id,
             "hosted_url": charge.hosted_url,
-            "address": charge.address,
             "plan": plan
-        })
+        }
+        
+        # Ajouter address si elle existe
+        if hasattr(charge, 'address') and charge.address:
+            response_data["address"] = charge.address
+        
+        print(f"📊 Réponse Coinbase: {response_data}")
+        return JSONResponse(response_data)
     
     except Exception as e:
         print(f"❌ Coinbase error: {e}")
+        import traceback
+        traceback.print_exc()
         return JSONResponse({
             "success": False,
             "message": str(e)

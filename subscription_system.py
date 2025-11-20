@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-🚀 SYSTÈME D'ABONNEMENT STRIPE + GESTION DES PRIX ADMIN
+🚀 SYSTÈME D'ABONNEMENT STRIPE + COINBASE COMMERCE + GESTION DES PRIX ADMIN
 Module standalone qui s'intègre à main.py sans rien casser
 """
 
@@ -41,6 +41,19 @@ if STRIPE_ENABLED:
         print("⚠️  stripe non installé - mode simulation")
 
 # ============================================================================
+# 🔧 CONFIGURATION COINBASE COMMERCE
+# ============================================================================
+
+COINBASE_API_KEY = os.getenv("COINBASE_COMMERCE_KEY")
+COINBASE_WEBHOOK_SECRET = os.getenv("COINBASE_WEBHOOK_SECRET")
+COINBASE_ENABLED = bool(COINBASE_API_KEY)
+
+if COINBASE_ENABLED:
+    print("✅ Coinbase Commerce activé")
+else:
+    print("⚠️  Coinbase Commerce non configuré")
+
+# ============================================================================
 # 💾 CONFIGURATION BASE DE DONNÉES
 # ============================================================================
 
@@ -64,7 +77,7 @@ def get_subscription_db_connection():
 # ============================================================================
 
 def init_subscription_tables():
-    """Crée les tables pour le système d'abonnement"""
+    """Crée les tables pour le système d'abonnement (Stripe + Coinbase)"""
     try:
         conn = get_subscription_db_connection()
         c = conn.cursor()
@@ -138,6 +151,24 @@ def init_subscription_tables():
                 created_at TIMESTAMP DEFAULT NOW()
             )""")
             
+            # ═══════════════════════════════════════════════════════════════════════════════
+            # TABLE: PAIEMENTS COINBASE COMMERCE
+            # ═══════════════════════════════════════════════════════════════════════════════
+            c.execute("""CREATE TABLE IF NOT EXISTS subscription_coinbase_payments (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                plan_id INTEGER REFERENCES pricing_plans(id),
+                charge_id TEXT UNIQUE NOT NULL,
+                amount_usd REAL NOT NULL,
+                crypto_amount TEXT,
+                crypto_currency TEXT,
+                status TEXT DEFAULT 'pending',
+                event_type TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                confirmed_at TIMESTAMP,
+                metadata TEXT
+            )""")
+            
         else:  # SQLite
             c.execute("""CREATE TABLE IF NOT EXISTS pricing_plans (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -202,6 +233,24 @@ def init_subscription_tables():
                 current_uses INTEGER DEFAULT 0,
                 is_active INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+            
+            # ═══════════════════════════════════════════════════════════════════════════════
+            # TABLE: PAIEMENTS COINBASE COMMERCE (SQLite)
+            # ═══════════════════════════════════════════════════════════════════════════════
+            c.execute("""CREATE TABLE IF NOT EXISTS subscription_coinbase_payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                plan_id INTEGER REFERENCES pricing_plans(id),
+                charge_id TEXT UNIQUE NOT NULL,
+                amount_usd REAL NOT NULL,
+                crypto_amount TEXT,
+                crypto_currency TEXT,
+                status TEXT DEFAULT 'pending',
+                event_type TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                confirmed_at TIMESTAMP,
+                metadata TEXT
             )""")
         
         # Insérer les plans par défaut si la table est vide
@@ -302,6 +351,192 @@ def init_subscription_tables():
         import traceback
         traceback.print_exc()
         return False
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔌 FONCTIONS COINBASE COMMERCE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def save_coinbase_charge(conn, user_id: int, plan_id: int, charge_id: str, amount_usd: float, crypto_currency: str = None):
+    """Sauvegarde une charge Coinbase en base de données"""
+    cursor = conn.cursor()
+    
+    if SUB_DB_CONFIG["type"] == "postgres":
+        cursor.execute("""
+            INSERT INTO subscription_coinbase_payments 
+            (user_id, plan_id, charge_id, amount_usd, crypto_currency, status)
+            VALUES (%s, %s, %s, %s, %s, 'pending')
+        """, (user_id, plan_id, charge_id, amount_usd, crypto_currency))
+    else:
+        cursor.execute("""
+            INSERT INTO subscription_coinbase_payments 
+            (user_id, plan_id, charge_id, amount_usd, crypto_currency, status)
+            VALUES (?, ?, ?, ?, ?, 'pending')
+        """, (user_id, plan_id, charge_id, amount_usd, crypto_currency))
+    
+    conn.commit()
+    print(f"✅ Charge {charge_id} sauvegardée pour user {user_id}")
+
+
+def update_coinbase_charge_status(conn, charge_id: str, status: str, event_type: str = None):
+    """Met à jour le statut d'une charge"""
+    cursor = conn.cursor()
+    
+    if SUB_DB_CONFIG["type"] == "postgres":
+        if status == "confirmed":
+            cursor.execute("""
+                UPDATE subscription_coinbase_payments
+                SET status = %s, event_type = %s, confirmed_at = CURRENT_TIMESTAMP
+                WHERE charge_id = %s
+            """, (status, event_type, charge_id))
+        else:
+            cursor.execute("""
+                UPDATE subscription_coinbase_payments
+                SET status = %s, event_type = %s
+                WHERE charge_id = %s
+            """, (status, event_type, charge_id))
+    else:
+        if status == "confirmed":
+            cursor.execute("""
+                UPDATE subscription_coinbase_payments
+                SET status = ?, event_type = ?, confirmed_at = CURRENT_TIMESTAMP
+                WHERE charge_id = ?
+            """, (status, event_type, charge_id))
+        else:
+            cursor.execute("""
+                UPDATE subscription_coinbase_payments
+                SET status = ?, event_type = ?
+                WHERE charge_id = ?
+            """, (status, event_type, charge_id))
+    
+    conn.commit()
+    print(f"✅ Charge {charge_id} statut → {status}")
+
+
+def get_coinbase_charge(conn, charge_id: str):
+    """Récupère les infos d'une charge Coinbase"""
+    cursor = conn.cursor()
+    
+    if SUB_DB_CONFIG["type"] == "postgres":
+        cursor.execute(
+            "SELECT * FROM subscription_coinbase_payments WHERE charge_id = %s",
+            (charge_id,)
+        )
+    else:
+        cursor.execute(
+            "SELECT * FROM subscription_coinbase_payments WHERE charge_id = ?",
+            (charge_id,)
+        )
+    
+    return cursor.fetchone()
+
+
+def activate_subscription_after_crypto_payment(conn, user_id: int, plan_id: int):
+    """Active l'abonnement après confirmation du paiement Coinbase"""
+    cursor = conn.cursor()
+    
+    if SUB_DB_CONFIG["type"] == "postgres":
+        # Annuler l'ancien abonnement
+        cursor.execute(
+            "UPDATE subscriptions SET status = %s, cancel_at_period_end = TRUE WHERE user_id = %s AND status = %s",
+            ('cancelled', user_id, 'active')
+        )
+        
+        # Créer le nouvel abonnement (30 jours)
+        cursor.execute("""
+            INSERT INTO subscriptions 
+            (user_id, plan_id, status, billing_period, current_period_start, current_period_end)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP + INTERVAL '30 days')
+        """, (user_id, plan_id, 'active', 'monthly'))
+    else:
+        # SQLite
+        cursor.execute(
+            "UPDATE subscriptions SET status = ?, cancel_at_period_end = TRUE WHERE user_id = ? AND status = ?",
+            ('cancelled', user_id, 'active')
+        )
+        
+        cursor.execute("""
+            INSERT INTO subscriptions 
+            (user_id, plan_id, status, billing_period, current_period_start, current_period_end)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, datetime('now', '+30 days'))
+        """, (user_id, plan_id, 'active', 'monthly'))
+    
+    conn.commit()
+    print(f"✅ Abonnement activé pour user {user_id} avec plan {plan_id}")
+    return True
+
+
+def get_coinbase_stats(conn):
+    """Récupère les stats des paiements Coinbase"""
+    cursor = conn.cursor()
+    
+    if SUB_DB_CONFIG["type"] == "postgres":
+        # Total reçu en crypto
+        cursor.execute("""
+            SELECT COALESCE(SUM(amount_usd), 0) as total
+            FROM subscription_coinbase_payments
+            WHERE status = 'confirmed'
+        """)
+        total = cursor.fetchone()[0]
+        
+        # Paiements en attente
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM subscription_coinbase_payments
+            WHERE status = 'pending'
+        """)
+        pending = cursor.fetchone()[0]
+        
+        # Paiements confirmés
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM subscription_coinbase_payments
+            WHERE status = 'confirmed'
+        """)
+        confirmed = cursor.fetchone()[0]
+        
+        # Paiements échoués
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM subscription_coinbase_payments
+            WHERE status = 'failed'
+        """)
+        failed = cursor.fetchone()[0]
+    else:
+        # SQLite
+        cursor.execute("""
+            SELECT COALESCE(SUM(amount_usd), 0) as total
+            FROM subscription_coinbase_payments
+            WHERE status = 'confirmed'
+        """)
+        total = cursor.fetchone()[0]
+        
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM subscription_coinbase_payments
+            WHERE status = 'pending'
+        """)
+        pending = cursor.fetchone()[0]
+        
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM subscription_coinbase_payments
+            WHERE status = 'confirmed'
+        """)
+        confirmed = cursor.fetchone()[0]
+        
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM subscription_coinbase_payments
+            WHERE status = 'failed'
+        """)
+        failed = cursor.fetchone()[0]
+    
+    return {
+        "total_usd": total,
+        "pending_count": pending,
+        "confirmed_count": confirmed,
+        "failed_count": failed
+    }
 
 # ============================================================================
 # 🔐 FONCTIONS UTILITAIRES
@@ -426,10 +661,17 @@ async def pricing_page():
         if plan['price_monthly'] == 0:
             button_html = '<button class="plan-btn free-btn" onclick="selectFreePlan()">Commencer Gratuit</button>'
         else:
-            button_html = f'''<button class="plan-btn premium-btn" 
-                onclick="checkout('{plan['id']}', 'monthly')">
-                Choisir ce plan
-            </button>'''
+            # Boutons pour Stripe ET Coinbase
+            button_html = f'''
+            <div class="payment-buttons">
+                <button class="plan-btn stripe-btn" onclick="checkoutStripe('{plan['id']}', 'monthly')">
+                    💳 Payer avec Carte
+                </button>
+                <button class="plan-btn crypto-btn" onclick="checkoutCrypto('{plan['id']}', '{plan['plan_name'].lower()}')">
+                    ₿ Payer en Crypto
+                </button>
+            </div>
+            '''
         
         plans_html += f"""
         <div class="pricing-card">
@@ -546,21 +788,28 @@ async def pricing_page():
             font-size: 16px;
         }}
         
+        .payment-buttons {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }}
+        
         .plan-btn {{
-            width: 100%;
-            padding: 16px;
-            font-size: 18px;
+            padding: 14px;
+            font-size: 16px;
             font-weight: bold;
             border: none;
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s;
-            margin-top: 20px;
         }}
         
         .free-btn {{
+            width: 100%;
             background: #10b981;
             color: white;
+            margin-top: 20px;
         }}
         
         .free-btn:hover {{
@@ -568,14 +817,24 @@ async def pricing_page():
             transform: scale(1.05);
         }}
         
-        .premium-btn {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .stripe-btn {{
+            background: #5469d4;
             color: white;
         }}
         
-        .premium-btn:hover {{
+        .stripe-btn:hover {{
+            background: #4657b8;
             opacity: 0.9;
-            transform: scale(1.05);
+        }}
+        
+        .crypto-btn {{
+            background: #f7931a;
+            color: white;
+        }}
+        
+        .crypto-btn:hover {{
+            background: #e68a15;
+            opacity: 0.9;
         }}
         
         .back-link {{
@@ -618,9 +877,54 @@ async def pricing_page():
             window.location.href = '/';
         }}
         
-        async function checkout(planId, period) {{
+        function checkoutStripe(planId, period) {{
             // Redirection vers la page de checkout Stripe
             window.location.href = `/checkout?plan_id=${{planId}}&period=${{period}}`;
+        }}
+        
+        async function checkoutCrypto(planId, planName) {{
+            // Redirection vers Coinbase Commerce
+            const userId = await getCurrentUserId(); // À implémenter selon votre système
+            const userEmail = await getCurrentUserEmail();
+            
+            if (!userId || !userEmail) {{
+                alert("Veuillez vous connecter d'abord");
+                window.location.href = "/login";
+                return;
+            }}
+            
+            try {{
+                const response = await fetch("/api/crypto/create-charge", {{
+                    method: "POST",
+                    headers: {{ "Content-Type": "application/json" }},
+                    body: JSON.stringify({{
+                        plan: planName,
+                        user_id: userId,
+                        user_email: userEmail
+                    }})
+                }});
+                
+                const data = await response.json();
+                
+                if (data.success) {{
+                    window.location.href = data.hosted_url;
+                }} else {{
+                    alert("Erreur: " + data.error);
+                }}
+            }} catch (error) {{
+                alert("Erreur de connexion: " + error);
+            }}
+        }}
+        
+        // À implémenter selon votre système d'authentification
+        async function getCurrentUserId() {{
+            // Récupérez l'ID utilisateur depuis votre système
+            return null; // À modifier
+        }}
+        
+        async function getCurrentUserEmail() {{
+            // Récupérez l'email utilisateur depuis votre système
+            return null; // À modifier
         }}
     </script>
 </body>
@@ -629,4 +933,4 @@ async def pricing_page():
 # Initialiser les tables au démarrage du module
 init_subscription_tables()
 
-print("✅ Module subscription_system chargé")
+print("✅ Module subscription_system chargé (avec Coinbase Commerce)")

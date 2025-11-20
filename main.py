@@ -506,6 +506,14 @@ if SUBSCRIPTION_ENABLED:
     app.include_router(subscription_router)
     app.include_router(admin_pricing_router)
     print("✅ Routes d'abonnement activées")
+    # ===== Inclure les routes de paiement =====
+try:
+    from payment_routes import payment_router
+    app.include_router(payment_router, prefix="/api", tags=["payments"])
+    print("✅ Routes de paiement chargées")
+except ImportError as e:
+    print(f"⚠️  Routes de paiement non disponibles: {e}")
+# ==========================================
 # =====================================================
 
 app.add_middleware(

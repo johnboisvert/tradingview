@@ -14260,6 +14260,319 @@ async def create_charge(req: CreateChargeRequest, request: Request):
             pricing_type="fixed_price",
             receipt_email=req.email,
             metadata={
+                "user_id": req.user_id or token.split("|")[0] if "|" in token else token,
+                "email": req.email
+            }
+        )
+        
+        # Sauvegarder dans la DB
+        charge_id = charge.id
+        create_payment_record(
+            charge_id=charge_id,
+            user_id=req.user_id or token.split("|")[0] if "|" in token else token,
+            email=req.email,
+            amount=req.amount_usd,
+            currency="USD",
+            description=req.description,
+            charge_data=charge
+        )
+        
+        return {
+            "success": True,
+            "charge_id": charge_id,
+            "hosted_url": charge.hosted_url,
+            "address": charge.address,
+            "amount_usd": req.amount_usd,
+            "pricing": charge.pricing
+        }
+    except Exception as e:
+        print(f"❌ Create charge: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/pricing", response_class=HTMLResponse)
+async def pricing_page(request: Request):
+    """Page de pricing public avec Coinbase Commerce"""
+    return HTMLResponse("""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💳 Plans d'Abonnement - Trading Dashboard Pro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #0f172a; 
+            color: #e2e8f0;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header p { color: #94a3b8; font-size: 18px; }
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+        .pricing-card {
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .pricing-card:hover {
+            transform: translateY(-10px);
+            border-color: #3b82f6;
+            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+        }
+        .pricing-card.featured {
+            border-color: #3b82f6;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
+            transform: scale(1.05);
+        }
+        .pricing-card .badge {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .pricing-card h3 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            margin-top: 20px;
+        }
+        .pricing-card p { color: #94a3b8; margin-bottom: 20px; }
+        .price {
+            font-size: 48px;
+            font-weight: bold;
+            color: #22c55e;
+            margin: 30px 0;
+        }
+        .price small { font-size: 16px; color: #94a3b8; }
+        .features {
+            text-align: left;
+            margin: 30px 0;
+            list-style: none;
+        }
+        .features li {
+            padding: 12px 0;
+            border-bottom: 1px solid #334155;
+            color: #cbd5e1;
+        }
+        .features li:before {
+            content: "✅ ";
+            color: #22c55e;
+            margin-right: 10px;
+        }
+        .btn-buy {
+            width: 100%;
+            padding: 16px;
+            margin-top: 30px;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-buy:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+        .btn-buy:active {
+            transform: scale(0.98);
+        }
+        .faq {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 40px;
+            margin-top: 60px;
+        }
+        .faq h2 { margin-bottom: 30px; color: #3b82f6; }
+        .faq-item {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 20px;
+        }
+        .faq-item strong { color: #e2e8f0; }
+        .faq-item p { color: #94a3b8; margin-top: 10px; }
+        .crypto-badge {
+            display: inline-block;
+            background: #1e293b;
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💳 Plans d'Abonnement Premium</h1>
+            <p>Accédez à toutes les fonctionnalités de Trading Dashboard Pro</p>
+        </div>
+
+        <div class="pricing-grid">
+            <!-- Plan Starter -->
+            <div class="pricing-card">
+                <h3>🌟 Starter</h3>
+                <p>Pour débuter</p>
+                <div class="price">
+                    $9.99<br><small>/mois</small>
+                </div>
+                <ul class="features">
+                    <li>Accès basique au dashboard</li>
+                    <li>10 trades par mois</li>
+                    <li>Fear & Greed Index</li>
+                    <li>Support par email</li>
+                </ul>
+                <span class="crypto-badge">🔐 Paiement Crypto accepté</span>
+                <button class="btn-buy" onclick="buyPlan('Starter', 9.99, 'user@example.com')">
+                    Acheter avec Crypto 🪙
+                </button>
+            </div>
+
+            <!-- Plan Professional (Featured) -->
+            <div class="pricing-card featured">
+                <div class="badge">POPULAIRE</div>
+                <h3>💎 Professional</h3>
+                <p>Pour les traders actifs</p>
+                <div class="price">
+                    $29.99<br><small>/mois</small>
+                </div>
+                <ul class="features">
+                    <li>Accès complet au dashboard</li>
+                    <li>Trades illimités</li>
+                    <li>Tous les indicateurs IA</li>
+                    <li>Webhooks TradingView</li>
+                    <li>Support 24/7 Premium</li>
+                </ul>
+                <span class="crypto-badge">🔐 Paiement Crypto accepté</span>
+                <button class="btn-buy" onclick="buyPlan('Professional', 29.99, 'user@example.com')">
+                    Acheter avec Crypto 🪙
+                </button>
+            </div>
+
+            <!-- Plan Enterprise -->
+            <div class="pricing-card">
+                <h3>👑 Enterprise</h3>
+                <p>Pour les professionnels</p>
+                <div class="price">
+                    $99.99<br><small>/mois</small>
+                </div>
+                <ul class="features">
+                    <li>Tout illimité</li>
+                    <li>API personnalisée</li>
+                    <li>Account manager dédié</li>
+                    <li>Intégrations custom</li>
+                    <li>Support prioritaire 24/7</li>
+                </ul>
+                <span class="crypto-badge">🔐 Paiement Crypto accepté</span>
+                <button class="btn-buy" onclick="buyPlan('Enterprise', 99.99, 'user@example.com')">
+                    Acheter avec Crypto 🪙
+                </button>
+            </div>
+        </div>
+
+        <div class="faq">
+            <h2>❓ Questions Fréquentes</h2>
+            
+            <div class="faq-item">
+                <strong>💳 Quels modes de paiement acceptez-vous?</strong>
+                <p>Nous acceptons les paiements en cryptomonnaies via Coinbase Commerce: Bitcoin, Ethereum, et autres cryptos majeures.</p>
+            </div>
+            
+            <div class="faq-item">
+                <strong>🔄 Puis-je changer de plan?</strong>
+                <p>Oui! Vous pouvez upgrader ou downgrader votre plan à tout moment. Les modifications se feront au prochain cycle de facturation.</p>
+            </div>
+            
+            <div class="faq-item">
+                <strong>🔐 Est-ce sécurisé?</strong>
+                <p>Oui! Les paiements sont traités par Coinbase Commerce, l'une des plateformes de paiement crypto les plus sûres au monde.</p>
+            </div>
+            
+            <div class="faq-item">
+                <strong>📞 Avez-vous du support?</strong>
+                <p>Bien sûr! Contactez notre équipe via email ou Telegram pour toute question concernant votre abonnement.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function buyPlan(planName, amount, email) {
+            console.log(`Achat du plan: $${planName} - $${amount}`);
+            
+            try {
+                const response = await fetch('/api/create-charge', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: planName + ' Plan',
+                        description: 'Abonnement ' + planName + ' au Trading Dashboard Pro',
+                        amount_usd: amount,
+                        email: email
+                    })
+                });
+                
+                console.log('Response status:', response.status);
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                if (response.ok && data.success) {
+                    console.log('Redirection vers:', data.hosted_url);
+                    window.location.href = data.hosted_url;
+                } else {
+                    alert('Erreur: ' + (data.detail || 'Impossible de créer la charge'));
+                }
+            } catch (error) {
+                console.error('Erreur complète:', error);
+                alert('Erreur: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>""")
+
+    
+    try:
+        # Créer la charge avec Coinbase Commerce
+        charge = coinbase_client.charge.create(
+            name=req.name,
+            description=req.description,
+            local_price={
+                "amount": str(req.amount_usd),
+                "currency": "USD"
+            },
+            pricing_type="fixed_price",
+            receipt_email=req.email,
+            metadata={
                 "user_id": req.user_id or token.split("|")[0],
                 "email": req.email
             }

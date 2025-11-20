@@ -1,14 +1,4 @@
 # -*- coding: utf-8 -*-
-# DEBUG: Voir les fichiers présents
-import os
-print("📂 Fichiers dans /app:")
-for f in os.listdir('/app'):
-    print(f"  - {f}")
-print("="*70)
-
-from fastapi import FastAPI...
-    
-# -*- coding: utf-8 -*-
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -40,8 +30,6 @@ except ImportError as e:
     def init_subscription_tables():
         pass
 # ===========================================================
-
-# PostgreSQL support
 
 # PostgreSQL support
 try:

@@ -345,7 +345,7 @@ app.add_middleware(
 async def auth_middleware(request: Request, call_next):
     """Vérifier l'authentification sur toutes les routes sauf /login"""
     # Routes publiques (pas besoin d'authentification)
-    public_paths = ["/login", "/health", "/tv-webhook"]
+    public_paths = ["/login", "/health", "/tv-webhook", "/debug-files", "/pricing", "/admin/pricing"]
     
     # Si c'est une route publique, laisser passer
     if any(request.url.path.startswith(path) for path in public_paths):

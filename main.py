@@ -328,16 +328,6 @@ async def debug_files():
 if SUBSCRIPTION_ENABLED:
 ```
 
----
-
-## 🚀 **PUIS:**
-
-1. **Commit** ce changement sur GitHub
-2. **Attendez** le redéploiement (2 minutes)
-3. **Ouvrez dans votre navigateur:**
-```
-https://tradingview-production-5763.up.railway.app/debug-files
-
 # ===== NOUVEAU: Monter les routeurs d'abonnement =====
 if SUBSCRIPTION_ENABLED:
     app.include_router(subscription_router)

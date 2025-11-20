@@ -16,6 +16,11 @@ import sqlite3
 import hashlib
 import secrets
 
+# ===== NOUVEAU: Système d'abonnement =====
+from subscription_system import subscription_router, init_subscription_tables
+from admin_pricing import admin_pricing_router
+# =========================================
+
 # PostgreSQL support
 try:
     import psycopg2
@@ -275,6 +280,12 @@ except Exception as e:
 # ============================================================================
 
 app = FastAPI()
+
+# ===== NOUVEAU: Monter les routeurs d'abonnement =====
+app.include_router(subscription_router)
+app.include_router(admin_pricing_router)
+# =====================================================
+
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # 🔐 Middleware d'authentification
@@ -16648,4 +16659,11 @@ if __name__ == "__main__":
     print("  • Inspiration & motivation pour vos investissements")
     print("  📍 Accès: /success-stories")
     print("="*70)
+    
+    # ===== NOUVEAU: Init tables abonnement =====
+    print("🔧 Initialisation du système d'abonnement...")
+    init_subscription_tables()
+    print("="*70)
+    # ===========================================
+    
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

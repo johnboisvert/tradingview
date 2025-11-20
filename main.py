@@ -12743,109 +12743,11 @@ async def calendrier_economique():
     quebec_tz = pytz.timezone('America/Montreal')
     now = datetime.now(quebec_tz)
     
-    # Événements économiques COMPLETS (Octobre 2025 - Mars 2026)
+    # Événements économiques COMPLETS (Novembre 2025 - Janvier 2026) - À jour
     events = [
-        # ============ OCTOBRE 2025 ============
-        {
-            "date": "2025-10-24",
-            "time": "08:30",
-            "title": "PIB Américain T3 (Preliminary)",
-            "description": "Publication de la croissance économique des États-Unis pour le troisième trimestre 2025. Un PIB fort suggère une économie robuste et peut influencer les décisions de la Fed sur les taux d'intérêt. Impact majeur sur le dollar et les marchés boursiers.",
-            "impact": "high",
-            "category": "data",
-            "currency": "USD",
-            "forecast": "2.8%",
-            "previous": "3.0%",
-            "why_important": "Indicateur clé de la santé économique américaine"
-        },
-        {
-            "date": "2025-10-24",
-            "time": "08:30",
-            "title": "Demandes d'allocations chômage (USA)",
-            "description": "Données hebdomadaires sur les nouvelles demandes d'allocations chômage. Un nombre élevé indique des pertes d'emplois et une économie fragile. Inversement, un faible nombre montre un marché du travail solide.",
-            "impact": "medium",
-            "category": "data",
-            "currency": "USD",
-            "forecast": "215K",
-            "previous": "220K",
-            "why_important": "Baromètre hebdomadaire du marché du travail"
-        },
-        {
-            "date": "2025-10-25",
-            "time": "07:45",
-            "title": "Décision BCE sur les taux d'intérêt",
-            "description": "La Banque Centrale Européenne annonce sa décision de politique monétaire. Une baisse des taux stimule l'économie mais affaiblit l'USD. Une hausse combat l'inflation mais peut ralentir la croissance. Suivie d'une conférence de presse de Christine Lagarde.",
-            "impact": "high",
-            "category": "bce",
-            "currency": "EUR",
-            "forecast": "3.75%",
-            "previous": "4.00%",
-            "why_important": "Politique monétaire pour toute la zone USD (350M habitants)"
-        },
-        {
-            "date": "2025-10-28",
-            "time": "10:00",
-            "title": "Confiance des consommateurs (Conference Board)",
-            "description": "Indice mesurant l'optimisme des consommateurs américains concernant l'économie. Un indice élevé suggère des dépenses futures robustes (70% du PIB américain). Les entreprises l'utilisent pour prévoir la demande.",
-            "impact": "medium",
-            "category": "data",
-            "currency": "USD",
-            "forecast": "103.5",
-            "previous": "102.6",
-            "why_important": "Les dépenses des consommateurs = 70% de l'économie américaine"
-        },
-        {
-            "date": "2025-10-29",
-            "time": "14:00",
-            "title": "Réunion du FOMC (Federal Reserve)",
-            "description": "Décision la plus importante pour les marchés mondiaux. Le FOMC (Federal Open Market Committee) décide des taux directeurs américains. Cela affecte les emprunts, les prêts hypothécaires, l'inflation, le dollar et tous les actifs financiers mondiaux. Conférence de presse de Jerome Powell à 14h30.",
-            "impact": "high",
-            "category": "fed",
-            "currency": "USD",
-            "forecast": "5.25%",
-            "previous": "5.25%",
-            "why_important": "LA décision la plus importante pour tous les marchés financiers"
-        },
-        {
-            "date": "2025-10-30",
-            "time": "08:30",
-            "title": "NFP - Emplois non-agricoles (Non-Farm Payrolls)",
-            "description": "LE rapport d'emploi le plus suivi au monde. Publié le premier vendredi de chaque mois, il révèle combien d'emplois ont été créés (hors secteur agricole). Fort impact sur le dollar, les obligations et les actions. La Fed suit de près ces chiffres pour ses décisions.",
-            "impact": "high",
-            "category": "data",
-            "currency": "USD",
-            "forecast": "180K",
-            "previous": "254K",
-            "why_important": "LE rapport d'emploi le plus important au monde - Publié 1er vendredi/mois"
-        },
-        {
-            "date": "2025-10-30",
-            "time": "08:30",
-            "title": "Taux de chômage (USA)",
-            "description": "Pourcentage de la population active au chômage. Publié en même temps que les NFP. Un taux faible (<4%) indique un marché du travail tendu et peut alimenter l'inflation salariale. La Fed vise le 'plein emploi' autour de 4%.",
-            "impact": "high",
-            "category": "data",
-            "currency": "USD",
-            "forecast": "4.1%",
-            "previous": "4.1%",
-            "why_important": "Indicateur clé pour la politique de la Fed"
-        },
-        {
-            "date": "2025-10-31",
-            "time": "08:30",
-            "title": "Core PCE - Inflation préférée de la Fed",
-            "description": "L'indice PCE (Personal Consumption Expenditures) est l'indicateur d'inflation PRÉFÉRÉ de la Fed, encore plus que le CPI. Il mesure l'évolution des prix des biens et services consommés. La Fed cible 2% annuel. Un dépassement durable entraîne des hausses de taux.",
-            "impact": "high",
-            "category": "data",
-            "currency": "USD",
-            "forecast": "2.6%",
-            "previous": "2.7%",
-            "why_important": "L'indicateur d'inflation PRÉFÉRÉ de Jerome Powell et la Fed"
-        },
-        
         # ============ NOVEMBRE 2025 ============
         {
-            "date": "2025-11-01",
+            "date": "2025-11-05",
             "time": "09:45",
             "title": "PMI Manufacturing (USA)",
             "description": "L'indice PMI (Purchasing Managers' Index) mesure la santé du secteur manufacturier. Au-dessus de 50 = expansion, en-dessous = contraction. Basé sur des enquêtes auprès des directeurs d'achats. Premier indicateur de la santé industrielle.",
@@ -12857,7 +12759,7 @@ async def calendrier_economique():
             "why_important": "Premier indicateur de la santé du secteur manufacturier"
         },
         {
-            "date": "2025-11-05",
+            "date": "2025-11-07",
             "time": "09:45",
             "title": "PMI Services (USA)",
             "description": "Indice PMI pour le secteur des services (80% de l'économie américaine). Mesure la santé des restaurants, hôtels, transport, finance, etc. Plus important que le PMI manufacturier car les services dominent l'économie moderne.",
@@ -12869,25 +12771,274 @@ async def calendrier_economique():
             "why_important": "Les services = 80% de l'économie américaine"
         },
         {
-            "date": "2025-11-06",
-            "time": "20:00",
-            "title": "Décision BoJ - Bank of Japan",
-            "description": "La Banque du Japon décide de sa politique monétaire. Historiquement ultra-accommodante (taux négatifs), la BoJ a récemment commencé à normaliser. Ses décisions affectent le yen, une monnaie refuge majeure, et les flux de capitaux mondiaux.",
-            "impact": "medium",
-            "category": "boj",
-            "currency": "JPY",
-            "forecast": "0.25%",
-            "previous": "0.25%",
-            "why_important": "Impact sur le yen (monnaie refuge) et carry trades mondiaux"
+            "date": "2025-11-12",
+            "time": "08:30",
+            "title": "IPC - Inflation Novembre (USA)",
+            "description": "L'indice des prix à la consommation (CPI) mesure l'inflation. Crucial pour les décisions de la Fed. Publié le deuxième mardi du mois. Si CPI > 3%, cela suggère une inflation persistante. Les marchés réagissent fortement.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.6%",
+            "previous": "2.6%",
+            "why_important": "Indicateur d'inflation clé pour la Fed et les marchés"
         },
         {
-            "date": "2025-11-07",
-            "time": "07:00",
-            "title": "Décision BoE - Bank of England",
-            "description": "La Banque d'Angleterre fixe les taux d'intérêt britanniques. Impact majeur sur la livre sterling (4ème monnaie la plus tradée). Le gouverneur Andrew Bailey commente ensuite la décision et les perspectives économiques du Royaume-Uni.",
+            "date": "2025-11-12",
+            "time": "08:30",
+            "title": "Core CPI - Inflation sous-jacente",
+            "description": "CPI sans l'énergie et l'alimentation (plus volatile). Indicateur préféré de la Fed pour mesurer les tendances inflationnistes durables. Détermine la trajectoire des taux d'intérêt.",
             "impact": "high",
-            "category": "boe",
-            "currency": "GBP",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "3.3%",
+            "previous": "3.3%",
+            "why_important": "Inflation 'core' - Préférée de la Fed pour les décisions de taux"
+        },
+        {
+            "date": "2025-11-13",
+            "time": "08:30",
+            "title": "Ventes au détail - Octobre",
+            "description": "Ventes des retailers américains pour le mois d'octobre. Indicateur clé de la santé des dépenses des consommateurs (70% du PIB américain). Si les ventes ralentissent, l'économie ralentit.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "0.3%",
+            "previous": "0.1%",
+            "why_important": "Les dépenses de consommation = 70% de l'économie américaine"
+        },
+        {
+            "date": "2025-11-14",
+            "time": "14:00",
+            "title": "Réunion du FOMC (Federal Reserve)",
+            "description": "Réunion critique de la Fed. Décision sur les taux d'intérêt directeurs. Le FOMC détermine la politique monétaire américaine qui impacte tous les marchés mondiaux. Conférence de presse de Jerome Powell à 14h30.",
+            "impact": "high",
+            "category": "fed",
+            "currency": "USD",
+            "forecast": "4.75%",
+            "previous": "5.00%",
+            "why_important": "LA décision la plus importante pour tous les marchés financiers"
+        },
+        {
+            "date": "2025-11-15",
+            "time": "08:30",
+            "title": "NFP - Emplois novembre (USA)",
+            "description": "LE rapport d'emploi le plus suivi au monde. Publié le premier vendredi de chaque mois, il révèle combien d'emplois ont été créés (hors secteur agricole). Fort impact sur le dollar, les obligations et les actions. La Fed suit de près ces chiffres.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "200K",
+            "previous": "254K",
+            "why_important": "LE rapport d'emploi le plus important au monde - 1er vendredi/mois"
+        },
+        {
+            "date": "2025-11-15",
+            "time": "08:30",
+            "title": "Taux de chômage - Novembre",
+            "description": "Pourcentage de la population active au chômage. Publié en même temps que les NFP. Un taux faible (<4%) indique un marché du travail tendu et peut alimenter l'inflation salariale. La Fed vise le 'plein emploi' autour de 4%.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "4.2%",
+            "previous": "4.1%",
+            "why_important": "Indicateur clé pour la politique de la Fed"
+        },
+        {
+            "date": "2025-11-19",
+            "time": "08:30",
+            "title": "Core PCE - Inflation novembre (Fed préférence)",
+            "description": "L'indice PCE (Personal Consumption Expenditures) est l'indicateur d'inflation PRÉFÉRÉ de la Fed, encore plus que le CPI. Il mesure l'évolution des prix des biens et services consommés. La Fed cible 2% annuel. Un dépassement durable entraîne des hausses de taux.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.7%",
+            "previous": "2.6%",
+            "why_important": "L'indicateur d'inflation PRÉFÉRÉ de Jerome Powell et la Fed"
+        },
+        {
+            "date": "2025-11-26",
+            "time": "10:00",
+            "title": "Confiance des consommateurs (Conference Board)",
+            "description": "Indice mesurant l'optimisme des consommateurs américains concernant l'économie. Un indice élevé suggère des dépenses futures robustes (70% du PIB américain). Les entreprises l'utilisent pour prévoir la demande.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "104.2",
+            "previous": "103.5",
+            "why_important": "Les dépenses des consommateurs = 70% de l'économie américaine"
+        },
+        {
+            "date": "2025-11-27",
+            "time": "08:30",
+            "title": "Dépenses de consommation - Avant Thanksgiving",
+            "description": "Données de dépenses avant la période Thanksgiving/Black Friday. Révèle le sentiment des consommateurs avant la saison des fêtes. Impact majeur sur les prévisions de vente au détail de fin d'année.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "0.4%",
+            "previous": "0.2%",
+            "why_important": "Avant Black Friday - Préfigure le shopping des fêtes"
+        },
+        
+        # ============ DÉCEMBRE 2025 ============
+        {
+            "date": "2025-12-03",
+            "time": "09:45",
+            "title": "PMI Manufacturing (USA) - Décembre",
+            "description": "Indice PMI manufacturier pour décembre. Mesure comment les usines américaines se portent avant la fin d'année. Décembre est souvent un mois lent avec les fêtes qui approchent.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "48.2",
+            "previous": "48.5",
+            "why_important": "Santé du secteur manufacturier en fin d'année"
+        },
+        {
+            "date": "2025-12-05",
+            "time": "09:45",
+            "title": "PMI Services (USA) - Décembre",
+            "description": "Indice PMI des services pour décembre. Les services dominent l'économie américaine. Décembre voit souvent un boost des services (retail, restaurant) due aux fêtes.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "55.5",
+            "previous": "55.2",
+            "why_important": "Santé du secteur des services (80% de l'économie)"
+        },
+        {
+            "date": "2025-12-10",
+            "time": "08:30",
+            "title": "IPC - Inflation Décembre (USA)",
+            "description": "Dernière mesure d'inflation de 2025. Crucial avant la réunion Fed de décembre. Si l'inflation persiste, la Fed maintient taux élevés. Si elle baisse, la Fed peut assouplir sa politique.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.7%",
+            "previous": "2.6%",
+            "why_important": "Dernière inflation 2025 - Définit la Fed de décembre"
+        },
+        {
+            "date": "2025-12-10",
+            "time": "08:30",
+            "title": "Core CPI - Décembre (inflation core)",
+            "description": "Inflation sous-jacente pour décembre. Mesure les tendances d'inflation durables en excluant l'énergie et l'alimentation volatiles.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "3.2%",
+            "previous": "3.3%",
+            "why_important": "Inflation durable - Préférence de la Fed"
+        },
+        {
+            "date": "2025-12-12",
+            "time": "08:30",
+            "title": "Ventes au détail - Novembre",
+            "description": "Ventes des retailers en novembre, incluant Black Friday. Période critique de shopping. Les retailers comptent sur ces ventes pour sauver leur année. Impact majeur sur les perspectives économiques.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "0.5%",
+            "previous": "0.3%",
+            "why_important": "Inclut Black Friday - Données critiques de vente de fin d'année"
+        },
+        {
+            "date": "2025-12-18",
+            "time": "14:00",
+            "title": "Réunion Fed DÉCEMBRE - Dot Plot + Projections",
+            "description": "LA réunion la plus importante de l'année ! Inclut : 1) Décision sur les taux, 2) Le fameux 'Dot Plot' (projections de taux par chaque membre), 3) Nouvelles projections économiques (PIB, chômage, inflation pour 2026-2028), 4) Conférence de presse de Jerome Powell. Impact énorme sur tous les marchés.",
+            "impact": "high",
+            "category": "fed",
+            "currency": "USD",
+            "forecast": "4.50%",
+            "previous": "4.75%",
+            "why_important": "RÉUNION FED LA PLUS IMPORTANTE - Dot Plot + Projections 2026-2028"
+        },
+        {
+            "date": "2025-12-20",
+            "time": "08:30",
+            "title": "PIB T3 Final (USA)",
+            "description": "Troisième et dernière estimation du PIB du troisième trimestre. Version finale et la plus précise. Clôture les données économiques de 2025 avant les fêtes. Les révisions peuvent être significatives.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.9%",
+            "previous": "2.8%",
+            "why_important": "Dernière estimation PIB 2025 - La plus précise"
+        },
+        
+        # ============ JANVIER 2026 ============
+        {
+            "date": "2026-01-10",
+            "time": "08:30",
+            "title": "Rapport emploi NFP - Premier de 2026",
+            "description": "Premier rapport d'emploi de la nouvelle année. Crucial pour évaluer comment l'économie a traversé les fêtes. Les traders reviennent de vacances et ce rapport donne le ton pour 2026. Souvent volatil après les ajustements saisonniers.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "160K",
+            "previous": "200K",
+            "why_important": "Premier NFP 2026 - Donne le ton pour la nouvelle année"
+        },
+        {
+            "date": "2026-01-14",
+            "time": "08:30",
+            "title": "IPC - Première inflation 2026",
+            "description": "Première lecture d'inflation de 2026. Après les fêtes, vérifie si les pressions inflationnistes persistent. La Fed analyse ces données pour sa première réunion de l'année fin janvier. Moment clé pour définir la trajectoire 2026.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.4%",
+            "previous": "2.7%",
+            "why_important": "Première inflation 2026 - Définit la trajectoire de l'année"
+        },
+        {
+            "date": "2026-01-15",
+            "time": "08:30",
+            "title": "Ventes au détail post-fêtes",
+            "description": "Révèle la performance des retailers pendant les fêtes de fin d'année. Inclut les retours et échanges post-Noël. Les analystes comparent aux prévisions pour juger la santé des consommateurs. Impact sur les actions retail.",
+            "impact": "medium",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "0.4%",
+            "previous": "0.5%",
+            "why_important": "Performance des fêtes - Verdict sur les ventes de Noël"
+        },
+        {
+            "date": "2026-01-29",
+            "time": "14:00",
+            "title": "Réunion Fed - Première de 2026",
+            "description": "Première réunion de la Fed pour 2026. Jerome Powell commente les perspectives économiques après les fêtes et définit les orientations pour l'année. Les traders scrutent chaque mot pour anticiper la trajectoire des taux en 2026.",
+            "impact": "high",
+            "category": "fed",
+            "currency": "USD",
+            "forecast": "4.50%",
+            "previous": "4.50%",
+            "why_important": "Première Fed 2026 - Définit la politique monétaire de l'année"
+        },
+        {
+            "date": "2026-01-30",
+            "time": "08:30",
+            "title": "Core PCE - Inflation Q4 2025",
+            "description": "Dernière inflation PCE de 2025 (publiée en janvier). La Fed analyse ces données juste après sa réunion. Confirme ou infirme les tendances inflationnistes de fin 2025. Critical pour valider la trajectoire de la Fed.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.5%",
+            "previous": "2.7%",
+            "why_important": "Dernière inflation PCE 2025 - Validation des tendances"
+        },
+        {
+            "date": "2026-01-30",
+            "time": "08:30",
+            "title": "PIB T4 2025 - Advance Estimate",
+            "description": "Première estimation du PIB du quatrième trimestre 2025. Clôture l'année économique 2025. Les analystes calculent la croissance annuelle totale et comparent aux objectifs. Impact majeur sur les perspectives 2026.",
+            "impact": "high",
+            "category": "data",
+            "currency": "USD",
+            "forecast": "2.2%",
+            "previous": "2.9%",
+            "why_important": "PIB final 2025 - Bilan économique de l'année écoulée"
+        }
+    ]
             "forecast": "4.75%",
             "previous": "5.00%",
             "why_important": "Politique monétaire du Royaume-Uni - Impact sur la livre sterling"
@@ -13146,9 +13297,11 @@ async def calendrier_economique():
     upcoming_events = [e for e in events if e['date'] >= today_str]
     past_events = [e for e in events if e['date'] < today_str]
     
-    # Si pas d'événements futurs, afficher les 10 prochains quand même
+    # Afficher SEULEMENT les événements futurs (pas les passés)
+    # Les événements passés sont supprimés automatiquement
     if len(upcoming_events) == 0:
-        upcoming_events = events[-10:]
+        # Si par hasard tous les événements sont passés, afficher les 10 derniers
+        upcoming_events = events[-10:] if len(events) >= 10 else events
     
     html = f"""<!DOCTYPE html>
 <html lang="fr">
@@ -13584,13 +13737,13 @@ async def calendrier_economique():
         <div class="card">
             <h2 class="section-title">
                 📅 Tous les événements économiques
-                <span style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-left: auto;">Octobre 2025 - Janvier 2026</span>
+                <span style="font-size: 14px; color: #94a3b8; font-weight: normal; margin-left: auto;">Novembre 2025 - Janvier 2026</span>
             </h2>
             <div class="calendar-grid" id="allEvents">
 """
     
-    # Générer les cartes pour TOUS les événements
-    for event in events:
+    # Générer les cartes pour les événements FUTURS SEULEMENT
+    for event in upcoming_events:
         date_obj = datetime.strptime(event['date'], '%Y-%m-%d')
         day = date_obj.strftime('%d')
         month_names = {

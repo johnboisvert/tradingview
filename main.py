@@ -16680,8 +16680,6 @@ if __name__ == "__main__":
     print("  • Inspiration & motivation pour vos investissements")
     print("  📍 Accès: /success-stories")
     print("="*70)
-    
-   print("="*70)
 
 # ===== NOUVEAU: Init tables abonnement =====
 print("🔧 Initialisation du système d'abonnement...")

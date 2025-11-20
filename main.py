@@ -20,6 +20,172 @@ import hashlib
 from coinbase_commerce import Client
 from datetime import datetime
 
+
+# ============================================================================
+# 💳 SYSTÈME COINBASE COMMERCE - NOUVEAU!
+# ============================================================================
+
+COINBASE_API_KEY = os.getenv("COINBASE_COMMERCE_KEY", "")
+COINBASE_WEBHOOK_SECRET = os.getenv("COINBASE_WEBHOOK_SECRET", "")
+
+# Initialiser le client Coinbase Commerce
+coinbase_client = None
+if COINBASE_API_KEY:
+    try:
+        coinbase_client = Client(api_key=COINBASE_API_KEY)
+        print("✅ Coinbase Commerce initialisé")
+    except Exception as e:
+        print(f"⚠️  Coinbase Commerce erreur: {e}")
+
+def init_payments_db():
+    """Crée la table payments pour Coinbase Commerce"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS payments (
+                id SERIAL PRIMARY KEY,
+                charge_id TEXT UNIQUE,
+                user_id TEXT,
+                email TEXT,
+                amount REAL,
+                currency TEXT DEFAULT 'USD',
+                description TEXT,
+                status TEXT DEFAULT 'pending',
+                crypto_address TEXT,
+                crypto_amount REAL,
+                crypto_currency TEXT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW(),
+                expires_at TIMESTAMP,
+                paid_at TIMESTAMP
+            )""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS payments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                charge_id TEXT UNIQUE,
+                user_id TEXT,
+                email TEXT,
+                amount REAL,
+                currency TEXT DEFAULT 'USD',
+                description TEXT,
+                status TEXT DEFAULT 'pending',
+                crypto_address TEXT,
+                crypto_amount REAL,
+                crypto_currency TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP,
+                paid_at TIMESTAMP
+            )""")
+        conn.commit()
+        conn.close()
+        print(f"✅ Table payments OK ({DB_CONFIG['type']})")
+        return True
+    except Exception as e:
+        print(f"❌ Init payments: {e}")
+        return False
+
+def create_payment_record(charge_id, user_id, email, amount, currency, description, charge_data):
+    """Crée un enregistrement de paiement"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        crypto_address = ""
+        crypto_amount = 0
+        crypto_currency = ""
+        
+        # Extraire les infos crypto de charge_data
+        if "address" in charge_data:
+            crypto_address = charge_data["address"]
+        if "pricing" in charge_data and "crypto" in charge_data["pricing"]:
+            for crypto in charge_data["pricing"]["crypto"]:
+                crypto_amount = float(crypto["amount"])
+                crypto_currency = crypto["currency"]
+                break
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""INSERT INTO payments 
+                (charge_id, user_id, email, amount, currency, description, status, crypto_address, 
+                 crypto_amount, crypto_currency, expires_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (charge_id, user_id, email, amount, currency, description, "pending", 
+                 crypto_address, crypto_amount, crypto_currency, 
+                 datetime.now() + timedelta(hours=1)))
+        else:
+            c.execute("""INSERT INTO payments 
+                (charge_id, user_id, email, amount, currency, description, status, crypto_address, 
+                 crypto_amount, crypto_currency, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (charge_id, user_id, email, amount, currency, description, "pending", 
+                 crypto_address, crypto_amount, crypto_currency, 
+                 datetime.now() + timedelta(hours=1)))
+        
+        conn.commit()
+        conn.close()
+        return charge_id
+    except Exception as e:
+        print(f"❌ Create payment record: {e}")
+        return None
+
+def update_payment_status(charge_id, status, paid_at=None):
+    """Met à jour le statut d'un paiement"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        updates = {"status": status, "updated_at": datetime.now()}
+        if paid_at:
+            updates["paid_at"] = paid_at
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""UPDATE payments SET status=%s, updated_at=%s, paid_at=%s WHERE charge_id=%s""",
+                (status, datetime.now(), paid_at, charge_id))
+        else:
+            c.execute("""UPDATE payments SET status=?, updated_at=?, paid_at=? WHERE charge_id=?""",
+                (status, datetime.now(), paid_at, charge_id))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"❌ Update payment status: {e}")
+        return False
+
+def get_payment_by_charge_id(charge_id):
+    """Récupère les infos d'un paiement"""
+    try:
+        conn = get_db_connection()
+        if DB_CONFIG["type"] == "postgres":
+            c = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+        
+        c.execute("SELECT * FROM payments WHERE charge_id=%s" if DB_CONFIG["type"] == "postgres" 
+                  else "SELECT * FROM payments WHERE charge_id=?", (charge_id,))
+        row = c.fetchone()
+        conn.close()
+        
+        return dict(row) if row else None
+    except Exception as e:
+        print(f"❌ Get payment: {e}")
+        return None
+
+# ===== NOUVEAU: Modèles Pydantic pour Coinbase =====
+class CreateChargeRequest(BaseModel):
+    name: str
+    description: str
+    amount_usd: float
+    email: str
+    user_id: Optional[str] = None
+
+class CoinbaseWebhookPayload(BaseModel):
+    event: dict
+    signature: str
+
+
 # ===== NOUVEAU: Système d'abonnement (import optionnel) =====
 try:
     from subscription_system import subscription_router, init_subscription_tables
@@ -14054,6 +14220,171 @@ async def get_weekly_pnl():
         "week_start": weekly_pnl["week_start"],
         "current_day": get_current_week_day()
     }
+
+# ============================================================================
+# 💳 ENDPOINTS COINBASE COMMERCE
+# ============================================================================
+
+@app.post("/api/create-charge")
+async def create_charge(req: CreateChargeRequest, token: Optional[str] = Cookie(None)):
+    """Crée une charge de paiement Coinbase Commerce"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    if not coinbase_client:
+        raise HTTPException(status_code=500, detail="Coinbase Commerce non configuré")
+    
+    try:
+        # Créer la charge avec Coinbase Commerce
+        charge = coinbase_client.charge.create(
+            name=req.name,
+            description=req.description,
+            local_price={
+                "amount": str(req.amount_usd),
+                "currency": "USD"
+            },
+            pricing_type="fixed_price",
+            receipt_email=req.email,
+            metadata={
+                "user_id": req.user_id or token.split("|")[0],
+                "email": req.email
+            }
+        )
+        
+        # Sauvegarder dans la DB
+        charge_id = charge.id
+        create_payment_record(
+            charge_id=charge_id,
+            user_id=req.user_id or token.split("|")[0],
+            email=req.email,
+            amount=req.amount_usd,
+            currency="USD",
+            description=req.description,
+            charge_data=charge
+        )
+        
+        return {
+            "success": True,
+            "charge_id": charge_id,
+            "hosted_url": charge.hosted_url,
+            "address": charge.address,
+            "amount_usd": req.amount_usd,
+            "pricing": charge.pricing
+        }
+    except Exception as e:
+        print(f"❌ Create charge: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/charge/{charge_id}")
+async def get_charge_status(charge_id: str, token: Optional[str] = Cookie(None)):
+    """Récupère le statut d'une charge"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    if not coinbase_client:
+        raise HTTPException(status_code=500, detail="Coinbase Commerce non configuré")
+    
+    try:
+        # Récupérer de la DB d'abord
+        payment = get_payment_by_charge_id(charge_id)
+        
+        # Vérifier l'état avec Coinbase
+        charge = coinbase_client.charge.retrieve(charge_id)
+        
+        return {
+            "success": True,
+            "charge_id": charge_id,
+            "status": charge.status,
+            "amount": charge.local_price.amount,
+            "currency": charge.local_price.currency,
+            "timeline": charge.timeline if hasattr(charge, 'timeline') else [],
+            "payment_record": payment
+        }
+    except Exception as e:
+        print(f"❌ Get charge: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/coinbase-webhook")
+async def coinbase_webhook(request: Request):
+    """Webhook Coinbase Commerce pour confirmer les paiements"""
+    try:
+        # Récupérer le payload brut
+        body = await request.body()
+        signature = request.headers.get("X-CC-Webhook-Signature", "")
+        
+        # Vérifier la signature (optionnel mais recommandé)
+        if COINBASE_WEBHOOK_SECRET:
+            expected_signature = hmac.new(
+                COINBASE_WEBHOOK_SECRET.encode(),
+                body,
+                hashlib.sha256
+            ).hexdigest()
+        
+        # Parser le JSON
+        payload = json.loads(body)
+        
+        if "event" not in payload:
+            return {"success": False, "message": "Payload invalide"}
+        
+        event = payload["event"]
+        event_type = event.get("type")
+        event_data = event.get("data", {})
+        
+        # Traiter les différents types d'événements
+        if event_type == "charge:confirmed":
+            charge_id = event_data.get("id")
+            update_payment_status(charge_id, "confirmed", datetime.now())
+            print(f"✅ Paiement confirmé: {charge_id}")
+            
+        elif event_type == "charge:failed":
+            charge_id = event_data.get("id")
+            update_payment_status(charge_id, "failed")
+            print(f"❌ Paiement échoué: {charge_id}")
+            
+        elif event_type == "charge:resolved":
+            charge_id = event_data.get("id")
+            update_payment_status(charge_id, "resolved", datetime.now())
+            print(f"✅ Paiement résolu: {charge_id}")
+            
+        elif event_type == "charge:created":
+            charge_id = event_data.get("id")
+            update_payment_status(charge_id, "created")
+            print(f"📝 Paiement créé: {charge_id}")
+        
+        return {"success": True, "message": "Webhook traité"}
+    
+    except Exception as e:
+        print(f"❌ Webhook erreur: {e}")
+        return {"success": False, "message": str(e)}
+
+@app.get("/api/payments")
+async def get_payments(token: Optional[str] = Cookie(None)):
+    """Liste tous les paiements de l'utilisateur"""
+    if not token:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    try:
+        username = token.split("|")[0]
+        conn = get_db_connection()
+        
+        if DB_CONFIG["type"] == "postgres":
+            c = conn.cursor(cursor_factory=RealDictCursor)
+            c.execute("SELECT * FROM payments WHERE user_id=%s ORDER BY created_at DESC", (username,))
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            c.execute("SELECT * FROM payments WHERE user_id=? ORDER BY created_at DESC", (username,))
+        
+        rows = c.fetchall()
+        conn.close()
+        
+        payments = [dict(r) for r in rows]
+        return {"success": True, "payments": payments}
+    except Exception as e:
+        print(f"❌ Get payments: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @app.post("/api/weekly-pnl/reset")
 async def reset_weekly_pnl_manual():

@@ -291,6 +291,53 @@ except Exception as e:
 
 app = FastAPI()
 
+# ===== ROUTE DE DEBUG =====
+@app.get("/debug-files")
+async def debug_files():
+    import os
+    files = os.listdir('/app')
+    
+    # Vérifier si les modules existent
+    subscription_exists = 'subscription_system.py' in files
+    admin_exists = 'admin_pricing.py' in files
+    
+    # Tester l'import
+    import_test = {}
+    try:
+        import subscription_system
+        import_test['subscription_system'] = '✅ Importable'
+    except Exception as e:
+        import_test['subscription_system'] = f'❌ {str(e)}'
+    
+    try:
+        import admin_pricing
+        import_test['admin_pricing'] = '✅ Importable'
+    except Exception as e:
+        import_test['admin_pricing'] = f'❌ {str(e)}'
+    
+    return {
+        "files_in_app": files,
+        "subscription_system_exists": subscription_exists,
+        "admin_pricing_exists": admin_exists,
+        "import_tests": import_test,
+        "SUBSCRIPTION_ENABLED": SUBSCRIPTION_ENABLED
+    }
+# ========================
+
+# ===== NOUVEAU: Monter les routeurs d'abonnement =====
+if SUBSCRIPTION_ENABLED:
+```
+
+---
+
+## 🚀 **PUIS:**
+
+1. **Commit** ce changement sur GitHub
+2. **Attendez** le redéploiement (2 minutes)
+3. **Ouvrez dans votre navigateur:**
+```
+https://tradingview-production-5763.up.railway.app/debug-files
+
 # ===== NOUVEAU: Monter les routeurs d'abonnement =====
 if SUBSCRIPTION_ENABLED:
     app.include_router(subscription_router)

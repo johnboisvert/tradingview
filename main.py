@@ -1,3 +1,12 @@
+# Test import (temporaire)
+try:
+    import subscription_system
+    print("✅ subscription_system importé avec succès!")
+except Exception as e:
+    print(f"❌ Erreur import subscription_system: {e}")
+    import traceback
+    traceback.print_exc()
+    
 # -*- coding: utf-8 -*-
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse

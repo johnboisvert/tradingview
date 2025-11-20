@@ -294,11 +294,14 @@ except Exception as e:
 app = FastAPI()
 
 # ===== NOUVEAU: Monter les routeurs d'abonnement =====
-app.include_router(subscription_router)
-app.include_router(admin_pricing_router)
+if SUBSCRIPTION_ENABLED:
+    app.include_router(subscription_router)
+    app.include_router(admin_pricing_router)
+    print("✅ Routes d'abonnement activées")
 # =====================================================
 
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware
+
 
 # 🔐 Middleware d'authentification
 @app.middleware("http")

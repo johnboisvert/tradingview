@@ -18460,20 +18460,6 @@ async def admin_activate_subscription(
         cursor.close()
         conn.close()
         
-        # Mettre à jour la session si c'est l'utilisateur connecté
-        user_session = request.cookies.get("session_token")
-        if user_session:
-            # Chercher l'utilisateur en session
-            user_info = get_user_from_token(user_session)
-            if user_info and user_info.get("username") == username:
-                # Mettre à jour les infos en mémoire
-                SESSIONS[user_session] = {
-                    **user_info,
-                    "subscription_plan": plan,
-                    "subscription_end": expiration_date.isoformat(),
-                    "payment_method": "MANUAL"
-                }
-        
         return JSONResponse({
             "success": True,
             "message": f"✅ Abonnement activé pour {username}",

@@ -2866,52 +2866,6 @@ CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Seg
 
 NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot Trading</a><a href="/calculatrice">🧮 Calculatrice</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/prediction-ia">🤖 Prédiction IA</a><a href="/ai-opportunity-scanner">🎯 AI Scanner</a><a href="/ai-market-regime">🌊 Market Regime</a><a href="/ai-whale-watcher">🐋 Whale Watcher</a><a href="/stats-dashboard">$ 📊 Stats Avancées $</a><a href="/market-simulation">📈 Simulation</a><a href="/success-stories">🌟 Success Stories</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a><a href="/pricing-complete">💎 Abonnements</a><a href="/admin-dashboard">👑 Admin</a><a href="/mon-compte">👤 Mon Compte</a><a href="/logout">🚪 Déconnexion</a></div>'
 
-# Middleware pour injecter automatiquement la NAV dans toutes les pages HTML
-@app.middleware("http")
-async def inject_nav_middleware(request: Request, call_next):
-    """Injecte automatiquement la navigation dans toutes les pages HTML"""
-    response = await call_next(request)
-    
-    # Vérifier si c'est une réponse HTML
-    content_type = response.headers.get("content-type", "")
-    if "text/html" in content_type:
-        # Lire le corps de la réponse
-        body = b""
-        async for chunk in response.body_iterator:
-            body += chunk
-        
-        try:
-            html = body.decode('utf-8')
-            
-            # Vérifier si la page n'a pas déjà la NAV et si c'est une page complète
-            if '<body' in html and NAV not in html and '<!DOCTYPE html>' in html:
-                # Injecter la NAV juste après <body> ou après le premier <div class="container">
-                if '<div class="container">' in html:
-                    html = html.replace('<div class="container">', f'<div class="container">{NAV}', 1)
-                elif '<body>' in html:
-                    html = html.replace('<body>', f'<body>{NAV}', 1)
-                elif '<body' in html:
-                    # Cas avec des attributs sur body
-                    import re
-                    html = re.sub(r'(<body[^>]*>)', r'\1' + NAV, html, count=1)
-            
-            # Créer une nouvelle réponse avec le HTML modifié
-            return Response(
-                content=html.encode('utf-8'),
-                status_code=response.status_code,
-                headers=dict(response.headers),
-                media_type="text/html"
-            )
-        except:
-            # En cas d'erreur, retourner la réponse originale
-            return Response(
-                content=body,
-                status_code=response.status_code,
-                headers=dict(response.headers)
-            )
-    
-    return response
-
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
     if price < 0.001:

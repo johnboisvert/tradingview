@@ -117,3 +117,9 @@ class PromoCodeManager:
             return True
         except:
             return False
+
+
+# Fonction standalone requise par main.py
+def create_promo_codes_table(conn):
+    """Fonction wrapper pour créer la table (compatibilité main.py)"""
+    return PromoCodeManager.create_table(conn)

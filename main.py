@@ -15312,8 +15312,8 @@ async def stripe_checkout(request: Request):
         
         # URLs
         base_url = "https://tradingview-production-5763.up.railway.app"
-        success_url = f"{base_url}/payment-success?plan={plan}"
-        cancel_url = f"{base_url}/payment-cancel?plan={plan}"
+        success_url = f"{base_url}/api/payment-success?plan={plan}"
+        cancel_url = f"{base_url}/api/payment-cancel?plan={plan}"
         
         # Créer session
         checkout_url, error = create_stripe_checkout_session(

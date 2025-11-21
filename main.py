@@ -18434,9 +18434,11 @@ async def admin_activate_subscription(
         expiration_date = datetime.now() + timedelta(days=valid_plans[plan])
         
         # Mettre à jour la base de données
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
         if USE_POSTGRESQL:
             # PostgreSQL
-            cursor = conn.cursor()
             cursor.execute("""
                 UPDATE users 
                 SET subscription_plan = %s,
@@ -18444,11 +18446,8 @@ async def admin_activate_subscription(
                     payment_method = 'MANUAL'
                 WHERE username = %s
             """, (plan, expiration_date, username))
-            conn.commit()
-            cursor.close()
         else:
             # SQLite
-            cursor = sqlite_conn.cursor()
             cursor.execute("""
                 UPDATE users 
                 SET subscription_plan = ?,
@@ -18456,8 +18455,10 @@ async def admin_activate_subscription(
                     payment_method = 'MANUAL'
                 WHERE username = ?
             """, (plan, expiration_date.isoformat(), username))
-            sqlite_conn.commit()
-            cursor.close()
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
         
         # Mettre à jour la session si c'est l'utilisateur connecté
         user_session = request.cookies.get("session_token")

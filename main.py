@@ -15358,6 +15358,28 @@ async def coinbase_checkout(request: Request):
                 "success": False,
                 "message": "Payment system non disponible"
             }, status_code=500)
+        
+        # Créer charge Coinbase
+        checkout_url, error = create_coinbase_charge(plan, email)
+        
+        if error:
+            return JSONResponse({
+                "success": False,
+                "message": error
+            }, status_code=400)
+        
+        print(f"✅ Charge Coinbase créée: {plan} pour {email}")
+        return JSONResponse({
+            "success": True,
+            "checkout_url": checkout_url
+        })
+    
+    except Exception as e:
+        print(f"❌ Coinbase error: {e}")
+        return JSONResponse({
+            "success": False,
+            "message": str(e)
+        }, status_code=500)
 
 @app.get("/api/payment-success")
 async def payment_success(request: Request, plan: str = "monthly"):
@@ -15536,41 +15558,6 @@ async def payment_cancel(request: Request, plan: str = "monthly"):
     </body>
     </html>
     """)
-        
-        # Créer paiement
-        charge, error = create_coinbase_payment(plan, email, coinbase_client)
-        
-        if error:
-            return JSONResponse({
-                "success": False,
-                "message": error
-            }, status_code=400)
-        
-        print(f"✅ Paiement Coinbase créé: {plan} pour {email}")
-        
-        # Construire la réponse
-        response_data = {
-            "success": True,
-            "charge_id": charge.id,
-            "hosted_url": charge.hosted_url,
-            "plan": plan
-        }
-        
-        # Ajouter address si elle existe
-        if hasattr(charge, 'address') and charge.address:
-            response_data["address"] = charge.address
-        
-        print(f"📊 Réponse Coinbase: {response_data}")
-        return JSONResponse(response_data)
-    
-    except Exception as e:
-        print(f"❌ Coinbase error: {e}")
-        import traceback
-        traceback.print_exc()
-        return JSONResponse({
-            "success": False,
-            "message": str(e)
-        }, status_code=500)
 
 @app.post("/api/test-payment")
 async def test_payment(request: Request):

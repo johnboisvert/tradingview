@@ -6,6 +6,21 @@ from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
+
+# Imports pour système d'emails et codes promo
+try:
+    from email_service import email_service
+    EMAIL_SERVICE_AVAILABLE = True
+except ImportError:
+    EMAIL_SERVICE_AVAILABLE = False
+    print("⚠️  email_service non disponible")
+
+try:
+    from promo_codes import PromoCodeManager, create_promo_codes_table
+    PROMO_CODES_AVAILABLE = True
+except ImportError:
+    PROMO_CODES_AVAILABLE = False
+    print("⚠️  promo_codes non disponible")
 import pytz
 import random
 import os
@@ -106,7 +121,12 @@ if COINBASE_AVAILABLE and COINBASE_API_KEY and Client:
 # ============================================================================
 
 def create_coinbase_payment(plan, email, client):
-    """Crée un paiement Coinbase Commerce"""
+    """Crée un paiement Coinbase Commerce
+    
+    NOTE: Les cryptos acceptées (BTC, ETH, USDT, etc.) sont configurées 
+    dans votre dashboard Coinbase Commerce, pas dans l'API.
+    Allez sur: https://commerce.coinbase.com/dashboard/settings
+    """
     try:
         if not client:
             return None, "Coinbase client non initialisé"
@@ -136,9 +156,11 @@ def create_coinbase_payment(plan, email, client):
         plan_info = plan_prices.get(normalized_plan, plan_prices['1_month'])
         
         # Créer la charge Coinbase
+        # NOTE: Les cryptos acceptées sont configurées au niveau du compte Coinbase
+        # Par défaut: BTC, ETH, USDC, USDT, BCH, DAI, DOGE, LTC
         charge_info = {
             'name': f'Trading Dashboard Pro - {plan_info["name"]}',
-            'description': f'Abonnement {plan_info["duration"]} - Tous les indicateurs IA, Trades illimités, Support premium',
+            'description': f'Abonnement {plan_info["duration"]} - Tous les indicateurs IA, Trades illimités, Support premium. Accepte: BTC, ETH, USDT, USDC',
             'pricing_type': 'fixed_price',
             'local_price': {
                 'amount': str(plan_info['amount']),
@@ -153,6 +175,7 @@ def create_coinbase_payment(plan, email, client):
         }
         
         print(f"🔵 Création charge Coinbase: {plan} -> {normalized_plan} = ${plan_info['amount']}")
+        print(f"💰 Cryptos acceptées: BTC, ETH, USDT, USDC (selon config Coinbase Commerce)")
         charge = client.charge.create(**charge_info)
         print(f"✅ Charge créée: {charge.id} - URL: {charge.hosted_url}")
         return charge, None
@@ -706,7 +729,12 @@ async def auth_middleware(request: Request, call_next):
         "/test-webhook-stripe",
         "/webhook/stripe-permissions",
         "/webhook/coinbase-permissions",
-        "/webhook/stripe-permissions-debug"
+        "/webhook/stripe-permissions-debug",
+        "/admin/init-promo-table",
+        "/admin/create-promo",
+        "/admin/list-promos",
+        "/admin/test-promo",
+        "/admin/create-launch-promos"
     ]
     
     # Si c'est une route publique, laisser passer
@@ -19277,6 +19305,363 @@ async def admin_dashboard(request: Request):
     </body>
     </html>
     """)
+
+# ==============================================================================
+# 💰 ROUTES ADMIN CODES PROMO
+# ==============================================================================
+
+@app.get("/admin/init-promo-table")
+async def admin_init_promo_table(session_token: Optional[str] = Cookie(None)):
+    """Initialise la table promo_codes (à exécuter une seule fois)"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return JSONResponse({"error": "Non authentifié"}, status_code=401)
+    
+    if not PROMO_CODES_AVAILABLE:
+        return JSONResponse({
+            "success": False,
+            "message": "❌ Module promo_codes non disponible"
+        }, status_code=500)
+    
+    try:
+        conn = get_db_connection()
+        create_promo_codes_table(conn)
+        conn.close()
+        return JSONResponse({
+            "success": True,
+            "message": "✅ Table promo_codes créée avec succès!"
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "message": f"❌ Erreur: {str(e)}"
+        }, status_code=500)
+
+
+@app.get("/admin/create-launch-promos")
+async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)):
+    """Crée automatiquement 5 codes promo de lancement"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return JSONResponse({"error": "Non authentifié"}, status_code=401)
+    
+    if not PROMO_CODES_AVAILABLE:
+        return JSONResponse({
+            "success": False,
+            "message": "❌ Module promo_codes non disponible"
+        }, status_code=500)
+    
+    try:
+        conn = get_db_connection()
+        create_promo_codes_table(conn)
+        
+        codes_created = []
+        
+        # Code 1: LAUNCH20 - 20% pour tous
+        success, msg = PromoCodeManager.create_promo_code(
+            conn, "LAUNCH20", "percent", 20,
+            description="Lancement: 20% de réduction"
+        )
+        if success: codes_created.append("LAUNCH20 (20% off)")
+        
+        # Code 2: WELCOME10 - $10 de réduction
+        success, msg = PromoCodeManager.create_promo_code(
+            conn, "WELCOME10", "fixed", 10.00,
+            description="Bienvenue: $10 de réduction"
+        )
+        if success: codes_created.append("WELCOME10 ($10 off)")
+        
+        # Code 3: FIRSTBUY - 25% premier achat, 50 max
+        success, msg = PromoCodeManager.create_promo_code(
+            conn, "FIRSTBUY", "percent", 25,
+            max_uses=50,
+            description="Premier achat: 25% off (50 max)"
+        )
+        if success: codes_created.append("FIRSTBUY (25% off, 50 max)")
+        
+        # Code 4: LONGTERM30 - 30% pour plans longs
+        success, msg = PromoCodeManager.create_promo_code(
+            conn, "LONGTERM30", "percent", 30,
+            plans="6_months,1_year",
+            description="Plans longs: 30% off"
+        )
+        if success: codes_created.append("LONGTERM30 (30% off plans 6m+)")
+        
+        # Code 5: FLASH50 - Flash sale 7 jours
+        success, msg = PromoCodeManager.create_promo_code(
+            conn, "FLASH50", "percent", 50,
+            expires_at=datetime.now() + timedelta(days=7),
+            min_amount=50.00,
+            description="Flash Sale: 50% off (min $50, 7 jours)"
+        )
+        if success: codes_created.append("FLASH50 (50% off, min $50, 7j)")
+        
+        conn.close()
+        
+        return JSONResponse({
+            "success": True,
+            "message": "✅ Codes de lancement créés!",
+            "codes": codes_created,
+            "total": len(codes_created)
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "message": f"❌ Erreur: {str(e)}"
+        }, status_code=500)
+
+
+@app.get("/admin/create-promo")
+async def admin_create_promo(
+    code: str,
+    discount_type: str,
+    discount_value: float,
+    max_uses: Optional[int] = None,
+    expires_days: Optional[int] = None,
+    min_amount: Optional[float] = None,
+    plans: Optional[str] = None,
+    description: str = "",
+    session_token: Optional[str] = Cookie(None)
+):
+    """Crée un code promo personnalisé via URL"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return JSONResponse({"error": "Non authentifié"}, status_code=401)
+    
+    if not PROMO_CODES_AVAILABLE:
+        return JSONResponse({
+            "success": False,
+            "message": "❌ Module promo_codes non disponible"
+        }, status_code=500)
+    
+    try:
+        conn = get_db_connection()
+        
+        expires_at = None
+        if expires_days:
+            expires_at = datetime.now() + timedelta(days=expires_days)
+        
+        success, message = PromoCodeManager.create_promo_code(
+            conn, code, discount_type, discount_value,
+            max_uses, expires_at, min_amount, plans, description
+        )
+        
+        conn.close()
+        
+        if success:
+            symbol = '%' if discount_type == 'percent' else '$'
+            return JSONResponse({
+                "success": True,
+                "message": f"✅ Code {code.upper()} créé!",
+                "code": code.upper(),
+                "discount": f"{discount_value}{symbol}"
+            })
+        else:
+            return JSONResponse({
+                "success": False,
+                "message": f"❌ {message}"
+            }, status_code=400)
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "message": f"❌ Erreur: {str(e)}"
+        }, status_code=500)
+
+
+@app.get("/admin/list-promos", response_class=HTMLResponse)
+async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
+    """Page admin: liste tous les codes promo avec stats"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return RedirectResponse("/login")
+    
+    if not PROMO_CODES_AVAILABLE:
+        return HTMLResponse("<h1>❌ Module promo_codes non disponible</h1>")
+    
+    try:
+        conn = get_db_connection()
+        codes = PromoCodeManager.get_all_promo_codes(conn)
+        stats = PromoCodeManager.get_promo_stats(conn)
+        conn.close()
+        
+        codes_html = ""
+        for code_data in codes:
+            (code, dtype, value, max_u, curr_u, expires, min_amt, 
+             plans, desc, is_active, created, last_used) = code_data
+            
+            symbol = '%' if dtype == 'percent' else '$'
+            uses_str = f"{curr_u}/{max_u if max_u else '∞'}"
+            status = "✅" if is_active else "❌"
+            expires_str = expires[:10] if expires else "Jamais"
+            
+            codes_html += f"""
+            <tr>
+                <td><strong>{code}</strong></td>
+                <td><span style="color: #10b981; font-weight: bold;">{value}{symbol}</span></td>
+                <td>{uses_str}</td>
+                <td>{status}</td>
+                <td>{expires_str}</td>
+                <td style="font-size: 12px;">{plans or 'Tous'}</td>
+                <td style="font-size: 12px;">{desc}</td>
+            </tr>
+            """
+        
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>💰 Codes Promo - Admin</title>
+            <style>
+                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                body {{ font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; padding: 20px; }}
+                .container {{ max-width: 1400px; margin: 0 auto; }}
+                h1 {{ color: #60a5fa; margin-bottom: 30px; }}
+                .stats {{
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                    margin: 20px 0;
+                }}
+                .stat-card {{
+                    background: #1e293b;
+                    padding: 20px;
+                    border-radius: 8px;
+                    border-left: 4px solid #60a5fa;
+                }}
+                .stat-card h3 {{ margin: 0 0 10px 0; font-size: 14px; color: #94a3b8; }}
+                .stat-card p {{ margin: 0; font-size: 28px; font-weight: bold; color: #10b981; }}
+                .buttons {{ margin: 20px 0; }}
+                .btn {{
+                    display: inline-block;
+                    padding: 12px 24px;
+                    background: #3b82f6;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 8px;
+                    margin: 5px;
+                    font-weight: 600;
+                }}
+                .btn:hover {{ background: #2563eb; }}
+                .btn-back {{ background: #6b7280; }}
+                table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    background: #1e293b;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    margin-top: 20px;
+                }}
+                th {{
+                    background: #334155;
+                    padding: 12px;
+                    text-align: left;
+                    font-weight: 600;
+                    font-size: 14px;
+                }}
+                td {{
+                    padding: 12px;
+                    border-bottom: 1px solid #334155;
+                }}
+                tr:hover {{ background: #334155; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                {NAV}
+                
+                <h1>💰 Gestion des Codes Promo</h1>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <h3>Total Codes</h3>
+                        <p>{stats.get('total_codes', 0)}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Codes Actifs</h3>
+                        <p>{stats.get('active_codes', 0)}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Utilisations</h3>
+                        <p>{stats.get('total_uses', 0)}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Plus Utilisé</h3>
+                        <p style="font-size: 20px;">{stats.get('most_used_code', 'N/A')}</p>
+                    </div>
+                </div>
+                
+                <div class="buttons">
+                    <a href="/admin/create-launch-promos" class="btn">
+                        ✨ Créer Codes de Lancement
+                    </a>
+                    <a href="/admin-dashboard" class="btn btn-back">
+                        ← Retour Admin
+                    </a>
+                </div>
+                
+                <h2 style="color: #94a3b8; margin-top: 30px;">📋 Liste des Codes</h2>
+                <table>
+                    <tr>
+                        <th>Code</th>
+                        <th>Réduction</th>
+                        <th>Utilisations</th>
+                        <th>Actif</th>
+                        <th>Expire</th>
+                        <th>Plans</th>
+                        <th>Description</th>
+                    </tr>
+                    {codes_html if codes_html else '<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 30px;">Aucun code promo créé</td></tr>'}
+                </table>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return HTMLResponse(html)
+    except Exception as e:
+        return HTMLResponse(f"<h1>❌ Erreur: {str(e)}</h1>")
+
+
+@app.get("/admin/test-promo")
+async def admin_test_promo(
+    code: str,
+    plan: str = "1_month",
+    amount: float = 29.99,
+    session_token: Optional[str] = Cookie(None)
+):
+    """Teste la validation d'un code promo"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return JSONResponse({"error": "Non authentifié"}, status_code=401)
+    
+    if not PROMO_CODES_AVAILABLE:
+        return JSONResponse({
+            "success": False,
+            "message": "❌ Module promo_codes non disponible"
+        }, status_code=500)
+    
+    try:
+        conn = get_db_connection()
+        valid, message, discount = PromoCodeManager.validate_promo_code(
+            conn, code, plan, amount
+        )
+        conn.close()
+        
+        return JSONResponse({
+            "valid": valid,
+            "message": message,
+            "original_amount": amount,
+            "discount": discount,
+            "final_amount": amount - discount if discount else amount,
+            "code": code.upper(),
+            "savings": f"${discount:.2f}" if discount else "$0.00"
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "message": f"❌ Erreur: {str(e)}"
+        }, status_code=500)
+
 
 if __name__ == "__main__":
     import uvicorn

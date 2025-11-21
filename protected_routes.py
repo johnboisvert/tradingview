@@ -5,7 +5,6 @@ Exemples d'intégration du middleware de permissions
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 from permissions_system import (
     Feature, 
     PermissionManager, 
@@ -16,7 +15,16 @@ from permissions_system import (
 from datetime import datetime
 
 router = APIRouter()
-templates = Jinja2Templates(directory="templates")
+
+# Templates Jinja2 (optionnel)
+try:
+    from fastapi.templating import Jinja2Templates
+    templates = Jinja2Templates(directory="templates")
+    TEMPLATES_AVAILABLE = True
+except:
+    templates = None
+    TEMPLATES_AVAILABLE = False
+    print("⚠️  Jinja2 non disponible - templates désactivés")
 
 # ============================================================================
 # ROUTES PROTÉGÉES PAR PERMISSIONS
@@ -122,47 +130,53 @@ async def backtesting(
 # DASHBOARD AVEC FEATURES CONDITIONNELLES
 # ============================================================================
 
-@router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_with_permissions(request: Request):
-    """Dashboard principal avec vérification des permissions pour chaque section"""
-    
-    user = request.session.get("user")
-    if not user:
-        return templates.TemplateResponse("login.html", {
-            "request": request,
-            "error": "Veuillez vous connecter"
-        })
-    
-    # Vérifier l'accès à chaque feature
-    features_status = {
-        "basic_dashboard": check_feature_access(user, Feature.BASIC_DASHBOARD),
-        "fear_greed": check_feature_access(user, Feature.FEAR_GREED_CURRENT),
-        "fear_greed_history_6m": check_feature_access(user, Feature.FEAR_GREED_HISTORY_6M),
-        "fear_greed_history_12m": check_feature_access(user, Feature.FEAR_GREED_HISTORY_12M),
-        "tradingview_webhooks": check_feature_access(user, Feature.TRADINGVIEW_WEBHOOKS),
-        "telegram_alerts": check_feature_access(user, Feature.TELEGRAM_ALERTS),
-        "ai_predictions": check_feature_access(user, Feature.AI_PREDICTIONS),
-        "whale_alerts": check_feature_access(user, Feature.WHALE_ALERTS),
-        "advanced_analytics": check_feature_access(user, Feature.ADVANCED_ANALYTICS),
-        "backtesting": check_feature_access(user, Feature.BACKTESTING),
-        "api_access": check_feature_access(user, Feature.API_ACCESS),
-    }
-    
-    # Infos sur l'abonnement
-    subscription_info = {
-        "plan": user.get("subscription_plan", SubscriptionPlan.FREE),
-        "plan_name": PermissionManager.get_plan_name(user.get("subscription_plan", SubscriptionPlan.FREE)),
-        "is_active": PermissionManager.is_subscription_active(user.get("subscription_end")),
-        "end_date": user.get("subscription_end"),
-        "features_count": len(PermissionManager.get_user_features(user.get("subscription_plan", SubscriptionPlan.FREE)))
-    }
-    
-    return templates.TemplateResponse("dashboard_with_permissions.html", {
-        "request": request,
-        "user": user,
-        "features": features_status,
-        "subscription": subscription_info
-    })
+# 🆕 TEMPORAIRE: Commenté car nécessite Jinja2
+# Décommenter après avoir ajouté jinja2 dans requirements.txt
+
+# @router.get("/dashboard-permissions", response_class=HTMLResponse)
+# async def dashboard_with_permissions(request: Request):
+#     """Dashboard principal avec vérification des permissions pour chaque section"""
+#     
+#     if not TEMPLATES_AVAILABLE:
+#         return JSONResponse({"error": "Templates non disponibles"}, status_code=503)
+#     
+#     user = request.session.get("user")
+#     if not user:
+#         return templates.TemplateResponse("login.html", {
+#             "request": request,
+#             "error": "Veuillez vous connecter"
+#         })
+#     
+#     # Vérifier l'accès à chaque feature
+#     features_status = {
+#         "basic_dashboard": check_feature_access(user, Feature.BASIC_DASHBOARD),
+#         "fear_greed": check_feature_access(user, Feature.FEAR_GREED_CURRENT),
+#         "fear_greed_history_6m": check_feature_access(user, Feature.FEAR_GREED_HISTORY_6M),
+#         "fear_greed_history_12m": check_feature_access(user, Feature.FEAR_GREED_HISTORY_12M),
+#         "tradingview_webhooks": check_feature_access(user, Feature.TRADINGVIEW_WEBHOOKS),
+#         "telegram_alerts": check_feature_access(user, Feature.TELEGRAM_ALERTS),
+#         "ai_predictions": check_feature_access(user, Feature.AI_PREDICTIONS),
+#         "whale_alerts": check_feature_access(user, Feature.WHALE_ALERTS),
+#         "advanced_analytics": check_feature_access(user, Feature.ADVANCED_ANALYTICS),
+#         "backtesting": check_feature_access(user, Feature.BACKTESTING),
+#         "api_access": check_feature_access(user, Feature.API_ACCESS),
+#     }
+#     
+#     # Infos sur l'abonnement
+#     subscription_info = {
+#         "plan": user.get("subscription_plan", SubscriptionPlan.FREE),
+#         "plan_name": PermissionManager.get_plan_name(user.get("subscription_plan", SubscriptionPlan.FREE)),
+#         "is_active": PermissionManager.is_subscription_active(user.get("subscription_end")),
+#         "end_date": user.get("subscription_end"),
+#         "features_count": len(PermissionManager.get_user_features(user.get("subscription_plan", SubscriptionPlan.FREE)))
+#     }
+#     
+#     return templates.TemplateResponse("dashboard_with_permissions.html", {
+#         "request": request,
+#         "user": user,
+#         "features": features_status,
+#         "subscription": subscription_info
+#     })
 
 # ============================================================================
 # API DE VÉRIFICATION DES PERMISSIONS (pour JavaScript)
@@ -267,41 +281,45 @@ async def permission_denied_handler(request: Request, exc):
         )
     else:
         # Rediriger vers la page pricing pour les routes HTML
-        return templates.TemplateResponse("upgrade_required.html", {
-            "request": request,
-            "error": exc.detail if hasattr(exc, 'detail') else None
-        }, status_code=403)
+        from fastapi.responses import RedirectResponse
+        return RedirectResponse(url="/pricing-complete?upgrade=required", status_code=303)
 
 # ============================================================================
 # HELPERS POUR LES TEMPLATES JINJA2
 # ============================================================================
 
-def register_template_functions(templates: Jinja2Templates):
+def register_template_functions(templates):
     """Enregistre les fonctions helper pour les templates"""
     
-    @templates.env.globals['has_feature']
-    def template_has_feature(user: dict, feature_name: str) -> bool:
-        """Vérifie si l'utilisateur a accès à une feature (pour templates)"""
-        try:
-            feature = Feature(feature_name)
-            user_plan = user.get("subscription_plan", SubscriptionPlan.FREE)
-            return PermissionManager.has_feature(user_plan, feature)
-        except:
-            return False
+    if not templates or not TEMPLATES_AVAILABLE:
+        return
     
-    @templates.env.globals['get_upgrade_message']
-    def template_upgrade_message(user: dict, feature_name: str) -> dict:
-        """Récupère le message d'upgrade pour une feature (pour templates)"""
-        try:
-            feature = Feature(feature_name)
-            return check_feature_access(user, feature)
-        except:
-            return {"has_access": False, "upgrade_info": None}
-    
-    @templates.env.globals['format_plan_name']
-    def template_format_plan(plan: str) -> str:
-        """Formate le nom du plan en français"""
-        return PermissionManager.get_plan_name(plan)
+    try:
+        @templates.env.globals['has_feature']
+        def template_has_feature(user: dict, feature_name: str) -> bool:
+            """Vérifie si l'utilisateur a accès à une feature (pour templates)"""
+            try:
+                feature = Feature(feature_name)
+                user_plan = user.get("subscription_plan", SubscriptionPlan.FREE)
+                return PermissionManager.has_feature(user_plan, feature)
+            except:
+                return False
+        
+        @templates.env.globals['get_upgrade_message']
+        def template_upgrade_message(user: dict, feature_name: str) -> dict:
+            """Récupère le message d'upgrade pour une feature (pour templates)"""
+            try:
+                feature = Feature(feature_name)
+                return check_feature_access(user, feature)
+            except:
+                return {"has_access": False, "upgrade_info": None}
+        
+        @templates.env.globals['format_plan_name']
+        def template_format_plan(plan: str) -> str:
+            """Formate le nom du plan en français"""
+            return PermissionManager.get_plan_name(plan)
+    except Exception as e:
+        print(f"⚠️  Erreur enregistrement template functions: {e}")
 
 # Export du router
 __all__ = ['router', 'register_template_functions']

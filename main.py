@@ -689,7 +689,25 @@ app.add_middleware(
 async def auth_middleware(request: Request, call_next):
     """Vérifier l'authentification sur toutes les routes sauf /login"""
     # Routes publiques (pas besoin d'authentification)
-    public_paths = ["/login", "/health", "/tv-webhook", "/debug-files", "/pricing", "/pricing-new", "/pricing-complete", "/api/test-payment", "/api/stripe-checkout", "/api/coinbase-checkout", "/api/payment-success", "/api/payment-cancel", "/admin/pricing", "/test-webhook-stripe"]
+    public_paths = [
+        "/login", 
+        "/health", 
+        "/tv-webhook", 
+        "/debug-files", 
+        "/pricing", 
+        "/pricing-new", 
+        "/pricing-complete", 
+        "/api/test-payment", 
+        "/api/stripe-checkout", 
+        "/api/coinbase-checkout", 
+        "/api/payment-success", 
+        "/api/payment-cancel", 
+        "/admin/pricing", 
+        "/test-webhook-stripe",
+        "/webhook/stripe-permissions",
+        "/webhook/coinbase-permissions",
+        "/webhook/stripe-permissions-debug"
+    ]
     
     # Si c'est une route publique, laisser passer
     if any(request.url.path.startswith(path) for path in public_paths):
@@ -18468,18 +18486,22 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
 @app.post("/webhook/stripe-permissions")
 async def stripe_permissions_webhook(request: Request):
-    """Webhook Stripe pour activer les abonnements automatiquement"""
+    """Webhook Stripe pour activer les abonnements automatiquement - VERSION AMÉLIORÉE"""
     
     if not STRIPE_AVAILABLE:
+        print("❌ Stripe non disponible")
         return JSONResponse({"error": "Stripe non disponible"}, status_code=503)
     
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
     
+    print(f"🔵 Webhook Stripe reçu - Signature: {sig_header[:20]}...")
+    
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, STRIPE_WEBHOOK_SECRET
         )
+        print(f"✅ Signature validée - Type: {event['type']}")
     except Exception as e:
         print(f"❌ Erreur webhook signature: {e}")
         return JSONResponse({"error": str(e)}, status_code=400)
@@ -18489,22 +18511,48 @@ async def stripe_permissions_webhook(request: Request):
         session = event["data"]["object"]
         
         customer_email = session.get("customer_email")
-        plan = session["metadata"].get("plan", "1_month")
+        plan_raw = session["metadata"].get("plan", "1_month")
         username = session["metadata"].get("username") or customer_email
         
-        if username and plan:
-            start_date = datetime.now()
-            duration_days = {
-                "1_month": 30,
-                "3_months": 90,
-                "6_months": 180,
-                "1_year": 365,
-            }
-            end_date = start_date + timedelta(days=duration_days.get(plan, 30))
-            
-            conn = get_db_connection()
-            c = conn.cursor()
-            
+        print(f"🔵 Checkout complété:")
+        print(f"   Email: {customer_email}")
+        print(f"   Plan brut: {plan_raw}")
+        print(f"   Username: {username}")
+        
+        if not username or not plan_raw:
+            print("❌ Données manquantes - Abonnement non activé")
+            return JSONResponse({"error": "Données manquantes"}, status_code=400)
+        
+        # Normaliser le plan
+        plan_mapping = {
+            'monthly': '1_month',
+            '1_month': '1_month',
+            '3months': '3_months',
+            '3_months': '3_months',
+            '6months': '6_months',
+            '6_months': '6_months',
+            'yearly': '1_year',
+            '1_year': '1_year'
+        }
+        plan = plan_mapping.get(plan_raw.lower(), '1_month')
+        
+        # Calculer les dates
+        start_date = datetime.now()
+        duration_days = {
+            "1_month": 30,
+            "3_months": 90,
+            "6_months": 180,
+            "1_year": 365,
+        }
+        end_date = start_date + timedelta(days=duration_days.get(plan, 30))
+        
+        print(f"✅ Plan normalisé: {plan_raw} -> {plan}")
+        print(f"📅 Dates: {start_date.date()} -> {end_date.date()}")
+        
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        try:
             if DB_CONFIG["type"] == "postgres":
                 c.execute("""
                     UPDATE users 
@@ -18514,10 +18562,11 @@ async def stripe_permissions_webhook(request: Request):
                         stripe_customer_id = %s,
                         stripe_subscription_id = %s,
                         payment_method = 'stripe',
-                        last_payment_date = %s
+                        last_payment_date = %s,
+                        email = COALESCE(email, %s)
                     WHERE username = %s
-                """, (plan, start_date, end_date, session["customer"], 
-                     session.get("subscription"), start_date, username))
+                """, (plan, start_date, end_date, session.get("customer"), 
+                     session.get("subscription"), start_date, customer_email, username))
             else:
                 c.execute("""
                     UPDATE users 
@@ -18527,19 +18576,57 @@ async def stripe_permissions_webhook(request: Request):
                         stripe_customer_id = ?,
                         stripe_subscription_id = ?,
                         payment_method = 'stripe',
-                        last_payment_date = ?
+                        last_payment_date = ?,
+                        email = COALESCE(email, ?)
                     WHERE username = ?
-                """, (plan, start_date.isoformat(), end_date.isoformat(), session["customer"], 
-                     session.get("subscription"), start_date.isoformat(), username))
+                """, (plan, start_date.isoformat(), end_date.isoformat(), session.get("customer"), 
+                     session.get("subscription"), start_date.isoformat(), customer_email, username))
+            
+            if c.rowcount == 0:
+                # Utilisateur n'existe pas - créer un compte
+                print(f"⚠️  Utilisateur {username} n'existe pas - Création...")
+                password_hash = "STRIPE_USER_" + str(session.get("customer"))  # Mot de passe temporaire
+                
+                if DB_CONFIG["type"] == "postgres":
+                    c.execute("""
+                        INSERT INTO users (username, password, email, subscription_plan, 
+                                         subscription_start, subscription_end, 
+                                         stripe_customer_id, payment_method, last_payment_date)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, 'stripe', %s)
+                    """, (username, password_hash, customer_email, plan, 
+                         start_date, end_date, session.get("customer"), start_date))
+                else:
+                    c.execute("""
+                        INSERT INTO users (username, password, email, subscription_plan, 
+                                         subscription_start, subscription_end, 
+                                         stripe_customer_id, payment_method, last_payment_date)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'stripe', ?)
+                    """, (username, password_hash, customer_email, plan, 
+                         start_date.isoformat(), end_date.isoformat(), 
+                         session.get("customer"), start_date.isoformat()))
+                
+                print(f"✅ Compte créé pour {username}")
             
             conn.commit()
-            conn.close()
             
-            print(f"✅ Abonnement Stripe activé: {username} → {plan} (expire: {end_date})")
+            print(f"✅✅✅ ABONNEMENT STRIPE ACTIVÉ!")
+            print(f"   Utilisateur: {username}")
+            print(f"   Email: {customer_email}")
+            print(f"   Plan: {plan}")
+            print(f"   Expire: {end_date.date()}")
+            print(f"   Durée: {duration_days.get(plan, 30)} jours")
+            
+        except Exception as e:
+            print(f"❌ Erreur SQL: {e}")
+            conn.rollback()
+        finally:
+            conn.close()
     
     elif event["type"] == "customer.subscription.deleted":
         subscription = event["data"]["object"]
         customer_id = subscription["customer"]
+        
+        print(f"🔴 Abonnement Stripe annulé - Customer: {customer_id}")
         
         conn = get_db_connection()
         c = conn.cursor()
@@ -18560,42 +18647,82 @@ async def stripe_permissions_webhook(request: Request):
                 c.execute("UPDATE users SET subscription_plan = 'free', subscription_end = ? WHERE username = ?",
                          (datetime.now().isoformat(), username))
             conn.commit()
-            print(f"⚠️  Abonnement Stripe annulé: {username} → FREE")
+            print(f"⚠️  Abonnement annulé: {username} → FREE")
+        else:
+            print(f"⚠️  Utilisateur non trouvé pour customer_id: {customer_id}")
         
         conn.close()
+    
+    else:
+        print(f"ℹ️  Événement ignoré: {event['type']}")
     
     return JSONResponse({"success": True})
 
 
 @app.post("/webhook/coinbase-permissions")
 async def coinbase_permissions_webhook(request: Request):
-    """Webhook Coinbase pour activer les abonnements crypto"""
+    """Webhook Coinbase pour activer les abonnements crypto - VERSION AMÉLIORÉE"""
     
     if not COINBASE_AVAILABLE:
+        print("❌ Coinbase non disponible")
         return JSONResponse({"error": "Coinbase non disponible"}, status_code=503)
     
     payload = await request.json()
     event_type = payload.get("event", {}).get("type")
     
+    print(f"🔵 Webhook Coinbase reçu - Type: {event_type}")
+    print(f"📦 Payload: {payload}")
+    
     if event_type == "charge:confirmed":
         charge = payload["event"]["data"]
         metadata = charge.get("metadata", {})
-        username = metadata.get("username")
-        plan = metadata.get("plan", "1_month")
         
-        if username and plan:
-            start_date = datetime.now()
-            duration_days = {
-                "1_month": 30,
-                "3_months": 90,
-                "6_months": 180,
-                "1_year": 365,
-            }
-            end_date = start_date + timedelta(days=duration_days.get(plan, 30))
-            
-            conn = get_db_connection()
-            c = conn.cursor()
-            
+        # Essayer de récupérer l'email depuis plusieurs sources
+        customer_email = metadata.get("email") or charge.get("customer_email")
+        plan_raw = metadata.get("plan") or metadata.get("original_plan", "1_month")
+        username = metadata.get("username") or customer_email
+        
+        print(f"🔵 Charge confirmée:")
+        print(f"   Charge ID: {charge.get('id')}")
+        print(f"   Email: {customer_email}")
+        print(f"   Plan brut: {plan_raw}")
+        print(f"   Username: {username}")
+        print(f"   Montant: {charge.get('pricing', {}).get('local', {}).get('amount')} USD")
+        
+        if not username or not plan_raw:
+            print("❌ Données manquantes - Abonnement non activé")
+            return JSONResponse({"error": "Données manquantes"}, status_code=400)
+        
+        # Normaliser le plan
+        plan_mapping = {
+            'monthly': '1_month',
+            '1_month': '1_month',
+            '3months': '3_months',
+            '3_months': '3_months',
+            '6months': '6_months',
+            '6_months': '6_months',
+            'yearly': '1_year',
+            '1_year': '1_year'
+        }
+        plan = plan_mapping.get(plan_raw.lower(), '1_month')
+        
+        # Calculer les dates
+        start_date = datetime.now()
+        duration_days = {
+            "1_month": 30,
+            "3_months": 90,
+            "6_months": 180,
+            "1_year": 365,
+        }
+        end_date = start_date + timedelta(days=duration_days.get(plan, 30))
+        
+        print(f"✅ Plan normalisé: {plan_raw} -> {plan}")
+        print(f"📅 Dates: {start_date.date()} -> {end_date.date()}")
+        
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        try:
             if DB_CONFIG["type"] == "postgres":
                 c.execute("""
                     UPDATE users 
@@ -18604,9 +18731,10 @@ async def coinbase_permissions_webhook(request: Request):
                         subscription_end = %s,
                         coinbase_customer_id = %s,
                         payment_method = 'coinbase',
-                        last_payment_date = %s
+                        last_payment_date = %s,
+                        email = COALESCE(email, %s)
                     WHERE username = %s
-                """, (plan, start_date, end_date, charge["id"], start_date, username))
+                """, (plan, start_date, end_date, charge["id"], start_date, customer_email, username))
             else:
                 c.execute("""
                     UPDATE users 
@@ -18615,15 +18743,63 @@ async def coinbase_permissions_webhook(request: Request):
                         subscription_end = ?,
                         coinbase_customer_id = ?,
                         payment_method = 'coinbase',
-                        last_payment_date = ?
+                        last_payment_date = ?,
+                        email = COALESCE(email, ?)
                     WHERE username = ?
                 """, (plan, start_date.isoformat(), end_date.isoformat(), charge["id"], 
-                     start_date.isoformat(), username))
+                     start_date.isoformat(), customer_email, username))
+            
+            if c.rowcount == 0:
+                # Utilisateur n'existe pas - créer un compte
+                print(f"⚠️  Utilisateur {username} n'existe pas - Création...")
+                password_hash = "COINBASE_USER_" + str(charge["id"])[:20]  # Mot de passe temporaire
+                
+                if DB_CONFIG["type"] == "postgres":
+                    c.execute("""
+                        INSERT INTO users (username, password, email, subscription_plan, 
+                                         subscription_start, subscription_end, 
+                                         coinbase_customer_id, payment_method, last_payment_date)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, 'coinbase', %s)
+                    """, (username, password_hash, customer_email, plan, 
+                         start_date, end_date, charge["id"], start_date))
+                else:
+                    c.execute("""
+                        INSERT INTO users (username, password, email, subscription_plan, 
+                                         subscription_start, subscription_end, 
+                                         coinbase_customer_id, payment_method, last_payment_date)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'coinbase', ?)
+                    """, (username, password_hash, customer_email, plan, 
+                         start_date.isoformat(), end_date.isoformat(), 
+                         charge["id"], start_date.isoformat()))
+                
+                print(f"✅ Compte créé pour {username}")
             
             conn.commit()
-            conn.close()
             
-            print(f"✅ Abonnement Coinbase activé: {username} → {plan}")
+            print(f"✅✅✅ ABONNEMENT COINBASE ACTIVÉ!")
+            print(f"   Utilisateur: {username}")
+            print(f"   Email: {customer_email}")
+            print(f"   Plan: {plan}")
+            print(f"   Expire: {end_date.date()}")
+            print(f"   Durée: {duration_days.get(plan, 30)} jours")
+            print(f"   Charge ID: {charge['id']}")
+            
+        except Exception as e:
+            print(f"❌ Erreur SQL: {e}")
+            import traceback
+            traceback.print_exc()
+            conn.rollback()
+        finally:
+            conn.close()
+    
+    elif event_type == "charge:failed":
+        print(f"❌ Paiement Coinbase échoué")
+    
+    elif event_type == "charge:pending":
+        print(f"⏳ Paiement Coinbase en attente")
+    
+    else:
+        print(f"ℹ️  Événement ignoré: {event_type}")
     
     return JSONResponse({"success": True})
 

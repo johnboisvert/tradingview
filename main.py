@@ -18,6 +18,29 @@ import secrets
 import hmac
 import hashlib
 
+# ============================================================================
+# 🆕 SYSTÈME DE PERMISSIONS - IMPORTS
+# ============================================================================
+try:
+    from permissions_system import (
+        Feature, 
+        PermissionManager, 
+        require_feature, 
+        check_feature_access,
+        SubscriptionPlan,
+        PLAN_FEATURES
+    )
+    from protected_routes import router as protected_router, register_template_functions
+    PERMISSIONS_AVAILABLE = True
+    print("✅ Système de permissions chargé")
+except ImportError as e:
+    print(f"⚠️  Système de permissions non disponible: {e}")
+    PERMISSIONS_AVAILABLE = False
+    protected_router = None
+    def register_template_functions(templates):
+        pass
+# ============================================================================
+
 # ===== NOUVEAU: Stripe et Payment System =====
 try:
     import stripe
@@ -501,6 +524,14 @@ except Exception as e:
 
 app = FastAPI()
 
+# ============================================================================
+# 🆕 ENREGISTRER LE ROUTER DES ROUTES PROTÉGÉES
+# ============================================================================
+if PERMISSIONS_AVAILABLE and protected_router:
+    app.include_router(protected_router)
+    print("✅ Routes protégées enregistrées")
+# ============================================================================
+
 # ===== ROUTE DE DEBUG =====
 @app.get("/debug-files")
 async def debug_files():
@@ -645,7 +676,7 @@ USE_POSTGRESQL = POSTGRESQL_AVAILABLE and DATABASE_URL is not None
 
 # Base de données des utilisateurs et sessions
 USERS_DB = "/tmp/users.db"  # Force /tmp pour Railway
-active_sessions = {}  # {token: username}
+active_sessions = {}  # 🆕 {token: {"username": str, "subscription_plan": str, ...}}
 
 class DatabaseManager:
     """Gestionnaire de base de données universel (PostgreSQL ou SQLite)"""
@@ -676,15 +707,38 @@ class DatabaseManager:
             username VARCHAR(255) PRIMARY KEY,
             password_hash VARCHAR(255) NOT NULL,
             role VARCHAR(50) NOT NULL,
-            created_at TIMESTAMP NOT NULL
+            created_at TIMESTAMP NOT NULL,
+            subscription_plan VARCHAR(50) DEFAULT 'free',
+            subscription_start TIMESTAMP,
+            subscription_end TIMESTAMP,
+            stripe_customer_id VARCHAR(255),
+            stripe_subscription_id VARCHAR(255),
+            coinbase_customer_id VARCHAR(255),
+            payment_method VARCHAR(50),
+            last_payment_date TIMESTAMP,
+            total_spent DECIMAL(10,2) DEFAULT 0.00
         )''')
+        
+        # Ajouter les colonnes si elles n'existent pas (pour migration)
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50) DEFAULT 'free'")
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_start TIMESTAMP")
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_end TIMESTAMP")
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255)")
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255)")
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS coinbase_customer_id VARCHAR(255)")
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)")
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_payment_date TIMESTAMP")
+            c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS total_spent DECIMAL(10,2) DEFAULT 0.00")
+        except:
+            pass  # Colonnes existent déjà
         
         # Créer un compte admin par défaut si n'existe pas
         c.execute("SELECT * FROM users WHERE username = 'admin'")
         if not c.fetchone():
             default_password = "admin123"
             password_hash = hashlib.sha256(default_password.encode()).hexdigest()
-            c.execute("INSERT INTO users VALUES (%s, %s, %s, %s)", 
+            c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (%s, %s, %s, %s)", 
                       ("admin", password_hash, "admin", datetime.now()))
             print("✅ Compte admin par défaut créé: admin / admin123")
         
@@ -700,15 +754,62 @@ class DatabaseManager:
             username TEXT PRIMARY KEY, 
             password_hash TEXT, 
             role TEXT,
-            created_at TEXT
+            created_at TEXT,
+            subscription_plan TEXT DEFAULT 'free',
+            subscription_start TEXT,
+            subscription_end TEXT,
+            stripe_customer_id TEXT,
+            stripe_subscription_id TEXT,
+            coinbase_customer_id TEXT,
+            payment_method TEXT,
+            last_payment_date TEXT,
+            total_spent REAL DEFAULT 0.0
         )''')
+        
+        # Ajouter les colonnes si elles n'existent pas (pour migration)
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN subscription_plan TEXT DEFAULT 'free'")
+        except:
+            pass
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN subscription_start TEXT")
+        except:
+            pass
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN subscription_end TEXT")
+        except:
+            pass
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT")
+        except:
+            pass
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT")
+        except:
+            pass
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN coinbase_customer_id TEXT")
+        except:
+            pass
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN payment_method TEXT")
+        except:
+            pass
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN last_payment_date TEXT")
+        except:
+            pass
+        try:
+            c.execute("ALTER TABLE users ADD COLUMN total_spent REAL DEFAULT 0.0")
+        except:
+            pass
         
         # Créer un compte admin par défaut si n'existe pas
         c.execute("SELECT * FROM users WHERE username = 'admin'")
         if not c.fetchone():
             default_password = "admin123"
             password_hash = hashlib.sha256(default_password.encode()).hexdigest()
-            c.execute("INSERT INTO users VALUES (?, ?, ?, ?)", 
+            c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)", 
                       ("admin", password_hash, "admin", datetime.now().isoformat()))
             print("✅ Compte admin par défaut créé: admin / admin123")
         
@@ -756,6 +857,71 @@ class DatabaseManager:
         users = c.fetchall()
         conn.close()
         return users
+    
+    def get_user_info(self, username: str) -> dict:
+        """🆕 Récupérer toutes les infos d'un utilisateur incluant l'abonnement"""
+        conn = self.get_connection()
+        c = conn.cursor()
+        
+        if self.use_postgresql:
+            c.execute("""
+                SELECT username, role, created_at, 
+                       subscription_plan, subscription_start, subscription_end,
+                       stripe_customer_id, stripe_subscription_id, payment_method
+                FROM users WHERE username = %s
+            """, (username,))
+        else:
+            c.execute("""
+                SELECT username, role, created_at,
+                       subscription_plan, subscription_start, subscription_end,
+                       stripe_customer_id, stripe_subscription_id, payment_method
+                FROM users WHERE username = ?
+            """, (username,))
+        
+        row = c.fetchone()
+        conn.close()
+        
+        if row:
+            # Convertir les dates string en datetime pour SQLite
+            subscription_start = None
+            subscription_end = None
+            
+            if len(row) > 4 and row[4]:
+                if isinstance(row[4], str):
+                    try:
+                        subscription_start = datetime.fromisoformat(row[4])
+                    except:
+                        pass
+                else:
+                    subscription_start = row[4]
+            
+            if len(row) > 5 and row[5]:
+                if isinstance(row[5], str):
+                    try:
+                        subscription_end = datetime.fromisoformat(row[5])
+                    except:
+                        pass
+                else:
+                    subscription_end = row[5]
+            
+            return {
+                "username": row[0],
+                "role": row[1],
+                "created_at": row[2],
+                "subscription_plan": row[3] if len(row) > 3 else "free",
+                "subscription_start": subscription_start,
+                "subscription_end": subscription_end,
+                "stripe_customer_id": row[6] if len(row) > 6 else None,
+                "stripe_subscription_id": row[7] if len(row) > 7 else None,
+                "payment_method": row[8] if len(row) > 8 else None,
+            }
+        return {
+            "username": username,
+            "role": "user",
+            "subscription_plan": "free",
+            "subscription_start": None,
+            "subscription_end": None,
+        }
     
     def add_user(self, username: str, password: str, role: str = "user"):
         """Ajouter un nouvel utilisateur"""
@@ -822,16 +988,28 @@ def verify_user(username: str, password: str) -> bool:
 
     return False
 
-def create_session(username: str) -> str:
-    """Créer une session pour un utilisateur"""
+def create_session(username: str, user_info: dict = None) -> str:
+    """Créer une session pour un utilisateur avec infos d'abonnement"""
     token = secrets.token_urlsafe(32)
-    active_sessions[token] = username
+    
+    if user_info:
+        # Stocker toutes les infos de l'utilisateur
+        active_sessions[token] = user_info
+    else:
+        # Récupérer les infos depuis la DB
+        user_data = db_manager.get_user_info(username)
+        active_sessions[token] = user_data
+    
     return token
 
-def get_user_from_token(token: Optional[str]) -> Optional[str]:
+def get_user_from_token(token: Optional[str]):
     """Récupérer l'utilisateur depuis un token de session"""
     if token:
-        return active_sessions.get(token)
+        user_data = active_sessions.get(token)
+        # Compatibilité: si c'est juste un string (ancien format), retourner tel quel
+        if isinstance(user_data, str):
+            return user_data
+        return user_data
     return None
 
 def get_current_user(session_token: Optional[str] = Cookie(None)) -> Optional[str]:
@@ -1479,13 +1657,18 @@ async def login_page(request: Request, error: str = None):
 
 @app.post("/login")
 async def login(request: Request, response: Response):
-    """Traiter la connexion"""
+    """Traiter la connexion avec gestion des permissions"""
     form_data = await request.form()
     username = form_data.get("username")
     password = form_data.get("password")
     
     if verify_user(username, password):
-        token = create_session(username)
+        # 🆕 Récupérer les infos complètes de l'utilisateur
+        user_info = db_manager.get_user_info(username)
+        
+        # Créer la session avec les infos d'abonnement
+        token = create_session(username, user_info)
+        
         redirect = RedirectResponse(url="/", status_code=303)
         redirect.set_cookie(
             key="session_token",
@@ -17849,6 +18032,367 @@ async def prediction_ia():
     </div>
 </body>
 </html>""")
+
+# ============================================================================
+# 🆕 SYSTÈME DE PERMISSIONS - WEBHOOKS ET SCHEDULER
+# ============================================================================
+
+# Webhook Stripe pour activer automatiquement les abonnements
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+
+@app.post("/webhook/stripe-permissions")
+async def stripe_permissions_webhook(request: Request):
+    """Webhook Stripe pour activer les abonnements automatiquement"""
+    
+    if not STRIPE_AVAILABLE:
+        return JSONResponse({"error": "Stripe non disponible"}, status_code=503)
+    
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, STRIPE_WEBHOOK_SECRET
+        )
+    except Exception as e:
+        print(f"❌ Erreur webhook signature: {e}")
+        return JSONResponse({"error": str(e)}, status_code=400)
+    
+    # Gérer les événements
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        
+        customer_email = session.get("customer_email")
+        plan = session["metadata"].get("plan", "1_month")
+        username = session["metadata"].get("username") or customer_email
+        
+        if username and plan:
+            start_date = datetime.now()
+            duration_days = {
+                "1_month": 30,
+                "3_months": 90,
+                "6_months": 180,
+                "1_year": 365,
+            }
+            end_date = start_date + timedelta(days=duration_days.get(plan, 30))
+            
+            conn = get_db_connection()
+            c = conn.cursor()
+            
+            if DB_CONFIG["type"] == "postgres":
+                c.execute("""
+                    UPDATE users 
+                    SET subscription_plan = %s,
+                        subscription_start = %s,
+                        subscription_end = %s,
+                        stripe_customer_id = %s,
+                        stripe_subscription_id = %s,
+                        payment_method = 'stripe',
+                        last_payment_date = %s
+                    WHERE username = %s
+                """, (plan, start_date, end_date, session["customer"], 
+                     session.get("subscription"), start_date, username))
+            else:
+                c.execute("""
+                    UPDATE users 
+                    SET subscription_plan = ?,
+                        subscription_start = ?,
+                        subscription_end = ?,
+                        stripe_customer_id = ?,
+                        stripe_subscription_id = ?,
+                        payment_method = 'stripe',
+                        last_payment_date = ?
+                    WHERE username = ?
+                """, (plan, start_date.isoformat(), end_date.isoformat(), session["customer"], 
+                     session.get("subscription"), start_date.isoformat(), username))
+            
+            conn.commit()
+            conn.close()
+            
+            print(f"✅ Abonnement Stripe activé: {username} → {plan} (expire: {end_date})")
+    
+    elif event["type"] == "customer.subscription.deleted":
+        subscription = event["data"]["object"]
+        customer_id = subscription["customer"]
+        
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("SELECT username FROM users WHERE stripe_customer_id = %s", (customer_id,))
+        else:
+            c.execute("SELECT username FROM users WHERE stripe_customer_id = ?", (customer_id,))
+        
+        row = c.fetchone()
+        
+        if row:
+            username = row[0]
+            if DB_CONFIG["type"] == "postgres":
+                c.execute("UPDATE users SET subscription_plan = 'free', subscription_end = %s WHERE username = %s",
+                         (datetime.now(), username))
+            else:
+                c.execute("UPDATE users SET subscription_plan = 'free', subscription_end = ? WHERE username = ?",
+                         (datetime.now().isoformat(), username))
+            conn.commit()
+            print(f"⚠️  Abonnement Stripe annulé: {username} → FREE")
+        
+        conn.close()
+    
+    return JSONResponse({"success": True})
+
+
+@app.post("/webhook/coinbase-permissions")
+async def coinbase_permissions_webhook(request: Request):
+    """Webhook Coinbase pour activer les abonnements crypto"""
+    
+    if not COINBASE_AVAILABLE:
+        return JSONResponse({"error": "Coinbase non disponible"}, status_code=503)
+    
+    payload = await request.json()
+    event_type = payload.get("event", {}).get("type")
+    
+    if event_type == "charge:confirmed":
+        charge = payload["event"]["data"]
+        metadata = charge.get("metadata", {})
+        username = metadata.get("username")
+        plan = metadata.get("plan", "1_month")
+        
+        if username and plan:
+            start_date = datetime.now()
+            duration_days = {
+                "1_month": 30,
+                "3_months": 90,
+                "6_months": 180,
+                "1_year": 365,
+            }
+            end_date = start_date + timedelta(days=duration_days.get(plan, 30))
+            
+            conn = get_db_connection()
+            c = conn.cursor()
+            
+            if DB_CONFIG["type"] == "postgres":
+                c.execute("""
+                    UPDATE users 
+                    SET subscription_plan = %s,
+                        subscription_start = %s,
+                        subscription_end = %s,
+                        coinbase_customer_id = %s,
+                        payment_method = 'coinbase',
+                        last_payment_date = %s
+                    WHERE username = %s
+                """, (plan, start_date, end_date, charge["id"], start_date, username))
+            else:
+                c.execute("""
+                    UPDATE users 
+                    SET subscription_plan = ?,
+                        subscription_start = ?,
+                        subscription_end = ?,
+                        coinbase_customer_id = ?,
+                        payment_method = 'coinbase',
+                        last_payment_date = ?
+                    WHERE username = ?
+                """, (plan, start_date.isoformat(), end_date.isoformat(), charge["id"], 
+                     start_date.isoformat(), username))
+            
+            conn.commit()
+            conn.close()
+            
+            print(f"✅ Abonnement Coinbase activé: {username} → {plan}")
+    
+    return JSONResponse({"success": True})
+
+
+# Scheduler pour vérifier les expirations
+if PERMISSIONS_AVAILABLE:
+    try:
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        
+        scheduler = AsyncIOScheduler()
+        
+        @scheduler.scheduled_job('cron', hour=0, minute=0)
+        def check_expired_subscriptions():
+            """Vérifie et désactive les abonnements expirés"""
+            
+            print("🔍 Vérification des abonnements expirés...")
+            
+            conn = get_db_connection()
+            c = conn.cursor()
+            
+            if DB_CONFIG["type"] == "postgres":
+                c.execute("""
+                    SELECT username, subscription_plan, subscription_end
+                    FROM users 
+                    WHERE subscription_end < %s 
+                    AND subscription_plan != 'free'
+                """, (datetime.now(),))
+            else:
+                c.execute("""
+                    SELECT username, subscription_plan, subscription_end
+                    FROM users 
+                    WHERE subscription_end < ? 
+                    AND subscription_plan != 'free'
+                """, (datetime.now().isoformat(),))
+            
+            expired = c.fetchall()
+            
+            for row in expired:
+                username = row[0]
+                old_plan = row[1]
+                
+                if DB_CONFIG["type"] == "postgres":
+                    c.execute("UPDATE users SET subscription_plan = 'free' WHERE username = %s", (username,))
+                else:
+                    c.execute("UPDATE users SET subscription_plan = 'free' WHERE username = ?", (username,))
+                
+                print(f"⚠️  Expiration: {username} ({old_plan} → free)")
+            
+            conn.commit()
+            conn.close()
+            
+            print(f"✅ {len(expired)} abonnements expirés traités")
+        
+        @app.on_event("startup")
+        async def startup_scheduler():
+            scheduler.start()
+            print("✅ Scheduler de vérification d'expiration démarré")
+        
+        print("✅ Scheduler configuré")
+    except ImportError:
+        print("⚠️  apscheduler non installé - scheduler désactivé")
+
+
+# Route "Mon Compte" pour gérer l'abonnement
+@app.get("/mon-compte", response_class=HTMLResponse)
+async def mon_compte(session_token: Optional[str] = Cookie(None)):
+    """Page de gestion du compte utilisateur"""
+    
+    user_session = get_user_from_token(session_token)
+    if not user_session:
+        return RedirectResponse("/login")
+    
+    # Extraire le username
+    if isinstance(user_session, str):
+        username = user_session
+    else:
+        username = user_session.get("username", "")
+    
+    # Récupérer les infos complètes
+    user_info = db_manager.get_user_info(username)
+    
+    # Vérifier si l'abonnement est actif
+    is_active = False
+    days_remaining = None
+    if user_info.get("subscription_end"):
+        is_active = user_info["subscription_end"] > datetime.now()
+        if is_active:
+            days_remaining = (user_info["subscription_end"] - datetime.now()).days
+    
+    plan_name = user_info.get("subscription_plan", "free")
+    plan_display = {
+        "free": "Gratuit",
+        "1_month": "Premium (1 mois)",
+        "3_months": "Advanced (3 mois)",
+        "6_months": "Pro (6 mois)",
+        "1_year": "Elite (1 an)"
+    }.get(plan_name, "Gratuit")
+    
+    # Compter les features disponibles
+    features_count = 3 if plan_name == "free" else 7 if plan_name == "1_month" else 12 if plan_name == "3_months" else 18 if plan_name == "6_months" else 24
+    
+    return HTMLResponse(f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mon Compte - Trading Dashboard Pro</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }}
+        .card {{ background: white; border-radius: 12px; padding: 24px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
+        h1 {{ color: #333; }}
+        h2 {{ color: #666; margin-top: 0; }}
+        .badge {{ display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; color: white; }}
+        .badge-free {{ background: #gray; }}
+        .badge-premium {{ background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }}
+        .badge-advanced {{ background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }}
+        .badge-pro {{ background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }}
+        .badge-elite {{ background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }}
+        .status {{ font-size: 18px; margin: 10px 0; }}
+        .status.active {{ color: #10b981; }}
+        .status.expired {{ color: #ef4444; }}
+        .btn {{ display: inline-block; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 20px; }}
+        .btn-upgrade {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }}
+        .btn-back {{ background: #e5e7eb; color: #333; }}
+        .info-row {{ display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }}
+        .info-label {{ font-weight: bold; color: #666; }}
+        .info-value {{ color: #333; }}
+    </style>
+</head>
+<body>
+    <h1>👤 Mon Compte</h1>
+    
+    <div class="card">
+        <h2>Informations générales</h2>
+        <div class="info-row">
+            <span class="info-label">Utilisateur:</span>
+            <span class="info-value">{username}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Plan actuel:</span>
+            <span class="info-value"><span class="badge badge-{plan_name}">{plan_display}</span></span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Statut:</span>
+            <span class="status {'active' if is_active else 'expired'}">{'✅ Actif' if is_active else '❌ Expiré'}</span>
+        </div>
+        {f'''<div class="info-row">
+            <span class="info-label">Expire le:</span>
+            <span class="info-value">{user_info["subscription_end"].strftime("%d/%m/%Y") if user_info.get("subscription_end") else "N/A"}</span>
+        </div>''' if user_info.get("subscription_end") else ''}
+        {f'''<div class="info-row">
+            <span class="info-label">Jours restants:</span>
+            <span class="info-value">{days_remaining} jours</span>
+        </div>''' if days_remaining else ''}
+    </div>
+    
+    <div class="card">
+        <h2>📊 Statistiques</h2>
+        <div class="info-row">
+            <span class="info-label">Features disponibles:</span>
+            <span class="info-value">{features_count} fonctionnalités</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Méthode de paiement:</span>
+            <span class="info-value">{user_info.get("payment_method", "Aucune").upper()}</span>
+        </div>
+    </div>
+    
+    {f'<a href="/pricing-complete" class="btn btn-upgrade">🚀 Upgrade mon plan</a>' if plan_name != '1_year' else '<p style="color: #10b981; font-weight: bold;">✨ Vous avez le plan Elite! Merci pour votre confiance.</p>'}
+    <a href="/" class="btn btn-back">← Retour au dashboard</a>
+</body>
+</html>
+    """)
+
+
+# Handler d'erreurs 403 (Permission Denied)
+@app.exception_handler(403)
+async def permission_denied_handler(request: Request, exc: HTTPException):
+    """Gère les erreurs de permissions"""
+    
+    if request.url.path.startswith("/api/"):
+        return JSONResponse(
+            status_code=403,
+            content={
+                "error": "permission_denied",
+                "message": "Vous n'avez pas accès à cette fonctionnalité",
+                "details": exc.detail if hasattr(exc, 'detail') else None
+            }
+        )
+    
+    return RedirectResponse("/pricing-complete?upgrade=required", status_code=303)
+
+# ============================================================================
+# FIN DU SYSTÈME DE PERMISSIONS
+# ============================================================================
 
 if __name__ == "__main__":
     import uvicorn

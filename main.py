@@ -586,7 +586,7 @@ app.add_middleware(
 async def auth_middleware(request: Request, call_next):
     """Vérifier l'authentification sur toutes les routes sauf /login"""
     # Routes publiques (pas besoin d'authentification)
-    public_paths = ["/login", "/health", "/tv-webhook", "/debug-files", "/pricing", "/pricing-new", "/pricing-complete", "/api/test-payment", "/api/stripe-checkout", "/api/coinbase-checkout", "/api/payment-success", "/api/payment-cancel", "/admin/pricing"]
+    public_paths = ["/login", "/health", "/tv-webhook", "/debug-files", "/pricing", "/pricing-new", "/pricing-complete", "/api/test-payment", "/api/stripe-checkout", "/api/coinbase-checkout", "/api/payment-success", "/api/payment-cancel", "/admin/pricing", "/test-webhook-stripe"]
     
     # Si c'est une route publique, laisser passer
     if any(request.url.path.startswith(path) for path in public_paths):
@@ -15358,6 +15358,184 @@ async def coinbase_checkout(request: Request):
                 "success": False,
                 "message": "Payment system non disponible"
             }, status_code=500)
+
+@app.get("/api/payment-success")
+async def payment_success(request: Request, plan: str = "monthly"):
+    """Page de succès après paiement Stripe"""
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Paiement Réussi</title>
+        <meta charset="UTF-8">
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Segoe UI', sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }}
+            .container {{
+                background: white;
+                padding: 50px;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                text-align: center;
+                max-width: 600px;
+            }}
+            h1 {{
+                color: #10b981;
+                font-size: 48px;
+                margin-bottom: 20px;
+            }}
+            p {{
+                color: #666;
+                font-size: 18px;
+                margin-bottom: 30px;
+                line-height: 1.6;
+            }}
+            .plan {{
+                background: #f0fdf4;
+                padding: 20px;
+                border-radius: 12px;
+                margin: 30px 0;
+                border: 2px solid #10b981;
+            }}
+            .plan strong {{
+                color: #10b981;
+                font-size: 24px;
+            }}
+            .btn {{
+                display: inline-block;
+                padding: 15px 40px;
+                background: #667eea;
+                color: white;
+                text-decoration: none;
+                border-radius: 10px;
+                font-weight: 600;
+                font-size: 18px;
+                transition: all 0.3s;
+                margin: 10px;
+            }}
+            .btn:hover {{
+                background: #5568d3;
+                transform: translateY(-2px);
+            }}
+            .emoji {{
+                font-size: 80px;
+                margin-bottom: 20px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="emoji">✅</div>
+            <h1>Paiement Réussi!</h1>
+            <p>Votre paiement a été traité avec succès.</p>
+            
+            <div class="plan">
+                <p>Plan acheté:</p>
+                <strong>{plan.upper()}</strong>
+            </div>
+            
+            <p><strong>⚠️ Important:</strong> Un administrateur activera votre abonnement sous peu. Vous recevrez une confirmation par email.</p>
+            
+            <p>En attendant, vous pouvez:</p>
+            
+            <a href="/mon-compte" class="btn">👤 Mon Compte</a>
+            <a href="/" class="btn">🏠 Dashboard</a>
+        </div>
+        
+        <script>
+            // Auto-redirect après 10 secondes
+            setTimeout(() => {{
+                window.location.href = '/mon-compte';
+            }}, 10000);
+        </script>
+    </body>
+    </html>
+    """)
+
+@app.get("/api/payment-cancel")
+async def payment_cancel(request: Request, plan: str = "monthly"):
+    """Page d'annulation de paiement"""
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Paiement Annulé</title>
+        <meta charset="UTF-8">
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Segoe UI', sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }}
+            .container {{
+                background: white;
+                padding: 50px;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                text-align: center;
+                max-width: 600px;
+            }}
+            h1 {{
+                color: #ef4444;
+                font-size: 48px;
+                margin-bottom: 20px;
+            }}
+            p {{
+                color: #666;
+                font-size: 18px;
+                margin-bottom: 30px;
+                line-height: 1.6;
+            }}
+            .btn {{
+                display: inline-block;
+                padding: 15px 40px;
+                background: #667eea;
+                color: white;
+                text-decoration: none;
+                border-radius: 10px;
+                font-weight: 600;
+                font-size: 18px;
+                transition: all 0.3s;
+                margin: 10px;
+            }}
+            .btn:hover {{
+                background: #5568d3;
+                transform: translateY(-2px);
+            }}
+            .emoji {{
+                font-size: 80px;
+                margin-bottom: 20px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="emoji">❌</div>
+            <h1>Paiement Annulé</h1>
+            <p>Vous avez annulé le processus de paiement.</p>
+            <p>Aucun montant n'a été débité.</p>
+            
+            <p>Vous pouvez réessayer quand vous voulez!</p>
+            
+            <a href="/pricing-complete" class="btn">💎 Voir les Plans</a>
+            <a href="/" class="btn">🏠 Dashboard</a>
+        </div>
+    </body>
+    </html>
+    """)
         
         # Créer paiement
         charge, error = create_coinbase_payment(plan, email, coinbase_client)

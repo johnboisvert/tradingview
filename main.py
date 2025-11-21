@@ -14667,6 +14667,7 @@ async def pricing_complete():
 </head>
 <body>
     <div class="container">
+        """ + NAV + """
         <div class="header">
             <h1>💳 Plans d'Abonnement Premium</h1>
             <p>Choisissez le plan parfait pour vos besoins de trading</p>

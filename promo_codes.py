@@ -1,17 +1,17 @@
-# promo_codes.py - Système de gestion des codes promotionnels
+# promo_codes.py - Système de codes promotionnels
 from datetime import datetime, timedelta
 from typing import Optional, Tuple, List, Dict
 
 class PromoCodeManager:
-    """Gestionnaire de codes promotionnels pour Trading Dashboard Pro"""
+    """Gestionnaire de codes promotionnels"""
     
     @staticmethod
     def create_table(conn):
-        """Crée la table promo_codes dans la base de données"""
+        """Crée la table promo_codes"""
         try:
             c = conn.cursor()
             
-            # Détecter si PostgreSQL ou SQLite
+            # Détecter PostgreSQL ou SQLite
             is_postgres = hasattr(conn, 'server_version')
             
             if is_postgres:
@@ -52,53 +52,47 @@ class PromoCodeManager:
                 """)
             
             conn.commit()
-            print("✅ Table promo_codes créée/vérifiée")
+            print("✅ Table promo_codes créée")
             return True
-            
         except Exception as e:
-            print(f"❌ Erreur création table: {e}")
+            print(f"❌ Erreur table: {e}")
             return False
     
     @staticmethod
-    def create_promo_code(
-        conn,
-        code: str,
-        discount_type: str,
-        discount_value: float,
-        description: str = "",
-        max_uses: Optional[int] = None,
-        expires_at: Optional[str] = None,
-        min_amount: Optional[float] = None,
-        applicable_plans: Optional[str] = None
-    ) -> Tuple[bool, str]:
-        """Crée un nouveau code promo"""
+    def create_promo_code(conn, code: str, discount_type: str, discount_value: float,
+                         description: str = "", max_uses: Optional[int] = None,
+                         expires_at: Optional[str] = None, min_amount: Optional[float] = None,
+                         applicable_plans: Optional[str] = None) -> Tuple[bool, str]:
+        """Crée un code promo"""
         try:
             c = conn.cursor()
-            code_upper = code.upper()
+            code = code.upper()
             
-            # Vérifier si existe déjà
-            c.execute("SELECT code FROM promo_codes WHERE code = %s" if hasattr(conn, 'server_version') else "SELECT code FROM promo_codes WHERE code = ?", (code_upper,))
+            # Vérifier existence
+            param = '%s' if hasattr(conn, 'server_version') else '?'
+            c.execute(f"SELECT code FROM promo_codes WHERE code = {param}", (code,))
             if c.fetchone():
-                return False, f"Code {code_upper} existe déjà"
+                return False, f"Code {code} existe déjà"
             
             # Insérer
-            if hasattr(conn, 'server_version'):  # PostgreSQL
+            if hasattr(conn, 'server_version'):
                 c.execute("""
-                    INSERT INTO promo_codes 
-                    (code, discount_type, discount_value, description, max_uses, expires_at, min_amount, applicable_plans)
+                    INSERT INTO promo_codes (code, discount_type, discount_value, description, 
+                    max_uses, expires_at, min_amount, applicable_plans)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, (code_upper, discount_type, discount_value, description, max_uses, expires_at, min_amount, applicable_plans))
-            else:  # SQLite
+                """, (code, discount_type, discount_value, description, max_uses, 
+                     expires_at, min_amount, applicable_plans))
+            else:
                 c.execute("""
-                    INSERT INTO promo_codes 
-                    (code, discount_type, discount_value, description, max_uses, expires_at, min_amount, applicable_plans)
+                    INSERT INTO promo_codes (code, discount_type, discount_value, description,
+                    max_uses, expires_at, min_amount, applicable_plans)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (code_upper, discount_type, discount_value, description, max_uses, expires_at, min_amount, applicable_plans))
+                """, (code, discount_type, discount_value, description, max_uses,
+                     expires_at, min_amount, applicable_plans))
             
             conn.commit()
-            print(f"✅ Code {code_upper} créé")
-            return True, f"Code {code_upper} créé"
-            
+            print(f"✅ Code {code} créé")
+            return True, f"Code {code} créé"
         except Exception as e:
             print(f"❌ Erreur: {e}")
             return False, str(e)
@@ -109,15 +103,8 @@ class PromoCodeManager:
         try:
             c = conn.cursor()
             c.execute("SELECT * FROM promo_codes ORDER BY created_at DESC")
-            
-            columns = [desc[0] for desc in c.description]
-            codes = []
-            
-            for row in c.fetchall():
-                codes.append(dict(zip(columns, row)))
-            
-            return codes
-            
+            columns = [d[0] for d in c.description]
+            return [dict(zip(columns, row)) for row in c.fetchall()]
         except Exception as e:
             print(f"❌ Erreur: {e}")
             return []
@@ -127,19 +114,18 @@ class PromoCodeManager:
         """Valide un code et retourne le discount"""
         try:
             c = conn.cursor()
-            code_upper = code.upper()
+            code = code.upper()
             
-            # Récupérer le code
-            if hasattr(conn, 'server_version'):  # PostgreSQL
-                c.execute("SELECT * FROM promo_codes WHERE code = %s AND is_active = TRUE", (code_upper,))
-            else:  # SQLite
-                c.execute("SELECT * FROM promo_codes WHERE code = ? AND is_active = 1", (code_upper,))
+            # Récupérer code
+            param = '%s' if hasattr(conn, 'server_version') else '?'
+            active = 'TRUE' if hasattr(conn, 'server_version') else '1'
+            c.execute(f"SELECT * FROM promo_codes WHERE code = {param} AND is_active = {active}", (code,))
             
             result = c.fetchone()
             if not result:
                 return False, "Code invalide", 0
             
-            columns = [desc[0] for desc in c.description]
+            columns = [d[0] for d in c.description]
             promo = dict(zip(columns, result))
             
             # Vérifier expiration
@@ -172,7 +158,6 @@ class PromoCodeManager:
                 discount = min(promo['discount_value'], amount)
             
             return True, "Code valide", round(discount, 2)
-            
         except Exception as e:
             print(f"❌ Erreur validation: {e}")
             return False, str(e), 0
@@ -182,17 +167,12 @@ class PromoCodeManager:
         """Incrémente le compteur"""
         try:
             c = conn.cursor()
-            code_upper = code.upper()
-            
-            if hasattr(conn, 'server_version'):  # PostgreSQL
-                c.execute("UPDATE promo_codes SET used_count = used_count + 1 WHERE code = %s", (code_upper,))
-            else:  # SQLite
-                c.execute("UPDATE promo_codes SET used_count = used_count + 1 WHERE code = ?", (code_upper,))
-            
+            code = code.upper()
+            param = '%s' if hasattr(conn, 'server_version') else '?'
+            c.execute(f"UPDATE promo_codes SET used_count = used_count + 1 WHERE code = {param}", (code,))
             conn.commit()
-            print(f"✅ Code {code_upper} utilisé par {user_email}")
+            print(f"✅ Code {code} utilisé par {user_email}")
             return True
-            
         except Exception as e:
             print(f"❌ Erreur: {e}")
             return False

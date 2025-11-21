@@ -18362,7 +18362,7 @@ async def mon_compte(session_token: Optional[str] = Cookie(None)):
         </div>
         <div class="info-row">
             <span class="info-label">Méthode de paiement:</span>
-            <span class="info-value">{user_info.get("payment_method", "Aucune").upper()}</span>
+            <span class="info-value">{(user_info.get("payment_method") or "Aucune").upper()}</span>
         </div>
     </div>
     

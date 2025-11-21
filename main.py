@@ -18394,6 +18394,103 @@ async def permission_denied_handler(request: Request, exc: HTTPException):
 # FIN DU SYSTÈME DE PERMISSIONS
 # ============================================================================
 
+# ============================================================================
+# ROUTE D'ACTIVATION MANUELLE D'ABONNEMENT (contournement webhook)
+# ============================================================================
+
+@app.get("/admin/activate-subscription")
+async def admin_activate_subscription(
+    username: str,
+    plan: str,
+    request: Request
+):
+    """
+    Route d'admin pour activer manuellement un abonnement
+    Usage: /admin/activate-subscription?username=admin&plan=1_month
+    
+    Plans disponibles:
+    - 1_month (Premium - 30 jours)
+    - 3_months (Advanced - 90 jours)
+    - 6_months (Pro - 180 jours)
+    - 1_year (Elite - 365 jours)
+    """
+    
+    try:
+        # Vérifier que le plan est valide
+        valid_plans = {
+            "1_month": 30,
+            "3_months": 90,
+            "6_months": 180,
+            "1_year": 365
+        }
+        
+        if plan not in valid_plans:
+            return JSONResponse({
+                "error": "Plan invalide",
+                "valid_plans": list(valid_plans.keys())
+            }, status_code=400)
+        
+        # Calculer la date d'expiration
+        expiration_date = datetime.now() + timedelta(days=valid_plans[plan])
+        
+        # Mettre à jour la base de données
+        if USE_POSTGRES:
+            # PostgreSQL
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE users 
+                SET subscription_plan = %s,
+                    subscription_end = %s,
+                    payment_method = 'MANUAL'
+                WHERE username = %s
+            """, (plan, expiration_date, username))
+            conn.commit()
+            cursor.close()
+        else:
+            # SQLite
+            cursor = sqlite_conn.cursor()
+            cursor.execute("""
+                UPDATE users 
+                SET subscription_plan = ?,
+                    subscription_end = ?,
+                    payment_method = 'MANUAL'
+                WHERE username = ?
+            """, (plan, expiration_date.isoformat(), username))
+            sqlite_conn.commit()
+            cursor.close()
+        
+        # Mettre à jour la session si c'est l'utilisateur connecté
+        user_session = request.cookies.get("session_token")
+        if user_session:
+            # Chercher l'utilisateur en session
+            user_info = get_user_from_token(user_session)
+            if user_info and user_info.get("username") == username:
+                # Mettre à jour les infos en mémoire
+                SESSIONS[user_session] = {
+                    **user_info,
+                    "subscription_plan": plan,
+                    "subscription_end": expiration_date.isoformat(),
+                    "payment_method": "MANUAL"
+                }
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"✅ Abonnement activé pour {username}",
+            "plan": plan,
+            "expires": expiration_date.isoformat(),
+            "days": valid_plans[plan],
+            "redirect": "/mon-compte"
+        })
+        
+    except Exception as e:
+        return JSONResponse({
+            "error": str(e)
+        }, status_code=500)
+
+# ============================================================================
+# FIN DE LA ROUTE D'ACTIVATION MANUELLE
+# ============================================================================
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))

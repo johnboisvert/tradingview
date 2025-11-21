@@ -259,9 +259,9 @@ class PermissionManager:
             return "Gratuit"
 
 # Middleware de vérification des permissions
-async def require_feature(feature: Feature):
+def require_feature(feature: Feature):
     """Décorateur pour protéger les routes avec vérification de permissions"""
-    async def dependency(request: Request):
+    def dependency(request: Request):
         # Récupérer l'utilisateur de la session
         user = request.session.get("user")
         

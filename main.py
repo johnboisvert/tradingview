@@ -50,14 +50,15 @@ except ImportError:
     print("⚠️  stripe non installé")
 
 try:
-    from payment_system import (
-        SUBSCRIPTION_PLANS,
-        get_plan_price_display,
-        create_stripe_checkout_session,
-        create_coinbase_payment,
-        get_subscription_expiry
-    )
+    # Les fonctions sont définies directement dans main.py
     PAYMENT_SYSTEM_AVAILABLE = True
+    # from payment_system import (
+    #     SUBSCRIPTION_PLANS,
+    #     get_plan_price_display,
+    #     create_stripe_checkout_session,
+    #     create_coinbase_payment,
+    #     get_subscription_expiry
+    # )
 except ImportError:
     PAYMENT_SYSTEM_AVAILABLE = False
     print("⚠️  payment_system non disponible")
@@ -99,6 +100,91 @@ if COINBASE_AVAILABLE and COINBASE_API_KEY and Client:
         print("✅ Coinbase Commerce initialisé")
     except Exception as e:
         print(f"⚠️  Coinbase Commerce erreur: {e}")
+
+# ============================================================================
+# FONCTIONS DE PAIEMENT
+# ============================================================================
+
+def create_coinbase_payment(plan, email, client):
+    """Crée un paiement Coinbase Commerce"""
+    try:
+        if not client:
+            return None, "Coinbase client non initialisé"
+        
+        # Prix par plan
+        plan_prices = {
+            'monthly': {'amount': 29.99, 'name': 'Premium 1 Mois'},
+            '1_month': {'amount': 29.99, 'name': 'Premium 1 Mois'},
+            '3_months': {'amount': 74.97, 'name': 'Advanced 3 Mois'},
+            '6_months': {'amount': 134.94, 'name': 'Pro 6 Mois'},
+            '1_year': {'amount': 239.88, 'name': 'Elite 1 An'}
+        }
+        
+        plan_info = plan_prices.get(plan, {'amount': 29.99, 'name': 'Premium'})
+        
+        # Créer la charge Coinbase
+        charge_info = {
+            'name': f'Trading Dashboard Pro - {plan_info["name"]}',
+            'description': f'Abonnement {plan_info["name"]}',
+            'pricing_type': 'fixed_price',
+            'local_price': {
+                'amount': str(plan_info['amount']),
+                'currency': 'USD'
+            },
+            'metadata': {
+                'plan': plan,
+                'email': email
+            }
+        }
+        
+        charge = client.charge.create(**charge_info)
+        return charge, None
+        
+    except Exception as e:
+        print(f"❌ Erreur Coinbase: {e}")
+        return None, str(e)
+
+def create_stripe_checkout_session(plan, email, success_url, cancel_url):
+    """Crée une session Stripe Checkout"""
+    try:
+        if not STRIPE_AVAILABLE or not stripe.api_key:
+            return None, "Stripe non configuré"
+        
+        # Prix par plan
+        plan_prices = {
+            'monthly': 2999,
+            '1_month': 2999,
+            '3_months': 7497,
+            '6_months': 13494,
+            '1_year': 23988
+        }
+        
+        price = plan_prices.get(plan, 2999)
+        
+        session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'usd',
+                    'unit_amount': price,
+                    'product_data': {
+                        'name': f'Trading Dashboard Pro - {plan}',
+                    },
+                },
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=success_url,
+            cancel_url=cancel_url,
+            customer_email=email,
+            metadata={'plan': plan, 'email': email}
+        )
+        
+        return session.url, None
+        
+    except Exception as e:
+        print(f"❌ Erreur Stripe: {e}")
+        return None, str(e)
 
 def init_payments_db():
     """Crée la table payments pour Coinbase Commerce"""
@@ -15361,7 +15447,7 @@ async def coinbase_checkout(request: Request):
             }, status_code=500)
         
         # Créer charge Coinbase
-        checkout_url, error = create_coinbase_charge(plan, email)
+        charge, error = create_coinbase_payment(plan, email, coinbase_client)
         
         if error:
             return JSONResponse({
@@ -15372,7 +15458,7 @@ async def coinbase_checkout(request: Request):
         print(f"✅ Charge Coinbase créée: {plan} pour {email}")
         return JSONResponse({
             "success": True,
-            "checkout_url": checkout_url
+            "checkout_url": charge.hosted_url
         })
     
     except Exception as e:

@@ -18478,6 +18478,204 @@ async def admin_activate_subscription(
 # FIN DE LA ROUTE D'ACTIVATION MANUELLE
 # ============================================================================
 
+# ============================================================================
+# ROUTES DE TEST WEBHOOK STRIPE
+# ============================================================================
+
+@app.get("/test-webhook-stripe")
+async def test_webhook_accessible():
+    """Test si le webhook Stripe est accessible publiquement"""
+    return JSONResponse({
+        "status": "✅ OK",
+        "message": "Le webhook Stripe est accessible!",
+        "url": "https://tradingview-production-5763.up.railway.app/webhook/stripe-permissions",
+        "test": "Si tu vois ce message, Stripe devrait pouvoir nous joindre"
+    })
+
+@app.post("/webhook/stripe-permissions-debug")
+async def stripe_webhook_debug(request: Request):
+    """Version de debug du webhook Stripe avec logs détaillés"""
+    try:
+        body = await request.body()
+        
+        print("=" * 70)
+        print("🔔 WEBHOOK STRIPE REÇU (DEBUG)")
+        print("=" * 70)
+        print(f"📊 Headers: {dict(request.headers)}")
+        print(f"📦 Body length: {len(body)} bytes")
+        print(f"🔐 Signature: {request.headers.get('stripe-signature', 'MANQUANTE!')}")
+        print("=" * 70)
+        
+        import json
+        try:
+            data = json.loads(body)
+            event_type = data.get("type", "unknown")
+            print(f"✅ Event type: {event_type}")
+            print(f"📋 Data: {json.dumps(data, indent=2)[:500]}...")
+        except:
+            print("❌ Impossible de parser le JSON")
+        
+        print("=" * 70)
+        
+        return JSONResponse({
+            "status": "received",
+            "message": "Webhook reçu! Check les logs Railway"
+        })
+        
+    except Exception as e:
+        print(f"❌ ERREUR WEBHOOK DEBUG: {str(e)}")
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+# ============================================================================
+# PAGE ADMIN DASHBOARD
+# ============================================================================
+
+@app.get("/admin-dashboard", response_class=HTMLResponse)
+async def admin_dashboard(request: Request):
+    """Page d'administration pour gérer les utilisateurs et abonnements"""
+    
+    # Vérifier l'authentification
+    session_token = request.cookies.get("session_token")
+    if not session_token:
+        return RedirectResponse("/login", status_code=303)
+    
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return HTMLResponse("<h1>403 - Accès refusé</h1><p>Admin seulement</p>", status_code=403)
+    
+    # Récupérer tous les utilisateurs
+    conn = db_manager.get_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT username, role, subscription_plan, subscription_end, 
+               payment_method, created_at, total_spent
+        FROM users 
+        ORDER BY created_at DESC
+    """)
+    
+    users = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    # Calculer les statistiques
+    total_users = len(users)
+    active_subs = sum(1 for u in users if u[2] and u[2] != 'free' and u[3])
+    total_revenue = sum(float(u[6] or 0) for u in users)
+    
+    # Construire le HTML des utilisateurs
+    users_html = ""
+    for user_data in users:
+        username = user_data[0]
+        role = user_data[1]
+        plan = user_data[2] or 'free'
+        sub_end = user_data[3]
+        payment_method = user_data[4] or 'N/A'
+        created = user_data[5]
+        
+        # Déterminer le statut
+        if sub_end:
+            try:
+                if USE_POSTGRESQL:
+                    exp_date = sub_end
+                else:
+                    exp_date = datetime.fromisoformat(sub_end) if isinstance(sub_end, str) else sub_end
+                
+                is_active = datetime.now() < exp_date
+                status = '<span class="badge badge-active">Actif</span>' if is_active else '<span class="badge badge-expired">Expiré</span>'
+                exp_str = exp_date.strftime("%d/%m/%Y") if hasattr(exp_date, 'strftime') else str(exp_date)[:10]
+            except:
+                status = '<span class="badge badge-expired">Expiré</span>'
+                exp_str = '-'
+        else:
+            status = '<span class="badge badge-free">Free</span>'
+            exp_str = '-'
+        
+        role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
+        plan_class = 'badge-premium' if '1_month' in plan or '3_months' in plan else ('badge-pro' if '6_months' in plan or '1_year' in plan else 'badge-free')
+        
+        users_html += f"""
+        <tr>
+            <td><strong>{username}</strong></td>
+            <td>{role_badge}</td>
+            <td><span class="badge {plan_class}">{plan}</span> {status}</td>
+            <td>{exp_str}</td>
+            <td>{payment_method}</td>
+            <td>{str(created)[:10] if created else '-'}</td>
+            <td class="actions">
+                <a href="/admin/activate-subscription?username={username}&plan=1_month" class="btn btn-success">Premium</a>
+                <a href="/admin/activate-subscription?username={username}&plan=1_year" class="btn btn-primary">Elite</a>
+            </td>
+        </tr>
+        """
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Dashboard</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{ font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }}
+            .container {{ max-width: 1400px; margin: 0 auto; }}
+            .header {{ background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; }}
+            h1 {{ color: #333; font-size: 32px; margin-bottom: 10px; }}
+            .subtitle {{ color: #666; }}
+            .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+            .stat-card {{ background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }}
+            .stat-value {{ font-size: 36px; font-weight: bold; color: #667eea; margin: 10px 0; }}
+            .stat-label {{ color: #666; font-size: 14px; text-transform: uppercase; }}
+            .users-section {{ background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }}
+            .section-title {{ font-size: 24px; color: #333; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #667eea; }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            thead {{ background: #f8f9fa; }}
+            th {{ padding: 15px; text-align: left; font-weight: 600; color: #333; border-bottom: 2px solid #dee2e6; }}
+            td {{ padding: 15px; border-bottom: 1px solid #dee2e6; }}
+            tbody tr:hover {{ background: #f8f9fa; }}
+            .badge {{ padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }}
+            .badge-admin {{ background: #ff6b6b; color: white; }}
+            .badge-user {{ background: #4ecdc4; color: white; }}
+            .badge-free {{ background: #95a5a6; color: white; }}
+            .badge-premium {{ background: #667eea; color: white; }}
+            .badge-pro {{ background: #f093fb; color: white; }}
+            .badge-active {{ background: #51cf66; color: white; }}
+            .badge-expired {{ background: #ff6b6b; color: white; }}
+            .actions {{ display: flex; gap: 10px; }}
+            .btn {{ padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-block; transition: all 0.3s; }}
+            .btn-primary {{ background: #667eea; color: white; }}
+            .btn-primary:hover {{ background: #5568d3; }}
+            .btn-success {{ background: #51cf66; color: white; }}
+            .btn-success:hover {{ background: #40c057; }}
+            .back-link {{ display: inline-block; margin-top: 20px; color: white; text-decoration: none; font-weight: 600; padding: 12px 24px; background: rgba(255,255,255,0.2); border-radius: 8px; }}
+            .back-link:hover {{ background: rgba(255,255,255,0.3); }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>👨‍💼 Admin Dashboard</h1>
+                <p class="subtitle">Gestion des utilisateurs et abonnements</p>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-label">Total Utilisateurs</div><div class="stat-value">{total_users}</div></div>
+                <div class="stat-card"><div class="stat-label">Abonnements Actifs</div><div class="stat-value">{active_subs}</div></div>
+                <div class="stat-card"><div class="stat-label">Revenus Totaux</div><div class="stat-value">${total_revenue:.2f}</div></div>
+            </div>
+            <div class="users-section">
+                <h2 class="section-title">📋 Liste des Utilisateurs</h2>
+                <table>
+                    <thead><tr><th>Utilisateur</th><th>Rôle</th><th>Plan</th><th>Expire</th><th>Méthode</th><th>Inscrit</th><th>Actions</th></tr></thead>
+                    <tbody>{users_html}</tbody>
+                </table>
+            </div>
+            <a href="/" class="back-link">← Retour au Dashboard</a>
+        </div>
+    </body>
+    </html>
+    """)
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))

@@ -264,25 +264,8 @@ async def compare_plans(request: Request):
 # ============================================================================
 # GESTION DES ERREURS 403 (Permission Denied)
 # ============================================================================
-
-@router.exception_handler(403)
-async def permission_denied_handler(request: Request, exc):
-    """Handler personnalisé pour les erreurs de permissions"""
-    
-    if request.url.path.startswith("/api/"):
-        # Retourner JSON pour les routes API
-        return JSONResponse(
-            status_code=403,
-            content={
-                "error": "permission_denied",
-                "message": "Vous n'avez pas accès à cette fonctionnalité",
-                "upgrade_required": True
-            }
-        )
-    else:
-        # Rediriger vers la page pricing pour les routes HTML
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url="/pricing-complete?upgrade=required", status_code=303)
+# NOTE: L'exception handler 403 est défini dans main.py car les APIRouter
+# ne supportent pas les exception_handlers (seulement l'app FastAPI principale)
 
 # ============================================================================
 # HELPERS POUR LES TEMPLATES JINJA2

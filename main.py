@@ -15808,11 +15808,6 @@ async def coinbase_checkout(request: Request):
             "plan": plan,
             "amount": final_amount
         })
-            "hosted_url": charge.hosted_url,
-            "charge_id": charge.id,
-            "plan": plan,
-            "amount": amount
-        })
     
     except Exception as e:
         print(f"❌ Exception Coinbase checkout: {type(e).__name__}: {str(e)}")

@@ -18434,7 +18434,7 @@ async def admin_activate_subscription(
         expiration_date = datetime.now() + timedelta(days=valid_plans[plan])
         
         # Mettre à jour la base de données
-        if USE_POSTGRES:
+        if USE_POSTGRESQL:
             # PostgreSQL
             cursor = conn.cursor()
             cursor.execute("""

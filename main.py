@@ -111,33 +111,50 @@ def create_coinbase_payment(plan, email, client):
         if not client:
             return None, "Coinbase client non initialisé"
         
-        # Prix par plan
-        plan_prices = {
-            'monthly': {'amount': 29.99, 'name': 'Premium 1 Mois'},
-            '1_month': {'amount': 29.99, 'name': 'Premium 1 Mois'},
-            '3_months': {'amount': 74.97, 'name': 'Advanced 3 Mois'},
-            '6_months': {'amount': 134.94, 'name': 'Pro 6 Mois'},
-            '1_year': {'amount': 239.88, 'name': 'Elite 1 An'}
+        # Normaliser le nom du plan
+        plan_mapping = {
+            'monthly': '1_month',
+            '1_month': '1_month',
+            '3months': '3_months',
+            '3_months': '3_months',
+            '6months': '6_months',
+            '6_months': '6_months',
+            'yearly': '1_year',
+            '1_year': '1_year'
         }
         
-        plan_info = plan_prices.get(plan, {'amount': 29.99, 'name': 'Premium'})
+        normalized_plan = plan_mapping.get(plan.lower(), '1_month')
+        
+        # Prix par plan
+        plan_prices = {
+            '1_month': {'amount': 29.99, 'name': 'Premium 1 Mois', 'duration': '1 mois'},
+            '3_months': {'amount': 74.97, 'name': 'Advanced 3 Mois', 'duration': '3 mois'},
+            '6_months': {'amount': 134.94, 'name': 'Pro 6 Mois', 'duration': '6 mois'},
+            '1_year': {'amount': 239.88, 'name': 'Elite 1 An', 'duration': '1 an'}
+        }
+        
+        plan_info = plan_prices.get(normalized_plan, plan_prices['1_month'])
         
         # Créer la charge Coinbase
         charge_info = {
             'name': f'Trading Dashboard Pro - {plan_info["name"]}',
-            'description': f'Abonnement {plan_info["name"]}',
+            'description': f'Abonnement {plan_info["duration"]} - Tous les indicateurs IA, Trades illimités, Support premium',
             'pricing_type': 'fixed_price',
             'local_price': {
                 'amount': str(plan_info['amount']),
                 'currency': 'USD'
             },
             'metadata': {
-                'plan': plan,
-                'email': email
+                'plan': normalized_plan,
+                'original_plan': plan,
+                'email': email,
+                'duration': plan_info['duration']
             }
         }
         
+        print(f"🔵 Création charge Coinbase: {plan} -> {normalized_plan} = ${plan_info['amount']}")
         charge = client.charge.create(**charge_info)
+        print(f"✅ Charge créée: {charge.id} - URL: {charge.hosted_url}")
         return charge, None
         
     except Exception as e:
@@ -15043,28 +15060,42 @@ async def pricing_complete():
         
         async function buyCoinbase(plan, amount) {
             const btn = event.target;
+            const originalText = btn.textContent;
             btn.disabled = true;
-            btn.textContent = 'Chargement...';
+            btn.textContent = '🔄 Création...';
             
             try {
+                console.log('🔵 Coinbase:', {plan, amount});
+                
                 const res = await fetch('/api/coinbase-checkout', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({plan, amount, email: 'user@example.com'})
+                    body: JSON.stringify({
+                        plan: plan,
+                        amount: amount,
+                        email: 'user@example.com'
+                    })
                 });
                 
                 const data = await res.json();
+                console.log('📦 Réponse Coinbase:', data);
+                
+                if (!res.ok) {
+                    throw new Error(data.message || `Erreur HTTP ${res.status}`);
+                }
+                
                 if (data.success && data.hosted_url) {
+                    console.log('✅ Redirection vers:', data.hosted_url);
+                    btn.textContent = '✅ Redirection...';
                     window.location.href = data.hosted_url;
                 } else {
-                    alert('Erreur: ' + (data.message || 'Impossible de créer le paiement'));
-                    btn.disabled = false;
-                    btn.textContent = '₿ Crypto';
+                    throw new Error(data.message || 'URL de paiement manquante');
                 }
             } catch (e) {
-                alert('Erreur: ' + e.message);
+                console.error('❌ Erreur Coinbase:', e);
+                alert('❌ Erreur: ' + e.message);
                 btn.disabled = false;
-                btn.textContent = '₿ Crypto';
+                btn.textContent = originalText;
             }
         }
     </script>
@@ -15561,40 +15592,54 @@ async def coinbase_checkout(request: Request):
     try:
         data = await request.json()
         plan = data.get('plan', 'monthly')
+        amount = data.get('amount', 29.99)
         email = data.get('email', 'user@example.com')
         
-        if not COINBASE_AVAILABLE or not coinbase_client:
-            return JSONResponse({
-                "success": False,
-                "message": "Coinbase Commerce non configuré"
-            }, status_code=500)
+        print(f"🔵 Demande Coinbase: plan={plan}, amount=${amount}, email={email}")
         
-        if not PAYMENT_SYSTEM_AVAILABLE:
+        if not COINBASE_AVAILABLE or not coinbase_client:
+            error_msg = "Coinbase Commerce non configuré - Vérifiez COINBASE_COMMERCE_KEY"
+            print(f"❌ {error_msg}")
             return JSONResponse({
                 "success": False,
-                "message": "Payment system non disponible"
+                "message": error_msg
             }, status_code=500)
         
         # Créer charge Coinbase
         charge, error = create_coinbase_payment(plan, email, coinbase_client)
         
         if error:
+            print(f"❌ Erreur création charge: {error}")
             return JSONResponse({
                 "success": False,
-                "message": error
+                "message": f"Erreur Coinbase: {error}"
             }, status_code=400)
         
-        print(f"✅ Charge Coinbase créée: {plan} pour {email}")
+        if not charge or not hasattr(charge, 'hosted_url'):
+            print(f"❌ Charge invalide: {charge}")
+            return JSONResponse({
+                "success": False,
+                "message": "Charge Coinbase invalide - pas d'URL générée"
+            }, status_code=500)
+        
+        print(f"✅ Charge Coinbase créée: {charge.id}")
+        print(f"🔗 URL de paiement: {charge.hosted_url}")
+        
         return JSONResponse({
             "success": True,
-            "checkout_url": charge.hosted_url
+            "hosted_url": charge.hosted_url,
+            "charge_id": charge.id,
+            "plan": plan,
+            "amount": amount
         })
     
     except Exception as e:
-        print(f"❌ Coinbase error: {e}")
+        print(f"❌ Exception Coinbase checkout: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return JSONResponse({
             "success": False,
-            "message": str(e)
+            "message": f"Erreur serveur: {str(e)}"
         }, status_code=500)
 
 @app.get("/api/payment-success")

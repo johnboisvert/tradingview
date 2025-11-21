@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import Optional, Any
@@ -2864,7 +2864,53 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot Trading</a><a href="/calculatrice">🧮 Calculatrice</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/prediction-ia">🤖 Prédiction IA</a><a href="/ai-opportunity-scanner">🎯 AI Scanner</a><a href="/ai-market-regime">🌊 Market Regime</a><a href="/ai-whale-watcher">🐋 Whale Watcher</a><a href="/stats-dashboard">$ 📊 Stats Avancées $</a><a href="/market-simulation">📈 Simulation</a><a href="/success-stories">🌟 Success Stories</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a><a href="/pricing">💎 Abonnements</a><a href="/admin">👑 Admin</a><a href="/logout">🚪 Déconnexion</a></div>'
+NAV = '<div class="nav"><a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin Season</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot Trading</a><a href="/calculatrice">🧮 Calculatrice</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk Management</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI Assistant</a><a href="/prediction-ia">🤖 Prédiction IA</a><a href="/ai-opportunity-scanner">🎯 AI Scanner</a><a href="/ai-market-regime">🌊 Market Regime</a><a href="/ai-whale-watcher">🐋 Whale Watcher</a><a href="/stats-dashboard">$ 📊 Stats Avancées $</a><a href="/market-simulation">📈 Simulation</a><a href="/success-stories">🌟 Success Stories</a><a href="/convertisseur">💱 Convertisseur</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun Phase</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a><a href="/pricing-complete">💎 Abonnements</a><a href="/admin-dashboard">👑 Admin</a><a href="/mon-compte">👤 Mon Compte</a><a href="/logout">🚪 Déconnexion</a></div>'
+
+# Middleware pour injecter automatiquement la NAV dans toutes les pages HTML
+@app.middleware("http")
+async def inject_nav_middleware(request: Request, call_next):
+    """Injecte automatiquement la navigation dans toutes les pages HTML"""
+    response = await call_next(request)
+    
+    # Vérifier si c'est une réponse HTML
+    content_type = response.headers.get("content-type", "")
+    if "text/html" in content_type:
+        # Lire le corps de la réponse
+        body = b""
+        async for chunk in response.body_iterator:
+            body += chunk
+        
+        try:
+            html = body.decode('utf-8')
+            
+            # Vérifier si la page n'a pas déjà la NAV et si c'est une page complète
+            if '<body' in html and NAV not in html and '<!DOCTYPE html>' in html:
+                # Injecter la NAV juste après <body> ou après le premier <div class="container">
+                if '<div class="container">' in html:
+                    html = html.replace('<div class="container">', f'<div class="container">{NAV}', 1)
+                elif '<body>' in html:
+                    html = html.replace('<body>', f'<body>{NAV}', 1)
+                elif '<body' in html:
+                    # Cas avec des attributs sur body
+                    import re
+                    html = re.sub(r'(<body[^>]*>)', r'\1' + NAV, html, count=1)
+            
+            # Créer une nouvelle réponse avec le HTML modifié
+            return Response(
+                content=html.encode('utf-8'),
+                status_code=response.status_code,
+                headers=dict(response.headers),
+                media_type="text/html"
+            )
+        except:
+            # En cas d'erreur, retourner la réponse originale
+            return Response(
+                content=body,
+                status_code=response.status_code,
+                headers=dict(response.headers)
+            )
+    
+    return response
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""

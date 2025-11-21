@@ -120,8 +120,8 @@ if COINBASE_AVAILABLE and COINBASE_API_KEY and Client:
 # FONCTIONS DE PAIEMENT
 # ============================================================================
 
-def create_coinbase_payment(plan, email, client):
-    """Crée un paiement Coinbase Commerce
+def create_coinbase_payment(plan, email, client, amount=None):
+    """Crée un paiement Coinbase Commerce avec montant personnalisé
     
     NOTE: Les cryptos acceptées (BTC, ETH, USDT, etc.) sont configurées 
     dans votre dashboard Coinbase Commerce, pas dans l'API.
@@ -155,6 +155,12 @@ def create_coinbase_payment(plan, email, client):
         
         plan_info = plan_prices.get(normalized_plan, plan_prices['1_month'])
         
+        # Si amount fourni (avec code promo), l'utiliser
+        if amount is not None:
+            final_amount = amount
+        else:
+            final_amount = plan_info['amount']
+        
         # Créer la charge Coinbase
         # NOTE: Les cryptos acceptées sont configurées au niveau du compte Coinbase
         # Par défaut: BTC, ETH, USDC, USDT, BCH, DAI, DOGE, LTC
@@ -163,7 +169,7 @@ def create_coinbase_payment(plan, email, client):
             'description': f'Abonnement {plan_info["duration"]} - Tous les indicateurs IA, Trades illimités, Support premium. Accepte: BTC, ETH, USDT, USDC',
             'pricing_type': 'fixed_price',
             'local_price': {
-                'amount': str(plan_info['amount']),
+                'amount': str(final_amount),
                 'currency': 'USD'
             },
             'metadata': {
@@ -174,7 +180,7 @@ def create_coinbase_payment(plan, email, client):
             }
         }
         
-        print(f"🔵 Création charge Coinbase: {plan} -> {normalized_plan} = ${plan_info['amount']}")
+        print(f"🔵 Création charge Coinbase: {plan} -> {normalized_plan} = ${final_amount}")
         print(f"💰 Cryptos acceptées: BTC, ETH, USDT, USDC (selon config Coinbase Commerce)")
         charge = client.charge.create(**charge_info)
         print(f"✅ Charge créée: {charge.id} - URL: {charge.hosted_url}")
@@ -184,13 +190,13 @@ def create_coinbase_payment(plan, email, client):
         print(f"❌ Erreur Coinbase: {e}")
         return None, str(e)
 
-def create_stripe_checkout_session(plan, email, success_url, cancel_url):
-    """Crée une session Stripe Checkout"""
+def create_stripe_checkout_session(plan, email, success_url, cancel_url, amount=None):
+    """Crée une session Stripe Checkout avec montant personnalisé"""
     try:
         if not STRIPE_AVAILABLE or not stripe.api_key:
             return None, "Stripe non configuré"
         
-        # Prix par plan
+        # Prix par plan (en cents)
         plan_prices = {
             'monthly': 2999,
             '1_month': 2999,
@@ -199,7 +205,11 @@ def create_stripe_checkout_session(plan, email, success_url, cancel_url):
             '1_year': 23988
         }
         
-        price = plan_prices.get(plan, 2999)
+        # Si amount fourni (avec code promo), l'utiliser
+        if amount is not None:
+            price = int(amount * 100)  # Convertir en cents
+        else:
+            price = plan_prices.get(plan, 2999)
         
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -14745,409 +14755,468 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
-    """Page de pricing COMPLÈTE avec 5 plans et paiements Stripe + Coinbase"""
+    """Page de pricing avec support codes promo"""
     return HTMLResponse("""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💳 Plans d'Abonnement Premium - Trading Dashboard Pro</title>
+    <title>💎 Plans & Tarifs - Trading Dashboard Pro</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: #0f172a; 
-            color: #e2e8f0;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
         }
-        .container { max-width: 1400px; margin: 0 auto; padding: 40px 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
         .header {
             text-align: center;
-            margin-bottom: 60px;
+            color: white;
+            margin-bottom: 50px;
         }
         .header h1 {
             font-size: 48px;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
         }
-        .header p { color: #94a3b8; font-size: 18px; }
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin-bottom: 60px;
-            padding: 30px 10px;
+        .header p {
+            font-size: 20px;
+            opacity: 0.9;
         }
-        .pricing-card {
-            background: #1e293b;
-            border: 2px solid #334155;
-            border-radius: 16px;
-            padding: 40px 30px 30px 30px;
-            text-align: center;
-            transition: all 0.3s;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            min-height: 550px;
+        
+        /* Section Code Promo */
+        .promo-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            max-width: 600px;
+        }
+        .promo-section h3 {
+            color: #333;
             margin-bottom: 20px;
+            font-size: 22px;
         }
-        .pricing-card:hover {
-            transform: translateY(-8px);
-            border-color: #3b82f6;
-            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+        .promo-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
         }
-        .pricing-card.featured {
-            border-color: #3b82f6;
-            box-shadow: 0 0 30px rgba(59, 130, 246, 0.3);
-            transform: scale(1.02);
-        }
-        .pricing-card.featured:hover {
-            transform: scale(1.02) translateY(-8px);
-        }
-        .pricing-card .badge {
-            position: absolute;
-            top: -15px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #3b82f6;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 12px;
+        .promo-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            text-transform: uppercase;
             font-weight: 600;
         }
-        .pricing-card h3 {
-            font-size: 26px;
-            margin-bottom: 8px;
-            margin-top: 10px;
+        .promo-input:focus {
+            outline: none;
+            border-color: #667eea;
         }
-        .pricing-card p { color: #94a3b8; margin-bottom: 20px; font-size: 14px; }
-        .price {
-            font-size: 42px;
+        .promo-btn {
+            padding: 15px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
             font-weight: bold;
-            color: #22c55e;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .promo-btn:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+        .promo-message {
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+        }
+        .promo-message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+            display: block;
+        }
+        .promo-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+            display: block;
+        }
+        .original-price {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        .pricing-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .pricing-card:hover {
+            transform: translateY(-10px);
+        }
+        .pricing-card.featured {
+            border: 3px solid #f59e0b;
+            transform: scale(1.05);
+        }
+        .pricing-card.featured::before {
+            content: "⭐ POPULAIRE";
+            position: absolute;
+            top: 20px;
+            right: -35px;
+            background: #f59e0b;
+            color: white;
+            padding: 5px 40px;
+            transform: rotate(45deg);
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .plan-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .plan-price {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
             margin: 20px 0;
         }
-        .price small { font-size: 14px; color: #94a3b8; }
+        .plan-price .currency { font-size: 24px; }
+        .plan-price .period { font-size: 16px; color: #666; }
+        .discount-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
         .features {
-            text-align: left;
-            margin: 25px 0;
             list-style: none;
-            flex-grow: 1;
-            min-height: 200px;
+            margin: 30px 0;
+            text-align: left;
         }
         .features li {
             padding: 12px 0;
-            border-bottom: 1px solid #334155;
-            color: #cbd5e1;
-            font-size: 14px;
-            line-height: 1.5;
+            color: #555;
+            border-bottom: 1px solid #eee;
         }
-        .features li:last-child { border-bottom: none; }
         .features li:before {
-            content: "✅ ";
-            color: #22c55e;
-            margin-right: 8px;
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 10px;
         }
-        .payment-buttons {
-            display: flex;
-            gap: 12px;
-            margin-top: auto;
-            padding-top: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        .btn-buy {
-            flex: 1;
-            min-width: 130px;
-            padding: 14px 16px;
+        .btn-payment {
+            display: block;
+            width: 100%;
+            padding: 15px;
             border: none;
             border-radius: 10px;
-            color: white;
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-top: 10px;
         }
         .btn-stripe {
-            background: linear-gradient(135deg, #635bff 0%, #5451f0 100%);
+            background: #635bff;
+            color: white;
         }
         .btn-stripe:hover {
-            background: linear-gradient(135deg, #5451f0 0%, #4340d6 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(99, 91, 255, 0.4);
+            background: #4f46e5;
+            transform: scale(1.02);
         }
         .btn-coinbase {
-            background: linear-gradient(135deg, #0052ff 0%, #0047e6 100%);
+            background: #0052ff;
+            color: white;
         }
         .btn-coinbase:hover {
-            background: linear-gradient(135deg, #0047e6 0%, #003dcc 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 82, 255, 0.4);
+            background: #0041cc;
+            transform: scale(1.02);
         }
-        .btn-buy:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
-        }
-        .free-badge {
+        .back-link {
             display: inline-block;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            margin-top: 30px;
             color: white;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-size: 13px;
-            margin-top: 15px;
+            text-decoration: none;
             font-weight: 600;
-            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            transition: all 0.3s;
         }
-        
-        /* Responsive Design */
-        @media (max-width: 1200px) {
-            .pricing-grid {
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            }
-            .pricing-card.featured {
-                transform: scale(1);
-            }
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
         }
-        
-        @media (max-width: 768px) {
-            .pricing-grid {
-                grid-template-columns: 1fr;
-                padding: 20px 5px;
-            }
-            .pricing-card {
-                min-height: auto;
-                margin-bottom: 30px;
-            }
-            .header h1 {
-                font-size: 32px;
-            }
-        }
-        .faq {
-            background: #1e293b;
-            border-radius: 12px;
-            padding: 40px;
-            margin-top: 60px;
-        }
-        .faq h2 { margin-bottom: 30px; color: #3b82f6; }
-        .faq-item {
-            margin-bottom: 20px;
-            border-bottom: 1px solid #334155;
-            padding-bottom: 20px;
-        }
-        .faq-item strong { color: #e2e8f0; }
-        .faq-item p { color: #94a3b8; margin-top: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        """ + NAV + """
         <div class="header">
-            <h1>💳 Plans d'Abonnement Premium</h1>
-            <p>Choisissez le plan parfait pour vos besoins de trading</p>
+            <h1>💎 Plans & Tarifs</h1>
+            <p>Choisissez le plan qui vous convient</p>
         </div>
-
-        <div class="pricing-grid">
-            <!-- Plan Gratuit -->
-            <div class="pricing-card">
-                <h3>🆓 Gratuit</h3>
-                <p>Pour débuter</p>
-                <div class="price">
-                    $0<br><small>/mois</small>
-                </div>
-                <ul class="features">
-                    <li>Accès limité au dashboard</li>
-                    <li>Fear & Greed Index</li>
-                    <li>1 alerte par semaine</li>
-                    <li>Avec publicités</li>
-                </ul>
-                <span class="free-badge">✅ GRATUIT</span>
-                <button class="btn-buy btn-stripe" onclick="alert('Accès gratuit - Pas de paiement requis')" style="margin-top: 30px; background: #10b981;">
-                    Accès Gratuit
-                </button>
+        
+        <!-- Section Code Promo -->
+        <div class="promo-section">
+            <h3>🎁 Vous avez un code promo?</h3>
+            <div class="promo-input-group">
+                <input type="text" 
+                       id="promoCode" 
+                       class="promo-input" 
+                       placeholder="Entrez votre code promo"
+                       onkeyup="this.value = this.value.toUpperCase()">
+                <button onclick="applyPromo()" class="promo-btn">Appliquer</button>
             </div>
-
-            <!-- Plan 1 Mois -->
+            <div id="promoMessage" class="promo-message"></div>
+        </div>
+        
+        <div class="pricing-grid">
+            <!-- Plan 1 Month -->
             <div class="pricing-card">
-                <h3>💳 1 Mois</h3>
-                <p>Essai court terme</p>
-                <div class="price">
-                    $29.99<br><small>/mois</small>
+                <div class="plan-name">💳 Premium</div>
+                <div class="discount-badge">1 mois</div>
+                <div class="plan-price" id="price-1-month">
+                    <span class="currency">$</span><span id="amount-1-month">29.99</span>
                 </div>
                 <ul class="features">
-                    <li>Accès complet au dashboard</li>
-                    <li>Trades illimités</li>
                     <li>Tous les indicateurs IA</li>
-                    <li>Webhooks TradingView</li>
+                    <li>Dashboard en temps réel</li>
+                    <li>Signaux de trading</li>
                     <li>Support prioritaire</li>
                 </ul>
-                <div class="payment-buttons">
-                    <button class="btn-buy btn-stripe" onclick="buyStripe('monthly', 29.99)">💳 Stripe</button>
-                    <button class="btn-buy btn-coinbase" onclick="buyCoinbase('monthly', 29.99)">₿ Crypto</button>
-                </div>
+                <button class="btn-payment btn-stripe" onclick="checkout('1_month', 'stripe', 29.99)">
+                    💳 Payer par Carte
+                </button>
+                <button class="btn-payment btn-coinbase" onclick="checkout('1_month', 'coinbase', 29.99)">
+                    ₿ Payer en Crypto
+                </button>
             </div>
-
-            <!-- Plan 3 Mois (Featured) -->
+            
+            <!-- Plan 3 Months -->
             <div class="pricing-card featured">
-                <div class="badge">⭐ MEILLEUR</div>
-                <h3>💎 3 Mois</h3>
-                <p>Sauvegarde 17%</p>
-                <div class="price">
-                    $74.97<br><small>pour 3 mois</small>
+                <div class="plan-name">💎 Advanced</div>
+                <div class="discount-badge">3 mois - Économisez 17%</div>
+                <div class="plan-price" id="price-3-months">
+                    <span class="currency">$</span><span id="amount-3-months">74.97</span>
+                    <span class="period">/3 mois</span>
                 </div>
                 <ul class="features">
-                    <li>Accès complet au dashboard</li>
-                    <li>Trades illimités</li>
-                    <li>Tous les indicateurs IA</li>
+                    <li>Tous les avantages Premium</li>
                     <li>Webhooks TradingView</li>
-                    <li>Support 24/7 Premium</li>
-                    <li>✨ 17% réduit</li>
+                    <li>Alertes Telegram</li>
+                    <li>Support 24/7</li>
                 </ul>
-                <div class="payment-buttons">
-                    <button class="btn-buy btn-stripe" onclick="buyStripe('3months', 74.97)">💳 Stripe</button>
-                    <button class="btn-buy btn-coinbase" onclick="buyCoinbase('3months', 74.97)">₿ Crypto</button>
-                </div>
+                <button class="btn-payment btn-stripe" onclick="checkout('3_months', 'stripe', 74.97)">
+                    💳 Payer par Carte
+                </button>
+                <button class="btn-payment btn-coinbase" onclick="checkout('3_months', 'coinbase', 74.97)">
+                    ₿ Payer en Crypto
+                </button>
             </div>
-
-            <!-- Plan 6 Mois -->
+            
+            <!-- Plan 6 Months -->
             <div class="pricing-card">
-                <h3>👑 6 Mois</h3>
-                <p>Sauvegarde 25%</p>
-                <div class="price">
-                    $134.94<br><small>pour 6 mois</small>
+                <div class="plan-name">👑 Pro</div>
+                <div class="discount-badge">6 mois - Économisez 25%</div>
+                <div class="plan-price" id="price-6-months">
+                    <span class="currency">$</span><span id="amount-6-months">134.94</span>
+                    <span class="period">/6 mois</span>
                 </div>
                 <ul class="features">
-                    <li>Accès complet au dashboard</li>
-                    <li>Trades illimités</li>
-                    <li>Tous les indicateurs IA</li>
-                    <li>Webhooks TradingView</li>
-                    <li>Support 24/7 Premium</li>
-                    <li>✨ 25% réduit</li>
+                    <li>Tous les avantages Advanced</li>
+                    <li>API accès complet</li>
+                    <li>Backtesting illimité</li>
+                    <li>Support VIP</li>
                 </ul>
-                <div class="payment-buttons">
-                    <button class="btn-buy btn-stripe" onclick="buyStripe('6months', 134.94)">💳 Stripe</button>
-                    <button class="btn-buy btn-coinbase" onclick="buyCoinbase('6months', 134.94)">₿ Crypto</button>
-                </div>
+                <button class="btn-payment btn-stripe" onclick="checkout('6_months', 'stripe', 134.94)">
+                    💳 Payer par Carte
+                </button>
+                <button class="btn-payment btn-coinbase" onclick="checkout('6_months', 'coinbase', 134.94)">
+                    ₿ Payer en Crypto
+                </button>
             </div>
-
-            <!-- Plan 1 An -->
+            
+            <!-- Plan 1 Year -->
             <div class="pricing-card">
-                <h3>🚀 1 An</h3>
-                <p>Sauvegarde 33%</p>
-                <div class="price">
-                    $239.88<br><small>/an</small>
+                <div class="plan-name">🚀 Elite</div>
+                <div class="discount-badge">1 an - Économisez 33%</div>
+                <div class="plan-price" id="price-1-year">
+                    <span class="currency">$</span><span id="amount-1-year">239.88</span>
+                    <span class="period">/an</span>
                 </div>
                 <ul class="features">
-                    <li>Accès complet au dashboard</li>
-                    <li>Trades illimités</li>
-                    <li>Tous les indicateurs IA</li>
-                    <li>Webhooks TradingView</li>
-                    <li>Support 24/7 Premium</li>
-                    <li>✨ 33% réduit</li>
+                    <li>Tous les avantages Pro</li>
+                    <li>Rapports PDF hebdomadaires</li>
+                    <li>Formation exclusive</li>
+                    <li>Support dédié</li>
                 </ul>
-                <div class="payment-buttons">
-                    <button class="btn-buy btn-stripe" onclick="buyStripe('yearly', 239.88)">💳 Stripe</button>
-                    <button class="btn-buy btn-coinbase" onclick="buyCoinbase('yearly', 239.88)">₿ Crypto</button>
-                </div>
+                <button class="btn-payment btn-stripe" onclick="checkout('1_year', 'stripe', 239.88)">
+                    💳 Payer par Carte
+                </button>
+                <button class="btn-payment btn-coinbase" onclick="checkout('1_year', 'coinbase', 239.88)">
+                    ₿ Payer en Crypto
+                </button>
             </div>
         </div>
-
-        <div class="faq">
-            <h2>❓ Questions Fréquentes</h2>
-            
-            <div class="faq-item">
-                <strong>💳 Stripe vs Crypto?</strong>
-                <p><strong>Stripe:</strong> Carte bancaire. <strong>Crypto:</strong> Bitcoin, Ethereum, etc.</p>
-            </div>
-            
-            <div class="faq-item">
-                <strong>🔄 Changer de plan?</strong>
-                <p>Oui, upgrader/downgrader à tout moment.</p>
-            </div>
-            
-            <div class="faq-item">
-                <strong>🔐 Sécurisé?</strong>
-                <p>Oui! Stripe (PCI DSS) et Coinbase Commerce.</p>
-            </div>
-        </div>
+        
+        <center>
+            <a href="/dashboard" class="back-link">← Retour au Dashboard</a>
+        </center>
     </div>
-
+    
     <script>
-        async function buyStripe(plan, amount) {
-            const btn = event.target;
-            btn.disabled = true;
-            btn.textContent = 'Chargement...';
+        // État global pour le code promo
+        let appliedPromo = {
+            code: null,
+            discount: 0,
+            originalPrices: {
+                '1_month': 29.99,
+                '3_months': 74.97,
+                '6_months': 134.94,
+                '1_year': 239.88
+            },
+            discountedPrices: {}
+        };
+        
+        // Appliquer le code promo
+        async function applyPromo() {
+            const codeInput = document.getElementById('promoCode');
+            const code = codeInput.value.trim().toUpperCase();
+            const messageDiv = document.getElementById('promoMessage');
+            
+            if (!code) {
+                showMessage('Veuillez entrer un code promo', 'error');
+                return;
+            }
+            
+            messageDiv.innerHTML = '🔄 Validation en cours...';
+            messageDiv.className = 'promo-message';
+            messageDiv.style.display = 'block';
             
             try {
-                const res = await fetch('/api/stripe-checkout', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({plan, amount, email: 'user@example.com'})
-                });
+                // Valider pour chaque plan
+                let validForAnyPlan = false;
                 
-                const data = await res.json();
-                if (data.success && data.checkout_url) {
-                    window.location.href = data.checkout_url;
-                } else {
-                    alert('Erreur: ' + (data.message || 'Impossible'));
-                    btn.disabled = false;
-                    btn.textContent = '💳 Stripe';
+                for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
+                    const response = await fetch(`/admin/test-promo?code=${code}&plan=${plan}&amount=${originalPrice}`);
+                    const data = await response.json();
+                    
+                    if (data.valid && data.discount) {
+                        validForAnyPlan = true;
+                        appliedPromo.code = code;
+                        appliedPromo.discountedPrices[plan] = data.final_amount;
+                        updatePriceDisplay(plan, originalPrice, data.final_amount);
+                    }
                 }
-            } catch (e) {
-                alert('Erreur: ' + e.message);
-                btn.disabled = false;
-                btn.textContent = '💳 Stripe';
+                
+                if (validForAnyPlan) {
+                    showMessage(`✅ Code ${code} appliqué avec succès!`, 'success');
+                } else {
+                    showMessage('❌ Code promo invalide ou expiré', 'error');
+                    resetPrices();
+                }
+            } catch (error) {
+                showMessage('❌ Erreur lors de la validation', 'error');
+                console.error(error);
             }
         }
         
-        async function buyCoinbase(plan, amount) {
-            const btn = event.target;
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = '🔄 Création...';
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('promoMessage');
+            messageDiv.innerHTML = message;
+            messageDiv.className = `promo-message ${type}`;
+            messageDiv.style.display = 'block';
+        }
+        
+        function updatePriceDisplay(plan, originalPrice, newPrice) {
+            const amountSpan = document.getElementById(`amount-${plan}`);
+            amountSpan.innerHTML = `
+                <span class="original-price">$${originalPrice.toFixed(2)}</span>
+                ${newPrice.toFixed(2)}
+            `;
+        }
+        
+        function resetPrices() {
+            appliedPromo.code = null;
+            appliedPromo.discountedPrices = {};
             
-            try {
-                console.log('🔵 Coinbase:', {plan, amount});
-                
-                const res = await fetch('/api/coinbase-checkout', {
+            for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
+                const amountSpan = document.getElementById(`amount-${plan}`);
+                amountSpan.textContent = originalPrice.toFixed(2);
+            }
+        }
+        
+        async function checkout(plan, method, baseAmount) {
+            const finalAmount = appliedPromo.discountedPrices[plan] || baseAmount;
+            
+            if (method === 'stripe') {
+                const response = await fetch('/api/stripe-checkout', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         plan: plan,
-                        amount: amount,
-                        email: 'user@example.com'
+                        amount: finalAmount,
+                        promo_code: appliedPromo.code
                     })
                 });
                 
-                const data = await res.json();
-                console.log('📦 Réponse Coinbase:', data);
-                
-                if (!res.ok) {
-                    throw new Error(data.message || `Erreur HTTP ${res.status}`);
-                }
-                
-                if (data.success && data.hosted_url) {
-                    console.log('✅ Redirection vers:', data.hosted_url);
-                    btn.textContent = '✅ Redirection...';
-                    window.location.href = data.hosted_url;
+                const data = await response.json();
+                if (data.url) {
+                    window.location.href = data.url;
                 } else {
-                    throw new Error(data.message || 'URL de paiement manquante');
+                    alert('Erreur: ' + (data.error || 'Impossible de créer la session'));
                 }
-            } catch (e) {
-                console.error('❌ Erreur Coinbase:', e);
-                alert('❌ Erreur: ' + e.message);
-                btn.disabled = false;
-                btn.textContent = originalText;
+            } else {
+                const response = await fetch('/api/coinbase-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        plan: plan,
+                        amount: finalAmount,
+                        promo_code: appliedPromo.code
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert('Erreur: ' + (data.error || 'Impossible de créer le paiement'));
+                }
             }
         }
     </script>
 </body>
-</html>""")
-
+</html>
+""")
 @app.get("/pricing-new", response_class=HTMLResponse)
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
@@ -15585,11 +15654,19 @@ async def coinbase_webhook(request: Request):
 
 @app.post("/api/stripe-checkout")
 async def stripe_checkout(request: Request):
-    """Crée une session Stripe Checkout"""
+    """Crée une session Stripe Checkout avec support des codes promo"""
     try:
         data = await request.json()
         plan = data.get('plan', 'monthly')
+        amount = data.get('amount', 29.99)
+        promo_code = data.get('promo_code', None)
         email = data.get('email', 'user@example.com')
+        
+        # Récupérer l'email de l'utilisateur connecté si disponible
+        session_token = request.cookies.get("session_token")
+        user = get_user_from_token(session_token)
+        if user:
+            email = user.get('username', email)
         
         if not STRIPE_AVAILABLE or not STRIPE_SECRET_KEY:
             return JSONResponse({
@@ -15603,14 +15680,36 @@ async def stripe_checkout(request: Request):
                 "message": "Payment system non disponible"
             }, status_code=500)
         
+        # Valider et appliquer le code promo
+        final_amount = amount
+        discount_applied = 0
+        
+        if promo_code and PROMO_CODES_AVAILABLE:
+            conn = get_db_connection()
+            valid, msg, discount = PromoCodeManager.validate_promo_code(
+                conn, promo_code, plan, amount
+            )
+            
+            if valid and discount:
+                discount_applied = discount
+                final_amount = amount - discount
+                print(f"✅ Code promo {promo_code} appliqué: -${discount:.2f} (${amount:.2f} → ${final_amount:.2f})")
+                
+                # Incrémenter l'utilisation du code
+                PromoCodeManager.use_promo_code(conn, promo_code, email)
+            else:
+                print(f"⚠️  Code promo '{promo_code}' invalide: {msg}")
+            
+            conn.close()
+        
         # URLs
         base_url = "https://tradingview-production-5763.up.railway.app"
         success_url = f"{base_url}/api/payment-success?plan={plan}"
         cancel_url = f"{base_url}/api/payment-cancel?plan={plan}"
         
-        # Créer session
+        # Créer session avec montant final (avec réduction)
         checkout_url, error = create_stripe_checkout_session(
-            plan, email, success_url, cancel_url
+            plan, email, success_url, cancel_url, final_amount
         )
         
         if error:
@@ -15619,9 +15718,10 @@ async def stripe_checkout(request: Request):
                 "message": error
             }, status_code=400)
         
-        print(f"✅ Session Stripe créée: {plan} pour {email}")
+        print(f"✅ Session Stripe créée: {plan} pour {email} (${final_amount:.2f})")
         return JSONResponse({
             "success": True,
+            "url": checkout_url,
             "checkout_url": checkout_url
         })
     
@@ -15634,14 +15734,21 @@ async def stripe_checkout(request: Request):
 
 @app.post("/api/coinbase-checkout")
 async def coinbase_checkout(request: Request):
-    """Crée un paiement Coinbase Commerce"""
+    """Crée un paiement Coinbase Commerce avec support des codes promo"""
     try:
         data = await request.json()
         plan = data.get('plan', 'monthly')
         amount = data.get('amount', 29.99)
+        promo_code = data.get('promo_code', None)
         email = data.get('email', 'user@example.com')
         
-        print(f"🔵 Demande Coinbase: plan={plan}, amount=${amount}, email={email}")
+        # Récupérer l'email de l'utilisateur connecté si disponible
+        session_token = request.cookies.get("session_token")
+        user = get_user_from_token(session_token)
+        if user:
+            email = user.get('username', email)
+        
+        print(f"🔵 Demande Coinbase: plan={plan}, amount=${amount}, email={email}, promo={promo_code}")
         
         if not COINBASE_AVAILABLE or not coinbase_client:
             error_msg = "Coinbase Commerce non configuré - Vérifiez COINBASE_COMMERCE_KEY"
@@ -15651,8 +15758,30 @@ async def coinbase_checkout(request: Request):
                 "message": error_msg
             }, status_code=500)
         
-        # Créer charge Coinbase
-        charge, error = create_coinbase_payment(plan, email, coinbase_client)
+        # Valider et appliquer le code promo
+        final_amount = amount
+        discount_applied = 0
+        
+        if promo_code and PROMO_CODES_AVAILABLE:
+            conn = get_db_connection()
+            valid, msg, discount = PromoCodeManager.validate_promo_code(
+                conn, promo_code, plan, amount
+            )
+            
+            if valid and discount:
+                discount_applied = discount
+                final_amount = amount - discount
+                print(f"✅ Code promo {promo_code} appliqué: -${discount:.2f} (${amount:.2f} → ${final_amount:.2f})")
+                
+                # Incrémenter l'utilisation du code
+                PromoCodeManager.use_promo_code(conn, promo_code, email)
+            else:
+                print(f"⚠️  Code promo '{promo_code}' invalide: {msg}")
+            
+            conn.close()
+        
+        # Créer charge Coinbase avec montant final
+        charge, error = create_coinbase_payment(plan, email, coinbase_client, final_amount)
         
         if error:
             print(f"❌ Erreur création charge: {error}")
@@ -15668,11 +15797,17 @@ async def coinbase_checkout(request: Request):
                 "message": "Charge Coinbase invalide - pas d'URL générée"
             }, status_code=500)
         
-        print(f"✅ Charge Coinbase créée: {charge.id}")
+        print(f"✅ Charge Coinbase créée: {charge.id} (${final_amount:.2f})")
         print(f"🔗 URL de paiement: {charge.hosted_url}")
         
         return JSONResponse({
             "success": True,
+            "url": charge.hosted_url,
+            "hosted_url": charge.hosted_url,
+            "charge_id": charge.id,
+            "plan": plan,
+            "amount": final_amount
+        })
             "hosted_url": charge.hosted_url,
             "charge_id": charge.id,
             "plan": plan,
@@ -19287,6 +19422,16 @@ async def admin_dashboard(request: Request):
             <div class="header">
                 <h1>👨‍💼 Admin Dashboard</h1>
                 <p class="subtitle">Gestion des utilisateurs et abonnements</p>
+            </div>
+            <div style="margin-bottom: 20px; text-align: center;">
+                <a href="/admin/list-promos" class="btn btn-primary" 
+                   style="background: #f59e0b; padding: 12px 24px; font-size: 16px; margin: 5px;">
+                    💰 Gérer les Codes Promo
+                </a>
+                <a href="/admin/pricing" class="btn btn-primary" 
+                   style="padding: 12px 24px; font-size: 16px; margin: 5px;">
+                    💳 Gérer les Prix
+                </a>
             </div>
             <div class="stats-grid">
                 <div class="stat-card"><div class="stat-label">Total Utilisateurs</div><div class="stat-value">{total_users}</div></div>

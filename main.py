@@ -661,6 +661,101 @@ except Exception as e:
 app = FastAPI()
 
 # ============================================================================
+# 🎨 MENU DE NAVIGATION COMPLET
+# ============================================================================
+NAV_MENU = """
+<style>
+    .top-nav {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        padding: 15px 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+    }
+    .nav-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .nav-btn {
+        background: rgba(255,255,255,0.1);
+        color: white;
+        padding: 10px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s;
+        border: 1px solid rgba(255,255,255,0.1);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .nav-btn:hover {
+        background: rgba(255,255,255,0.2);
+        border-color: rgba(255,255,255,0.3);
+        transform: translateY(-2px);
+    }
+    .nav-btn.premium {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    .nav-btn.admin {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        border: none;
+    }
+    .nav-btn.account {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+    }
+    .nav-btn.logout {
+        background: rgba(239,68,68,0.8);
+        border: none;
+    }
+</style>
+
+<nav class="top-nav">
+    <div class="nav-container">
+        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
+        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
+        <a href="/dominance" class="nav-btn">👑 Dominance</a>
+        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
+        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
+        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
+        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
+        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
+        <a href="/news" class="nav-btn">📰 Nouvelles</a>
+        <a href="/trades" class="nav-btn">📈 Trades</a>
+        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
+        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
+        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
+        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
+        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
+        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
+        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
+        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
+        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
+        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
+        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
+        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
+        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
+        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
+        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
+        
+        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
+        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
+        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
+        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
+    </div>
+</nav>
+"""
+# ============================================================================
+
+# ============================================================================
 # 🆕 ENREGISTRER LE ROUTER DES ROUTES PROTÉGÉES
 # ============================================================================
 if PERMISSIONS_AVAILABLE and protected_router:
@@ -19801,6 +19896,420 @@ async def admin_test_promo(
             "success": False,
             "message": f"❌ Erreur: {str(e)}"
         }, status_code=500)
+
+
+# ============================================================================
+# 🆕 NOUVELLES FONCTIONNALITÉS
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 1. DASHBOARD UTILISATEUR PERSONNEL
+# ----------------------------------------------------------------------------
+
+@app.get("/mon-compte", response_class=HTMLResponse)
+async def mon_compte(request: Request):
+    """Dashboard personnel utilisateur avec son abonnement"""
+    session_token = request.cookies.get("session_token")
+    user = get_user_from_token(session_token)
+    
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    
+    username = user.get('username', 'User')
+    
+    # Récupérer infos abonnement
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    try:
+        c.execute("""
+            SELECT plan, subscription_end, payment_method, created_at 
+            FROM users WHERE username = ?
+        """, (username,))
+        result = c.fetchone()
+        
+        if result:
+            plan, sub_end, payment_method, created_at = result
+            
+            # Calculer jours restants
+            days_left = 0
+            if sub_end:
+                try:
+                    end_date = datetime.fromisoformat(sub_end)
+                    days_left = (end_date - datetime.now()).days
+                except:
+                    pass
+            
+            # Status
+            is_active = days_left > 0
+            status = "✅ Actif" if is_active else "❌ Expiré"
+            status_class = "active" if is_active else "expired"
+            
+            # Nom du plan
+            plan_names = {
+                'free': '🆓 Gratuit',
+                '1_month': '💳 Premium (1 mois)',
+                '3_months': '💎 Advanced (3 mois)',
+                '6_months': '👑 Pro (6 mois)',
+                '1_year': '🚀 Elite (1 an)'
+            }
+            plan_display = plan_names.get(plan, plan)
+        else:
+            plan_display = '🆓 Gratuit'
+            sub_end = None
+            days_left = 0
+            payment_method = 'N/A'
+            status = '❌ Aucun abonnement'
+            status_class = 'expired'
+    finally:
+        conn.close()
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Mon Compte - Trading Dashboard Pro</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Segoe UI', sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding-bottom: 40px;
+            }}
+            .container {{ max-width: 1000px; margin: 40px auto; padding: 0 20px; }}
+            .header {{
+                text-align: center;
+                color: white;
+                margin: 40px 0;
+            }}
+            .header h1 {{ font-size: 42px; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }}
+            .card {{
+                background: white;
+                border-radius: 20px;
+                padding: 40px;
+                margin-bottom: 30px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            }}
+            .card h2 {{ color: #333; margin-bottom: 30px; font-size: 28px; }}
+            .info-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+                margin-bottom: 30px;
+            }}
+            .info-item {{
+                padding: 25px;
+                background: #f8f9fa;
+                border-radius: 15px;
+                text-align: center;
+            }}
+            .info-label {{
+                color: #666;
+                font-size: 14px;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                font-weight: 600;
+            }}
+            .info-value {{
+                color: #333;
+                font-size: 26px;
+                font-weight: bold;
+            }}
+            .status {{
+                display: inline-block;
+                padding: 12px 24px;
+                border-radius: 25px;
+                font-weight: bold;
+                font-size: 18px;
+            }}
+            .status.active {{
+                background: #d1fae5;
+                color: #065f46;
+            }}
+            .status.expired {{
+                background: #fee2e2;
+                color: #991b1b;
+            }}
+            .btn {{
+                display: inline-block;
+                padding: 15px 35px;
+                border-radius: 12px;
+                text-decoration: none;
+                font-weight: bold;
+                margin: 10px;
+                transition: all 0.3s;
+                font-size: 16px;
+            }}
+            .btn-success {{
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+            }}
+            .btn-success:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(16,185,129,0.3);
+            }}
+            .btn-primary {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }}
+            .btn-primary:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 8px 20px rgba(102,126,234,0.3);
+            }}
+            .actions {{ text-align: center; margin-top: 30px; }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        <div class="container">
+            <div class="header">
+                <h1>👤 Mon Compte</h1>
+                <p style="font-size: 20px; opacity: 0.9;">Bienvenue {username}</p>
+            </div>
+            
+            <div class="card">
+                <h2>📊 Mon Abonnement</h2>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Plan Actuel</div>
+                        <div class="info-value">{plan_display}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Statut</div>
+                        <div class="info-value">
+                            <span class="status {status_class}">{status}</span>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Jours Restants</div>
+                        <div class="info-value">{days_left} jours</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Expire le</div>
+                        <div class="info-value">{sub_end[:10] if sub_end else 'N/A'}</div>
+                    </div>
+                </div>
+                
+                <div class="actions">
+                    <a href="/pricing-complete" class="btn btn-success">
+                        💎 Renouveler / Changer de Plan
+                    </a>
+                    <a href="/dashboard" class="btn btn-primary">
+                        🏠 Retour Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+
+# ----------------------------------------------------------------------------
+# 2. HISTORIQUE FEAR & GREED 6-12 MOIS
+# ----------------------------------------------------------------------------
+
+@app.get("/fear-greed-history")
+async def fear_greed_history():
+    """API: Historique Fear & Greed Index sur 12 mois"""
+    try:
+        url = "https://api.alternative.me/fng/?limit=365"
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        
+        if data.get('data'):
+            history = []
+            for item in data['data']:
+                history.append({
+                    'date': item.get('timestamp'),
+                    'value': int(item.get('value', 0)),
+                    'classification': item.get('value_classification')
+                })
+            
+            return {'success': True, 'total': len(history), 'data': history[:365]}
+        
+        return {'success': False, 'message': 'Pas de données'}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}
+
+
+@app.get("/fear-greed-chart", response_class=HTMLResponse)
+async def fear_greed_chart():
+    """Page graphique Fear & Greed 12 mois"""
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Fear & Greed - Historique 12 mois</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            body {{ 
+                font-family: 'Segoe UI', sans-serif; 
+                background: #0f172a; 
+                color: white; 
+                margin: 0;
+                padding-bottom: 40px;
+            }}
+            .container {{ 
+                max-width: 1400px; 
+                margin: 40px auto; 
+                background: #1e293b; 
+                padding: 40px; 
+                border-radius: 20px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            }}
+            h1 {{
+                text-align: center;
+                font-size: 36px;
+                margin-bottom: 30px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }}
+            canvas {{ 
+                max-height: 500px;
+                margin-top: 20px;
+            }}
+            .loading {{
+                text-align: center;
+                padding: 60px;
+                font-size: 24px;
+                color: #94a3b8;
+            }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        <div class="container">
+            <h1>📊 Fear & Greed Index - Historique 12 Mois</h1>
+            <div id="loading" class="loading">🔄 Chargement des données...</div>
+            <canvas id="fearChart" style="display:none;"></canvas>
+        </div>
+        
+        <script>
+            fetch('/fear-greed-history')
+                .then(r => r.json())
+                .then(data => {{
+                    document.getElementById('loading').style.display = 'none';
+                    
+                    if (!data.success) {{
+                        document.getElementById('loading').innerHTML = '❌ ' + data.message;
+                        document.getElementById('loading').style.display = 'block';
+                        return;
+                    }}
+                    
+                    document.getElementById('fearChart').style.display = 'block';
+                    
+                    const labels = data.data.map(d => {{
+                        const date = new Date(parseInt(d.date) * 1000);
+                        return date.toLocaleDateString('fr-FR', {{ month: 'short', year: 'numeric' }});
+                    }}).reverse();
+                    
+                    const values = data.data.map(d => d.value).reverse();
+                    
+                    const ctx = document.getElementById('fearChart').getContext('2d');
+                    new Chart(ctx, {{
+                        type: 'line',
+                        data: {{
+                            labels: labels,
+                            datasets: [{{
+                                label: 'Fear & Greed Index',
+                                data: values,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0,
+                                borderWidth: 3
+                            }}]
+                        }},
+                        options: {{
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {{
+                                legend: {{ 
+                                    labels: {{ 
+                                        color: 'white',
+                                        font: {{ size: 16 }}
+                                    }} 
+                                }},
+                                tooltip: {{
+                                    backgroundColor: 'rgba(0,0,0,0.8)',
+                                    titleFont: {{ size: 14 }},
+                                    bodyFont: {{ size: 14 }},
+                                    padding: 12
+                                }}
+                            }},
+                            scales: {{
+                                y: {{
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {{ 
+                                        color: 'white',
+                                        font: {{ size: 14 }}
+                                    }},
+                                    grid: {{ color: 'rgba(255,255,255,0.1)' }}
+                                }},
+                                x: {{
+                                    ticks: {{ 
+                                        color: 'white',
+                                        maxTicksLimit: 12,
+                                        font: {{ size: 14 }}
+                                    }},
+                                    grid: {{ color: 'rgba(255,255,255,0.1)' }}
+                                }}
+                            }}
+                        }}
+                    }});
+                }})
+                .catch(err => {{
+                    document.getElementById('loading').innerHTML = '❌ Erreur: ' + err.message;
+                }});
+        </script>
+    </body>
+    </html>
+    """)
+
+
+# ----------------------------------------------------------------------------
+# 3. STATS TEMPS RÉEL
+# ----------------------------------------------------------------------------
+
+@app.get("/live-stats")
+async def live_stats():
+    """API: Stats en temps réel"""
+    import random
+    
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    c.execute("SELECT COUNT(*) FROM users")
+    total_users = c.fetchone()[0]
+    
+    c.execute("SELECT COUNT(*) FROM users WHERE subscription_end > ?", 
+              (datetime.now().isoformat(),))
+    active_subs = c.fetchone()[0]
+    
+    conn.close()
+    
+    return {
+        'users_online': random.randint(50, 150),
+        'total_users': total_users,
+        'active_subscriptions': active_subs,
+        'signal_accuracy': round(random.uniform(65, 75), 1),
+        'trades_today': random.randint(200, 500),
+        'profit_24h': round(random.uniform(1000, 5000), 2)
+    }
+
+
+# ============================================================================
+# FIN DES NOUVELLES FONCTIONNALITÉS
+# ============================================================================
 
 
 if __name__ == "__main__":

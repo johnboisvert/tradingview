@@ -19118,119 +19118,6 @@ if PERMISSIONS_AVAILABLE:
 
 
 # Route "Mon Compte" pour gérer l'abonnement
-@app.get("/mon-compte", response_class=HTMLResponse)
-async def mon_compte(session_token: Optional[str] = Cookie(None)):
-    """Page de gestion du compte utilisateur"""
-    
-    user_session = get_user_from_token(session_token)
-    if not user_session:
-        return RedirectResponse("/login")
-    
-    # Extraire le username
-    if isinstance(user_session, str):
-        username = user_session
-    else:
-        username = user_session.get("username", "")
-    
-    # Récupérer les infos complètes
-    user_info = db_manager.get_user_info(username)
-    
-    # Vérifier si l'abonnement est actif
-    is_active = False
-    days_remaining = None
-    if user_info.get("subscription_end"):
-        is_active = user_info["subscription_end"] > datetime.now()
-        if is_active:
-            days_remaining = (user_info["subscription_end"] - datetime.now()).days
-    
-    plan_name = user_info.get("subscription_plan", "free")
-    plan_display = {
-        "free": "Gratuit",
-        "1_month": "Premium (1 mois)",
-        "3_months": "Advanced (3 mois)",
-        "6_months": "Pro (6 mois)",
-        "1_year": "Elite (1 an)"
-    }.get(plan_name, "Gratuit")
-    
-    # Compter les features disponibles
-    features_count = 3 if plan_name == "free" else 7 if plan_name == "1_month" else 12 if plan_name == "3_months" else 18 if plan_name == "6_months" else 24
-    
-    return HTMLResponse(f"""
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Mon Compte - Trading Dashboard Pro</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background: #f5f5f5; }}
-        .card {{ background: white; border-radius: 12px; padding: 24px; margin: 20px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }}
-        h1 {{ color: #333; }}
-        h2 {{ color: #666; margin-top: 0; }}
-        .badge {{ display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: bold; color: white; }}
-        .badge-free {{ background: #gray; }}
-        .badge-premium {{ background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }}
-        .badge-advanced {{ background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }}
-        .badge-pro {{ background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }}
-        .badge-elite {{ background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }}
-        .status {{ font-size: 18px; margin: 10px 0; }}
-        .status.active {{ color: #10b981; }}
-        .status.expired {{ color: #ef4444; }}
-        .btn {{ display: inline-block; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 20px; }}
-        .btn-upgrade {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }}
-        .btn-back {{ background: #e5e7eb; color: #333; }}
-        .info-row {{ display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }}
-        .info-label {{ font-weight: bold; color: #666; }}
-        .info-value {{ color: #333; }}
-    </style>
-</head>
-<body>
-    <h1>👤 Mon Compte</h1>
-    
-    <div class="card">
-        <h2>Informations générales</h2>
-        <div class="info-row">
-            <span class="info-label">Utilisateur:</span>
-            <span class="info-value">{username}</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Plan actuel:</span>
-            <span class="info-value"><span class="badge badge-{plan_name}">{plan_display}</span></span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Statut:</span>
-            <span class="status {'active' if is_active else 'expired'}">{'✅ Actif' if is_active else '❌ Expiré'}</span>
-        </div>
-        {f'''<div class="info-row">
-            <span class="info-label">Expire le:</span>
-            <span class="info-value">{user_info["subscription_end"].strftime("%d/%m/%Y") if user_info.get("subscription_end") else "N/A"}</span>
-        </div>''' if user_info.get("subscription_end") else ''}
-        {f'''<div class="info-row">
-            <span class="info-label">Jours restants:</span>
-            <span class="info-value">{days_remaining} jours</span>
-        </div>''' if days_remaining else ''}
-    </div>
-    
-    <div class="card">
-        <h2>📊 Statistiques</h2>
-        <div class="info-row">
-            <span class="info-label">Features disponibles:</span>
-            <span class="info-value">{features_count} fonctionnalités</span>
-        </div>
-        <div class="info-row">
-            <span class="info-label">Méthode de paiement:</span>
-            <span class="info-value">{(user_info.get("payment_method") or "Aucune").upper()}</span>
-        </div>
-    </div>
-    
-    {f'<a href="/pricing-complete" class="btn btn-upgrade">🚀 Upgrade mon plan</a>' if plan_name != '1_year' else '<p style="color: #10b981; font-weight: bold;">✨ Vous avez le plan Elite! Merci pour votre confiance.</p>'}
-    <a href="/" class="btn btn-back">← Retour au dashboard</a>
-</body>
-</html>
-    """)
-
-
-# Handler d'erreurs 403 (Permission Denied)
-@app.exception_handler(403)
 async def permission_denied_handler(request: Request, exc: HTTPException):
     """Gère les erreurs de permissions"""
     
@@ -20286,26 +20173,47 @@ async def live_stats():
     """API: Stats en temps réel"""
     import random
     
-    conn = get_db_connection()
-    c = conn.cursor()
-    
-    c.execute("SELECT COUNT(*) FROM users")
-    total_users = c.fetchone()[0]
-    
-    c.execute("SELECT COUNT(*) FROM users WHERE subscription_end > ?", 
-              (datetime.now().isoformat(),))
-    active_subs = c.fetchone()[0]
-    
-    conn.close()
-    
-    return {
-        'users_online': random.randint(50, 150),
-        'total_users': total_users,
-        'active_subscriptions': active_subs,
-        'signal_accuracy': round(random.uniform(65, 75), 1),
-        'trades_today': random.randint(200, 500),
-        'profit_24h': round(random.uniform(1000, 5000), 2)
-    }
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Compter total utilisateurs
+        c.execute("SELECT COUNT(*) FROM users")
+        total_users = c.fetchone()[0]
+        
+        # Compter abonnements actifs (compatible PostgreSQL et SQLite)
+        now = datetime.now().isoformat()
+        is_postgres = hasattr(conn, 'server_version')
+        
+        if is_postgres:
+            c.execute("SELECT COUNT(*) FROM users WHERE subscription_end > %s", (now,))
+        else:
+            c.execute("SELECT COUNT(*) FROM users WHERE subscription_end > ?", (now,))
+        
+        active_subs = c.fetchone()[0]
+        
+        conn.close()
+        
+        return {
+            'success': True,
+            'users_online': random.randint(50, 150),
+            'total_users': total_users,
+            'active_subscriptions': active_subs,
+            'signal_accuracy': round(random.uniform(65, 75), 1),
+            'trades_today': random.randint(200, 500),
+            'profit_24h': round(random.uniform(1000, 5000), 2)
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'users_online': 0,
+            'total_users': 0,
+            'active_subscriptions': 0,
+            'signal_accuracy': 0,
+            'trades_today': 0,
+            'profit_24h': 0
+        }
 
 
 # ============================================================================

@@ -19803,10 +19803,10 @@ async def mon_compte(request: Request):
     if not user:
         return RedirectResponse("/login", status_code=303)
     
-    username = user.get('username', 'User')
+    username = user.get('username', 'User') if isinstance(user, dict) else user
     
-    # Récupérer infos abonnement
-    conn = get_db_connection()
+    # Récupérer infos abonnement depuis la bonne DB
+    conn = db_manager.get_connection()  # ← CORRECTION ICI
     c = conn.cursor()
     
     try:
@@ -20174,22 +20174,16 @@ async def live_stats():
     import random
     
     try:
-        conn = get_db_connection()
+        conn = db_manager.get_connection()  # ← CORRECTION ICI
         c = conn.cursor()
         
         # Compter total utilisateurs
         c.execute("SELECT COUNT(*) FROM users")
         total_users = c.fetchone()[0]
         
-        # Compter abonnements actifs (compatible PostgreSQL et SQLite)
+        # Compter abonnements actifs
         now = datetime.now().isoformat()
-        is_postgres = hasattr(conn, 'server_version')
-        
-        if is_postgres:
-            c.execute("SELECT COUNT(*) FROM users WHERE subscription_end > %s", (now,))
-        else:
-            c.execute("SELECT COUNT(*) FROM users WHERE subscription_end > ?", (now,))
-        
+        c.execute("SELECT COUNT(*) FROM users WHERE subscription_end > ?", (now,))
         active_subs = c.fetchone()[0]
         
         conn.close()

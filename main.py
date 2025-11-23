@@ -32,6 +32,7 @@ import hashlib
 import secrets
 import hmac
 import hashlib
+import requests  # Pour API externe (Fear & Greed, etc.)
 
 # ============================================================================
 # 🆕 SYSTÈME DE PERMISSIONS - IMPORTS

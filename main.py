@@ -19810,45 +19810,69 @@ async def mon_compte(request: Request):
     c = conn.cursor()
     
     try:
-        c.execute("""
-            SELECT plan, subscription_end, payment_method, created_at 
-            FROM users WHERE username = ?
-        """, (username,))
-        result = c.fetchone()
+        # Essayer avec toutes les colonnes
+        try:
+            c.execute("""
+                SELECT subscription_plan, subscription_end, payment_method, created_at 
+                FROM users WHERE username = ?
+            """, (username,))
+            result = c.fetchone()
+        except:
+            # Si payment_method n'existe pas, essayer sans
+            c.execute("""
+                SELECT subscription_plan, subscription_end, created_at 
+                FROM users WHERE username = ?
+            """, (username,))
+            result = c.fetchone()
+            if result:
+                plan, sub_end, created_at = result
+                payment_method = 'N/A'
+            else:
+                result = None
         
-        if result:
+        if result and len(result) == 4:
             plan, sub_end, payment_method, created_at = result
-            
-            # Calculer jours restants
-            days_left = 0
-            if sub_end:
-                try:
-                    end_date = datetime.fromisoformat(sub_end)
-                    days_left = (end_date - datetime.now()).days
-                except:
-                    pass
-            
-            # Status
-            is_active = days_left > 0
-            status = "✅ Actif" if is_active else "❌ Expiré"
-            status_class = "active" if is_active else "expired"
-            
-            # Nom du plan
-            plan_names = {
-                'free': '🆓 Gratuit',
-                '1_month': '💳 Premium (1 mois)',
-                '3_months': '💎 Advanced (3 mois)',
-                '6_months': '👑 Pro (6 mois)',
-                '1_year': '🚀 Elite (1 an)'
-            }
-            plan_display = plan_names.get(plan, plan)
+        elif result:
+            # Déjà géré ci-dessus
+            pass
         else:
-            plan_display = '🆓 Gratuit'
+            plan = 'free'
             sub_end = None
-            days_left = 0
             payment_method = 'N/A'
-            status = '❌ Aucun abonnement'
-            status_class = 'expired'
+            created_at = None
+        
+        # Calculer jours restants
+        days_left = 0
+        if sub_end:
+            try:
+                end_date = datetime.fromisoformat(sub_end)
+                days_left = (end_date - datetime.now()).days
+            except:
+                pass
+        
+        # Status
+        is_active = days_left > 0
+        status = "✅ Actif" if is_active else "❌ Expiré"
+        status_class = "active" if is_active else "expired"
+        
+        # Nom du plan
+        plan_names = {
+            'free': '🆓 Gratuit',
+            '1_month': '💳 Premium (1 mois)',
+            '3_months': '💎 Advanced (3 mois)',
+            '6_months': '👑 Pro (6 mois)',
+            '1_year': '🚀 Elite (1 an)'
+        }
+        plan_display = plan_names.get(plan, plan if plan else '🆓 Gratuit')
+    except Exception as e:
+        # En cas d'erreur, valeurs par défaut
+        print(f"Erreur /mon-compte: {e}")
+        plan_display = '🆓 Gratuit'
+        sub_end = None
+        days_left = 0
+        payment_method = 'N/A'
+        status = '❌ Aucun abonnement'
+        status_class = 'expired'
     finally:
         conn.close()
     

@@ -20425,7 +20425,6 @@ async def api_keys_page(request: Request):
     """)
 
 @app.post("/api/generate-key")
-@protected_route
 async def generate_api_key(request: Request):
     """Génère une clé API pour le développeur authentifié"""
     user = get_user_from_token(request.cookies.get("session_token"))
@@ -20523,7 +20522,6 @@ async def admin_update_plan_features_page(request: Request):
     """)
 
 @app.post("/admin/update-plan-features")
-@protected_route
 async def update_plan_features(request: Request):
     """Modifier les features d'un plan (endpoint POST)"""
     user = get_user_from_token(request.cookies.get("session_token"))

@@ -20377,7 +20377,7 @@ async def testimonials_widget():
 API_KEYS = {}
 
 @app.get("/api-keys", response_class=HTMLResponse)
-@protected_route
+@protected_router  # <--- CORRECTION
 async def api_keys_page(request: Request):
     """Page pour gérer sa clé API"""
     user = get_user_from_token(request.cookies.get("session_token"))
@@ -20473,7 +20473,7 @@ curl -H "api-key: YOUR_KEY" \\
 # ============================================================================
 
 @app.get("/admin/update-plan-features", response_class=HTMLResponse)
-@protected_route
+@protected_router  # <--- CORRECTION
 async def admin_update_plan_features_page(request: Request):
     """Page admin pour modifier les features d'un plan"""
     user = get_user_from_token(request.cookies.get("session_token"))

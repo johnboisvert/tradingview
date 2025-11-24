@@ -19999,7 +19999,7 @@ async def mon_compte(request: Request):
             # 2. HISTORIQUE FEAR & GREED 6-12 MOIS
             # ----------------------------------------------------------------------------
 
-            @app.get("/fear-greed-history")
+@app.get("/fear-greed-history")
             async def fear_greed_history():
                 """API: Historique Fear & Greed Index sur 12 mois"""
                 try:

@@ -10583,22 +10583,6 @@ async def heatmap_page():
     return HTMLResponse(html)
 # Remplacer la fonction @app.get("/altcoin-season") par celle-ci
 
-
-@app.get("/api/altcoin-season-history")
-async def get_altcoin_history():
-    """Historique 365 jours"""
-    history = []
-    now = datetime.now()
-    for i in range(365):
-        date = now - timedelta(days=365-i)
-        base = 45
-        annual = math.sin((i/365) * 2 * math.pi) * 20
-        monthly = math.sin((i/30) * 2 * math.pi) * 10
-        event = 20 if 150 <= i <= 200 else -20 if 280 <= i <= 310 else 0
-        index = max(10, min(90, base + annual + monthly + event))
-        history.append({"date": date.strftime("%Y-%m-%d"), "index": round(index, 1)})
-    return {"status": "success", "history": history}
-
 @app.get("/altcoin-season", response_class=HTMLResponse)
 async def altcoin_page():
     """Page Altcoin Season - SIMPLE avec juste la jauge"""
@@ -10941,14 +10925,6 @@ async def altcoin_page():
 </html>
 """
     return html
-
-
-@app.get("/nouvelles", response_class=HTMLResponse)
-async def news_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Nouvelles</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📰 Actualités Crypto</h1></div>""" + NAV + """<div class="card"><div id="news"><div class="spinner"></div></div></div></div><script>async function load(){const r=await fetch('/api/crypto-news');const d=await r.json();let h='';d.articles.forEach(a=>{h+='<div style="padding:20px;border-bottom:1px solid #334155"><h3 style="color:#60a5fa;margin-bottom:10px">'+a.title+'</h3><p style="color:#94a3b8;font-size:14px">'+a.source+'</p><a href="'+a.url+'" target="_blank" style="color:#3b82f6">Lire →</a></div>'});document.getElementById('news').innerHTML=h}load();setInterval(load,300000);</script></body></html>"""
-    return HTMLResponse(html)
-
-
 
 
 @app.get("/bullrun-phase", response_class=HTMLResponse)

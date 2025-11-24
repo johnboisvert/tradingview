@@ -20377,10 +20377,13 @@ async def testimonials_widget():
 API_KEYS = {}
 
 @app.get("/api-keys", response_class=HTMLResponse)
-@protected_router  # <--- CORRECTION
 async def api_keys_page(request: Request):
     """Page pour gérer sa clé API"""
+    # On vérifie si l'utilisateur est bien connecté
     user = get_user_from_token(request.cookies.get("session_token"))
+    if not user:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
     return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="fr">
@@ -20473,11 +20476,11 @@ curl -H "api-key: YOUR_KEY" \\
 # ============================================================================
 
 @app.get("/admin/update-plan-features", response_class=HTMLResponse)
-@protected_router  # <--- CORRECTION
 async def admin_update_plan_features_page(request: Request):
     """Page admin pour modifier les features d'un plan"""
+    # On vérifie si l'utilisateur est admin
     user = get_user_from_token(request.cookies.get("session_token"))
-    if user.get('role') != 'admin':
+    if not user or user.get('role') != 'admin':
         raise HTTPException(status_code=403, detail="Accès refusé")
     
     # Récupérer les plans existants pour les afficher dans un formulaire
@@ -20518,7 +20521,6 @@ async def admin_update_plan_features_page(request: Request):
     </body>
     </html>
     """)
-
 
 @app.post("/admin/update-plan-features")
 @protected_route

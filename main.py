@@ -19995,6 +19995,10 @@ async def mon_compte(request: Request):
     </html>
     """)
 
+# ============================================================================
+# NOUVELLES FONCTIONNALITÉS AJOUTÉES
+# ============================================================================
+
 # ----------------------------------------------------------------------------
 # 1. HISTORIQUE FEAR & GREED 6-12 MOIS
 # ----------------------------------------------------------------------------
@@ -20208,10 +20212,6 @@ async def live_stats():
 
 
 # ============================================================================
-# FIN DES NOUVELLES FONCTIONNALITÉS
-# ============================================================================
-
-# ============================================================================
 # BACKTESTING
 # ============================================================================
 
@@ -20310,33 +20310,10 @@ async def api_backtest(request: Request):
         }
     }
 
-@app.post("/backtest")
-async def backtest_strategy(request: Request):
-    """Backtest d'une stratégie sur données historiques"""
-    data = await request.json()
-    
-    symbol = data.get('symbol', 'BTCUSDT')
-    start_date = data.get('start_date')  # '2024-01-01'
-    end_date = data.get('end_date')      # '2024-12-31'
-    strategy = data.get('strategy', 'ema_cross')
-    
-    # Simulation (remplacez par vraies données)
-    results = {
-        'total_trades': 156,
-        'winning_trades': 94,
-        'losing_trades': 62,
-        'win_rate': 60.26,
-        'profit_loss': 3250.75,
-        'max_drawdown': -450.20,
-        'sharpe_ratio': 1.85
-    }
-    
-    return {
-        'success': True,
-        'symbol': symbol,
-        'period': f"{start_date} - {end_date}",
-        'results': results
-    }
+
+# ============================================================================
+# MÉTRIQUES ON-CHAIN
+# ============================================================================
 
 @app.get("/onchain-metrics")
 async def onchain_metrics():
@@ -20370,28 +20347,10 @@ async def onchain_metrics():
         'metrics': metrics
     }
 
-@app.get("/admin/testimonials", response_class=HTMLResponse)
-async def manage_testimonials():
-    """Gestion des témoignages"""
-    # Page admin pour ajouter/modifier témoignages
-    return HTMLResponse("""
-    <!DOCTYPE html>
-    <html>
-    <head><title>Témoignages</title></head>
-    <body>
-        <h1>Gérer les Témoignages</h1>
-        <form action="/admin/add-testimonial" method="POST">
-            <input type="text" name="name" placeholder="Nom client" required>
-            <textarea name="text" placeholder="Témoignage" required></textarea>
-            <input type="number" name="rating" min="1" max="5" value="5">
-            <button type="submit">Ajouter</button>
-        </form>
-    </body>
-    </html>
-    """)
+# ============================================================================
+# WIDGET TÉMOIGNAGES
+# ============================================================================
 
-
-# Afficher sur homepage
 @app.get("/testimonials-widget")
 async def testimonials_widget():
     """Widget témoignages pour homepage"""
@@ -20410,19 +20369,62 @@ async def testimonials_widget():
     
     return {'success': True, 'testimonials': testimonials}
 
-# --- DÉBUT DE LA SECTION SUPPRIMÉE/CORRIGÉE ---
-# La fonction live_stats() dupliquée et mal indentée a été supprimée ici.
-# La fonction live_stats() correcte est plus haut dans le fichier.
-# La fonction generate_api_key() qui suivait était aussi mal indentée.
-# --- FIN DE LA SECTION SUPPRIMÉE/CORRIGÉE ---
+# ============================================================================
+# GESTION CLÉS API (Développeur)
+# ============================================================================
 
+# Stockage temporaire des clés API (à remplacer par une base de données en production)
+API_KEYS = {}
 
-# API Key management
-API_KEYS = {}  # En production: utiliser DB
+@app.get("/api-keys", response_class=HTMLResponse)
+@protected_route
+async def api_keys_page(request: Request):
+    """Page pour gérer sa clé API"""
+    user = get_user_from_token(request.cookies.get("session_token"))
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>Votre Clé API</title>
+        <style>
+            body {{ font-family: Arial; background: #0f172a; color: white; margin: 0; }}
+            .container {{ max-width: 800px; margin: 40px auto; padding: 20px; background: #1e293b; border-radius: 20px; }}
+            h1 {{ text-align: center; }}
+            .key-display {{ background: #0f172a; padding: 20px; border-radius: 10px; word-wrap: break-word; margin: 20px 0; }}
+            button {{ width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 10px; cursor: pointer; }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        <div class="container">
+            <h1>🔑 Votre Clé API Développeur</h1>
+            <p>Générez une clé pour accéder aux endpoints de notre API.</p>
+            <button onclick="generateKey()">Générer une nouvelle clé</button>
+            <div id="keyResult"></div>
+            <h3>Documentation</h3>
+            <p><a href="/api/docs" target="_blank">Voir la documentation de l'API</a></p>
+        </div>
+        <script>
+            async function generateKey() {{
+                const response = await fetch('/api/generate-key', {{ method: 'POST' }});
+                const result = await response.json();
+                const div = document.getElementById('keyResult');
+                if (result.success) {{
+                    div.innerHTML = `<h3>Clé générée !</h3><div class="key-display"><code>\${{result.api_key}}</code></div><p>Conservez-la précieusement.</p>`;
+                }} else {{
+                    div.innerHTML = `<p style="color: red;">Erreur: \${{result.error}}</p>`;
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """)
 
 @app.post("/api/generate-key")
+@protected_route
 async def generate_api_key(request: Request):
-    """Génère une clé API pour développeurs"""
+    """Génère une clé API pour le développeur authentifié"""
     user = get_user_from_token(request.cookies.get("session_token"))
     if not user:
         return {"error": "Non authentifié"}
@@ -20437,13 +20439,12 @@ async def generate_api_key(request: Request):
         'docs': '/api/docs'
     }
 
-
 # Routes API publiques
 @app.get("/api/v1/signals")
 async def api_signals(api_key: str):
     """API: Récupérer les signaux"""
     if api_key not in API_KEYS:
-        return {"error": "Invalid API key"}
+        raise HTTPException(status_code=403, detail="Invalid API key")
     
     # Retourner signaux
     return {
@@ -20463,16 +20464,75 @@ async def api_documentation():
     <p>Récupère les signaux de trading actuels</p>
     <pre>
 curl -H "api-key: YOUR_KEY" \\
-  https://tradingview-production-5763.up.railway.app/api/v1/signals
+  https://votre-domaine.com/api/v1/signals
     </pre>
     """)
+
+# ============================================================================
+# ADMINISTRATION
+# ============================================================================
+
+@app.get("/admin/update-plan-features", response_class=HTMLResponse)
+@protected_route
+async def admin_update_plan_features_page(request: Request):
+    """Page admin pour modifier les features d'un plan"""
+    user = get_user_from_token(request.cookies.get("session_token"))
+    if user.get('role') != 'admin':
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    
+    # Récupérer les plans existants pour les afficher dans un formulaire
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT plan_name, features FROM pricing_plans")
+    plans = c.fetchall()
+    conn.close()
+    
+    plans_html = ""
+    for plan_name, features_json in plans:
+        plans_html += f"<h3>Plan: {plan_name}</h3><textarea name='features_{plan_name}' rows='5' style='width:100%'>{features_json}</textarea><br><br>"
+
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>Modifier les Plans</title>
+        <style>
+            body {{ font-family: Arial; background: #0f172a; color: white; margin: 0; }}
+            .container {{ max-width: 800px; margin: 40px auto; padding: 20px; background: #1e293b; border-radius: 20px; }}
+            h1 {{ text-align: center; }}
+            textarea {{ background: #0f172a; color: white; border: 1px solid #334155; padding: 10px; border-radius: 5px; }}
+            button {{ width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        <div class="container">
+            <h1>⚙️ Modifier les fonctionnalités des plans</h1>
+            <p>Modifiez les fonctionnalités (au format JSON) pour chaque plan.</p>
+            <form action="/admin/update-plan-features" method="POST">
+                {plans_html}
+                <button type="submit">Mettre à jour tous les plans</button>
+            </form>
+        </div>
+    </body>
+    </html>
+    """)
+
+
 @app.post("/admin/update-plan-features")
+@protected_route
 async def update_plan_features(request: Request):
-    """Modifier les features d'un plan"""
+    """Modifier les features d'un plan (endpoint POST)"""
+    user = get_user_from_token(request.cookies.get("session_token"))
+    if user.get('role') != 'admin':
+        raise HTTPException(status_code=403, detail="Accès refusé")
+        
+    # Cette version est plus simple et attend un seul plan à la fois
     data = await request.json()
     
-    plan = data.get('plan')  # 'free', '1_month', etc.
-    features = data.get('features', [])  # Liste features
+    plan = data.get('plan')
+    features = data.get('features', [])
     
     conn = get_db_connection()
     c = conn.cursor()
@@ -20488,6 +20548,11 @@ async def update_plan_features(request: Request):
     conn.close()
     
     return {'success': True, 'message': f'Plan {plan} mis à jour'}
+
+
+# ============================================================================
+# DÉMARRAGE DE L'APPLICATION
+# ============================================================================
 
 if __name__ == "__main__":
     import uvicorn

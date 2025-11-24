@@ -19995,605 +19995,597 @@ async def mon_compte(request: Request):
     </html>
     """)
 
-            # ----------------------------------------------------------------------------
-            # 2. HISTORIQUE FEAR & GREED 6-12 MOIS
-            # ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# 1. HISTORIQUE FEAR & GREED 6-12 MOIS
+# ----------------------------------------------------------------------------
 
 @app.get("/fear-greed-history")
-            async def fear_greed_history():
-                """API: Historique Fear & Greed Index sur 12 mois"""
-                try:
-                    url = "https://api.alternative.me/fng/?limit=365"
-                    response = requests.get(url, timeout=10)
-                    data = response.json()
-                    
-                    if data.get('data'):
-                        history = []
-                        for item in data['data']:
-                            history.append({
-                                'date': item.get('timestamp'),
-                                'value': int(item.get('value', 0)),
-                                'classification': item.get('value_classification')
-                            })
-                        
-                        return {'success': True, 'total': len(history), 'data': history[:365]}
-                    
-                    return {'success': False, 'message': 'Pas de données'}
-                except Exception as e:
-                    return {'success': False, 'message': str(e)}
+async def fear_greed_history():
+    """API: Historique Fear & Greed Index sur 12 mois"""
+    try:
+        url = "https://api.alternative.me/fng/?limit=365"
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        
+        if data.get('data'):
+            history = []
+            for item in data['data']:
+                history.append({
+                    'date': item.get('timestamp'),
+                    'value': int(item.get('value', 0)),
+                    'classification': item.get('value_classification')
+                })
+            
+            return {'success': True, 'total': len(history), 'data': history[:365]}
+        
+        return {'success': False, 'message': 'Pas de données'}
+    except Exception as e:
+        return {'success': False, 'message': str(e)}
 
 
-            @app.get("/fear-greed-chart", response_class=HTMLResponse)
-            async def fear_greed_chart():
-                """Page graphique Fear & Greed 12 mois"""
-                return HTMLResponse(f"""
-                <!DOCTYPE html>
-                <html lang="fr">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Fear & Greed - Historique 12 mois</title>
-                    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-                    <style>
-                        body {{ 
-                            font-family: 'Segoe UI', sans-serif; 
-                            background: #0f172a; 
-                            color: white; 
-                            margin: 0;
-                            padding-bottom: 40px;
-                        }}
-                        .container {{ 
-                            max-width: 1400px; 
-                            margin: 40px auto; 
-                            background: #1e293b; 
-                            padding: 40px; 
-                            border-radius: 20px;
-                            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-                        }}
-                        h1 {{
-                            text-align: center;
-                            font-size: 36px;
-                            margin-bottom: 30px;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            -webkit-background-clip: text;
-                            -webkit-text-fill-color: transparent;
-                        }}
-                        canvas {{ 
-                            max-height: 500px;
-                            margin-top: 20px;
-                        }}
-                        .loading {{
-                            text-align: center;
-                            padding: 60px;
-                            font-size: 24px;
-                            color: #94a3b8;
-                        }}
-                    </style>
-                </head>
-                <body>
-                    {NAV_MENU}
-                    <div class="container">
-                        <h1>📊 Fear & Greed Index - Historique 12 Mois</h1>
-                        <div id="loading" class="loading">🔄 Chargement des données...</div>
-                        <canvas id="fearChart" style="display:none;"></canvas>
-                    </div>
+@app.get("/fear-greed-chart", response_class=HTMLResponse)
+async def fear_greed_chart():
+    """Page graphique Fear & Greed 12 mois"""
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Fear & Greed - Historique 12 mois</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <style>
+            body {{ 
+                font-family: 'Segoe UI', sans-serif; 
+                background: #0f172a; 
+                color: white; 
+                margin: 0;
+                padding-bottom: 40px;
+            }}
+            .container {{ 
+                max-width: 1400px; 
+                margin: 40px auto; 
+                background: #1e293b; 
+                padding: 40px; 
+                border-radius: 20px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            }}
+            h1 {{
+                text-align: center;
+                font-size: 36px;
+                margin-bottom: 30px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }}
+            canvas {{ 
+                max-height: 500px;
+                margin-top: 20px;
+            }}
+            .loading {{
+                text-align: center;
+                padding: 60px;
+                font-size: 24px;
+                color: #94a3b8;
+            }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        <div class="container">
+            <h1>📊 Fear & Greed Index - Historique 12 Mois</h1>
+            <div id="loading" class="loading">🔄 Chargement des données...</div>
+            <canvas id="fearChart" style="display:none;"></canvas>
+        </div>
+        
+        <script>
+            fetch('/fear-greed-history')
+                .then(r => r.json())
+                .then(data => {{
+                    document.getElementById('loading').style.display = 'none';
                     
-                    <script>
-                        fetch('/fear-greed-history')
-                            .then(r => r.json())
-                            .then(data => {{
-                                document.getElementById('loading').style.display = 'none';
-                                
-                                if (!data.success) {{
-                                    document.getElementById('loading').innerHTML = '❌ ' + data.message;
-                                    document.getElementById('loading').style.display = 'block';
-                                    return;
+                    if (!data.success) {{
+                        document.getElementById('loading').innerHTML = '❌ ' + data.message;
+                        document.getElementById('loading').style.display = 'block';
+                        return;
+                    }}
+                    
+                    document.getElementById('fearChart').style.display = 'block';
+                    
+                    const labels = data.data.map(d => {{
+                        const date = new Date(parseInt(d.date) * 1000);
+                        return date.toLocaleDateString('fr-FR', {{ month: 'short', year: 'numeric' }});
+                    }}).reverse();
+                    
+                    const values = data.data.map(d => d.value).reverse();
+                    
+                    const ctx = document.getElementById('fearChart').getContext('2d');
+                    new Chart(ctx, {{
+                        type: 'line',
+                        data: {{
+                            labels: labels,
+                            datasets: [{{
+                                label: 'Fear & Greed Index',
+                                data: values,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0,
+                                borderWidth: 3
+                            }}]
+                        }},
+                        options: {{
+                            responsive: true,
+                            maintainAspectRatio: true,
+                            plugins: {{
+                                legend: {{ 
+                                    labels: {{ 
+                                        color: 'white',
+                                        font: {{ size: 16 }}
+                                    }} 
+                                }},
+                                tooltip: {{
+                                    backgroundColor: 'rgba(0,0,0,0.8)',
+                                    titleFont: {{ size: 14 }},
+                                    bodyFont: {{ size: 14 }},
+                                    padding: 12
                                 }}
-                                
-                                document.getElementById('fearChart').style.display = 'block';
-                                
-                                const labels = data.data.map(d => {{
-                                    const date = new Date(parseInt(d.date) * 1000);
-                                    return date.toLocaleDateString('fr-FR', {{ month: 'short', year: 'numeric' }});
-                                }}).reverse();
-                                
-                                const values = data.data.map(d => d.value).reverse();
-                                
-                                const ctx = document.getElementById('fearChart').getContext('2d');
-                                new Chart(ctx, {{
-                                    type: 'line',
-                                    data: {{
-                                        labels: labels,
-                                        datasets: [{{
-                                            label: 'Fear & Greed Index',
-                                            data: values,
-                                            borderColor: '#667eea',
-                                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                                            fill: true,
-                                            tension: 0.4,
-                                            pointRadius: 0,
-                                            borderWidth: 3
-                                        }}]
+                            }},
+                            scales: {{
+                                y: {{
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {{ 
+                                        color: 'white',
+                                        font: {{ size: 14 }}
                                     }},
-                                    options: {{
-                                        responsive: true,
-                                        maintainAspectRatio: true,
-                                        plugins: {{
-                                            legend: {{ 
-                                                labels: {{ 
-                                                    color: 'white',
-                                                    font: {{ size: 16 }}
-                                                }} 
-                                            }},
-                                            tooltip: {{
-                                                backgroundColor: 'rgba(0,0,0,0.8)',
-                                                titleFont: {{ size: 14 }},
-                                                bodyFont: {{ size: 14 }},
-                                                padding: 12
-                                            }}
-                                        }},
-                                        scales: {{
-                                            y: {{
-                                                beginAtZero: true,
-                                                max: 100,
-                                                ticks: {{ 
-                                                    color: 'white',
-                                                    font: {{ size: 14 }}
-                                                }},
-                                                grid: {{ color: 'rgba(255,255,255,0.1)' }}
-                                            }},
-                                            x: {{
-                                                ticks: {{ 
-                                                    color: 'white',
-                                                    maxTicksLimit: 12,
-                                                    font: {{ size: 14 }}
-                                                }},
-                                                grid: {{ color: 'rgba(255,255,255,0.1)' }}
-                                            }}
-                                        }}
-                                    }}
-                                }});
-                            }})
-                            .catch(err => {{
-                                document.getElementById('loading').innerHTML = '❌ Erreur: ' + err.message;
-                            }});
-                    </script>
-                </body>
-                </html>
-                """)
-
-
-            # ----------------------------------------------------------------------------
-            # 3. STATS TEMPS RÉEL
-            # ----------------------------------------------------------------------------
-
-            @app.get("/live-stats")
-            async def live_stats():
-                """API: Stats en temps réel"""
-                import random
-                
-                try:
-                    # Assurez-vous que db_manager est défini quelque part dans votre code
-                    # Si vous utilisez get_db_connection(), remplacez db_manager.get_connection()
-                    conn = db_manager.get_connection()  
-                    c = conn.cursor()
-                    
-                    # Compter total utilisateurs
-                    c.execute("SELECT COUNT(*) FROM users")
-                    total_users = c.fetchone()[0]
-                    
-                    # Compter abonnements actifs
-                    now = datetime.now().isoformat()
-                    c.execute("SELECT COUNT(*) FROM users WHERE subscription_end > ?", (now,))
-                    active_subs = c.fetchone()[0]
-                    
-                    conn.close()
-                    
-                    return {
-                        'success': True,
-                        'users_online': random.randint(50, 150),
-                        'total_users': total_users,
-                        'active_subscriptions': active_subs,
-                        'signal_accuracy': round(random.uniform(65, 75), 1),
-                        'trades_today': random.randint(200, 500),
-                        'profit_24h': round(random.uniform(1000, 5000), 2)
-                    }
-                except Exception as e:
-                    return {
-                        'success': False,
-                        'error': str(e),
-                        'users_online': 0,
-                        'total_users': 0,
-                        'active_subscriptions': 0,
-                        'signal_accuracy': 0,
-                        'trades_today': 0,
-                        'profit_24h': 0
-                    }
-
-
-            # ============================================================================
-            # FIN DES NOUVELLES FONCTIONNALITÉS
-            # ============================================================================
-
-            # ============================================================================
-            # BACKTESTING
-            # ============================================================================
-
-            @app.get("/backtesting", response_class=HTMLResponse)
-            async def backtesting_page():
-                """Page backtesting"""
-                return HTMLResponse(f"""
-                <!DOCTYPE html>
-                <html lang="fr">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>Backtesting - Trading Dashboard Pro</title>
-                    <style>
-                        body {{ font-family: Arial; background: #0f172a; color: white; margin: 0; }}
-                        .container {{ max-width: 1200px; margin: 40px auto; padding: 20px; }}
-                        .card {{ background: #1e293b; border-radius: 20px; padding: 40px; margin-bottom: 30px; }}
-                        input, select {{ width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; background: #0f172a; color: white; border: 2px solid #334155; }}
-                        button {{ width: 100%; padding: 18px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }}
-                        .result-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }}
-                        .result-item {{ background: #0f172a; padding: 25px; border-radius: 15px; text-align: center; }}
-                        .result-value {{ font-size: 32px; font-weight: bold; color: #10b981; }}
-                    </style>
-                </head>
-                <body>
-                    {NAV_MENU}
-                    <div class="container">
-                        <h1>🧪 Backtesting de Stratégies</h1>
-                        <div class="card">
-                            <form id="backtestForm">
-                                <input type="text" id="symbol" value="BTCUSDT" placeholder="Symbole" required>
-                                <input type="date" id="startDate" value="2024-01-01" required>
-                                <input type="date" id="endDate" value="2024-12-31" required>
-                                <select id="strategy">
-                                    <option value="ema_cross">EMA Crossover</option>
-                                    <option value="rsi">RSI Strategy</option>
-                                    <option value="macd">MACD Strategy</option>
-                                </select>
-                                <button type="submit">🚀 Lancer le Backtest</button>
-                            </form>
-                            <div id="results" style="display:none;">
-                                <h2>Résultats</h2>
-                                <div class="result-grid" id="resultGrid"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <script>
-                        document.getElementById('backtestForm').addEventListener('submit', async (e) => {{
-                            e.preventDefault();
-                            const data = {{
-                                symbol: document.getElementById('symbol').value,
-                                start_date: document.getElementById('startDate').value,
-                                end_date: document.getElementById('endDate').value,
-                                strategy: document.getElementById('strategy').value
-                            }};
-                            const response = await fetch('/api/backtest', {{
-                                method: 'POST',
-                                headers: {{ 'Content-Type': 'application/json' }},
-                                body: JSON.stringify(data)
-                            }});
-                            const result = await response.json();
-                            if (result.success) {{
-                                const r = result.results;
-                                document.getElementById('resultGrid').innerHTML = `
-                                    <div class="result-item"><div>Total Trades</div><div class="result-value">\${{r.total_trades}}</div></div>
-                                    <div class="result-item"><div>Win Rate</div><div class="result-value">\${{r.win_rate}}%</div></div>
-                                    <div class="result-item"><div>Profit/Loss</div><div class="result-value">\$\$\${{r.profit_loss}}</div></div>
-                                `;
-                                document.getElementById('results').style.display = 'block';
+                                    grid: {{ color: 'rgba(255,255,255,0.1)' }}
+                                }},
+                                x: {{
+                                    ticks: {{ 
+                                        color: 'white',
+                                        maxTicksLimit: 12,
+                                        font: {{ size: 14 }}
+                                    }},
+                                    grid: {{ color: 'rgba(255,255,255,0.1)' }}
+                                }}
                             }}
-                        }});
-                    </script>
-                </body>
-                </html>
-                """)
+                        }}
+                    }});
+                }})
+                .catch(err => {{
+                    document.getElementById('loading').innerHTML = '❌ Erreur: ' + err.message;
+                }});
+        </script>
+    </body>
+    </html>
+    """)
 
 
-            @app.post("/api/backtest")
-            async def api_backtest(request: Request):
-                """API Backtesting"""
-                import random
-                data = await request.json()
-                
-                total_trades = random.randint(100, 200)
-                winning_trades = int(total_trades * random.uniform(0.55, 0.70))
-                
-                return {
-                    'success': True,
-                    'results': {
-                        'total_trades': total_trades,
-                        'winning_trades': winning_trades,
-                        'losing_trades': total_trades - winning_trades,
-                        'win_rate': round((winning_trades / total_trades) * 100, 2),
-                        'profit_loss': round(random.uniform(2000, 5000), 2),
-                        'max_drawdown': round(random.uniform(-800, -300), 2),
-                        'sharpe_ratio': round(random.uniform(1.2, 2.5), 2)
-                    }
-                }
+# ----------------------------------------------------------------------------
+# 2. STATS TEMPS RÉEL
+# ----------------------------------------------------------------------------
 
-            @app.post("/backtest")
-            async def backtest_strategy(request: Request):
-                """Backtest d'une stratégie sur données historiques"""
-                data = await request.json()
-                
-                symbol = data.get('symbol', 'BTCUSDT')
-                start_date = data.get('start_date')  # '2024-01-01'
-                end_date = data.get('end_date')      # '2024-12-31'
-                strategy = data.get('strategy', 'ema_cross')
-                
-                # Simulation (remplacez par vraies données)
-                results = {
-                    'total_trades': 156,
-                    'winning_trades': 94,
-                    'losing_trades': 62,
-                    'win_rate': 60.26,
-                    'profit_loss': 3250.75,
-                    'max_drawdown': -450.20,
-                    'sharpe_ratio': 1.85
-                }
-                
-                return {
-                    'success': True,
-                    'symbol': symbol,
-                    'period': f"{start_date} - {end_date}",
-                    'results': results
-                }
-
-            @app.get("/onchain-metrics")
-            async def onchain_metrics():
-                """Indicateurs on-chain (whale movements, exchange flows)"""
-                # Utiliser API comme Glassnode, CryptoQuant
-                # Exemple simplifié:
-                
-                metrics = {
-                    'whale_transactions': {
-                        'last_24h': 47,
-                        'total_volume': '125,340 BTC',
-                        'trend': 'up'
-                    },
-                    'exchange_inflow': {
-                        'btc': '12,450 BTC',
-                        'change_24h': '+15.2%'
-                    },
-                    'exchange_outflow': {
-                        'btc': '8,920 BTC',
-                        'change_24h': '-5.8%'
-                    },
-                    'net_flow': {
-                        'btc': '+3,530 BTC',
-                        'sentiment': 'Selling pressure'
-                    }
-                }
-                
-                return {
-                    'success': True,
-                    'timestamp': datetime.now().isoformat(),
-                    'metrics': metrics
-                }
-
-            @app.get("/admin/testimonials", response_class=HTMLResponse)
-            async def manage_testimonials():
-                """Gestion des témoignages"""
-                # Page admin pour ajouter/modifier témoignages
-                return HTMLResponse("""
-                <!DOCTYPE html>
-                <html>
-                <head><title>Témoignages</title></head>
-                <body>
-                    <h1>Gérer les Témoignages</h1>
-                    <form action="/admin/add-testimonial" method="POST">
-                        <input type="text" name="name" placeholder="Nom client" required>
-                        <textarea name="text" placeholder="Témoignage" required></textarea>
-                        <input type="number" name="rating" min="1" max="5" value="5">
-                        <button type="submit">Ajouter</button>
-                    </form>
-                </body>
-                </html>
-                """)
+@app.get("/live-stats")
+async def live_stats():
+    """API: Stats en temps réel"""
+    import random
+    
+    try:
+        conn = db_manager.get_connection()
+        c = conn.cursor()
+        
+        c.execute("SELECT COUNT(*) FROM users")
+        total_users = c.fetchone()[0]
+        
+        now = datetime.now().isoformat()
+        c.execute("SELECT COUNT(*) FROM users WHERE subscription_end > ?", (now,))
+        active_subs = c.fetchone()[0]
+        
+        conn.close()
+        
+        return {
+            'success': True,
+            'users_online': random.randint(50, 150),
+            'total_users': total_users,
+            'active_subscriptions': active_subs,
+            'signal_accuracy': round(random.uniform(65, 75), 1),
+            'trades_today': random.randint(200, 500),
+            'profit_24h': round(random.uniform(1000, 5000), 2)
+        }
+    except Exception as e:
+        return {
+            'success': False,
+            'error': str(e),
+            'users_online': 0,
+            'total_users': 0,
+            'active_subscriptions': 0,
+            'signal_accuracy': 0,
+            'trades_today': 0,
+            'profit_24h': 0
+        }
 
 
-            # Afficher sur homepage
-            @app.get("/testimonials-widget")
-            async def testimonials_widget():
-                """Widget témoignages pour homepage"""
-                testimonials = [
-                    {
-                        'name': 'Jean D.',
-                        'text': 'Excellente plateforme! +250% en 3 mois',
-                        'rating': 5
-                    },
-                    {
-                        'name': 'Marie L.',
-                        'text': 'Signaux précis, interface intuitive',
-                        'rating': 5
-                    }
-                ]
-                
-                return {'success': True, 'testimonials': testimonials}
+# ============================================================================
+# FIN DES NOUVELLES FONCTIONNALITÉS
+# ============================================================================
 
-            # --- DÉBUT DE LA SECTION SUPPRIMÉE/CORRIGÉE ---
-            # La fonction live_stats() dupliquée et mal indentée a été supprimée ici.
-            # La fonction live_stats() correcte est plus haut dans le fichier.
-            # La fonction generate_api_key() qui suivait était aussi mal indentée.
-            # --- FIN DE LA SECTION SUPPRIMÉE/CORRIGÉE ---
+# ============================================================================
+# BACKTESTING
+# ============================================================================
+
+@app.get("/backtesting", response_class=HTMLResponse)
+async def backtesting_page():
+    """Page backtesting"""
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>Backtesting - Trading Dashboard Pro</title>
+        <style>
+            body {{ font-family: Arial; background: #0f172a; color: white; margin: 0; }}
+            .container {{ max-width: 1200px; margin: 40px auto; padding: 20px; }}
+            .card {{ background: #1e293b; border-radius: 20px; padding: 40px; margin-bottom: 30px; }}
+            input, select {{ width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; background: #0f172a; color: white; border: 2px solid #334155; }}
+            button {{ width: 100%; padding: 18px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }}
+            .result-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }}
+            .result-item {{ background: #0f172a; padding: 25px; border-radius: 15px; text-align: center; }}
+            .result-value {{ font-size: 32px; font-weight: bold; color: #10b981; }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        <div class="container">
+            <h1>🧪 Backtesting de Stratégies</h1>
+            <div class="card">
+                <form id="backtestForm">
+                    <input type="text" id="symbol" value="BTCUSDT" placeholder="Symbole" required>
+                    <input type="date" id="startDate" value="2024-01-01" required>
+                    <input type="date" id="endDate" value="2024-12-31" required>
+                    <select id="strategy">
+                        <option value="ema_cross">EMA Crossover</option>
+                        <option value="rsi">RSI Strategy</option>
+                        <option value="macd">MACD Strategy</option>
+                    </select>
+                    <button type="submit">🚀 Lancer le Backtest</button>
+                </form>
+                <div id="results" style="display:none;">
+                    <h2>Résultats</h2>
+                    <div class="result-grid" id="resultGrid"></div>
+                </div>
+            </div>
+        </div>
+        <script>
+            document.getElementById('backtestForm').addEventListener('submit', async (e) => {{
+                e.preventDefault();
+                const data = {{
+                    symbol: document.getElementById('symbol').value,
+                    start_date: document.getElementById('startDate').value,
+                    end_date: document.getElementById('endDate').value,
+                    strategy: document.getElementById('strategy').value
+                }};
+                const response = await fetch('/api/backtest', {{
+                    method: 'POST',
+                    headers: {{ 'Content-Type': 'application/json' }},
+                    body: JSON.stringify(data)
+                }});
+                const result = await response.json();
+                if (result.success) {{
+                    const r = result.results;
+                    document.getElementById('resultGrid').innerHTML = `
+                        <div class="result-item"><div>Total Trades</div><div class="result-value">\${{r.total_trades}}</div></div>
+                        <div class="result-item"><div>Win Rate</div><div class="result-value">\${{r.win_rate}}%</div></div>
+                        <div class="result-item"><div>Profit/Loss</div><div class="result-value">\$\$\${{r.profit_loss}}</div></div>
+                    `;
+                    document.getElementById('results').style.display = 'block';
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    """)
 
 
-            # API Key management
-            API_KEYS = {}  # En production: utiliser DB
+@app.post("/api/backtest")
+async def api_backtest(request: Request):
+    """API Backtesting"""
+    import random
+    data = await request.json()
+    
+    total_trades = random.randint(100, 200)
+    winning_trades = int(total_trades * random.uniform(0.55, 0.70))
+    
+    return {
+        'success': True,
+        'results': {
+            'total_trades': total_trades,
+            'winning_trades': winning_trades,
+            'losing_trades': total_trades - winning_trades,
+            'win_rate': round((winning_trades / total_trades) * 100, 2),
+            'profit_loss': round(random.uniform(2000, 5000), 2),
+            'max_drawdown': round(random.uniform(-800, -300), 2),
+            'sharpe_ratio': round(random.uniform(1.2, 2.5), 2)
+        }
+    }
 
-            @app.post("/api/generate-key")
-            async def generate_api_key(request: Request):
-                """Génère une clé API pour développeurs"""
-                # Assurez-vous que get_user_from_token est défini
-                user = get_user_from_token(request.cookies.get("session_token"))
-                if not user:
-                    return {"error": "Non authentifié"}
-                
-                import secrets
-                api_key = secrets.token_urlsafe(32)
-                API_KEYS[api_key] = user['username']
-                
-                return {
-                    'success': True,
-                    'api_key': api_key,
-                    'docs': '/api/docs'
-                }
+@app.post("/backtest")
+async def backtest_strategy(request: Request):
+    """Backtest d'une stratégie sur données historiques"""
+    data = await request.json()
+    
+    symbol = data.get('symbol', 'BTCUSDT')
+    start_date = data.get('start_date')  # '2024-01-01'
+    end_date = data.get('end_date')      # '2024-12-31'
+    strategy = data.get('strategy', 'ema_cross')
+    
+    # Simulation (remplacez par vraies données)
+    results = {
+        'total_trades': 156,
+        'winning_trades': 94,
+        'losing_trades': 62,
+        'win_rate': 60.26,
+        'profit_loss': 3250.75,
+        'max_drawdown': -450.20,
+        'sharpe_ratio': 1.85
+    }
+    
+    return {
+        'success': True,
+        'symbol': symbol,
+        'period': f"{start_date} - {end_date}",
+        'results': results
+    }
+
+@app.get("/onchain-metrics")
+async def onchain_metrics():
+    """Indicateurs on-chain (whale movements, exchange flows)"""
+    # Utiliser API comme Glassnode, CryptoQuant
+    # Exemple simplifié:
+    
+    metrics = {
+        'whale_transactions': {
+            'last_24h': 47,
+            'total_volume': '125,340 BTC',
+            'trend': 'up'
+        },
+        'exchange_inflow': {
+            'btc': '12,450 BTC',
+            'change_24h': '+15.2%'
+        },
+        'exchange_outflow': {
+            'btc': '8,920 BTC',
+            'change_24h': '-5.8%'
+        },
+        'net_flow': {
+            'btc': '+3,530 BTC',
+            'sentiment': 'Selling pressure'
+        }
+    }
+    
+    return {
+        'success': True,
+        'timestamp': datetime.now().isoformat(),
+        'metrics': metrics
+    }
+
+@app.get("/admin/testimonials", response_class=HTMLResponse)
+async def manage_testimonials():
+    """Gestion des témoignages"""
+    # Page admin pour ajouter/modifier témoignages
+    return HTMLResponse("""
+    <!DOCTYPE html>
+    <html>
+    <head><title>Témoignages</title></head>
+    <body>
+        <h1>Gérer les Témoignages</h1>
+        <form action="/admin/add-testimonial" method="POST">
+            <input type="text" name="name" placeholder="Nom client" required>
+            <textarea name="text" placeholder="Témoignage" required></textarea>
+            <input type="number" name="rating" min="1" max="5" value="5">
+            <button type="submit">Ajouter</button>
+        </form>
+    </body>
+    </html>
+    """)
 
 
-            # Routes API publiques
-            @app.get("/api/v1/signals")
-            async def api_signals(api_key: str):
-                """API: Récupérer les signaux"""
-                if api_key not in API_KEYS:
-                    return {"error": "Invalid API key"}
-                
-                # Retourner signaux
-                return {
-                    'signals': [
-                        {'symbol': 'BTCUSDT', 'action': 'BUY', 'price': 45000},
-                        {'symbol': 'ETHUSDT', 'action': 'SELL', 'price': 2500}
-                    ]
-                }
+# Afficher sur homepage
+@app.get("/testimonials-widget")
+async def testimonials_widget():
+    """Widget témoignages pour homepage"""
+    testimonials = [
+        {
+            'name': 'Jean D.',
+            'text': 'Excellente plateforme! +250% en 3 mois',
+            'rating': 5
+        },
+        {
+            'name': 'Marie L.',
+            'text': 'Signaux précis, interface intuitive',
+            'rating': 5
+        }
+    ]
+    
+    return {'success': True, 'testimonials': testimonials}
+
+# --- DÉBUT DE LA SECTION SUPPRIMÉE/CORRIGÉE ---
+# La fonction live_stats() dupliquée et mal indentée a été supprimée ici.
+# La fonction live_stats() correcte est plus haut dans le fichier.
+# La fonction generate_api_key() qui suivait était aussi mal indentée.
+# --- FIN DE LA SECTION SUPPRIMÉE/CORRIGÉE ---
 
 
-            @app.get("/api/docs", response_class=HTMLResponse)
-            async def api_documentation():
-                """Documentation API"""
-                return HTMLResponse("""
-                <h1>API Documentation</h1>
-                <h2>GET /api/v1/signals</h2>
-                <p>Récupère les signaux de trading actuels</p>
-                <pre>
-            curl -H "api-key: YOUR_KEY" \\
-              https://tradingview-production-5763.up.railway.app/api/v1/signals
-                </pre>
-                """)
-            @app.post("/admin/update-plan-features")
-            async def update_plan_features(request: Request):
-                """Modifier les features d'un plan"""
-                data = await request.json()
-                
-                plan = data.get('plan')  # 'free', '1_month', etc.
-                features = data.get('features', [])  # Liste features
-                
-                # Assurez-vous que get_db_connection est défini
-                conn = get_db_connection()
-                c = conn.cursor()
-                
-                # Assurez-vous que json est importé
-                import json
-                c.execute("""
-                    UPDATE pricing_plans 
-                    SET features = ? 
-                    WHERE plan_name = ?
-                """, (json.dumps(features), plan))
-                
-                conn.commit()
-                conn.close()
-                
-                return {'success': True, 'message': f'Plan {plan} mis à jour'}
+# API Key management
+API_KEYS = {}  # En production: utiliser DB
 
-            if __name__ == "__main__":
-                import uvicorn
-                port = int(os.getenv("PORT", 8000))
-                print("\n" + "="*70)
-                print("🚀 DASHBOARD TRADING - VERSION ULTIME + AUTH + PERSISTANCE")
-                print("="*70)
-                print(f"📡 Port: {port}")
-                print(f"🔗 URL: http://localhost:{port}")
-                print("="*70)
-                print("🔐 SYSTÈME D'AUTHENTIFICATION:")
-                if USE_POSTGRESQL:
-                    print(f"  • Type: PostgreSQL (✅ PERSISTANT)")
-                    print(f"  • Base de données: Railway PostgreSQL")
-                else:
-                    print(f"  • Type: SQLite (fichier local)")
-                    print(f"  • Base de données: {USERS_DB}")
-                print(f"  • Compte par défaut: admin / admin123")
-                print(f"  • Panel admin: /admin")
-                print("="*70)
-                print("💾 STOCKAGE DES DONNÉES:")
-                print(f"  • Répertoire: {DATA_DIR}")
-                print(f"  • Trades: {TRADES_FILE}")
-                if DATA_DIR == "/data":
-                    print("  ✅ PERSISTANCE FICHIERS ACTIVÉE (Railway Volume)")
-                elif DATA_DIR == "/tmp":
-                    print("  ⚠️  Fichiers temporaires (pertes au redémarrage)")
-                if USE_POSTGRESQL:
-                    print("  ✅ PERSISTANCE BASE DE DONNÉES ACTIVÉE (PostgreSQL)")
+@app.post("/api/generate-key")
+async def generate_api_key(request: Request):
+    """Génère une clé API pour développeurs"""
+    user = get_user_from_token(request.cookies.get("session_token"))
+    if not user:
+        return {"error": "Non authentifié"}
+    
+    import secrets
+    api_key = secrets.token_urlsafe(32)
+    API_KEYS[api_key] = user['username']
+    
+    return {
+        'success': True,
+        'api_key': api_key,
+        'docs': '/api/docs'
+    }
 
-                print("="*70)
-                print("✅ BOT TELEGRAM PROFESSIONNEL:")
-                print("  • Messages formatés avec emojis")
-                print("  • Direction LONG/SHORT bien visible")
-                print("  • Score de confiance IA (60-99%)")
-                print("  • Heure du Québec (EDT/EST AUTOMATIQUE)")
-                print("  • Risk/Reward automatique")
-                print("  • Recommandations SLBE")
-                print("="*70)
-                print("📊 24 PAGES ACTIVES + 4 NOUVELLES FONCTIONNALITÉS:")
-                print("  • 🏠 ACCUEIL PROFESSIONNEL")
-                print("  • Fear & Greed, Dominance BTC, Heatmap")
-                print("  • 🌟 ALTCOIN SEASON (INDEX CORRIGÉ!)")
-                print("  • 📚 STRATÉGIE (1H + 15min détaillé)")
-                print("  • 💎 SPOT TRADING COMPLET")
-                print("  • 🎯 AI OPPORTUNITY SCANNER")
-                print("  • 🌊 AI MARKET REGIME DETECTOR")
-                print("  • 🐋 AI WHALE WATCHER")
-                print("  • $ 📊 STATISTIQUES AVANCÉES (NOUVEAU!) $")
-                print("  • 📈 SIMULATION MARCHÉ RÉALISTE (NOUVEAU!)")
-                print("  • 📄 PDF REPORT GENERATOR (NOUVEAU!)")
-                print("  • 🌟 SUCCESS STORIES (NOUVEAU!)")
-                print("  • Nouvelles, Trades, Convertisseur, Calendrier")
-                print("  • Risk Management, Watchlist, AI Assistant")
-                print("  • Bullrun Phase, Graphiques, Telegram")
-                print("="*70)
-                print("$ 📊 STATISTIQUES AVANCÉES (NOUVEAU!) $:")
-                print("  • Sharpe Ratio 1.85, Max Drawdown -35%, Win Rate 87%")
-                print("  • Recovery Time: 4 mois, Volatilité Annualisée: 45%")
-                print("  • Graphiques animés en temps réel")
-                print("  • Tendances long-terme vs court-terme")
-                print("  • Analyse P&L détaillée avec recommandations")
-                print("  📍 Accès: /stats-dashboard")
-                print("="*70)
-                print("📈 SIMULATION MARCHÉ RÉALISTE (NOUVEAU!):")
-                print("  • Générateur de prix aléatoire mais RÉALISTE")
-                print("  • Cycles bull/bear market AUTOMATIQUES")
-                print("  • Moments de panique (crash -30%)")
-                print("  • Comparaison: DCA DISCIPLINE vs Émotions")
-                print("  • Visualiser l'impact long-terme du DCA")
-                print("  📍 Accès: /market-simulation")
-                print("="*70)
-                print("📄 PDF REPORT GENERATOR (NOUVEAU!):")
-                print("  • Télécharger rapport PDF professionnel")
-                print("  • Graphiques + statistiques + recommandations")
-                print("  • À partager avec conseiller ou ami")
-                print("  • Watermark du dashboard")
-                print("  • Format professionnel imprimable")
-                print("  📍 Accès: /generate-pdf-report")
-                print("="*70)
-                print("🌟 SUCCESS STORIES (NOUVEAU!):")
-                print("  • 5 histoires vraies de DCA réussies")
-                print("  • Cas: Marc (500$/mois = 50K$ en 4 ans)")
-                print("  • Timeline interactive 2020-2024")
-                print("  • Badges de réussite & statistiques")
-                print("  • Inspiration & motivation pour vos investissements")
-                print("  📍 Accès: /success-stories")
-                print("="*70)
-                
-                # ===== NOUVEAU: Init tables abonnement =====
-                if SUBSCRIPTION_ENABLED:
-                    print("🔧 Initialisation du système d'abonnement...")
-                    try:
-                        # Assurez-vous que init_subscription_tables est défini
-                        init_subscription_tables()
-                        print("✅ Système d'abonnement initialisé")
-                    except Exception as e:
-                        print(f"⚠️  Erreur init abonnement: {e}")
-                print("="*70)
-                # ===========================================
-                
-                uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+
+# Routes API publiques
+@app.get("/api/v1/signals")
+async def api_signals(api_key: str):
+    """API: Récupérer les signaux"""
+    if api_key not in API_KEYS:
+        return {"error": "Invalid API key"}
+    
+    # Retourner signaux
+    return {
+        'signals': [
+            {'symbol': 'BTCUSDT', 'action': 'BUY', 'price': 45000},
+            {'symbol': 'ETHUSDT', 'action': 'SELL', 'price': 2500}
+        ]
+    }
+
+
+@app.get("/api/docs", response_class=HTMLResponse)
+async def api_documentation():
+    """Documentation API"""
+    return HTMLResponse("""
+    <h1>API Documentation</h1>
+    <h2>GET /api/v1/signals</h2>
+    <p>Récupère les signaux de trading actuels</p>
+    <pre>
+curl -H "api-key: YOUR_KEY" \\
+  https://tradingview-production-5763.up.railway.app/api/v1/signals
+    </pre>
+    """)
+@app.post("/admin/update-plan-features")
+async def update_plan_features(request: Request):
+    """Modifier les features d'un plan"""
+    data = await request.json()
+    
+    plan = data.get('plan')  # 'free', '1_month', etc.
+    features = data.get('features', [])  # Liste features
+    
+    conn = get_db_connection()
+    c = conn.cursor()
+    
+    import json
+    c.execute("""
+        UPDATE pricing_plans 
+        SET features = ? 
+        WHERE plan_name = ?
+    """, (json.dumps(features), plan))
+    
+    conn.commit()
+    conn.close()
+    
+    return {'success': True, 'message': f'Plan {plan} mis à jour'}
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    print("\n" + "="*70)
+    print("🚀 DASHBOARD TRADING - VERSION ULTIME + AUTH + PERSISTANCE")
+    print("="*70)
+    print(f"📡 Port: {port}")
+    print(f"🔗 URL: http://localhost:{port}")
+    print("="*70)
+    print("🔐 SYSTÈME D'AUTHENTIFICATION:")
+    if USE_POSTGRESQL:
+        print(f"  • Type: PostgreSQL (✅ PERSISTANT)")
+        print(f"  • Base de données: Railway PostgreSQL")
+    else:
+        print(f"  • Type: SQLite (fichier local)")
+        print(f"  • Base de données: {USERS_DB}")
+    print(f"  • Compte par défaut: admin / admin123")
+    print(f"  • Panel admin: /admin")
+    print("="*70)
+    print("💾 STOCKAGE DES DONNÉES:")
+    print(f"  • Répertoire: {DATA_DIR}")
+    print(f"  • Trades: {TRADES_FILE}")
+    if DATA_DIR == "/data":
+        print("  ✅ PERSISTANCE FICHIERS ACTIVÉE (Railway Volume)")
+    elif DATA_DIR == "/tmp":
+        print("  ⚠️  Fichiers temporaires (pertes au redémarrage)")
+    if USE_POSTGRESQL:
+        print("  ✅ PERSISTANCE BASE DE DONNÉES ACTIVÉE (PostgreSQL)")
+
+    print("="*70)
+    print("✅ BOT TELEGRAM PROFESSIONNEL:")
+    print("  • Messages formatés avec emojis")
+    print("  • Direction LONG/SHORT bien visible")
+    print("  • Score de confiance IA (60-99%)")
+    print("  • Heure du Québec (EDT/EST AUTOMATIQUE)")
+    print("  • Risk/Reward automatique")
+    print("  • Recommandations SLBE")
+    print("="*70)
+    print("📊 24 PAGES ACTIVES + 4 NOUVELLES FONCTIONNALITÉS:")
+    print("  • 🏠 ACCUEIL PROFESSIONNEL")
+    print("  • Fear & Greed, Dominance BTC, Heatmap")
+    print("  • 🌟 ALTCOIN SEASON (INDEX CORRIGÉ!)")
+    print("  • 📚 STRATÉGIE (1H + 15min détaillé)")
+    print("  • 💎 SPOT TRADING COMPLET")
+    print("  • 🎯 AI OPPORTUNITY SCANNER")
+    print("  • 🌊 AI MARKET REGIME DETECTOR")
+    print("  • 🐋 AI WHALE WATCHER")
+    print("  • $ 📊 STATISTIQUES AVANCÉES (NOUVEAU!) $")
+    print("  • 📈 SIMULATION MARCHÉ RÉALISTE (NOUVEAU!)")
+    print("  • 📄 PDF REPORT GENERATOR (NOUVEAU!)")
+    print("  • 🌟 SUCCESS STORIES (NOUVEAU!)")
+    print("  • Nouvelles, Trades, Convertisseur, Calendrier")
+    print("  • Risk Management, Watchlist, AI Assistant")
+    print("  • Bullrun Phase, Graphiques, Telegram")
+    print("="*70)
+    print("$ 📊 STATISTIQUES AVANCÉES (NOUVEAU!) $:")
+    print("  • Sharpe Ratio 1.85, Max Drawdown -35%, Win Rate 87%")
+    print("  • Recovery Time: 4 mois, Volatilité Annualisée: 45%")
+    print("  • Graphiques animés en temps réel")
+    print("  • Tendances long-terme vs court-terme")
+    print("  • Analyse P&L détaillée avec recommandations")
+    print("  📍 Accès: /stats-dashboard")
+    print("="*70)
+    print("📈 SIMULATION MARCHÉ RÉALISTE (NOUVEAU!):")
+    print("  • Générateur de prix aléatoire mais RÉALISTE")
+    print("  • Cycles bull/bear market AUTOMATIQUES")
+    print("  • Moments de panique (crash -30%)")
+    print("  • Comparaison: DCA DISCIPLINE vs Émotions")
+    print("  • Visualiser l'impact long-terme du DCA")
+    print("  📍 Accès: /market-simulation")
+    print("="*70)
+    print("📄 PDF REPORT GENERATOR (NOUVEAU!):")
+    print("  • Télécharger rapport PDF professionnel")
+    print("  • Graphiques + statistiques + recommandations")
+    print("  • À partager avec conseiller ou ami")
+    print("  • Watermark du dashboard")
+    print("  • Format professionnel imprimable")
+    print("  📍 Accès: /generate-pdf-report")
+    print("="*70)
+    print("🌟 SUCCESS STORIES (NOUVEAU!):")
+    print("  • 5 histoires vraies de DCA réussies")
+    print("  • Cas: Marc (500$/mois = 50K$ en 4 ans)")
+    print("  • Timeline interactive 2020-2024")
+    print("  • Badges de réussite & statistiques")
+    print("  • Inspiration & motivation pour vos investissements")
+    print("  📍 Accès: /success-stories")
+    print("="*70)
+    
+    # ===== NOUVEAU: Init tables abonnement =====
+    if SUBSCRIPTION_ENABLED:
+        print("🔧 Initialisation du système d'abonnement...")
+        try:
+            init_subscription_tables()
+            print("✅ Système d'abonnement initialisé")
+        except Exception as e:
+            print(f"⚠️  Erreur init abonnement: {e}")
+    print("="*70)
+    # ===========================================
+    
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

@@ -802,7 +802,7 @@ ADMIN_NAV = """
         <a href="/admin/permissions" class="admin-nav-btn">🔐 Permissions</a>
         <a href="/admin/pricing" class="admin-nav-btn">💰 Gestion Prix</a>
         <a href="/admin/list-promos" class="admin-nav-btn">🎫 Codes Promo</a>
-        <a href="/admin/create-promo" class="admin-nav-btn">➕ Créer Promo</a>
+        <a href="/admin/create-promo-page" class="admin-nav-btn">➕ Créer Promo</a>
         <a href="/admin/change-password" class="admin-nav-btn">🔐 Mot de Passe</a>
     </div>
 </nav>
@@ -21628,6 +21628,226 @@ async def update_plan_features_api(request: Request, session_token: Optional[str
     except Exception as e:
         print(f"❌ Erreur update features: {e}")
         return {"success": False, "error": str(e)}
+
+# ============================================================================
+
+
+# ============================================================================
+# ➕ PAGE CRÉATION CODE PROMO
+# ============================================================================
+
+@app.get("/admin/create-promo-page", response_class=HTMLResponse)
+async def admin_create_promo_page(session_token: Optional[str] = Cookie(None)):
+    """Page HTML pour créer un code promo"""
+    user = get_user_from_token(session_token)
+    if not user or user.get('role') != 'admin':
+        return RedirectResponse("/login")
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>➕ Créer Code Promo</title>
+        <style>
+            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
+            .container {{ max-width: 800px; margin: 0 auto; }}
+            .form-card {{ 
+                background: #1e293b; 
+                padding: 40px; 
+                border-radius: 15px; 
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                margin-top: 20px;
+            }}
+            h1 {{ color: #60a5fa; text-align: center; margin-bottom: 30px; }}
+            .form-row {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
+            .form-group {{ margin-bottom: 20px; }}
+            .form-group.full {{ grid-column: 1 / -1; }}
+            label {{ 
+                display: block; 
+                margin-bottom: 8px; 
+                font-weight: bold; 
+                color: #e2e8f0;
+                font-size: 14px;
+            }}
+            input, select, textarea {{ 
+                width: 100%; 
+                padding: 12px; 
+                border-radius: 8px; 
+                background: #0f172a; 
+                color: white; 
+                border: 2px solid #334155;
+                font-size: 15px;
+                box-sizing: border-box;
+                transition: all 0.3s;
+            }}
+            input:focus, select:focus, textarea:focus {{ 
+                outline: none; 
+                border-color: #60a5fa;
+                background: rgba(96, 165, 250, 0.05);
+            }}
+            button {{ 
+                width: 100%; 
+                padding: 16px; 
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+                color: white; 
+                border: none; 
+                border-radius: 10px; 
+                font-size: 17px; 
+                font-weight: bold;
+                cursor: pointer; 
+                margin-top: 20px;
+                transition: all 0.3s;
+                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+            }}
+            button:hover {{ 
+                transform: translateY(-3px); 
+                box-shadow: 0 15px 40px rgba(16, 185, 129, 0.4);
+            }}
+            .message {{ 
+                margin-top: 20px; 
+                padding: 18px; 
+                border-radius: 10px;
+                font-weight: 500;
+            }}
+            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
+            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
+            .info-box {{
+                background: rgba(99, 102, 241, 0.1);
+                padding: 20px;
+                border-radius: 12px;
+                margin-bottom: 20px;
+                border: 1px solid rgba(99, 102, 241, 0.3);
+            }}
+            .info-box p {{ margin: 5px 0; font-size: 14px; color: #cbd5e1; }}
+            .required {{ color: #ef4444; }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        {ADMIN_NAV}
+        <div class="container">
+            <h1>➕ Créer un Code Promo</h1>
+            
+            <div class="info-box">
+                <p><strong>ℹ️ Instructions:</strong></p>
+                <p>• Les champs marqués d'un <span class="required">*</span> sont obligatoires</p>
+                <p>• Le code promo sera créé immédiatement après soumission</p>
+                <p>• Les utilisateurs pourront l'utiliser sur la page de paiement</p>
+            </div>
+            
+            <div class="form-card">
+                <form id="promoForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="code">Code Promo <span class="required">*</span></label>
+                            <input type="text" id="code" required placeholder="Ex: SUMMER2024" style="text-transform: uppercase;">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="discount_type">Type de Réduction <span class="required">*</span></label>
+                            <select id="discount_type" required>
+                                <option value="percent">Pourcentage (%)</option>
+                                <option value="fixed">Montant Fixe ($)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="discount_value">Valeur Réduction <span class="required">*</span></label>
+                            <input type="number" id="discount_value" required step="0.01" min="0.01" placeholder="Ex: 20">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="max_uses">Utilisations Max</label>
+                            <input type="number" id="max_uses" min="1" placeholder="Laisser vide = illimité">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expires_days">Expire dans X jours</label>
+                            <input type="number" id="expires_days" min="1" placeholder="Ex: 30 (vide = jamais)">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="min_amount">Montant Minimum ($)</label>
+                            <input type="number" id="min_amount" step="0.01" min="0" placeholder="Ex: 50.00">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group full">
+                        <label for="plans">Plans Applicables</label>
+                        <input type="text" id="plans" placeholder="Ex: premium,advanced,pro (vide = tous les plans)">
+                    </div>
+                    
+                    <div class="form-group full">
+                        <label for="description">Description</label>
+                        <textarea id="description" rows="3" placeholder="Description du code promo (optionnel)..."></textarea>
+                    </div>
+                    
+                    <button type="submit">💾 Créer le Code Promo</button>
+                </form>
+                <div id="message"></div>
+            </div>
+        </div>
+        
+        <script>
+            document.getElementById('promoForm').addEventListener('submit', async (e) => {{
+                e.preventDefault();
+                
+                const code = document.getElementById('code').value.toUpperCase();
+                const discount_type = document.getElementById('discount_type').value;
+                const discount_value = parseFloat(document.getElementById('discount_value').value);
+                const max_uses = document.getElementById('max_uses').value;
+                const expires_days = document.getElementById('expires_days').value;
+                const min_amount = document.getElementById('min_amount').value;
+                const plans = document.getElementById('plans').value;
+                const description = document.getElementById('description').value;
+                
+                const params = new URLSearchParams({{
+                    code,
+                    discount_type,
+                    discount_value,
+                    description: description || ''
+                }});
+                
+                if (max_uses) params.append('max_uses', max_uses);
+                if (expires_days) params.append('expires_days', expires_days);
+                if (min_amount) params.append('min_amount', min_amount);
+                if (plans) params.append('plans', plans);
+                
+                const msg = document.getElementById('message');
+                msg.innerHTML = '<div class="message" style="background: rgba(99, 102, 241, 0.2); border: 2px solid #6366f1; color: #a5b4fc;">⏳ Création en cours...</div>';
+                
+                try {{
+                    const response = await fetch('/admin/create-promo?' + params.toString());
+                    const result = await response.json();
+                    
+                    if (result.success) {{
+                        msg.innerHTML = '<div class="message success">✅ Code promo "' + code + '" créé avec succès!<br>Les utilisateurs peuvent maintenant l\'utiliser.</div>';
+                        document.getElementById('promoForm').reset();
+                        
+                        setTimeout(() => {{
+                            window.location.href = '/admin/list-promos';
+                        }}, 2000);
+                    }} else {{
+                        msg.innerHTML = '<div class="message error">❌ Erreur: ' + (result.message || result.error || 'Erreur inconnue') + '</div>';
+                    }}
+                }} catch (err) {{
+                    msg.innerHTML = '<div class="message error">❌ Erreur de connexion: ' + err.message + '</div>';
+                }}
+            }});
+            
+            // Auto-uppercase pour le code
+            document.getElementById('code').addEventListener('input', (e) => {{
+                e.target.value = e.target.value.toUpperCase();
+            }});
+        </script>
+    </body>
+    </html>
+    """)
 
 # ============================================================================
 

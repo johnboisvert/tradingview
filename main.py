@@ -757,6 +757,60 @@ NAV_MENU = """
 # ============================================================================
 
 # ============================================================================
+# MENU NAVIGATION ADMIN
+# ============================================================================
+ADMIN_NAV = """
+<style>
+    .admin-nav {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        padding: 15px 20px;
+        margin-bottom: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .admin-nav-container {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .admin-nav-btn {
+        background: rgba(255,255,255,0.1);
+        color: white;
+        padding: 10px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s;
+        border: 1px solid rgba(255,255,255,0.1);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .admin-nav-btn:hover {
+        background: rgba(255,255,255,0.2);
+        transform: translateY(-2px);
+    }
+    .admin-nav-btn.active {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    }
+</style>
+
+<nav class="admin-nav">
+    <div class="admin-nav-container">
+        <a href="/admin-dashboard" class="admin-nav-btn">🏠 Dashboard</a>
+        <a href="/admin/pricing" class="admin-nav-btn">💰 Gestion Prix</a>
+        <a href="/admin/list-promos" class="admin-nav-btn">🎫 Codes Promo</a>
+        <a href="/admin/create-promo" class="admin-nav-btn">➕ Créer Promo</a>
+        <a href="/admin/change-password" class="admin-nav-btn">🔐 Mot de Passe</a>
+        <a href="/dashboard" class="admin-nav-btn">← Retour App</a>
+    </div>
+</nav>
+"""
+# ============================================================================
+
+# ============================================================================
 # 🆕 ENREGISTRER LE ROUTER DES ROUTES PROTÉGÉES
 # ============================================================================
 if PERMISSIONS_AVAILABLE and protected_router:
@@ -19372,6 +19426,7 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
+        {ADMIN_NAV}
         <div class="container">
             <div class="header">
                 <h1>👨‍💼 Admin Dashboard</h1>
@@ -19580,7 +19635,12 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
     try:
         conn = get_db_connection()
         codes = PromoCodeManager.get_all_promo_codes(conn)
-        stats = PromoCodeManager.get_promo_stats(conn)
+        # Calculer les stats manuellement
+        stats = {
+            'total_codes': len(codes),
+            'active_codes': sum(1 for c in codes if c[9]),  # c[9] = is_active
+            'total_uses': sum(c[4] for c in codes),  # c[4] = current_uses
+        }
         conn.close()
         
         codes_html = ""
@@ -19665,8 +19725,8 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             </style>
         </head>
         <body>
+            {ADMIN_NAV}
             <div class="container">
-                {NAV}
                 
                 <h1>💰 Gestion des Codes Promo</h1>
                 
@@ -20599,6 +20659,194 @@ async def update_plan_features(request: Request):
 # ============================================================================
 # DÉMARRAGE DE L'APPLICATION
 # ============================================================================
+
+# ============================================================================
+# 🔐 CHANGEMENT DE MOT DE PASSE ADMIN
+# ============================================================================
+
+@app.get("/admin/change-password", response_class=HTMLResponse)
+async def admin_change_password_page(session_token: Optional[str] = Cookie(None)):
+    """Page changement de mot de passe admin"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return RedirectResponse("/login")
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>🔐 Changer Mot de Passe</title>
+        <style>
+            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
+            .container {{ max-width: 600px; margin: 0 auto; }}
+            .card {{ background: #1e293b; padding: 30px; border-radius: 15px; margin-top: 30px; }}
+            h1 {{ color: #60a5fa; margin-bottom: 20px; }}
+            .form-group {{ margin-bottom: 20px; }}
+            label {{ display: block; margin-bottom: 8px; font-weight: bold; color: #e2e8f0; }}
+            input {{ 
+                width: 100%; 
+                padding: 12px; 
+                border-radius: 8px; 
+                background: #0f172a; 
+                color: white; 
+                border: 2px solid #334155;
+                font-size: 16px;
+                box-sizing: border-box;
+            }}
+            input:focus {{ outline: none; border-color: #60a5fa; }}
+            button {{ 
+                width: 100%; 
+                padding: 15px; 
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
+                color: white; 
+                border: none; 
+                border-radius: 8px; 
+                font-size: 16px; 
+                font-weight: bold;
+                cursor: pointer; 
+                margin-top: 15px;
+                transition: all 0.3s;
+            }}
+            button:hover {{ transform: translateY(-2px); box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3); }}
+            .message {{ margin-top: 20px; padding: 15px; border-radius: 8px; }}
+            .error {{ background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }}
+            .success {{ background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; }}
+        </style>
+    </head>
+    <body>
+        {ADMIN_NAV}
+        <div class="container">
+            <div class="card">
+                <h1>🔐 Changer Mot de Passe</h1>
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="currentPassword">Mot de passe actuel</label>
+                        <input type="password" id="currentPassword" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newPassword">Nouveau mot de passe</label>
+                        <input type="password" id="newPassword" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirmer nouveau mot de passe</label>
+                        <input type="password" id="confirmPassword" required>
+                    </div>
+                    
+                    <button type="submit">💾 Changer le mot de passe</button>
+                </form>
+                <div id="message"></div>
+            </div>
+        </div>
+        <script>
+            document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {{
+                e.preventDefault();
+                
+                const current = document.getElementById('currentPassword').value;
+                const newPass = document.getElementById('newPassword').value;
+                const confirm = document.getElementById('confirmPassword').value;
+                const msg = document.getElementById('message');
+                
+                msg.innerHTML = '';
+                
+                if (newPass !== confirm) {{
+                    msg.innerHTML = '<div class="message error">❌ Les mots de passe ne correspondent pas</div>';
+                    return;
+                }}
+                
+                if (newPass.length < 6) {{
+                    msg.innerHTML = '<div class="message error">❌ Le mot de passe doit avoir au moins 6 caractères</div>';
+                    return;
+                }}
+                
+                try {{
+                    const response = await fetch('/admin/api/change-password', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify({{
+                            current_password: current,
+                            new_password: newPass
+                        }})
+                    }});
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {{
+                        msg.innerHTML = '<div class="message success">✅ Mot de passe changé avec succès!</div>';
+                        document.getElementById('changePasswordForm').reset();
+                    }} else {{
+                        msg.innerHTML = '<div class="message error">❌ ' + result.error + '</div>';
+                    }}
+                }} catch (err) {{
+                    msg.innerHTML = '<div class="message error">❌ Erreur: ' + err.message + '</div>';
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    """)
+
+
+@app.post("/admin/api/change-password")
+async def admin_change_password_api(request: Request, session_token: Optional[str] = Cookie(None)):
+    """API changement mot de passe"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return {"success": False, "error": "Non authentifié"}
+    
+    try:
+        data = await request.json()
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        
+        if not current_password or not new_password:
+            return {"success": False, "error": "Données manquantes"}
+        
+        # Vérifier mot de passe actuel
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("SELECT password FROM users WHERE email=%s", (user['email'],))
+        else:
+            c.execute("SELECT password FROM users WHERE email=?", (user['email'],))
+        
+        result = c.fetchone()
+        
+        if not result:
+            conn.close()
+            return {"success": False, "error": "Utilisateur non trouvé"}
+        
+        stored_password = result[0]
+        
+        # Vérifier si le mot de passe actuel est correct
+        current_password_hash = hashlib.sha256(current_password.encode()).hexdigest()
+        if current_password_hash != stored_password:
+            conn.close()
+            return {"success": False, "error": "Mot de passe actuel incorrect"}
+        
+        # Changer le mot de passe
+        new_password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("UPDATE users SET password=%s WHERE email=%s", 
+                     (new_password_hash, user['email']))
+        else:
+            c.execute("UPDATE users SET password=? WHERE email=?", 
+                     (new_password_hash, user['email']))
+        
+        conn.commit()
+        conn.close()
+        
+        return {"success": True}
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+# ============================================================================
+
 
 if __name__ == "__main__":
     import uvicorn

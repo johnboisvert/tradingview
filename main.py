@@ -20215,71 +20215,109 @@ async def live_stats():
 # BACKTESTING
 # ============================================================================
 
+# Page Backtesting
 @app.get("/backtesting", response_class=HTMLResponse)
-async def backtesting_page():
-    """Page backtesting"""
+async def backtesting_page(request: Request):
+    """Page de backtesting avec formulaire"""
     return HTMLResponse(f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
-        <title>Backtesting - Trading Dashboard Pro</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Backtesting | {SITE_NAME}</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
         <style>
-            body {{ font-family: Arial; background: #0f172a; color: white; margin: 0; }}
-            .container {{ max-width: 1200px; margin: 40px auto; padding: 20px; }}
-            .card {{ background: #1e293b; border-radius: 20px; padding: 40px; margin-bottom: 30px; }}
-            input, select {{ width: 100%; padding: 15px; margin: 10px 0; border-radius: 10px; background: #0f172a; color: white; border: 2px solid #334155; }}
-            button {{ width: 100%; padding: 18px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }}
-            .result-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }}
-            .result-item {{ background: #0f172a; padding: 25px; border-radius: 15px; text-align: center; }}
-            .result-value {{ font-size: 32px; font-weight: bold; color: #10b981; }}
+            .gradient-bg {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
+            .glass-effect {{ background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }}
+            .result-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }}
+            .result-item {{ background: #1e293b; padding: 1.5rem; border-radius: 12px; text-align: center; }}
+            .result-value {{ font-size: 2rem; font-weight: bold; color: #10b981; }}
+            .result-value.loss {{ color: #ef4444; }}
         </style>
     </head>
-    <body>
+    <body class="bg-gray-900 text-white min-h-screen">
         {NAV_MENU}
-        <div class="container">
-            <h1>🧪 Backtesting de Stratégies</h1>
-            <div class="card">
-                <form id="backtestForm">
-                    <input type="text" id="symbol" value="BTCUSDT" placeholder="Symbole" required>
-                    <input type="date" id="startDate" value="2024-01-01" required>
-                    <input type="date" id="endDate" value="2024-12-31" required>
-                    <select id="strategy">
-                        <option value="ema_cross">EMA Crossover</option>
-                        <option value="rsi">RSI Strategy</option>
-                        <option value="macd">MACD Strategy</option>
-                    </select>
-                    <button type="submit">🚀 Lancer le Backtest</button>
-                </form>
-                <div id="results" style="display:none;">
-                    <h2>Résultats</h2>
-                    <div class="result-grid" id="resultGrid"></div>
+        <div class="container mx-auto px-4 py-8">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl font-bold text-center mb-8">⚙️ Backtesting de Stratégie</h1>
+                <div class="glass-effect rounded-xl p-8">
+                    <form id="backtestForm" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="symbol" class="block text-sm font-medium mb-2">Paire de Trading</label>
+                                <input type="text" id="symbol" name="symbol" value="BTCUSDT" required class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="strategy" class="block text-sm font-medium mb-2">Stratégie</label>
+                                <select id="strategy" name="strategy" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                    <option value="ema_cross">Croisement EMA</option>
+                                    <option value="rsi">RSI</option>
+                                    <option value="macd">MACD</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="start_date" class="block text-sm font-medium mb-2">Date de Début</label>
+                                <input type="date" id="start_date" name="start_date" value="2024-01-01" required class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="end_date" class="block text-sm font-medium mb-2">Date de Fin</label>
+                                <input type="date" id="end_date" name="end_date" value="2024-12-31" required class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="flex justify-center">
+                            <button type="submit" class="gradient-bg text-white px-8 py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                                <i class="ri-play-line mr-2"></i> Lancer le Backtest
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div id="results" class="mt-12 hidden">
+                    <h2 class="text-3xl font-bold text-center mb-8">📊 Résultats</h2>
+                    <div id="resultGrid" class="result-grid">
+                        <!-- Les résultats seront injectés ici par JS -->
+                    </div>
                 </div>
             </div>
         </div>
+
         <script>
             document.getElementById('backtestForm').addEventListener('submit', async (e) => {{
                 e.preventDefault();
-                const data = {{
-                    symbol: document.getElementById('symbol').value,
-                    start_date: document.getElementById('startDate').value,
-                    end_date: document.getElementById('endDate').value,
-                    strategy: document.getElementById('strategy').value
-                }};
-                const response = await fetch('/api/backtest', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify(data)
-                }});
-                const result = await response.json();
-                if (result.success) {{
-                    const r = result.results;
-                   document.getElementById('resultGrid').innerHTML = `
-    <div class="result-item"><div>Total Trades</div><div class="result-value">${r.total_trades}</div></div>
-    <div class="result-item"><div>Win Rate</div><div class="result-value">${r.win_rate}%</div></div>
-    <div class="result-item"><div>Profit/Loss</div><div class="result-value">$${r.profit_loss}</div></div>
-`;
-                    document.getElementById('results').style.display = 'block';
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+                
+                // Afficher un loader
+                const resultsDiv = document.getElementById('results');
+                const resultGrid = document.getElementById('resultGrid');
+                resultGrid.innerHTML = '<div class="col-span-full text-center text-xl">Calcul en cours...</div>';
+                resultsDiv.classList.remove('hidden');
+
+                try {{
+                    const response = await fetch('/api/backtest', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify(data)
+                    }});
+                    const r = await response.json();
+
+                    if (r.success) {{
+                        resultGrid.innerHTML = `
+                            <div class="result-item"><div>Total Trades</div><div class="result-value">\${{r.total_trades}}</div></div>
+                            <div class="result-item"><div>Win Rate</div><div class="result-value">\${{r.win_rate}}%</div></div>
+                            <div class="result-item"><div>Winning Trades</div><div class="result-value">\${{r.winning_trades}}</div></div>
+                            <div class="result-item"><div>Losing Trades</div><div class="result-value">\${{r.losing_trades}}</div></div>
+                            <div class="result-item"><div>Profit/Loss</div><div class="result-value \${{r.profit_loss >= 0 ? '' : 'loss'}}">\$\${{r.profit_loss}}</div></div>
+                            <div class="result-item"><div>Max Drawdown</div><div class="result-value loss">\${{r.max_drawdown}}</div></div>
+                            <div class="result-item"><div>Sharpe Ratio</div><div class="result-value">\${{r.sharpe_ratio}}</div></div>
+                        `;
+                    }} else {{
+                        resultGrid.innerHTML = '<div class="col-span-full text-center text-red-500">Erreur lors du backtest.</div>';
+                    }}
+                }} catch (error) {{
+                    console.error('Error:', error);
+                    resultGrid.innerHTML = '<div class="col-span-full text-center text-red-500">Erreur de connexion au serveur.</div>';
                 }}
             }});
         </script>

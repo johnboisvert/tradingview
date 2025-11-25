@@ -763,51 +763,270 @@ ADMIN_NAV = """
 <style>
     .admin-nav {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
+        padding: 12px 20px;
         margin-bottom: 20px;
         border-radius: 10px;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        border: 2px solid rgba(245, 158, 11, 0.3);
     }
     .admin-nav-container {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         flex-wrap: wrap;
         align-items: center;
     }
     .admin-nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
+        background: rgba(245, 158, 11, 0.2);
+        color: #fbbf24;
+        padding: 8px 14px;
+        border-radius: 6px;
         text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
+        font-size: 13px;
+        font-weight: 600;
         transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
+        border: 1px solid rgba(245, 158, 11, 0.3);
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
     }
     .admin-nav-btn:hover {
-        background: rgba(255,255,255,0.2);
+        background: rgba(245, 158, 11, 0.3);
         transform: translateY(-2px);
-    }
-    .admin-nav-btn.active {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
     }
 </style>
 
 <nav class="admin-nav">
     <div class="admin-nav-container">
+        <span style="color: #fbbf24; font-weight: bold; margin-right: 10px;">⚙️ ADMIN:</span>
         <a href="/admin-dashboard" class="admin-nav-btn">🏠 Dashboard</a>
+        <a href="/admin/permissions" class="admin-nav-btn">🔐 Permissions</a>
         <a href="/admin/pricing" class="admin-nav-btn">💰 Gestion Prix</a>
         <a href="/admin/list-promos" class="admin-nav-btn">🎫 Codes Promo</a>
         <a href="/admin/create-promo" class="admin-nav-btn">➕ Créer Promo</a>
         <a href="/admin/change-password" class="admin-nav-btn">🔐 Mot de Passe</a>
-        <a href="/dashboard" class="admin-nav-btn">← Retour App</a>
     </div>
 </nav>
 """
+# ============================================================================
+
+# ============================================================================
+# SYSTÈME DE PERMISSIONS PAR FORFAIT
+# ============================================================================
+
+# Permissions par défaut pour chaque forfait
+PLAN_PERMISSIONS = {
+    'free': [
+        '/dashboard',
+        '/fear-greed',
+        '/dominance',
+        '/heatmap',
+        '/news',
+        '/convertisseur',
+        '/success-stories'
+    ],
+    'premium': [
+        '/dashboard',
+        '/fear-greed',
+        '/dominance',
+        '/heatmap',
+        '/news',
+        '/convertisseur',
+        '/success-stories',
+        '/strategy',
+        '/spot-trading',
+        '/calculatrice',
+        '/trades',
+        '/risk-management',
+        '/watchlist',
+        '/graphiques',
+        '/telegram-setup',
+        '/altcoin-season'
+    ],
+    'advanced': [
+        '/dashboard',
+        '/fear-greed',
+        '/dominance',
+        '/heatmap',
+        '/news',
+        '/convertisseur',
+        '/success-stories',
+        '/strategy',
+        '/spot-trading',
+        '/calculatrice',
+        '/trades',
+        '/risk-management',
+        '/watchlist',
+        '/graphiques',
+        '/telegram-setup',
+        '/altcoin-season',
+        '/ai-assistant',
+        '/prediction-ia',
+        '/market-regime',
+        '/stats-avancees',
+        '/calendrier'
+    ],
+    'pro': [
+        '/dashboard',
+        '/fear-greed',
+        '/dominance',
+        '/heatmap',
+        '/news',
+        '/convertisseur',
+        '/success-stories',
+        '/strategy',
+        '/spot-trading',
+        '/calculatrice',
+        '/trades',
+        '/risk-management',
+        '/watchlist',
+        '/graphiques',
+        '/telegram-setup',
+        '/altcoin-season',
+        '/ai-assistant',
+        '/prediction-ia',
+        '/market-regime',
+        '/stats-avancees',
+        '/calendrier',
+        '/ai-scanner',
+        '/whale-watcher',
+        '/simulation',
+        '/bullrun-phase'
+    ],
+    'elite': ['*']  # Accès à tout
+}
+
+def check_page_access(user_plan: str, page_path: str) -> bool:
+    """Vérifie si l'utilisateur peut accéder à la page"""
+    # Admin et Elite ont accès à tout
+    if user_plan in ['admin', 'elite']:
+        return True
+    
+    # Récupérer les permissions du plan
+    allowed_pages = PLAN_PERMISSIONS.get(user_plan, [])
+    
+    # Vérifier si la page est autorisée
+    return page_path in allowed_pages or '*' in allowed_pages
+
+# Charger les permissions depuis le fichier si existe
+try:
+    import json
+    import os
+    if os.path.exists('plan_permissions.json'):
+        with open('plan_permissions.json', 'r') as f:
+            PLAN_PERMISSIONS = json.load(f)
+            print("✅ Permissions chargées depuis plan_permissions.json")
+except Exception as e:
+    print(f"ℹ️ Utilisation des permissions par défaut: {e}")
+
+# ============================================================================
+# MIDDLEWARE DE VÉRIFICATION DES PERMISSIONS
+# ============================================================================
+
+@app.middleware("http")
+async def verify_page_permissions(request: Request, call_next):
+    """Middleware pour vérifier les permissions d'accès aux pages"""
+    
+    # Pages publiques toujours accessibles
+    public_pages = [
+        '/login', '/register', '/pricing-complete', '/logout', 
+        '/', '/api/', '/static/', '/admin/api/'
+    ]
+    
+    # Vérifier si la page est publique
+    if any(request.url.path.startswith(page) for page in public_pages):
+        return await call_next(request)
+    
+    # Récupérer l'utilisateur
+    session_token = request.cookies.get("session_token")
+    user = get_user_from_token(session_token)
+    
+    if not user:
+        # Rediriger vers login si non authentifié
+        if not request.url.path.startswith('/api/'):
+            return RedirectResponse("/login", status_code=303)
+        return await call_next(request)
+    
+    # Admin bypass toutes les vérifications
+    if user.get('role') == 'admin':
+        return await call_next(request)
+    
+    # Vérifier les permissions pour la page
+    user_plan = user.get('subscription_plan', 'free')
+    
+    if not check_page_access(user_plan, request.url.path):
+        # Page bloquée - afficher message de restriction
+        return HTMLResponse(f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>🔒 Accès Restreint</title>
+                <style>
+                    body {{
+                        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                        color: white;
+                        font-family: Arial, sans-serif;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        padding: 20px;
+                    }}
+                    .container {{
+                        text-align: center;
+                        max-width: 600px;
+                        background: rgba(30, 41, 59, 0.8);
+                        padding: 50px;
+                        border-radius: 20px;
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+                    }}
+                    h1 {{ font-size: 48px; margin: 0 0 20px 0; }}
+                    p {{ font-size: 18px; color: #94a3b8; margin: 15px 0; }}
+                    .plan-badge {{
+                        display: inline-block;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        padding: 10px 25px;
+                        border-radius: 25px;
+                        font-weight: bold;
+                        margin: 20px 0;
+                    }}
+                    .btn {{
+                        display: inline-block;
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        color: white;
+                        padding: 18px 40px;
+                        text-decoration: none;
+                        border-radius: 12px;
+                        font-weight: bold;
+                        font-size: 18px;
+                        margin: 30px 10px 10px 10px;
+                        transition: all 0.3s;
+                    }}
+                    .btn:hover {{ transform: translateY(-3px); box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4); }}
+                    .btn-secondary {{
+                        background: rgba(255,255,255,0.1);
+                        color: #60a5fa;
+                    }}
+                    .btn-secondary:hover {{ background: rgba(255,255,255,0.2); }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🔒</h1>
+                    <h2>Accès Restreint</h2>
+                    <p>Cette page nécessite un abonnement supérieur.</p>
+                    <div class="plan-badge">Votre plan: {user_plan.upper()}</div>
+                    <p style="margin-top: 30px;">Améliorez votre abonnement pour accéder à toutes les fonctionnalités premium!</p>
+                    <a href="/pricing-complete" class="btn">💎 Voir les Forfaits</a>
+                    <a href="/dashboard" class="btn btn-secondary">← Retour au Dashboard</a>
+                </div>
+            </body>
+            </html>
+        """, status_code=403)
+    
+    return await call_next(request)
+
 # ============================================================================
 
 # ============================================================================
@@ -19426,6 +19645,7 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
+        {NAV_MENU}
         {ADMIN_NAV}
         <div class="container">
             <div class="header">
@@ -19638,8 +19858,8 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         # Calculer les stats manuellement
         stats = {
             'total_codes': len(codes),
-            'active_codes': sum(1 for c in codes if c[9]),  # c[9] = is_active
-            'total_uses': sum(c[4] for c in codes),  # c[4] = current_uses
+            'active_codes': sum(1 for c in codes if c[9]),
+            'total_uses': sum(c[4] for c in codes) if codes else 0,
         }
         conn.close()
         
@@ -19725,6 +19945,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             </style>
         </head>
         <body>
+            {NAV_MENU}
             {ADMIN_NAV}
             <div class="container">
                 
@@ -20660,6 +20881,252 @@ async def update_plan_features(request: Request):
 # DÉMARRAGE DE L'APPLICATION
 # ============================================================================
 
+
+# ============================================================================
+# 🔐 GESTION DES PERMISSIONS PAR FORFAIT - INTERFACE ADMIN
+# ============================================================================
+
+@app.get("/admin/permissions", response_class=HTMLResponse)
+async def admin_permissions_page(session_token: Optional[str] = Cookie(None)):
+    """Page admin pour gérer les permissions par forfait"""
+    user = get_user_from_token(session_token)
+    if not user or user.get('role') != 'admin':
+        return RedirectResponse("/login")
+    
+    # Liste de toutes les pages
+    all_pages = [
+        {'path': '/dashboard', 'name': '🏠 Accueil'},
+        {'path': '/fear-greed', 'name': '😨 Fear&Greed'},
+        {'path': '/dominance', 'name': '👑 Dominance'},
+        {'path': '/altcoin-season', 'name': '🌟 Altcoin Season'},
+        {'path': '/heatmap', 'name': '🔥 Heatmap'},
+        {'path': '/strategy', 'name': '📊 Stratégie'},
+        {'path': '/spot-trading', 'name': '💎 Spot Trading'},
+        {'path': '/calculatrice', 'name': '🧮 Calculatrice'},
+        {'path': '/news', 'name': '📰 Nouvelles'},
+        {'path': '/trades', 'name': '📈 Trades'},
+        {'path': '/risk-management', 'name': '⚠️ Risk Management'},
+        {'path': '/watchlist', 'name': '👁️ Watchlist'},
+        {'path': '/ai-assistant', 'name': '🤖 AI Assistant'},
+        {'path': '/prediction-ia', 'name': '🔮 Prédiction IA'},
+        {'path': '/ai-scanner', 'name': '🔍 AI Scanner'},
+        {'path': '/market-regime', 'name': '📊 Market Regime'},
+        {'path': '/whale-watcher', 'name': '🐋 Whale Watcher'},
+        {'path': '/stats-avancees', 'name': '📊 Stats Avancées'},
+        {'path': '/simulation', 'name': '🎮 Simulation'},
+        {'path': '/success-stories', 'name': '⭐ Success Stories'},
+        {'path': '/convertisseur', 'name': '💱 Convertisseur'},
+        {'path': '/calendrier', 'name': '📅 Calendrier'},
+        {'path': '/bullrun-phase', 'name': '🚀 Bullrun Phase'},
+        {'path': '/graphiques', 'name': '📊 Graphiques'},
+        {'path': '/telegram-setup', 'name': '📱 Telegram'},
+    ]
+    
+    plans = ['free', 'premium', 'advanced', 'pro', 'elite']
+    
+    # Générer les checkbox pour chaque page/plan
+    rows_html = ""
+    for page in all_pages:
+        row = f'<tr><td class="page-name">{page["name"]}</td>'
+        for plan in plans:
+            is_checked = page['path'] in PLAN_PERMISSIONS.get(plan, []) or PLAN_PERMISSIONS.get(plan, []) == ['*']
+            checked_attr = 'checked' if is_checked else ''
+            row += f'''
+            <td style="text-align: center;">
+                <input type="checkbox" class="checkbox" 
+                       data-page="{page['path']}" 
+                       data-plan="{plan}"
+                       {checked_attr}>
+            </td>
+            '''
+        row += '</tr>'
+        rows_html += row
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>🔐 Gestion des Permissions</title>
+        <style>
+            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
+            .container {{ max-width: 1400px; margin: 0 auto; }}
+            h1 {{ color: #60a5fa; margin-bottom: 30px; text-align: center; }}
+            .permissions-table {{ 
+                background: #1e293b; 
+                border-radius: 15px; 
+                padding: 30px; 
+                overflow-x: auto;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            th {{ 
+                background: #334155; 
+                padding: 15px; 
+                text-align: left; 
+                font-weight: bold;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+            }}
+            td {{ padding: 12px 15px; border-bottom: 1px solid #334155; }}
+            tbody tr:hover {{ background: rgba(99, 102, 241, 0.1); }}
+            .checkbox {{ 
+                width: 22px; 
+                height: 22px; 
+                cursor: pointer;
+                accent-color: #10b981;
+            }}
+            .plan-header {{ 
+                text-align: center; 
+                font-weight: bold; 
+                font-size: 14px;
+            }}
+            .plan-free {{ color: #94a3b8; }}
+            .plan-premium {{ color: #667eea; }}
+            .plan-advanced {{ color: #f59e0b; }}
+            .plan-pro {{ color: #ec4899; }}
+            .plan-elite {{ color: #fbbf24; }}
+            .save-btn {{
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+                padding: 18px 40px;
+                border: none;
+                border-radius: 12px;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                margin-top: 30px;
+                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+                transition: all 0.3s;
+            }}
+            .save-btn:hover {{ transform: translateY(-3px); box-shadow: 0 15px 40px rgba(16, 185, 129, 0.4); }}
+            .page-name {{ font-weight: 500; }}
+            .message {{ margin-top: 20px; padding: 20px; border-radius: 12px; }}
+            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
+            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
+            .info-box {{
+                background: rgba(99, 102, 241, 0.1);
+                padding: 20px;
+                border-radius: 12px;
+                margin-bottom: 30px;
+                border: 1px solid rgba(99, 102, 241, 0.3);
+            }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        {ADMIN_NAV}
+        <div class="container">
+            <h1>🔐 Gestion des Permissions par Forfait</h1>
+            
+            <div class="info-box">
+                <p style="margin: 0;">
+                    <strong>ℹ️ Instructions:</strong> Cochez les pages auxquelles chaque forfait a accès.
+                    Les changements sont sauvegardés immédiatement et appliqués à tous les utilisateurs.
+                </p>
+            </div>
+            
+            <div class="permissions-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Page</th>
+                            <th class="plan-header plan-free">🆓 Free</th>
+                            <th class="plan-header plan-premium">💎 Premium</th>
+                            <th class="plan-header plan-advanced">⭐ Advanced</th>
+                            <th class="plan-header plan-pro">🚀 Pro</th>
+                            <th class="plan-header plan-elite">👑 Elite</th>
+                        </tr>
+                    </thead>
+                    <tbody id="permissionsTable">
+                        {rows_html}
+                    </tbody>
+                </table>
+                
+                <button class="save-btn" onclick="savePermissions()">
+                    💾 Sauvegarder les Permissions
+                </button>
+                <div id="message"></div>
+            </div>
+        </div>
+        
+        <script>
+            async function savePermissions() {{
+                const checkboxes = document.querySelectorAll('.checkbox');
+                const permissions = {{}};
+                
+                checkboxes.forEach(cb => {{
+                    const plan = cb.dataset.plan;
+                    const page = cb.dataset.page;
+                    
+                    if (!permissions[plan]) {{
+                        permissions[plan] = [];
+                    }}
+                    
+                    if (cb.checked) {{
+                        permissions[plan].push(page);
+                    }}
+                }});
+                
+                try {{
+                    const response = await fetch('/admin/api/save-permissions', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify(permissions)
+                    }});
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {{
+                        document.getElementById('message').innerHTML = 
+                            '<div class="message success">✅ Permissions sauvegardées avec succès! Les changements sont appliqués immédiatement.</div>';
+                        setTimeout(() => {{
+                            document.getElementById('message').innerHTML = '';
+                        }}, 5000);
+                    }} else {{
+                        document.getElementById('message').innerHTML = 
+                            '<div class="message error">❌ Erreur: ' + result.error + '</div>';
+                    }}
+                }} catch (err) {{
+                    document.getElementById('message').innerHTML = 
+                        '<div class="message error">❌ Erreur de connexion: ' + err.message + '</div>';
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """)
+
+
+@app.post("/admin/api/save-permissions")
+async def save_permissions_api(request: Request, session_token: Optional[str] = Cookie(None)):
+    """API pour sauvegarder les permissions"""
+    user = get_user_from_token(session_token)
+    if not user or user.get('role') != 'admin':
+        return {"success": False, "error": "Non autorisé"}
+    
+    try:
+        permissions = await request.json()
+        
+        # Sauvegarder dans un fichier JSON
+        import json
+        with open('plan_permissions.json', 'w') as f:
+            json.dump(permissions, f, indent=2)
+        
+        # Mettre à jour la variable globale
+        global PLAN_PERMISSIONS
+        PLAN_PERMISSIONS = permissions
+        
+        print(f"✅ Permissions sauvegardées: {len(permissions)} plans")
+        
+        return {"success": True}
+        
+    except Exception as e:
+        print(f"❌ Erreur sauvegarde permissions: {e}")
+        return {"success": False, "error": str(e)}
+
+
 # ============================================================================
 # 🔐 CHANGEMENT DE MOT DE PASSE ADMIN
 # ============================================================================
@@ -20680,41 +21147,75 @@ async def admin_change_password_page(session_token: Optional[str] = Cookie(None)
         <style>
             body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
             .container {{ max-width: 600px; margin: 0 auto; }}
-            .card {{ background: #1e293b; padding: 30px; border-radius: 15px; margin-top: 30px; }}
-            h1 {{ color: #60a5fa; margin-bottom: 20px; }}
-            .form-group {{ margin-bottom: 20px; }}
-            label {{ display: block; margin-bottom: 8px; font-weight: bold; color: #e2e8f0; }}
+            .card {{ 
+                background: #1e293b; 
+                padding: 40px; 
+                border-radius: 15px; 
+                margin-top: 30px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            }}
+            h1 {{ color: #60a5fa; margin-bottom: 30px; text-align: center; }}
+            .form-group {{ margin-bottom: 25px; }}
+            label {{ 
+                display: block; 
+                margin-bottom: 10px; 
+                font-weight: bold; 
+                color: #e2e8f0;
+                font-size: 14px;
+            }}
             input {{ 
                 width: 100%; 
-                padding: 12px; 
+                padding: 14px; 
                 border-radius: 8px; 
                 background: #0f172a; 
                 color: white; 
                 border: 2px solid #334155;
                 font-size: 16px;
                 box-sizing: border-box;
+                transition: all 0.3s;
             }}
-            input:focus {{ outline: none; border-color: #60a5fa; }}
+            input:focus {{ 
+                outline: none; 
+                border-color: #60a5fa;
+                background: rgba(96, 165, 250, 0.05);
+            }}
             button {{ 
                 width: 100%; 
-                padding: 15px; 
+                padding: 16px; 
                 background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
                 color: white; 
                 border: none; 
-                border-radius: 8px; 
-                font-size: 16px; 
+                border-radius: 10px; 
+                font-size: 17px; 
                 font-weight: bold;
                 cursor: pointer; 
-                margin-top: 15px;
+                margin-top: 20px;
                 transition: all 0.3s;
             }}
-            button:hover {{ transform: translateY(-2px); box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3); }}
-            .message {{ margin-top: 20px; padding: 15px; border-radius: 8px; }}
-            .error {{ background: rgba(239, 68, 68, 0.2); border: 1px solid #ef4444; color: #fca5a5; }}
-            .success {{ background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #6ee7b7; }}
+            button:hover {{ 
+                transform: translateY(-3px); 
+                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4); 
+            }}
+            .message {{ 
+                margin-top: 25px; 
+                padding: 18px; 
+                border-radius: 10px;
+                font-weight: 500;
+            }}
+            .error {{ 
+                background: rgba(239, 68, 68, 0.2); 
+                border: 2px solid #ef4444; 
+                color: #fca5a5; 
+            }}
+            .success {{ 
+                background: rgba(16, 185, 129, 0.2); 
+                border: 2px solid #10b981; 
+                color: #6ee7b7; 
+            }}
         </style>
     </head>
     <body>
+        {NAV_MENU}
         {ADMIN_NAV}
         <div class="container">
             <div class="card">
@@ -20722,17 +21223,17 @@ async def admin_change_password_page(session_token: Optional[str] = Cookie(None)
                 <form id="changePasswordForm">
                     <div class="form-group">
                         <label for="currentPassword">Mot de passe actuel</label>
-                        <input type="password" id="currentPassword" required>
+                        <input type="password" id="currentPassword" required placeholder="Entrez votre mot de passe actuel">
                     </div>
                     
                     <div class="form-group">
                         <label for="newPassword">Nouveau mot de passe</label>
-                        <input type="password" id="newPassword" required>
+                        <input type="password" id="newPassword" required placeholder="Minimum 6 caractères">
                     </div>
                     
                     <div class="form-group">
                         <label for="confirmPassword">Confirmer nouveau mot de passe</label>
-                        <input type="password" id="confirmPassword" required>
+                        <input type="password" id="confirmPassword" required placeholder="Retapez le nouveau mot de passe">
                     </div>
                     
                     <button type="submit">💾 Changer le mot de passe</button>
@@ -20840,13 +21341,15 @@ async def admin_change_password_api(request: Request, session_token: Optional[st
         conn.commit()
         conn.close()
         
+        print(f"✅ Mot de passe changé pour {user['email']}")
+        
         return {"success": True}
         
     except Exception as e:
+        print(f"❌ Erreur changement mot de passe: {e}")
         return {"success": False, "error": str(e)}
 
 # ============================================================================
-
 
 if __name__ == "__main__":
     import uvicorn

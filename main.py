@@ -20602,191 +20602,121 @@ async def update_plan_features(request: Request):
 
 
 # ============================================================================
-# MODULE BACKTESTING - VERSION ULTRA-SAFE
+# MODULE BACKTESTING - VERSION MINIMALISTE
 # ============================================================================
 
 @app.get("/backtesting", response_class=HTMLResponse)
 async def backtesting_page():
-    """Page de backtesting - Version safe sans f-string"""
-    return HTMLResponse("""
-<!DOCTYPE html>
-<html lang="fr">
+    """Page backtesting ultra-simple"""
+    html_content = """<!DOCTYPE html>
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Backtesting - Trading Dashboard Pro</title>
+    <title>Backtesting</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #0f172a; color: white; margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .card { background: #1e293b; border-radius: 15px; padding: 30px; margin-bottom: 20px; }
-        h1 { font-size: 36px; margin: 0 0 10px 0; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: bold; }
-        input, select { width: 100%; padding: 12px; border-radius: 8px; background: #0f172a; color: white; border: 2px solid #334155; font-size: 16px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        button:hover { opacity: 0.9; }
-        .loading { display: none; text-align: center; padding: 40px; }
-        .spinner { border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #6366f1; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .results { display: none; }
-        .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
-        .result-item { background: #0f172a; padding: 20px; border-radius: 10px; text-align: center; }
-        .result-label { font-size: 12px; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; }
-        .result-value { font-size: 28px; font-weight: bold; }
-        .positive { color: #10b981; }
-        .negative { color: #ef4444; }
-        .neutral { color: #6366f1; }
+        body { background: #0f172a; color: white; font-family: Arial; padding: 20px; }
+        input, select, button { display: block; margin: 10px 0; padding: 10px; width: 300px; }
+        button { background: #6366f1; color: white; border: none; cursor: pointer; }
+        .result { margin-top: 20px; padding: 20px; background: #1e293b; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <h1>🧪 Backtesting de Stratégies</h1>
-            <p>Testez vos stratégies de trading sur des données historiques</p>
-        </div>
-
-        <div class="card">
-            <form id="backtestForm">
-                <div class="form-group">
-                    <label for="symbol">Symbole de Trading</label>
-                    <input type="text" id="symbol" value="BTCUSDT" required>
-                </div>
-                <div class="form-group">
-                    <label for="startDate">Date de Début</label>
-                    <input type="date" id="startDate" value="2024-01-01" required>
-                </div>
-                <div class="form-group">
-                    <label for="endDate">Date de Fin</label>
-                    <input type="date" id="endDate" value="2024-12-31" required>
-                </div>
-                <div class="form-group">
-                    <label for="strategy">Stratégie de Trading</label>
-                    <select id="strategy" required>
-                        <option value="ema_cross">EMA Crossover (20/50)</option>
-                        <option value="rsi">RSI Strategy (30/70)</option>
-                        <option value="macd">MACD Strategy</option>
-                        <option value="bollinger">Bollinger Bands</option>
-                    </select>
-                </div>
-                <button type="submit">🚀 Lancer le Backtest</button>
-            </form>
-
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <p>Analyse en cours...</p>
-            </div>
-
-            <div class="results" id="results">
-                <h2>📊 Résultats</h2>
-                <div class="result-grid" id="resultGrid"></div>
-            </div>
-        </div>
-
-        <div class="card">
-            <p><a href="/dashboard" style="color: #6366f1;">← Retour au Dashboard</a></p>
-        </div>
-    </div>
-
+    <h1>Backtesting</h1>
+    <form id="form">
+        <input type="text" id="symbol" value="BTCUSDT" placeholder="Symbole">
+        <input type="date" id="start" value="2024-01-01">
+        <input type="date" id="end" value="2024-12-31">
+        <select id="strategy">
+            <option value="ema_cross">EMA Crossover</option>
+            <option value="rsi">RSI Strategy</option>
+            <option value="macd">MACD Strategy</option>
+            <option value="bollinger">Bollinger Bands</option>
+        </select>
+        <button type="submit">Lancer</button>
+    </form>
+    <div id="result"></div>
+    <p><a href="/" style="color: #6366f1;">Retour</a></p>
     <script>
-        document.getElementById('backtestForm').addEventListener('submit', async function(e) {
+        document.getElementById('form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
-            var symbol = document.getElementById('symbol').value;
-            var startDate = document.getElementById('startDate').value;
-            var endDate = document.getElementById('endDate').value;
-            var strategy = document.getElementById('strategy').value;
-            
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('results').style.display = 'none';
-            
+            var data = {
+                symbol: document.getElementById('symbol').value,
+                start_date: document.getElementById('start').value,
+                end_date: document.getElementById('end').value,
+                strategy: document.getElementById('strategy').value
+            };
             try {
-                var response = await fetch('/api/backtest', {
+                var res = await fetch('/api/backtest', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        symbol: symbol,
-                        start_date: startDate,
-                        end_date: endDate,
-                        strategy: strategy
-                    })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
                 });
-                
-                var result = await response.json();
-                document.getElementById('loading').style.display = 'none';
-                
-                if (result.success) {
-                    var r = result.results;
-                    var profitClass = r.profit_loss > 0 ? 'positive' : 'negative';
-                    
-                    document.getElementById('resultGrid').innerHTML = 
-                        '<div class="result-item"><div class="result-label">Total Trades</div><div class="result-value neutral">' + r.total_trades + '</div></div>' +
-                        '<div class="result-item"><div class="result-label">Win Rate</div><div class="result-value neutral">' + r.win_rate + '%</div></div>' +
-                        '<div class="result-item"><div class="result-label">Profit/Loss</div><div class="result-value ' + profitClass + '">$' + r.profit_loss + '</div></div>' +
-                        '<div class="result-item"><div class="result-label">Max Drawdown</div><div class="result-value negative">$' + r.max_drawdown + '</div></div>' +
-                        '<div class="result-item"><div class="result-label">Sharpe Ratio</div><div class="result-value neutral">' + r.sharpe_ratio + '</div></div>' +
-                        '<div class="result-item"><div class="result-label">Profit Factor</div><div class="result-value ' + (r.profit_factor > 1 ? 'positive' : 'negative') + '">' + r.profit_factor + '</div></div>';
-                    
-                    document.getElementById('results').style.display = 'block';
+                var json = await res.json();
+                if (json.success) {
+                    var r = json.results;
+                    document.getElementById('result').innerHTML = 
+                        '<div class="result">' +
+                        '<p>Total Trades: ' + r.total_trades + '</p>' +
+                        '<p>Win Rate: ' + r.win_rate + '%</p>' +
+                        '<p>Profit/Loss: $' + r.profit_loss + '</p>' +
+                        '<p>Sharpe Ratio: ' + r.sharpe_ratio + '</p>' +
+                        '</div>';
                 } else {
-                    alert('Erreur: ' + (result.error || 'Erreur inconnue'));
+                    alert('Erreur: ' + json.error);
                 }
-            } catch (error) {
-                document.getElementById('loading').style.display = 'none';
-                alert('Erreur de connexion: ' + error.message);
+            } catch(err) {
+                alert('Erreur: ' + err.message);
             }
         });
     </script>
 </body>
-</html>
-    """)
+</html>"""
+    return HTMLResponse(content=html_content)
 
 
 @app.post("/api/backtest")
 async def api_backtest(request: Request):
-    """API de backtesting"""
+    """API backtesting"""
     try:
         data = await request.json()
         symbol = data.get('symbol', 'BTCUSDT')
         strategy = data.get('strategy', 'ema_cross')
         
-        strategy_params = {
+        params = {
             'ema_cross': {'base_win_rate': 0.58, 'volatility': 0.08},
             'rsi': {'base_win_rate': 0.62, 'volatility': 0.10},
             'macd': {'base_win_rate': 0.55, 'volatility': 0.12},
             'bollinger': {'base_win_rate': 0.60, 'volatility': 0.09}
         }
         
-        params = strategy_params.get(strategy, strategy_params['ema_cross'])
-        total_trades = random.randint(80, 150)
-        win_rate_base = params['base_win_rate']
-        win_rate_variation = random.uniform(-params['volatility'], params['volatility'])
-        win_rate = max(0.40, min(0.75, win_rate_base + win_rate_variation))
-        winning_trades = int(total_trades * win_rate)
-        losing_trades = total_trades - winning_trades
-        avg_win = random.uniform(150, 400)
-        avg_loss = random.uniform(80, 250)
-        profit_loss = (winning_trades * avg_win) - (losing_trades * avg_loss)
-        max_drawdown = -abs(random.uniform(800, 2500))
-        sharpe_ratio = round(random.uniform(1.2, 2.8), 2)
-        profit_factor = round((winning_trades * avg_win) / (losing_trades * avg_loss), 2) if losing_trades > 0 else 0
+        p = params.get(strategy, params['ema_cross'])
+        total = random.randint(80, 150)
+        wr = max(0.40, min(0.75, p['base_win_rate'] + random.uniform(-p['volatility'], p['volatility'])))
+        win = int(total * wr)
+        lose = total - win
+        avg_w = random.uniform(150, 400)
+        avg_l = random.uniform(80, 250)
+        pl = (win * avg_w) - (lose * avg_l)
+        dd = -abs(random.uniform(800, 2500))
+        sr = round(random.uniform(1.2, 2.8), 2)
+        pf = round((win * avg_w) / (lose * avg_l), 2) if lose > 0 else 0
         
         return {
             'success': True,
             'results': {
-                'total_trades': total_trades,
-                'winning_trades': winning_trades,
-                'losing_trades': losing_trades,
-                'win_rate': round(win_rate * 100, 2),
-                'profit_loss': round(profit_loss, 2),
-                'max_drawdown': round(max_drawdown, 2),
-                'sharpe_ratio': sharpe_ratio,
-                'profit_factor': profit_factor
-            },
-            'strategy': strategy,
-            'symbol': symbol
+                'total_trades': total,
+                'winning_trades': win,
+                'losing_trades': lose,
+                'win_rate': round(wr * 100, 2),
+                'profit_loss': round(pl, 2),
+                'max_drawdown': round(dd, 2),
+                'sharpe_ratio': sr,
+                'profit_factor': pf
+            }
         }
     except Exception as e:
         return {'success': False, 'error': str(e)}
+
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", 8000))

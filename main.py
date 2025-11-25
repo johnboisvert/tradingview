@@ -817,6 +817,7 @@ ADMIN_NAV = """
 PLAN_PERMISSIONS = {
     'free': [
         '/dashboard',
+        '/pricing-complete',
         '/fear-greed',
         '/dominance',
         '/heatmap',
@@ -15101,7 +15102,8 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
     """Page de pricing avec support codes promo"""
-    return HTMLResponse("""<!DOCTYPE html>
+    # Construire le HTML avec NAV_MENU
+    html = NAV_MENU + """<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -15204,13 +15206,31 @@ async def pricing_complete():
             margin-right: 10px;
         }
         
-        .pricing-grid {
+        .pricing-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
             margin-bottom: 50px;
-        }
-        .pricing-card {
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
+        }}
+        @media (max-width: 1400px) {{
+            .pricing-grid {{
+                grid-template-columns: repeat(3, 1fr);
+            }}
+        }}
+        @media (max-width: 900px) {{
+            .pricing-grid {{
+                grid-template-columns: repeat(2, 1fr);
+            }}
+        }}
+        @media (max-width: 600px) {{
+            .pricing-grid {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+        .pricing-card {{
             background: white;
             border-radius: 20px;
             padding: 40px 30px;
@@ -15323,7 +15343,8 @@ async def pricing_complete():
     </style>
 </head>
 <body>
-    <div class="container">
+    {{NAV_MENU}}
+    <div class="container" style="padding-top: 20px;">
         <div class="header">
             <h1>💎 Plans & Tarifs</h1>
             <p>Choisissez le plan qui vous convient</p>
@@ -15344,6 +15365,27 @@ async def pricing_complete():
         </div>
         
         <div class="pricing-grid">
+            <!-- Plan GRATUIT -->
+            <div class="pricing-card">
+                <div class="plan-name">🆓 Gratuit</div>
+                <div class="discount-badge">Accès de base</div>
+                <div class="plan-price">
+                    <span class="currency">$</span><span>0</span>
+                    <span class="period">/toujours</span>
+                </div>
+                <ul class="features">
+                    <li>✅ Accès au dashboard</li>
+                    <li>✅ Fear & Greed Index</li>
+                    <li>✅ Dominance Bitcoin</li>
+                    <li>✅ Heatmap crypto</li>
+                    <li>✅ Actualités crypto</li>
+                    <li>✅ Convertisseur</li>
+                </ul>
+                <button class="btn-payment" style="background: #94a3b8; cursor: pointer;" onclick="window.location.href='/register'">
+                    📝 S'inscrire Gratuitement
+                </button>
+            </div>
+            
             <!-- Plan 1 Month -->
             <div class="pricing-card">
                 <div class="plan-name">💳 Premium</div>
@@ -15561,7 +15603,9 @@ async def pricing_complete():
     </script>
 </body>
 </html>
-""")
+"""
+    return HTMLResponse(html)
+
 @app.get("/pricing-new", response_class=HTMLResponse)
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
@@ -21347,6 +21391,242 @@ async def admin_change_password_api(request: Request, session_token: Optional[st
         
     except Exception as e:
         print(f"❌ Erreur changement mot de passe: {e}")
+        return {"success": False, "error": str(e)}
+
+# ============================================================================
+
+
+# ============================================================================
+# 💰 GESTION DES PRIX - INTERFACE ADMIN
+# ============================================================================
+
+@app.get("/admin/pricing", response_class=HTMLResponse)
+async def admin_pricing_management(session_token: Optional[str] = Cookie(None)):
+    """Page admin pour gérer les prix des forfaits"""
+    user = get_user_from_token(session_token)
+    if not user or user.get('role') != 'admin':
+        return RedirectResponse("/login")
+    
+    # Prix actuels
+    current_prices = {
+        'free': {'price': 0, 'name': '🆓 Gratuit'},
+        'premium': {'price': 29.99, 'name': '💎 Premium (1 mois)'},
+        'advanced': {'price': 74.97, 'name': '⭐ Advanced (3 mois)'},
+        'pro': {'price': 134.94, 'name': '🚀 Pro (6 mois)'},
+        'elite': {'price': 239.88, 'name': '👑 Elite (1 an)'}
+    }
+    
+    rows_html = ""
+    for plan_id, data in current_prices.items():
+        disabled = 'disabled' if plan_id == 'free' else ''
+        rows_html += f"""
+        <tr>
+            <td><strong>{data['name']}</strong></td>
+            <td>
+                <input type="number" 
+                       id="price-{plan_id}" 
+                       value="{data['price']}" 
+                       step="0.01"
+                       min="0"
+                       {disabled}
+                       style="width: 140px; padding: 10px; border-radius: 8px; border: 2px solid #334155; background: #0f172a; color: white; font-size: 16px;">
+            </td>
+            <td><code style="background: #0f172a; padding: 5px 10px; border-radius: 5px;">{plan_id}</code></td>
+        </tr>
+        """
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>💰 Gestion des Prix</title>
+        <style>
+            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
+            .container {{ max-width: 1000px; margin: 0 auto; }}
+            h1 {{ color: #60a5fa; margin-bottom: 30px; text-align: center; }}
+            .pricing-table {{ 
+                background: #1e293b; 
+                border-radius: 15px; 
+                padding: 30px; 
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            th {{ 
+                background: #334155; 
+                padding: 15px; 
+                text-align: left; 
+                font-weight: bold;
+            }}
+            td {{ padding: 15px; border-bottom: 1px solid #334155; }}
+            tbody tr:hover {{ background: rgba(99, 102, 241, 0.1); }}
+            .save-btn {{
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+                padding: 18px 40px;
+                border: none;
+                border-radius: 12px;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                margin-top: 30px;
+                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+                transition: all 0.3s;
+            }}
+            .save-btn:hover {{ transform: translateY(-3px); }}
+            .message {{ margin-top: 20px; padding: 20px; border-radius: 12px; }}
+            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
+            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
+            .info-box {{
+                background: rgba(99, 102, 241, 0.1);
+                padding: 20px;
+                border-radius: 12px;
+                margin-bottom: 30px;
+                border: 1px solid rgba(99, 102, 241, 0.3);
+            }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        {ADMIN_NAV}
+        <div class="container">
+            <h1>💰 Gestion des Prix des Forfaits</h1>
+            
+            <div class="info-box">
+                <p style="margin: 0;">
+                    <strong>ℹ️ Instructions:</strong> Modifiez les prix des forfaits payants.
+                    Le plan GRATUIT est toujours à 0$ (non modifiable).
+                </p>
+            </div>
+            
+            <div class="pricing-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Forfait</th>
+                            <th>Prix (USD)</th>
+                            <th>ID Plan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows_html}
+                    </tbody>
+                </table>
+                
+                <button class="save-btn" onclick="savePrices()">
+                    💾 Sauvegarder les Prix
+                </button>
+                <div id="message"></div>
+            </div>
+        </div>
+        
+        <script>
+            async function savePrices() {{
+                const prices = {{
+                    free: 0,
+                    premium: parseFloat(document.getElementById('price-premium').value),
+                    advanced: parseFloat(document.getElementById('price-advanced').value),
+                    pro: parseFloat(document.getElementById('price-pro').value),
+                    elite: parseFloat(document.getElementById('price-elite').value)
+                }};
+                
+                try {{
+                    const response = await fetch('/admin/api/update-prices', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify(prices)
+                    }});
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {{
+                        document.getElementById('message').innerHTML = 
+                            '<div class="message success">✅ Prix sauvegardés avec succès!</div>';
+                        setTimeout(() => {{
+                            document.getElementById('message').innerHTML = '';
+                        }}, 5000);
+                    }} else {{
+                        document.getElementById('message').innerHTML = 
+                            '<div class="message error">❌ Erreur: ' + result.error + '</div>';
+                    }}
+                }} catch (err) {{
+                    document.getElementById('message').innerHTML = 
+                        '<div class="message error">❌ Erreur: ' + err.message + '</div>';
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """)
+
+
+@app.post("/admin/api/update-prices")
+async def update_prices_api(request: Request, session_token: Optional[str] = Cookie(None)):
+    """API pour mettre à jour les prix"""
+    user = get_user_from_token(session_token)
+    if not user or user.get('role') != 'admin':
+        return {"success": False, "error": "Non autorisé"}
+    
+    try:
+        prices = await request.json()
+        
+        # Sauvegarder dans un fichier JSON
+        import json
+        with open('plan_prices.json', 'w') as f:
+            json.dump(prices, f, indent=2)
+        
+        print(f"✅ Prix sauvegardés: {prices}")
+        
+        return {"success": True}
+        
+    except Exception as e:
+        print(f"❌ Erreur sauvegarde prix: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/admin/update-plan-features")
+async def update_plan_features_api(request: Request, session_token: Optional[str] = Cookie(None)):
+    """API pour mettre à jour les fonctionnalités d'un plan"""
+    user = get_user_from_token(session_token)
+    if not user or user.get('role') != 'admin':
+        return {"success": False, "error": "Non autorisé"}
+    
+    try:
+        data = await request.json()
+        plan = data.get('plan')
+        features = data.get('features', [])
+        
+        if not plan:
+            return {"success": False, "error": "Plan non spécifié"}
+        
+        # Sauvegarder les features dans un fichier
+        import json
+        import os
+        
+        # Charger les features existantes
+        features_file = 'plan_features.json'
+        all_features = {}
+        
+        try:
+            if os.path.exists(features_file):
+                with open(features_file, 'r') as f:
+                    all_features = json.load(f)
+        except:
+            pass
+        
+        # Mettre à jour les features du plan
+        all_features[plan] = features
+        
+        # Sauvegarder
+        with open(features_file, 'w') as f:
+            json.dump(all_features, f, indent=2)
+        
+        print(f"✅ Features mises à jour pour {plan}: {len(features)} features")
+        
+        return {"success": True}
+        
+    except Exception as e:
+        print(f"❌ Erreur update features: {e}")
         return {"success": False, "error": str(e)}
 
 # ============================================================================

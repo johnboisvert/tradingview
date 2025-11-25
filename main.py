@@ -20609,49 +20609,48 @@ async def update_plan_features(request: Request):
 @app.get("/backtesting", response_class=HTMLResponse)
 async def backtesting_page():
     """Page de backtesting des stratégies de trading"""
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
+    html = """<!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>🧪 Backtesting - Trading Dashboard Pro</title>
         <style>
-            body {{
+            body {
                 font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                 background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
                 color: white;
                 margin: 0;
                 padding: 0;
                 min-height: 100vh;
-            }}
-            .container {{
+            }
+            .container {
                 max-width: 1400px;
                 margin: 0 auto;
                 padding: 40px 20px;
-            }}
-            .header {{
+            }
+            .header {
                 text-align: center;
                 margin-bottom: 50px;
                 padding: 40px 20px;
                 background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%);
                 border-radius: 20px;
                 border: 1px solid rgba(99, 102, 241, 0.2);
-            }}
-            .header h1 {{
+            }
+            .header h1 {
                 font-size: 48px;
                 margin: 0 0 15px 0;
                 background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
-            }}
-            .header p {{
+            }
+            .header p {
                 font-size: 18px;
                 color: #94a3b8;
                 margin: 0;
-            }}
-            .card {{
+            }
+            .card {
                 background: rgba(30, 41, 59, 0.6);
                 backdrop-filter: blur(10px);
                 border-radius: 20px;
@@ -20659,18 +20658,18 @@ async def backtesting_page():
                 margin-bottom: 30px;
                 border: 1px solid rgba(51, 65, 85, 0.6);
                 box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            }}
-            .form-group {{
+            }
+            .form-group {
                 margin-bottom: 25px;
-            }}
-            .form-group label {{
+            }
+            .form-group label {
                 display: block;
                 margin-bottom: 10px;
                 font-weight: 600;
                 color: #e2e8f0;
                 font-size: 15px;
-            }}
-            input, select {{
+            }
+            input, select {
                 width: 100%;
                 padding: 16px 20px;
                 border-radius: 12px;
@@ -20680,13 +20679,13 @@ async def backtesting_page():
                 font-size: 16px;
                 transition: all 0.3s;
                 box-sizing: border-box;
-            }}
-            input:focus, select:focus {{
+            }
+            input:focus, select:focus {
                 outline: none;
                 border-color: #6366f1;
                 background: rgba(15, 23, 42, 0.95);
-            }}
-            button {{
+            }
+            button {
                 width: 100%;
                 padding: 18px;
                 background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
@@ -20698,20 +20697,20 @@ async def backtesting_page():
                 cursor: pointer;
                 transition: all 0.3s;
                 margin-top: 10px;
-            }}
-            button:hover {{
+            }
+            button:hover {
                 transform: translateY(-2px);
                 box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
-            }}
-            button:active {{
+            }
+            button:active {
                 transform: translateY(0);
-            }}
-            .loading {{
+            }
+            .loading {
                 display: none;
                 text-align: center;
                 padding: 40px;
-            }}
-            .spinner {{
+            }
+            .spinner {
                 border: 4px solid rgba(255, 255, 255, 0.1);
                 border-top: 4px solid #6366f1;
                 border-radius: 50%;
@@ -20719,84 +20718,84 @@ async def backtesting_page():
                 height: 50px;
                 animation: spin 1s linear infinite;
                 margin: 0 auto 20px;
-            }}
-            @keyframes spin {{
-                0% {{ transform: rotate(0deg); }}
-                100% {{ transform: rotate(360deg); }}
-            }}
-            .results {{
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .results {
                 display: none;
-            }}
-            .results h2 {{
+            }
+            .results h2 {
                 font-size: 32px;
                 margin-bottom: 30px;
                 color: #e2e8f0;
-            }}
-            .result-grid {{
+            }
+            .result-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
                 gap: 20px;
                 margin-bottom: 30px;
-            }}
-            .result-item {{
+            }
+            .result-item {
                 background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.8) 100%);
                 padding: 30px;
                 border-radius: 15px;
                 text-align: center;
                 border: 1px solid rgba(51, 65, 85, 0.4);
                 transition: all 0.3s;
-            }}
-            .result-item:hover {{
+            }
+            .result-item:hover {
                 transform: translateY(-5px);
                 border-color: #6366f1;
-            }}
-            .result-label {{
+            }
+            .result-label {
                 font-size: 14px;
                 color: #94a3b8;
                 text-transform: uppercase;
                 letter-spacing: 1px;
                 margin-bottom: 10px;
                 font-weight: 600;
-            }}
-            .result-value {{
+            }
+            .result-value {
                 font-size: 36px;
                 font-weight: bold;
                 margin: 10px 0;
-            }}
-            .result-value.positive {{
+            }
+            .result-value.positive {
                 color: #10b981;
-            }}
-            .result-value.negative {{
+            }
+            .result-value.negative {
                 color: #ef4444;
-            }}
-            .result-value.neutral {{
+            }
+            .result-value.neutral {
                 color: #6366f1;
-            }}
-            .strategy-info {{
+            }
+            .strategy-info {
                 background: rgba(99, 102, 241, 0.1);
                 padding: 20px;
                 border-radius: 12px;
                 border: 1px solid rgba(99, 102, 241, 0.2);
                 margin-bottom: 20px;
-            }}
-            .strategy-info h3 {{
+            }
+            .strategy-info h3 {
                 margin: 0 0 10px 0;
                 color: #6366f1;
-            }}
-            .strategy-info p {{
+            }
+            .strategy-info p {
                 margin: 5px 0;
                 color: #94a3b8;
                 line-height: 1.6;
-            }}
-            @media (max-width: 768px) {{
-                .result-grid {{
+            }
+            @media (max-width: 768px) {
+                .result-grid {
                     grid-template-columns: 1fr;
-                }}
-            }}
+                }
+            }
         </style>
     </head>
     <body>
-        {NAV_MENU}
+        """ + NAV_MENU + """
         
         <div class="container">
             <div class="header">
@@ -20853,15 +20852,15 @@ async def backtesting_page():
             const strategyDescriptions = {
                 'ema_cross': {
                     name: 'EMA Crossover',
-                    description: 'Stratégie basée sur le croisement des moyennes mobiles exponentielles (EMA 20 et EMA 50). Signal d\'achat quand EMA courte croise au-dessus de EMA longue, signal de vente dans le cas inverse.'
+                    description: 'Stratégie basée sur le croisement des moyennes mobiles exponentielles (EMA 20 et EMA 50). Signal d achat quand EMA courte croise au-dessus de EMA longue, signal de vente dans le cas inverse.'
                 },
                 'rsi': {
                     name: 'RSI Strategy',
-                    description: 'Stratégie utilisant l\'indicateur RSI (Relative Strength Index). Achat en zone de survente (RSI < 30), vente en zone de surachat (RSI > 70).'
+                    description: 'Stratégie utilisant l indicateur RSI (Relative Strength Index). Achat en zone de survente (RSI < 30), vente en zone de surachat (RSI > 70).'
                 },
                 'macd': {
                     name: 'MACD Strategy',
-                    description: 'Stratégie MACD (Moving Average Convergence Divergence). Signal d\'achat quand la ligne MACD croise au-dessus de la ligne de signal, vente dans le cas inverse.'
+                    description: 'Stratégie MACD (Moving Average Convergence Divergence). Signal d achat quand la ligne MACD croise au-dessus de la ligne de signal, vente dans le cas inverse.'
                 },
                 'bollinger': {
                     name: 'Bollinger Bands',
@@ -20877,7 +20876,6 @@ async def backtesting_page():
                 const endDate = document.getElementById('endDate').value;
                 const strategy = document.getElementById('strategy').value;
                 
-                // Afficher le loading
                 document.getElementById('loading').style.display = 'block';
                 document.getElementById('results').style.display = 'none';
                 
@@ -20897,55 +20895,24 @@ async def backtesting_page():
                     
                     const result = await response.json();
                     
-                    // Cacher le loading
                     document.getElementById('loading').style.display = 'none';
                     
                     if (result.success) {
-                        // Afficher les informations de la stratégie
                         const strategyInfo = strategyDescriptions[strategy];
-                        document.getElementById('strategyInfo').innerHTML = `
-                            <h3>${strategyInfo.name}</h3>
-                            <p>${strategyInfo.description}</p>
-                        `;
+                        document.getElementById('strategyInfo').innerHTML = '<h3>' + strategyInfo.name + '</h3><p>' + strategyInfo.description + '</p>';
                         
-                        // Afficher les résultats
                         const r = result.results;
                         const profitClass = r.profit_loss > 0 ? 'positive' : 'negative';
                         
-                        document.getElementById('resultGrid').innerHTML = `
-                            <div class="result-item">
-                                <div class="result-label">Total Trades</div>
-                                <div class="result-value neutral">${r.total_trades}</div>
-                            </div>
-                            <div class="result-item">
-                                <div class="result-label">Trades Gagnants</div>
-                                <div class="result-value positive">${r.winning_trades}</div>
-                            </div>
-                            <div class="result-item">
-                                <div class="result-label">Trades Perdants</div>
-                                <div class="result-value negative">${r.losing_trades}</div>
-                            </div>
-                            <div class="result-item">
-                                <div class="result-label">Win Rate</div>
-                                <div class="result-value neutral">${r.win_rate}%</div>
-                            </div>
-                            <div class="result-item">
-                                <div class="result-label">Profit/Loss</div>
-                                <div class="result-value ${profitClass}">$${r.profit_loss.toLocaleString()}</div>
-                            </div>
-                            <div class="result-item">
-                                <div class="result-label">Max Drawdown</div>
-                                <div class="result-value negative">$${r.max_drawdown.toLocaleString()}</div>
-                            </div>
-                            <div class="result-item">
-                                <div class="result-label">Sharpe Ratio</div>
-                                <div class="result-value neutral">${r.sharpe_ratio}</div>
-                            </div>
-                            <div class="result-item">
-                                <div class="result-label">Profit Factor</div>
-                                <div class="result-value ${r.profit_factor > 1 ? 'positive' : 'negative'}">${r.profit_factor}</div>
-                            </div>
-                        `;
+                        document.getElementById('resultGrid').innerHTML = 
+                            '<div class="result-item"><div class="result-label">Total Trades</div><div class="result-value neutral">' + r.total_trades + '</div></div>' +
+                            '<div class="result-item"><div class="result-label">Trades Gagnants</div><div class="result-value positive">' + r.winning_trades + '</div></div>' +
+                            '<div class="result-item"><div class="result-label">Trades Perdants</div><div class="result-value negative">' + r.losing_trades + '</div></div>' +
+                            '<div class="result-item"><div class="result-label">Win Rate</div><div class="result-value neutral">' + r.win_rate + '%</div></div>' +
+                            '<div class="result-item"><div class="result-label">Profit/Loss</div><div class="result-value ' + profitClass + '">$' + r.profit_loss.toLocaleString() + '</div></div>' +
+                            '<div class="result-item"><div class="result-label">Max Drawdown</div><div class="result-value negative">$' + r.max_drawdown.toLocaleString() + '</div></div>' +
+                            '<div class="result-item"><div class="result-label">Sharpe Ratio</div><div class="result-value neutral">' + r.sharpe_ratio + '</div></div>' +
+                            '<div class="result-item"><div class="result-label">Profit Factor</div><div class="result-value ' + (r.profit_factor > 1 ? 'positive' : 'negative') + '">' + r.profit_factor + '</div></div>';
                         
                         document.getElementById('results').style.display = 'block';
                     } else {
@@ -20959,7 +20926,8 @@ async def backtesting_page():
         </script>
     </body>
     </html>
-    """)
+    """
+    return HTMLResponse(html)
 
 
 @app.post("/api/backtest")

@@ -20325,7 +20325,6 @@ async def backtesting_page(request: Request):
     </html>
     """)
 
-
 @app.post("/api/backtest")
 async def api_backtest(request: Request):
     """API Backtesting"""

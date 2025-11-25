@@ -757,277 +757,38 @@ NAV_MENU = """
 # ============================================================================
 
 # ============================================================================
-# MENU NAVIGATION ADMIN
+# MENU ADMIN
 # ============================================================================
 ADMIN_NAV = """
 <style>
     .admin-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 12px 20px;
-        margin-bottom: 20px;
-        border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        border: 2px solid rgba(245, 158, 11, 0.3);
+        background: #1e293b;
+        padding: 10px 20px;
+        margin-bottom: 15px;
+        border-radius: 8px;
+        border: 1px solid #f59e0b;
     }
-    .admin-nav-container {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .admin-nav-btn {
-        background: rgba(245, 158, 11, 0.2);
+    .admin-nav a {
         color: #fbbf24;
-        padding: 8px 14px;
-        border-radius: 6px;
         text-decoration: none;
-        font-size: 13px;
+        padding: 8px 12px;
+        margin: 0 5px;
+        border-radius: 5px;
+        font-size: 14px;
         font-weight: 600;
-        transition: all 0.3s;
-        border: 1px solid rgba(245, 158, 11, 0.3);
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
+        display: inline-block;
     }
-    .admin-nav-btn:hover {
-        background: rgba(245, 158, 11, 0.3);
-        transform: translateY(-2px);
+    .admin-nav a:hover {
+        background: rgba(245, 158, 11, 0.2);
     }
 </style>
-
 <nav class="admin-nav">
-    <div class="admin-nav-container">
-        <span style="color: #fbbf24; font-weight: bold; margin-right: 10px;">⚙️ ADMIN:</span>
-        <a href="/admin-dashboard" class="admin-nav-btn">🏠 Dashboard</a>
-        <a href="/admin/permissions" class="admin-nav-btn">🔐 Permissions</a>
-        <a href="/admin/pricing" class="admin-nav-btn">💰 Gestion Prix</a>
-        <a href="/admin/list-promos" class="admin-nav-btn">🎫 Codes Promo</a>
-        <a href="/admin/create-promo-page" class="admin-nav-btn">➕ Créer Promo</a>
-        <a href="/admin/change-password" class="admin-nav-btn">🔐 Mot de Passe</a>
-    </div>
+    <span style="color: #fbbf24; font-weight: bold;">⚙️ ADMIN:</span>
+    <a href="/admin-dashboard">🏠 Dashboard</a>
+    <a href="/admin/list-promos">🎫 Promos</a>
+    <a href="/dashboard">← Retour</a>
 </nav>
 """
-# ============================================================================
-
-# ============================================================================
-# SYSTÈME DE PERMISSIONS PAR FORFAIT
-# ============================================================================
-
-# Permissions par défaut pour chaque forfait
-PLAN_PERMISSIONS = {
-    'free': [
-        '/dashboard',
-        '/pricing-complete',
-        '/fear-greed',
-        '/dominance',
-        '/heatmap',
-        '/news',
-        '/convertisseur',
-        '/success-stories'
-    ],
-    'premium': [
-        '/dashboard',
-        '/fear-greed',
-        '/dominance',
-        '/heatmap',
-        '/news',
-        '/convertisseur',
-        '/success-stories',
-        '/strategy',
-        '/spot-trading',
-        '/calculatrice',
-        '/trades',
-        '/risk-management',
-        '/watchlist',
-        '/graphiques',
-        '/telegram-setup',
-        '/altcoin-season'
-    ],
-    'advanced': [
-        '/dashboard',
-        '/fear-greed',
-        '/dominance',
-        '/heatmap',
-        '/news',
-        '/convertisseur',
-        '/success-stories',
-        '/strategy',
-        '/spot-trading',
-        '/calculatrice',
-        '/trades',
-        '/risk-management',
-        '/watchlist',
-        '/graphiques',
-        '/telegram-setup',
-        '/altcoin-season',
-        '/ai-assistant',
-        '/prediction-ia',
-        '/market-regime',
-        '/stats-avancees',
-        '/calendrier'
-    ],
-    'pro': [
-        '/dashboard',
-        '/fear-greed',
-        '/dominance',
-        '/heatmap',
-        '/news',
-        '/convertisseur',
-        '/success-stories',
-        '/strategy',
-        '/spot-trading',
-        '/calculatrice',
-        '/trades',
-        '/risk-management',
-        '/watchlist',
-        '/graphiques',
-        '/telegram-setup',
-        '/altcoin-season',
-        '/ai-assistant',
-        '/prediction-ia',
-        '/market-regime',
-        '/stats-avancees',
-        '/calendrier',
-        '/ai-scanner',
-        '/whale-watcher',
-        '/simulation',
-        '/bullrun-phase'
-    ],
-    'elite': ['*']  # Accès à tout
-}
-
-def check_page_access(user_plan: str, page_path: str) -> bool:
-    """Vérifie si l'utilisateur peut accéder à la page"""
-    # Admin et Elite ont accès à tout
-    if user_plan in ['admin', 'elite']:
-        return True
-    
-    # Récupérer les permissions du plan
-    allowed_pages = PLAN_PERMISSIONS.get(user_plan, [])
-    
-    # Vérifier si la page est autorisée
-    return page_path in allowed_pages or '*' in allowed_pages
-
-# Charger les permissions depuis le fichier si existe
-try:
-    import json
-    import os
-    if os.path.exists('plan_permissions.json'):
-        with open('plan_permissions.json', 'r') as f:
-            PLAN_PERMISSIONS = json.load(f)
-            print("✅ Permissions chargées depuis plan_permissions.json")
-except Exception as e:
-    print(f"ℹ️ Utilisation des permissions par défaut: {e}")
-
-# ============================================================================
-# MIDDLEWARE DE VÉRIFICATION DES PERMISSIONS
-# ============================================================================
-
-@app.middleware("http")
-async def verify_page_permissions(request: Request, call_next):
-    """Middleware pour vérifier les permissions d'accès aux pages"""
-    
-    # Pages publiques toujours accessibles
-    public_pages = [
-        '/login', '/register', '/pricing-complete', '/logout', 
-        '/', '/api/', '/static/', '/admin/api/'
-    ]
-    
-    # Vérifier si la page est publique
-    if any(request.url.path.startswith(page) for page in public_pages):
-        return await call_next(request)
-    
-    # Récupérer l'utilisateur
-    session_token = request.cookies.get("session_token")
-    user = get_user_from_token(session_token)
-    
-    if not user:
-        # Rediriger vers login si non authentifié
-        if not request.url.path.startswith('/api/'):
-            return RedirectResponse("/login", status_code=303)
-        return await call_next(request)
-    
-    # Admin bypass toutes les vérifications
-    if user.get('role') == 'admin':
-        return await call_next(request)
-    
-    # Vérifier les permissions pour la page
-    user_plan = user.get('subscription_plan', 'free')
-    
-    if not check_page_access(user_plan, request.url.path):
-        # Page bloquée - afficher message de restriction
-        return HTMLResponse(f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>🔒 Accès Restreint</title>
-                <style>
-                    body {{
-                        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-                        color: white;
-                        font-family: Arial, sans-serif;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        min-height: 100vh;
-                        margin: 0;
-                        padding: 20px;
-                    }}
-                    .container {{
-                        text-align: center;
-                        max-width: 600px;
-                        background: rgba(30, 41, 59, 0.8);
-                        padding: 50px;
-                        border-radius: 20px;
-                        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-                    }}
-                    h1 {{ font-size: 48px; margin: 0 0 20px 0; }}
-                    p {{ font-size: 18px; color: #94a3b8; margin: 15px 0; }}
-                    .plan-badge {{
-                        display: inline-block;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        padding: 10px 25px;
-                        border-radius: 25px;
-                        font-weight: bold;
-                        margin: 20px 0;
-                    }}
-                    .btn {{
-                        display: inline-block;
-                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                        color: white;
-                        padding: 18px 40px;
-                        text-decoration: none;
-                        border-radius: 12px;
-                        font-weight: bold;
-                        font-size: 18px;
-                        margin: 30px 10px 10px 10px;
-                        transition: all 0.3s;
-                    }}
-                    .btn:hover {{ transform: translateY(-3px); box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4); }}
-                    .btn-secondary {{
-                        background: rgba(255,255,255,0.1);
-                        color: #60a5fa;
-                    }}
-                    .btn-secondary:hover {{ background: rgba(255,255,255,0.2); }}
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>🔒</h1>
-                    <h2>Accès Restreint</h2>
-                    <p>Cette page nécessite un abonnement supérieur.</p>
-                    <div class="plan-badge">Votre plan: {user_plan.upper()}</div>
-                    <p style="margin-top: 30px;">Améliorez votre abonnement pour accéder à toutes les fonctionnalités premium!</p>
-                    <a href="/pricing-complete" class="btn">💎 Voir les Forfaits</a>
-                    <a href="/dashboard" class="btn btn-secondary">← Retour au Dashboard</a>
-                </div>
-            </body>
-            </html>
-        """, status_code=403)
-    
-    return await call_next(request)
-
 # ============================================================================
 
 # ============================================================================
@@ -15102,8 +14863,7 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
     """Page de pricing avec support codes promo"""
-    # Construire le HTML avec NAV_MENU
-    html = NAV_MENU + """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -15206,31 +14966,13 @@ async def pricing_complete():
             margin-right: 10px;
         }
         
-        .pricing-grid {{
+        .pricing-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
             margin-bottom: 50px;
-            max-width: 1600px;
-            margin-left: auto;
-            margin-right: auto;
-        }}
-        @media (max-width: 1400px) {{
-            .pricing-grid {{
-                grid-template-columns: repeat(3, 1fr);
-            }}
-        }}
-        @media (max-width: 900px) {{
-            .pricing-grid {{
-                grid-template-columns: repeat(2, 1fr);
-            }}
-        }}
-        @media (max-width: 600px) {{
-            .pricing-grid {{
-                grid-template-columns: 1fr;
-            }}
-        }}
-        .pricing-card {{
+        }
+        .pricing-card {
             background: white;
             border-radius: 20px;
             padding: 40px 30px;
@@ -15343,8 +15085,7 @@ async def pricing_complete():
     </style>
 </head>
 <body>
-    {{NAV_MENU}}
-    <div class="container" style="padding-top: 20px;">
+    <div class="container">
         <div class="header">
             <h1>💎 Plans & Tarifs</h1>
             <p>Choisissez le plan qui vous convient</p>
@@ -15365,27 +15106,6 @@ async def pricing_complete():
         </div>
         
         <div class="pricing-grid">
-            <!-- Plan GRATUIT -->
-            <div class="pricing-card">
-                <div class="plan-name">🆓 Gratuit</div>
-                <div class="discount-badge">Accès de base</div>
-                <div class="plan-price">
-                    <span class="currency">$</span><span>0</span>
-                    <span class="period">/toujours</span>
-                </div>
-                <ul class="features">
-                    <li>✅ Accès au dashboard</li>
-                    <li>✅ Fear & Greed Index</li>
-                    <li>✅ Dominance Bitcoin</li>
-                    <li>✅ Heatmap crypto</li>
-                    <li>✅ Actualités crypto</li>
-                    <li>✅ Convertisseur</li>
-                </ul>
-                <button class="btn-payment" style="background: #94a3b8; cursor: pointer;" onclick="window.location.href='/register'">
-                    📝 S'inscrire Gratuitement
-                </button>
-            </div>
-            
             <!-- Plan 1 Month -->
             <div class="pricing-card">
                 <div class="plan-name">💳 Premium</div>
@@ -15603,9 +15323,7 @@ async def pricing_complete():
     </script>
 </body>
 </html>
-"""
-    return HTMLResponse(html)
-
+""")
 @app.get("/pricing-new", response_class=HTMLResponse)
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
@@ -19899,7 +19617,6 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
     try:
         conn = get_db_connection()
         codes = PromoCodeManager.get_all_promo_codes(conn)
-        # Calculer les stats manuellement
         stats = {
             'total_codes': len(codes),
             'active_codes': sum(1 for c in codes if c[9]),
@@ -20927,924 +20644,163 @@ async def update_plan_features(request: Request):
 
 
 # ============================================================================
-# 🔐 GESTION DES PERMISSIONS PAR FORFAIT - INTERFACE ADMIN
+# 🏠 PAGE D'ACCUEIL / DASHBOARD
 # ============================================================================
 
-@app.get("/admin/permissions", response_class=HTMLResponse)
-async def admin_permissions_page(session_token: Optional[str] = Cookie(None)):
-    """Page admin pour gérer les permissions par forfait"""
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    """Page d'accueil - redirige vers dashboard ou pricing"""
+    session_token = request.cookies.get("session_token")
     user = get_user_from_token(session_token)
-    if not user or user.get('role') != 'admin':
-        return RedirectResponse("/login")
     
-    # Liste de toutes les pages
-    all_pages = [
-        {'path': '/dashboard', 'name': '🏠 Accueil'},
-        {'path': '/fear-greed', 'name': '😨 Fear&Greed'},
-        {'path': '/dominance', 'name': '👑 Dominance'},
-        {'path': '/altcoin-season', 'name': '🌟 Altcoin Season'},
-        {'path': '/heatmap', 'name': '🔥 Heatmap'},
-        {'path': '/strategy', 'name': '📊 Stratégie'},
-        {'path': '/spot-trading', 'name': '💎 Spot Trading'},
-        {'path': '/calculatrice', 'name': '🧮 Calculatrice'},
-        {'path': '/news', 'name': '📰 Nouvelles'},
-        {'path': '/trades', 'name': '📈 Trades'},
-        {'path': '/risk-management', 'name': '⚠️ Risk Management'},
-        {'path': '/watchlist', 'name': '👁️ Watchlist'},
-        {'path': '/ai-assistant', 'name': '🤖 AI Assistant'},
-        {'path': '/prediction-ia', 'name': '🔮 Prédiction IA'},
-        {'path': '/ai-scanner', 'name': '🔍 AI Scanner'},
-        {'path': '/market-regime', 'name': '📊 Market Regime'},
-        {'path': '/whale-watcher', 'name': '🐋 Whale Watcher'},
-        {'path': '/stats-avancees', 'name': '📊 Stats Avancées'},
-        {'path': '/simulation', 'name': '🎮 Simulation'},
-        {'path': '/success-stories', 'name': '⭐ Success Stories'},
-        {'path': '/convertisseur', 'name': '💱 Convertisseur'},
-        {'path': '/calendrier', 'name': '📅 Calendrier'},
-        {'path': '/bullrun-phase', 'name': '🚀 Bullrun Phase'},
-        {'path': '/graphiques', 'name': '📊 Graphiques'},
-        {'path': '/telegram-setup', 'name': '📱 Telegram'},
-    ]
-    
-    plans = ['free', 'premium', 'advanced', 'pro', 'elite']
-    
-    # Générer les checkbox pour chaque page/plan
-    rows_html = ""
-    for page in all_pages:
-        row = f'<tr><td class="page-name">{page["name"]}</td>'
-        for plan in plans:
-            is_checked = page['path'] in PLAN_PERMISSIONS.get(plan, []) or PLAN_PERMISSIONS.get(plan, []) == ['*']
-            checked_attr = 'checked' if is_checked else ''
-            row += f'''
-            <td style="text-align: center;">
-                <input type="checkbox" class="checkbox" 
-                       data-page="{page['path']}" 
-                       data-plan="{plan}"
-                       {checked_attr}>
-            </td>
-            '''
-        row += '</tr>'
-        rows_html += row
-    
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>🔐 Gestion des Permissions</title>
-        <style>
-            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
-            .container {{ max-width: 1400px; margin: 0 auto; }}
-            h1 {{ color: #60a5fa; margin-bottom: 30px; text-align: center; }}
-            .permissions-table {{ 
-                background: #1e293b; 
-                border-radius: 15px; 
-                padding: 30px; 
-                overflow-x: auto;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            }}
-            table {{ width: 100%; border-collapse: collapse; }}
-            th {{ 
-                background: #334155; 
-                padding: 15px; 
-                text-align: left; 
-                font-weight: bold;
-                position: sticky;
-                top: 0;
-                z-index: 10;
-            }}
-            td {{ padding: 12px 15px; border-bottom: 1px solid #334155; }}
-            tbody tr:hover {{ background: rgba(99, 102, 241, 0.1); }}
-            .checkbox {{ 
-                width: 22px; 
-                height: 22px; 
-                cursor: pointer;
-                accent-color: #10b981;
-            }}
-            .plan-header {{ 
-                text-align: center; 
-                font-weight: bold; 
-                font-size: 14px;
-            }}
-            .plan-free {{ color: #94a3b8; }}
-            .plan-premium {{ color: #667eea; }}
-            .plan-advanced {{ color: #f59e0b; }}
-            .plan-pro {{ color: #ec4899; }}
-            .plan-elite {{ color: #fbbf24; }}
-            .save-btn {{
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                color: white;
-                padding: 18px 40px;
-                border: none;
-                border-radius: 12px;
-                font-size: 18px;
-                font-weight: bold;
-                cursor: pointer;
-                margin-top: 30px;
-                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
-                transition: all 0.3s;
-            }}
-            .save-btn:hover {{ transform: translateY(-3px); box-shadow: 0 15px 40px rgba(16, 185, 129, 0.4); }}
-            .page-name {{ font-weight: 500; }}
-            .message {{ margin-top: 20px; padding: 20px; border-radius: 12px; }}
-            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
-            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
-            .info-box {{
-                background: rgba(99, 102, 241, 0.1);
-                padding: 20px;
-                border-radius: 12px;
-                margin-bottom: 30px;
-                border: 1px solid rgba(99, 102, 241, 0.3);
-            }}
-        </style>
-    </head>
-    <body>
-        {NAV_MENU}
-        {ADMIN_NAV}
-        <div class="container">
-            <h1>🔐 Gestion des Permissions par Forfait</h1>
-            
-            <div class="info-box">
-                <p style="margin: 0;">
-                    <strong>ℹ️ Instructions:</strong> Cochez les pages auxquelles chaque forfait a accès.
-                    Les changements sont sauvegardés immédiatement et appliqués à tous les utilisateurs.
-                </p>
-            </div>
-            
-            <div class="permissions-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Page</th>
-                            <th class="plan-header plan-free">🆓 Free</th>
-                            <th class="plan-header plan-premium">💎 Premium</th>
-                            <th class="plan-header plan-advanced">⭐ Advanced</th>
-                            <th class="plan-header plan-pro">🚀 Pro</th>
-                            <th class="plan-header plan-elite">👑 Elite</th>
-                        </tr>
-                    </thead>
-                    <tbody id="permissionsTable">
-                        {rows_html}
-                    </tbody>
-                </table>
-                
-                <button class="save-btn" onclick="savePermissions()">
-                    💾 Sauvegarder les Permissions
-                </button>
-                <div id="message"></div>
-            </div>
-        </div>
-        
-        <script>
-            async function savePermissions() {{
-                const checkboxes = document.querySelectorAll('.checkbox');
-                const permissions = {{}};
-                
-                checkboxes.forEach(cb => {{
-                    const plan = cb.dataset.plan;
-                    const page = cb.dataset.page;
-                    
-                    if (!permissions[plan]) {{
-                        permissions[plan] = [];
-                    }}
-                    
-                    if (cb.checked) {{
-                        permissions[plan].push(page);
-                    }}
-                }});
-                
-                try {{
-                    const response = await fetch('/admin/api/save-permissions', {{
-                        method: 'POST',
-                        headers: {{'Content-Type': 'application/json'}},
-                        body: JSON.stringify(permissions)
-                    }});
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {{
-                        document.getElementById('message').innerHTML = 
-                            '<div class="message success">✅ Permissions sauvegardées avec succès! Les changements sont appliqués immédiatement.</div>';
-                        setTimeout(() => {{
-                            document.getElementById('message').innerHTML = '';
-                        }}, 5000);
-                    }} else {{
-                        document.getElementById('message').innerHTML = 
-                            '<div class="message error">❌ Erreur: ' + result.error + '</div>';
-                    }}
-                }} catch (err) {{
-                    document.getElementById('message').innerHTML = 
-                        '<div class="message error">❌ Erreur de connexion: ' + err.message + '</div>';
-                }}
-            }}
-        </script>
-    </body>
-    </html>
-    """)
+    if user:
+        # Si connecté, aller au dashboard
+        return RedirectResponse("/dashboard", status_code=303)
+    else:
+        # Si non connecté, aller au pricing
+        return RedirectResponse("/pricing-complete", status_code=303)
 
 
-@app.post("/admin/api/save-permissions")
-async def save_permissions_api(request: Request, session_token: Optional[str] = Cookie(None)):
-    """API pour sauvegarder les permissions"""
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    """Dashboard principal de l'application"""
+    session_token = request.cookies.get("session_token")
     user = get_user_from_token(session_token)
-    if not user or user.get('role') != 'admin':
-        return {"success": False, "error": "Non autorisé"}
     
-    try:
-        permissions = await request.json()
-        
-        # Sauvegarder dans un fichier JSON
-        import json
-        with open('plan_permissions.json', 'w') as f:
-            json.dump(permissions, f, indent=2)
-        
-        # Mettre à jour la variable globale
-        global PLAN_PERMISSIONS
-        PLAN_PERMISSIONS = permissions
-        
-        print(f"✅ Permissions sauvegardées: {len(permissions)} plans")
-        
-        return {"success": True}
-        
-    except Exception as e:
-        print(f"❌ Erreur sauvegarde permissions: {e}")
-        return {"success": False, "error": str(e)}
-
-
-# ============================================================================
-# 🔐 CHANGEMENT DE MOT DE PASSE ADMIN
-# ============================================================================
-
-@app.get("/admin/change-password", response_class=HTMLResponse)
-async def admin_change_password_page(session_token: Optional[str] = Cookie(None)):
-    """Page changement de mot de passe admin"""
-    user = get_user_from_token(session_token)
     if not user:
-        return RedirectResponse("/login")
+        return RedirectResponse("/login", status_code=303)
+    
+    username = user.get('username', 'Utilisateur')
+    plan = user.get('subscription_plan', 'free')
     
     return HTMLResponse(f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
-        <title>🔐 Changer Mot de Passe</title>
+        <title>🏠 Dashboard - Trading Pro</title>
         <style>
-            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .card {{ 
-                background: #1e293b; 
-                padding: 40px; 
-                border-radius: 15px; 
-                margin-top: 30px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            }}
-            h1 {{ color: #60a5fa; margin-bottom: 30px; text-align: center; }}
-            .form-group {{ margin-bottom: 25px; }}
-            label {{ 
-                display: block; 
-                margin-bottom: 10px; 
-                font-weight: bold; 
-                color: #e2e8f0;
-                font-size: 14px;
-            }}
-            input {{ 
-                width: 100%; 
-                padding: 14px; 
-                border-radius: 8px; 
-                background: #0f172a; 
-                color: white; 
-                border: 2px solid #334155;
-                font-size: 16px;
-                box-sizing: border-box;
-                transition: all 0.3s;
-            }}
-            input:focus {{ 
-                outline: none; 
-                border-color: #60a5fa;
-                background: rgba(96, 165, 250, 0.05);
-            }}
-            button {{ 
-                width: 100%; 
-                padding: 16px; 
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-                color: white; 
-                border: none; 
-                border-radius: 10px; 
-                font-size: 17px; 
-                font-weight: bold;
-                cursor: pointer; 
-                margin-top: 20px;
-                transition: all 0.3s;
-            }}
-            button:hover {{ 
-                transform: translateY(-3px); 
-                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4); 
-            }}
-            .message {{ 
-                margin-top: 25px; 
-                padding: 18px; 
-                border-radius: 10px;
-                font-weight: 500;
-            }}
-            .error {{ 
-                background: rgba(239, 68, 68, 0.2); 
-                border: 2px solid #ef4444; 
-                color: #fca5a5; 
-            }}
-            .success {{ 
-                background: rgba(16, 185, 129, 0.2); 
-                border: 2px solid #10b981; 
-                color: #6ee7b7; 
-            }}
-        </style>
-    </head>
-    <body>
-        {NAV_MENU}
-        {ADMIN_NAV}
-        <div class="container">
-            <div class="card">
-                <h1>🔐 Changer Mot de Passe</h1>
-                <form id="changePasswordForm">
-                    <div class="form-group">
-                        <label for="currentPassword">Mot de passe actuel</label>
-                        <input type="password" id="currentPassword" required placeholder="Entrez votre mot de passe actuel">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="newPassword">Nouveau mot de passe</label>
-                        <input type="password" id="newPassword" required placeholder="Minimum 6 caractères">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="confirmPassword">Confirmer nouveau mot de passe</label>
-                        <input type="password" id="confirmPassword" required placeholder="Retapez le nouveau mot de passe">
-                    </div>
-                    
-                    <button type="submit">💾 Changer le mot de passe</button>
-                </form>
-                <div id="message"></div>
-            </div>
-        </div>
-        <script>
-            document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {{
-                e.preventDefault();
-                
-                const current = document.getElementById('currentPassword').value;
-                const newPass = document.getElementById('newPassword').value;
-                const confirm = document.getElementById('confirmPassword').value;
-                const msg = document.getElementById('message');
-                
-                msg.innerHTML = '';
-                
-                if (newPass !== confirm) {{
-                    msg.innerHTML = '<div class="message error">❌ Les mots de passe ne correspondent pas</div>';
-                    return;
-                }}
-                
-                if (newPass.length < 6) {{
-                    msg.innerHTML = '<div class="message error">❌ Le mot de passe doit avoir au moins 6 caractères</div>';
-                    return;
-                }}
-                
-                try {{
-                    const response = await fetch('/admin/api/change-password', {{
-                        method: 'POST',
-                        headers: {{'Content-Type': 'application/json'}},
-                        body: JSON.stringify({{
-                            current_password: current,
-                            new_password: newPass
-                        }})
-                    }});
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {{
-                        msg.innerHTML = '<div class="message success">✅ Mot de passe changé avec succès!</div>';
-                        document.getElementById('changePasswordForm').reset();
-                    }} else {{
-                        msg.innerHTML = '<div class="message error">❌ ' + result.error + '</div>';
-                    }}
-                }} catch (err) {{
-                    msg.innerHTML = '<div class="message error">❌ Erreur: ' + err.message + '</div>';
-                }}
-            }});
-        </script>
-    </body>
-    </html>
-    """)
-
-
-@app.post("/admin/api/change-password")
-async def admin_change_password_api(request: Request, session_token: Optional[str] = Cookie(None)):
-    """API changement mot de passe"""
-    user = get_user_from_token(session_token)
-    if not user:
-        return {"success": False, "error": "Non authentifié"}
-    
-    try:
-        data = await request.json()
-        current_password = data.get('current_password')
-        new_password = data.get('new_password')
-        
-        if not current_password or not new_password:
-            return {"success": False, "error": "Données manquantes"}
-        
-        # Vérifier mot de passe actuel
-        conn = get_db_connection()
-        c = conn.cursor()
-        
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("SELECT password FROM users WHERE email=%s", (user['email'],))
-        else:
-            c.execute("SELECT password FROM users WHERE email=?", (user['email'],))
-        
-        result = c.fetchone()
-        
-        if not result:
-            conn.close()
-            return {"success": False, "error": "Utilisateur non trouvé"}
-        
-        stored_password = result[0]
-        
-        # Vérifier si le mot de passe actuel est correct
-        current_password_hash = hashlib.sha256(current_password.encode()).hexdigest()
-        if current_password_hash != stored_password:
-            conn.close()
-            return {"success": False, "error": "Mot de passe actuel incorrect"}
-        
-        # Changer le mot de passe
-        new_password_hash = hashlib.sha256(new_password.encode()).hexdigest()
-        
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("UPDATE users SET password=%s WHERE email=%s", 
-                     (new_password_hash, user['email']))
-        else:
-            c.execute("UPDATE users SET password=? WHERE email=?", 
-                     (new_password_hash, user['email']))
-        
-        conn.commit()
-        conn.close()
-        
-        print(f"✅ Mot de passe changé pour {user['email']}")
-        
-        return {"success": True}
-        
-    except Exception as e:
-        print(f"❌ Erreur changement mot de passe: {e}")
-        return {"success": False, "error": str(e)}
-
-# ============================================================================
-
-
-# ============================================================================
-# 💰 GESTION DES PRIX - INTERFACE ADMIN
-# ============================================================================
-
-@app.get("/admin/pricing", response_class=HTMLResponse)
-async def admin_pricing_management(session_token: Optional[str] = Cookie(None)):
-    """Page admin pour gérer les prix des forfaits"""
-    user = get_user_from_token(session_token)
-    if not user or user.get('role') != 'admin':
-        return RedirectResponse("/login")
-    
-    # Prix actuels
-    current_prices = {
-        'free': {'price': 0, 'name': '🆓 Gratuit'},
-        'premium': {'price': 29.99, 'name': '💎 Premium (1 mois)'},
-        'advanced': {'price': 74.97, 'name': '⭐ Advanced (3 mois)'},
-        'pro': {'price': 134.94, 'name': '🚀 Pro (6 mois)'},
-        'elite': {'price': 239.88, 'name': '👑 Elite (1 an)'}
-    }
-    
-    rows_html = ""
-    for plan_id, data in current_prices.items():
-        disabled = 'disabled' if plan_id == 'free' else ''
-        rows_html += f"""
-        <tr>
-            <td><strong>{data['name']}</strong></td>
-            <td>
-                <input type="number" 
-                       id="price-{plan_id}" 
-                       value="{data['price']}" 
-                       step="0.01"
-                       min="0"
-                       {disabled}
-                       style="width: 140px; padding: 10px; border-radius: 8px; border: 2px solid #334155; background: #0f172a; color: white; font-size: 16px;">
-            </td>
-            <td><code style="background: #0f172a; padding: 5px 10px; border-radius: 5px;">{plan_id}</code></td>
-        </tr>
-        """
-    
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>💰 Gestion des Prix</title>
-        <style>
-            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
-            .container {{ max-width: 1000px; margin: 0 auto; }}
-            h1 {{ color: #60a5fa; margin-bottom: 30px; text-align: center; }}
-            .pricing-table {{ 
-                background: #1e293b; 
-                border-radius: 15px; 
-                padding: 30px; 
-                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            }}
-            table {{ width: 100%; border-collapse: collapse; }}
-            th {{ 
-                background: #334155; 
-                padding: 15px; 
-                text-align: left; 
-                font-weight: bold;
-            }}
-            td {{ padding: 15px; border-bottom: 1px solid #334155; }}
-            tbody tr:hover {{ background: rgba(99, 102, 241, 0.1); }}
-            .save-btn {{
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            body {{
+                margin: 0;
+                padding: 0;
+                font-family: Arial, sans-serif;
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
                 color: white;
-                padding: 18px 40px;
-                border: none;
-                border-radius: 12px;
-                font-size: 18px;
-                font-weight: bold;
-                cursor: pointer;
-                margin-top: 30px;
-                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
-                transition: all 0.3s;
+                min-height: 100vh;
             }}
-            .save-btn:hover {{ transform: translateY(-3px); }}
-            .message {{ margin-top: 20px; padding: 20px; border-radius: 12px; }}
-            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
-            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
-            .info-box {{
-                background: rgba(99, 102, 241, 0.1);
+            .container {{
+                max-width: 1400px;
+                margin: 0 auto;
                 padding: 20px;
-                border-radius: 12px;
-                margin-bottom: 30px;
-                border: 1px solid rgba(99, 102, 241, 0.3);
             }}
-        </style>
-    </head>
-    <body>
-        {NAV_MENU}
-        {ADMIN_NAV}
-        <div class="container">
-            <h1>💰 Gestion des Prix des Forfaits</h1>
-            
-            <div class="info-box">
-                <p style="margin: 0;">
-                    <strong>ℹ️ Instructions:</strong> Modifiez les prix des forfaits payants.
-                    Le plan GRATUIT est toujours à 0$ (non modifiable).
-                </p>
-            </div>
-            
-            <div class="pricing-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Forfait</th>
-                            <th>Prix (USD)</th>
-                            <th>ID Plan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows_html}
-                    </tbody>
-                </table>
-                
-                <button class="save-btn" onclick="savePrices()">
-                    💾 Sauvegarder les Prix
-                </button>
-                <div id="message"></div>
-            </div>
-        </div>
-        
-        <script>
-            async function savePrices() {{
-                const prices = {{
-                    free: 0,
-                    premium: parseFloat(document.getElementById('price-premium').value),
-                    advanced: parseFloat(document.getElementById('price-advanced').value),
-                    pro: parseFloat(document.getElementById('price-pro').value),
-                    elite: parseFloat(document.getElementById('price-elite').value)
-                }};
-                
-                try {{
-                    const response = await fetch('/admin/api/update-prices', {{
-                        method: 'POST',
-                        headers: {{'Content-Type': 'application/json'}},
-                        body: JSON.stringify(prices)
-                    }});
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {{
-                        document.getElementById('message').innerHTML = 
-                            '<div class="message success">✅ Prix sauvegardés avec succès!</div>';
-                        setTimeout(() => {{
-                            document.getElementById('message').innerHTML = '';
-                        }}, 5000);
-                    }} else {{
-                        document.getElementById('message').innerHTML = 
-                            '<div class="message error">❌ Erreur: ' + result.error + '</div>';
-                    }}
-                }} catch (err) {{
-                    document.getElementById('message').innerHTML = 
-                        '<div class="message error">❌ Erreur: ' + err.message + '</div>';
-                }}
+            .welcome-card {{
+                background: rgba(30, 41, 59, 0.8);
+                padding: 40px;
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+                margin: 40px 0;
+                text-align: center;
             }}
-        </script>
-    </body>
-    </html>
-    """)
-
-
-@app.post("/admin/api/update-prices")
-async def update_prices_api(request: Request, session_token: Optional[str] = Cookie(None)):
-    """API pour mettre à jour les prix"""
-    user = get_user_from_token(session_token)
-    if not user or user.get('role') != 'admin':
-        return {"success": False, "error": "Non autorisé"}
-    
-    try:
-        prices = await request.json()
-        
-        # Sauvegarder dans un fichier JSON
-        import json
-        with open('plan_prices.json', 'w') as f:
-            json.dump(prices, f, indent=2)
-        
-        print(f"✅ Prix sauvegardés: {prices}")
-        
-        return {"success": True}
-        
-    except Exception as e:
-        print(f"❌ Erreur sauvegarde prix: {e}")
-        return {"success": False, "error": str(e)}
-
-
-@app.post("/admin/update-plan-features")
-async def update_plan_features_api(request: Request, session_token: Optional[str] = Cookie(None)):
-    """API pour mettre à jour les fonctionnalités d'un plan"""
-    user = get_user_from_token(session_token)
-    if not user or user.get('role') != 'admin':
-        return {"success": False, "error": "Non autorisé"}
-    
-    try:
-        data = await request.json()
-        plan = data.get('plan')
-        features = data.get('features', [])
-        
-        if not plan:
-            return {"success": False, "error": "Plan non spécifié"}
-        
-        # Sauvegarder les features dans un fichier
-        import json
-        import os
-        
-        # Charger les features existantes
-        features_file = 'plan_features.json'
-        all_features = {}
-        
-        try:
-            if os.path.exists(features_file):
-                with open(features_file, 'r') as f:
-                    all_features = json.load(f)
-        except:
-            pass
-        
-        # Mettre à jour les features du plan
-        all_features[plan] = features
-        
-        # Sauvegarder
-        with open(features_file, 'w') as f:
-            json.dump(all_features, f, indent=2)
-        
-        print(f"✅ Features mises à jour pour {plan}: {len(features)} features")
-        
-        return {"success": True}
-        
-    except Exception as e:
-        print(f"❌ Erreur update features: {e}")
-        return {"success": False, "error": str(e)}
-
-# ============================================================================
-
-
-# ============================================================================
-# ➕ PAGE CRÉATION CODE PROMO
-# ============================================================================
-
-@app.get("/admin/create-promo-page", response_class=HTMLResponse)
-async def admin_create_promo_page(session_token: Optional[str] = Cookie(None)):
-    """Page HTML pour créer un code promo"""
-    user = get_user_from_token(session_token)
-    if not user or user.get('role') != 'admin':
-        return RedirectResponse("/login")
-    
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>➕ Créer Code Promo</title>
-        <style>
-            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
-            .container {{ max-width: 800px; margin: 0 auto; }}
-            .form-card {{ 
-                background: #1e293b; 
-                padding: 40px; 
-                border-radius: 15px; 
-                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-                margin-top: 20px;
+            h1 {{
+                font-size: 48px;
+                margin: 0 0 20px 0;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
             }}
-            h1 {{ color: #60a5fa; text-align: center; margin-bottom: 30px; }}
-            .form-row {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
-            .form-group {{ margin-bottom: 20px; }}
-            .form-group.full {{ grid-column: 1 / -1; }}
-            label {{ 
-                display: block; 
-                margin-bottom: 8px; 
-                font-weight: bold; 
-                color: #e2e8f0;
+            .plan-badge {{
+                display: inline-block;
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                padding: 10px 25px;
+                border-radius: 25px;
+                font-weight: bold;
+                margin: 20px 0;
+                font-size: 18px;
+            }}
+            .features-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 20px;
+                margin-top: 40px;
+            }}
+            .feature-card {{
+                background: rgba(30, 41, 59, 0.6);
+                padding: 30px;
+                border-radius: 15px;
+                border: 2px solid rgba(99, 102, 241, 0.3);
+                transition: all 0.3s;
+                cursor: pointer;
+                text-decoration: none;
+                color: white;
+                display: block;
+            }}
+            .feature-card:hover {{
+                transform: translateY(-5px);
+                border-color: #667eea;
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            }}
+            .feature-icon {{
+                font-size: 48px;
+                margin-bottom: 15px;
+            }}
+            .feature-title {{
+                font-size: 24px;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }}
+            .feature-desc {{
+                color: #94a3b8;
                 font-size: 14px;
             }}
-            input, select, textarea {{ 
-                width: 100%; 
-                padding: 12px; 
-                border-radius: 8px; 
-                background: #0f172a; 
-                color: white; 
-                border: 2px solid #334155;
-                font-size: 15px;
-                box-sizing: border-box;
-                transition: all 0.3s;
-            }}
-            input:focus, select:focus, textarea:focus {{ 
-                outline: none; 
-                border-color: #60a5fa;
-                background: rgba(96, 165, 250, 0.05);
-            }}
-            button {{ 
-                width: 100%; 
-                padding: 16px; 
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%); 
-                color: white; 
-                border: none; 
-                border-radius: 10px; 
-                font-size: 17px; 
-                font-weight: bold;
-                cursor: pointer; 
-                margin-top: 20px;
-                transition: all 0.3s;
-                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
-            }}
-            button:hover {{ 
-                transform: translateY(-3px); 
-                box-shadow: 0 15px 40px rgba(16, 185, 129, 0.4);
-            }}
-            .message {{ 
-                margin-top: 20px; 
-                padding: 18px; 
-                border-radius: 10px;
-                font-weight: 500;
-            }}
-            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
-            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
-            .info-box {{
-                background: rgba(99, 102, 241, 0.1);
-                padding: 20px;
-                border-radius: 12px;
-                margin-bottom: 20px;
-                border: 1px solid rgba(99, 102, 241, 0.3);
-            }}
-            .info-box p {{ margin: 5px 0; font-size: 14px; color: #cbd5e1; }}
-            .required {{ color: #ef4444; }}
         </style>
     </head>
     <body>
         {NAV_MENU}
-        {ADMIN_NAV}
         <div class="container">
-            <h1>➕ Créer un Code Promo</h1>
-            
-            <div class="info-box">
-                <p><strong>ℹ️ Instructions:</strong></p>
-                <p>• Les champs marqués d'un <span class="required">*</span> sont obligatoires</p>
-                <p>• Le code promo sera créé immédiatement après soumission</p>
-                <p>• Les utilisateurs pourront l'utiliser sur la page de paiement</p>
+            <div class="welcome-card">
+                <h1>👋 Bienvenue, {username}!</h1>
+                <p style="font-size: 20px; color: #cbd5e1;">Votre plateforme de trading professionnelle</p>
+                <div class="plan-badge">Plan: {plan.upper()}</div>
             </div>
             
-            <div class="form-card">
-                <form id="promoForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="code">Code Promo <span class="required">*</span></label>
-                            <input type="text" id="code" required placeholder="Ex: SUMMER2024" style="text-transform: uppercase;">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="discount_type">Type de Réduction <span class="required">*</span></label>
-                            <select id="discount_type" required>
-                                <option value="percent">Pourcentage (%)</option>
-                                <option value="fixed">Montant Fixe ($)</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="discount_value">Valeur Réduction <span class="required">*</span></label>
-                            <input type="number" id="discount_value" required step="0.01" min="0.01" placeholder="Ex: 20">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="max_uses">Utilisations Max</label>
-                            <input type="number" id="max_uses" min="1" placeholder="Laisser vide = illimité">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="expires_days">Expire dans X jours</label>
-                            <input type="number" id="expires_days" min="1" placeholder="Ex: 30 (vide = jamais)">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="min_amount">Montant Minimum ($)</label>
-                            <input type="number" id="min_amount" step="0.01" min="0" placeholder="Ex: 50.00">
-                        </div>
-                    </div>
-                    
-                    <div class="form-group full">
-                        <label for="plans">Plans Applicables</label>
-                        <input type="text" id="plans" placeholder="Ex: premium,advanced,pro (vide = tous les plans)">
-                    </div>
-                    
-                    <div class="form-group full">
-                        <label for="description">Description</label>
-                        <textarea id="description" rows="3" placeholder="Description du code promo (optionnel)..."></textarea>
-                    </div>
-                    
-                    <button type="submit">💾 Créer le Code Promo</button>
-                </form>
-                <div id="message"></div>
+            <div class="features-grid">
+                <a href="/fear-greed" class="feature-card">
+                    <div class="feature-icon">😨</div>
+                    <div class="feature-title">Fear & Greed Index</div>
+                    <div class="feature-desc">Analysez le sentiment du marché</div>
+                </a>
+                
+                <a href="/dominance" class="feature-card">
+                    <div class="feature-icon">👑</div>
+                    <div class="feature-title">Dominance Bitcoin</div>
+                    <div class="feature-desc">Suivez la dominance BTC</div>
+                </a>
+                
+                <a href="/heatmap" class="feature-card">
+                    <div class="feature-icon">🔥</div>
+                    <div class="feature-title">Heatmap Crypto</div>
+                    <div class="feature-desc">Visualisez les performances</div>
+                </a>
+                
+                <a href="/strategy" class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <div class="feature-title">Stratégies Trading</div>
+                    <div class="feature-desc">Accédez aux stratégies pro</div>
+                </a>
+                
+                <a href="/news" class="feature-card">
+                    <div class="feature-icon">📰</div>
+                    <div class="feature-title">Actualités Crypto</div>
+                    <div class="feature-desc">Dernières nouvelles du marché</div>
+                </a>
+                
+                <a href="/pricing-complete" class="feature-card">
+                    <div class="feature-icon">💎</div>
+                    <div class="feature-title">Abonnements</div>
+                    <div class="feature-desc">Découvrez nos offres premium</div>
+                </a>
             </div>
         </div>
-        
-        <script>
-            document.getElementById('promoForm').addEventListener('submit', async (e) => {{
-                e.preventDefault();
-                
-                const code = document.getElementById('code').value.toUpperCase();
-                const discount_type = document.getElementById('discount_type').value;
-                const discount_value = parseFloat(document.getElementById('discount_value').value);
-                const max_uses = document.getElementById('max_uses').value;
-                const expires_days = document.getElementById('expires_days').value;
-                const min_amount = document.getElementById('min_amount').value;
-                const plans = document.getElementById('plans').value;
-                const description = document.getElementById('description').value;
-                
-                const params = new URLSearchParams({{
-                    code,
-                    discount_type,
-                    discount_value,
-                    description: description || ''
-                }});
-                
-                if (max_uses) params.append('max_uses', max_uses);
-                if (expires_days) params.append('expires_days', expires_days);
-                if (min_amount) params.append('min_amount', min_amount);
-                if (plans) params.append('plans', plans);
-                
-                const msg = document.getElementById('message');
-                msg.innerHTML = '<div class="message" style="background: rgba(99, 102, 241, 0.2); border: 2px solid #6366f1; color: #a5b4fc;">⏳ Création en cours...</div>';
-                
-                try {{
-                    const response = await fetch('/admin/create-promo?' + params.toString());
-                    const result = await response.json();
-                    
-                    if (result.success) {{
-                        msg.innerHTML = '<div class="message success">✅ Code promo "' + code + '" créé avec succès!<br>Les utilisateurs peuvent maintenant l\'utiliser.</div>';
-                        document.getElementById('promoForm').reset();
-                        
-                        setTimeout(() => {{
-                            window.location.href = '/admin/list-promos';
-                        }}, 2000);
-                    }} else {{
-                        msg.innerHTML = '<div class="message error">❌ Erreur: ' + (result.message || result.error || 'Erreur inconnue') + '</div>';
-                    }}
-                }} catch (err) {{
-                    msg.innerHTML = '<div class="message error">❌ Erreur de connexion: ' + err.message + '</div>';
-                }}
-            }});
-            
-            // Auto-uppercase pour le code
-            document.getElementById('code').addEventListener('input', (e) => {{
-                e.target.value = e.target.value.toUpperCase();
-            }});
-        </script>
     </body>
     </html>
     """)

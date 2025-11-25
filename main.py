@@ -785,7 +785,10 @@ ADMIN_NAV = """
 <nav class="admin-nav">
     <span style="color: #fbbf24; font-weight: bold;">⚙️ ADMIN:</span>
     <a href="/admin-dashboard">🏠 Dashboard</a>
+    <a href="/admin/permissions">🔐 Permissions</a>
+    <a href="/admin/pricing">💰 Prix</a>
     <a href="/admin/list-promos">🎫 Promos</a>
+    <a href="/admin/change-password">🔐 Password</a>
     <a href="/dashboard">← Retour</a>
 </nav>
 """
@@ -14863,7 +14866,7 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
     """Page de pricing avec support codes promo"""
-    return HTMLResponse("""<!DOCTYPE html>
+    html = NAV_MENU + """<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -15323,7 +15326,9 @@ async def pricing_complete():
     </script>
 </body>
 </html>
-""")
+"""
+    return HTMLResponse(html)
+
 @app.get("/pricing-new", response_class=HTMLResponse)
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
@@ -20804,6 +20809,426 @@ async def dashboard(request: Request):
     </body>
     </html>
     """)
+
+# ============================================================================
+
+
+# ============================================================================
+# 🔐 PAGE GESTION DES PERMISSIONS
+# ============================================================================
+
+@app.get("/admin/permissions", response_class=HTMLResponse)
+async def admin_permissions_page(session_token: Optional[str] = Cookie(None)):
+    """Page admin pour gérer les permissions par forfait"""
+    user = get_user_from_token(session_token)
+    if not user or user.get('role') != 'admin':
+        return RedirectResponse("/login")
+    
+    all_pages = [
+        {'path': '/dashboard', 'name': '🏠 Dashboard'},
+        {'path': '/fear-greed', 'name': '😨 Fear&Greed'},
+        {'path': '/dominance', 'name': '👑 Dominance'},
+        {'path': '/altcoin-season', 'name': '🌟 Altcoin Season'},
+        {'path': '/heatmap', 'name': '🔥 Heatmap'},
+        {'path': '/strategy', 'name': '📊 Stratégie'},
+        {'path': '/spot-trading', 'name': '💎 Spot Trading'},
+        {'path': '/calculatrice', 'name': '🧮 Calculatrice'},
+        {'path': '/news', 'name': '📰 Nouvelles'},
+        {'path': '/trades', 'name': '📈 Trades'},
+        {'path': '/risk-management', 'name': '⚠️ Risk Management'},
+        {'path': '/watchlist', 'name': '👁️ Watchlist'},
+        {'path': '/ai-assistant', 'name': '🤖 AI Assistant'},
+        {'path': '/prediction-ia', 'name': '🔮 Prédiction IA'},
+        {'path': '/ai-scanner', 'name': '🔍 AI Scanner'},
+        {'path': '/market-regime', 'name': '📊 Market Regime'},
+        {'path': '/whale-watcher', 'name': '🐋 Whale Watcher'},
+        {'path': '/stats-avancees', 'name': '📊 Stats Avancées'},
+        {'path': '/simulation', 'name': '🎮 Simulation'},
+    ]
+    
+    plans = ['free', 'premium', 'advanced', 'pro', 'elite']
+    plan_names = {
+        'free': '🆓 Free',
+        'premium': '💎 Premium',
+        'advanced': '⭐ Advanced',
+        'pro': '🚀 Pro',
+        'elite': '👑 Elite'
+    }
+    
+    # Permissions par défaut
+    default_permissions = {
+        'free': ['/dashboard', '/pricing-complete', '/fear-greed', '/dominance', '/heatmap', '/news'],
+        'premium': ['/dashboard', '/fear-greed', '/dominance', '/heatmap', '/strategy', '/spot-trading', '/trades'],
+        'advanced': ['/dashboard', '/fear-greed', '/dominance', '/heatmap', '/strategy', '/ai-assistant', '/prediction-ia'],
+        'pro': ['/dashboard', '/fear-greed', '/ai-scanner', '/whale-watcher', '/simulation'],
+        'elite': ['*']
+    }
+    
+    rows_html = ""
+    for page in all_pages:
+        row = f'<tr><td class="page-name">{page["name"]}</td>'
+        for plan in plans:
+            perms = default_permissions.get(plan, [])
+            is_checked = page['path'] in perms or '*' in perms
+            checked_attr = 'checked' if is_checked else ''
+            row += f'<td style="text-align: center;"><input type="checkbox" class="checkbox" data-page="{page["path"]}" data-plan="{plan}" {checked_attr}></td>'
+        row += '</tr>'
+        rows_html += row
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>🔐 Gestion des Permissions</title>
+        <style>
+            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
+            .container {{ max-width: 1400px; margin: 0 auto; }}
+            h1 {{ color: #60a5fa; margin-bottom: 30px; text-align: center; }}
+            .permissions-table {{ background: #1e293b; border-radius: 15px; padding: 30px; overflow-x: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            th {{ background: #334155; padding: 15px; text-align: left; font-weight: bold; }}
+            td {{ padding: 12px 15px; border-bottom: 1px solid #334155; }}
+            tbody tr:hover {{ background: rgba(99, 102, 241, 0.1); }}
+            .checkbox {{ width: 22px; height: 22px; cursor: pointer; accent-color: #10b981; }}
+            .plan-header {{ text-align: center; font-weight: bold; font-size: 14px; }}
+            .save-btn {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 18px 40px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 30px; }}
+            .save-btn:hover {{ transform: translateY(-3px); }}
+            .page-name {{ font-weight: 500; }}
+            .message {{ margin-top: 20px; padding: 20px; border-radius: 12px; }}
+            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
+            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        {ADMIN_NAV}
+        <div class="container">
+            <h1>🔐 Gestion des Permissions par Forfait</h1>
+            <div class="permissions-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Page</th>
+                            <th class="plan-header">{plan_names['free']}</th>
+                            <th class="plan-header">{plan_names['premium']}</th>
+                            <th class="plan-header">{plan_names['advanced']}</th>
+                            <th class="plan-header">{plan_names['pro']}</th>
+                            <th class="plan-header">{plan_names['elite']}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows_html}
+                    </tbody>
+                </table>
+                <button class="save-btn" onclick="savePermissions()">💾 Sauvegarder les Permissions</button>
+                <div id="message"></div>
+            </div>
+        </div>
+        <script>
+            async function savePermissions() {{
+                const checkboxes = document.querySelectorAll('.checkbox');
+                const permissions = {{}};
+                checkboxes.forEach(cb => {{
+                    const plan = cb.dataset.plan;
+                    const page = cb.dataset.page;
+                    if (!permissions[plan]) permissions[plan] = [];
+                    if (cb.checked) permissions[plan].push(page);
+                }});
+                
+                try {{
+                    const response = await fetch('/admin/api/save-permissions', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify(permissions)
+                    }});
+                    const result = await response.json();
+                    if (result.success) {{
+                        document.getElementById('message').innerHTML = '<div class="message success">✅ Permissions sauvegardées!</div>';
+                        setTimeout(() => document.getElementById('message').innerHTML = '', 3000);
+                    }} else {{
+                        document.getElementById('message').innerHTML = '<div class="message error">❌ Erreur: ' + result.error + '</div>';
+                    }}
+                }} catch (err) {{
+                    document.getElementById('message').innerHTML = '<div class="message error">❌ Erreur: ' + err.message + '</div>';
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """)
+
+@app.post("/admin/api/save-permissions")
+async def save_permissions_api(request: Request, session_token: Optional[str] = Cookie(None)):
+    """API pour sauvegarder les permissions"""
+    user = get_user_from_token(session_token)
+    if not user or user.get('role') != 'admin':
+        return {"success": False, "error": "Non autorisé"}
+    try:
+        permissions = await request.json()
+        import json
+        with open('plan_permissions.json', 'w') as f:
+            json.dump(permissions, f, indent=2)
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ============================================================================
+# 💰 PAGE GESTION DES PRIX
+# ============================================================================
+
+@app.get("/admin/pricing", response_class=HTMLResponse)
+async def admin_pricing_page(session_token: Optional[str] = Cookie(None)):
+    """Page admin pour gérer les prix"""
+    user = get_user_from_token(session_token)
+    if not user or user.get('role') != 'admin':
+        return RedirectResponse("/login")
+    
+    current_prices = {
+        'free': {'price': 0, 'name': '🆓 Gratuit'},
+        'premium': {'price': 29.99, 'name': '💎 Premium (1 mois)'},
+        'advanced': {'price': 74.97, 'name': '⭐ Advanced (3 mois)'},
+        'pro': {'price': 134.94, 'name': '🚀 Pro (6 mois)'},
+        'elite': {'price': 239.88, 'name': '👑 Elite (1 an)'}
+    }
+    
+    rows_html = ""
+    for plan_id, data in current_prices.items():
+        disabled = 'disabled' if plan_id == 'free' else ''
+        rows_html += f"""
+        <tr>
+            <td><strong>{data['name']}</strong></td>
+            <td><input type="number" id="price-{plan_id}" value="{data['price']}" step="0.01" min="0" {disabled} style="width: 140px; padding: 10px; border-radius: 8px; border: 2px solid #334155; background: #0f172a; color: white;"></td>
+            <td><code>{plan_id}</code></td>
+        </tr>
+        """
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>💰 Gestion des Prix</title>
+        <style>
+            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
+            .container {{ max-width: 1000px; margin: 0 auto; }}
+            h1 {{ color: #60a5fa; margin-bottom: 30px; text-align: center; }}
+            .pricing-table {{ background: #1e293b; border-radius: 15px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }}
+            table {{ width: 100%; border-collapse: collapse; }}
+            th {{ background: #334155; padding: 15px; text-align: left; font-weight: bold; }}
+            td {{ padding: 15px; border-bottom: 1px solid #334155; }}
+            tbody tr:hover {{ background: rgba(99, 102, 241, 0.1); }}
+            .save-btn {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 18px 40px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 30px; }}
+            .save-btn:hover {{ transform: translateY(-3px); }}
+            .message {{ margin-top: 20px; padding: 20px; border-radius: 12px; }}
+            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
+            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
+            code {{ background: #0f172a; padding: 5px 10px; border-radius: 5px; }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        {ADMIN_NAV}
+        <div class="container">
+            <h1>💰 Gestion des Prix des Forfaits</h1>
+            <div class="pricing-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Forfait</th>
+                            <th>Prix (USD)</th>
+                            <th>ID Plan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows_html}
+                    </tbody>
+                </table>
+                <button class="save-btn" onclick="savePrices()">💾 Sauvegarder les Prix</button>
+                <div id="message"></div>
+            </div>
+        </div>
+        <script>
+            async function savePrices() {{
+                const prices = {{
+                    free: 0,
+                    premium: parseFloat(document.getElementById('price-premium').value),
+                    advanced: parseFloat(document.getElementById('price-advanced').value),
+                    pro: parseFloat(document.getElementById('price-pro').value),
+                    elite: parseFloat(document.getElementById('price-elite').value)
+                }};
+                try {{
+                    const response = await fetch('/admin/api/update-prices', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify(prices)
+                    }});
+                    const result = await response.json();
+                    if (result.success) {{
+                        document.getElementById('message').innerHTML = '<div class="message success">✅ Prix sauvegardés!</div>';
+                        setTimeout(() => document.getElementById('message').innerHTML = '', 3000);
+                    }} else {{
+                        document.getElementById('message').innerHTML = '<div class="message error">❌ Erreur: ' + result.error + '</div>';
+                    }}
+                }} catch (err) {{
+                    document.getElementById('message').innerHTML = '<div class="message error">❌ Erreur: ' + err.message + '</div>';
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """)
+
+@app.post("/admin/api/update-prices")
+async def update_prices_api(request: Request, session_token: Optional[str] = Cookie(None)):
+    """API pour mettre à jour les prix"""
+    user = get_user_from_token(session_token)
+    if not user or user.get('role') != 'admin':
+        return {"success": False, "error": "Non autorisé"}
+    try:
+        prices = await request.json()
+        import json
+        with open('plan_prices.json', 'w') as f:
+            json.dump(prices, f, indent=2)
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+# ============================================================================
+# 🔐 CHANGEMENT MOT DE PASSE
+# ============================================================================
+
+@app.get("/admin/change-password", response_class=HTMLResponse)
+async def admin_change_password_page(session_token: Optional[str] = Cookie(None)):
+    """Page changement de mot de passe"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return RedirectResponse("/login")
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>🔐 Changer Mot de Passe</title>
+        <style>
+            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
+            .container {{ max-width: 600px; margin: 0 auto; }}
+            .card {{ background: #1e293b; padding: 40px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); margin-top: 20px; }}
+            h1 {{ color: #60a5fa; text-align: center; margin-bottom: 30px; }}
+            .form-group {{ margin-bottom: 20px; }}
+            label {{ display: block; margin-bottom: 8px; font-weight: bold; color: #e2e8f0; }}
+            input {{ width: 100%; padding: 12px; border-radius: 8px; background: #0f172a; color: white; border: 2px solid #334155; font-size: 15px; box-sizing: border-box; }}
+            input:focus {{ outline: none; border-color: #60a5fa; }}
+            button {{ width: 100%; padding: 16px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; cursor: pointer; margin-top: 20px; }}
+            button:hover {{ transform: translateY(-3px); }}
+            .message {{ margin-top: 20px; padding: 18px; border-radius: 10px; }}
+            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
+            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        {ADMIN_NAV}
+        <div class="container">
+            <div class="card">
+                <h1>🔐 Changer Mot de Passe</h1>
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label>Mot de passe actuel</label>
+                        <input type="password" id="currentPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nouveau mot de passe</label>
+                        <input type="password" id="newPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirmer nouveau mot de passe</label>
+                        <input type="password" id="confirmPassword" required>
+                    </div>
+                    <button type="submit">💾 Changer le mot de passe</button>
+                </form>
+                <div id="message"></div>
+            </div>
+        </div>
+        <script>
+            document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {{
+                e.preventDefault();
+                const current = document.getElementById('currentPassword').value;
+                const newPass = document.getElementById('newPassword').value;
+                const confirm = document.getElementById('confirmPassword').value;
+                const msg = document.getElementById('message');
+                msg.innerHTML = '';
+                if (newPass !== confirm) {{
+                    msg.innerHTML = '<div class="message error">❌ Les mots de passe ne correspondent pas</div>';
+                    return;
+                }}
+                if (newPass.length < 6) {{
+                    msg.innerHTML = '<div class="message error">❌ Le mot de passe doit avoir au moins 6 caractères</div>';
+                    return;
+                }}
+                try {{
+                    const response = await fetch('/admin/api/change-password', {{
+                        method: 'POST',
+                        headers: {{'Content-Type': 'application/json'}},
+                        body: JSON.stringify({{ current_password: current, new_password: newPass }})
+                    }});
+                    const result = await response.json();
+                    if (result.success) {{
+                        msg.innerHTML = '<div class="message success">✅ Mot de passe changé avec succès!</div>';
+                        document.getElementById('changePasswordForm').reset();
+                    }} else {{
+                        msg.innerHTML = '<div class="message error">❌ ' + result.error + '</div>';
+                    }}
+                }} catch (err) {{
+                    msg.innerHTML = '<div class="message error">❌ Erreur: ' + err.message + '</div>';
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    """)
+
+@app.post("/admin/api/change-password")
+async def admin_change_password_api(request: Request, session_token: Optional[str] = Cookie(None)):
+    """API changement mot de passe"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return {"success": False, "error": "Non authentifié"}
+    try:
+        data = await request.json()
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        if not current_password or not new_password:
+            return {"success": False, "error": "Données manquantes"}
+        conn = get_db_connection()
+        c = conn.cursor()
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("SELECT password FROM users WHERE email=%s", (user['email'],))
+        else:
+            c.execute("SELECT password FROM users WHERE email=?", (user['email'],))
+        result = c.fetchone()
+        if not result:
+            conn.close()
+            return {"success": False, "error": "Utilisateur non trouvé"}
+        stored_password = result[0]
+        import hashlib
+        current_password_hash = hashlib.sha256(current_password.encode()).hexdigest()
+        if current_password_hash != stored_password:
+            conn.close()
+            return {"success": False, "error": "Mot de passe actuel incorrect"}
+        new_password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("UPDATE users SET password=%s WHERE email=%s", (new_password_hash, user['email']))
+        else:
+            c.execute("UPDATE users SET password=? WHERE email=?", (new_password_hash, user['email']))
+        conn.commit()
+        conn.close()
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 # ============================================================================
 

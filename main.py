@@ -20512,6 +20512,7 @@ curl -H "api-key: YOUR_KEY" \\
 # ADMINISTRATION
 # ============================================================================
 
+# Page d'admin pour modifier les plans
 @app.get("/admin/update-plan-features", response_class=HTMLResponse)
 async def admin_update_plan_features_page(request: Request):
     """Page admin pour modifier les features d'un plan"""
@@ -20536,24 +20537,32 @@ async def admin_update_plan_features_page(request: Request):
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
-        <title>Modifier les Plans</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Plans | {SITE_NAME}</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
         <style>
-            body {{ font-family: Arial; background: #0f172a; color: white; margin: 0; }}
-            .container {{ max-width: 800px; margin: 40px auto; padding: 20px; background: #1e293b; border-radius: 20px; }}
-            h1 {{ text-align: center; }}
-            textarea {{ background: #0f172a; color: white; border: 1px solid #334155; padding: 10px; border-radius: 5px; }}
-            button {{ width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 10px; cursor: pointer; margin-top: 20px; }}
+            .gradient-bg {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
+            .glass-effect {{ background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }}
         </style>
     </head>
-    <body>
+    <body class="bg-gray-900 text-white min-h-screen">
         {NAV_MENU}
-        <div class="container">
-            <h1>⚙️ Modifier les fonctionnalités des plans</h1>
-            <p>Modifiez les fonctionnalités (au format JSON) pour chaque plan.</p>
-            <form action="/admin/update-plan-features" method="POST">
-                {plans_html}
-                <button type="submit">Mettre à jour tous les plans</button>
-            </form>
+        <div class="container mx-auto px-4 py-8">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl font-bold text-center mb-8">⚙️ Modifier les fonctionnalités des plans</h1>
+                <div class="glass-effect rounded-xl p-8">
+                    <p class="mb-6 text-gray-300">Modifiez les fonctionnalités (au format JSON) pour chaque plan.</p>
+                    <form action="/admin/update-plan-features" method="POST" class="space-y-6">
+                        {plans_html}
+                        <div class="flex justify-center">
+                            <button type="submit" class="gradient-bg text-white px-8 py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                                <i class="ri-save-line mr-2"></i> Mettre à jour tous les plans
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </body>
     </html>

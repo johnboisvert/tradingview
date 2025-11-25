@@ -20274,11 +20274,11 @@ async def backtesting_page():
                 const result = await response.json();
                 if (result.success) {{
                     const r = result.results;
-                    document.getElementById('resultGrid').innerHTML = `
-                        <div class="result-item"><div>Total Trades</div><div class="result-value">\${{r.total_trades}}</div></div>
-                        <div class="result-item"><div>Win Rate</div><div class="result-value">\${{r.win_rate}}%</div></div>
-                        <div class="result-item"><div>Profit/Loss</div><div class="result-value">\$\$\${{r.profit_loss}}</div></div>
-                    `;
+                   document.getElementById('resultGrid').innerHTML = `
+    <div class="result-item"><div>Total Trades</div><div class="result-value">${r.total_trades}</div></div>
+    <div class="result-item"><div>Win Rate</div><div class="result-value">${r.win_rate}%</div></div>
+    <div class="result-item"><div>Profit/Loss</div><div class="result-value">$${r.profit_loss}</div></div>
+`;
                     document.getElementById('results').style.display = 'block';
                 }}
             }});

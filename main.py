@@ -21467,6 +21467,87 @@ async def backtesting_page(request: Request):
             </div>
         </div>
         
+        <!-- Section Explicative -->
+        <div class="container" style="margin-top: 50px; margin-bottom: 50px;">
+            <div class="results-panel">
+                <h2 style="margin-bottom: 20px;">📚 Comment fonctionne le Backtesting?</h2>
+                
+                <div style="background: rgba(15, 23, 42, 0.8); padding: 30px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">🎯 Qu'est-ce que le Backtesting?</h3>
+                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px;">
+                        Le backtesting est une méthode qui permet de <strong>tester une stratégie de trading sur des données historiques</strong> 
+                        pour voir comment elle aurait performé dans le passé. C'est comme rejouer l'histoire du marché avec votre stratégie 
+                        pour voir si elle aurait été profitable.
+                    </p>
+                </div>
+                
+                <div style="background: rgba(15, 23, 42, 0.8); padding: 30px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="color: #10b981; margin-bottom: 15px;">⚙️ Comment ça marche?</h3>
+                    <ol style="color: #e2e8f0; line-height: 1.8; font-size: 16px; padding-left: 25px;">
+                        <li style="margin-bottom: 10px;"><strong>Chargement des données:</strong> Le système génère des données de prix réalistes basées sur les caractéristiques typiques de chaque crypto (volatilité, tendance, cycles).</li>
+                        <li style="margin-bottom: 10px;"><strong>Application de la stratégie:</strong> Votre stratégie choisie (SMA, RSI ou MACD) est appliquée sur chaque jour de données pour décider quand acheter et vendre.</li>
+                        <li style="margin-bottom: 10px;"><strong>Simulation des trades:</strong> Chaque signal d'achat/vente est exécuté virtuellement en tenant compte des frais de trading.</li>
+                        <li style="margin-bottom: 10px;"><strong>Calcul des résultats:</strong> Le système calcule votre profit/perte, win rate, drawdown et autres métriques importantes.</li>
+                    </ol>
+                </div>
+                
+                <div style="background: rgba(239, 68, 68, 0.15); padding: 30px; border-radius: 15px; border: 2px solid rgba(239, 68, 68, 0.3); margin-bottom: 30px;">
+                    <h3 style="color: #fca5a5; margin-bottom: 15px;">⚠️ IMPORTANT: Données Simulées</h3>
+                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
+                        <strong>Les données utilisées dans ce backtesting sont SIMULÉES et GÉNÉRÉES ALGORITHMIQUEMENT.</strong>
+                    </p>
+                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
+                        Elles sont conçues pour être réalistes (avec volatilité, tendances et cycles de marché), mais 
+                        <strong>NE représentent PAS les prix réels historiques</strong> des cryptomonnaies.
+                    </p>
+                    <div style="background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 8px; margin-top: 15px;">
+                        <p style="color: #fca5a5; font-size: 15px; margin: 0;">
+                            <strong>⛔ N'utilisez PAS ces résultats pour prendre des décisions de trading réelles!</strong>
+                        </p>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(15, 23, 42, 0.8); padding: 30px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="color: #667eea; margin-bottom: 15px;">✅ À quoi ça sert alors?</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3);">
+                            <div style="font-size: 32px; margin-bottom: 10px;">📖</div>
+                            <h4 style="color: #667eea; margin-bottom: 10px;">Apprendre</h4>
+                            <p style="color: #94a3b8; font-size: 14px;">Comprendre comment fonctionnent les différentes stratégies de trading (SMA, RSI, MACD).</p>
+                        </div>
+                        <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3);">
+                            <div style="font-size: 32px; margin-bottom: 10px;">🧪</div>
+                            <h4 style="color: #667eea; margin-bottom: 10px;">Expérimenter</h4>
+                            <p style="color: #94a3b8; font-size: 14px;">Tester différents paramètres (ex: SMA 10/30 vs 20/50) pour voir l'impact sur les résultats.</p>
+                        </div>
+                        <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3);">
+                            <div style="font-size: 32px; margin-bottom: 10px;">📊</div>
+                            <h4 style="color: #667eea; margin-bottom: 10px;">Analyser</h4>
+                            <p style="color: #94a3b8; font-size: 14px;">Découvrir les métriques importantes: Win Rate, Drawdown, Sharpe Ratio, etc.</p>
+                        </div>
+                        <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3);">
+                            <div style="font-size: 32px; margin-bottom: 10px;">🎯</div>
+                            <h4 style="color: #667eea; margin-bottom: 10px;">Présenter</h4>
+                            <p style="color: #94a3b8; font-size: 14px;">Démontrer les capacités du système de backtesting avec une interface professionnelle.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(16, 185, 129, 0.15); padding: 30px; border-radius: 15px; border: 2px solid rgba(16, 185, 129, 0.3);">
+                    <h3 style="color: #6ee7b7; margin-bottom: 15px;">💡 Pour un Backtesting Réel</h3>
+                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
+                        Si vous voulez faire du <strong>backtesting avec des données historiques réelles</strong>, vous devrez:
+                    </p>
+                    <ul style="color: #e2e8f0; line-height: 1.8; font-size: 16px; padding-left: 25px;">
+                        <li style="margin-bottom: 10px;">Utiliser des services comme <strong>TradingView</strong>, <strong>Binance</strong> (avec VPN si nécessaire), ou <strong>CryptoCompare</strong></li>
+                        <li style="margin-bottom: 10px;">Télécharger les données historiques au format CSV</li>
+                        <li style="margin-bottom: 10px;">Utiliser des plateformes de backtesting professionnelles comme <strong>Backtrader</strong>, <strong>QuantConnect</strong>, ou <strong>TradingView Strategy Tester</strong></li>
+                        <li style="margin-bottom: 10px;">Considérer les frais réels, le slippage, et la liquidité du marché</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
         <script>
             let currentStrategy = 'sma';
             let backtestResults = null;

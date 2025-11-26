@@ -20311,7 +20311,7 @@ async def backtesting_page(request: Request):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Backtesting | {SITE_NAME}</title>
+        <title>🔬 Backtesting Pro - Trading Dashboard</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
         <style>
@@ -20623,7 +20623,7 @@ async def admin_update_plan_features_page(request: Request):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Admin Plans | {SITE_NAME}</title>
+        <title>💰 Gestion des Prix - Trading Dashboard</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
         <style>

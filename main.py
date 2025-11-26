@@ -740,6 +740,7 @@ NAV_MENU = """
         <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
         <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
         <a href="/simulation" class="nav-btn">🎮 Simulation</a>
+        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
         <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
         <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
         <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
@@ -21267,6 +21268,1095 @@ async def admin_change_password_api(request: Request, session_token: Optional[st
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+# ============================================================================
+
+
+# ============================================================================
+# 🔬 PAGE BACKTESTING PROFESSIONNELLE
+# ============================================================================
+
+@app.get("/backtesting", response_class=HTMLResponse)
+async def backtesting_page(request: Request):
+    """Page de backtesting avancée avec multiples stratégies"""
+    session_token = request.cookies.get("session_token")
+    user = get_user_from_token(session_token)
+    
+    if not user:
+        return RedirectResponse("/login")
+    
+    username = user.get('username', 'Trader')
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🔬 Backtesting Pro - Trading Dashboard</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                color: white;
+                font-family: 'Segoe UI', Arial, sans-serif;
+                min-height: 100vh;
+                padding-bottom: 50px;
+            }}
+            .container {{
+                max-width: 1600px;
+                margin: 0 auto;
+                padding: 20px;
+            }}
+            .header {{
+                text-align: center;
+                margin: 30px 0;
+            }}
+            h1 {{
+                font-size: 48px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                margin-bottom: 10px;
+            }}
+            .subtitle {{
+                color: #94a3b8;
+                font-size: 18px;
+            }}
+            
+            /* Tabs */
+            .tabs {{
+                display: flex;
+                gap: 10px;
+                margin-bottom: 30px;
+                border-bottom: 2px solid #334155;
+            }}
+            .tab {{
+                padding: 15px 30px;
+                background: rgba(255,255,255,0.05);
+                border: none;
+                color: #94a3b8;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: 600;
+                border-radius: 8px 8px 0 0;
+                transition: all 0.3s;
+            }}
+            .tab:hover {{
+                background: rgba(255,255,255,0.1);
+                color: white;
+            }}
+            .tab.active {{
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }}
+            
+            /* Content Sections */
+            .tab-content {{
+                display: none;
+            }}
+            .tab-content.active {{
+                display: block;
+            }}
+            
+            /* Configuration Panel */
+            .config-panel {{
+                background: rgba(30, 41, 59, 0.8);
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                margin-bottom: 30px;
+            }}
+            .config-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin-top: 20px;
+            }}
+            .config-group {{
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }}
+            label {{
+                font-weight: 600;
+                color: #e2e8f0;
+                font-size: 14px;
+            }}
+            input, select {{
+                padding: 12px;
+                background: #0f172a;
+                border: 2px solid #334155;
+                border-radius: 8px;
+                color: white;
+                font-size: 15px;
+                transition: all 0.3s;
+            }}
+            input:focus, select:focus {{
+                outline: none;
+                border-color: #667eea;
+                background: rgba(102, 126, 234, 0.05);
+            }}
+            
+            /* Buttons */
+            .btn-primary {{
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                color: white;
+                padding: 15px 40px;
+                border: none;
+                border-radius: 10px;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s;
+                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+                margin-top: 20px;
+            }}
+            .btn-primary:hover {{
+                transform: translateY(-3px);
+                box-shadow: 0 15px 40px rgba(16, 185, 129, 0.4);
+            }}
+            .btn-primary:disabled {{
+                background: #334155;
+                cursor: not-allowed;
+                transform: none;
+            }}
+            
+            /* Results Panel */
+            .results-panel {{
+                background: rgba(30, 41, 59, 0.8);
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+                margin-bottom: 30px;
+            }}
+            .metrics-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+                margin: 30px 0;
+            }}
+            .metric-card {{
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+                padding: 20px;
+                border-radius: 12px;
+                border: 2px solid rgba(102, 126, 234, 0.3);
+                text-align: center;
+            }}
+            .metric-label {{
+                color: #94a3b8;
+                font-size: 14px;
+                margin-bottom: 10px;
+            }}
+            .metric-value {{
+                font-size: 32px;
+                font-weight: bold;
+                color: white;
+            }}
+            .metric-value.positive {{
+                color: #10b981;
+            }}
+            .metric-value.negative {{
+                color: #ef4444;
+            }}
+            
+            /* Chart Container */
+            .chart-container {{
+                background: rgba(15, 23, 42, 0.8);
+                padding: 30px;
+                border-radius: 15px;
+                margin: 30px 0;
+                height: 500px;
+                position: relative;
+            }}
+            
+            /* Trades Table */
+            .trades-table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 30px;
+                background: rgba(15, 23, 42, 0.8);
+                border-radius: 15px;
+                overflow: hidden;
+            }}
+            .trades-table thead {{
+                background: #334155;
+            }}
+            .trades-table th {{
+                padding: 15px;
+                text-align: left;
+                font-weight: 600;
+                font-size: 14px;
+            }}
+            .trades-table td {{
+                padding: 15px;
+                border-top: 1px solid #334155;
+            }}
+            .trades-table tbody tr:hover {{
+                background: rgba(99, 102, 241, 0.1);
+            }}
+            .badge {{
+                padding: 5px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: 600;
+            }}
+            .badge.win {{
+                background: rgba(16, 185, 129, 0.2);
+                color: #6ee7b7;
+            }}
+            .badge.loss {{
+                background: rgba(239, 68, 68, 0.2);
+                color: #fca5a5;
+            }}
+            
+            /* Loading State */
+            .loading {{
+                display: none;
+                text-align: center;
+                padding: 40px;
+            }}
+            .loading.active {{
+                display: block;
+            }}
+            .spinner {{
+                border: 4px solid rgba(255,255,255,0.1);
+                border-top: 4px solid #667eea;
+                border-radius: 50%;
+                width: 60px;
+                height: 60px;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 20px;
+            }}
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+            
+            /* Strategy Cards */
+            .strategy-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 20px;
+                margin-top: 20px;
+            }}
+            .strategy-card {{
+                background: rgba(30, 41, 59, 0.8);
+                padding: 25px;
+                border-radius: 12px;
+                border: 2px solid #334155;
+                cursor: pointer;
+                transition: all 0.3s;
+            }}
+            .strategy-card:hover {{
+                border-color: #667eea;
+                transform: translateY(-3px);
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            }}
+            .strategy-card.selected {{
+                border-color: #10b981;
+                background: rgba(16, 185, 129, 0.1);
+            }}
+            .strategy-icon {{
+                font-size: 36px;
+                margin-bottom: 15px;
+            }}
+            .strategy-name {{
+                font-size: 20px;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }}
+            .strategy-desc {{
+                color: #94a3b8;
+                font-size: 14px;
+            }}
+            
+            /* Responsive */
+            @media (max-width: 768px) {{
+                h1 {{ font-size: 32px; }}
+                .config-grid {{ grid-template-columns: 1fr; }}
+                .metrics-grid {{ grid-template-columns: 1fr; }}
+                .strategy-grid {{ grid-template-columns: 1fr; }}
+            }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        
+        <div class="container">
+            <div class="header">
+                <h1>🔬 Backtesting Professionnel</h1>
+                <p class="subtitle">Testez et optimisez vos stratégies de trading sur données historiques</p>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('config')">⚙️ Configuration</button>
+                <button class="tab" onclick="switchTab('results')">📊 Résultats</button>
+                <button class="tab" onclick="switchTab('comparison')">🔄 Comparaison</button>
+            </div>
+            
+            <!-- Tab 1: Configuration -->
+            <div id="tab-config" class="tab-content active">
+                <div class="config-panel">
+                    <h2 style="margin-bottom: 20px;">⚙️ Paramètres du Backtest</h2>
+                    
+                    <div class="config-grid">
+                        <div class="config-group">
+                            <label>💱 Paire de trading</label>
+                            <select id="crypto-pair">
+                                <option value="bitcoin">BTC/USD</option>
+                                <option value="ethereum">ETH/USD</option>
+                                <option value="binancecoin">BNB/USD</option>
+                                <option value="solana">SOL/USD</option>
+                                <option value="cardano">ADA/USD</option>
+                                <option value="ripple">XRP/USD</option>
+                            </select>
+                        </div>
+                        
+                        <div class="config-group">
+                            <label>💰 Capital initial</label>
+                            <input type="number" id="initial-capital" value="10000" min="100" step="100">
+                        </div>
+                        
+                        <div class="config-group">
+                            <label>📅 Date de début</label>
+                            <input type="date" id="start-date" value="2024-01-01">
+                        </div>
+                        
+                        <div class="config-group">
+                            <label>📅 Date de fin</label>
+                            <input type="date" id="end-date" value="2024-12-31">
+                        </div>
+                        
+                        <div class="config-group">
+                            <label>💸 Frais de trading (%)</label>
+                            <input type="number" id="trading-fee" value="0.1" min="0" max="5" step="0.01">
+                        </div>
+                        
+                        <div class="config-group">
+                            <label>📏 Taille de position (%)</label>
+                            <input type="number" id="position-size" value="100" min="1" max="100" step="1">
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin: 30px 0 20px 0;">📊 Sélectionnez une stratégie</h3>
+                    <div class="strategy-grid">
+                        <div class="strategy-card selected" onclick="selectStrategy('sma')">
+                            <div class="strategy-icon">📈</div>
+                            <div class="strategy-name">SMA Crossover</div>
+                            <div class="strategy-desc">Achat quand SMA courte > SMA longue. Simple et efficace.</div>
+                            <div style="margin-top: 15px;">
+                                <input type="number" id="sma-short" placeholder="SMA Court (ex: 20)" value="20" style="width: 100%; margin-bottom: 5px;">
+                                <input type="number" id="sma-long" placeholder="SMA Long (ex: 50)" value="50" style="width: 100%;">
+                            </div>
+                        </div>
+                        
+                        <div class="strategy-card" onclick="selectStrategy('rsi')">
+                            <div class="strategy-icon">⚡</div>
+                            <div class="strategy-name">RSI Strategy</div>
+                            <div class="strategy-desc">Achat en zone de survente (RSI < 30), vente en zone de surachat (RSI > 70).</div>
+                            <div style="margin-top: 15px;">
+                                <input type="number" id="rsi-period" placeholder="Période RSI (ex: 14)" value="14" style="width: 100%; margin-bottom: 5px;">
+                                <input type="number" id="rsi-oversold" placeholder="Seuil survente (ex: 30)" value="30" style="width: 100%; margin-bottom: 5px;">
+                                <input type="number" id="rsi-overbought" placeholder="Seuil surachat (ex: 70)" value="70" style="width: 100%;">
+                            </div>
+                        </div>
+                        
+                        <div class="strategy-card" onclick="selectStrategy('macd')">
+                            <div class="strategy-icon">📉</div>
+                            <div class="strategy-name">MACD Strategy</div>
+                            <div class="strategy-desc">Achat quand MACD croise au-dessus du signal, vente à l'inverse.</div>
+                            <div style="margin-top: 15px;">
+                                <input type="number" id="macd-fast" placeholder="EMA rapide (ex: 12)" value="12" style="width: 100%; margin-bottom: 5px;">
+                                <input type="number" id="macd-slow" placeholder="EMA lente (ex: 26)" value="26" style="width: 100%; margin-bottom: 5px;">
+                                <input type="number" id="macd-signal" placeholder="Signal (ex: 9)" value="9" style="width: 100%;">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-primary" onclick="runBacktest()" id="run-btn">
+                        🚀 Lancer le Backtest
+                    </button>
+                </div>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p style="color: #94a3b8; font-size: 18px;">⏳ Backtesting en cours...</p>
+                    <p style="color: #667eea; margin-top: 10px;">Analyse des données historiques et simulation des trades</p>
+                </div>
+            </div>
+            
+            <!-- Tab 2: Results -->
+            <div id="tab-results" class="tab-content">
+                <div class="results-panel">
+                    <h2 style="margin-bottom: 20px;">📊 Résultats du Backtest</h2>
+                    
+                    <div class="metrics-grid" id="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">💰 Profit/Loss Total</div>
+                            <div class="metric-value" id="total-pnl">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">📈 Rendement (%)</div>
+                            <div class="metric-value" id="return-pct">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">📊 Nombre de Trades</div>
+                            <div class="metric-value" id="total-trades">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">🎯 Win Rate</div>
+                            <div class="metric-value" id="win-rate">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">📉 Max Drawdown</div>
+                            <div class="metric-value negative" id="max-drawdown">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">💎 Sharpe Ratio</div>
+                            <div class="metric-value" id="sharpe-ratio">-</div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="performance-chart"></canvas>
+                    </div>
+                    
+                    <h3 style="margin: 30px 0 20px 0;">📋 Historique des Trades</h3>
+                    <div style="overflow-x: auto;">
+                        <table class="trades-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>📅 Date</th>
+                                    <th>🔄 Type</th>
+                                    <th>💵 Prix</th>
+                                    <th>📊 Quantité</th>
+                                    <th>💰 P&L</th>
+                                    <th>📈 P&L %</th>
+                                    <th>✅ Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trades-tbody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">
+                                        Aucun trade pour le moment. Lancez un backtest pour voir les résultats.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab 3: Comparison -->
+            <div id="tab-comparison" class="tab-content">
+                <div class="results-panel">
+                    <h2 style="margin-bottom: 20px;">🔄 Comparaison de Stratégies</h2>
+                    <p style="color: #94a3b8; text-align: center; padding: 60px;">
+                        Cette fonctionnalité permet de comparer plusieurs stratégies côte à côte.<br>
+                        <strong>À venir prochainement!</strong>
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            let currentStrategy = 'sma';
+            let backtestResults = null;
+            let performanceChart = null;
+            
+            // Switch tabs
+            function switchTab(tabName) {{
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                event.target.classList.add('active');
+                document.getElementById('tab-' + tabName).classList.add('active');
+            }}
+            
+            // Select strategy
+            function selectStrategy(strategy) {{
+                document.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('selected'));
+                event.currentTarget.classList.add('selected');
+                currentStrategy = strategy;
+            }}
+            
+            // Run backtest
+            async function runBacktest() {{
+                const runBtn = document.getElementById('run-btn');
+                const loading = document.getElementById('loading');
+                
+                runBtn.disabled = true;
+                loading.classList.add('active');
+                
+                // Get parameters
+                const params = {{
+                    crypto: document.getElementById('crypto-pair').value,
+                    capital: parseFloat(document.getElementById('initial-capital').value),
+                    startDate: document.getElementById('start-date').value,
+                    endDate: document.getElementById('end-date').value,
+                    fee: parseFloat(document.getElementById('trading-fee').value),
+                    positionSize: parseFloat(document.getElementById('position-size').value),
+                    strategy: currentStrategy
+                }};
+                
+                // Strategy parameters
+                if (currentStrategy === 'sma') {{
+                    params.smaShort = parseInt(document.getElementById('sma-short').value);
+                    params.smaLong = parseInt(document.getElementById('sma-long').value);
+                }} else if (currentStrategy === 'rsi') {{
+                    params.rsiPeriod = parseInt(document.getElementById('rsi-period').value);
+                    params.rsiOversold = parseInt(document.getElementById('rsi-oversold').value);
+                    params.rsiOverbought = parseInt(document.getElementById('rsi-overbought').value);
+                }} else if (currentStrategy === 'macd') {{
+                    params.macdFast = parseInt(document.getElementById('macd-fast').value);
+                    params.macdSlow = parseInt(document.getElementById('macd-slow').value);
+                    params.macdSignal = parseInt(document.getElementById('macd-signal').value);
+                }}
+                
+                try {{
+                    const response = await fetch('/api/backtest', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify(params)
+                    }});
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {{
+                        backtestResults = data.results;
+                        displayResults(data.results);
+                        switchTab('results');
+                        document.querySelectorAll('.tab')[1].click();
+                    }} else {{
+                        alert('❌ Erreur: ' + data.error);
+                    }}
+                }} catch (err) {{
+                    alert('❌ Erreur: ' + err.message);
+                }} finally {{
+                    runBtn.disabled = false;
+                    loading.classList.remove('active');
+                }}
+            }}
+            
+            // Display results
+            function displayResults(results) {{
+                // Update metrics
+                document.getElementById('total-pnl').textContent = '$' + results.totalPnL.toFixed(2);
+                document.getElementById('total-pnl').className = 'metric-value ' + (results.totalPnL >= 0 ? 'positive' : 'negative');
+                
+                document.getElementById('return-pct').textContent = results.returnPct.toFixed(2) + '%';
+                document.getElementById('return-pct').className = 'metric-value ' + (results.returnPct >= 0 ? 'positive' : 'negative');
+                
+                document.getElementById('total-trades').textContent = results.totalTrades;
+                document.getElementById('win-rate').textContent = results.winRate.toFixed(1) + '%';
+                document.getElementById('max-drawdown').textContent = results.maxDrawdown.toFixed(2) + '%';
+                document.getElementById('sharpe-ratio').textContent = results.sharpeRatio.toFixed(2);
+                
+                // Update chart
+                updateChart(results.equityCurve);
+                
+                // Update trades table
+                updateTradesTable(results.trades);
+            }}
+            
+            // Update performance chart
+            function updateChart(equityCurve) {{
+                const ctx = document.getElementById('performance-chart');
+                
+                if (performanceChart) {{
+                    performanceChart.destroy();
+                }}
+                
+                performanceChart = new Chart(ctx, {{
+                    type: 'line',
+                    data: {{
+                        labels: equityCurve.map((_, i) => i),
+                        datasets: [{{
+                            label: 'Capital',
+                            data: equityCurve,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }}]
+                    }},
+                    options: {{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {{
+                            legend: {{
+                                labels: {{ color: 'white', font: {{ size: 14 }} }}
+                            }},
+                            tooltip: {{
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                titleColor: 'white',
+                                bodyColor: 'white',
+                                borderColor: '#667eea',
+                                borderWidth: 1
+                            }}
+                        }},
+                        scales: {{
+                            x: {{
+                                ticks: {{ color: '#94a3b8' }},
+                                grid: {{ color: 'rgba(148, 163, 184, 0.1)' }}
+                            }},
+                            y: {{
+                                ticks: {{ 
+                                    color: '#94a3b8',
+                                    callback: value => '$' + value.toFixed(0)
+                                }},
+                                grid: {{ color: 'rgba(148, 163, 184, 0.1)' }}
+                            }}
+                        }}
+                    }}
+                }});
+            }}
+            
+            // Update trades table
+            function updateTradesTable(trades) {{
+                const tbody = document.getElementById('trades-tbody');
+                tbody.innerHTML = '';
+                
+                trades.forEach((trade, i) => {{
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${{i + 1}}</td>
+                        <td>${{new Date(trade.date).toLocaleDateString()}}</td>
+                        <td>${{trade.type === 'buy' ? '🟢 BUY' : '🔴 SELL'}}</td>
+                        <td>$${{trade.price.toFixed(2)}}</td>
+                        <td>${{trade.quantity.toFixed(4)}}</td>
+                        <td class="${{trade.pnl >= 0 ? 'positive' : 'negative'}}">$${{trade.pnl.toFixed(2)}}</td>
+                        <td class="${{trade.pnlPct >= 0 ? 'positive' : 'negative'}}">${{trade.pnlPct.toFixed(2)}}%</td>
+                        <td><span class="badge ${{trade.pnl >= 0 ? 'win' : 'loss'}}">${{trade.pnl >= 0 ? 'WIN' : 'LOSS'}}</span></td>
+                    `;
+                }});
+            }}
+            
+            // Set default dates
+            document.getElementById('end-date').valueAsDate = new Date();
+            const startDate = new Date();
+            startDate.setFullYear(startDate.getFullYear() - 1);
+            document.getElementById('start-date').valueAsDate = startDate;
+        </script>
+    </body>
+    </html>
+    """)
+
+# ============================================================================
+# 🔬 API BACKTESTING
+# ============================================================================
+
+@app.post("/api/backtest")
+async def api_backtest(request: Request):
+    """API pour exécuter un backtest"""
+    try:
+        data = await request.json()
+        
+        # Extract parameters
+        crypto = data.get('crypto', 'bitcoin')
+        capital = data.get('capital', 10000)
+        start_date = data.get('startDate', '2024-01-01')
+        end_date = data.get('endDate', '2024-12-31')
+        fee = data.get('fee', 0.1) / 100
+        position_size = data.get('positionSize', 100) / 100
+        strategy = data.get('strategy', 'sma')
+        
+        # Fetch historical data from CoinGecko
+        import requests
+        from datetime import datetime
+        
+        # Convert dates to timestamps
+        start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+        end_ts = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp())
+        
+        # Fetch data
+        url = f"https://api.coingecko.com/api/v3/coins/{crypto}/market_chart/range"
+        params = {
+            'vs_currency': 'usd',
+            'from': start_ts,
+            'to': end_ts
+        }
+        
+        response = requests.get(url, params=params, timeout=10)
+        
+        if response.status_code != 200:
+            return {"success": False, "error": "Failed to fetch historical data"}
+        
+        market_data = response.json()
+        prices = [p[1] for p in market_data['prices']]
+        dates = [p[0] for p in market_data['prices']]
+        
+        if len(prices) < 50:
+            return {"success": False, "error": "Not enough historical data"}
+        
+        # Run backtest based on strategy
+        if strategy == 'sma':
+            sma_short = data.get('smaShort', 20)
+            sma_long = data.get('smaLong', 50)
+            results = backtest_sma(prices, dates, capital, fee, position_size, sma_short, sma_long)
+        elif strategy == 'rsi':
+            rsi_period = data.get('rsiPeriod', 14)
+            rsi_oversold = data.get('rsiOversold', 30)
+            rsi_overbought = data.get('rsiOverbought', 70)
+            results = backtest_rsi(prices, dates, capital, fee, position_size, rsi_period, rsi_oversold, rsi_overbought)
+        elif strategy == 'macd':
+            macd_fast = data.get('macdFast', 12)
+            macd_slow = data.get('macdSlow', 26)
+            macd_signal = data.get('macdSignal', 9)
+            results = backtest_macd(prices, dates, capital, fee, position_size, macd_fast, macd_slow, macd_signal)
+        else:
+            return {"success": False, "error": "Unknown strategy"}
+        
+        return {"success": True, "results": results}
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def calculate_sma(prices, period):
+    """Calculate Simple Moving Average"""
+    sma = []
+    for i in range(len(prices)):
+        if i < period - 1:
+            sma.append(None)
+        else:
+            sma.append(sum(prices[i-period+1:i+1]) / period)
+    return sma
+
+
+def calculate_rsi(prices, period=14):
+    """Calculate Relative Strength Index"""
+    rsi = []
+    gains = []
+    losses = []
+    
+    for i in range(1, len(prices)):
+        change = prices[i] - prices[i-1]
+        gains.append(max(change, 0))
+        losses.append(max(-change, 0))
+    
+    for i in range(len(gains)):
+        if i < period - 1:
+            rsi.append(None)
+        else:
+            avg_gain = sum(gains[i-period+1:i+1]) / period
+            avg_loss = sum(losses[i-period+1:i+1]) / period
+            
+            if avg_loss == 0:
+                rsi.append(100)
+            else:
+                rs = avg_gain / avg_loss
+                rsi.append(100 - (100 / (1 + rs)))
+    
+    return [None] + rsi
+
+
+def calculate_ema(prices, period):
+    """Calculate Exponential Moving Average"""
+    ema = []
+    multiplier = 2 / (period + 1)
+    
+    # First EMA is SMA
+    sma = sum(prices[:period]) / period
+    ema.append(sma)
+    
+    for i in range(period, len(prices)):
+        ema_value = (prices[i] - ema[-1]) * multiplier + ema[-1]
+        ema.append(ema_value)
+    
+    return [None] * (period - 1) + ema
+
+
+def backtest_sma(prices, dates, capital, fee, position_size, short_period, long_period):
+    """Backtest SMA Crossover strategy"""
+    sma_short = calculate_sma(prices, short_period)
+    sma_long = calculate_sma(prices, long_period)
+    
+    equity = capital
+    position = 0
+    trades = []
+    equity_curve = [capital]
+    
+    for i in range(long_period, len(prices)):
+        if sma_short[i] is None or sma_long[i] is None:
+            equity_curve.append(equity)
+            continue
+        
+        # Buy signal
+        if sma_short[i] > sma_long[i] and sma_short[i-1] <= sma_long[i-1] and position == 0:
+            trade_amount = equity * position_size
+            position = (trade_amount * (1 - fee)) / prices[i]
+            equity -= trade_amount
+            
+            trades.append({
+                'date': dates[i],
+                'type': 'buy',
+                'price': prices[i],
+                'quantity': position,
+                'pnl': 0,
+                'pnlPct': 0
+            })
+        
+        # Sell signal
+        elif sma_short[i] < sma_long[i] and sma_short[i-1] >= sma_long[i-1] and position > 0:
+            sell_value = position * prices[i] * (1 - fee)
+            pnl = sell_value - (capital * position_size)
+            pnl_pct = (pnl / (capital * position_size)) * 100
+            
+            equity += sell_value
+            position = 0
+            
+            trades.append({
+                'date': dates[i],
+                'type': 'sell',
+                'price': prices[i],
+                'quantity': 0,
+                'pnl': pnl,
+                'pnlPct': pnl_pct
+            })
+        
+        # Update equity curve
+        current_equity = equity
+        if position > 0:
+            current_equity += position * prices[i]
+        equity_curve.append(current_equity)
+    
+    # Close final position if open
+    if position > 0:
+        sell_value = position * prices[-1] * (1 - fee)
+        equity += sell_value
+        position = 0
+    
+    # Calculate metrics
+    total_pnl = equity - capital
+    return_pct = (total_pnl / capital) * 100
+    winning_trades = sum(1 for t in trades if t['pnl'] > 0)
+    total_trades = len([t for t in trades if t['type'] == 'sell'])
+    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+    
+    # Calculate max drawdown
+    peak = equity_curve[0]
+    max_dd = 0
+    for value in equity_curve:
+        if value > peak:
+            peak = value
+        dd = ((peak - value) / peak) * 100
+        if dd > max_dd:
+            max_dd = dd
+    
+    # Calculate Sharpe ratio (simplified)
+    returns = [(equity_curve[i] - equity_curve[i-1]) / equity_curve[i-1] for i in range(1, len(equity_curve))]
+    avg_return = sum(returns) / len(returns) if returns else 0
+    std_return = (sum((r - avg_return) ** 2 for r in returns) / len(returns)) ** 0.5 if returns else 0
+    sharpe = (avg_return / std_return * (252 ** 0.5)) if std_return > 0 else 0
+    
+    return {
+        'totalPnL': total_pnl,
+        'returnPct': return_pct,
+        'totalTrades': total_trades,
+        'winRate': win_rate,
+        'maxDrawdown': max_dd,
+        'sharpeRatio': sharpe,
+        'equityCurve': equity_curve,
+        'trades': trades
+    }
+
+
+def backtest_rsi(prices, dates, capital, fee, position_size, period, oversold, overbought):
+    """Backtest RSI strategy"""
+    rsi = calculate_rsi(prices, period)
+    
+    equity = capital
+    position = 0
+    trades = []
+    equity_curve = [capital]
+    
+    for i in range(period + 1, len(prices)):
+        if rsi[i] is None:
+            equity_curve.append(equity)
+            continue
+        
+        # Buy signal (oversold)
+        if rsi[i] < oversold and position == 0:
+            trade_amount = equity * position_size
+            position = (trade_amount * (1 - fee)) / prices[i]
+            equity -= trade_amount
+            
+            trades.append({
+                'date': dates[i],
+                'type': 'buy',
+                'price': prices[i],
+                'quantity': position,
+                'pnl': 0,
+                'pnlPct': 0
+            })
+        
+        # Sell signal (overbought)
+        elif rsi[i] > overbought and position > 0:
+            sell_value = position * prices[i] * (1 - fee)
+            pnl = sell_value - (capital * position_size)
+            pnl_pct = (pnl / (capital * position_size)) * 100
+            
+            equity += sell_value
+            position = 0
+            
+            trades.append({
+                'date': dates[i],
+                'type': 'sell',
+                'price': prices[i],
+                'quantity': 0,
+                'pnl': pnl,
+                'pnlPct': pnl_pct
+            })
+        
+        current_equity = equity
+        if position > 0:
+            current_equity += position * prices[i]
+        equity_curve.append(current_equity)
+    
+    if position > 0:
+        sell_value = position * prices[-1] * (1 - fee)
+        equity += sell_value
+    
+    total_pnl = equity - capital
+    return_pct = (total_pnl / capital) * 100
+    winning_trades = sum(1 for t in trades if t['pnl'] > 0)
+    total_trades = len([t for t in trades if t['type'] == 'sell'])
+    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+    
+    peak = equity_curve[0]
+    max_dd = 0
+    for value in equity_curve:
+        if value > peak:
+            peak = value
+        dd = ((peak - value) / peak) * 100
+        if dd > max_dd:
+            max_dd = dd
+    
+    returns = [(equity_curve[i] - equity_curve[i-1]) / equity_curve[i-1] for i in range(1, len(equity_curve))]
+    avg_return = sum(returns) / len(returns) if returns else 0
+    std_return = (sum((r - avg_return) ** 2 for r in returns) / len(returns)) ** 0.5 if returns else 0
+    sharpe = (avg_return / std_return * (252 ** 0.5)) if std_return > 0 else 0
+    
+    return {
+        'totalPnL': total_pnl,
+        'returnPct': return_pct,
+        'totalTrades': total_trades,
+        'winRate': win_rate,
+        'maxDrawdown': max_dd,
+        'sharpeRatio': sharpe,
+        'equityCurve': equity_curve,
+        'trades': trades
+    }
+
+
+def backtest_macd(prices, dates, capital, fee, position_size, fast, slow, signal_period):
+    """Backtest MACD strategy"""
+    ema_fast = calculate_ema(prices, fast)
+    ema_slow = calculate_ema(prices, slow)
+    
+    # Calculate MACD line
+    macd_line = []
+    for i in range(len(prices)):
+        if ema_fast[i] is not None and ema_slow[i] is not None:
+            macd_line.append(ema_fast[i] - ema_slow[i])
+        else:
+            macd_line.append(None)
+    
+    # Calculate signal line (EMA of MACD)
+    valid_macd = [m for m in macd_line if m is not None]
+    signal_line = calculate_ema(valid_macd, signal_period)
+    
+    # Pad signal line
+    signal_line = [None] * (len(macd_line) - len(signal_line)) + signal_line
+    
+    equity = capital
+    position = 0
+    trades = []
+    equity_curve = [capital]
+    
+    for i in range(slow + signal_period, len(prices)):
+        if macd_line[i] is None or signal_line[i] is None:
+            equity_curve.append(equity)
+            continue
+        
+        # Buy signal
+        if macd_line[i] > signal_line[i] and macd_line[i-1] <= signal_line[i-1] and position == 0:
+            trade_amount = equity * position_size
+            position = (trade_amount * (1 - fee)) / prices[i]
+            equity -= trade_amount
+            
+            trades.append({
+                'date': dates[i],
+                'type': 'buy',
+                'price': prices[i],
+                'quantity': position,
+                'pnl': 0,
+                'pnlPct': 0
+            })
+        
+        # Sell signal
+        elif macd_line[i] < signal_line[i] and macd_line[i-1] >= signal_line[i-1] and position > 0:
+            sell_value = position * prices[i] * (1 - fee)
+            pnl = sell_value - (capital * position_size)
+            pnl_pct = (pnl / (capital * position_size)) * 100
+            
+            equity += sell_value
+            position = 0
+            
+            trades.append({
+                'date': dates[i],
+                'type': 'sell',
+                'price': prices[i],
+                'quantity': 0,
+                'pnl': pnl,
+                'pnlPct': pnl_pct
+            })
+        
+        current_equity = equity
+        if position > 0:
+            current_equity += position * prices[i]
+        equity_curve.append(current_equity)
+    
+    if position > 0:
+        sell_value = position * prices[-1] * (1 - fee)
+        equity += sell_value
+    
+    total_pnl = equity - capital
+    return_pct = (total_pnl / capital) * 100
+    winning_trades = sum(1 for t in trades if t['pnl'] > 0)
+    total_trades = len([t for t in trades if t['type'] == 'sell'])
+    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+    
+    peak = equity_curve[0]
+    max_dd = 0
+    for value in equity_curve:
+        if value > peak:
+            peak = value
+        dd = ((peak - value) / peak) * 100
+        if dd > max_dd:
+            max_dd = dd
+    
+    returns = [(equity_curve[i] - equity_curve[i-1]) / equity_curve[i-1] for i in range(1, len(equity_curve))]
+    avg_return = sum(returns) / len(returns) if returns else 0
+    std_return = (sum((r - avg_return) ** 2 for r in returns) / len(returns)) ** 0.5 if returns else 0
+    sharpe = (avg_return / std_return * (252 ** 0.5)) if std_return > 0 else 0
+    
+    return {
+        'totalPnL': total_pnl,
+        'returnPct': return_pct,
+        'totalTrades': total_trades,
+        'winRate': win_rate,
+        'maxDrawdown': max_dd,
+        'sharpeRatio': sharpe,
+        'equityCurve': equity_curve,
+        'trades': trades
+    }
 
 # ============================================================================
 

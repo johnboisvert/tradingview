@@ -14971,9 +14971,27 @@ async def pricing_complete():
         
         .pricing-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
             margin-bottom: 50px;
+            max-width: 1600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        @media (max-width: 1400px) {
+            .pricing-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 900px) {
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 600px) {
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
         }
         .pricing-card {
             background: white;
@@ -15109,6 +15127,26 @@ async def pricing_complete():
         </div>
         
         <div class="pricing-grid">
+            <!-- Plan GRATUIT -->
+            <div class="pricing-card">
+                <div class="plan-name">🆓 Gratuit</div>
+                <div class="discount-badge">Toujours gratuit</div>
+                <div class="plan-price">
+                    <span class="currency">$</span><span>0</span>
+                    <span class="period">/toujours</span>
+                </div>
+                <ul class="features">
+                    <li>✅ Dashboard de base</li>
+                    <li>✅ Fear & Greed Index</li>
+                    <li>✅ Dominance Bitcoin</li>
+                    <li>✅ Heatmap crypto</li>
+                    <li>✅ Actualités</li>
+                </ul>
+                <button class="btn-payment" style="background: #94a3b8; cursor: pointer;" onclick="window.location.href='/register'">
+                    📝 S'inscrire Gratuitement
+                </button>
+            </div>
+            
             <!-- Plan 1 Month -->
             <div class="pricing-card">
                 <div class="plan-name">💳 Premium</div>

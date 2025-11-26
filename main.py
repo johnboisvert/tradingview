@@ -21670,38 +21670,54 @@ async def api_backtest(request: Request):
         position_size = data.get('positionSize', 100) / 100
         strategy = data.get('strategy', 'sma')
         
-        # Fetch historical data from CoinGecko
+        # Map crypto IDs to Binance symbols
+        crypto_map = {
+            'bitcoin': 'BTCUSDT',
+            'ethereum': 'ETHUSDT',
+            'binancecoin': 'BNBUSDT',
+            'solana': 'SOLUSDT',
+            'cardano': 'ADAUSDT',
+            'ripple': 'XRPUSDT'
+        }
+        
+        symbol = crypto_map.get(crypto, 'BTCUSDT')
+        
+        # Fetch historical data from Binance (free, no auth required)
         import requests
         from datetime import datetime
         
-        # Convert dates to timestamps
-        start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
-        end_ts = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp())
+        # Convert dates to timestamps (milliseconds for Binance)
+        start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp() * 1000)
+        end_ts = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp() * 1000)
         
-        # Fetch data
-        url = f"https://api.coingecko.com/api/v3/coins/{crypto}/market_chart/range"
+        # Binance Klines API - Get daily candles
+        url = "https://api.binance.com/api/v3/klines"
         params = {
-            'vs_currency': 'usd',
-            'from': start_ts,
-            'to': end_ts
+            'symbol': symbol,
+            'interval': '1d',  # Daily candles
+            'startTime': start_ts,
+            'endTime': end_ts,
+            'limit': 1000
         }
         
-        response = requests.get(url, params=params, timeout=15)
-        
-        if response.status_code != 200:
-            error_msg = f"CoinGecko API Error (Status {response.status_code})"
-            if response.status_code == 429:
-                error_msg = "API rate limit atteinte. Réessayez dans 1 minute."
-            elif response.status_code == 404:
-                error_msg = f"Crypto '{crypto}' non trouvée."
-            return {"success": False, "error": error_msg}
-        
-        market_data = response.json()
-        prices = [p[1] for p in market_data['prices']]
-        dates = [p[0] for p in market_data['prices']]
-        
-        if len(prices) < 50:
-            return {"success": False, "error": "Not enough historical data"}
+        try:
+            response = requests.get(url, params=params, timeout=15)
+            
+            if response.status_code != 200:
+                return {"success": False, "error": f"Binance API Error (Status {response.status_code})"}
+            
+            klines = response.json()
+            
+            if len(klines) < 50:
+                return {"success": False, "error": "Pas assez de données historiques (minimum 50 jours)"}
+            
+            # Extract closing prices and timestamps
+            # Binance kline format: [timestamp, open, high, low, close, volume, ...]
+            prices = [float(k[4]) for k in klines]  # Closing price
+            dates = [k[0] for k in klines]  # Timestamp
+            
+        except Exception as e:
+            return {"success": False, "error": f"Erreur lors du chargement des données: {str(e)}"}
         
         # Run backtest based on strategy
         if strategy == 'sma':

@@ -21296,9 +21296,9 @@ async def backtesting_page(request: Request):
             
             <!-- Tabs -->
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('config')">⚙️ Configuration</button>
-                <button class="tab" onclick="switchTab('results')">📊 Résultats</button>
-                <button class="tab" onclick="switchTab('comparison')">🔄 Comparaison</button>
+                <button class="tab active" onclick="switchTab('config', event)">⚙️ Configuration</button>
+                <button class="tab" onclick="switchTab('results', event)">📊 Résultats</button>
+                <button class="tab" onclick="switchTab('comparison', event)">🔄 Comparaison</button>
             </div>
             
             <!-- Tab 1: Configuration -->
@@ -21473,11 +21473,13 @@ async def backtesting_page(request: Request):
             let performanceChart = null;
             
             // Switch tabs
-            function switchTab(tabName) {{
+            function switchTab(tabName, event) {{
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 
-                event.target.classList.add('active');
+                if (event && event.target) {{
+                    event.target.classList.add('active');
+                }}
                 document.getElementById('tab-' + tabName).classList.add('active');
             }}
             
@@ -21533,7 +21535,7 @@ async def backtesting_page(request: Request):
                     if (data.success) {{
                         backtestResults = data.results;
                         displayResults(data.results);
-                        switchTab('results');
+                        // Switch to results tab
                         document.querySelectorAll('.tab')[1].click();
                     }} else {{
                         alert('❌ Erreur: ' + data.error);

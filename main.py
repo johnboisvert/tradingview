@@ -664,7 +664,97 @@ app = FastAPI()
 # ============================================================================
 # 🎨 MENU DE NAVIGATION COMPLET
 # ============================================================================
+NAV_MENU = """
+<style>
+    .top-nav {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        padding: 15px 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+    }
+    .nav-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .nav-btn {
+        background: rgba(255,255,255,0.1);
+        color: white;
+        padding: 10px 16px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s;
+        border: 1px solid rgba(255,255,255,0.1);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .nav-btn:hover {
+        background: rgba(255,255,255,0.2);
+        border-color: rgba(255,255,255,0.3);
+        transform: translateY(-2px);
+    }
+    .nav-btn.premium {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    .nav-btn.admin {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        border: none;
+    }
+    .nav-btn.account {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+    }
+    .nav-btn.logout {
+        background: rgba(239,68,68,0.8);
+        border: none;
+    }
+</style>
 
+<nav class="top-nav">
+    <div class="nav-container">
+        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
+        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
+        <a href="/dominance" class="nav-btn">👑 Dominance</a>
+        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
+        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
+        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
+        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
+        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
+        <a href="/news" class="nav-btn">📰 Nouvelles</a>
+        <a href="/trades" class="nav-btn">📈 Trades</a>
+        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
+        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
+        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
+        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
+        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
+        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
+        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
+        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
+        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
+        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
+        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
+        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
+        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
+        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
+        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
+        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
+        
+        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
+        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
+        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
+        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
+    </div>
+</nav>
+"""
 # ============================================================================
 
 # ============================================================================
@@ -2413,97 +2503,7 @@ async def strategie_page():
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
         <div class="container">
             <header>
@@ -3854,97 +3854,7 @@ async def home():
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
         <div class="hero">
             <h1>🎯 Magic Mike Trading Dashboard</h1>
@@ -4493,97 +4403,7 @@ async def spot_trading_page():
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
         <div class="container">
             <header>
@@ -6264,97 +6084,7 @@ async def ai_opportunity_scanner():
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
         <div class="container">
             <header>
@@ -6873,97 +6603,7 @@ async def ai_market_regime():
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
         <div class="container">
             <header>
@@ -7880,97 +7520,7 @@ async def ai_whale_watcher():
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
         <div class="container">
             <header>
@@ -8905,97 +8455,7 @@ async def convertisseur_page():
     </style>
 </head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
     <div class="container">
         <div class="header">
@@ -10048,97 +9508,7 @@ async def fear_greed_page():
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
 let mainChart=null;
 let fullData=[];
 let currentPeriod='30d';
@@ -10783,97 +10153,7 @@ async def heatmap_page():
     </style>
 </head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
     <div class="container">
         <!-- HEADER -->
@@ -11426,97 +10706,7 @@ async def altcoin_page():
     </style>
 </head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
     <div class="container">
         <div class="altcoin-header">
@@ -12075,97 +11265,7 @@ async def bullrun_page():
     </style>
 </head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
     <div class="container">
         <div class="header">
@@ -12768,97 +11868,7 @@ async def charts_page():
     </style>
 </head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
     <div class="container">
         <!-- Header -->
@@ -13799,97 +12809,7 @@ async def trades_page():
     </style>
 </head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
     <div class="container">
         <div class="header fade-in">
@@ -15310,97 +14230,7 @@ async def calendrier_economique():
     </style>
 </head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
     <div class="container">
         <div class="header">
@@ -18627,97 +17457,7 @@ async def risk_management_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
 <div class="container">
 <div class="header"><h1>⚖️ RISK MANAGEMENT</h1><p>Gestion professionnelle du risque</p></div>
@@ -18891,97 +17631,7 @@ async def watchlist_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
 <div class="container">
 <div class="header"><h1>👀 WATCHLIST & ALERTES</h1><p>Surveillez vos cryptos préférées</p></div>
@@ -19122,97 +17772,7 @@ async def ai_assistant_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
 <div class="container">
 <div class="header"><h1>🤖 AI TRADING ASSISTANT</h1><p>Intelligence artificielle pour optimiser vos trades</p></div>
@@ -19676,97 +18236,7 @@ async def calculatrice_trades():
     </style>
 </head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
     <div class="container">
         <div class="header">
@@ -20220,97 +18690,7 @@ async def prediction_ia():
     </style>
 </head>
 <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
     <div class="container">
         <div class="header">
@@ -21001,97 +19381,7 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         {ADMIN_NAV}
         <div class="container">
             <div class="header">
@@ -21390,97 +19680,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             </style>
         </head>
         <body>
-            
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+            {NAV_MENU}
             {ADMIN_NAV}
             <div class="container">
                 
@@ -21767,97 +19967,7 @@ async def mon_compte(request: Request):
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         <div class="container">
             <div class="header">
                 <h1>👤 Mon Compte</h1>
@@ -21981,97 +20091,7 @@ async def fear_greed_chart():
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         <div class="container">
             <h1>📊 Fear & Greed Index - Historique 12 Mois</h1>
             <div id="loading" class="loading">🔄 Chargement des données...</div>
@@ -22246,97 +20266,7 @@ async def admin_update_plan_features_page(request: Request):
         </style>
     </head>
     <body class="bg-gray-900 text-white min-h-screen">
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         <div class="container mx-auto px-4 py-8">
             <div class="max-w-4xl mx-auto">
                 <h1 class="text-4xl font-bold text-center mb-8">⚙️ Modifier les fonctionnalités des plans</h1>
@@ -22503,97 +20433,7 @@ async def dashboard(request: Request):
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         <div class="container">
             <div class="welcome-card">
                 <h1>👋 Bienvenue, {username}!</h1>
@@ -22734,97 +20574,7 @@ async def admin_permissions_page(session_token: Optional[str] = Cookie(None)):
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         {ADMIN_NAV}
         <div class="container">
             <h1>🔐 Gestion des Permissions par Forfait</h1>
@@ -22951,97 +20701,7 @@ async def admin_pricing_page(session_token: Optional[str] = Cookie(None)):
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         {ADMIN_NAV}
         <div class="container">
             <h1>💰 Gestion des Prix des Forfaits</h1>
@@ -23143,97 +20803,7 @@ async def admin_change_password_page(session_token: Optional[str] = Cookie(None)
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         {ADMIN_NAV}
         <div class="container">
             <div class="card">
@@ -23646,97 +21216,7 @@ async def backtesting_page(request: Request):
         </style>
     </head>
     <body>
-        
-<style>
-    .top-nav {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        padding: 15px 20px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        position: sticky;
-        top: 0;
-        z-index: 1000;
-    }
-    .nav-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-    }
-    .nav-btn {
-        background: rgba(255,255,255,0.1);
-        color: white;
-        padding: 10px 16px;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.3s;
-        border: 1px solid rgba(255,255,255,0.1);
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .nav-btn:hover {
-        background: rgba(255,255,255,0.2);
-        border-color: rgba(255,255,255,0.3);
-        transform: translateY(-2px);
-    }
-    .nav-btn.premium {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-    }
-    .nav-btn.admin {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        border: none;
-    }
-    .nav-btn.account {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: none;
-    }
-    .nav-btn.logout {
-        background: rgba(239,68,68,0.8);
-        border: none;
-    }
-</style>
-
-<nav class="top-nav">
-    <div class="nav-container">
-        <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
-        <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
-        <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
-        <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
-        <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
-        <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>
-        <a href="/market-regime" class="nav-btn">📊 Market Regime</a>
-        <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
-        <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
-        <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
-        <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
-        <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
-        <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
-        <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
-        <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
-        <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
-        
-        <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
-        <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-
+        {NAV_MENU}
         
         <div class="container">
             <div class="header">

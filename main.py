@@ -2511,7 +2511,6 @@ async def strategie_page():
                 <p>LA STRATÉGIE COMPLÈTE POUR GAGNER AVEC VOTRE INDICATEUR</p>
             </header>
             
-            """ + NAV + """
             
             <div class="content">
                 <!-- NIVEAU 1 : COMPRENDRE -->
@@ -3160,96 +3159,6 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-NAV = '''<style>
-.modern-nav {
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-    padding: 0;
-    margin-bottom: 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-.modern-nav .nav-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0;
-    padding: 15px;
-    justify-content: center;
-    align-items: center;
-}
-.modern-nav a {
-    padding: 10px 18px;
-    background: rgba(30, 41, 59, 0.6);
-    border-radius: 8px;
-    text-decoration: none;
-    color: #cbd5e1;
-    transition: all 0.3s;
-    border: 1px solid rgba(51, 65, 85, 0.5);
-    font-size: 14px;
-    font-weight: 500;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.modern-nav a:hover {
-    background: #3b82f6;
-    color: white;
-    border-color: #3b82f6;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-.modern-nav a.nav-premium {
-    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-    color: white;
-    border: 2px solid #8b5cf6;
-    font-weight: 600;
-}
-.modern-nav a.nav-premium:hover {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
-}
-.modern-nav a.nav-admin {
-    background: #ef4444;
-    color: white;
-    border-color: #dc2626;
-}
-.modern-nav a.nav-admin:hover {
-    background: #dc2626;
-}
-</style>
-<div class="modern-nav">
-    <div class="nav-container">
-        <a href="/">🏠 Accueil</a>
-        <a href="/fear-greed">😱 Fear&Greed</a>
-        <a href="/dominance">👑 Dominance</a>
-        <a href="/altcoin-season">🌟 Altcoin Season</a>
-        <a href="/heatmap">🔥 Heatmap</a>
-        <a href="/strategie">📚 Stratégie</a>
-        <a href="/spot-trading">💎 Spot Trading</a>
-        <a href="/calculatrice">🧮 Calculatrice</a>
-        <a href="/nouvelles">📰 Nouvelles</a>
-        <a href="/trades">📊 Trades</a>
-        <a href="/risk-management">⚖️ Risk Management</a>
-        <a href="/watchlist">👀 Watchlist</a>
-        <a href="/ai-assistant">🤖 AI Assistant</a>
-        <a href="/prediction-ia">🤖 Prédiction IA</a>
-        <a href="/ai-opportunity-scanner">🎯 AI Scanner</a>
-        <a href="/ai-market-regime">🌊 Market Regime</a>
-        <a href="/ai-whale-watcher">🐋 Whale Watcher</a>
-        <a href="/stats-dashboard">💰 Stats Avancées</a>
-        <a href="/market-simulation">📈 Simulation</a>
-        <a href="/success-stories">🌟 Success Stories</a>
-        <a href="/convertisseur">💱 Convertisseur</a>
-        <a href="/calendrier">📅 Calendrier</a>
-        <a href="/bullrun-phase">🚀 Bullrun Phase</a>
-        <a href="/graphiques">📈 Graphiques</a>
-        <a href="/telegram-test">📱 Telegram</a>
-        <a href="/pricing-complete" class="nav-premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-admin">👑 Admin</a>
-        <a href="/mon-compte">👤 Mon Compte</a>
-        <a href="/logout">🚪 Déconnexion</a>
-    </div>
-</div>'''
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -3971,7 +3880,6 @@ async def home():
             </div>
         </div>
         
-        """ + NAV + """
         
         <div class="container">
             <div class="features-grid">
@@ -4503,7 +4411,6 @@ async def spot_trading_page():
                 <p>Tout ce que vous devez savoir sur le trading au comptant (Spot)</p>
             </header>
             
-            """ + NAV + """
             
             <div class="content">
                 <!-- SECTION 1: QU'EST-CE QUE LE SPOT -->
@@ -6185,7 +6092,6 @@ async def ai_opportunity_scanner():
                 <p>Intelligence Artificielle détectant les meilleures opportunités de trading en temps réel</p>
             </header>
             
-            """ + NAV + """
             
             <div class="content">
                 <div class="refresh-bar">
@@ -6705,7 +6611,6 @@ async def ai_market_regime():
                 <p>Détection intelligente de la phase actuelle du marché crypto</p>
             </header>
             
-            """ + NAV + """
             
             <div class="content">
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 25px; border: 2px solid rgba(99, 102, 241, 0.3);">
@@ -7626,7 +7531,6 @@ async def ai_whale_watcher():
                 </div>
             </header>
             
-            """ + NAV + """
             
             <div class="content">
                 <div id="alertBanner"></div>
@@ -8168,7 +8072,6 @@ async def news_page():
             <h1>📰 Actualités Crypto</h1>
             <p>Les dernières nouvelles du monde de la cryptomonnaie</p>
         </div>
-        """ + NAV + """
         <div class="card">
             <input type="text" class="search-input" id="searchInput" placeholder="🔍 Rechercher...">
             <div class="filters" id="filters">
@@ -9600,14 +9503,12 @@ async def telegram_test():
 # FIN SECTION ALTCOIN SEASON
 @app.get("/fear-greed", response_class=HTMLResponse)
 async def fear_greed_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div>""" + NAV + """<div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script></body></html>"""
     return HTMLResponse(html)
 
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body>
         {NAV_MENU}
-        <div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div>""" + NAV + """<div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
 let mainChart=null;
 let fullData=[];
 let currentPeriod='30d';
@@ -10261,7 +10162,6 @@ async def heatmap_page():
             <p>Visualisation en temps réel des performances du marché crypto</p>
         </div>
 
-        """ + NAV + """
 
         <!-- STATISTIQUES -->
         <div class="stats-bar">
@@ -10814,7 +10714,6 @@ async def altcoin_page():
             <p style="color: #94a3b8; font-size: 18px;">Indice du marché crypto</p>
         </div>
 
-        """ + NAV + """
 
         <div class="gauge-card">
             <div class="gauge-container">
@@ -11374,7 +11273,6 @@ async def bullrun_page():
             <p>Analyse en temps réel des 4 phases du cycle haussier crypto</p>
         </div>
         
-        """ + NAV + """
         
         <div id="loading" class="loading-state">
             <div class="spinner"></div>
@@ -11979,7 +11877,6 @@ async def charts_page():
             <p>Analyse technique avancée et visualisation de données</p>
         </div>
         
-        """ + NAV + """
         
         <!-- Tabs -->
         <div class="tabs-container">
@@ -12830,7 +12727,6 @@ async def charts_page():
     return HTMLResponse(html)
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📱 Test Telegram</h1></div>""" + NAV + """<div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
     return HTMLResponse(html)
 
 
@@ -12920,7 +12816,6 @@ async def trades_page():
             <h1>📊 Gestion des Trades Premium</h1>
             <p>Plateforme avancée de suivi et d'analyse de trading</p>
         </div>
-        """ + NAV + """
         <div style="height:15px;"></div>
         <div class="stats-grid fade-in" id="statsGrid">
             <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-label">Total Trades</div><div class="stat-value" id="totalTrades">0</div><div class="stat-change" id="totalChange">+0 cette semaine</div></div>
@@ -16800,7 +16695,6 @@ async def market_simulation():
         <h1>📈 SIMULATION DE MARCHÉ - Top 10 Crypto</h1>
         <p class="subtitle">Comparez l'impact du DCA vs Émotions sur les cryptos réelles</p>
         
-        """ + NAV + """
         
         <div class="controls">
             <div class="control-group">
@@ -18350,7 +18244,6 @@ async def calculatrice_trades():
             <p>Calculez votre position, risque et profits potentiels</p>
         </div>
         
-        """ + NAV + """
         
         <div class="calc-grid">
             <!-- SECTION 1: PARAMÈTRES DU TRADE -->
@@ -18805,7 +18698,6 @@ async def prediction_ia():
             <p>Intelligence artificielle avancée pour prédire les mouvements de marché</p>
         </div>
         
-        """ + NAV + """
         
         <div class="info-banner">
             <h2>🚀 Application IA Avancée</h2>

@@ -21484,25 +21484,45 @@ async def backtesting_page(request: Request):
                 <div style="background: rgba(15, 23, 42, 0.8); padding: 30px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="color: #10b981; margin-bottom: 15px;">⚙️ Comment ça marche?</h3>
                     <ol style="color: #e2e8f0; line-height: 1.8; font-size: 16px; padding-left: 25px;">
-                        <li style="margin-bottom: 10px;"><strong>Chargement des données:</strong> Le système génère des données de prix réalistes basées sur les caractéristiques typiques de chaque crypto (volatilité, tendance, cycles).</li>
+                        <li style="margin-bottom: 10px;"><strong>Chargement des données:</strong> Le système récupère les <strong>données historiques RÉELLES</strong> depuis Yahoo Finance (prix de clôture quotidiens).</li>
                         <li style="margin-bottom: 10px;"><strong>Application de la stratégie:</strong> Votre stratégie choisie (SMA, RSI ou MACD) est appliquée sur chaque jour de données pour décider quand acheter et vendre.</li>
                         <li style="margin-bottom: 10px;"><strong>Simulation des trades:</strong> Chaque signal d'achat/vente est exécuté virtuellement en tenant compte des frais de trading.</li>
                         <li style="margin-bottom: 10px;"><strong>Calcul des résultats:</strong> Le système calcule votre profit/perte, win rate, drawdown et autres métriques importantes.</li>
                     </ol>
                 </div>
                 
+                <div style="background: rgba(16, 185, 129, 0.15); padding: 30px; border-radius: 15px; border: 2px solid rgba(16, 185, 129, 0.3); margin-bottom: 30px;">
+                    <h3 style="color: #6ee7b7; margin-bottom: 15px;">✅ Données Historiques RÉELLES</h3>
+                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
+                        <strong>Ce backtesting utilise des données historiques RÉELLES provenant de Yahoo Finance!</strong>
+                    </p>
+                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
+                        Les prix affichés sont les <strong>vrais prix de clôture quotidiens</strong> des cryptomonnaies pour la période sélectionnée.
+                    </p>
+                    <div style="background: rgba(16, 185, 129, 0.1); padding: 15px; border-radius: 8px; margin-top: 15px;">
+                        <p style="color: #6ee7b7; font-size: 15px; margin: 0;">
+                            <strong>✅ Source fiable: Yahoo Finance API</strong>
+                        </p>
+                    </div>
+                </div>
+                
                 <div style="background: rgba(239, 68, 68, 0.15); padding: 30px; border-radius: 15px; border: 2px solid rgba(239, 68, 68, 0.3); margin-bottom: 30px;">
-                    <h3 style="color: #fca5a5; margin-bottom: 15px;">⚠️ IMPORTANT: Données Simulées</h3>
+                    <h3 style="color: #fca5a5; margin-bottom: 15px;">⚠️ AVERTISSEMENT Important</h3>
                     <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
-                        <strong>Les données utilisées dans ce backtesting sont SIMULÉES et GÉNÉRÉES ALGORITHMIQUEMENT.</strong>
+                        Bien que les données soient réelles, les <strong>performances passées ne garantissent PAS les résultats futurs</strong>.
                     </p>
                     <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
-                        Elles sont conçues pour être réalistes (avec volatilité, tendances et cycles de marché), mais 
-                        <strong>NE représentent PAS les prix réels historiques</strong> des cryptomonnaies.
+                        Le backtesting ne tient pas compte de:
                     </p>
+                    <ul style="color: #e2e8f0; line-height: 1.8; font-size: 16px; padding-left: 25px;">
+                        <li>Le slippage (différence entre prix affiché et prix d'exécution)</li>
+                        <li>La liquidité du marché (impossibilité d'acheter/vendre)</li>
+                        <li>Les événements imprévus (hacks, régulations, etc.)</li>
+                        <li>Les facteurs psychologiques du trading réel</li>
+                    </ul>
                     <div style="background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 8px; margin-top: 15px;">
                         <p style="color: #fca5a5; font-size: 15px; margin: 0;">
-                            <strong>⛔ N'utilisez PAS ces résultats pour prendre des décisions de trading réelles!</strong>
+                            <strong>⚠️ Utilisez ces résultats comme outil d'apprentissage, pas comme garantie de profits!</strong>
                         </p>
                     </div>
                 </div>
@@ -21753,77 +21773,73 @@ async def api_backtest(request: Request):
         position_size = data.get('positionSize', 100) / 100
         strategy = data.get('strategy', 'sma')
         
-        # Map crypto IDs to Binance symbols
+        # Map crypto IDs to Yahoo Finance tickers
         crypto_map = {
-            'bitcoin': 'BTCUSDT',
-            'ethereum': 'ETHUSDT',
-            'binancecoin': 'BNBUSDT',
-            'solana': 'SOLUSDT',
-            'cardano': 'ADAUSDT',
-            'ripple': 'XRPUSDT'
+            'bitcoin': 'BTC-USD',
+            'ethereum': 'ETH-USD',
+            'binancecoin': 'BNB-USD',
+            'solana': 'SOL-USD',
+            'cardano': 'ADA-USD',
+            'ripple': 'XRP-USD'
         }
         
-        symbol = crypto_map.get(crypto, 'BTCUSDT')
+        yahoo_symbol = crypto_map.get(crypto, 'BTC-USD')
         
-        # Generate realistic simulated data (since APIs are blocked/restricted)
-        import random
-        from datetime import datetime, timedelta
+        # Fetch REAL historical data from Yahoo Finance (free, no auth required, works everywhere!)
+        import requests
+        from datetime import datetime
+        import time
         
         # Parse dates
         start_dt = datetime.strptime(start_date, '%Y-%m-%d')
         end_dt = datetime.strptime(end_date, '%Y-%m-%d')
         
-        # Calculate number of days
-        num_days = (end_dt - start_dt).days + 1
+        # Convert to Unix timestamps
+        start_ts = int(start_dt.timestamp())
+        end_ts = int(end_dt.timestamp())
         
-        if num_days < 50:
-            return {"success": False, "error": "Période trop courte (minimum 50 jours)"}
-        
-        # Base prices for each crypto (approximate 2024 prices)
-        base_prices = {
-            'BTCUSDT': 45000,
-            'ETHUSDT': 2500,
-            'BNBUSDT': 350,
-            'SOLUSDT': 100,
-            'ADAUSDT': 0.50,
-            'XRPUSDT': 0.60
+        # Yahoo Finance API endpoint
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}"
+        params = {
+            'period1': start_ts,
+            'period2': end_ts,
+            'interval': '1d',
+            'events': 'history'
         }
         
-        base_price = base_prices.get(symbol, 45000)
-        
-        # Generate realistic price data with trend and volatility
-        prices = []
-        dates = []
-        current_price = base_price
-        
-        # Add overall trend (slightly bullish for 2024)
-        trend = 0.0002  # 0.02% daily trend
-        
-        for i in range(num_days):
-            # Calculate date
-            current_date = start_dt + timedelta(days=i)
-            timestamp = int(current_date.timestamp() * 1000)
-            dates.append(timestamp)
+        try:
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            response = requests.get(url, params=params, headers=headers, timeout=15)
             
-            # Add trend
-            current_price *= (1 + trend)
+            if response.status_code != 200:
+                return {"success": False, "error": f"Erreur API Yahoo Finance (Status {response.status_code})"}
             
-            # Add realistic daily volatility (2-5% daily moves)
-            volatility = random.uniform(-0.03, 0.03)
-            current_price *= (1 + volatility)
+            data_json = response.json()
             
-            # Add some market cycles (simulate bull/bear periods)
-            cycle = 0.01 * random.random() * (1 if i % 30 < 20 else -1)
-            current_price *= (1 + cycle)
+            # Extract data from Yahoo Finance response
+            result = data_json.get('chart', {}).get('result', [])
+            if not result:
+                return {"success": False, "error": "Aucune donnée disponible pour cette période"}
             
-            # Ensure price stays positive and realistic
-            current_price = max(current_price, base_price * 0.5)
-            current_price = min(current_price, base_price * 2.0)
+            timestamps = result[0].get('timestamp', [])
+            quote_data = result[0].get('indicators', {}).get('quote', [{}])[0]
+            close_prices = quote_data.get('close', [])
             
-            prices.append(current_price)
-        
-        if len(prices) < 50:
-            return {"success": False, "error": "Pas assez de données générées"}
+            # Filter out None values
+            prices = []
+            dates = []
+            for i, price in enumerate(close_prices):
+                if price is not None:
+                    prices.append(float(price))
+                    dates.append(timestamps[i] * 1000)  # Convert to milliseconds
+            
+            if len(prices) < 50:
+                return {"success": False, "error": f"Pas assez de données historiques (seulement {len(prices)} jours, minimum 50)"}
+            
+        except Exception as e:
+            return {"success": False, "error": f"Erreur lors du chargement des données: {str(e)}"}
         
         # Run backtest based on strategy
         if strategy == 'sma':

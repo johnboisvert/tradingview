@@ -1827,6 +1827,50 @@ async def login_page(request: Request, error: str = None):
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
     <div class="login-container">
         <div class="login-header">
             <h1>🔐 Connexion</h1>
@@ -1958,6 +2002,50 @@ async def admin_panel(username: str = Depends(require_admin)):
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
     <div class="container">
         <div class="header">
             <h1>👑 Panel d'Administration</h1>
@@ -2413,6 +2501,50 @@ async def strategie_page():
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
         <div class="container">
@@ -3766,6 +3898,50 @@ async def home():
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
         <div class="hero">
@@ -4316,6 +4492,50 @@ async def spot_trading_page():
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
         <div class="container">
@@ -5998,6 +6218,50 @@ async def ai_opportunity_scanner():
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
         <div class="container">
@@ -6518,6 +6782,50 @@ async def ai_market_regime():
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
         <div class="container">
@@ -7436,6 +7744,50 @@ async def ai_whale_watcher():
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
         <div class="container">
@@ -7984,6 +8336,50 @@ async def news_page():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
     <div class="container">
         <div class="header">
             <h1>📰 Actualités Crypto</h1>
@@ -8373,6 +8769,50 @@ async def convertisseur_page():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
     <div class="container">
@@ -9421,12 +9861,100 @@ async def telegram_test():
 # FIN SECTION ALTCOIN SEASON
 @app.get("/fear-greed", response_class=HTMLResponse)
 async def fear_greed_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+<div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script></body></html>"""
     return HTMLResponse(html)
 
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         <div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div><div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
 let mainChart=null;
@@ -10073,6 +10601,50 @@ async def heatmap_page():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
     <div class="container">
@@ -10627,6 +11199,50 @@ async def altcoin_page():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
     <div class="container">
@@ -11187,6 +11803,50 @@ async def bullrun_page():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
     <div class="container">
@@ -11791,6 +12451,50 @@ async def charts_page():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
     <div class="container">
@@ -12651,7 +13355,51 @@ async def charts_page():
     return HTMLResponse(html)
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📱 Test Telegram</h1></div><div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+<div class="container"><div class="header"><h1>📱 Test Telegram</h1></div><div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
     return HTMLResponse(html)
 
 
@@ -12734,6 +13482,50 @@ async def trades_page():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
     <div class="container">
@@ -14156,6 +14948,50 @@ async def calendrier_economique():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
     <div class="container">
@@ -14956,6 +15792,50 @@ async def pricing_complete():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
     <div class="container">
         <div class="header">
             <h1>💎 Plans & Tarifs</h1>
@@ -15374,6 +16254,50 @@ async def pricing_page_new(request: Request):
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
     <div class="container">
         <div id="successMsg" class="success-message">
             ✅ Paiement reçu! Merci! Votre abonnement est actif.
@@ -15891,6 +16815,50 @@ async def payment_success(request: Request, plan: str = "monthly"):
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         <div class="container">
             <div class="emoji">✅</div>
             <h1>Paiement Réussi!</h1>
@@ -15981,6 +16949,50 @@ async def payment_cancel(request: Request, plan: str = "monthly"):
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         <div class="container">
             <div class="emoji">❌</div>
             <h1>Paiement Annulé</h1>
@@ -16253,6 +17265,50 @@ async def stats_dashboard():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
     <div class="nav">
         <a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot</a><a href="/calculatrice">🧮 Calc</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI</a><a href="/ai-opportunity-scanner">🎯 Scanner</a><a href="/ai-market-regime">🌊 Regime</a><a href="/ai-whale-watcher">🐋 Whale</a><a href="/stats-dashboard" class="active">$ Stats $</a><a href="/market-simulation">📈 Simulation</a><a href="/success-stories">🌟 Stories</a><a href="/convertisseur">💱 Convertir</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a>
     </div>
@@ -16617,6 +17673,50 @@ async def market_simulation():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
     <div class="container">
         <h1>📈 SIMULATION DE MARCHÉ - Top 10 Crypto</h1>
         <p class="subtitle">Comparez l'impact du DCA vs Émotions sur les cryptos réelles</p>
@@ -17189,6 +18289,50 @@ async def success_stories():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
     <div class="nav">
         <a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot</a><a href="/calculatrice">🧮 Calc</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI</a><a href="/ai-opportunity-scanner">🎯 Scanner</a><a href="/ai-market-regime">🌊 Regime</a><a href="/ai-whale-watcher">🐋 Whale</a><a href="/stats-dashboard">$ Stats $</a><a href="/market-simulation">📈 Simulation</a><a href="/success-stories" class="active">🌟 Stories</a><a href="/convertisseur">💱 Convertir</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a>
     </div>
@@ -17384,6 +18528,50 @@ async def risk_management_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
 <div class="container">
@@ -17558,6 +18746,50 @@ async def watchlist_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
 <div class="container">
@@ -17699,6 +18931,50 @@ async def ai_assistant_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
 <div class="container">
@@ -18163,6 +19439,50 @@ async def calculatrice_trades():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
     <div class="container">
@@ -18618,6 +19938,50 @@ async def prediction_ia():
     </style>
 </head>
 <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
     <div class="container">
@@ -19310,6 +20674,50 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         {ADMIN_NAV}
         <div class="container">
@@ -19609,6 +21017,50 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             </style>
         </head>
         <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
             
             {ADMIN_NAV}
             <div class="container">
@@ -19896,6 +21348,50 @@ async def mon_compte(request: Request):
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         <div class="container">
             <div class="header">
@@ -20020,6 +21516,50 @@ async def fear_greed_chart():
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         <div class="container">
             <h1>📊 Fear & Greed Index - Historique 12 Mois</h1>
@@ -20195,6 +21735,50 @@ async def admin_update_plan_features_page(request: Request):
         </style>
     </head>
     <body class="bg-gray-900 text-white min-h-screen">
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         <div class="container mx-auto px-4 py-8">
             <div class="max-w-4xl mx-auto">
@@ -20362,6 +21946,50 @@ async def dashboard(request: Request):
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         <div class="container">
             <div class="welcome-card">
@@ -20503,6 +22131,50 @@ async def admin_permissions_page(session_token: Optional[str] = Cookie(None)):
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         {ADMIN_NAV}
         <div class="container">
@@ -20630,6 +22302,50 @@ async def admin_pricing_page(session_token: Optional[str] = Cookie(None)):
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         {ADMIN_NAV}
         <div class="container">
@@ -20732,6 +22448,50 @@ async def admin_change_password_page(session_token: Optional[str] = Cookie(None)
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         {ADMIN_NAV}
         <div class="container">
@@ -21145,6 +22905,50 @@ async def backtesting_page(request: Request):
         </style>
     </head>
     <body>
+<style>
+.fixed-nav {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 12px 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 1000;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.fixed-nav a {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border: 1px solid rgba(255,255,255,0.1);
+    white-space: nowrap;
+}
+.fixed-nav a:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+</style>
+<nav class="fixed-nav">
+    <a href="/dashboard">🏠 Accueil</a>
+    <a href="/fear-greed">😨 Fear&Greed</a>
+    <a href="/dominance">👑 Dominance</a>
+    <a href="/heatmap">🔥 Heatmap</a>
+    <a href="/backtesting">🔬 Backtesting</a>
+    <a href="/strategy">📚 Stratégie</a>
+    <a href="/calculatrice">🧮 Calculatrice</a>
+    <a href="/trades">📈 Trades</a>
+    <a href="/news">📰 News</a>
+    <a href="/mon-compte">👤 Compte</a>
+    <a href="/logout">🚪 Déconnexion</a>
+</nav>
+
         
         
         <div class="container">

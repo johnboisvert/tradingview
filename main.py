@@ -1827,51 +1827,7 @@ async def login_page(request: Request, error: str = None):
     </style>
 </head>
 <body>
-<style>
-.fixed-nav {
-    position: sticky;
-    top: 0;
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    padding: 12px 20px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    z-index: 1000;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-.fixed-nav a {
-    background: rgba(255,255,255,0.1);
-    color: white;
-    padding: 8px 14px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-    border: 1px solid rgba(255,255,255,0.1);
-    white-space: nowrap;
-}
-.fixed-nav a:hover {
-    background: rgba(255,255,255,0.2);
-    transform: translateY(-1px);
-}
-</style>
-<nav class="fixed-nav">
-    <a href="/dashboard">🏠 Accueil</a>
-    <a href="/fear-greed">😨 Fear&Greed</a>
-    <a href="/dominance">👑 Dominance</a>
-    <a href="/heatmap">🔥 Heatmap</a>
-    <a href="/backtesting">🔬 Backtesting</a>
-    <a href="/strategy">📚 Stratégie</a>
-    <a href="/calculatrice">🧮 Calculatrice</a>
-    <a href="/trades">📈 Trades</a>
-    <a href="/news">📰 News</a>
-    <a href="/mon-compte">👤 Compte</a>
-    <a href="/logout">🚪 Déconnexion</a>
-</nav>
-
-    <div class="login-container">
+<div class="login-container">
         <div class="login-header">
             <h1>🔐 Connexion</h1>
             <p>Accédez à votre dashboard de trading</p>
@@ -2002,51 +1958,7 @@ async def admin_panel(username: str = Depends(require_admin)):
     </style>
 </head>
 <body>
-<style>
-.fixed-nav {
-    position: sticky;
-    top: 0;
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    padding: 12px 20px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-    z-index: 1000;
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-.fixed-nav a {
-    background: rgba(255,255,255,0.1);
-    color: white;
-    padding: 8px 14px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-    border: 1px solid rgba(255,255,255,0.1);
-    white-space: nowrap;
-}
-.fixed-nav a:hover {
-    background: rgba(255,255,255,0.2);
-    transform: translateY(-1px);
-}
-</style>
-<nav class="fixed-nav">
-    <a href="/dashboard">🏠 Accueil</a>
-    <a href="/fear-greed">😨 Fear&Greed</a>
-    <a href="/dominance">👑 Dominance</a>
-    <a href="/heatmap">🔥 Heatmap</a>
-    <a href="/backtesting">🔬 Backtesting</a>
-    <a href="/strategy">📚 Stratégie</a>
-    <a href="/calculatrice">🧮 Calculatrice</a>
-    <a href="/trades">📈 Trades</a>
-    <a href="/news">📰 News</a>
-    <a href="/mon-compte">👤 Compte</a>
-    <a href="/logout">🚪 Déconnexion</a>
-</nav>
-
-    <div class="container">
+<div class="container">
         <div class="header">
             <h1>👑 Panel d'Administration</h1>
             <p>Gérez les accès au dashboard</p>

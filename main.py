@@ -2221,7 +2221,7 @@ async def change_password(request: Request, username: str = Depends(require_auth
 # ✅ ROUTE STRATÉGIE MAGIC MIKE COMPLÈTE (tous les 5 niveaux)
 @app.get("/strategie", response_class=HTMLResponse)
 async def strategie_page():
-    html_content = """
+    html_content = f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -3735,7 +3735,7 @@ async def health_check():
 @app.get("/", response_class=HTMLResponse)
 async def home():
     """Page d'accueil professionnelle du dashboard"""
-    html_content = """
+    html_content = f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -4214,7 +4214,7 @@ async def home():
 @app.get("/spot-trading", response_class=HTMLResponse)
 async def spot_trading_page():
     """Page complète et professionnelle sur le trading SPOT"""
-    html_content = """
+    html_content = f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -5890,7 +5890,7 @@ async def ai_opportunity_scanner():
     Scanner IA des meilleures opportunités de trading en temps réel
     ✅ DONNÉES RÉELLES EN TEMPS RÉEL DE COINGECKO API (Pas de données simulées!)
     """
-    html_content = """
+    html_content = f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -6457,7 +6457,7 @@ async def ai_market_regime():
     
     ⚠️ OUI, nous sommes au début/milieu d'un bull run, PAS à la fin!
     """
-    html_content = """
+    html_content = f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -7330,7 +7330,7 @@ async def ai_whale_watcher():
     whale_data_json = json.dumps(whale_data)
     
     # Créer le HTML avec un PLACEHOLDER
-    html_content = """
+    html_content = f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>

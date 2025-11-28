@@ -2464,6 +2464,8 @@ async def strategie_page():
         </style>
     </head>
     <body>
+        {NAV_MENU}
+
         <div class="container">
             <header>
                 <h1>🎯 MAGIC MIKE 1H - GUIDE ULTIME 🎯</h1>
@@ -4452,6 +4454,8 @@ async def spot_trading_page():
         </style>
     </head>
     <body>
+        {NAV_MENU}
+
         <div class="container">
             <header>
                 <h1>💎 TRADING SPOT - GUIDE COMPLET</h1>
@@ -6132,6 +6136,8 @@ async def ai_opportunity_scanner():
         </style>
     </head>
     <body>
+        {NAV_MENU}
+
         <div class="container">
             <header>
                 <h1>🎯 AI OPPORTUNITY SCANNER</h1>
@@ -6650,6 +6656,8 @@ async def ai_market_regime():
         </style>
     </head>
     <body>
+        {NAV_MENU}
+
         <div class="container">
             <header>
                 <h1>🌊 AI MARKET REGIME DETECTOR</h1>
@@ -7566,6 +7574,8 @@ async def ai_whale_watcher():
         </style>
     </head>
     <body>
+        {NAV_MENU}
+
         <div class="container">
             <header>
                 <h1>🐋 AI WHALE WATCHER</h1>
@@ -8112,6 +8122,8 @@ async def news_page():
     </style>
 </head>
 <body>
+        {NAV_MENU}
+
     <div class="container">
         <div class="header">
             <h1>📰 Actualités Crypto</h1>
@@ -9552,7 +9564,9 @@ async def fear_greed_page():
 
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body><div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div>""" + NAV + """<div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body>
+        {NAV_MENU}
+<div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div>""" + NAV + """<div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
 let mainChart=null;
 let fullData=[];
 let currentPeriod='30d';
@@ -10197,6 +10211,8 @@ async def heatmap_page():
     </style>
 </head>
 <body>
+        {NAV_MENU}
+
     <div class="container">
         <!-- HEADER -->
         <div class="heatmap-header">
@@ -10749,6 +10765,8 @@ async def altcoin_page():
     </style>
 </head>
 <body>
+        {NAV_MENU}
+
     <div class="container">
         <div class="altcoin-header">
             <h1>🌟 Altcoin Season Index</h1>
@@ -11307,6 +11325,8 @@ async def bullrun_page():
     </style>
 </head>
 <body>
+        {NAV_MENU}
+
     <div class="container">
         <div class="header">
             <h1>🚀 Bullrun Phase Tracker</h1>
@@ -11909,6 +11929,8 @@ async def charts_page():
     </style>
 </head>
 <body>
+        {NAV_MENU}
+
     <div class="container">
         <!-- Header -->
         <div class="header">
@@ -12767,7 +12789,9 @@ async def charts_page():
     return HTMLResponse(html)
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📱 Test Telegram</h1></div>""" + NAV + """<div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body>
+        {NAV_MENU}
+<div class="container"><div class="header"><h1>📱 Test Telegram</h1></div>""" + NAV + """<div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
     return HTMLResponse(html)
 
 
@@ -12850,6 +12874,8 @@ async def trades_page():
     </style>
 </head>
 <body>
+        {NAV_MENU}
+
     <div class="container">
         <div class="header fade-in">
             <h1>📊 Gestion des Trades Premium</h1>
@@ -14270,6 +14296,8 @@ async def calendrier_economique():
     </style>
 </head>
 <body>
+        {NAV_MENU}
+
     <div class="container">
         <div class="header">
             <h1>📅 Calendrier Économique Détaillé</h1>
@@ -15446,6 +15474,8 @@ async def pricing_page_new(request: Request):
     </style>
 </head>
 <body>
+        {NAV_MENU}
+
     <div class="container">
         <div id="successMsg" class="success-message">
             ✅ Paiement reçu! Merci! Votre abonnement est actif.
@@ -17456,6 +17486,8 @@ async def risk_management_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
 <body>
+        {NAV_MENU}
+
 <div class="container">
 <div class="header"><h1>⚖️ RISK MANAGEMENT</h1><p>Gestion professionnelle du risque</p></div>
 {NAV}
@@ -17628,6 +17660,8 @@ async def watchlist_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
 <body>
+        {NAV_MENU}
+
 <div class="container">
 <div class="header"><h1>👀 WATCHLIST & ALERTES</h1><p>Surveillez vos cryptos préférées</p></div>
 {NAV}
@@ -17767,6 +17801,8 @@ async def ai_assistant_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
 <body>
+        {NAV_MENU}
+
 <div class="container">
 <div class="header"><h1>🤖 AI TRADING ASSISTANT</h1><p>Intelligence artificielle pour optimiser vos trades</p></div>
 {NAV}
@@ -18229,6 +18265,8 @@ async def calculatrice_trades():
     </style>
 </head>
 <body>
+        {NAV_MENU}
+
     <div class="container">
         <div class="header">
             <h1>🧮 Calculatrice de Trades</h1>
@@ -18682,6 +18720,8 @@ async def prediction_ia():
     </style>
 </head>
 <body>
+        {NAV_MENU}
+
     <div class="container">
         <div class="header">
             <h1>🤖 Prédiction Crypto IA Pro</h1>

@@ -3089,6 +3089,11 @@ document.addEventListener('DOMContentLoaded', function() {
     border: none; 
     color: white;
 }
+.universal-nav-btn.admin { 
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); 
+    border: none; 
+    color: white;
+}
 .universal-nav-btn.logout { 
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
     border: none; 
@@ -3102,7 +3107,6 @@ document.addEventListener('DOMContentLoaded', function() {
         <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
         <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
         <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-        <a href="/backtesting" class="universal-nav-btn">🔬 Backtesting</a>
         <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
         <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
         <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
@@ -3124,6 +3128,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
+        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
         <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
         <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
     </div>
@@ -3620,6 +3625,105 @@ async def webhook(trade: TradeWebhook):
 async def health_check():
     """Endpoint pour garder le serveur éveillé (UptimeRobot) - Supporte GET et HEAD"""
     return {"status": "alive", "timestamp": datetime.now().isoformat()}
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(session_token: Optional[str] = Cookie(None)):
+    """Dashboard principal"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return RedirectResponse("/login")
+    
+    username = user.get('username', 'Utilisateur')
+    plan = user.get('plan', 'FREE')
+    
+    return HTMLResponse(f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏠 Dashboard - Trading Pro</title>
+    """ + CSS + """
+    <style>
+        .welcome-section {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+            border-radius: 15px;
+            margin: 30px 0;
+            text-align: center;
+            color: white;
+        }}
+        .welcome-section h1 {{
+            font-size: 36px;
+            margin-bottom: 10px;
+        }}
+        .features-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }}
+        .feature-card {{
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            transition: all 0.3s;
+        }}
+        .feature-card:hover {{
+            transform: translateY(-5px);
+            border-color: #60a5fa;
+        }}
+        .feature-card h3 {{
+            color: #60a5fa;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }}
+        .feature-card p {{
+            color: #94a3b8;
+            line-height: 1.6;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="welcome-section">
+            <h1>🏠 Bienvenue {username}!</h1>
+            <p style="font-size: 18px;">Plan actuel: <strong>{plan.upper()}</strong></p>
+        </div>
+        
+        <div class="features-grid">
+            <div class="feature-card">
+                <h3>😨 Fear & Greed Index</h3>
+                <p>Mesurez le sentiment du marché en temps réel</p>
+                <a href="/fear-greed" style="color: #60a5fa;">Accéder →</a>
+            </div>
+            <div class="feature-card">
+                <h3>👑 Dominance Bitcoin</h3>
+                <p>Suivez la dominance de Bitcoin sur le marché</p>
+                <a href="/dominance" style="color: #60a5fa;">Accéder →</a>
+            </div>
+            <div class="feature-card">
+                <h3>🔥 Heatmap Crypto</h3>
+                <p>Visualisez les performances du top 100 cryptos</p>
+                <a href="/heatmap" style="color: #60a5fa;">Accéder →</a>
+            </div>
+            
+            <div class="feature-card">
+                <h3>📚 Stratégies Trading</h3>
+                <p>Apprenez les meilleures stratégies de trading</p>
+                <a href="/strategie" style="color: #60a5fa;">Accéder →</a>
+            </div>
+            <div class="feature-card">
+                <h3>📰 Actualités Crypto</h3>
+                <p>Restez informé des dernières nouvelles</p>
+                <a href="/nouvelles" style="color: #60a5fa;">Accéder →</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>""")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def home():

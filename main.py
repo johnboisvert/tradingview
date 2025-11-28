@@ -8536,7 +8536,7 @@ async def convertisseur_page():
 </head>
 <body>
 <style>
-.top-nav {
+.top-nav {{
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     padding: 12px 20px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.5);
@@ -8544,16 +8544,16 @@ async def convertisseur_page():
     top: 0;
     z-index: 9999;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.nav-container {
+}}
+.nav-container {{
     max-width: 1600px;
     margin: 0 auto;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-}
-.nav-btn {
+}}
+.nav-btn {{
     background: rgba(255,255,255,0.05);
     color: #e2e8f0;
     padding: 8px 14px;
@@ -8564,17 +8564,17 @@ async def convertisseur_page():
     transition: all 0.2s;
     border: 1px solid rgba(255,255,255,0.08);
     white-space: nowrap;
-}
-.nav-btn:hover {
+}}
+.nav-btn:hover {{
     background: rgba(255,255,255,0.12);
     border-color: rgba(96,165,250,0.4);
     color: white;
     transform: translateY(-1px);
-}
-.nav-btn.premium { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }
-.nav-btn.admin { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }
-.nav-btn.account { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }
-.nav-btn.logout { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }
+}}
+.nav-btn.premium {{ background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }}
+.nav-btn.admin {{ background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }}
+.nav-btn.account {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }}
+.nav-btn.logout {{ background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }}
 </style>
 <nav class="top-nav">
     <div class="nav-container">
@@ -8609,6 +8609,7 @@ async def convertisseur_page():
         <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
     </div>
 </nav>
+
 
 
 <style>
@@ -14665,7 +14666,7 @@ async def calendrier_economique():
 </head>
 <body>
 <style>
-.top-nav {
+.top-nav {{
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     padding: 12px 20px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.5);
@@ -14673,16 +14674,16 @@ async def calendrier_economique():
     top: 0;
     z-index: 9999;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.nav-container {
+}}
+.nav-container {{
     max-width: 1600px;
     margin: 0 auto;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-}
-.nav-btn {
+}}
+.nav-btn {{
     background: rgba(255,255,255,0.05);
     color: #e2e8f0;
     padding: 8px 14px;
@@ -14693,17 +14694,17 @@ async def calendrier_economique():
     transition: all 0.2s;
     border: 1px solid rgba(255,255,255,0.08);
     white-space: nowrap;
-}
-.nav-btn:hover {
+}}
+.nav-btn:hover {{
     background: rgba(255,255,255,0.12);
     border-color: rgba(96,165,250,0.4);
     color: white;
     transform: translateY(-1px);
-}
-.nav-btn.premium { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }
-.nav-btn.admin { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }
-.nav-btn.account { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }
-.nav-btn.logout { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }
+}}
+.nav-btn.premium {{ background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }}
+.nav-btn.admin {{ background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }}
+.nav-btn.account {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }}
+.nav-btn.logout {{ background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }}
 </style>
 <nav class="top-nav">
     <div class="nav-container">
@@ -14738,6 +14739,7 @@ async def calendrier_economique():
         <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
     </div>
 </nav>
+
 
 
 <style>
@@ -18211,7 +18213,7 @@ async def risk_management_page():
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
 <body>
 <style>
-.top-nav {
+.top-nav {{
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     padding: 12px 20px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.5);
@@ -18219,16 +18221,16 @@ async def risk_management_page():
     top: 0;
     z-index: 9999;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.nav-container {
+}}
+.nav-container {{
     max-width: 1600px;
     margin: 0 auto;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-}
-.nav-btn {
+}}
+.nav-btn {{
     background: rgba(255,255,255,0.05);
     color: #e2e8f0;
     padding: 8px 14px;
@@ -18239,17 +18241,17 @@ async def risk_management_page():
     transition: all 0.2s;
     border: 1px solid rgba(255,255,255,0.08);
     white-space: nowrap;
-}
-.nav-btn:hover {
+}}
+.nav-btn:hover {{
     background: rgba(255,255,255,0.12);
     border-color: rgba(96,165,250,0.4);
     color: white;
     transform: translateY(-1px);
-}
-.nav-btn.premium { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }
-.nav-btn.admin { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }
-.nav-btn.account { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }
-.nav-btn.logout { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }
+}}
+.nav-btn.premium {{ background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }}
+.nav-btn.admin {{ background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }}
+.nav-btn.account {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }}
+.nav-btn.logout {{ background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }}
 </style>
 <nav class="top-nav">
     <div class="nav-container">
@@ -18284,6 +18286,7 @@ async def risk_management_page():
         <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
     </div>
 </nav>
+
 
 
 <style>
@@ -18551,7 +18554,7 @@ async def watchlist_page():
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
 <body>
 <style>
-.top-nav {
+.top-nav {{
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     padding: 12px 20px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.5);
@@ -18559,16 +18562,16 @@ async def watchlist_page():
     top: 0;
     z-index: 9999;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.nav-container {
+}}
+.nav-container {{
     max-width: 1600px;
     margin: 0 auto;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-}
-.nav-btn {
+}}
+.nav-btn {{
     background: rgba(255,255,255,0.05);
     color: #e2e8f0;
     padding: 8px 14px;
@@ -18579,17 +18582,17 @@ async def watchlist_page():
     transition: all 0.2s;
     border: 1px solid rgba(255,255,255,0.08);
     white-space: nowrap;
-}
-.nav-btn:hover {
+}}
+.nav-btn:hover {{
     background: rgba(255,255,255,0.12);
     border-color: rgba(96,165,250,0.4);
     color: white;
     transform: translateY(-1px);
-}
-.nav-btn.premium { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }
-.nav-btn.admin { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }
-.nav-btn.account { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }
-.nav-btn.logout { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }
+}}
+.nav-btn.premium {{ background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }}
+.nav-btn.admin {{ background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }}
+.nav-btn.account {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }}
+.nav-btn.logout {{ background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }}
 </style>
 <nav class="top-nav">
     <div class="nav-container">
@@ -18624,6 +18627,7 @@ async def watchlist_page():
         <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
     </div>
 </nav>
+
 
 
 <style>
@@ -18858,7 +18862,7 @@ async def ai_assistant_page():
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
 <body>
 <style>
-.top-nav {
+.top-nav {{
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     padding: 12px 20px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.5);
@@ -18866,16 +18870,16 @@ async def ai_assistant_page():
     top: 0;
     z-index: 9999;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.nav-container {
+}}
+.nav-container {{
     max-width: 1600px;
     margin: 0 auto;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-}
-.nav-btn {
+}}
+.nav-btn {{
     background: rgba(255,255,255,0.05);
     color: #e2e8f0;
     padding: 8px 14px;
@@ -18886,17 +18890,17 @@ async def ai_assistant_page():
     transition: all 0.2s;
     border: 1px solid rgba(255,255,255,0.08);
     white-space: nowrap;
-}
-.nav-btn:hover {
+}}
+.nav-btn:hover {{
     background: rgba(255,255,255,0.12);
     border-color: rgba(96,165,250,0.4);
     color: white;
     transform: translateY(-1px);
-}
-.nav-btn.premium { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }
-.nav-btn.admin { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }
-.nav-btn.account { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }
-.nav-btn.logout { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }
+}}
+.nav-btn.premium {{ background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }}
+.nav-btn.admin {{ background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }}
+.nav-btn.account {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }}
+.nav-btn.logout {{ background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }}
 </style>
 <nav class="top-nav">
     <div class="nav-container">
@@ -18931,6 +18935,7 @@ async def ai_assistant_page():
         <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
     </div>
 </nav>
+
 
 
 <style>
@@ -20631,7 +20636,7 @@ async def admin_dashboard(request: Request):
     </head>
     <body>
 <style>
-.top-nav {
+.top-nav {{
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     padding: 12px 20px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.5);
@@ -20639,16 +20644,16 @@ async def admin_dashboard(request: Request):
     top: 0;
     z-index: 9999;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.nav-container {
+}}
+.nav-container {{
     max-width: 1600px;
     margin: 0 auto;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-}
-.nav-btn {
+}}
+.nav-btn {{
     background: rgba(255,255,255,0.05);
     color: #e2e8f0;
     padding: 8px 14px;
@@ -20659,17 +20664,17 @@ async def admin_dashboard(request: Request):
     transition: all 0.2s;
     border: 1px solid rgba(255,255,255,0.08);
     white-space: nowrap;
-}
-.nav-btn:hover {
+}}
+.nav-btn:hover {{
     background: rgba(255,255,255,0.12);
     border-color: rgba(96,165,250,0.4);
     color: white;
     transform: translateY(-1px);
-}
-.nav-btn.premium { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }
-.nav-btn.admin { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }
-.nav-btn.account { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }
-.nav-btn.logout { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }
+}}
+.nav-btn.premium {{ background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }}
+.nav-btn.admin {{ background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }}
+.nav-btn.account {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }}
+.nav-btn.logout {{ background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }}
 </style>
 <nav class="top-nav">
     <div class="nav-container">
@@ -20704,6 +20709,7 @@ async def admin_dashboard(request: Request):
         <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
     </div>
 </nav>
+
 
 
 <style>
@@ -20965,7 +20971,7 @@ async def admin_pricing_page(session_token: Optional[str] = Cookie(None)):
 </head>
 <body>
 <style>
-.top-nav {
+.top-nav {{
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     padding: 12px 20px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.5);
@@ -20973,16 +20979,16 @@ async def admin_pricing_page(session_token: Optional[str] = Cookie(None)):
     top: 0;
     z-index: 9999;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.nav-container {
+}}
+.nav-container {{
     max-width: 1600px;
     margin: 0 auto;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-}
-.nav-btn {
+}}
+.nav-btn {{
     background: rgba(255,255,255,0.05);
     color: #e2e8f0;
     padding: 8px 14px;
@@ -20993,17 +20999,17 @@ async def admin_pricing_page(session_token: Optional[str] = Cookie(None)):
     transition: all 0.2s;
     border: 1px solid rgba(255,255,255,0.08);
     white-space: nowrap;
-}
-.nav-btn:hover {
+}}
+.nav-btn:hover {{
     background: rgba(255,255,255,0.12);
     border-color: rgba(96,165,250,0.4);
     color: white;
     transform: translateY(-1px);
-}
-.nav-btn.premium { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }
-.nav-btn.admin { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }
-.nav-btn.account { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }
-.nav-btn.logout { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }
+}}
+.nav-btn.premium {{ background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }}
+.nav-btn.admin {{ background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }}
+.nav-btn.account {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }}
+.nav-btn.logout {{ background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }}
 </style>
 <nav class="top-nav">
     <div class="nav-container">
@@ -21038,6 +21044,7 @@ async def admin_pricing_page(session_token: Optional[str] = Cookie(None)):
         <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
     </div>
 </nav>
+
 
 <style>
 .top-nav {
@@ -21417,7 +21424,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         </head>
         <body>
 <style>
-.top-nav {
+.top-nav {{
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     padding: 12px 20px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.5);
@@ -21425,16 +21432,16 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
     top: 0;
     z-index: 9999;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.nav-container {
+}}
+.nav-container {{
     max-width: 1600px;
     margin: 0 auto;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-}
-.nav-btn {
+}}
+.nav-btn {{
     background: rgba(255,255,255,0.05);
     color: #e2e8f0;
     padding: 8px 14px;
@@ -21445,17 +21452,17 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
     transition: all 0.2s;
     border: 1px solid rgba(255,255,255,0.08);
     white-space: nowrap;
-}
-.nav-btn:hover {
+}}
+.nav-btn:hover {{
     background: rgba(255,255,255,0.12);
     border-color: rgba(96,165,250,0.4);
     color: white;
     transform: translateY(-1px);
-}
-.nav-btn.premium { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }
-.nav-btn.admin { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }
-.nav-btn.account { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }
-.nav-btn.logout { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }
+}}
+.nav-btn.premium {{ background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }}
+.nav-btn.admin {{ background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }}
+.nav-btn.account {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }}
+.nav-btn.logout {{ background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }}
 </style>
 <nav class="top-nav">
     <div class="nav-container">
@@ -21490,6 +21497,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
     </div>
 </nav>
+
 
 
 <style>
@@ -21871,7 +21879,7 @@ async def mon_compte(request: Request):
     </head>
     <body>
 <style>
-.top-nav {
+.top-nav {{
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     padding: 12px 20px;
     box-shadow: 0 2px 15px rgba(0,0,0,0.5);
@@ -21879,16 +21887,16 @@ async def mon_compte(request: Request):
     top: 0;
     z-index: 9999;
     border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-.nav-container {
+}}
+.nav-container {{
     max-width: 1600px;
     margin: 0 auto;
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-}
-.nav-btn {
+}}
+.nav-btn {{
     background: rgba(255,255,255,0.05);
     color: #e2e8f0;
     padding: 8px 14px;
@@ -21899,17 +21907,17 @@ async def mon_compte(request: Request):
     transition: all 0.2s;
     border: 1px solid rgba(255,255,255,0.08);
     white-space: nowrap;
-}
-.nav-btn:hover {
+}}
+.nav-btn:hover {{
     background: rgba(255,255,255,0.12);
     border-color: rgba(96,165,250,0.4);
     color: white;
     transform: translateY(-1px);
-}
-.nav-btn.premium { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }
-.nav-btn.admin { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }
-.nav-btn.account { background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }
-.nav-btn.logout { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }
+}}
+.nav-btn.premium {{ background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border: none; color: white; }}
+.nav-btn.admin {{ background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; color: white; }}
+.nav-btn.account {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; color: white; }}
+.nav-btn.logout {{ background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border: none; color: white; }}
 </style>
 <nav class="top-nav">
     <div class="nav-container">
@@ -21944,6 +21952,7 @@ async def mon_compte(request: Request):
         <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
     </div>
 </nav>
+
 
 
 <style>

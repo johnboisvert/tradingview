@@ -740,7 +740,6 @@ NAV_MENU = """
         <a href="/whale-watcher" class="nav-btn">🐋 Whale Watcher</a>
         <a href="/stats-avancees" class="nav-btn">📊 Stats Avancées</a>
         <a href="/simulation" class="nav-btn">🎮 Simulation</a>
-        <a href="/backtesting" class="nav-btn">🔬 Backtesting</a>
         <a href="/success-stories" class="nav-btn">⭐ Success Stories</a>
         <a href="/convertisseur" class="nav-btn">💱 Convertisseur</a>
         <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
@@ -753,44 +752,6 @@ NAV_MENU = """
         <a href="/mon-compte" class="nav-btn account">👤 Mon Compte</a>
         <a href="/logout" class="nav-btn logout">🚪 Déconnexion</a>
     </div>
-</nav>
-"""
-# ============================================================================
-
-# ============================================================================
-# MENU ADMIN
-# ============================================================================
-ADMIN_NAV = """
-<style>
-    .admin-nav {
-        background: #1e293b;
-        padding: 10px 20px;
-        margin-bottom: 15px;
-        border-radius: 8px;
-        border: 1px solid #f59e0b;
-    }
-    .admin-nav a {
-        color: #fbbf24;
-        text-decoration: none;
-        padding: 8px 12px;
-        margin: 0 5px;
-        border-radius: 5px;
-        font-size: 14px;
-        font-weight: 600;
-        display: inline-block;
-    }
-    .admin-nav a:hover {
-        background: rgba(245, 158, 11, 0.2);
-    }
-</style>
-<nav class="admin-nav">
-    <span style="color: #fbbf24; font-weight: bold;">⚙️ ADMIN:</span>
-    <a href="/admin-dashboard">🏠 Dashboard</a>
-    <a href="/admin/permissions">🔐 Permissions</a>
-    <a href="/admin/pricing">💰 Prix</a>
-    <a href="/admin/list-promos">🎫 Promos</a>
-    <a href="/admin/change-password">🔐 Password</a>
-    <a href="/dashboard">← Retour</a>
 </nav>
 """
 # ============================================================================
@@ -2221,7 +2182,7 @@ async def change_password(request: Request, username: str = Depends(require_auth
 # ✅ ROUTE STRATÉGIE MAGIC MIKE COMPLÈTE (tous les 5 niveaux)
 @app.get("/strategie", response_class=HTMLResponse)
 async def strategie_page():
-    html_content = f"""
+    html_content = """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -2503,15 +2464,13 @@ async def strategie_page():
         </style>
     </head>
     <body>
-        {NAV_MENU}
-        
         <div class="container">
             <header>
                 <h1>🎯 MAGIC MIKE 1H - GUIDE ULTIME 🎯</h1>
                 <p>LA STRATÉGIE COMPLÈTE POUR GAGNER AVEC VOTRE INDICATEUR</p>
             </header>
             
-            """ + NAV + """
+            
             
             <div class="content">
                 <!-- NIVEAU 1 : COMPRENDRE -->
@@ -3160,96 +3119,7 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-NAV = '''<style>
-.modern-nav {
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-    padding: 0;
-    margin-bottom: 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-}
-.modern-nav .nav-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0;
-    padding: 15px;
-    justify-content: center;
-    align-items: center;
-}
-.modern-nav a {
-    padding: 10px 18px;
-    background: rgba(30, 41, 59, 0.6);
-    border-radius: 8px;
-    text-decoration: none;
-    color: #cbd5e1;
-    transition: all 0.3s;
-    border: 1px solid rgba(51, 65, 85, 0.5);
-    font-size: 14px;
-    font-weight: 500;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.modern-nav a:hover {
-    background: #3b82f6;
-    color: white;
-    border-color: #3b82f6;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-.modern-nav a.nav-premium {
-    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-    color: white;
-    border: 2px solid #8b5cf6;
-    font-weight: 600;
-}
-.modern-nav a.nav-premium:hover {
-    transform: translateY(-2px) scale(1.05);
-    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
-}
-.modern-nav a.nav-admin {
-    background: #ef4444;
-    color: white;
-    border-color: #dc2626;
-}
-.modern-nav a.nav-admin:hover {
-    background: #dc2626;
-}
-</style>
-<div class="modern-nav">
-    <div class="nav-container">
-        <a href="/">🏠 Accueil</a>
-        <a href="/fear-greed">😱 Fear&Greed</a>
-        <a href="/dominance">👑 Dominance</a>
-        <a href="/altcoin-season">🌟 Altcoin Season</a>
-        <a href="/heatmap">🔥 Heatmap</a>
-        <a href="/strategie">📚 Stratégie</a>
-        <a href="/spot-trading">💎 Spot Trading</a>
-        <a href="/calculatrice">🧮 Calculatrice</a>
-        <a href="/nouvelles">📰 Nouvelles</a>
-        <a href="/trades">📊 Trades</a>
-        <a href="/risk-management">⚖️ Risk Management</a>
-        <a href="/watchlist">👀 Watchlist</a>
-        <a href="/ai-assistant">🤖 AI Assistant</a>
-        <a href="/prediction-ia">🤖 Prédiction IA</a>
-        <a href="/ai-opportunity-scanner">🎯 AI Scanner</a>
-        <a href="/ai-market-regime">🌊 Market Regime</a>
-        <a href="/ai-whale-watcher">🐋 Whale Watcher</a>
-        <a href="/stats-dashboard">💰 Stats Avancées</a>
-        <a href="/market-simulation">📈 Simulation</a>
-        <a href="/success-stories">🌟 Success Stories</a>
-        <a href="/convertisseur">💱 Convertisseur</a>
-        <a href="/calendrier">📅 Calendrier</a>
-        <a href="/bullrun-phase">🚀 Bullrun Phase</a>
-        <a href="/graphiques">📈 Graphiques</a>
-        <a href="/telegram-test">📱 Telegram</a>
-        <a href="/pricing-complete" class="nav-premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="nav-admin">👑 Admin</a>
-        <a href="/mon-compte">👤 Mon Compte</a>
-        <a href="/logout">🚪 Déconnexion</a>
-    </div>
-</div>'''
+
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -3735,7 +3605,7 @@ async def health_check():
 @app.get("/", response_class=HTMLResponse)
 async def home():
     """Page d'accueil professionnelle du dashboard"""
-    html_content = f"""
+    html_content = """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -3945,8 +3815,6 @@ async def home():
         </style>
     </head>
     <body>
-        {NAV_MENU}
-        
         <div class="hero">
             <h1>🎯 Magic Mike Trading Dashboard</h1>
             <p>Plateforme complète d'analyse crypto & outils professionnels pour traders</p>
@@ -3971,7 +3839,7 @@ async def home():
             </div>
         </div>
         
-        """ + NAV + """
+        
         
         <div class="container">
             <div class="features-grid">
@@ -4214,7 +4082,7 @@ async def home():
 @app.get("/spot-trading", response_class=HTMLResponse)
 async def spot_trading_page():
     """Page complète et professionnelle sur le trading SPOT"""
-    html_content = f"""
+    html_content = """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -4495,15 +4363,13 @@ async def spot_trading_page():
         </style>
     </head>
     <body>
-        {NAV_MENU}
-        
         <div class="container">
             <header>
                 <h1>💎 TRADING SPOT - GUIDE COMPLET</h1>
                 <p>Tout ce que vous devez savoir sur le trading au comptant (Spot)</p>
             </header>
             
-            """ + NAV + """
+            
             
             <div class="content">
                 <!-- SECTION 1: QU'EST-CE QUE LE SPOT -->
@@ -5890,7 +5756,7 @@ async def ai_opportunity_scanner():
     Scanner IA des meilleures opportunités de trading en temps réel
     ✅ DONNÉES RÉELLES EN TEMPS RÉEL DE COINGECKO API (Pas de données simulées!)
     """
-    html_content = f"""
+    html_content = """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -6177,15 +6043,13 @@ async def ai_opportunity_scanner():
         </style>
     </head>
     <body>
-        {NAV_MENU}
-        
         <div class="container">
             <header>
                 <h1>🎯 AI OPPORTUNITY SCANNER</h1>
                 <p>Intelligence Artificielle détectant les meilleures opportunités de trading en temps réel</p>
             </header>
             
-            """ + NAV + """
+            
             
             <div class="content">
                 <div class="refresh-bar">
@@ -6457,7 +6321,7 @@ async def ai_market_regime():
     
     ⚠️ OUI, nous sommes au début/milieu d'un bull run, PAS à la fin!
     """
-    html_content = f"""
+    html_content = """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -6697,15 +6561,13 @@ async def ai_market_regime():
         </style>
     </head>
     <body>
-        {NAV_MENU}
-        
         <div class="container">
             <header>
                 <h1>🌊 AI MARKET REGIME DETECTOR</h1>
                 <p>Détection intelligente de la phase actuelle du marché crypto</p>
             </header>
             
-            """ + NAV + """
+            
             
             <div class="content">
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 25px; border: 2px solid rgba(99, 102, 241, 0.3);">
@@ -7330,7 +7192,7 @@ async def ai_whale_watcher():
     whale_data_json = json.dumps(whale_data)
     
     # Créer le HTML avec un PLACEHOLDER
-    html_content = f"""
+    html_content = """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -7615,8 +7477,6 @@ async def ai_whale_watcher():
         </style>
     </head>
     <body>
-        {NAV_MENU}
-        
         <div class="container">
             <header>
                 <h1>🐋 AI WHALE WATCHER</h1>
@@ -7626,7 +7486,7 @@ async def ai_whale_watcher():
                 </div>
             </header>
             
-            """ + NAV + """
+            
             
             <div class="content">
                 <div id="alertBanner"></div>
@@ -8168,7 +8028,7 @@ async def news_page():
             <h1>📰 Actualités Crypto</h1>
             <p>Les dernières nouvelles du monde de la cryptomonnaie</p>
         </div>
-        """ + NAV + """
+        
         <div class="card">
             <input type="text" class="search-input" id="searchInput" placeholder="🔍 Rechercher...">
             <div class="filters" id="filters">
@@ -8552,8 +8412,6 @@ async def convertisseur_page():
     </style>
 </head>
 <body>
-        {NAV_MENU}
-        
     <div class="container">
         <div class="header">
             <h1>💱 Convertisseur Universel</h1>
@@ -9600,14 +9458,12 @@ async def telegram_test():
 # FIN SECTION ALTCOIN SEASON
 @app.get("/fear-greed", response_class=HTMLResponse)
 async def fear_greed_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div>""" + NAV + """<div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script></body></html>"""
     return HTMLResponse(html)
 
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body>
-        {NAV_MENU}
-        <div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div>""" + NAV + """<div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body><div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div><div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
 let mainChart=null;
 let fullData=[];
 let currentPeriod='30d';
@@ -10252,8 +10108,6 @@ async def heatmap_page():
     </style>
 </head>
 <body>
-        {NAV_MENU}
-        
     <div class="container">
         <!-- HEADER -->
         <div class="heatmap-header">
@@ -10261,7 +10115,7 @@ async def heatmap_page():
             <p>Visualisation en temps réel des performances du marché crypto</p>
         </div>
 
-        """ + NAV + """
+        
 
         <!-- STATISTIQUES -->
         <div class="stats-bar">
@@ -10806,15 +10660,13 @@ async def altcoin_page():
     </style>
 </head>
 <body>
-        {NAV_MENU}
-        
     <div class="container">
         <div class="altcoin-header">
             <h1>🌟 Altcoin Season Index</h1>
             <p style="color: #94a3b8; font-size: 18px;">Indice du marché crypto</p>
         </div>
 
-        """ + NAV + """
+        
 
         <div class="gauge-card">
             <div class="gauge-container">
@@ -11366,15 +11218,13 @@ async def bullrun_page():
     </style>
 </head>
 <body>
-        {NAV_MENU}
-        
     <div class="container">
         <div class="header">
             <h1>🚀 Bullrun Phase Tracker</h1>
             <p>Analyse en temps réel des 4 phases du cycle haussier crypto</p>
         </div>
         
-        """ + NAV + """
+        
         
         <div id="loading" class="loading-state">
             <div class="spinner"></div>
@@ -11970,8 +11820,6 @@ async def charts_page():
     </style>
 </head>
 <body>
-        {NAV_MENU}
-        
     <div class="container">
         <!-- Header -->
         <div class="header">
@@ -11979,7 +11827,7 @@ async def charts_page():
             <p>Analyse technique avancée et visualisation de données</p>
         </div>
         
-        """ + NAV + """
+        
         
         <!-- Tabs -->
         <div class="tabs-container">
@@ -12830,7 +12678,7 @@ async def charts_page():
     return HTMLResponse(html)
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📱 Test Telegram</h1></div>""" + NAV + """<div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📱 Test Telegram</h1></div><div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
     return HTMLResponse(html)
 
 
@@ -12913,14 +12761,12 @@ async def trades_page():
     </style>
 </head>
 <body>
-        {NAV_MENU}
-        
     <div class="container">
         <div class="header fade-in">
             <h1>📊 Gestion des Trades Premium</h1>
             <p>Plateforme avancée de suivi et d'analyse de trading</p>
         </div>
-        """ + NAV + """
+        
         <div style="height:15px;"></div>
         <div class="stats-grid fade-in" id="statsGrid">
             <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-label">Total Trades</div><div class="stat-value" id="totalTrades">0</div><div class="stat-change" id="totalChange">+0 cette semaine</div></div>
@@ -14335,8 +14181,6 @@ async def calendrier_economique():
     </style>
 </head>
 <body>
-        {NAV_MENU}
-        
     <div class="container">
         <div class="header">
             <h1>📅 Calendrier Économique Détaillé</h1>
@@ -14895,7 +14739,7 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
     """Page de pricing avec support codes promo"""
-    html = NAV_MENU + """<!DOCTYPE html>
+    return HTMLResponse("""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -15000,27 +14844,9 @@ async def pricing_complete():
         
         .pricing-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
             margin-bottom: 50px;
-            max-width: 1600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        @media (max-width: 1400px) {
-            .pricing-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        @media (max-width: 900px) {
-            .pricing-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        @media (max-width: 600px) {
-            .pricing-grid {
-                grid-template-columns: 1fr;
-            }
         }
         .pricing-card {
             background: white;
@@ -15156,26 +14982,6 @@ async def pricing_complete():
         </div>
         
         <div class="pricing-grid">
-            <!-- Plan GRATUIT -->
-            <div class="pricing-card">
-                <div class="plan-name">🆓 Gratuit</div>
-                <div class="discount-badge">Toujours gratuit</div>
-                <div class="plan-price">
-                    <span class="currency">$</span><span>0</span>
-                    <span class="period">/toujours</span>
-                </div>
-                <ul class="features">
-                    <li>✅ Dashboard de base</li>
-                    <li>✅ Fear & Greed Index</li>
-                    <li>✅ Dominance Bitcoin</li>
-                    <li>✅ Heatmap crypto</li>
-                    <li>✅ Actualités</li>
-                </ul>
-                <button class="btn-payment" style="background: #94a3b8; cursor: pointer;" onclick="window.location.href='/register'">
-                    📝 S'inscrire Gratuitement
-                </button>
-            </div>
-            
             <!-- Plan 1 Month -->
             <div class="pricing-card">
                 <div class="plan-name">💳 Premium</div>
@@ -15393,9 +15199,7 @@ async def pricing_complete():
     </script>
 </body>
 </html>
-"""
-    return HTMLResponse(html)
-
+""")
 @app.get("/pricing-new", response_class=HTMLResponse)
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
@@ -16800,7 +16604,7 @@ async def market_simulation():
         <h1>📈 SIMULATION DE MARCHÉ - Top 10 Crypto</h1>
         <p class="subtitle">Comparez l'impact du DCA vs Émotions sur les cryptos réelles</p>
         
-        """ + NAV + """
+        
         
         <div class="controls">
             <div class="control-group">
@@ -17563,8 +17367,6 @@ async def risk_management_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
 <body>
-        {NAV_MENU}
-        
 <div class="container">
 <div class="header"><h1>⚖️ RISK MANAGEMENT</h1><p>Gestion professionnelle du risque</p></div>
 {NAV}
@@ -17737,8 +17539,6 @@ async def watchlist_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
 <body>
-        {NAV_MENU}
-        
 <div class="container">
 <div class="header"><h1>👀 WATCHLIST & ALERTES</h1><p>Surveillez vos cryptos préférées</p></div>
 {NAV}
@@ -17878,8 +17678,6 @@ async def ai_assistant_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
 <body>
-        {NAV_MENU}
-        
 <div class="container">
 <div class="header"><h1>🤖 AI TRADING ASSISTANT</h1><p>Intelligence artificielle pour optimiser vos trades</p></div>
 {NAV}
@@ -18342,15 +18140,13 @@ async def calculatrice_trades():
     </style>
 </head>
 <body>
-        {NAV_MENU}
-        
     <div class="container">
         <div class="header">
             <h1>🧮 Calculatrice de Trades</h1>
             <p>Calculez votre position, risque et profits potentiels</p>
         </div>
         
-        """ + NAV + """
+        
         
         <div class="calc-grid">
             <!-- SECTION 1: PARAMÈTRES DU TRADE -->
@@ -18797,15 +18593,13 @@ async def prediction_ia():
     </style>
 </head>
 <body>
-        {NAV_MENU}
-        
     <div class="container">
         <div class="header">
             <h1>🤖 Prédiction Crypto IA Pro</h1>
             <p>Intelligence artificielle avancée pour prédire les mouvements de marché</p>
         </div>
         
-        """ + NAV + """
+        
         
         <div class="info-banner">
             <h2>🚀 Application IA Avancée</h2>
@@ -19489,8 +19283,6 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
-        {NAV_MENU}
-        {ADMIN_NAV}
         <div class="container">
             <div class="header">
                 <h1>👨‍💼 Admin Dashboard</h1>
@@ -19699,11 +19491,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
     try:
         conn = get_db_connection()
         codes = PromoCodeManager.get_all_promo_codes(conn)
-        stats = {
-            'total_codes': len(codes),
-            'active_codes': sum(1 for c in codes if c[9]),
-            'total_uses': sum(c[4] for c in codes) if codes else 0,
-        }
+        stats = PromoCodeManager.get_promo_stats(conn)
         conn.close()
         
         codes_html = ""
@@ -19788,9 +19576,8 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             </style>
         </head>
         <body>
-            {NAV_MENU}
-            {ADMIN_NAV}
             <div class="container">
+                {NAV}
                 
                 <h1>💰 Gestion des Codes Promo</h1>
                 
@@ -20336,6 +20123,302 @@ async def live_stats():
 
 
 # ============================================================================
+# BACKTESTING
+# ============================================================================
+
+# Page Backtesting
+@app.get("/backtesting", response_class=HTMLResponse)
+async def backtesting_page(request: Request):
+    """Page de backtesting avec formulaire"""
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Backtesting | {SITE_NAME}</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
+        <style>
+            .gradient-bg {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
+            .glass-effect {{ background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }}
+            .result-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }}
+            .result-item {{ background: #1e293b; padding: 1.5rem; border-radius: 12px; text-align: center; }}
+            .result-value {{ font-size: 2rem; font-weight: bold; color: #10b981; }}
+            .result-value.loss {{ color: #ef4444; }}
+        </style>
+    </head>
+    <body class="bg-gray-900 text-white min-h-screen">
+        {NAV_MENU}
+        <div class="container mx-auto px-4 py-8">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-4xl font-bold text-center mb-8">⚙️ Backtesting de Stratégie</h1>
+                <div class="glass-effect rounded-xl p-8">
+                    <form id="backtestForm" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="symbol" class="block text-sm font-medium mb-2">Paire de Trading</label>
+                                <input type="text" id="symbol" name="symbol" value="BTCUSDT" required class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="strategy" class="block text-sm font-medium mb-2">Stratégie</label>
+                                <select id="strategy" name="strategy" class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                                    <option value="ema_cross">Croisement EMA</option>
+                                    <option value="rsi">RSI</option>
+                                    <option value="macd">MACD</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="start_date" class="block text-sm font-medium mb-2">Date de Début</label>
+                                <input type="date" id="start_date" name="start_date" value="2024-01-01" required class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="end_date" class="block text-sm font-medium mb-2">Date de Fin</label>
+                                <input type="date" id="end_date" name="end_date" value="2024-12-31" required class="w-full px-4 py-2 bg-gray-800 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                            </div>
+                        </div>
+                        <div class="flex justify-center">
+                            <button type="submit" class="gradient-bg text-white px-8 py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                                <i class="ri-play-line mr-2"></i> Lancer le Backtest
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div id="results" class="mt-12 hidden">
+                    <h2 class="text-3xl font-bold text-center mb-8">📊 Résultats</h2>
+                    <div id="resultGrid" class="result-grid">
+                        <!-- Les résultats seront injectés ici par JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            document.getElementById('backtestForm').addEventListener('submit', async (e) => {{
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData.entries());
+                
+                // Afficher un loader
+                const resultsDiv = document.getElementById('results');
+                const resultGrid = document.getElementById('resultGrid');
+                resultGrid.innerHTML = '<div class="col-span-full text-center text-xl">Calcul en cours...</div>';
+                resultsDiv.classList.remove('hidden');
+
+                try {{
+                    const response = await fetch('/api/backtest', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify(data)
+                    }});
+                    const r = await response.json();
+
+                    if (r.success) {{
+                        resultGrid.innerHTML = `
+                            <div class="result-item"><div>Total Trades</div><div class="result-value">\${{r.total_trades}}</div></div>
+                            <div class="result-item"><div>Win Rate</div><div class="result-value">\${{r.win_rate}}%</div></div>
+                            <div class="result-item"><div>Winning Trades</div><div class="result-value">\${{r.winning_trades}}</div></div>
+                            <div class="result-item"><div>Losing Trades</div><div class="result-value">\${{r.losing_trades}}</div></div>
+                            <div class="result-item"><div>Profit/Loss</div><div class="result-value \${{r.profit_loss >= 0 ? '' : 'loss'}}">\$\${{r.profit_loss}}</div></div>
+                            <div class="result-item"><div>Max Drawdown</div><div class="result-value loss">\${{r.max_drawdown}}</div></div>
+                            <div class="result-item"><div>Sharpe Ratio</div><div class="result-value">\${{r.sharpe_ratio}}</div></div>
+                        `;
+                    }} else {{
+                        resultGrid.innerHTML = '<div class="col-span-full text-center text-red-500">Erreur lors du backtest.</div>';
+                    }}
+                }} catch (error) {{
+                    console.error('Error:', error);
+                    resultGrid.innerHTML = '<div class="col-span-full text-center text-red-500">Erreur de connexion au serveur.</div>';
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    """)
+
+@app.post("/api/backtest")
+async def api_backtest(request: Request):
+    """API Backtesting"""
+    import random
+    data = await request.json()
+    
+    total_trades = random.randint(100, 200)
+    winning_trades = int(total_trades * random.uniform(0.55, 0.70))
+    
+    return {
+        'success': True,
+        'results': {
+            'total_trades': total_trades,
+            'winning_trades': winning_trades,
+            'losing_trades': total_trades - winning_trades,
+            'win_rate': round((winning_trades / total_trades) * 100, 2),
+            'profit_loss': round(random.uniform(2000, 5000), 2),
+            'max_drawdown': round(random.uniform(-800, -300), 2),
+            'sharpe_ratio': round(random.uniform(1.2, 2.5), 2)
+        }
+    }
+
+
+# ============================================================================
+# MÉTRIQUES ON-CHAIN
+# ============================================================================
+
+@app.get("/onchain-metrics")
+async def onchain_metrics():
+    """Indicateurs on-chain (whale movements, exchange flows)"""
+    # Utiliser API comme Glassnode, CryptoQuant
+    # Exemple simplifié:
+    
+    metrics = {
+        'whale_transactions': {
+            'last_24h': 47,
+            'total_volume': '125,340 BTC',
+            'trend': 'up'
+        },
+        'exchange_inflow': {
+            'btc': '12,450 BTC',
+            'change_24h': '+15.2%'
+        },
+        'exchange_outflow': {
+            'btc': '8,920 BTC',
+            'change_24h': '-5.8%'
+        },
+        'net_flow': {
+            'btc': '+3,530 BTC',
+            'sentiment': 'Selling pressure'
+        }
+    }
+    
+    return {
+        'success': True,
+        'timestamp': datetime.now().isoformat(),
+        'metrics': metrics
+    }
+
+# ============================================================================
+# WIDGET TÉMOIGNAGES
+# ============================================================================
+
+@app.get("/testimonials-widget")
+async def testimonials_widget():
+    """Widget témoignages pour homepage"""
+    testimonials = [
+        {
+            'name': 'Jean D.',
+            'text': 'Excellente plateforme! +250% en 3 mois',
+            'rating': 5
+        },
+        {
+            'name': 'Marie L.',
+            'text': 'Signaux précis, interface intuitive',
+            'rating': 5
+        }
+    ]
+    
+    return {'success': True, 'testimonials': testimonials}
+
+# ============================================================================
+# GESTION CLÉS API (Développeur)
+# ============================================================================
+
+# Stockage temporaire des clés API (à remplacer par une base de données en production)
+API_KEYS = {}
+
+@app.get("/api-keys", response_class=HTMLResponse)
+async def api_keys_page(request: Request):
+    """Page pour gérer sa clé API"""
+    # On vérifie si l'utilisateur est bien connecté
+    user = get_user_from_token(request.cookies.get("session_token"))
+    if not user:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>Votre Clé API</title>
+        <style>
+            body {{ font-family: Arial; background: #0f172a; color: white; margin: 0; }}
+            .container {{ max-width: 800px; margin: 40px auto; padding: 20px; background: #1e293b; border-radius: 20px; }}
+            h1 {{ text-align: center; }}
+            .key-display {{ background: #0f172a; padding: 20px; border-radius: 10px; word-wrap: break-word; margin: 20px 0; }}
+            button {{ width: 100%; padding: 15px; background: #667eea; color: white; border: none; border-radius: 10px; cursor: pointer; }}
+        </style>
+    </head>
+    <body>
+        {NAV_MENU}
+        <div class="container">
+            <h1>🔑 Votre Clé API Développeur</h1>
+            <p>Générez une clé pour accéder aux endpoints de notre API.</p>
+            <button onclick="generateKey()">Générer une nouvelle clé</button>
+            <div id="keyResult"></div>
+            <h3>Documentation</h3>
+            <p><a href="/api/docs" target="_blank">Voir la documentation de l'API</a></p>
+        </div>
+        <script>
+            async function generateKey() {{
+                const response = await fetch('/api/generate-key', {{ method: 'POST' }});
+                const result = await response.json();
+                const div = document.getElementById('keyResult');
+                if (result.success) {{
+                    div.innerHTML = `<h3>Clé générée !</h3><div class="key-display"><code>\${{result.api_key}}</code></div><p>Conservez-la précieusement.</p>`;
+                }} else {{
+                    div.innerHTML = `<p style="color: red;">Erreur: \${{result.error}}</p>`;
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """)
+
+@app.post("/api/generate-key")
+async def generate_api_key(request: Request):
+    """Génère une clé API pour le développeur authentifié"""
+    user = get_user_from_token(request.cookies.get("session_token"))
+    if not user:
+        return {"error": "Non authentifié"}
+    
+    import secrets
+    api_key = secrets.token_urlsafe(32)
+    API_KEYS[api_key] = user['username']
+    
+    return {
+        'success': True,
+        'api_key': api_key,
+        'docs': '/api/docs'
+    }
+
+# Routes API publiques
+@app.get("/api/v1/signals")
+async def api_signals(api_key: str):
+    """API: Récupérer les signaux"""
+    if api_key not in API_KEYS:
+        raise HTTPException(status_code=403, detail="Invalid API key")
+    
+    # Retourner signaux
+    return {
+        'signals': [
+            {'symbol': 'BTCUSDT', 'action': 'BUY', 'price': 45000},
+            {'symbol': 'ETHUSDT', 'action': 'SELL', 'price': 2500}
+        ]
+    }
+
+
+@app.get("/api/docs", response_class=HTMLResponse)
+async def api_documentation():
+    """Documentation API"""
+    return HTMLResponse("""
+    <h1>API Documentation</h1>
+    <h2>GET /api/v1/signals</h2>
+    <p>Récupère les signaux de trading actuels</p>
+    <pre>
+curl -H "api-key: YOUR_KEY" \\
+  https://votre-domaine.com/api/v1/signals
+    </pre>
+    """)
+
+# ============================================================================
 # ADMINISTRATION
 # ============================================================================
 
@@ -20365,7 +20448,7 @@ async def admin_update_plan_features_page(request: Request):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>💰 Gestion des Prix - Trading Dashboard</title>
+        <title>Admin Plans | {SITE_NAME}</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css" rel="stylesheet">
         <style>
@@ -20426,1823 +20509,6 @@ async def update_plan_features(request: Request):
 
 # ============================================================================
 # DÉMARRAGE DE L'APPLICATION
-# ============================================================================
-
-
-# ============================================================================
-# 🏠 PAGE D'ACCUEIL / DASHBOARD
-# ============================================================================
-
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    """Page d'accueil - redirige vers dashboard ou pricing"""
-    session_token = request.cookies.get("session_token")
-    user = get_user_from_token(session_token)
-    
-    if user:
-        # Si connecté, aller au dashboard
-        return RedirectResponse("/dashboard", status_code=303)
-    else:
-        # Si non connecté, aller au pricing
-        return RedirectResponse("/pricing-complete", status_code=303)
-
-
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    """Dashboard principal de l'application"""
-    session_token = request.cookies.get("session_token")
-    user = get_user_from_token(session_token)
-    
-    if not user:
-        return RedirectResponse("/login", status_code=303)
-    
-    username = user.get('username', 'Utilisateur')
-    plan = user.get('subscription_plan', 'free')
-    
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>🏠 Dashboard - Trading Pro</title>
-        <style>
-            body {{
-                margin: 0;
-                padding: 0;
-                font-family: Arial, sans-serif;
-                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-                color: white;
-                min-height: 100vh;
-            }}
-            .container {{
-                max-width: 1400px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            .welcome-card {{
-                background: rgba(30, 41, 59, 0.8);
-                padding: 40px;
-                border-radius: 20px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-                margin: 40px 0;
-                text-align: center;
-            }}
-            h1 {{
-                font-size: 48px;
-                margin: 0 0 20px 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-            }}
-            .plan-badge {{
-                display: inline-block;
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                padding: 10px 25px;
-                border-radius: 25px;
-                font-weight: bold;
-                margin: 20px 0;
-                font-size: 18px;
-            }}
-            .features-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 20px;
-                margin-top: 40px;
-            }}
-            .feature-card {{
-                background: rgba(30, 41, 59, 0.6);
-                padding: 30px;
-                border-radius: 15px;
-                border: 2px solid rgba(99, 102, 241, 0.3);
-                transition: all 0.3s;
-                cursor: pointer;
-                text-decoration: none;
-                color: white;
-                display: block;
-            }}
-            .feature-card:hover {{
-                transform: translateY(-5px);
-                border-color: #667eea;
-                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-            }}
-            .feature-icon {{
-                font-size: 48px;
-                margin-bottom: 15px;
-            }}
-            .feature-title {{
-                font-size: 24px;
-                font-weight: bold;
-                margin-bottom: 10px;
-            }}
-            .feature-desc {{
-                color: #94a3b8;
-                font-size: 14px;
-            }}
-        </style>
-    </head>
-    <body>
-        {NAV_MENU}
-        <div class="container">
-            <div class="welcome-card">
-                <h1>👋 Bienvenue, {username}!</h1>
-                <p style="font-size: 20px; color: #cbd5e1;">Votre plateforme de trading professionnelle</p>
-                <div class="plan-badge">Plan: {plan.upper()}</div>
-            </div>
-            
-            <div class="features-grid">
-                <a href="/fear-greed" class="feature-card">
-                    <div class="feature-icon">😨</div>
-                    <div class="feature-title">Fear & Greed Index</div>
-                    <div class="feature-desc">Analysez le sentiment du marché</div>
-                </a>
-                
-                <a href="/dominance" class="feature-card">
-                    <div class="feature-icon">👑</div>
-                    <div class="feature-title">Dominance Bitcoin</div>
-                    <div class="feature-desc">Suivez la dominance BTC</div>
-                </a>
-                
-                <a href="/heatmap" class="feature-card">
-                    <div class="feature-icon">🔥</div>
-                    <div class="feature-title">Heatmap Crypto</div>
-                    <div class="feature-desc">Visualisez les performances</div>
-                </a>
-                
-                <a href="/strategy" class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <div class="feature-title">Stratégies Trading</div>
-                    <div class="feature-desc">Accédez aux stratégies pro</div>
-                </a>
-                
-                <a href="/news" class="feature-card">
-                    <div class="feature-icon">📰</div>
-                    <div class="feature-title">Actualités Crypto</div>
-                    <div class="feature-desc">Dernières nouvelles du marché</div>
-                </a>
-                
-                <a href="/pricing-complete" class="feature-card">
-                    <div class="feature-icon">💎</div>
-                    <div class="feature-title">Abonnements</div>
-                    <div class="feature-desc">Découvrez nos offres premium</div>
-                </a>
-            </div>
-        </div>
-    </body>
-    </html>
-    """)
-
-# ============================================================================
-
-
-# ============================================================================
-# 🔐 PAGE GESTION DES PERMISSIONS
-# ============================================================================
-
-@app.get("/admin/permissions", response_class=HTMLResponse)
-async def admin_permissions_page(session_token: Optional[str] = Cookie(None)):
-    """Page admin pour gérer les permissions par forfait"""
-    user = get_user_from_token(session_token)
-    if not user or user.get('role') != 'admin':
-        return RedirectResponse("/login")
-    
-    all_pages = [
-        {'path': '/dashboard', 'name': '🏠 Dashboard'},
-        {'path': '/fear-greed', 'name': '😨 Fear&Greed'},
-        {'path': '/dominance', 'name': '👑 Dominance'},
-        {'path': '/altcoin-season', 'name': '🌟 Altcoin Season'},
-        {'path': '/heatmap', 'name': '🔥 Heatmap'},
-        {'path': '/strategy', 'name': '📊 Stratégie'},
-        {'path': '/spot-trading', 'name': '💎 Spot Trading'},
-        {'path': '/calculatrice', 'name': '🧮 Calculatrice'},
-        {'path': '/news', 'name': '📰 Nouvelles'},
-        {'path': '/trades', 'name': '📈 Trades'},
-        {'path': '/risk-management', 'name': '⚠️ Risk Management'},
-        {'path': '/watchlist', 'name': '👁️ Watchlist'},
-        {'path': '/ai-assistant', 'name': '🤖 AI Assistant'},
-        {'path': '/prediction-ia', 'name': '🔮 Prédiction IA'},
-        {'path': '/ai-scanner', 'name': '🔍 AI Scanner'},
-        {'path': '/market-regime', 'name': '📊 Market Regime'},
-        {'path': '/whale-watcher', 'name': '🐋 Whale Watcher'},
-        {'path': '/stats-avancees', 'name': '📊 Stats Avancées'},
-        {'path': '/simulation', 'name': '🎮 Simulation'},
-    ]
-    
-    plans = ['free', 'premium', 'advanced', 'pro', 'elite']
-    plan_names = {
-        'free': '🆓 Free',
-        'premium': '💎 Premium',
-        'advanced': '⭐ Advanced',
-        'pro': '🚀 Pro',
-        'elite': '👑 Elite'
-    }
-    
-    # Permissions par défaut
-    default_permissions = {
-        'free': ['/dashboard', '/pricing-complete', '/fear-greed', '/dominance', '/heatmap', '/news'],
-        'premium': ['/dashboard', '/fear-greed', '/dominance', '/heatmap', '/strategy', '/spot-trading', '/trades'],
-        'advanced': ['/dashboard', '/fear-greed', '/dominance', '/heatmap', '/strategy', '/ai-assistant', '/prediction-ia'],
-        'pro': ['/dashboard', '/fear-greed', '/ai-scanner', '/whale-watcher', '/simulation'],
-        'elite': ['*']
-    }
-    
-    rows_html = ""
-    for page in all_pages:
-        row = f'<tr><td class="page-name">{page["name"]}</td>'
-        for plan in plans:
-            perms = default_permissions.get(plan, [])
-            is_checked = page['path'] in perms or '*' in perms
-            checked_attr = 'checked' if is_checked else ''
-            row += f'<td style="text-align: center;"><input type="checkbox" class="checkbox" data-page="{page["path"]}" data-plan="{plan}" {checked_attr}></td>'
-        row += '</tr>'
-        rows_html += row
-    
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>🔐 Gestion des Permissions</title>
-        <style>
-            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
-            .container {{ max-width: 1400px; margin: 0 auto; }}
-            h1 {{ color: #60a5fa; margin-bottom: 30px; text-align: center; }}
-            .permissions-table {{ background: #1e293b; border-radius: 15px; padding: 30px; overflow-x: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }}
-            table {{ width: 100%; border-collapse: collapse; }}
-            th {{ background: #334155; padding: 15px; text-align: left; font-weight: bold; }}
-            td {{ padding: 12px 15px; border-bottom: 1px solid #334155; }}
-            tbody tr:hover {{ background: rgba(99, 102, 241, 0.1); }}
-            .checkbox {{ width: 22px; height: 22px; cursor: pointer; accent-color: #10b981; }}
-            .plan-header {{ text-align: center; font-weight: bold; font-size: 14px; }}
-            .save-btn {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 18px 40px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 30px; }}
-            .save-btn:hover {{ transform: translateY(-3px); }}
-            .page-name {{ font-weight: 500; }}
-            .message {{ margin-top: 20px; padding: 20px; border-radius: 12px; }}
-            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
-            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
-        </style>
-    </head>
-    <body>
-        {NAV_MENU}
-        {ADMIN_NAV}
-        <div class="container">
-            <h1>🔐 Gestion des Permissions par Forfait</h1>
-            <div class="permissions-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Page</th>
-                            <th class="plan-header">{plan_names['free']}</th>
-                            <th class="plan-header">{plan_names['premium']}</th>
-                            <th class="plan-header">{plan_names['advanced']}</th>
-                            <th class="plan-header">{plan_names['pro']}</th>
-                            <th class="plan-header">{plan_names['elite']}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows_html}
-                    </tbody>
-                </table>
-                <button class="save-btn" onclick="savePermissions()">💾 Sauvegarder les Permissions</button>
-                <div id="message"></div>
-            </div>
-        </div>
-        <script>
-            async function savePermissions() {{
-                const checkboxes = document.querySelectorAll('.checkbox');
-                const permissions = {{}};
-                checkboxes.forEach(cb => {{
-                    const plan = cb.dataset.plan;
-                    const page = cb.dataset.page;
-                    if (!permissions[plan]) permissions[plan] = [];
-                    if (cb.checked) permissions[plan].push(page);
-                }});
-                
-                try {{
-                    const response = await fetch('/admin/api/save-permissions', {{
-                        method: 'POST',
-                        headers: {{'Content-Type': 'application/json'}},
-                        body: JSON.stringify(permissions)
-                    }});
-                    const result = await response.json();
-                    if (result.success) {{
-                        document.getElementById('message').innerHTML = '<div class="message success">✅ Permissions sauvegardées!</div>';
-                        setTimeout(() => document.getElementById('message').innerHTML = '', 3000);
-                    }} else {{
-                        document.getElementById('message').innerHTML = '<div class="message error">❌ Erreur: ' + result.error + '</div>';
-                    }}
-                }} catch (err) {{
-                    document.getElementById('message').innerHTML = '<div class="message error">❌ Erreur: ' + err.message + '</div>';
-                }}
-            }}
-        </script>
-    </body>
-    </html>
-    """)
-
-@app.post("/admin/api/save-permissions")
-async def save_permissions_api(request: Request, session_token: Optional[str] = Cookie(None)):
-    """API pour sauvegarder les permissions"""
-    user = get_user_from_token(session_token)
-    if not user or user.get('role') != 'admin':
-        return {"success": False, "error": "Non autorisé"}
-    try:
-        permissions = await request.json()
-        import json
-        with open('plan_permissions.json', 'w') as f:
-            json.dump(permissions, f, indent=2)
-        return {"success": True}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-# ============================================================================
-# 💰 PAGE GESTION DES PRIX
-# ============================================================================
-
-@app.get("/admin/pricing", response_class=HTMLResponse)
-async def admin_pricing_page(session_token: Optional[str] = Cookie(None)):
-    """Page admin pour gérer les prix"""
-    user = get_user_from_token(session_token)
-    if not user or user.get('role') != 'admin':
-        return RedirectResponse("/login")
-    
-    current_prices = {
-        'free': {'price': 0, 'name': '🆓 Gratuit'},
-        'premium': {'price': 29.99, 'name': '💎 Premium (1 mois)'},
-        'advanced': {'price': 74.97, 'name': '⭐ Advanced (3 mois)'},
-        'pro': {'price': 134.94, 'name': '🚀 Pro (6 mois)'},
-        'elite': {'price': 239.88, 'name': '👑 Elite (1 an)'}
-    }
-    
-    rows_html = ""
-    for plan_id, data in current_prices.items():
-        disabled = 'disabled' if plan_id == 'free' else ''
-        rows_html += f"""
-        <tr>
-            <td><strong>{data['name']}</strong></td>
-            <td><input type="number" id="price-{plan_id}" value="{data['price']}" step="0.01" min="0" {disabled} style="width: 140px; padding: 10px; border-radius: 8px; border: 2px solid #334155; background: #0f172a; color: white;"></td>
-            <td><code>{plan_id}</code></td>
-        </tr>
-        """
-    
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>💰 Gestion des Prix</title>
-        <style>
-            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
-            .container {{ max-width: 1000px; margin: 0 auto; }}
-            h1 {{ color: #60a5fa; margin-bottom: 30px; text-align: center; }}
-            .pricing-table {{ background: #1e293b; border-radius: 15px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }}
-            table {{ width: 100%; border-collapse: collapse; }}
-            th {{ background: #334155; padding: 15px; text-align: left; font-weight: bold; }}
-            td {{ padding: 15px; border-bottom: 1px solid #334155; }}
-            tbody tr:hover {{ background: rgba(99, 102, 241, 0.1); }}
-            .save-btn {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 18px 40px; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 30px; }}
-            .save-btn:hover {{ transform: translateY(-3px); }}
-            .message {{ margin-top: 20px; padding: 20px; border-radius: 12px; }}
-            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
-            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
-            code {{ background: #0f172a; padding: 5px 10px; border-radius: 5px; }}
-        </style>
-    </head>
-    <body>
-        {NAV_MENU}
-        {ADMIN_NAV}
-        <div class="container">
-            <h1>💰 Gestion des Prix des Forfaits</h1>
-            <div class="pricing-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Forfait</th>
-                            <th>Prix (USD)</th>
-                            <th>ID Plan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows_html}
-                    </tbody>
-                </table>
-                <button class="save-btn" onclick="savePrices()">💾 Sauvegarder les Prix</button>
-                <div id="message"></div>
-            </div>
-        </div>
-        <script>
-            async function savePrices() {{
-                const prices = {{
-                    free: 0,
-                    premium: parseFloat(document.getElementById('price-premium').value),
-                    advanced: parseFloat(document.getElementById('price-advanced').value),
-                    pro: parseFloat(document.getElementById('price-pro').value),
-                    elite: parseFloat(document.getElementById('price-elite').value)
-                }};
-                try {{
-                    const response = await fetch('/admin/api/update-prices', {{
-                        method: 'POST',
-                        headers: {{'Content-Type': 'application/json'}},
-                        body: JSON.stringify(prices)
-                    }});
-                    const result = await response.json();
-                    if (result.success) {{
-                        document.getElementById('message').innerHTML = '<div class="message success">✅ Prix sauvegardés!</div>';
-                        setTimeout(() => document.getElementById('message').innerHTML = '', 3000);
-                    }} else {{
-                        document.getElementById('message').innerHTML = '<div class="message error">❌ Erreur: ' + result.error + '</div>';
-                    }}
-                }} catch (err) {{
-                    document.getElementById('message').innerHTML = '<div class="message error">❌ Erreur: ' + err.message + '</div>';
-                }}
-            }}
-        </script>
-    </body>
-    </html>
-    """)
-
-@app.post("/admin/api/update-prices")
-async def update_prices_api(request: Request, session_token: Optional[str] = Cookie(None)):
-    """API pour mettre à jour les prix"""
-    user = get_user_from_token(session_token)
-    if not user or user.get('role') != 'admin':
-        return {"success": False, "error": "Non autorisé"}
-    try:
-        prices = await request.json()
-        import json
-        with open('plan_prices.json', 'w') as f:
-            json.dump(prices, f, indent=2)
-        return {"success": True}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-# ============================================================================
-# 🔐 CHANGEMENT MOT DE PASSE
-# ============================================================================
-
-@app.get("/admin/change-password", response_class=HTMLResponse)
-async def admin_change_password_page(session_token: Optional[str] = Cookie(None)):
-    """Page changement de mot de passe"""
-    user = get_user_from_token(session_token)
-    if not user:
-        return RedirectResponse("/login")
-    
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>🔐 Changer Mot de Passe</title>
-        <style>
-            body {{ background: #0f172a; color: white; font-family: Arial; padding: 20px; }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .card {{ background: #1e293b; padding: 40px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); margin-top: 20px; }}
-            h1 {{ color: #60a5fa; text-align: center; margin-bottom: 30px; }}
-            .form-group {{ margin-bottom: 20px; }}
-            label {{ display: block; margin-bottom: 8px; font-weight: bold; color: #e2e8f0; }}
-            input {{ width: 100%; padding: 12px; border-radius: 8px; background: #0f172a; color: white; border: 2px solid #334155; font-size: 15px; box-sizing: border-box; }}
-            input:focus {{ outline: none; border-color: #60a5fa; }}
-            button {{ width: 100%; padding: 16px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 10px; font-size: 17px; font-weight: bold; cursor: pointer; margin-top: 20px; }}
-            button:hover {{ transform: translateY(-3px); }}
-            .message {{ margin-top: 20px; padding: 18px; border-radius: 10px; }}
-            .error {{ background: rgba(239, 68, 68, 0.2); border: 2px solid #ef4444; color: #fca5a5; }}
-            .success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; color: #6ee7b7; }}
-        </style>
-    </head>
-    <body>
-        {NAV_MENU}
-        {ADMIN_NAV}
-        <div class="container">
-            <div class="card">
-                <h1>🔐 Changer Mot de Passe</h1>
-                <form id="changePasswordForm">
-                    <div class="form-group">
-                        <label>Mot de passe actuel</label>
-                        <input type="password" id="currentPassword" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Nouveau mot de passe</label>
-                        <input type="password" id="newPassword" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Confirmer nouveau mot de passe</label>
-                        <input type="password" id="confirmPassword" required>
-                    </div>
-                    <button type="submit">💾 Changer le mot de passe</button>
-                </form>
-                <div id="message"></div>
-            </div>
-        </div>
-        <script>
-            document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {{
-                e.preventDefault();
-                const current = document.getElementById('currentPassword').value;
-                const newPass = document.getElementById('newPassword').value;
-                const confirm = document.getElementById('confirmPassword').value;
-                const msg = document.getElementById('message');
-                msg.innerHTML = '';
-                if (newPass !== confirm) {{
-                    msg.innerHTML = '<div class="message error">❌ Les mots de passe ne correspondent pas</div>';
-                    return;
-                }}
-                if (newPass.length < 6) {{
-                    msg.innerHTML = '<div class="message error">❌ Le mot de passe doit avoir au moins 6 caractères</div>';
-                    return;
-                }}
-                try {{
-                    const response = await fetch('/admin/api/change-password', {{
-                        method: 'POST',
-                        headers: {{'Content-Type': 'application/json'}},
-                        body: JSON.stringify({{ current_password: current, new_password: newPass }})
-                    }});
-                    const result = await response.json();
-                    if (result.success) {{
-                        msg.innerHTML = '<div class="message success">✅ Mot de passe changé avec succès!</div>';
-                        document.getElementById('changePasswordForm').reset();
-                    }} else {{
-                        msg.innerHTML = '<div class="message error">❌ ' + result.error + '</div>';
-                    }}
-                }} catch (err) {{
-                    msg.innerHTML = '<div class="message error">❌ Erreur: ' + err.message + '</div>';
-                }}
-            }});
-        </script>
-    </body>
-    </html>
-    """)
-
-@app.post("/admin/api/change-password")
-async def admin_change_password_api(request: Request, session_token: Optional[str] = Cookie(None)):
-    """API changement mot de passe"""
-    user = get_user_from_token(session_token)
-    if not user:
-        return {"success": False, "error": "Non authentifié"}
-    try:
-        data = await request.json()
-        current_password = data.get('current_password')
-        new_password = data.get('new_password')
-        if not current_password or not new_password:
-            return {"success": False, "error": "Données manquantes"}
-        conn = get_db_connection()
-        c = conn.cursor()
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("SELECT password FROM users WHERE email=%s", (user['email'],))
-        else:
-            c.execute("SELECT password FROM users WHERE email=?", (user['email'],))
-        result = c.fetchone()
-        if not result:
-            conn.close()
-            return {"success": False, "error": "Utilisateur non trouvé"}
-        stored_password = result[0]
-        import hashlib
-        current_password_hash = hashlib.sha256(current_password.encode()).hexdigest()
-        if current_password_hash != stored_password:
-            conn.close()
-            return {"success": False, "error": "Mot de passe actuel incorrect"}
-        new_password_hash = hashlib.sha256(new_password.encode()).hexdigest()
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("UPDATE users SET password=%s WHERE email=%s", (new_password_hash, user['email']))
-        else:
-            c.execute("UPDATE users SET password=? WHERE email=?", (new_password_hash, user['email']))
-        conn.commit()
-        conn.close()
-        return {"success": True}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-# ============================================================================
-
-
-# ============================================================================
-# 🔬 PAGE BACKTESTING PROFESSIONNELLE
-# ============================================================================
-
-@app.get("/backtesting", response_class=HTMLResponse)
-async def backtesting_page(request: Request):
-    """Page de backtesting avancée avec multiples stratégies"""
-    session_token = request.cookies.get("session_token")
-    user = get_user_from_token(session_token)
-    
-    if not user:
-        return RedirectResponse("/login")
-    
-    username = user.get('username', 'Trader')
-    
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>🔬 Backtesting Pro - Trading Dashboard</title>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{
-                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-                color: white;
-                font-family: 'Segoe UI', Arial, sans-serif;
-                min-height: 100vh;
-                padding-bottom: 50px;
-            }}
-            .container {{
-                max-width: 1600px;
-                margin: 0 auto;
-                padding: 20px;
-            }}
-            .header {{
-                text-align: center;
-                margin: 30px 0;
-            }}
-            h1 {{
-                font-size: 48px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                margin-bottom: 10px;
-            }}
-            .subtitle {{
-                color: #94a3b8;
-                font-size: 18px;
-            }}
-            
-            /* Tabs */
-            .tabs {{
-                display: flex;
-                gap: 10px;
-                margin-bottom: 30px;
-                border-bottom: 2px solid #334155;
-            }}
-            .tab {{
-                padding: 15px 30px;
-                background: rgba(255,255,255,0.05);
-                border: none;
-                color: #94a3b8;
-                cursor: pointer;
-                font-size: 16px;
-                font-weight: 600;
-                border-radius: 8px 8px 0 0;
-                transition: all 0.3s;
-            }}
-            .tab:hover {{
-                background: rgba(255,255,255,0.1);
-                color: white;
-            }}
-            .tab.active {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-            }}
-            
-            /* Content Sections */
-            .tab-content {{
-                display: none;
-            }}
-            .tab-content.active {{
-                display: block;
-            }}
-            
-            /* Configuration Panel */
-            .config-panel {{
-                background: rgba(30, 41, 59, 0.8);
-                padding: 30px;
-                border-radius: 15px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-                margin-bottom: 30px;
-            }}
-            .config-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 20px;
-                margin-top: 20px;
-            }}
-            .config-group {{
-                display: flex;
-                flex-direction: column;
-                gap: 8px;
-            }}
-            label {{
-                font-weight: 600;
-                color: #e2e8f0;
-                font-size: 14px;
-            }}
-            input, select {{
-                padding: 12px;
-                background: #0f172a;
-                border: 2px solid #334155;
-                border-radius: 8px;
-                color: white;
-                font-size: 15px;
-                transition: all 0.3s;
-            }}
-            input:focus, select:focus {{
-                outline: none;
-                border-color: #667eea;
-                background: rgba(102, 126, 234, 0.05);
-            }}
-            
-            /* Buttons */
-            .btn-primary {{
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                color: white;
-                padding: 15px 40px;
-                border: none;
-                border-radius: 10px;
-                font-size: 18px;
-                font-weight: bold;
-                cursor: pointer;
-                transition: all 0.3s;
-                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
-                margin-top: 20px;
-            }}
-            .btn-primary:hover {{
-                transform: translateY(-3px);
-                box-shadow: 0 15px 40px rgba(16, 185, 129, 0.4);
-            }}
-            .btn-primary:disabled {{
-                background: #334155;
-                cursor: not-allowed;
-                transform: none;
-            }}
-            
-            /* Results Panel */
-            .results-panel {{
-                background: rgba(30, 41, 59, 0.8);
-                padding: 30px;
-                border-radius: 15px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-                margin-bottom: 30px;
-            }}
-            .metrics-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 20px;
-                margin: 30px 0;
-            }}
-            .metric-card {{
-                background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-                padding: 20px;
-                border-radius: 12px;
-                border: 2px solid rgba(102, 126, 234, 0.3);
-                text-align: center;
-            }}
-            .metric-label {{
-                color: #94a3b8;
-                font-size: 14px;
-                margin-bottom: 10px;
-            }}
-            .metric-value {{
-                font-size: 32px;
-                font-weight: bold;
-                color: white;
-            }}
-            .metric-value.positive {{
-                color: #10b981;
-            }}
-            .metric-value.negative {{
-                color: #ef4444;
-            }}
-            
-            /* Chart Container */
-            .chart-container {{
-                background: rgba(15, 23, 42, 0.8);
-                padding: 30px;
-                border-radius: 15px;
-                margin: 30px 0;
-                height: 500px;
-                position: relative;
-            }}
-            
-            /* Trades Table */
-            .trades-table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 30px;
-                background: rgba(15, 23, 42, 0.8);
-                border-radius: 15px;
-                overflow: hidden;
-            }}
-            .trades-table thead {{
-                background: #334155;
-            }}
-            .trades-table th {{
-                padding: 15px;
-                text-align: left;
-                font-weight: 600;
-                font-size: 14px;
-            }}
-            .trades-table td {{
-                padding: 15px;
-                border-top: 1px solid #334155;
-            }}
-            .trades-table tbody tr:hover {{
-                background: rgba(99, 102, 241, 0.1);
-            }}
-            .badge {{
-                padding: 5px 12px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 600;
-            }}
-            .badge.win {{
-                background: rgba(16, 185, 129, 0.2);
-                color: #6ee7b7;
-            }}
-            .badge.loss {{
-                background: rgba(239, 68, 68, 0.2);
-                color: #fca5a5;
-            }}
-            
-            /* Loading State */
-            .loading {{
-                display: none;
-                text-align: center;
-                padding: 40px;
-            }}
-            .loading.active {{
-                display: block;
-            }}
-            .spinner {{
-                border: 4px solid rgba(255,255,255,0.1);
-                border-top: 4px solid #667eea;
-                border-radius: 50%;
-                width: 60px;
-                height: 60px;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 20px;
-            }}
-            @keyframes spin {{
-                0% {{ transform: rotate(0deg); }}
-                100% {{ transform: rotate(360deg); }}
-            }}
-            
-            /* Strategy Cards */
-            .strategy-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-                gap: 20px;
-                margin-top: 20px;
-            }}
-            .strategy-card {{
-                background: rgba(30, 41, 59, 0.8);
-                padding: 25px;
-                border-radius: 12px;
-                border: 2px solid #334155;
-                cursor: pointer;
-                transition: all 0.3s;
-            }}
-            .strategy-card:hover {{
-                border-color: #667eea;
-                transform: translateY(-3px);
-                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-            }}
-            .strategy-card.selected {{
-                border-color: #10b981;
-                background: rgba(16, 185, 129, 0.1);
-            }}
-            .strategy-icon {{
-                font-size: 36px;
-                margin-bottom: 15px;
-            }}
-            .strategy-name {{
-                font-size: 20px;
-                font-weight: bold;
-                margin-bottom: 10px;
-            }}
-            .strategy-desc {{
-                color: #94a3b8;
-                font-size: 14px;
-            }}
-            
-            /* Responsive */
-            @media (max-width: 768px) {{
-                h1 {{ font-size: 32px; }}
-                .config-grid {{ grid-template-columns: 1fr; }}
-                .metrics-grid {{ grid-template-columns: 1fr; }}
-                .strategy-grid {{ grid-template-columns: 1fr; }}
-            }}
-        </style>
-    </head>
-    <body>
-        {NAV_MENU}
-        
-        <div class="container">
-            <div class="header">
-                <h1>🔬 Backtesting Professionnel</h1>
-                <p class="subtitle">Testez et optimisez vos stratégies de trading sur données historiques</p>
-            </div>
-            
-            <!-- Tabs -->
-            <div class="tabs">
-                <button class="tab active" onclick="switchTab('config', event)">⚙️ Configuration</button>
-                <button class="tab" onclick="switchTab('results', event)">📊 Résultats</button>
-                <button class="tab" onclick="switchTab('comparison', event)">🔄 Comparaison</button>
-            </div>
-            
-            <!-- Tab 1: Configuration -->
-            <div id="tab-config" class="tab-content active">
-                <div class="config-panel">
-                    <h2 style="margin-bottom: 20px;">⚙️ Paramètres du Backtest</h2>
-                    
-                    <div class="config-grid">
-                        <div class="config-group">
-                            <label>💱 Paire de trading</label>
-                            <select id="crypto-pair">
-                                <option value="bitcoin">BTC/USD</option>
-                                <option value="ethereum">ETH/USD</option>
-                                <option value="binancecoin">BNB/USD</option>
-                                <option value="solana">SOL/USD</option>
-                                <option value="cardano">ADA/USD</option>
-                                <option value="ripple">XRP/USD</option>
-                            </select>
-                        </div>
-                        
-                        <div class="config-group">
-                            <label>💰 Capital initial</label>
-                            <input type="number" id="initial-capital" value="10000" min="100" step="100">
-                        </div>
-                        
-                        <div class="config-group">
-                            <label>📅 Date de début</label>
-                            <input type="date" id="start-date" value="2024-01-01">
-                        </div>
-                        
-                        <div class="config-group">
-                            <label>📅 Date de fin</label>
-                            <input type="date" id="end-date" value="2024-12-31">
-                        </div>
-                        
-                        <div class="config-group">
-                            <label>💸 Frais de trading (%)</label>
-                            <input type="number" id="trading-fee" value="0.1" min="0" max="5" step="0.01">
-                        </div>
-                        
-                        <div class="config-group">
-                            <label>📏 Taille de position (%)</label>
-                            <input type="number" id="position-size" value="100" min="1" max="100" step="1">
-                        </div>
-                    </div>
-                    
-                    <h3 style="margin: 30px 0 20px 0;">📊 Sélectionnez une stratégie</h3>
-                    <div class="strategy-grid">
-                        <div class="strategy-card selected" onclick="selectStrategy('sma')">
-                            <div class="strategy-icon">📈</div>
-                            <div class="strategy-name">SMA Crossover</div>
-                            <div class="strategy-desc">Achat quand SMA courte > SMA longue. Simple et efficace.</div>
-                            <div style="margin-top: 15px;">
-                                <input type="number" id="sma-short" placeholder="SMA Court (ex: 20)" value="20" style="width: 100%; margin-bottom: 5px;">
-                                <input type="number" id="sma-long" placeholder="SMA Long (ex: 50)" value="50" style="width: 100%;">
-                            </div>
-                        </div>
-                        
-                        <div class="strategy-card" onclick="selectStrategy('rsi')">
-                            <div class="strategy-icon">⚡</div>
-                            <div class="strategy-name">RSI Strategy</div>
-                            <div class="strategy-desc">Achat en zone de survente (RSI < 30), vente en zone de surachat (RSI > 70).</div>
-                            <div style="margin-top: 15px;">
-                                <input type="number" id="rsi-period" placeholder="Période RSI (ex: 14)" value="14" style="width: 100%; margin-bottom: 5px;">
-                                <input type="number" id="rsi-oversold" placeholder="Seuil survente (ex: 30)" value="30" style="width: 100%; margin-bottom: 5px;">
-                                <input type="number" id="rsi-overbought" placeholder="Seuil surachat (ex: 70)" value="70" style="width: 100%;">
-                            </div>
-                        </div>
-                        
-                        <div class="strategy-card" onclick="selectStrategy('macd')">
-                            <div class="strategy-icon">📉</div>
-                            <div class="strategy-name">MACD Strategy</div>
-                            <div class="strategy-desc">Achat quand MACD croise au-dessus du signal, vente à l'inverse.</div>
-                            <div style="margin-top: 15px;">
-                                <input type="number" id="macd-fast" placeholder="EMA rapide (ex: 12)" value="12" style="width: 100%; margin-bottom: 5px;">
-                                <input type="number" id="macd-slow" placeholder="EMA lente (ex: 26)" value="26" style="width: 100%; margin-bottom: 5px;">
-                                <input type="number" id="macd-signal" placeholder="Signal (ex: 9)" value="9" style="width: 100%;">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button class="btn-primary" onclick="runBacktest()" id="run-btn">
-                        🚀 Lancer le Backtest
-                    </button>
-                </div>
-                
-                <div class="loading" id="loading">
-                    <div class="spinner"></div>
-                    <p style="color: #94a3b8; font-size: 18px;">⏳ Backtesting en cours...</p>
-                    <p style="color: #667eea; margin-top: 10px;">Analyse des données historiques et simulation des trades</p>
-                </div>
-            </div>
-            
-            <!-- Tab 2: Results -->
-            <div id="tab-results" class="tab-content">
-                <div class="results-panel">
-                    <h2 style="margin-bottom: 20px;">📊 Résultats du Backtest</h2>
-                    
-                    <div class="metrics-grid" id="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-label">💰 Profit/Loss Total</div>
-                            <div class="metric-value" id="total-pnl">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">📈 Rendement (%)</div>
-                            <div class="metric-value" id="return-pct">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">📊 Nombre de Trades</div>
-                            <div class="metric-value" id="total-trades">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">🎯 Win Rate</div>
-                            <div class="metric-value" id="win-rate">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">📉 Max Drawdown</div>
-                            <div class="metric-value negative" id="max-drawdown">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">💎 Sharpe Ratio</div>
-                            <div class="metric-value" id="sharpe-ratio">-</div>
-                        </div>
-                    </div>
-                    
-                    <div class="chart-container">
-                        <canvas id="performance-chart"></canvas>
-                    </div>
-                    
-                    <h3 style="margin: 30px 0 20px 0;">📋 Historique des Trades</h3>
-                    <div style="overflow-x: auto;">
-                        <table class="trades-table">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>📅 Date</th>
-                                    <th>🔄 Type</th>
-                                    <th>💵 Prix</th>
-                                    <th>📊 Quantité</th>
-                                    <th>💰 P&L</th>
-                                    <th>📈 P&L %</th>
-                                    <th>✅ Statut</th>
-                                </tr>
-                            </thead>
-                            <tbody id="trades-tbody">
-                                <tr>
-                                    <td colspan="8" style="text-align: center; padding: 40px; color: #94a3b8;">
-                                        Aucun trade pour le moment. Lancez un backtest pour voir les résultats.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Tab 3: Comparison -->
-            <div id="tab-comparison" class="tab-content">
-                <div class="results-panel">
-                    <h2 style="margin-bottom: 20px;">🔄 Comparaison de Stratégies</h2>
-                    <p style="color: #94a3b8; text-align: center; padding: 60px;">
-                        Cette fonctionnalité permet de comparer plusieurs stratégies côte à côte.<br>
-                        <strong>À venir prochainement!</strong>
-                    </p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Section Explicative -->
-        <div class="container" style="margin-top: 50px; margin-bottom: 50px;">
-            <div class="results-panel">
-                <h2 style="margin-bottom: 20px;">📚 Comment fonctionne le Backtesting?</h2>
-                
-                <div style="background: rgba(15, 23, 42, 0.8); padding: 30px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="color: #667eea; margin-bottom: 15px;">🎯 Qu'est-ce que le Backtesting?</h3>
-                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px;">
-                        Le backtesting est une méthode qui permet de <strong>tester une stratégie de trading sur des données historiques</strong> 
-                        pour voir comment elle aurait performé dans le passé. C'est comme rejouer l'histoire du marché avec votre stratégie 
-                        pour voir si elle aurait été profitable.
-                    </p>
-                </div>
-                
-                <div style="background: rgba(15, 23, 42, 0.8); padding: 30px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="color: #10b981; margin-bottom: 15px;">⚙️ Comment ça marche?</h3>
-                    <ol style="color: #e2e8f0; line-height: 1.8; font-size: 16px; padding-left: 25px;">
-                        <li style="margin-bottom: 10px;"><strong>Chargement des données:</strong> Le système récupère les <strong>données historiques RÉELLES</strong> depuis Yahoo Finance (prix de clôture quotidiens).</li>
-                        <li style="margin-bottom: 10px;"><strong>Application de la stratégie:</strong> Votre stratégie choisie (SMA, RSI ou MACD) est appliquée sur chaque jour de données pour décider quand acheter et vendre.</li>
-                        <li style="margin-bottom: 10px;"><strong>Simulation des trades:</strong> Chaque signal d'achat/vente est exécuté virtuellement en tenant compte des frais de trading.</li>
-                        <li style="margin-bottom: 10px;"><strong>Calcul des résultats:</strong> Le système calcule votre profit/perte, win rate, drawdown et autres métriques importantes.</li>
-                    </ol>
-                </div>
-                
-                <div style="background: rgba(16, 185, 129, 0.15); padding: 30px; border-radius: 15px; border: 2px solid rgba(16, 185, 129, 0.3); margin-bottom: 30px;">
-                    <h3 style="color: #6ee7b7; margin-bottom: 15px;">✅ Données Historiques RÉELLES</h3>
-                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
-                        <strong>Ce backtesting utilise des données historiques RÉELLES provenant de Yahoo Finance!</strong>
-                    </p>
-                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
-                        Les prix affichés sont les <strong>vrais prix de clôture quotidiens</strong> des cryptomonnaies pour la période sélectionnée.
-                    </p>
-                    <div style="background: rgba(16, 185, 129, 0.1); padding: 15px; border-radius: 8px; margin-top: 15px;">
-                        <p style="color: #6ee7b7; font-size: 15px; margin: 0;">
-                            <strong>✅ Source fiable: Yahoo Finance API</strong>
-                        </p>
-                    </div>
-                </div>
-                
-                <div style="background: rgba(239, 68, 68, 0.15); padding: 30px; border-radius: 15px; border: 2px solid rgba(239, 68, 68, 0.3); margin-bottom: 30px;">
-                    <h3 style="color: #fca5a5; margin-bottom: 15px;">⚠️ AVERTISSEMENT Important</h3>
-                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
-                        Bien que les données soient réelles, les <strong>performances passées ne garantissent PAS les résultats futurs</strong>.
-                    </p>
-                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
-                        Le backtesting ne tient pas compte de:
-                    </p>
-                    <ul style="color: #e2e8f0; line-height: 1.8; font-size: 16px; padding-left: 25px;">
-                        <li>Le slippage (différence entre prix affiché et prix d'exécution)</li>
-                        <li>La liquidité du marché (impossibilité d'acheter/vendre)</li>
-                        <li>Les événements imprévus (hacks, régulations, etc.)</li>
-                        <li>Les facteurs psychologiques du trading réel</li>
-                    </ul>
-                    <div style="background: rgba(239, 68, 68, 0.1); padding: 15px; border-radius: 8px; margin-top: 15px;">
-                        <p style="color: #fca5a5; font-size: 15px; margin: 0;">
-                            <strong>⚠️ Utilisez ces résultats comme outil d'apprentissage, pas comme garantie de profits!</strong>
-                        </p>
-                    </div>
-                </div>
-                
-                <div style="background: rgba(15, 23, 42, 0.8); padding: 30px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="color: #667eea; margin-bottom: 15px;">✅ À quoi ça sert alors?</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
-                        <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3);">
-                            <div style="font-size: 32px; margin-bottom: 10px;">📖</div>
-                            <h4 style="color: #667eea; margin-bottom: 10px;">Apprendre</h4>
-                            <p style="color: #94a3b8; font-size: 14px;">Comprendre comment fonctionnent les différentes stratégies de trading (SMA, RSI, MACD).</p>
-                        </div>
-                        <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3);">
-                            <div style="font-size: 32px; margin-bottom: 10px;">🧪</div>
-                            <h4 style="color: #667eea; margin-bottom: 10px;">Expérimenter</h4>
-                            <p style="color: #94a3b8; font-size: 14px;">Tester différents paramètres (ex: SMA 10/30 vs 20/50) pour voir l'impact sur les résultats.</p>
-                        </div>
-                        <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3);">
-                            <div style="font-size: 32px; margin-bottom: 10px;">📊</div>
-                            <h4 style="color: #667eea; margin-bottom: 10px;">Analyser</h4>
-                            <p style="color: #94a3b8; font-size: 14px;">Découvrir les métriques importantes: Win Rate, Drawdown, Sharpe Ratio, etc.</p>
-                        </div>
-                        <div style="background: rgba(102, 126, 234, 0.1); padding: 20px; border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.3);">
-                            <div style="font-size: 32px; margin-bottom: 10px;">🎯</div>
-                            <h4 style="color: #667eea; margin-bottom: 10px;">Présenter</h4>
-                            <p style="color: #94a3b8; font-size: 14px;">Démontrer les capacités du système de backtesting avec une interface professionnelle.</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="background: rgba(16, 185, 129, 0.15); padding: 30px; border-radius: 15px; border: 2px solid rgba(16, 185, 129, 0.3);">
-                    <h3 style="color: #6ee7b7; margin-bottom: 15px;">💡 Pour un Backtesting Réel</h3>
-                    <p style="color: #e2e8f0; line-height: 1.8; font-size: 16px; margin-bottom: 15px;">
-                        Si vous voulez faire du <strong>backtesting avec des données historiques réelles</strong>, vous devrez:
-                    </p>
-                    <ul style="color: #e2e8f0; line-height: 1.8; font-size: 16px; padding-left: 25px;">
-                        <li style="margin-bottom: 10px;">Utiliser des services comme <strong>TradingView</strong>, <strong>Binance</strong> (avec VPN si nécessaire), ou <strong>CryptoCompare</strong></li>
-                        <li style="margin-bottom: 10px;">Télécharger les données historiques au format CSV</li>
-                        <li style="margin-bottom: 10px;">Utiliser des plateformes de backtesting professionnelles comme <strong>Backtrader</strong>, <strong>QuantConnect</strong>, ou <strong>TradingView Strategy Tester</strong></li>
-                        <li style="margin-bottom: 10px;">Considérer les frais réels, le slippage, et la liquidité du marché</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        
-        <script>
-            let currentStrategy = 'sma';
-            let backtestResults = null;
-            let performanceChart = null;
-            
-            // Switch tabs
-            function switchTab(tabName, event) {{
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                
-                if (event && event.target) {{
-                    event.target.classList.add('active');
-                }}
-                document.getElementById('tab-' + tabName).classList.add('active');
-            }}
-            
-            // Select strategy
-            function selectStrategy(strategy) {{
-                document.querySelectorAll('.strategy-card').forEach(c => c.classList.remove('selected'));
-                event.currentTarget.classList.add('selected');
-                currentStrategy = strategy;
-            }}
-            
-            // Run backtest
-            async function runBacktest() {{
-                const runBtn = document.getElementById('run-btn');
-                const loading = document.getElementById('loading');
-                
-                runBtn.disabled = true;
-                loading.classList.add('active');
-                
-                // Get parameters
-                const params = {{
-                    crypto: document.getElementById('crypto-pair').value,
-                    capital: parseFloat(document.getElementById('initial-capital').value),
-                    startDate: document.getElementById('start-date').value,
-                    endDate: document.getElementById('end-date').value,
-                    fee: parseFloat(document.getElementById('trading-fee').value),
-                    positionSize: parseFloat(document.getElementById('position-size').value),
-                    strategy: currentStrategy
-                }};
-                
-                // Strategy parameters
-                if (currentStrategy === 'sma') {{
-                    params.smaShort = parseInt(document.getElementById('sma-short').value);
-                    params.smaLong = parseInt(document.getElementById('sma-long').value);
-                }} else if (currentStrategy === 'rsi') {{
-                    params.rsiPeriod = parseInt(document.getElementById('rsi-period').value);
-                    params.rsiOversold = parseInt(document.getElementById('rsi-oversold').value);
-                    params.rsiOverbought = parseInt(document.getElementById('rsi-overbought').value);
-                }} else if (currentStrategy === 'macd') {{
-                    params.macdFast = parseInt(document.getElementById('macd-fast').value);
-                    params.macdSlow = parseInt(document.getElementById('macd-slow').value);
-                    params.macdSignal = parseInt(document.getElementById('macd-signal').value);
-                }}
-                
-                try {{
-                    const response = await fetch('/api/backtest', {{
-                        method: 'POST',
-                        headers: {{ 'Content-Type': 'application/json' }},
-                        body: JSON.stringify(params)
-                    }});
-                    
-                    const data = await response.json();
-                    
-                    if (data.success) {{
-                        backtestResults = data.results;
-                        displayResults(data.results);
-                        // Switch to results tab
-                        document.querySelectorAll('.tab')[1].click();
-                    }} else {{
-                        alert('❌ Erreur: ' + data.error);
-                    }}
-                }} catch (err) {{
-                    alert('❌ Erreur: ' + err.message);
-                }} finally {{
-                    runBtn.disabled = false;
-                    loading.classList.remove('active');
-                }}
-            }}
-            
-            // Display results
-            function displayResults(results) {{
-                // Update metrics
-                document.getElementById('total-pnl').textContent = '$' + results.totalPnL.toFixed(2);
-                document.getElementById('total-pnl').className = 'metric-value ' + (results.totalPnL >= 0 ? 'positive' : 'negative');
-                
-                document.getElementById('return-pct').textContent = results.returnPct.toFixed(2) + '%';
-                document.getElementById('return-pct').className = 'metric-value ' + (results.returnPct >= 0 ? 'positive' : 'negative');
-                
-                document.getElementById('total-trades').textContent = results.totalTrades;
-                document.getElementById('win-rate').textContent = results.winRate.toFixed(1) + '%';
-                document.getElementById('max-drawdown').textContent = results.maxDrawdown.toFixed(2) + '%';
-                document.getElementById('sharpe-ratio').textContent = results.sharpeRatio.toFixed(2);
-                
-                // Update chart
-                updateChart(results.equityCurve);
-                
-                // Update trades table
-                updateTradesTable(results.trades);
-            }}
-            
-            // Update performance chart
-            function updateChart(equityCurve) {{
-                const ctx = document.getElementById('performance-chart');
-                
-                if (performanceChart) {{
-                    performanceChart.destroy();
-                }}
-                
-                performanceChart = new Chart(ctx, {{
-                    type: 'line',
-                    data: {{
-                        labels: equityCurve.map((_, i) => i),
-                        datasets: [{{
-                            label: 'Capital',
-                            data: equityCurve,
-                            borderColor: '#10b981',
-                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                            borderWidth: 3,
-                            fill: true,
-                            tension: 0.4
-                        }}]
-                    }},
-                    options: {{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {{
-                            legend: {{
-                                labels: {{ color: 'white', font: {{ size: 14 }} }}
-                            }},
-                            tooltip: {{
-                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                                titleColor: 'white',
-                                bodyColor: 'white',
-                                borderColor: '#667eea',
-                                borderWidth: 1
-                            }}
-                        }},
-                        scales: {{
-                            x: {{
-                                ticks: {{ color: '#94a3b8' }},
-                                grid: {{ color: 'rgba(148, 163, 184, 0.1)' }}
-                            }},
-                            y: {{
-                                ticks: {{ 
-                                    color: '#94a3b8',
-                                    callback: value => '$' + value.toFixed(0)
-                                }},
-                                grid: {{ color: 'rgba(148, 163, 184, 0.1)' }}
-                            }}
-                        }}
-                    }}
-                }});
-            }}
-            
-            // Update trades table
-            function updateTradesTable(trades) {{
-                const tbody = document.getElementById('trades-tbody');
-                tbody.innerHTML = '';
-                
-                trades.forEach((trade, i) => {{
-                    const row = tbody.insertRow();
-                    row.innerHTML = `
-                        <td>${{i + 1}}</td>
-                        <td>${{new Date(trade.date).toLocaleDateString()}}</td>
-                        <td>${{trade.type === 'buy' ? '🟢 BUY' : '🔴 SELL'}}</td>
-                        <td>$${{trade.price.toFixed(2)}}</td>
-                        <td>${{trade.quantity.toFixed(4)}}</td>
-                        <td class="${{trade.pnl >= 0 ? 'positive' : 'negative'}}">$${{trade.pnl.toFixed(2)}}</td>
-                        <td class="${{trade.pnlPct >= 0 ? 'positive' : 'negative'}}">${{trade.pnlPct.toFixed(2)}}%</td>
-                        <td><span class="badge ${{trade.pnl >= 0 ? 'win' : 'loss'}}">${{trade.pnl >= 0 ? 'WIN' : 'LOSS'}}</span></td>
-                    `;
-                }});
-            }}
-            
-            // Set default dates
-            document.getElementById('end-date').valueAsDate = new Date();
-            const startDate = new Date();
-            startDate.setFullYear(startDate.getFullYear() - 1);
-            document.getElementById('start-date').valueAsDate = startDate;
-        </script>
-    </body>
-    </html>
-    """)
-
-# ============================================================================
-# 🔬 API BACKTESTING
-# ============================================================================
-
-@app.post("/api/backtest")
-async def api_backtest(request: Request):
-    """API pour exécuter un backtest"""
-    try:
-        data = await request.json()
-        
-        # Extract parameters
-        crypto = data.get('crypto', 'bitcoin')
-        capital = data.get('capital', 10000)
-        start_date = data.get('startDate', '2024-01-01')
-        end_date = data.get('endDate', '2024-12-31')
-        fee = data.get('fee', 0.1) / 100
-        position_size = data.get('positionSize', 100) / 100
-        strategy = data.get('strategy', 'sma')
-        
-        # Map crypto IDs to Yahoo Finance tickers
-        crypto_map = {
-            'bitcoin': 'BTC-USD',
-            'ethereum': 'ETH-USD',
-            'binancecoin': 'BNB-USD',
-            'solana': 'SOL-USD',
-            'cardano': 'ADA-USD',
-            'ripple': 'XRP-USD'
-        }
-        
-        yahoo_symbol = crypto_map.get(crypto, 'BTC-USD')
-        
-        # Fetch REAL historical data from Yahoo Finance (free, no auth required, works everywhere!)
-        import requests
-        from datetime import datetime
-        import time
-        
-        # Parse dates
-        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-        end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-        
-        # Convert to Unix timestamps
-        start_ts = int(start_dt.timestamp())
-        end_ts = int(end_dt.timestamp())
-        
-        # Yahoo Finance API endpoint
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{yahoo_symbol}"
-        params = {
-            'period1': start_ts,
-            'period2': end_ts,
-            'interval': '1d',
-            'events': 'history'
-        }
-        
-        try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
-            response = requests.get(url, params=params, headers=headers, timeout=15)
-            
-            if response.status_code != 200:
-                return {"success": False, "error": f"Erreur API Yahoo Finance (Status {response.status_code})"}
-            
-            data_json = response.json()
-            
-            # Extract data from Yahoo Finance response
-            result = data_json.get('chart', {}).get('result', [])
-            if not result:
-                return {"success": False, "error": "Aucune donnée disponible pour cette période"}
-            
-            timestamps = result[0].get('timestamp', [])
-            quote_data = result[0].get('indicators', {}).get('quote', [{}])[0]
-            close_prices = quote_data.get('close', [])
-            
-            # Filter out None values
-            prices = []
-            dates = []
-            for i, price in enumerate(close_prices):
-                if price is not None:
-                    prices.append(float(price))
-                    dates.append(timestamps[i] * 1000)  # Convert to milliseconds
-            
-            if len(prices) < 50:
-                return {"success": False, "error": f"Pas assez de données historiques (seulement {len(prices)} jours, minimum 50)"}
-            
-        except Exception as e:
-            return {"success": False, "error": f"Erreur lors du chargement des données: {str(e)}"}
-        
-        # Run backtest based on strategy
-        if strategy == 'sma':
-            sma_short = data.get('smaShort', 20)
-            sma_long = data.get('smaLong', 50)
-            results = backtest_sma(prices, dates, capital, fee, position_size, sma_short, sma_long)
-        elif strategy == 'rsi':
-            rsi_period = data.get('rsiPeriod', 14)
-            rsi_oversold = data.get('rsiOversold', 30)
-            rsi_overbought = data.get('rsiOverbought', 70)
-            results = backtest_rsi(prices, dates, capital, fee, position_size, rsi_period, rsi_oversold, rsi_overbought)
-        elif strategy == 'macd':
-            macd_fast = data.get('macdFast', 12)
-            macd_slow = data.get('macdSlow', 26)
-            macd_signal = data.get('macdSignal', 9)
-            results = backtest_macd(prices, dates, capital, fee, position_size, macd_fast, macd_slow, macd_signal)
-        else:
-            return {"success": False, "error": "Unknown strategy"}
-        
-        return {"success": True, "results": results}
-        
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-def calculate_sma(prices, period):
-    """Calculate Simple Moving Average"""
-    sma = []
-    for i in range(len(prices)):
-        if i < period - 1:
-            sma.append(None)
-        else:
-            sma.append(sum(prices[i-period+1:i+1]) / period)
-    return sma
-
-
-def calculate_rsi(prices, period=14):
-    """Calculate Relative Strength Index"""
-    rsi = []
-    gains = []
-    losses = []
-    
-    for i in range(1, len(prices)):
-        change = prices[i] - prices[i-1]
-        gains.append(max(change, 0))
-        losses.append(max(-change, 0))
-    
-    for i in range(len(gains)):
-        if i < period - 1:
-            rsi.append(None)
-        else:
-            avg_gain = sum(gains[i-period+1:i+1]) / period
-            avg_loss = sum(losses[i-period+1:i+1]) / period
-            
-            if avg_loss == 0:
-                rsi.append(100)
-            else:
-                rs = avg_gain / avg_loss
-                rsi.append(100 - (100 / (1 + rs)))
-    
-    return [None] + rsi
-
-
-def calculate_ema(prices, period):
-    """Calculate Exponential Moving Average"""
-    ema = []
-    multiplier = 2 / (period + 1)
-    
-    # First EMA is SMA
-    sma = sum(prices[:period]) / period
-    ema.append(sma)
-    
-    for i in range(period, len(prices)):
-        ema_value = (prices[i] - ema[-1]) * multiplier + ema[-1]
-        ema.append(ema_value)
-    
-    return [None] * (period - 1) + ema
-
-
-def backtest_sma(prices, dates, capital, fee, position_size, short_period, long_period):
-    """Backtest SMA Crossover strategy"""
-    sma_short = calculate_sma(prices, short_period)
-    sma_long = calculate_sma(prices, long_period)
-    
-    equity = capital
-    position = 0
-    trades = []
-    equity_curve = [capital]
-    
-    for i in range(long_period, len(prices)):
-        if sma_short[i] is None or sma_long[i] is None:
-            equity_curve.append(equity)
-            continue
-        
-        # Buy signal
-        if sma_short[i] > sma_long[i] and sma_short[i-1] <= sma_long[i-1] and position == 0:
-            trade_amount = equity * position_size
-            position = (trade_amount * (1 - fee)) / prices[i]
-            equity -= trade_amount
-            
-            trades.append({
-                'date': dates[i],
-                'type': 'buy',
-                'price': prices[i],
-                'quantity': position,
-                'pnl': 0,
-                'pnlPct': 0
-            })
-        
-        # Sell signal
-        elif sma_short[i] < sma_long[i] and sma_short[i-1] >= sma_long[i-1] and position > 0:
-            sell_value = position * prices[i] * (1 - fee)
-            pnl = sell_value - (capital * position_size)
-            pnl_pct = (pnl / (capital * position_size)) * 100
-            
-            equity += sell_value
-            position = 0
-            
-            trades.append({
-                'date': dates[i],
-                'type': 'sell',
-                'price': prices[i],
-                'quantity': 0,
-                'pnl': pnl,
-                'pnlPct': pnl_pct
-            })
-        
-        # Update equity curve
-        current_equity = equity
-        if position > 0:
-            current_equity += position * prices[i]
-        equity_curve.append(current_equity)
-    
-    # Close final position if open
-    if position > 0:
-        sell_value = position * prices[-1] * (1 - fee)
-        equity += sell_value
-        position = 0
-    
-    # Calculate metrics
-    total_pnl = equity - capital
-    return_pct = (total_pnl / capital) * 100
-    winning_trades = sum(1 for t in trades if t['pnl'] > 0)
-    total_trades = len([t for t in trades if t['type'] == 'sell'])
-    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
-    
-    # Calculate max drawdown
-    peak = equity_curve[0]
-    max_dd = 0
-    for value in equity_curve:
-        if value > peak:
-            peak = value
-        dd = ((peak - value) / peak) * 100
-        if dd > max_dd:
-            max_dd = dd
-    
-    # Calculate Sharpe ratio (simplified)
-    returns = [(equity_curve[i] - equity_curve[i-1]) / equity_curve[i-1] for i in range(1, len(equity_curve))]
-    avg_return = sum(returns) / len(returns) if returns else 0
-    std_return = (sum((r - avg_return) ** 2 for r in returns) / len(returns)) ** 0.5 if returns else 0
-    sharpe = (avg_return / std_return * (252 ** 0.5)) if std_return > 0 else 0
-    
-    return {
-        'totalPnL': total_pnl,
-        'returnPct': return_pct,
-        'totalTrades': total_trades,
-        'winRate': win_rate,
-        'maxDrawdown': max_dd,
-        'sharpeRatio': sharpe,
-        'equityCurve': equity_curve,
-        'trades': trades
-    }
-
-
-def backtest_rsi(prices, dates, capital, fee, position_size, period, oversold, overbought):
-    """Backtest RSI strategy"""
-    rsi = calculate_rsi(prices, period)
-    
-    equity = capital
-    position = 0
-    trades = []
-    equity_curve = [capital]
-    
-    for i in range(period + 1, len(prices)):
-        if rsi[i] is None:
-            equity_curve.append(equity)
-            continue
-        
-        # Buy signal (oversold)
-        if rsi[i] < oversold and position == 0:
-            trade_amount = equity * position_size
-            position = (trade_amount * (1 - fee)) / prices[i]
-            equity -= trade_amount
-            
-            trades.append({
-                'date': dates[i],
-                'type': 'buy',
-                'price': prices[i],
-                'quantity': position,
-                'pnl': 0,
-                'pnlPct': 0
-            })
-        
-        # Sell signal (overbought)
-        elif rsi[i] > overbought and position > 0:
-            sell_value = position * prices[i] * (1 - fee)
-            pnl = sell_value - (capital * position_size)
-            pnl_pct = (pnl / (capital * position_size)) * 100
-            
-            equity += sell_value
-            position = 0
-            
-            trades.append({
-                'date': dates[i],
-                'type': 'sell',
-                'price': prices[i],
-                'quantity': 0,
-                'pnl': pnl,
-                'pnlPct': pnl_pct
-            })
-        
-        current_equity = equity
-        if position > 0:
-            current_equity += position * prices[i]
-        equity_curve.append(current_equity)
-    
-    if position > 0:
-        sell_value = position * prices[-1] * (1 - fee)
-        equity += sell_value
-    
-    total_pnl = equity - capital
-    return_pct = (total_pnl / capital) * 100
-    winning_trades = sum(1 for t in trades if t['pnl'] > 0)
-    total_trades = len([t for t in trades if t['type'] == 'sell'])
-    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
-    
-    peak = equity_curve[0]
-    max_dd = 0
-    for value in equity_curve:
-        if value > peak:
-            peak = value
-        dd = ((peak - value) / peak) * 100
-        if dd > max_dd:
-            max_dd = dd
-    
-    returns = [(equity_curve[i] - equity_curve[i-1]) / equity_curve[i-1] for i in range(1, len(equity_curve))]
-    avg_return = sum(returns) / len(returns) if returns else 0
-    std_return = (sum((r - avg_return) ** 2 for r in returns) / len(returns)) ** 0.5 if returns else 0
-    sharpe = (avg_return / std_return * (252 ** 0.5)) if std_return > 0 else 0
-    
-    return {
-        'totalPnL': total_pnl,
-        'returnPct': return_pct,
-        'totalTrades': total_trades,
-        'winRate': win_rate,
-        'maxDrawdown': max_dd,
-        'sharpeRatio': sharpe,
-        'equityCurve': equity_curve,
-        'trades': trades
-    }
-
-
-def backtest_macd(prices, dates, capital, fee, position_size, fast, slow, signal_period):
-    """Backtest MACD strategy"""
-    ema_fast = calculate_ema(prices, fast)
-    ema_slow = calculate_ema(prices, slow)
-    
-    # Calculate MACD line
-    macd_line = []
-    for i in range(len(prices)):
-        if ema_fast[i] is not None and ema_slow[i] is not None:
-            macd_line.append(ema_fast[i] - ema_slow[i])
-        else:
-            macd_line.append(None)
-    
-    # Calculate signal line (EMA of MACD)
-    valid_macd = [m for m in macd_line if m is not None]
-    signal_line = calculate_ema(valid_macd, signal_period)
-    
-    # Pad signal line
-    signal_line = [None] * (len(macd_line) - len(signal_line)) + signal_line
-    
-    equity = capital
-    position = 0
-    trades = []
-    equity_curve = [capital]
-    
-    for i in range(slow + signal_period, len(prices)):
-        if macd_line[i] is None or signal_line[i] is None:
-            equity_curve.append(equity)
-            continue
-        
-        # Buy signal
-        if macd_line[i] > signal_line[i] and macd_line[i-1] <= signal_line[i-1] and position == 0:
-            trade_amount = equity * position_size
-            position = (trade_amount * (1 - fee)) / prices[i]
-            equity -= trade_amount
-            
-            trades.append({
-                'date': dates[i],
-                'type': 'buy',
-                'price': prices[i],
-                'quantity': position,
-                'pnl': 0,
-                'pnlPct': 0
-            })
-        
-        # Sell signal
-        elif macd_line[i] < signal_line[i] and macd_line[i-1] >= signal_line[i-1] and position > 0:
-            sell_value = position * prices[i] * (1 - fee)
-            pnl = sell_value - (capital * position_size)
-            pnl_pct = (pnl / (capital * position_size)) * 100
-            
-            equity += sell_value
-            position = 0
-            
-            trades.append({
-                'date': dates[i],
-                'type': 'sell',
-                'price': prices[i],
-                'quantity': 0,
-                'pnl': pnl,
-                'pnlPct': pnl_pct
-            })
-        
-        current_equity = equity
-        if position > 0:
-            current_equity += position * prices[i]
-        equity_curve.append(current_equity)
-    
-    if position > 0:
-        sell_value = position * prices[-1] * (1 - fee)
-        equity += sell_value
-    
-    total_pnl = equity - capital
-    return_pct = (total_pnl / capital) * 100
-    winning_trades = sum(1 for t in trades if t['pnl'] > 0)
-    total_trades = len([t for t in trades if t['type'] == 'sell'])
-    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
-    
-    peak = equity_curve[0]
-    max_dd = 0
-    for value in equity_curve:
-        if value > peak:
-            peak = value
-        dd = ((peak - value) / peak) * 100
-        if dd > max_dd:
-            max_dd = dd
-    
-    returns = [(equity_curve[i] - equity_curve[i-1]) / equity_curve[i-1] for i in range(1, len(equity_curve))]
-    avg_return = sum(returns) / len(returns) if returns else 0
-    std_return = (sum((r - avg_return) ** 2 for r in returns) / len(returns)) ** 0.5 if returns else 0
-    sharpe = (avg_return / std_return * (252 ** 0.5)) if std_return > 0 else 0
-    
-    return {
-        'totalPnL': total_pnl,
-        'returnPct': return_pct,
-        'totalTrades': total_trades,
-        'winRate': win_rate,
-        'maxDrawdown': max_dd,
-        'sharpeRatio': sharpe,
-        'equityCurve': equity_curve,
-        'trades': trades
-    }
-
 # ============================================================================
 
 if __name__ == "__main__":

@@ -19462,6 +19462,193 @@ async def admin_dashboard(request: Request):
 # 💰 ROUTES ADMIN CODES PROMO
 # ==============================================================================
 
+
+
+@app.get("/admin/pricing", response_class=HTMLResponse)
+async def admin_pricing(request: Request):
+    """Page de gestion des plans d'abonnement et permissions"""
+    
+    session_token = request.cookies.get("session_token")
+    if not session_token:
+        return RedirectResponse("/login", status_code=303)
+    
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return HTMLResponse("<h1>403 - Accès refusé</h1>", status_code=403)
+    
+    plans_html = """
+    <div class="plan-card">
+        <div class="plan-name">Free</div>
+        <div class="plan-price">$0</div>
+        <div class="features">
+            <div class="feature">Dashboard de base</div>
+            <div class="feature">Indicateurs limités</div>
+            <div class="feature">5 alertes/jour</div>
+        </div>
+    </div>
+    <div class="plan-card">
+        <div class="plan-name">Premium 1 mois</div>
+        <div class="plan-price">$29.99</div>
+        <div class="features">
+            <div class="feature">Tous les indicateurs</div>
+            <div class="feature">Alertes illimitées</div>
+            <div class="feature">Scanner AI</div>
+        </div>
+    </div>
+    <div class="plan-card">
+        <div class="plan-name">Premium 3 mois</div>
+        <div class="plan-price">$74.97</div>
+        <div class="features">
+            <div class="feature">Tous Premium</div>
+            <div class="feature">15% de réduction</div>
+        </div>
+    </div>
+    <div class="plan-card">
+        <div class="plan-name">Pro 6 mois</div>
+        <div class="plan-price">$134.94</div>
+        <div class="features">
+            <div class="feature">Tous Premium +</div>
+            <div class="feature">Whale Watcher</div>
+            <div class="feature">Market Regime</div>
+            <div class="feature">25% de réduction</div>
+        </div>
+    </div>
+    <div class="plan-card">
+        <div class="plan-name">Elite 1 an</div>
+        <div class="plan-price">$239.88</div>
+        <div class="features">
+            <div class="feature">Tous Pro +</div>
+            <div class="feature">API Access</div>
+            <div class="feature">33% de réduction</div>
+        </div>
+    </div>
+    """
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>Admin - Gestion Pricing</title>
+        <style>
+.universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999}}
+.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+.universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px}}
+.universal-nav-btn:hover{{background:rgba(255,255,255,0.12)}}
+.universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:white}}
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{ font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }}
+            .container {{ max-width: 1400px; margin: 0 auto; }}
+            .header {{ background: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; }}
+            h1 {{ color: #333; }}
+            .plans-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+            .plan-card {{ background: white; padding: 25px; border-radius: 15px; }}
+            .plan-name {{ font-size: 24px; font-weight: bold; color: #667eea; margin-bottom: 10px; }}
+            .plan-price {{ font-size: 32px; font-weight: bold; color: #333; margin: 15px 0; }}
+            .features {{ margin-top: 20px; }}
+            .feature {{ padding: 8px 0; color: #555; }}
+            .feature::before {{ content: "✓ "; color: #51cf66; font-weight: bold; }}
+            .routes-section {{ background: white; padding: 30px; border-radius: 15px; margin-top: 20px; }}
+            .route-group {{ margin-bottom: 25px; }}
+            .route-group h3 {{ color: #667eea; margin-bottom: 15px; }}
+            .route-list {{ display: flex; flex-wrap: wrap; gap: 10px; }}
+            .route-badge {{ background: #f0f0f0; padding: 8px 16px; border-radius: 20px; font-size: 13px; }}
+            .back-btn {{ display: inline-block; margin-top: 20px; padding: 12px 24px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 8px; }}
+        </style>
+    </head>
+    <body>
+        <nav class="universal-top-nav">
+            <div class="universal-nav-container">
+                <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
+                <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
+                <a href="/admin/list-promos" class="universal-nav-btn admin">💰 Promos</a>
+                <a href="/admin/pricing" class="universal-nav-btn admin">💎 Pricing</a>
+                <a href="/mon-compte" class="universal-nav-btn">👤 Compte</a>
+                <a href="/logout" class="universal-nav-btn">🚪 Déconnexion</a>
+            </div>
+        </nav>
+        
+        <div class="container">
+            <div class="header">
+                <h1>💎 Gestion des Plans & Permissions</h1>
+                <p>Configuration des plans d'abonnement et routes protégées</p>
+            </div>
+            
+            <h2 style="color: white; margin-bottom: 20px;">📋 Plans d'Abonnement</h2>
+            <div class="plans-grid">
+                {plans_html}
+            </div>
+            
+            <div class="routes-section">
+                <h2 style="margin-bottom: 25px;">🔐 Routes Protégées par Plan</h2>
+                
+                <div class="route-group">
+                    <h3>🆓 Free (Accès de base)</h3>
+                    <div class="route-list">
+                        <span class="route-badge">/dashboard</span>
+                        <span class="route-badge">/fear-greed</span>
+                        <span class="route-badge">/dominance</span>
+                        <span class="route-badge">/altcoin-season</span>
+                        <span class="route-badge">/heatmap</span>
+                        <span class="route-badge">/nouvelles</span>
+                        <span class="route-badge">/convertisseur</span>
+                        <span class="route-badge">/calendrier</span>
+                    </div>
+                </div>
+                
+                <div class="route-group">
+                    <h3>💎 Premium (1-3 mois)</h3>
+                    <div class="route-list">
+                        <span class="route-badge">/ai-assistant</span>
+                        <span class="route-badge">/prediction-ia</span>
+                        <span class="route-badge">/ai-opportunity-scanner</span>
+                        <span class="route-badge">/strategie</span>
+                        <span class="route-badge">/spot-trading</span>
+                        <span class="route-badge">/calculatrice</span>
+                        <span class="route-badge">/trades</span>
+                        <span class="route-badge">/risk-management</span>
+                        <span class="route-badge">/watchlist</span>
+                    </div>
+                </div>
+                
+                <div class="route-group">
+                    <h3>⭐ Pro (6 mois)</h3>
+                    <div class="route-list">
+                        <span class="route-badge">/ai-whale-watcher</span>
+                        <span class="route-badge">/ai-market-regime</span>
+                        <span class="route-badge">/stats-dashboard</span>
+                        <span class="route-badge">/market-simulation</span>
+                        <span class="route-badge">/success-stories</span>
+                    </div>
+                </div>
+                
+                <div class="route-group">
+                    <h3>👑 Elite (1 an)</h3>
+                    <div class="route-list">
+                        <span class="route-badge">/graphiques</span>
+                        <span class="route-badge">/bullrun-phase</span>
+                        <span class="route-badge">/telegram-test</span>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
+                    <h4 style="color: #333; margin-bottom: 15px;">📝 Notes:</h4>
+                    <ul style="color: #666; line-height: 1.8;">
+                        <li>Les utilisateurs héritent des permissions de tous les plans inférieurs</li>
+                        <li>Les plans 3_months héritent des permissions 1_month</li>
+                        <li>Les plans 1_year ont accès à toutes les fonctionnalités</li>
+                        <li>Les routes admin restent protégées par role='admin'</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <a href="/admin-dashboard" class="back-btn">← Retour au Dashboard Admin</a>
+        </div>
+    </body>
+    </html>
+    """)
+
+
 @app.get("/admin/init-promo-table")
 async def admin_init_promo_table(session_token: Optional[str] = Cookie(None)):
     """Initialise la table promo_codes (à exécuter une seule fois)"""
@@ -19633,7 +19820,28 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
     try:
         conn = get_db_connection()
         codes = PromoCodeManager.get_all_promo_codes(conn)
-        stats = PromoCodeManager.get_promo_stats(conn)
+        
+        # Get stats directly
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as total,
+                    COUNT(CASE WHEN is_active = 1 THEN 1 END) as active,
+                    COALESCE(SUM(current_usage), 0) as usage
+                FROM promo_codes
+            """)
+            stats_row = cursor.fetchone()
+            stats = {
+                'total': stats_row[0] if stats_row else 0,
+                'active': stats_row[1] if stats_row else 0,
+                'total_usage': stats_row[2] if stats_row else 0
+            }
+        except:
+            stats = {'total': 0, 'active': 0, 'total_usage': 0}
+        finally:
+            cursor.close()
+        
         conn.close()
         
         codes_html = ""
@@ -19726,19 +19934,19 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
                 <div class="stats">
                     <div class="stat-card">
                         <h3>Total Codes</h3>
-                        <p>{stats.get('total_codes', 0)}</p>
+                        <p>{stats.get('total', 0)}</p>
                     </div>
                     <div class="stat-card">
                         <h3>Codes Actifs</h3>
-                        <p>{stats.get('active_codes', 0)}</p>
+                        <p>{stats.get('active', 0)}</p>
                     </div>
                     <div class="stat-card">
                         <h3>Total Utilisations</h3>
-                        <p>{stats.get('total_uses', 0)}</p>
+                        <p>{stats.get('total_usage', 0)}</p>
                     </div>
                     <div class="stat-card">
                         <h3>Plus Utilisé</h3>
-                        <p style="font-size: 20px;">{stats.get('most_used_code', 'N/A')}</p>
+                        <p style="font-size: 20px;">N/A</p>
                     </div>
                 </div>
                 

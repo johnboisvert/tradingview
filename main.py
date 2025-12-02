@@ -16265,10 +16265,7 @@ async def stats_dashboard():
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }}
-        .nav {{ display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; justify-content: center; position: sticky; top: 0; z-index: 100; background: rgba(15, 23, 42, 0.95); padding: 15px; border-radius: 12px; backdrop-filter: blur(10px); }}
-        .nav a {{ padding: 12px 20px; background: #1e293b; border-radius: 8px; text-decoration: none; color: #e2e8f0; transition: all 0.3s; border: 1px solid #334155; font-size: 0.95em; white-space: nowrap; }}
-        .nav a:hover {{ background: #334155; border-color: #60a5fa; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3); }}
-        .nav a.active {{ background: #334155; border-color: #60a5fa; }}
+        
         .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
         h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
         
@@ -16296,9 +16293,7 @@ async def stats_dashboard():
     </style>
 </head>
 <body>
-    <div class="nav">
-        <a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot</a><a href="/calculatrice">🧮 Calc</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI</a><a href="/ai-opportunity-scanner">🎯 Scanner</a><a href="/ai-market-regime">🌊 Regime</a><a href="/ai-whale-watcher">🐋 Whale</a><a href="/stats-dashboard" class="active">$ Stats $</a><a href="/market-simulation">📈 Simulation</a><a href="/success-stories">🌟 Stories</a><a href="/convertisseur">💱 Convertir</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a>
-    </div>
+    
 
     <div class="container">
         <h1>$ 📊 STATISTIQUES - 100% DONNÉES RÉELLES $</h1>
@@ -17233,9 +17228,7 @@ async def success_stories():
     </style>
 </head>
 <body>
-    <div class="nav">
-        <a href="/">🏠 Accueil</a><a href="/fear-greed">😱 Fear&Greed</a><a href="/dominance">👑 Dominance</a><a href="/altcoin-season">🌟 Altcoin</a><a href="/heatmap">🔥 Heatmap</a><a href="/strategie">📚 Stratégie</a><a href="/spot-trading">💎 Spot</a><a href="/calculatrice">🧮 Calc</a><a href="/nouvelles">📰 Nouvelles</a><a href="/trades">📊 Trades</a><a href="/risk-management">⚖️ Risk</a><a href="/watchlist">👀 Watchlist</a><a href="/ai-assistant">🤖 AI</a><a href="/ai-opportunity-scanner">🎯 Scanner</a><a href="/ai-market-regime">🌊 Regime</a><a href="/ai-whale-watcher">🐋 Whale</a><a href="/stats-dashboard">$ Stats $</a><a href="/market-simulation">📈 Simulation</a><a href="/success-stories" class="active">🌟 Stories</a><a href="/convertisseur">💱 Convertir</a><a href="/calendrier">📅 Calendrier</a><a href="/bullrun-phase">🚀 Bullrun</a><a href="/graphiques">📈 Graphiques</a><a href="/telegram-test">📱 Telegram</a>
-    </div>
+    
 
     <div class="container">
         <h1>🌟 SUCCESS STORIES - Histoires Vraies de DCA</h1>

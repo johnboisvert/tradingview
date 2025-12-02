@@ -16260,39 +16260,83 @@ async def stats_dashboard():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📊 Stats Dashboard - Données Réelles</title>
-    """ + CSS + """
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }}
         
-        .stats-page .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
-        .stats-page h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
+        .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+        h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
         
-        .stats-page .data-badge {{ text-align: center; margin-bottom: 20px; padding: 12px; background: rgba(0, 255, 136, 0.1); border: 2px solid #00ff88; border-radius: 8px; color: #00ff88; font-weight: bold; }}
+        .data-badge {{ text-align: center; margin-bottom: 20px; padding: 12px; background: rgba(0, 255, 136, 0.1); border: 2px solid #00ff88; border-radius: 8px; color: #00ff88; font-weight: bold; }}
         
-        .stats-page .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }}
-        .stats-page .stat-card {{ background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.3); border-radius: 12px; padding: 20px; text-align: center; }}
-        .stats-page .stat-card:hover {{ border-color: #00ff88; box-shadow: 0 0 15px rgba(0,255,136,0.4); }}
-        .stats-page .stat-label {{ font-size: 0.85em; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }}
-        .stats-page .stat-value {{ font-size: 2.2em; font-weight: bold; color: #00ff88; margin: 8px 0; }}
-        .stats-page .stat-badge {{ display: inline-block; padding: 4px 12px; background: rgba(0,255,136,0.2); border-radius: 15px; font-size: 0.75em; }}
+        .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+        .stat-card {{ background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.3); border-radius: 12px; padding: 20px; text-align: center; }}
+        .stat-card:hover {{ border-color: #00ff88; box-shadow: 0 0 15px rgba(0,255,136,0.4); }}
+        .stat-label {{ font-size: 0.85em; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }}
+        .stat-value {{ font-size: 2.2em; font-weight: bold; color: #00ff88; margin: 8px 0; }}
+        .stat-badge {{ display: inline-block; padding: 4px 12px; background: rgba(0,255,136,0.2); border-radius: 15px; font-size: 0.75em; }}
         
-        .stats-page .charts-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 30px; }}
-        .stats-page .chart-container {{ background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.2); border-radius: 12px; padding: 15px; height: 350px; position: relative; }}
-        .stats-page .chart-title {{ text-align: center; color: #00ff88; margin-bottom: 10px; font-size: 1.1em; }}
+        .charts-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+        .chart-container {{ background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.2); border-radius: 12px; padding: 15px; height: 350px; position: relative; }}
+        .chart-title {{ text-align: center; color: #00ff88; margin-bottom: 10px; font-size: 1.1em; }}
         
-        .stats-page .rec-box {{ background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,212,255,0.1)); border-left: 4px solid #00ff88; padding: 20px; border-radius: 8px; margin-top: 20px; }}
-        .stats-page .rec-box h3 {{ margin-bottom: 15px; color: #00ff88; }}
-        .stats-page .rec-box ul {{ margin-left: 20px; line-height: 1.8; }}
+        .rec-box {{ background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,212,255,0.1)); border-left: 4px solid #00ff88; padding: 20px; border-radius: 8px; margin-top: 20px; }}
+        .rec-box h3 {{ margin-bottom: 15px; color: #00ff88; }}
+        .rec-box ul {{ margin-left: 20px; line-height: 1.8; }}
         
-        .stats-page .btn {{ display: block; margin: 20px auto; padding: 12px 30px; background: linear-gradient(45deg, #00ff88, #00d4ff); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1em; }}
-        .stats-page .btn:hover {{ transform: scale(1.05); }}
+        .btn {{ display: block; margin: 20px auto; padding: 12px 30px; background: linear-gradient(45deg, #00ff88, #00d4ff); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1em; }}
+        .btn:hover {{ transform: scale(1.05); }}
         
-        .stats-page .footer {{ text-align: center; color: #00ff88; font-size: 0.9em; margin-top: 20px; padding: 15px; background: rgba(0, 255, 136, 0.1); border-radius: 8px; border: 1px solid rgba(0, 255, 136, 0.3); }}
+        .footer {{ text-align: center; color: #00ff88; font-size: 0.9em; margin-top: 20px; padding: 15px; background: rgba(0, 255, 136, 0.1); border-radius: 8px; border: 1px solid rgba(0, 255, 136, 0.3); }}
     </style>
 </head>
 <body>
+<style>
+.universal-top-nav{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}
+.universal-nav-container{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.universal-nav-btn{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}
+.universal-nav-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}
+.universal-nav-btn.premium{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}
+.universal-nav-btn.admin{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}
+.universal-nav-btn.account{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}
+.universal-nav-btn.logout{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}
+</style>
+<nav class="universal-top-nav">
+    <div class="universal-nav-container">
+        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
+        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
+        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
+        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
+        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
+        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
+        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
+        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
+        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
+        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
+        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
+        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
+        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
+        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
+        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
+        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
+        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
+        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
+        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
+        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
+        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
+        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
+        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
+        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
+        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
+        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
+        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
+        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
+        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
+    </div>
+</nav>
+
     
 
     <div class="container">
@@ -16417,7 +16461,7 @@ async def stats_dashboard():
             location.reload();
         }}, 30000);
     </script>
-</div></body>
+</body>
 </html>"""
     
     return HTMLResponse(html)

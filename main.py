@@ -16266,30 +16266,30 @@ async def stats_dashboard():
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }}
         
-        .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
-        h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
+        .stats-page .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
+        .stats-page h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
         
-        .data-badge {{ text-align: center; margin-bottom: 20px; padding: 12px; background: rgba(0, 255, 136, 0.1); border: 2px solid #00ff88; border-radius: 8px; color: #00ff88; font-weight: bold; }}
+        .stats-page .data-badge {{ text-align: center; margin-bottom: 20px; padding: 12px; background: rgba(0, 255, 136, 0.1); border: 2px solid #00ff88; border-radius: 8px; color: #00ff88; font-weight: bold; }}
         
-        .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }}
-        .stat-card {{ background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.3); border-radius: 12px; padding: 20px; text-align: center; }}
-        .stat-card:hover {{ border-color: #00ff88; box-shadow: 0 0 15px rgba(0,255,136,0.4); }}
-        .stat-label {{ font-size: 0.85em; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }}
-        .stat-value {{ font-size: 2.2em; font-weight: bold; color: #00ff88; margin: 8px 0; }}
-        .stat-badge {{ display: inline-block; padding: 4px 12px; background: rgba(0,255,136,0.2); border-radius: 15px; font-size: 0.75em; }}
+        .stats-page .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+        .stats-page .stat-card {{ background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.3); border-radius: 12px; padding: 20px; text-align: center; }}
+        .stats-page .stat-card:hover {{ border-color: #00ff88; box-shadow: 0 0 15px rgba(0,255,136,0.4); }}
+        .stats-page .stat-label {{ font-size: 0.85em; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }}
+        .stats-page .stat-value {{ font-size: 2.2em; font-weight: bold; color: #00ff88; margin: 8px 0; }}
+        .stats-page .stat-badge {{ display: inline-block; padding: 4px 12px; background: rgba(0,255,136,0.2); border-radius: 15px; font-size: 0.75em; }}
         
-        .charts-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 30px; }}
-        .chart-container {{ background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.2); border-radius: 12px; padding: 15px; height: 350px; position: relative; }}
-        .chart-title {{ text-align: center; color: #00ff88; margin-bottom: 10px; font-size: 1.1em; }}
+        .stats-page .charts-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+        .stats-page .chart-container {{ background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.2); border-radius: 12px; padding: 15px; height: 350px; position: relative; }}
+        .stats-page .chart-title {{ text-align: center; color: #00ff88; margin-bottom: 10px; font-size: 1.1em; }}
         
-        .rec-box {{ background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,212,255,0.1)); border-left: 4px solid #00ff88; padding: 20px; border-radius: 8px; margin-top: 20px; }}
-        .rec-box h3 {{ margin-bottom: 15px; color: #00ff88; }}
-        .rec-box ul {{ margin-left: 20px; line-height: 1.8; }}
+        .stats-page .rec-box {{ background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,212,255,0.1)); border-left: 4px solid #00ff88; padding: 20px; border-radius: 8px; margin-top: 20px; }}
+        .stats-page .rec-box h3 {{ margin-bottom: 15px; color: #00ff88; }}
+        .stats-page .rec-box ul {{ margin-left: 20px; line-height: 1.8; }}
         
-        .btn {{ display: block; margin: 20px auto; padding: 12px 30px; background: linear-gradient(45deg, #00ff88, #00d4ff); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1em; }}
-        .btn:hover {{ transform: scale(1.05); }}
+        .stats-page .btn {{ display: block; margin: 20px auto; padding: 12px 30px; background: linear-gradient(45deg, #00ff88, #00d4ff); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1em; }}
+        .stats-page .btn:hover {{ transform: scale(1.05); }}
         
-        .footer {{ text-align: center; color: #00ff88; font-size: 0.9em; margin-top: 20px; padding: 15px; background: rgba(0, 255, 136, 0.1); border-radius: 8px; border: 1px solid rgba(0, 255, 136, 0.3); }}
+        .stats-page .footer {{ text-align: center; color: #00ff88; font-size: 0.9em; margin-top: 20px; padding: 15px; background: rgba(0, 255, 136, 0.1); border-radius: 8px; border: 1px solid rgba(0, 255, 136, 0.3); }}
     </style>
 </head>
 <body>
@@ -16417,7 +16417,7 @@ async def stats_dashboard():
             location.reload();
         }}, 30000);
     </script>
-</body>
+</div></body>
 </html>"""
     
     return HTMLResponse(html)

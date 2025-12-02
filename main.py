@@ -19476,179 +19476,437 @@ async def admin_pricing(request: Request):
     if not user or user.get("role") != "admin":
         return HTMLResponse("<h1>403 - Accès refusé</h1>", status_code=403)
     
-    plans_html = """
-    <div class="plan-card">
-        <div class="plan-name">Free</div>
-        <div class="plan-price">$0</div>
-        <div class="features">
-            <div class="feature">Dashboard de base</div>
-            <div class="feature">Indicateurs limités</div>
-            <div class="feature">5 alertes/jour</div>
-        </div>
-    </div>
-    <div class="plan-card">
-        <div class="plan-name">Premium 1 mois</div>
-        <div class="plan-price">$29.99</div>
-        <div class="features">
-            <div class="feature">Tous les indicateurs</div>
-            <div class="feature">Alertes illimitées</div>
-            <div class="feature">Scanner AI</div>
-        </div>
-    </div>
-    <div class="plan-card">
-        <div class="plan-name">Premium 3 mois</div>
-        <div class="plan-price">$74.97</div>
-        <div class="features">
-            <div class="feature">Tous Premium</div>
-            <div class="feature">15% de réduction</div>
-        </div>
-    </div>
-    <div class="plan-card">
-        <div class="plan-name">Pro 6 mois</div>
-        <div class="plan-price">$134.94</div>
-        <div class="features">
-            <div class="feature">Tous Premium +</div>
-            <div class="feature">Whale Watcher</div>
-            <div class="feature">Market Regime</div>
-            <div class="feature">25% de réduction</div>
-        </div>
-    </div>
-    <div class="plan-card">
-        <div class="plan-name">Elite 1 an</div>
-        <div class="plan-price">$239.88</div>
-        <div class="features">
-            <div class="feature">Tous Pro +</div>
-            <div class="feature">API Access</div>
-            <div class="feature">33% de réduction</div>
-        </div>
-    </div>
-    """
-    
     return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <title>Admin - Gestion Pricing</title>
-        <style>
-.universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999}}
-.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
-.universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px}}
-.universal-nav-btn:hover{{background:rgba(255,255,255,0.12)}}
-.universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:white}}
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{ font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }}
-            .container {{ max-width: 1400px; margin: 0 auto; }}
-            .header {{ background: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; }}
-            h1 {{ color: #333; }}
-            .plans-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }}
-            .plan-card {{ background: white; padding: 25px; border-radius: 15px; }}
-            .plan-name {{ font-size: 24px; font-weight: bold; color: #667eea; margin-bottom: 10px; }}
-            .plan-price {{ font-size: 32px; font-weight: bold; color: #333; margin: 15px 0; }}
-            .features {{ margin-top: 20px; }}
-            .feature {{ padding: 8px 0; color: #555; }}
-            .feature::before {{ content: "✓ "; color: #51cf66; font-weight: bold; }}
-            .routes-section {{ background: white; padding: 30px; border-radius: 15px; margin-top: 20px; }}
-            .route-group {{ margin-bottom: 25px; }}
-            .route-group h3 {{ color: #667eea; margin-bottom: 15px; }}
-            .route-list {{ display: flex; flex-wrap: wrap; gap: 10px; }}
-            .route-badge {{ background: #f0f0f0; padding: 8px 16px; border-radius: 20px; font-size: 13px; }}
-            .back-btn {{ display: inline-block; margin-top: 20px; padding: 12px 24px; background: rgba(255,255,255,0.2); color: white; text-decoration: none; border-radius: 8px; }}
-        </style>
-    </head>
-    <body>
-        <nav class="universal-top-nav">
-            <div class="universal-nav-container">
-                <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-                <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-                <a href="/admin/list-promos" class="universal-nav-btn admin">💰 Promos</a>
-                <a href="/admin/pricing" class="universal-nav-btn admin">💎 Pricing</a>
-                <a href="/mon-compte" class="universal-nav-btn">👤 Compte</a>
-                <a href="/logout" class="universal-nav-btn">🚪 Déconnexion</a>
-            </div>
-        </nav>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Gestion Pricing</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         
-        <div class="container">
-            <div class="header">
-                <h1>💎 Gestion des Plans & Permissions</h1>
-                <p>Configuration des plans d'abonnement et routes protégées</p>
-            </div>
-            
-            <h2 style="color: white; margin-bottom: 20px;">📋 Plans d'Abonnement</h2>
-            <div class="plans-grid">
-                {plans_html}
-            </div>
-            
-            <div class="routes-section">
-                <h2 style="margin-bottom: 25px;">🔐 Routes Protégées par Plan</h2>
-                
-                <div class="route-group">
-                    <h3>🆓 Free (Accès de base)</h3>
-                    <div class="route-list">
-                        <span class="route-badge">/dashboard</span>
-                        <span class="route-badge">/fear-greed</span>
-                        <span class="route-badge">/dominance</span>
-                        <span class="route-badge">/altcoin-season</span>
-                        <span class="route-badge">/heatmap</span>
-                        <span class="route-badge">/nouvelles</span>
-                        <span class="route-badge">/convertisseur</span>
-                        <span class="route-badge">/calendrier</span>
-                    </div>
-                </div>
-                
-                <div class="route-group">
-                    <h3>💎 Premium (1-3 mois)</h3>
-                    <div class="route-list">
-                        <span class="route-badge">/ai-assistant</span>
-                        <span class="route-badge">/prediction-ia</span>
-                        <span class="route-badge">/ai-opportunity-scanner</span>
-                        <span class="route-badge">/strategie</span>
-                        <span class="route-badge">/spot-trading</span>
-                        <span class="route-badge">/calculatrice</span>
-                        <span class="route-badge">/trades</span>
-                        <span class="route-badge">/risk-management</span>
-                        <span class="route-badge">/watchlist</span>
-                    </div>
-                </div>
-                
-                <div class="route-group">
-                    <h3>⭐ Pro (6 mois)</h3>
-                    <div class="route-list">
-                        <span class="route-badge">/ai-whale-watcher</span>
-                        <span class="route-badge">/ai-market-regime</span>
-                        <span class="route-badge">/stats-dashboard</span>
-                        <span class="route-badge">/market-simulation</span>
-                        <span class="route-badge">/success-stories</span>
-                    </div>
-                </div>
-                
-                <div class="route-group">
-                    <h3>👑 Elite (1 an)</h3>
-                    <div class="route-list">
-                        <span class="route-badge">/graphiques</span>
-                        <span class="route-badge">/bullrun-phase</span>
-                        <span class="route-badge">/telegram-test</span>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px;">
-                    <h4 style="color: #333; margin-bottom: 15px;">📝 Notes:</h4>
-                    <ul style="color: #666; line-height: 1.8;">
-                        <li>Les utilisateurs héritent des permissions de tous les plans inférieurs</li>
-                        <li>Les plans 3_months héritent des permissions 1_month</li>
-                        <li>Les plans 1_year ont accès à toutes les fonctionnalités</li>
-                        <li>Les routes admin restent protégées par role='admin'</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <a href="/admin-dashboard" class="back-btn">← Retour au Dashboard Admin</a>
+        /* Menu */
+        .top-menu {{
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 12px 20px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.5);
+            position: sticky;
+            top: 0;
+            z-index: 9999;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }}
+        .menu-container {{
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }}
+        .menu-link {{
+            background: rgba(255,255,255,0.05);
+            color: #e2e8f0;
+            padding: 8px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.08);
+            white-space: nowrap;
+        }}
+        .menu-link:hover {{
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(96,165,250,0.4);
+            color: white;
+        }}
+        .menu-link.admin {{
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border: none;
+            color: white;
+        }}
+        
+        /* Body */
+        body {{
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding-bottom: 40px;
+        }}
+        
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        
+        .header {{
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }}
+        
+        h1 {{ color: #333; font-size: 32px; margin-bottom: 10px; }}
+        .subtitle {{ color: #666; font-size: 16px; }}
+        
+        /* Plans Grid */
+        .section-title {{
+            color: white;
+            font-size: 24px;
+            margin: 30px 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.3);
+        }}
+        
+        .plans-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        
+        .plan-card {{
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }}
+        
+        .plan-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }}
+        
+        .plan-name {{
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }}
+        
+        .plan-price {{
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin: 15px 0;
+        }}
+        
+        .plan-price span {{
+            font-size: 16px;
+            color: #666;
+        }}
+        
+        .plan-id {{
+            background: #f0f0f0;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #666;
+            display: inline-block;
+            margin-bottom: 15px;
+        }}
+        
+        .features {{
+            margin-top: 20px;
+        }}
+        
+        .feature {{
+            padding: 8px 0;
+            color: #555;
+            font-size: 14px;
+        }}
+        
+        .feature::before {{
+            content: "✓ ";
+            color: #51cf66;
+            font-weight: bold;
+            margin-right: 8px;
+        }}
+        
+        /* Routes Section */
+        .routes-section {{
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-top: 20px;
+        }}
+        
+        .route-group {{
+            margin-bottom: 30px;
+        }}
+        
+        .route-group h3 {{
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            font-size: 20px;
+        }}
+        
+        .route-list {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }}
+        
+        .route-badge {{
+            background: #f8f9fa;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #333;
+            border: 1px solid #dee2e6;
+            transition: all 0.2s;
+        }}
+        
+        .route-badge:hover {{
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }}
+        
+        .info-box {{
+            margin-top: 30px;
+            padding: 20px;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 8px;
+        }}
+        
+        .info-box h4 {{
+            color: #856404;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }}
+        
+        .info-box ul {{
+            color: #856404;
+            line-height: 1.8;
+            padding-left: 20px;
+        }}
+        
+        .back-btn {{
+            display: inline-block;
+            margin-top: 30px;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.95);
+            color: #667eea;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }}
+        
+        .back-btn:hover {{
+            background: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+        }}
+        
+        .stats-bar {{
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }}
+        
+        .stat-item {{
+            background: rgba(255,255,255,0.95);
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }}
+        
+        .stat-label {{
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }}
+        
+        .stat-value {{
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }}
+    </style>
+</head>
+<body>
+    <nav class="top-menu">
+        <div class="menu-container">
+            <a href="/dashboard" class="menu-link">🏠 Accueil</a>
+            <a href="/admin-dashboard" class="menu-link admin">🔧 Admin Dashboard</a>
+            <a href="/admin/list-promos" class="menu-link admin">💰 Codes Promo</a>
+            <a href="/admin/pricing" class="menu-link admin" style="background: #8b5cf6;">💎 Pricing</a>
+            <a href="/mon-compte" class="menu-link">👤 Compte</a>
+            <a href="/logout" class="menu-link" style="background: #ef4444; color: white;">🚪 Déconnexion</a>
         </div>
-    </body>
-    </html>
+    </nav>
+
+    <div class="container">
+        <div class="header">
+            <h1>💎 Gestion des Plans d'Abonnement</h1>
+            <p class="subtitle">Configuration complète des plans, prix et permissions d'accès</p>
+        </div>
+        
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-label">Total Plans</div>
+                <div class="stat-value">5</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Routes Protégées</div>
+                <div class="stat-value">25+</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Prix Min/Max</div>
+                <div class="stat-value">$0 - $240</div>
+            </div>
+        </div>
+
+        <h2 class="section-title">📋 Plans d'Abonnement Disponibles</h2>
+        <div class="plans-grid">
+            <div class="plan-card">
+                <div class="plan-id">ID: free</div>
+                <div class="plan-name">🆓 Free</div>
+                <div class="plan-price">$0<span>/gratuit</span></div>
+                <div class="features">
+                    <div class="feature">Dashboard de base</div>
+                    <div class="feature">Indicateurs limités</div>
+                    <div class="feature">Fear & Greed Index</div>
+                    <div class="feature">5 alertes par jour</div>
+                    <div class="feature">8 pages accessibles</div>
+                </div>
+            </div>
+            
+            <div class="plan-card">
+                <div class="plan-id">ID: 1_month</div>
+                <div class="plan-name">💎 Premium 1 mois</div>
+                <div class="plan-price">$29.99<span>/mois</span></div>
+                <div class="features">
+                    <div class="feature">Tous les indicateurs</div>
+                    <div class="feature">Alertes illimitées</div>
+                    <div class="feature">Scanner AI</div>
+                    <div class="feature">Trading assistant AI</div>
+                    <div class="feature">Support prioritaire</div>
+                    <div class="feature">9 pages supplémentaires</div>
+                </div>
+            </div>
+            
+            <div class="plan-card">
+                <div class="plan-id">ID: 3_months</div>
+                <div class="plan-name">💎 Premium 3 mois</div>
+                <div class="plan-price">$74.97<span>/3 mois</span></div>
+                <div class="features">
+                    <div class="feature">Tous Premium</div>
+                    <div class="feature">15% de réduction</div>
+                    <div class="feature">Économie de $14.99</div>
+                </div>
+            </div>
+            
+            <div class="plan-card">
+                <div class="plan-id">ID: 6_months</div>
+                <div class="plan-name">⭐ Pro 6 mois</div>
+                <div class="plan-price">$134.94<span>/6 mois</span></div>
+                <div class="features">
+                    <div class="feature">Tous Premium +</div>
+                    <div class="feature">Whale Watcher AI</div>
+                    <div class="feature">Market Regime Detection</div>
+                    <div class="feature">Stats dashboard avancé</div>
+                    <div class="feature">25% de réduction</div>
+                    <div class="feature">Économie de $44.99</div>
+                </div>
+            </div>
+            
+            <div class="plan-card">
+                <div class="plan-id">ID: 1_year</div>
+                <div class="plan-name">👑 Elite 1 an</div>
+                <div class="plan-price">$239.88<span>/an</span></div>
+                <div class="features">
+                    <div class="feature">Tous Pro +</div>
+                    <div class="feature">API Access</div>
+                    <div class="feature">Backtesting avancé</div>
+                    <div class="feature">Consultation mensuelle</div>
+                    <div class="feature">33% de réduction</div>
+                    <div class="feature">Économie de $119.99</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="routes-section">
+            <h2 style="margin-bottom: 25px;">🔐 Routes Protégées par Niveau d'Abonnement</h2>
+            
+            <div class="route-group">
+                <h3>🆓 Free - Accès de Base (8 pages)</h3>
+                <div class="route-list">
+                    <div class="route-badge">/dashboard</div>
+                    <div class="route-badge">/fear-greed</div>
+                    <div class="route-badge">/dominance</div>
+                    <div class="route-badge">/altcoin-season</div>
+                    <div class="route-badge">/heatmap</div>
+                    <div class="route-badge">/nouvelles</div>
+                    <div class="route-badge">/convertisseur</div>
+                    <div class="route-badge">/calendrier</div>
+                </div>
+            </div>
+            
+            <div class="route-group">
+                <h3>💎 Premium (1-3 mois) - +9 Pages</h3>
+                <div class="route-list">
+                    <div class="route-badge">/ai-assistant</div>
+                    <div class="route-badge">/prediction-ia</div>
+                    <div class="route-badge">/ai-opportunity-scanner</div>
+                    <div class="route-badge">/strategie</div>
+                    <div class="route-badge">/spot-trading</div>
+                    <div class="route-badge">/calculatrice</div>
+                    <div class="route-badge">/trades</div>
+                    <div class="route-badge">/risk-management</div>
+                    <div class="route-badge">/watchlist</div>
+                </div>
+            </div>
+            
+            <div class="route-group">
+                <h3>⭐ Pro (6 mois) - +5 Pages</h3>
+                <div class="route-list">
+                    <div class="route-badge">/ai-whale-watcher</div>
+                    <div class="route-badge">/ai-market-regime</div>
+                    <div class="route-badge">/stats-dashboard</div>
+                    <div class="route-badge">/market-simulation</div>
+                    <div class="route-badge">/success-stories</div>
+                </div>
+            </div>
+            
+            <div class="route-group">
+                <h3>👑 Elite (1 an) - +3 Pages + Toutes Fonctionnalités</h3>
+                <div class="route-list">
+                    <div class="route-badge">/graphiques</div>
+                    <div class="route-badge">/bullrun-phase</div>
+                    <div class="route-badge">/telegram-test</div>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <h4>📝 Système de Permissions</h4>
+                <ul>
+                    <li><strong>Héritage:</strong> Chaque plan hérite des permissions des plans inférieurs</li>
+                    <li><strong>Premium 3 mois:</strong> Même accès que 1 mois avec meilleur prix</li>
+                    <li><strong>Elite 1 an:</strong> Accès total à TOUTES les 25+ fonctionnalités</li>
+                    <li><strong>Routes Admin:</strong> Protégées par role='admin' (indépendant des plans)</li>
+                    <li><strong>Total pages:</strong> Free (8) + Premium (9) + Pro (5) + Elite (3) = 25+ pages</li>
+                </ul>
+            </div>
+        </div>
+        
+        <a href="/admin-dashboard" class="back-btn">← Retour au Dashboard Admin</a>
+    </div>
+</body>
+</html>
     """)
-
-
 @app.get("/admin/init-promo-table")
 async def admin_init_promo_table(session_token: Optional[str] = Cookie(None)):
     """Initialise la table promo_codes (à exécuter une seule fois)"""

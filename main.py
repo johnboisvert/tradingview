@@ -14803,7 +14803,7 @@ async def pricing_complete():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💎 Plans & Tarifs - Trading Dashboard Pro</title>
+    <title>💎 Plans & Tarifs - Trading Dashboard Pro</title>""" + CSS + """
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -16260,6 +16260,7 @@ async def stats_dashboard():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📊 Stats Dashboard - Données Réelles</title>
+    """ + CSS + """
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
@@ -16480,7 +16481,7 @@ async def market_simulation():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📈 Simulation Marché Top 10 Crypto</title>
+    <title>📈 Simulation Marché Top 10 Crypto</title>""" + CSS + """
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -17045,6 +17046,7 @@ async def success_stories():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🌟 Success Stories DCA</title>
+    """ + CSS + """
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -19829,7 +19831,7 @@ async def mon_compte(request: Request):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mon Compte - Trading Dashboard Pro</title>
+        <title>Mon Compte - Trading Dashboard Pro</title>""" + CSS + """
         <style>
             * {{ margin: 0; padding: 0; box-sizing: border-box; }}
             body {{

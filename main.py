@@ -19436,8 +19436,8 @@ async def admin_dashboard(request: Request):
                     💰 Gérer les Codes Promo
                 </a>
                 <a href="/admin/pricing" class="btn btn-primary" 
-                   style="padding: 12px 24px; font-size: 16px; margin: 5px;">
-                    💳 Gérer les Prix
+                   style="background: #8b5cf6; padding: 12px 24px; font-size: 16px; margin: 5px;">
+                    💎 Gérer les Plans & Permissions
                 </a>
             </div>
             <div class="stats-grid">
@@ -19926,6 +19926,51 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             </style>
         </head>
         <body>
+<style>
+.universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
+.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+.universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
+.universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
+.universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
+.universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}}
+.universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
+.universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
+</style>
+<nav class="universal-top-nav">
+    <div class="universal-nav-container">
+        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
+        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
+        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
+        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
+        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
+        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
+        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
+        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
+        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
+        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
+        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
+        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
+        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
+        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
+        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
+        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
+        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
+        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
+        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
+        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
+        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
+        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
+        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
+        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
+        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
+        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
+        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
+        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
+        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
+    </div>
+</nav>
+
+
             <div class="container">
                 
                 

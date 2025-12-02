@@ -11877,7 +11877,7 @@ async def charts_page():
             .tradingview-widget-container { height: 400px; }
         }
     </style>
-</head>
+""" + CSS + """</head>
 <body>
     <div class="container">
         <!-- Header -->
@@ -12818,7 +12818,7 @@ async def trades_page():
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.5s ease; }
     </style>
-</head>
+""" + CSS + """</head>
 <body>
     <div class="container">
         <div class="header fade-in">
@@ -19305,6 +19305,7 @@ async def admin_dashboard(request: Request):
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Admin Dashboard</title>
+        """ + CSS + """
         <style>
             * {{ margin: 0; padding: 0; box-sizing: border-box; }}
             body {{ font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }}

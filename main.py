@@ -19477,7 +19477,7 @@ async def admin_dashboard(request: Request):
 
 @app.get("/admin/pricing", response_class=HTMLResponse)
 async def admin_pricing_view(request: Request):
-    """Page de gestion des plans"""
+    """Page de gestion des plans - ISOLÉE"""
     session_token = request.cookies.get("session_token")
     if not session_token:
         return RedirectResponse("/login", status_code=303)
@@ -19486,166 +19486,103 @@ async def admin_pricing_view(request: Request):
     if not user or user.get("role") != "admin":
         return HTMLResponse("<h1>403</h1>", status_code=403)
     
-    # Check for success/error messages
     success = request.query_params.get("success")
     error = request.query_params.get("error")
     
-    alert_html = ""
+    alert = ""
     if success:
-        alert_html = '<div class="alert alert-success">✅ Plan mis à jour avec succès!</div>'
+        alert = '<div class="alert success">✅ Plan mis à jour avec succès!</div>'
     elif error:
-        alert_html = '<div class="alert alert-error">❌ Erreur lors de la mise à jour</div>'
+        alert = '<div class="alert error">❌ Erreur lors de la mise à jour</div>'
+    
+    # TOUTES les 29 routes disponibles
+    all_routes_html = ""
+    routes_list = [
+        '/dashboard', '/fear-greed', '/dominance', '/altcoin-season', '/heatmap',
+        '/strategie', '/spot-trading', '/calculatrice', '/nouvelles', '/trades',
+        '/risk-management', '/watchlist', '/ai-assistant', '/prediction-ia',
+        '/ai-opportunity-scanner', '/ai-whale-watcher', '/ai-market-regime',
+        '/stats-dashboard', '/market-simulation', '/success-stories',
+        '/convertisseur', '/calendrier', '/bullrun-phase', '/graphiques',
+        '/telegram-test', '/pricing-complete', '/admin-dashboard', '/admin/list-promos',
+        '/mon-compte'
+    ]
     
     return HTMLResponse(f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Admin - Gestion Pricing</title>
+    <title>Admin Pricing</title>
     <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }}
+        * {{ margin:0; padding:0; box-sizing:border-box; }}
+        body {{ font-family:'Segoe UI',sans-serif; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; }}
         
-        .admin-menu {{
-            background: #1a1a2e;
-            padding: 15px 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            position: sticky;
-            top: 0;
-            z-index: 99999;
-            border-bottom: 3px solid #f59e0b;
+        /* MENU ISOLÉ */
+        .top-menu {{
+            background:#1a1a2e;
+            padding:15px 20px;
+            box-shadow:0 4px 20px rgba(0,0,0,0.5);
+            position:sticky;
+            top:0;
+            z-index:999999;
+            border-bottom:3px solid #f59e0b;
         }}
         .menu-items {{
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
+            max-width:1200px;
+            margin:0 auto;
+            display:flex;
+            gap:15px;
+            flex-wrap:wrap;
+            justify-content:center;
         }}
         .menu-btn {{
-            background: #2d2d44;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s;
+            background:#2d2d44;
+            color:white;
+            padding:10px 20px;
+            border-radius:8px;
+            text-decoration:none;
+            font-weight:600;
+            transition:all 0.3s;
         }}
-        .menu-btn:hover {{ background: #3d3d54; transform: translateY(-2px); }}
-        .menu-btn.active {{ background: #f59e0b; }}
+        .menu-btn:hover {{ background:#3d3d54; }}
+        .menu-btn.active {{ background:#f59e0b; }}
         
-        .container {{ max-width: 1400px; margin: 0 auto; padding: 30px 20px; }}
-        .page-header {{ background: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }}
-        h1 {{ color: #333; font-size: 32px; }}
+        .container {{ max-width:1400px; margin:0 auto; padding:30px 20px; }}
+        .header {{ background:white; padding:30px; border-radius:15px; margin-bottom:30px; box-shadow:0 10px 30px rgba(0,0,0,0.2); }}
+        h1 {{ color:#333; font-size:32px; }}
         
-        .alert {{
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-weight: 500;
-        }}
-        .alert-success {{
-            background: #d1fae5;
-            color: #065f46;
-            border-left: 4px solid #10b981;
-        }}
-        .alert-error {{
-            background: #fee2e2;
-            color: #991b1b;
-            border-left: 4px solid #ef4444;
-        }}
+        .alert {{ padding:15px 20px; border-radius:8px; margin-bottom:20px; font-weight:500; }}
+        .alert.success {{ background:#d1fae5; color:#065f46; border-left:4px solid #10b981; }}
+        .alert.error {{ background:#fee2e2; color:#991b1b; border-left:4px solid #ef4444; }}
         
-        .plan-editor {{
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 25px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }}
-        .plan-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
-        }}
-        .plan-title {{ font-size: 24px; font-weight: bold; color: #667eea; }}
-        .plan-id {{ background: #f0f0f0; padding: 5px 15px; border-radius: 20px; font-size: 13px; }}
+        .plan-editor {{ background:white; padding:25px; border-radius:15px; margin-bottom:25px; box-shadow:0 5px 15px rgba(0,0,0,0.1); }}
+        .plan-header {{ display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:15px; border-bottom:2px solid #f0f0f0; }}
+        .plan-title {{ font-size:24px; font-weight:bold; color:#667eea; }}
+        .plan-id {{ background:#f0f0f0; padding:5px 15px; border-radius:20px; font-size:13px; }}
         
-        .editor-row {{
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
-        }}
-        .form-group {{ margin-bottom: 15px; }}
-        .form-label {{
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: #555;
-            margin-bottom: 8px;
-        }}
-        .form-input {{
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-        }}
-        .form-input:focus {{
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }}
+        .editor-row {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-bottom:20px; }}
+        .form-group {{ margin-bottom:15px; }}
+        .form-label {{ display:block; font-size:14px; font-weight:600; color:#555; margin-bottom:8px; }}
+        .form-input {{ width:100%; padding:12px; border:2px solid #e0e0e0; border-radius:8px; font-size:16px; }}
+        .form-input:focus {{ outline:none; border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,0.1); }}
         
-        .routes-section {{
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-        }}
-        .routes-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
-        }}
-        .route-checkbox {{
-            display: flex;
-            align-items: center;
-            background: white;
-            padding: 10px;
-            border-radius: 6px;
-            border: 2px solid #e0e0e0;
-        }}
-        .route-checkbox input {{
-            margin-right: 10px;
-            width: 18px;
-            height: 18px;
-        }}
+        .routes-section {{ background:#f8f9fa; padding:20px; border-radius:10px; margin-top:20px; }}
+        .routes-section h4 {{ color:#333; margin-bottom:15px; }}
+        .routes-grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:15px; }}
+        .route-checkbox {{ display:flex; align-items:center; background:white; padding:10px; border-radius:6px; border:2px solid #e0e0e0; }}
+        .route-checkbox input {{ margin-right:10px; width:18px; height:18px; }}
+        .route-checkbox:has(input:checked) {{ background:#e8f0ff; border-color:#667eea; }}
         
-        .save-btn {{
-            background: #10b981;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 15px;
-        }}
-        .save-btn:hover {{
-            background: #059669;
-            transform: translateY(-2px);
-        }}
+        .save-btn {{ background:#10b981; color:white; padding:12px 30px; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; margin-top:15px; }}
+        .save-btn:hover {{ background:#059669; }}
+        
+        .info {{ background:#dbeafe; padding:20px; border-radius:10px; margin-top:30px; border-left:4px solid #3b82f6; }}
+        .info h4 {{ color:#1e40af; margin-bottom:10px; }}
+        .info ul {{ color:#1e40af; line-height:2; padding-left:20px; }}
     </style>
 </head>
 <body>
-    <nav class="admin-menu">
+    <nav class="top-menu">
         <div class="menu-items">
             <a href="/dashboard" class="menu-btn">🏠 Accueil</a>
             <a href="/admin-dashboard" class="menu-btn">🔧 Admin</a>
@@ -19657,12 +19594,12 @@ async def admin_pricing_view(request: Request):
     </nav>
     
     <div class="container">
-        <div class="page-header">
+        <div class="header">
             <h1>💎 Gestion des Plans d'Abonnement</h1>
-            <p style="color: #666; margin-top: 10px;">Modifiez les prix, noms et permissions pour chaque plan</p>
+            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (29 routes disponibles)</p>
         </div>
         
-        {alert_html}
+        {alert}
         
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="free">
@@ -19672,7 +19609,7 @@ async def admin_pricing_view(request: Request):
             </div>
             <div class="editor-row">
                 <div class="form-group">
-                    <label class="form-label">Nom du Plan</label>
+                    <label class="form-label">Nom</label>
                     <input type="text" name="name" value="Free" class="form-input" required>
                 </div>
                 <div class="form-group">
@@ -19685,16 +19622,9 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Pages Accessibles (8 sélectionnées)</h4>
+                <h4>🔐 Toutes les 29 Routes Disponibles (cochez celles accessibles en Free)</h4>
                 <div class="routes-grid">
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/dashboard" checked> /dashboard</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/fear-greed" checked> /fear-greed</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/dominance" checked> /dominance</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/altcoin-season" checked> /altcoin-season</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/heatmap" checked> /heatmap</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/nouvelles" checked> /nouvelles</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/convertisseur" checked> /convertisseur</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/calendrier" checked> /calendrier</label>
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap","/nouvelles","/convertisseur","/calendrier"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Free</button>
@@ -19708,7 +19638,7 @@ async def admin_pricing_view(request: Request):
             </div>
             <div class="editor-row">
                 <div class="form-group">
-                    <label class="form-label">Nom du Plan</label>
+                    <label class="form-label">Nom</label>
                     <input type="text" name="name" value="Premium 1 mois" class="form-input" required>
                 </div>
                 <div class="form-group">
@@ -19721,22 +19651,13 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Pages Accessibles (hérite de Free + 9 pages)</h4>
+                <h4>🔐 Toutes les 29 Routes (+ hérite de Free)</h4>
                 <div class="routes-grid">
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-assistant" checked> /ai-assistant</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/prediction-ia" checked> /prediction-ia</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-opportunity-scanner" checked> /ai-opportunity-scanner</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/strategie" checked> /strategie</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/spot-trading" checked> /spot-trading</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/calculatrice" checked> /calculatrice</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/trades" checked> /trades</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/risk-management" checked> /risk-management</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/watchlist" checked> /watchlist</label>
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Premium</button>
         </form>
-        
         
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="3_months">
@@ -19746,7 +19667,7 @@ async def admin_pricing_view(request: Request):
             </div>
             <div class="editor-row">
                 <div class="form-group">
-                    <label class="form-label">Nom du Plan</label>
+                    <label class="form-label">Nom</label>
                     <input type="text" name="name" value="Advanced 3 mois" class="form-input" required>
                 </div>
                 <div class="form-group">
@@ -19759,22 +19680,14 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Pages Accessibles (hérite de Premium 1 mois)</h4>
+                <h4>🔐 Toutes les 29 Routes (hérite de Premium)</h4>
                 <div class="routes-grid">
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-assistant" checked> /ai-assistant</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/prediction-ia" checked> /prediction-ia</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-opportunity-scanner" checked> /ai-opportunity-scanner</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/strategie" checked> /strategie</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/spot-trading" checked> /spot-trading</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/calculatrice" checked> /calculatrice</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/trades" checked> /trades</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/risk-management" checked> /risk-management</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/watchlist" checked> /watchlist</label>
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Advanced</button>
         </form>
-
+        
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="6_months">
             <div class="plan-header">
@@ -19783,7 +19696,7 @@ async def admin_pricing_view(request: Request):
             </div>
             <div class="editor-row">
                 <div class="form-group">
-                    <label class="form-label">Nom du Plan</label>
+                    <label class="form-label">Nom</label>
                     <input type="text" name="name" value="Pro 6 mois" class="form-input" required>
                 </div>
                 <div class="form-group">
@@ -19796,13 +19709,9 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Pages Accessibles (hérite de Premium + 5 pages)</h4>
+                <h4>🔐 Toutes les 29 Routes (+ hérite de Premium)</h4>
                 <div class="routes-grid">
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-whale-watcher" checked> /ai-whale-watcher</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-market-regime" checked> /ai-market-regime</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/stats-dashboard" checked> /stats-dashboard</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/market-simulation" checked> /market-simulation</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/success-stories" checked> /success-stories</label>
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard","/market-simulation","/success-stories"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Pro</button>
@@ -19816,7 +19725,7 @@ async def admin_pricing_view(request: Request):
             </div>
             <div class="editor-row">
                 <div class="form-group">
-                    <label class="form-label">Nom du Plan</label>
+                    <label class="form-label">Nom</label>
                     <input type="text" name="name" value="Elite 1 an" class="form-input" required>
                 </div>
                 <div class="form-group">
@@ -19829,31 +19738,75 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Pages Accessibles (hérite de Pro + 3 pages = TOUT)</h4>
+                <h4>🔐 Toutes les 29 Routes (+ hérite de Pro = TOUT)</h4>
                 <div class="routes-grid">
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/graphiques" checked> /graphiques</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/bullrun-phase" checked> /bullrun-phase</label>
-                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/telegram-test" checked> /telegram-test</label>
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/graphiques","/bullrun-phase","/telegram-test"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Elite</button>
         </form>
         
-        <div style="background: #dbeafe; padding: 20px; border-radius: 10px; margin-top: 30px; border-left: 4px solid #3b82f6;">
-            <h4 style="color: #1e40af; margin-bottom: 10px;">ℹ️ Informations Importantes</h4>
-            <ul style="color: #1e40af; line-height: 2;">
+        <div class="info">
+            <h4>ℹ️ Informations</h4>
+            <ul>
+                <li><strong>29 routes totales</strong> disponibles dans le système</li>
+                <li>Chaque plan hérite des permissions des plans inférieurs</li>
+                <li>Cochez/décochez les routes pour chaque plan</li>
                 <li>Les modifications sont sauvegardées dans /data/pricing_config.json</li>
-                <li>Les utilisateurs héritent des permissions des plans inférieurs</li>
-                <li>Premium 3_months utilise automatiquement les mêmes routes que 1_month</li>
-                <li>Pour appliquer les changements au système, redémarrez l'application</li>
             </ul>
         </div>
         
-        <a href="/admin-dashboard" style="display: inline-block; margin-top: 30px; padding: 12px 24px; background: white; color: #667eea; text-decoration: none; border-radius: 8px; font-weight: 600;">← Retour au Dashboard</a>
+        <a href="/admin-dashboard" style="display:inline-block; margin-top:30px; padding:12px 24px; background:white; color:#667eea; text-decoration:none; border-radius:8px; font-weight:600;">← Retour</a>
     </div>
 </body>
 </html>
     """)
+
+
+@app.post("/admin/pricing/update")
+async def admin_pricing_update(request: Request):
+    """Update plan"""
+    session_token = request.cookies.get("session_token")
+    if not session_token:
+        return RedirectResponse("/login", status_code=303)
+    
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return HTMLResponse("<h1>403</h1>", status_code=403)
+    
+    try:
+        form = await request.form()
+        plan_id = form.get("plan_id")
+        name = form.get("name")
+        price = float(form.get("price", 0))
+        duration = form.get("duration")
+        routes = form.getlist("routes")
+        
+        import json, os
+        config_file = "/data/pricing_config.json"
+        
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+        else:
+            config = {}
+        
+        config[plan_id] = {
+            'name': name,
+            'price': price,
+            'duration': duration,
+            'routes': routes,
+            'updated_at': str(datetime.now())
+        }
+        
+        os.makedirs("/data", exist_ok=True)
+        with open(config_file, 'w') as f:
+            json.dump(config, f, indent=2)
+        
+        return RedirectResponse("/admin/pricing?success=1", status_code=303)
+    except Exception as e:
+        print(f"Erreur: {e}")
+        return RedirectResponse("/admin/pricing?error=1", status_code=303)
 
 
 @app.post("/admin/pricing/update")

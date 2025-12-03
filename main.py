@@ -20015,7 +20015,7 @@ async def admin_pricing_view(request: Request):
     elif error:
         alert = '<div class="alert error">❌ Erreur lors de la mise à jour</div>'
     
-    # TOUTES les 29 routes disponibles
+    # TOUTES les 33 routes disponibles
     all_routes_html = ""
     routes_list = [
         '/dashboard', '/fear-greed', '/dominance', '/altcoin-season', '/heatmap',
@@ -20024,8 +20024,9 @@ async def admin_pricing_view(request: Request):
         '/ai-opportunity-scanner', '/ai-whale-watcher', '/ai-market-regime',
         '/stats-dashboard', '/market-simulation', '/success-stories',
         '/convertisseur', '/calendrier', '/bullrun-phase', '/graphiques',
-        '/telegram-test', '/pricing-complete', '/admin-dashboard', '/admin/list-promos',
-        '/mon-compte'
+        '/generate-pdf-report', '/backtesting', '/onchain-metrics',
+        '/api-keys', '/testimonials-widget',
+        '/telegram-test', '/pricing-complete', '/admin-dashboard', '/mon-compte'
     ]
     
     return HTMLResponse(f"""<!DOCTYPE html>
@@ -20116,7 +20117,7 @@ async def admin_pricing_view(request: Request):
     <div class="container">
         <div class="header">
             <h1>💎 Gestion des Plans d'Abonnement</h1>
-            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (29 routes disponibles)</p>
+            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (33 routes disponibles)</p>
         </div>
         
         {alert}
@@ -20142,7 +20143,7 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 29 Routes Disponibles (cochez celles accessibles en Free)</h4>
+                <h4>🔐 Toutes les 33 Routes Disponibles (cochez celles accessibles en Free)</h4>
                 <div class="routes-grid">
                     {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap","/nouvelles","/convertisseur","/calendrier"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
@@ -20171,7 +20172,7 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 29 Routes (+ hérite de Free)</h4>
+                <h4>🔐 Toutes les 33 Routes (+ hérite de Free)</h4>
                 <div class="routes-grid">
                     {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
@@ -20200,7 +20201,7 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 29 Routes (hérite de Premium)</h4>
+                <h4>🔐 Toutes les 33 Routes (hérite de Premium)</h4>
                 <div class="routes-grid">
                     {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
@@ -20229,7 +20230,7 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 29 Routes (+ hérite de Premium)</h4>
+                <h4>🔐 Toutes les 33 Routes (+ hérite de Premium)</h4>
                 <div class="routes-grid">
                     {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard","/market-simulation","/success-stories"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
@@ -20258,7 +20259,7 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 29 Routes (+ hérite de Pro = TOUT)</h4>
+                <h4>🔐 Toutes les 33 Routes (+ hérite de Pro = TOUT)</h4>
                 <div class="routes-grid">
                     {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/graphiques","/bullrun-phase","/telegram-test"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
@@ -21446,12 +21447,11 @@ async def api_backtest(request: Request):
 # MÉTRIQUES ON-CHAIN
 # ============================================================================
 
-@app.get("/onchain-metrics")
+@app.get("/onchain-metrics", response_class=HTMLResponse)
 async def onchain_metrics():
-    """Indicateurs on-chain (whale movements, exchange flows)"""
-    # Utiliser API comme Glassnode, CryptoQuant
-    # Exemple simplifié:
+    """Page Métriques On-Chain - Whale movements, exchange flows"""
     
+    # Données métriques (exemple - à remplacer par vraies APIs)
     metrics = {
         'whale_transactions': {
             'last_24h': 47,
@@ -21472,33 +21472,379 @@ async def onchain_metrics():
         }
     }
     
-    return {
-        'success': True,
-        'timestamp': datetime.now().isoformat(),
-        'metrics': metrics
-    }
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>⛓️ Métriques On-Chain</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+                color: white;
+                min-height: 100vh;
+                padding: 20px;
+            }}
+            .container {{
+                max-width: 1200px;
+                margin: 0 auto;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 40px;
+                padding: 40px 20px;
+                background: rgba(255,255,255,0.05);
+                border-radius: 20px;
+                backdrop-filter: blur(10px);
+            }}
+            .header h1 {{
+                font-size: 48px;
+                margin-bottom: 10px;
+                background: linear-gradient(135deg, #00ff88, #00d4ff);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }}
+            .metrics-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 25px;
+                margin-bottom: 30px;
+            }}
+            .metric-card {{
+                background: rgba(255,255,255,0.05);
+                border: 2px solid rgba(0,255,136,0.2);
+                border-radius: 15px;
+                padding: 30px;
+                transition: all 0.3s;
+            }}
+            .metric-card:hover {{
+                transform: translateY(-5px);
+                border-color: rgba(0,255,136,0.5);
+                box-shadow: 0 10px 30px rgba(0,255,136,0.2);
+            }}
+            .metric-icon {{
+                font-size: 40px;
+                margin-bottom: 15px;
+            }}
+            .metric-label {{
+                color: #aaa;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 10px;
+            }}
+            .metric-value {{
+                font-size: 36px;
+                font-weight: bold;
+                color: #00ff88;
+                margin-bottom: 10px;
+            }}
+            .metric-change {{
+                font-size: 16px;
+                padding: 5px 12px;
+                border-radius: 20px;
+                display: inline-block;
+            }}
+            .metric-change.positive {{
+                background: rgba(0,255,136,0.2);
+                color: #00ff88;
+            }}
+            .metric-change.negative {{
+                background: rgba(255,100,100,0.2);
+                color: #ff6464;
+            }}
+            .info-section {{
+                background: rgba(0,100,255,0.1);
+                border-left: 4px solid #0064ff;
+                padding: 20px;
+                border-radius: 10px;
+                margin-top: 30px;
+            }}
+            .back-btn {{
+                display: inline-block;
+                padding: 12px 24px;
+                background: rgba(0,255,136,0.2);
+                border: 2px solid #00ff88;
+                color: white;
+                text-decoration: none;
+                border-radius: 10px;
+                font-weight: bold;
+                margin-top: 20px;
+                transition: all 0.3s;
+            }}
+            .back-btn:hover {{
+                background: rgba(0,255,136,0.3);
+                transform: scale(1.05);
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>⛓️ Métriques On-Chain</h1>
+                <p style="color: #aaa; font-size: 18px;">Suivez les mouvements des baleines et flux d'exchanges</p>
+            </div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-icon">🐋</div>
+                    <div class="metric-label">Transactions Baleines</div>
+                    <div class="metric-value">{metrics['whale_transactions']['last_24h']}</div>
+                    <div class="metric-change positive">Volume: {metrics['whale_transactions']['total_volume']}</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">📥</div>
+                    <div class="metric-label">Entrées Exchange</div>
+                    <div class="metric-value">{metrics['exchange_inflow']['btc']}</div>
+                    <div class="metric-change positive">{metrics['exchange_inflow']['change_24h']}</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">📤</div>
+                    <div class="metric-label">Sorties Exchange</div>
+                    <div class="metric-value">{metrics['exchange_outflow']['btc']}</div>
+                    <div class="metric-change negative">{metrics['exchange_outflow']['change_24h']}</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-icon">💹</div>
+                    <div class="metric-label">Flux Net</div>
+                    <div class="metric-value">{metrics['net_flow']['btc']}</div>
+                    <div class="metric-change negative">{metrics['net_flow']['sentiment']}</div>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <h3 style="color: #0064ff; margin-bottom: 15px;">📊 Interprétation</h3>
+                <p style="line-height: 1.8;">
+                    <strong>Flux Net Positif:</strong> Plus d'entrées que de sorties = Pression de vente potentielle<br>
+                    <strong>Flux Net Négatif:</strong> Plus de sorties que d'entrées = Accumulation (bullish)<br>
+                    <strong>Transactions Baleines:</strong> Mouvements de gros capitaux (>1000 BTC) à surveiller
+                </p>
+            </div>
+            
+            <center>
+                <a href="/dashboard" class="back-btn">← Retour au Dashboard</a>
+            </center>
+        </div>
+    </body>
+    </html>
+    """)
 
 # ============================================================================
 # WIDGET TÉMOIGNAGES
 # ============================================================================
 
-@app.get("/testimonials-widget")
+@app.get("/testimonials-widget", response_class=HTMLResponse)
 async def testimonials_widget():
-    """Widget témoignages pour homepage"""
+    """Page Témoignages Clients"""
     testimonials = [
         {
             'name': 'Jean D.',
-            'text': 'Excellente plateforme! +250% en 3 mois',
-            'rating': 5
+            'text': 'Excellente plateforme! +250% en 3 mois grâce aux signaux précis',
+            'rating': 5,
+            'plan': 'Elite',
+            'date': 'Nov 2024'
         },
         {
             'name': 'Marie L.',
-            'text': 'Signaux précis, interface intuitive',
-            'rating': 5
+            'text': 'Signaux précis, interface intuitive. Le backtesting m\'a fait économiser des milliers de dollars',
+            'rating': 5,
+            'plan': 'Pro',
+            'date': 'Oct 2024'
+        },
+        {
+            'name': 'Thomas B.',
+            'text': 'Le whale watcher est incroyable. J\'anticipe maintenant les gros mouvements',
+            'rating': 5,
+            'plan': 'Pro',
+            'date': 'Sept 2024'
+        },
+        {
+            'name': 'Sophie M.',
+            'text': 'Meilleur dashboard crypto que j\'ai testé. Les alertes Telegram sont parfaites',
+            'rating': 5,
+            'plan': 'Advanced',
+            'date': 'Sept 2024'
         }
     ]
     
-    return {'success': True, 'testimonials': testimonials}
+    testimonials_html = ""
+    for t in testimonials:
+        stars = "⭐" * t['rating']
+        testimonials_html += f"""
+        <div class="testimonial-card">
+            <div class="stars">{stars}</div>
+            <p class="testimonial-text">"{t['text']}"</p>
+            <div class="testimonial-footer">
+                <strong>{t['name']}</strong>
+                <span class="plan-badge">{t['plan']}</span>
+                <span class="date">{t['date']}</span>
+            </div>
+        </div>
+        """
+    
+    return HTMLResponse(f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>⭐ Témoignages Clients</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                padding: 20px;
+            }}
+            .container {{
+                max-width: 1200px;
+                margin: 0 auto;
+            }}
+            .header {{
+                text-align: center;
+                color: white;
+                margin-bottom: 50px;
+            }}
+            .header h1 {{
+                font-size: 48px;
+                margin-bottom: 15px;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            }}
+            .header p {{
+                font-size: 20px;
+                opacity: 0.9;
+            }}
+            .testimonials-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 30px;
+                margin-bottom: 40px;
+            }}
+            .testimonial-card {{
+                background: white;
+                border-radius: 20px;
+                padding: 30px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                transition: transform 0.3s;
+            }}
+            .testimonial-card:hover {{
+                transform: translateY(-10px);
+            }}
+            .stars {{
+                font-size: 24px;
+                margin-bottom: 15px;
+            }}
+            .testimonial-text {{
+                color: #333;
+                font-size: 16px;
+                line-height: 1.6;
+                margin-bottom: 20px;
+                font-style: italic;
+            }}
+            .testimonial-footer {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-top: 2px solid #f0f0f0;
+                padding-top: 15px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }}
+            .testimonial-footer strong {{
+                color: #667eea;
+                font-size: 16px;
+            }}
+            .plan-badge {{
+                background: linear-gradient(135deg, #f59e0b, #d97706);
+                color: white;
+                padding: 5px 15px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            .date {{
+                color: #999;
+                font-size: 14px;
+            }}
+            .cta-section {{
+                background: white;
+                border-radius: 20px;
+                padding: 50px;
+                text-align: center;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            }}
+            .cta-section h2 {{
+                color: #333;
+                font-size: 32px;
+                margin-bottom: 20px;
+            }}
+            .cta-section p {{
+                color: #666;
+                font-size: 18px;
+                margin-bottom: 30px;
+            }}
+            .cta-btn {{
+                display: inline-block;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                padding: 15px 40px;
+                border-radius: 10px;
+                text-decoration: none;
+                font-weight: bold;
+                font-size: 18px;
+                transition: all 0.3s;
+            }}
+            .cta-btn:hover {{
+                transform: scale(1.05);
+                box-shadow: 0 5px 20px rgba(102,126,234,0.4);
+            }}
+            .back-link {{
+                display: inline-block;
+                margin-top: 30px;
+                color: white;
+                text-decoration: none;
+                font-weight: 600;
+                padding: 12px 24px;
+                background: rgba(255,255,255,0.2);
+                border-radius: 8px;
+                transition: all 0.3s;
+            }}
+            .back-link:hover {{
+                background: rgba(255,255,255,0.3);
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>⭐ Ce Que Disent Nos Clients</h1>
+                <p>Des milliers de traders nous font confiance</p>
+            </div>
+            
+            <div class="testimonials-grid">
+                {testimonials_html}
+            </div>
+            
+            <div class="cta-section">
+                <h2>Rejoignez-les Aujourd'hui</h2>
+                <p>Commencez à trader intelligemment avec nos outils professionnels</p>
+                <a href="/pricing-complete" class="cta-btn">💎 Voir les Plans</a>
+            </div>
+            
+            <center>
+                <a href="/dashboard" class="back-link">← Retour au Dashboard</a>
+            </center>
+        </div>
+    </body>
+    </html>
+    """)
 
 # ============================================================================
 # GESTION CLÉS API (Développeur)

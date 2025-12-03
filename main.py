@@ -1587,7 +1587,10 @@ async def calculate_altcoin_season_index():
             alts_win = sum(1 for c in all_cryptos[2:] if c.get('price_change_percentage_7d_in_currency', 0) or 0 > btc7d)
             alt_pct = (alts_win / (len(all_cryptos) - 2) * 100) if len(all_cryptos) > 2 else 0
             
-            # Momentum basé sur l'INDEX FINAL (pas alt_pct)
+            # INDEX FINAL (combinaison idx + performance altcoins)
+            final_idx = min(100, max(0, (idx * 0.7) + (alt_pct * 0.3)))
+            
+            # Momentum basé sur l'INDEX FINAL
             if final_idx > 70: mom = "🚀 EXPLOSIF!"
             elif final_idx > 50: mom = "🔥 HOT"
             elif final_idx > 30: mom = "⚡ ACTIF"

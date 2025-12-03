@@ -15253,6 +15253,400 @@ async def pricing_complete():
             </div>
         </div>
         
+        <!-- Section Pages & Fonctionnalités Détaillées -->
+        <div style="background: white; border-radius: 20px; padding: 50px; margin-top: 60px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <h2 style="text-align: center; color: #333; font-size: 36px; margin-bottom: 20px;">
+                📋 Pages & Fonctionnalités Disponibles
+            </h2>
+            <p style="text-align: center; color: #666; font-size: 18px; margin-bottom: 40px;">
+                Découvrez exactement ce que vous obtenez avec chaque plan
+            </p>
+            
+            <!-- Tabs Navigation -->
+            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
+                <button onclick="showPlan('free')" id="tab-free" class="plan-tab active-tab">
+                    🆓 GRATUIT
+                </button>
+                <button onclick="showPlan('premium')" id="tab-premium" class="plan-tab">
+                    💳 PREMIUM
+                </button>
+                <button onclick="showPlan('advanced')" id="tab-advanced" class="plan-tab">
+                    💎 ADVANCED
+                </button>
+                <button onclick="showPlan('pro')" id="tab-pro" class="plan-tab">
+                    👑 PRO
+                </button>
+                <button onclick="showPlan('elite')" id="tab-elite" class="plan-tab">
+                    🚀 ELITE
+                </button>
+            </div>
+            
+            <!-- Plan FREE -->
+            <div id="plan-free" class="plan-content">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">🆓 Plan GRATUIT - $0/mois</h3>
+                    <p style="font-size: 16px; opacity: 0.9;">9 pages accessibles sans inscription</p>
+                </div>
+                
+                <div class="pages-grid">
+                    <div class="page-card">
+                        <div class="page-icon">🏠</div>
+                        <h4>Page d'Accueil</h4>
+                        <p>Vue d'ensemble du marché crypto avec statistiques principales</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">📊</div>
+                        <h4>Dashboard</h4>
+                        <p>Dashboard de base avec indicateurs essentiels et statistiques temps réel</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">😨</div>
+                        <h4>Fear & Greed Index</h4>
+                        <p>Indice de sentiment du marché Bitcoin, indicateur émotionnel</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">👑</div>
+                        <h4>Bitcoin Dominance</h4>
+                        <p>Suivi de la domination BTC vs altcoins avec graphiques historiques</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">🔥</div>
+                        <h4>Altcoin Season Index</h4>
+                        <p>Index 90 jours indiquant si c'est Bitcoin ou Altcoin Season</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">🗺️</div>
+                        <h4>Crypto Heatmap</h4>
+                        <p>Carte thermique du marché crypto avec top gainers/losers</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">📰</div>
+                        <h4>Actualités Crypto</h4>
+                        <p>Feed d'actualités crypto en temps réel de sources fiables</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">💱</div>
+                        <h4>Convertisseur</h4>
+                        <p>Convertisseur de devises crypto/fiat avec taux en direct</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">📅</div>
+                        <h4>Calendrier Économique</h4>
+                        <p>Événements crypto importants et annonces de projets</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plan PREMIUM -->
+            <div id="plan-premium" class="plan-content" style="display: none;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">💳 Plan PREMIUM - $29.99/mois</h3>
+                    <p style="font-size: 16px; opacity: 0.9;">9 pages gratuites + 7 pages premium = 16 pages totales</p>
+                </div>
+                
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+                    <strong style="color: #065f46;">✅ Inclut toutes les pages GRATUITES +</strong>
+                </div>
+                
+                <div class="pages-grid">
+                    <div class="page-card premium-card">
+                        <div class="page-icon">🤖</div>
+                        <h4>Assistant IA</h4>
+                        <p>Assistant IA pour analyse de marché, recommandations personnalisées et réponses trading</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">💹</div>
+                        <h4>Spot Trading</h4>
+                        <p>Interface de trading spot avec gestion de positions, historique et calcul P&L automatique</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">📊</div>
+                        <h4>Dashboard Trades</h4>
+                        <p>Vue complète de tous vos trades avec statistiques détaillées et filtres avancés</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">👁️</div>
+                        <h4>Watchlist</h4>
+                        <p>Liste de surveillance avec alertes de prix personnalisées et notifications temps réel</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">🧮</div>
+                        <h4>Calculatrice Trading</h4>
+                        <p>Calcul de taille de position, leverage, profits/pertes et conversions</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">🎮</div>
+                        <h4>Simulateur Marché</h4>
+                        <p>Trading en mode simulation avec données réelles, sans risque financier</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">👤</div>
+                        <h4>Mon Compte</h4>
+                        <p>Gestion complète du profil, abonnement, statistiques et historique</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plan ADVANCED -->
+            <div id="plan-advanced" class="plan-content" style="display: none;">
+                <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">💎 Plan ADVANCED - $74.97/3 mois</h3>
+                    <p style="font-size: 16px; opacity: 0.9;">16 pages Premium + 7 pages Advanced = 23 pages totales</p>
+                </div>
+                
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+                    <strong style="color: #065f46;">✅ Inclut toutes les pages PREMIUM +</strong>
+                </div>
+                
+                <div class="pages-grid">
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">🔍</div>
+                        <h4>Scanner Opportunités IA</h4>
+                        <p>Détection automatique d'opportunités de trading avec analyse de patterns et scoring</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">📈</div>
+                        <h4>Détection Régime Marché</h4>
+                        <p>Identification automatique des phases Bull/Bear/Consolidation avec analyse de volatilité</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">📋</div>
+                        <h4>Gestion Stratégies</h4>
+                        <p>Création et gestion de stratégies personnalisées avec optimisation de paramètres</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">⚠️</div>
+                        <h4>Risk Management</h4>
+                        <p>Calcul avancé de taille de position, Risk/Reward, Stop Loss et Take Profit suggérés</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">📊</div>
+                        <h4>Stats Dashboard Avancé</h4>
+                        <p>Statistiques détaillées avec win rate, profit factor, meilleures/pires trades</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">📈</div>
+                        <h4>Graphiques Personnalisés</h4>
+                        <p>Charts avancés avec indicateurs techniques et analyse multi-timeframe</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">🚀</div>
+                        <h4>Détection Bull Run</h4>
+                        <p>Identification automatique des phases de bull run avec indicateurs et prédictions</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plan PRO -->
+            <div id="plan-pro" class="plan-content" style="display: none;">
+                <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">👑 Plan PRO - $134.94/6 mois</h3>
+                    <p style="font-size: 16px; opacity: 0.9;">23 pages Advanced + 5 pages Pro = 28 pages totales</p>
+                </div>
+                
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+                    <strong style="color: #065f46;">✅ Inclut toutes les pages ADVANCED +</strong>
+                </div>
+                
+                <div class="pages-grid">
+                    <div class="page-card pro-card">
+                        <div class="page-icon">🐋</div>
+                        <h4>Whale Watcher</h4>
+                        <p>Surveillance des mouvements de gros capitaux avec alertes transactions importantes</p>
+                    </div>
+                    
+                    <div class="page-card pro-card">
+                        <div class="page-icon">🔄</div>
+                        <h4>Backtesting Complet</h4>
+                        <p>Test de stratégies sur données historiques avec métriques avancées (Sharpe, Max DD)</p>
+                    </div>
+                    
+                    <div class="page-card pro-card">
+                        <div class="page-icon">📡</div>
+                        <h4>Stats Temps Réel</h4>
+                        <p>Métriques en direct avec performance du jour, P&L live et taux de réussite</p>
+                    </div>
+                    
+                    <div class="page-card pro-card">
+                        <div class="page-icon">📄</div>
+                        <h4>Rapports PDF</h4>
+                        <p>Génération automatique de rapports mensuels avec analyses et graphiques exportables</p>
+                    </div>
+                    
+                    <div class="page-card pro-card">
+                        <div class="page-icon">⛓️</div>
+                        <h4>Métriques On-Chain</h4>
+                        <p>Données blockchain avancées, flux de transactions et indicateurs on-chain</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plan ELITE -->
+            <div id="plan-elite" class="plan-content" style="display: none;">
+                <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">🚀 Plan ELITE - $239.88/an</h3>
+                    <p style="font-size: 16px; opacity: 0.9;">28 pages Pro + 3 pages Elite = 31 pages totales - TOUT DÉBLOQUÉ!</p>
+                </div>
+                
+                <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                    <strong style="color: #92400e;">⭐ Inclut TOUTES les pages PRO + Accès API Complet</strong>
+                </div>
+                
+                <div class="pages-grid">
+                    <div class="page-card elite-card">
+                        <div class="page-icon">🔮</div>
+                        <h4>Prédictions IA Avancées</h4>
+                        <p>Prédictions de prix basées sur machine learning avec modèles avancés et probabilités</p>
+                    </div>
+                    
+                    <div class="page-card elite-card">
+                        <div class="page-icon">🔑</div>
+                        <h4>Gestion Clés API</h4>
+                        <p>Génération de clés API personnelles pour accès programmatique à toutes vos données</p>
+                    </div>
+                    
+                    <div class="page-card elite-card">
+                        <div class="page-icon">📚</div>
+                        <h4>Documentation API</h4>
+                        <p>Documentation complète de l'API avec exemples de code et limites de rate</p>
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 30px; border-radius: 15px; margin-top: 30px; text-align: center;">
+                    <h3 style="color: #92400e; font-size: 24px; margin-bottom: 15px;">🎁 Bonus Exclusifs ELITE</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <div style="font-size: 36px; margin-bottom: 10px;">🎓</div>
+                            <strong>Formation Exclusive</strong>
+                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Accès aux webinaires et formations trading</p>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <div style="font-size: 36px; margin-bottom: 10px;">💬</div>
+                            <strong>Support Dédié VIP</strong>
+                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Réponse prioritaire sous 1 heure</p>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <div style="font-size: 36px; margin-bottom: 10px;">📊</div>
+                            <strong>Rapports Hebdo</strong>
+                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Rapports PDF automatiques chaque semaine</p>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <div style="font-size: 36px; margin-bottom: 10px;">∞</div>
+                            <strong>Limites Illimitées</strong>
+                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Pas de limite sur les appels API</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+                .plan-tab {
+                    padding: 15px 25px;
+                    border: 2px solid #e0e0e0;
+                    background: white;
+                    border-radius: 10px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    font-size: 14px;
+                }
+                .plan-tab:hover {
+                    border-color: #667eea;
+                    transform: scale(1.05);
+                }
+                .plan-tab.active-tab {
+                    background: #667eea;
+                    color: white;
+                    border-color: #667eea;
+                }
+                .pages-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 20px;
+                    margin-top: 20px;
+                }
+                .page-card {
+                    background: #f9fafb;
+                    border-radius: 12px;
+                    padding: 25px;
+                    border: 2px solid #e5e7eb;
+                    transition: all 0.3s;
+                }
+                .page-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                }
+                .premium-card {
+                    border-color: #667eea;
+                    background: linear-gradient(135deg, #f3f4ff 0%, #ffffff 100%);
+                }
+                .advanced-card {
+                    border-color: #f59e0b;
+                    background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+                }
+                .pro-card {
+                    border-color: #8b5cf6;
+                    background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 100%);
+                }
+                .elite-card {
+                    border-color: #ef4444;
+                    background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+                }
+                .page-icon {
+                    font-size: 42px;
+                    margin-bottom: 15px;
+                }
+                .page-card h4 {
+                    color: #333;
+                    font-size: 18px;
+                    margin-bottom: 10px;
+                }
+                .page-card p {
+                    color: #666;
+                    font-size: 14px;
+                    line-height: 1.6;
+                }
+            </style>
+            
+            <script>
+                function showPlan(planName) {
+                    // Cacher tous les plans
+                    document.querySelectorAll('.plan-content').forEach(el => {
+                        el.style.display = 'none';
+                    });
+                    
+                    // Retirer la classe active de tous les tabs
+                    document.querySelectorAll('.plan-tab').forEach(el => {
+                        el.classList.remove('active-tab');
+                    });
+                    
+                    // Afficher le plan sélectionné
+                    document.getElementById('plan-' + planName).style.display = 'block';
+                    document.getElementById('tab-' + planName).classList.add('active-tab');
+                }
+            </script>
+        </div>
+        
         <center>
             <a href="/dashboard" class="back-link">← Retour au Dashboard</a>
         </center>

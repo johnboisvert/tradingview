@@ -848,6 +848,11 @@ async def auth_middleware(request: Request, call_next):
     public_prefixes = [
         "/tv-webhook",
         "/webhook/",
+        "/api/altcoin-season",      # API Altcoin Season
+        "/api/fear-greed",           # API Fear & Greed
+        "/api/btc-dominance",        # API BTC Dominance
+        "/api/heatmap",              # API Heatmap
+        "/api/crypto-news",          # API News
         "/api/stripe-checkout",
         "/api/coinbase-checkout",
         "/api/payment-",

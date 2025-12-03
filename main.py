@@ -3656,9 +3656,20 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
     if not user:
         return RedirectResponse("/login")
+    
+    username = user.get('username', 'Utilisateur')
+    
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
-<body><h1 style="color:white;padding:20px;">🏠 Bienvenue {user.get('username')}!</h1></body></html>""")
+<body>
+    <div style="padding: 40px; text-align: center;">
+        <h1 style="color:white; font-size: 48px; margin-bottom: 20px;">🏠 Bienvenue {username}!</h1>
+        <p style="color: #94a3b8; font-size: 20px;">Votre tableau de bord de trading</p>
+        <div style="margin-top: 40px;">
+            <a href="/fear-greed" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; margin: 10px; font-weight: 600;">📊 Commencer</a>
+        </div>
+    </div>
+</body></html>""")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -19726,6 +19737,44 @@ async def admin_pricing_view(request: Request):
             <button type="submit" class="save-btn">💾 Sauvegarder Premium</button>
         </form>
         
+        
+        <form method="POST" action="/admin/pricing/update" class="plan-editor">
+            <input type="hidden" name="plan_id" value="3_months">
+            <div class="plan-header">
+                <div class="plan-title">💎 Advanced 3 mois</div>
+                <div class="plan-id">ID: 3_months</div>
+            </div>
+            <div class="editor-row">
+                <div class="form-group">
+                    <label class="form-label">Nom du Plan</label>
+                    <input type="text" name="name" value="Advanced 3 mois" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prix ($)</label>
+                    <input type="number" name="price" value="74.97" step="0.01" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Durée</label>
+                    <input type="text" name="duration" value="3 mois" class="form-input" required>
+                </div>
+            </div>
+            <div class="routes-section">
+                <h4>🔐 Pages Accessibles (hérite de Premium 1 mois)</h4>
+                <div class="routes-grid">
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-assistant" checked> /ai-assistant</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/prediction-ia" checked> /prediction-ia</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-opportunity-scanner" checked> /ai-opportunity-scanner</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/strategie" checked> /strategie</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/spot-trading" checked> /spot-trading</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/calculatrice" checked> /calculatrice</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/trades" checked> /trades</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/risk-management" checked> /risk-management</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/watchlist" checked> /watchlist</label>
+                </div>
+            </div>
+            <button type="submit" class="save-btn">💾 Sauvegarder Advanced</button>
+        </form>
+
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="6_months">
             <div class="plan-header">

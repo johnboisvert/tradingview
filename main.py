@@ -745,6 +745,7 @@ NAV_MENU = """
         <a href="/calendrier" class="nav-btn">📅 Calendrier</a>
         <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
         <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
+        <a href="/generate-pdf-report" class="nav-btn">📄 Rapport PDF</a>
         <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
         
         <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
@@ -3269,6 +3270,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
 <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
 <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
+<a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
 <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
 <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
 <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>

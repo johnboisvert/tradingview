@@ -817,9 +817,23 @@ app.add_middleware(
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     """Vérifier l'authentification sur toutes les routes sauf /login"""
+    
+    # ✅ ROUTES FREE - Accessibles SANS login
+    free_routes = [
+        "/dashboard",
+        "/fear-greed",
+        "/dominance",
+        "/altcoin-season",
+        "/heatmap",
+        "/nouvelles",
+        "/convertisseur",
+        "/calendrier"
+    ]
+    
     # Routes publiques (pas besoin d'authentification)
     public_paths = [
         "/login", 
+        "/register",
         "/health", 
         "/tv-webhook", 
         "/debug-files", 
@@ -831,7 +845,6 @@ async def auth_middleware(request: Request, call_next):
         "/api/coinbase-checkout", 
         "/api/payment-success", 
         "/api/payment-cancel", 
-        "/admin/pricing", 
         "/test-webhook-stripe",
         "/webhook/stripe-permissions",
         "/webhook/coinbase-permissions",
@@ -843,8 +856,11 @@ async def auth_middleware(request: Request, call_next):
         "/admin/create-launch-promos"
     ]
     
-    # Si c'est une route publique, laisser passer
-    if any(request.url.path.startswith(path) for path in public_paths):
+    # Combiner FREE routes + public paths
+    all_public = free_routes + public_paths
+    
+    # Si c'est une route publique ou FREE, laisser passer
+    if any(request.url.path.startswith(path) or request.url.path == path for path in all_public):
         return await call_next(request)
     
     # Vérifier le token de session

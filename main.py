@@ -1546,14 +1546,16 @@ http_client = httpx.AsyncClient(timeout=10.0)
 
 async def calculate_altcoin_season_index():
     """
-    🔥 ALTCOIN SEASON INDEX - FORMULE OFFICIELLE BLOCKCHAINCENTER.NET
-    Méthode: Top 50 altcoins qui battent BTC sur 90 jours
+    🔥 ALTCOIN SEASON INDEX - MÉTHODE BLOCKCHAINCENTER (7 JOURS)
+    Note: CoinGecko API ne retourne pas les données 90j dans l'endpoint markets
+    Méthode alternative: Top 50 alts qui battent BTC sur 7 jours
     Source: CoinGecko API
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # Récupérer top 100 cryptos (pour avoir 50 alts après exclusion de BTC)
-            print("🔄 Récupération top 100 cryptos...")
+            print("🔄 Récupération top 100 cryptos avec données 7j...")
+            
+            # Récupérer avec 7d data (90d non disponible dans markets endpoint)
             response = await client.get(
                 'https://api.coingecko.com/api/v3/coins/markets',
                 params={
@@ -1562,42 +1564,55 @@ async def calculate_altcoin_season_index():
                     'per_page': 100,
                     'page': 1,
                     'sparkline': False,
-                    'price_change_percentage': '90d'
+                    'price_change_percentage': '7d'
                 }
             )
             
             if response.status_code != 200:
-                raise Exception(f"CoinGecko API error: {response.status_code}")
+                print(f"❌ CoinGecko API error: {response.status_code}")
+                raise Exception(f"API error: {response.status_code}")
             
             all_coins = response.json()
+            print(f"✅ Reçu {len(all_coins)} cryptos")
             
             # Trouver BTC
             btc = next((c for c in all_coins if c['symbol'].lower() == 'btc'), None)
             if not btc:
+                print("❌ BTC not found")
                 raise Exception("BTC not found in API response")
             
-            btc_90d = btc.get('price_change_percentage_90d_in_currency', 0) or 0
+            # Performance BTC sur 7 jours
+            btc_7d = btc.get('price_change_percentage_7d_in_currency')
+            if btc_7d is None:
+                # Fallback to non-currency version
+                btc_7d = btc.get('price_change_percentage_7d', 0)
+            
+            print(f"📊 BTC 7d: {btc_7d:.2f}%")
             
             # Prendre top 50 altcoins (excluant BTC et stablecoins)
-            stablecoins = {'usdt', 'usdc', 'busd', 'dai', 'tusd', 'usdp', 'usdd'}
+            stablecoins = {'usdt', 'usdc', 'busd', 'dai', 'tusd', 'usdp', 'usdd', 'fdusd'}
             altcoins = [
                 c for c in all_coins 
                 if c['symbol'].lower() not in stablecoins 
                 and c['symbol'].lower() != 'btc'
             ][:50]
             
-            if len(altcoins) < 50:
-                print(f"⚠️ Seulement {len(altcoins)} altcoins trouvés")
+            print(f"✅ Analysant {len(altcoins)} altcoins")
             
-            # FORMULE OFFICIELLE: Compter combien battent BTC sur 90j
+            # FORMULE: Compter combien battent BTC sur 7j
             alts_beating_btc = 0
             for alt in altcoins:
-                alt_90d = alt.get('price_change_percentage_90d_in_currency', 0) or 0
-                if alt_90d > btc_90d:
+                alt_7d = alt.get('price_change_percentage_7d_in_currency')
+                if alt_7d is None:
+                    alt_7d = alt.get('price_change_percentage_7d', 0)
+                
+                if alt_7d is not None and alt_7d > btc_7d:
                     alts_beating_btc += 1
             
             # INDEX = (Alts battant BTC / 50) × 100
-            index = (alts_beating_btc / 50) * 100
+            index = (alts_beating_btc / len(altcoins)) * 100
+            
+            print(f"📈 {alts_beating_btc}/{len(altcoins)} alts battent BTC")
             
             # Données globales pour info
             try:
@@ -1648,19 +1663,20 @@ async def calculate_altcoin_season_index():
                 "phase": phase,
                 "description": description,
                 "alts_winning": alts_beating_btc,
-                "total_alts": 50,
+                "total_alts": len(altcoins),
                 "trend": trend,
                 "momentum": momentum,
                 "btc_dominance": round(btc_dominance, 2),
                 "eth_dominance": round(eth_dominance, 2),
-                "btc_change_90d": round(btc_90d, 2),
-                "method": "Official BlockchainCenter.net formula",
+                "btc_change_7d": round(btc_7d, 2),
+                "method": "BlockchainCenter method (7-day performance)",
+                "note": "Using 7-day data (90-day not available in CoinGecko markets API)",
                 "status": "success",
                 "source": "CoinGecko API",
                 "timestamp": datetime.now().isoformat()
             }
             
-            print(f"✅ ALTCOIN INDEX: {index:.1f} | {alts_beating_btc}/50 alts > BTC | {phase}")
+            print(f"✅ ALTCOIN INDEX: {index:.1f} | {alts_beating_btc}/{len(altcoins)} alts > BTC | {phase}")
             return result
             
     except Exception as e:

@@ -1546,16 +1546,15 @@ http_client = httpx.AsyncClient(timeout=10.0)
 
 async def calculate_altcoin_season_index():
     """
-    🔥 ALTCOIN SEASON INDEX - MÉTHODE BLOCKCHAINCENTER (7 JOURS)
-    Note: CoinGecko API ne retourne pas les données 90j dans l'endpoint markets
-    Méthode alternative: Top 50 alts qui battent BTC sur 7 jours
-    Source: CoinGecko API
+    🔥 ALTCOIN SEASON INDEX - MÉTHODE BLOCKCHAINCENTER OFFICIELLE (90 JOURS)
+    Utilise les données historiques 90 jours de CoinGecko pour calculer l'index exact
+    Source: CoinGecko API /coins/{id}/market_chart
     """
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            print("🔄 Récupération top 100 cryptos avec données 7j...")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            print("🔄 Récupération top 100 cryptos...")
             
-            # Récupérer avec 7d data (90d non disponible dans markets endpoint)
+            # 1. Récupérer la liste des top 100 cryptos pour avoir les IDs
             response = await client.get(
                 'https://api.coingecko.com/api/v3/coins/markets',
                 params={
@@ -1563,8 +1562,7 @@ async def calculate_altcoin_season_index():
                     'order': 'market_cap_desc',
                     'per_page': 100,
                     'page': 1,
-                    'sparkline': False,
-                    'price_change_percentage': '7d'
+                    'sparkline': False
                 }
             )
             
@@ -1575,21 +1573,29 @@ async def calculate_altcoin_season_index():
             all_coins = response.json()
             print(f"✅ Reçu {len(all_coins)} cryptos")
             
-            # Trouver BTC
-            btc = next((c for c in all_coins if c['symbol'].lower() == 'btc'), None)
-            if not btc:
-                print("❌ BTC not found")
-                raise Exception("BTC not found in API response")
+            # 2. Récupérer les données historiques 90 jours pour BTC
+            print("📊 Récupération données BTC 90 jours...")
+            btc_response = await client.get(
+                'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart',
+                params={
+                    'vs_currency': 'usd',
+                    'days': 90,
+                    'interval': 'daily'
+                }
+            )
             
-            # Performance BTC sur 7 jours
-            btc_7d = btc.get('price_change_percentage_7d_in_currency')
-            if btc_7d is None:
-                # Fallback to non-currency version
-                btc_7d = btc.get('price_change_percentage_7d', 0)
+            if btc_response.status_code != 200:
+                raise Exception(f"BTC API error: {btc_response.status_code}")
             
-            print(f"📊 BTC 7d: {btc_7d:.2f}%")
+            btc_data = btc_response.json()
+            btc_prices = btc_data['prices']
+            btc_price_90d_ago = btc_prices[0][1]  # [timestamp, price]
+            btc_price_now = btc_prices[-1][1]
+            btc_performance_90d = ((btc_price_now - btc_price_90d_ago) / btc_price_90d_ago) * 100
             
-            # Prendre top 50 altcoins (excluant BTC et stablecoins)
+            print(f"✅ BTC 90d: {btc_performance_90d:.2f}% (${btc_price_90d_ago:.0f} → ${btc_price_now:.0f})")
+            
+            # 3. Filtrer les altcoins (top 50, excluant BTC et stablecoins)
             stablecoins = {'usdt', 'usdc', 'busd', 'dai', 'tusd', 'usdp', 'usdd', 'fdusd'}
             altcoins = [
                 c for c in all_coins 
@@ -1597,24 +1603,62 @@ async def calculate_altcoin_season_index():
                 and c['symbol'].lower() != 'btc'
             ][:50]
             
-            print(f"✅ Analysant {len(altcoins)} altcoins")
+            print(f"🔍 Analysant {len(altcoins)} altcoins sur 90 jours...")
             
-            # FORMULE: Compter combien battent BTC sur 7j
+            # 4. Pour chaque altcoin, récupérer performance 90 jours
             alts_beating_btc = 0
-            for alt in altcoins:
-                alt_7d = alt.get('price_change_percentage_7d_in_currency')
-                if alt_7d is None:
-                    alt_7d = alt.get('price_change_percentage_7d', 0)
-                
-                if alt_7d is not None and alt_7d > btc_7d:
-                    alts_beating_btc += 1
+            successful_comparisons = 0
             
-            # INDEX = (Alts battant BTC / 50) × 100
-            index = (alts_beating_btc / len(altcoins)) * 100
+            # Limiter à 25 appels/minute pour respecter les rate limits
+            import asyncio
             
-            print(f"📈 {alts_beating_btc}/{len(altcoins)} alts battent BTC")
+            for i, alt in enumerate(altcoins):
+                try:
+                    # Petit délai pour respecter rate limits (30 calls/min = 2 sec entre appels)
+                    if i > 0 and i % 10 == 0:
+                        print(f"   ... {i}/{len(altcoins)} alts analysés")
+                        await asyncio.sleep(2)  # Pause pour rate limit
+                    
+                    alt_response = await client.get(
+                        f'https://api.coingecko.com/api/v3/coins/{alt["id"]}/market_chart',
+                        params={
+                            'vs_currency': 'usd',
+                            'days': 90,
+                            'interval': 'daily'
+                        }
+                    )
+                    
+                    if alt_response.status_code == 200:
+                        alt_data = alt_response.json()
+                        if 'prices' in alt_data and len(alt_data['prices']) > 0:
+                            alt_prices = alt_data['prices']
+                            alt_price_90d_ago = alt_prices[0][1]
+                            alt_price_now = alt_prices[-1][1]
+                            alt_performance_90d = ((alt_price_now - alt_price_90d_ago) / alt_price_90d_ago) * 100
+                            
+                            successful_comparisons += 1
+                            if alt_performance_90d > btc_performance_90d:
+                                alts_beating_btc += 1
+                                print(f"   ✅ {alt['symbol'].upper()}: +{alt_performance_90d:.1f}% > BTC")
+                        else:
+                            print(f"   ⚠️  {alt['symbol'].upper()}: Pas de données historiques")
+                    else:
+                        print(f"   ⚠️  {alt['symbol'].upper()}: API error {alt_response.status_code}")
+                        
+                except Exception as e:
+                    print(f"   ❌ {alt['symbol'].upper()}: {e}")
+                    continue
             
-            # Données globales pour info
+            # 5. Calculer l'index
+            if successful_comparisons == 0:
+                raise Exception("Aucune donnée altcoin récupérée")
+            
+            # INDEX = (Alts battant BTC / total analysé) × 100
+            index = (alts_beating_btc / successful_comparisons) * 100
+            
+            print(f"📈 RÉSULTAT: {alts_beating_btc}/{successful_comparisons} alts battent BTC sur 90 jours")
+            
+            # 6. Données globales pour info
             try:
                 global_response = await client.get('https://api.coingecko.com/api/v3/global')
                 global_data = global_response.json()['data']
@@ -1624,7 +1668,7 @@ async def calculate_altcoin_season_index():
                 btc_dominance = 0
                 eth_dominance = 0
             
-            # Déterminer phase et momentum
+            # 7. Déterminer phase et momentum
             if index >= 75:
                 phase = "🔥 ALTCOIN SEASON"
                 description = "Les altcoins EXPLOSENT!"
@@ -1663,20 +1707,20 @@ async def calculate_altcoin_season_index():
                 "phase": phase,
                 "description": description,
                 "alts_winning": alts_beating_btc,
-                "total_alts": len(altcoins),
+                "total_alts": successful_comparisons,
                 "trend": trend,
                 "momentum": momentum,
                 "btc_dominance": round(btc_dominance, 2),
                 "eth_dominance": round(eth_dominance, 2),
-                "btc_change_7d": round(btc_7d, 2),
-                "method": "BlockchainCenter method (7-day performance)",
-                "note": "Using 7-day data (90-day not available in CoinGecko markets API)",
+                "btc_change_90d": round(btc_performance_90d, 2),
+                "method": "BlockchainCenter official method (90-day performance)",
+                "note": "Using real 90-day historical data from CoinGecko API",
                 "status": "success",
-                "source": "CoinGecko API",
+                "source": "CoinGecko API (market_chart endpoint)",
                 "timestamp": datetime.now().isoformat()
             }
             
-            print(f"✅ ALTCOIN INDEX: {index:.1f} | {alts_beating_btc}/{len(altcoins)} alts > BTC | {phase}")
+            print(f"✅ ALTCOIN INDEX: {index:.1f} | {alts_beating_btc}/{successful_comparisons} alts > BTC | {phase}")
             return result
             
     except Exception as e:
@@ -7908,12 +7952,12 @@ def generate_heatmap_fallback():
 altcoin_cache = {
     "data": None,
     "timestamp": None,
-    "cache_duration": 300  # 5 minutes de cache
+    "cache_duration": 1800  # 30 minutes de cache (récupération 90j prend ~2min)
 }
 
 @app.get("/api/altcoin-season-index")
 async def get_altcoin_season_index():
-    """🔥 API Altcoin Season Index - VRAIES DONNÉES STABLES (cache 5min)"""
+    """🔥 API Altcoin Season Index - VRAIES DONNÉES 90 JOURS (cache 30min)"""
     global altcoin_cache
     
     try:

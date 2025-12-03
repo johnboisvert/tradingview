@@ -15568,7 +15568,10 @@ async def pricing_complete():
                     font-weight: bold;
                     cursor: pointer;
                     transition: all 0.3s;
-                    font-size: 14px;
+                    font-size: 16px;
+                    min-width: 150px;
+                    white-space: nowrap;
+                    text-align: center;
                 }
                 .plan-tab:hover {
                     border-color: #667eea;
@@ -17507,6 +17510,7 @@ async def generate_pdf_report():
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
+        from fastapi.responses import StreamingResponse
         import io
         
         # Créer le PDF en mémoire
@@ -17575,20 +17579,27 @@ async def generate_pdf_report():
         
         elements.append(Spacer(1, 0.3*inch))
         elements.append(Paragraph(f'Généré le: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}', styles['Normal']))
-        elements.append(Paragraph('© Dashboard Trading Professionnel - Watermark', 
+        elements.append(Paragraph('© Dashboard Trading Professionnel', 
                                 styles['Normal']))
         
         # Build PDF
         doc.build(elements)
         buffer.seek(0)
         
-        return {
-            "status": "success",
-            "message": "PDF généré avec succès",
-            "filename": f"rapport_trading_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-            "size": len(buffer.getvalue())
-        }
+        # Retourner le PDF pour téléchargement
+        filename = f"rapport_trading_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        return StreamingResponse(
+            buffer,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={filename}"
+            }
+        )
     except Exception as e:
+        print(f"❌ Erreur génération PDF: {e}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "message": str(e)}
 
 # ============================================================================

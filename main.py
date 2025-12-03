@@ -19465,448 +19465,399 @@ async def admin_dashboard(request: Request):
 
 
 @app.get("/admin/pricing", response_class=HTMLResponse)
-async def admin_pricing(request: Request):
-    """Page de gestion des plans d'abonnement et permissions"""
-    
+async def admin_pricing_view(request: Request):
+    """Page de gestion des plans"""
     session_token = request.cookies.get("session_token")
     if not session_token:
         return RedirectResponse("/login", status_code=303)
     
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
-        return HTMLResponse("<h1>403 - Accès refusé</h1>", status_code=403)
+        return HTMLResponse("<h1>403</h1>", status_code=403)
     
-    return HTMLResponse(f"""
-<!DOCTYPE html>
+    # Check for success/error messages
+    success = request.query_params.get("success")
+    error = request.query_params.get("error")
+    
+    alert_html = ""
+    if success:
+        alert_html = '<div class="alert alert-success">✅ Plan mis à jour avec succès!</div>'
+    elif error:
+        alert_html = '<div class="alert alert-error">❌ Erreur lors de la mise à jour</div>'
+    
+    return HTMLResponse(f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Gestion Pricing</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }}
         
-        /* Menu */
-        .top-menu {{
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            padding: 12px 20px;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.5);
+        .admin-menu {{
+            background: #1a1a2e;
+            padding: 15px 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
             position: sticky;
             top: 0;
-            z-index: 9999;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            z-index: 99999;
+            border-bottom: 3px solid #f59e0b;
         }}
-        .menu-container {{
-            max-width: 1600px;
+        .menu-items {{
+            max-width: 1200px;
             margin: 0 auto;
             display: flex;
-            gap: 8px;
+            gap: 15px;
             flex-wrap: wrap;
             justify-content: center;
         }}
-        .menu-link {{
-            background: rgba(255,255,255,0.05);
-            color: #e2e8f0;
-            padding: 8px 14px;
-            border-radius: 6px;
+        .menu-btn {{
+            background: #2d2d44;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
             text-decoration: none;
-            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }}
+        .menu-btn:hover {{ background: #3d3d54; transform: translateY(-2px); }}
+        .menu-btn.active {{ background: #f59e0b; }}
+        
+        .container {{ max-width: 1400px; margin: 0 auto; padding: 30px 20px; }}
+        .page-header {{ background: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }}
+        h1 {{ color: #333; font-size: 32px; }}
+        
+        .alert {{
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
             font-weight: 500;
-            transition: all 0.2s;
-            border: 1px solid rgba(255,255,255,0.08);
-            white-space: nowrap;
         }}
-        .menu-link:hover {{
-            background: rgba(255,255,255,0.12);
-            border-color: rgba(96,165,250,0.4);
-            color: white;
+        .alert-success {{
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
         }}
-        .menu-link.admin {{
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            border: none;
-            color: white;
+        .alert-error {{
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
         }}
         
-        /* Body */
-        body {{
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding-bottom: 40px;
-        }}
-        
-        .container {{
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }}
-        
-        .header {{
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            margin: 20px 0;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }}
-        
-        h1 {{ color: #333; font-size: 32px; margin-bottom: 10px; }}
-        .subtitle {{ color: #666; font-size: 16px; }}
-        
-        /* Plans Grid */
-        .section-title {{
-            color: white;
-            font-size: 24px;
-            margin: 30px 0 20px 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid rgba(255,255,255,0.3);
-        }}
-        
-        .plans-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }}
-        
-        .plan-card {{
+        .plan-editor {{
             background: white;
             padding: 25px;
             border-radius: 15px;
+            margin-bottom: 25px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            transition: transform 0.2s;
         }}
-        
-        .plan-card:hover {{
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }}
-        
-        .plan-name {{
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
-            margin-bottom: 10px;
-        }}
-        
-        .plan-price {{
-            font-size: 32px;
-            font-weight: bold;
-            color: #333;
-            margin: 15px 0;
-        }}
-        
-        .plan-price span {{
-            font-size: 16px;
-            color: #666;
-        }}
-        
-        .plan-id {{
-            background: #f0f0f0;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            color: #666;
-            display: inline-block;
-            margin-bottom: 15px;
-        }}
-        
-        .features {{
-            margin-top: 20px;
-        }}
-        
-        .feature {{
-            padding: 8px 0;
-            color: #555;
-            font-size: 14px;
-        }}
-        
-        .feature::before {{
-            content: "✓ ";
-            color: #51cf66;
-            font-weight: bold;
-            margin-right: 8px;
-        }}
-        
-        /* Routes Section */
-        .routes-section {{
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            margin-top: 20px;
-        }}
-        
-        .route-group {{
-            margin-bottom: 30px;
-        }}
-        
-        .route-group h3 {{
-            color: #667eea;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
+        .plan-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
             border-bottom: 2px solid #f0f0f0;
-            font-size: 20px;
+        }}
+        .plan-title {{ font-size: 24px; font-weight: bold; color: #667eea; }}
+        .plan-id {{ background: #f0f0f0; padding: 5px 15px; border-radius: 20px; font-size: 13px; }}
+        
+        .editor-row {{
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }}
+        .form-group {{ margin-bottom: 15px; }}
+        .form-label {{
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }}
+        .form-input {{
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }}
+        .form-input:focus {{
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }}
         
-        .route-list {{
+        .routes-section {{
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }}
+        .routes-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 10px;
+            margin-top: 15px;
         }}
-        
-        .route-badge {{
-            background: #f8f9fa;
-            padding: 10px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            color: #333;
-            border: 1px solid #dee2e6;
-            transition: all 0.2s;
-        }}
-        
-        .route-badge:hover {{
-            background: #e9ecef;
-            border-color: #adb5bd;
-        }}
-        
-        .info-box {{
-            margin-top: 30px;
-            padding: 20px;
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            border-radius: 8px;
-        }}
-        
-        .info-box h4 {{
-            color: #856404;
-            margin-bottom: 15px;
-            font-size: 18px;
-        }}
-        
-        .info-box ul {{
-            color: #856404;
-            line-height: 1.8;
-            padding-left: 20px;
-        }}
-        
-        .back-btn {{
-            display: inline-block;
-            margin-top: 30px;
-            padding: 12px 24px;
-            background: rgba(255,255,255,0.95);
-            color: #667eea;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            transition: all 0.2s;
-        }}
-        
-        .back-btn:hover {{
-            background: white;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-        }}
-        
-        .stats-bar {{
+        .route-checkbox {{
             display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            align-items: center;
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            border: 2px solid #e0e0e0;
+        }}
+        .route-checkbox input {{
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
         }}
         
-        .stat-item {{
-            background: rgba(255,255,255,0.95);
-            padding: 15px 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        .save-btn {{
+            background: #10b981;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 15px;
         }}
-        
-        .stat-label {{
-            font-size: 12px;
-            color: #666;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }}
-        
-        .stat-value {{
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
+        .save-btn:hover {{
+            background: #059669;
+            transform: translateY(-2px);
         }}
     </style>
 </head>
 <body>
-    <nav class="top-menu">
-        <div class="menu-container">
-            <a href="/dashboard" class="menu-link">🏠 Accueil</a>
-            <a href="/admin-dashboard" class="menu-link admin">🔧 Admin Dashboard</a>
-            <a href="/admin/list-promos" class="menu-link admin">💰 Codes Promo</a>
-            <a href="/admin/pricing" class="menu-link admin" style="background: #8b5cf6;">💎 Pricing</a>
-            <a href="/mon-compte" class="menu-link">👤 Compte</a>
-            <a href="/logout" class="menu-link" style="background: #ef4444; color: white;">🚪 Déconnexion</a>
+    <nav class="admin-menu">
+        <div class="menu-items">
+            <a href="/dashboard" class="menu-btn">🏠 Accueil</a>
+            <a href="/admin-dashboard" class="menu-btn">🔧 Admin</a>
+            <a href="/admin/list-promos" class="menu-btn">💰 Promos</a>
+            <a href="/admin/pricing" class="menu-btn active">💎 Pricing</a>
+            <a href="/mon-compte" class="menu-btn">👤 Compte</a>
+            <a href="/logout" class="menu-btn">🚪 Déconnexion</a>
         </div>
     </nav>
-
+    
     <div class="container">
-        <div class="header">
+        <div class="page-header">
             <h1>💎 Gestion des Plans d'Abonnement</h1>
-            <p class="subtitle">Configuration complète des plans, prix et permissions d'accès</p>
+            <p style="color: #666; margin-top: 10px;">Modifiez les prix, noms et permissions pour chaque plan</p>
         </div>
         
-        <div class="stats-bar">
-            <div class="stat-item">
-                <div class="stat-label">Total Plans</div>
-                <div class="stat-value">5</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-label">Routes Protégées</div>
-                <div class="stat-value">25+</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-label">Prix Min/Max</div>
-                <div class="stat-value">$0 - $240</div>
-            </div>
-        </div>
-
-        <h2 class="section-title">📋 Plans d'Abonnement Disponibles</h2>
-        <div class="plans-grid">
-            <div class="plan-card">
+        {alert_html}
+        
+        <form method="POST" action="/admin/pricing/update" class="plan-editor">
+            <input type="hidden" name="plan_id" value="free">
+            <div class="plan-header">
+                <div class="plan-title">🆓 Free</div>
                 <div class="plan-id">ID: free</div>
-                <div class="plan-name">🆓 Free</div>
-                <div class="plan-price">$0<span>/gratuit</span></div>
-                <div class="features">
-                    <div class="feature">Dashboard de base</div>
-                    <div class="feature">Indicateurs limités</div>
-                    <div class="feature">Fear & Greed Index</div>
-                    <div class="feature">5 alertes par jour</div>
-                    <div class="feature">8 pages accessibles</div>
+            </div>
+            <div class="editor-row">
+                <div class="form-group">
+                    <label class="form-label">Nom du Plan</label>
+                    <input type="text" name="name" value="Free" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prix ($)</label>
+                    <input type="number" name="price" value="0" step="0.01" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Durée</label>
+                    <input type="text" name="duration" value="gratuit" class="form-input" required>
                 </div>
             </div>
-            
-            <div class="plan-card">
+            <div class="routes-section">
+                <h4>🔐 Pages Accessibles (8 sélectionnées)</h4>
+                <div class="routes-grid">
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/dashboard" checked> /dashboard</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/fear-greed" checked> /fear-greed</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/dominance" checked> /dominance</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/altcoin-season" checked> /altcoin-season</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/heatmap" checked> /heatmap</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/nouvelles" checked> /nouvelles</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/convertisseur" checked> /convertisseur</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/calendrier" checked> /calendrier</label>
+                </div>
+            </div>
+            <button type="submit" class="save-btn">💾 Sauvegarder Free</button>
+        </form>
+        
+        <form method="POST" action="/admin/pricing/update" class="plan-editor">
+            <input type="hidden" name="plan_id" value="1_month">
+            <div class="plan-header">
+                <div class="plan-title">💎 Premium 1 mois</div>
                 <div class="plan-id">ID: 1_month</div>
-                <div class="plan-name">💎 Premium 1 mois</div>
-                <div class="plan-price">$29.99<span>/mois</span></div>
-                <div class="features">
-                    <div class="feature">Tous les indicateurs</div>
-                    <div class="feature">Alertes illimitées</div>
-                    <div class="feature">Scanner AI</div>
-                    <div class="feature">Trading assistant AI</div>
-                    <div class="feature">Support prioritaire</div>
-                    <div class="feature">9 pages supplémentaires</div>
+            </div>
+            <div class="editor-row">
+                <div class="form-group">
+                    <label class="form-label">Nom du Plan</label>
+                    <input type="text" name="name" value="Premium 1 mois" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prix ($)</label>
+                    <input type="number" name="price" value="29.99" step="0.01" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Durée</label>
+                    <input type="text" name="duration" value="1 mois" class="form-input" required>
                 </div>
             </div>
-            
-            <div class="plan-card">
-                <div class="plan-id">ID: 3_months</div>
-                <div class="plan-name">💎 Premium 3 mois</div>
-                <div class="plan-price">$74.97<span>/3 mois</span></div>
-                <div class="features">
-                    <div class="feature">Tous Premium</div>
-                    <div class="feature">15% de réduction</div>
-                    <div class="feature">Économie de $14.99</div>
+            <div class="routes-section">
+                <h4>🔐 Pages Accessibles (hérite de Free + 9 pages)</h4>
+                <div class="routes-grid">
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-assistant" checked> /ai-assistant</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/prediction-ia" checked> /prediction-ia</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-opportunity-scanner" checked> /ai-opportunity-scanner</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/strategie" checked> /strategie</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/spot-trading" checked> /spot-trading</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/calculatrice" checked> /calculatrice</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/trades" checked> /trades</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/risk-management" checked> /risk-management</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/watchlist" checked> /watchlist</label>
                 </div>
             </div>
-            
-            <div class="plan-card">
+            <button type="submit" class="save-btn">💾 Sauvegarder Premium</button>
+        </form>
+        
+        <form method="POST" action="/admin/pricing/update" class="plan-editor">
+            <input type="hidden" name="plan_id" value="6_months">
+            <div class="plan-header">
+                <div class="plan-title">⭐ Pro 6 mois</div>
                 <div class="plan-id">ID: 6_months</div>
-                <div class="plan-name">⭐ Pro 6 mois</div>
-                <div class="plan-price">$134.94<span>/6 mois</span></div>
-                <div class="features">
-                    <div class="feature">Tous Premium +</div>
-                    <div class="feature">Whale Watcher AI</div>
-                    <div class="feature">Market Regime Detection</div>
-                    <div class="feature">Stats dashboard avancé</div>
-                    <div class="feature">25% de réduction</div>
-                    <div class="feature">Économie de $44.99</div>
+            </div>
+            <div class="editor-row">
+                <div class="form-group">
+                    <label class="form-label">Nom du Plan</label>
+                    <input type="text" name="name" value="Pro 6 mois" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prix ($)</label>
+                    <input type="number" name="price" value="134.94" step="0.01" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Durée</label>
+                    <input type="text" name="duration" value="6 mois" class="form-input" required>
                 </div>
             </div>
-            
-            <div class="plan-card">
+            <div class="routes-section">
+                <h4>🔐 Pages Accessibles (hérite de Premium + 5 pages)</h4>
+                <div class="routes-grid">
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-whale-watcher" checked> /ai-whale-watcher</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/ai-market-regime" checked> /ai-market-regime</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/stats-dashboard" checked> /stats-dashboard</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/market-simulation" checked> /market-simulation</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/success-stories" checked> /success-stories</label>
+                </div>
+            </div>
+            <button type="submit" class="save-btn">💾 Sauvegarder Pro</button>
+        </form>
+        
+        <form method="POST" action="/admin/pricing/update" class="plan-editor">
+            <input type="hidden" name="plan_id" value="1_year">
+            <div class="plan-header">
+                <div class="plan-title">👑 Elite 1 an</div>
                 <div class="plan-id">ID: 1_year</div>
-                <div class="plan-name">👑 Elite 1 an</div>
-                <div class="plan-price">$239.88<span>/an</span></div>
-                <div class="features">
-                    <div class="feature">Tous Pro +</div>
-                    <div class="feature">API Access</div>
-                    <div class="feature">Backtesting avancé</div>
-                    <div class="feature">Consultation mensuelle</div>
-                    <div class="feature">33% de réduction</div>
-                    <div class="feature">Économie de $119.99</div>
+            </div>
+            <div class="editor-row">
+                <div class="form-group">
+                    <label class="form-label">Nom du Plan</label>
+                    <input type="text" name="name" value="Elite 1 an" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Prix ($)</label>
+                    <input type="number" name="price" value="239.88" step="0.01" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Durée</label>
+                    <input type="text" name="duration" value="1 an" class="form-input" required>
                 </div>
             </div>
-        </div>
-
-        <div class="routes-section">
-            <h2 style="margin-bottom: 25px;">🔐 Routes Protégées par Niveau d'Abonnement</h2>
-            
-            <div class="route-group">
-                <h3>🆓 Free - Accès de Base (8 pages)</h3>
-                <div class="route-list">
-                    <div class="route-badge">/dashboard</div>
-                    <div class="route-badge">/fear-greed</div>
-                    <div class="route-badge">/dominance</div>
-                    <div class="route-badge">/altcoin-season</div>
-                    <div class="route-badge">/heatmap</div>
-                    <div class="route-badge">/nouvelles</div>
-                    <div class="route-badge">/convertisseur</div>
-                    <div class="route-badge">/calendrier</div>
+            <div class="routes-section">
+                <h4>🔐 Pages Accessibles (hérite de Pro + 3 pages = TOUT)</h4>
+                <div class="routes-grid">
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/graphiques" checked> /graphiques</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/bullrun-phase" checked> /bullrun-phase</label>
+                    <label class="route-checkbox"><input type="checkbox" name="routes" value="/telegram-test" checked> /telegram-test</label>
                 </div>
             </div>
-            
-            <div class="route-group">
-                <h3>💎 Premium (1-3 mois) - +9 Pages</h3>
-                <div class="route-list">
-                    <div class="route-badge">/ai-assistant</div>
-                    <div class="route-badge">/prediction-ia</div>
-                    <div class="route-badge">/ai-opportunity-scanner</div>
-                    <div class="route-badge">/strategie</div>
-                    <div class="route-badge">/spot-trading</div>
-                    <div class="route-badge">/calculatrice</div>
-                    <div class="route-badge">/trades</div>
-                    <div class="route-badge">/risk-management</div>
-                    <div class="route-badge">/watchlist</div>
-                </div>
-            </div>
-            
-            <div class="route-group">
-                <h3>⭐ Pro (6 mois) - +5 Pages</h3>
-                <div class="route-list">
-                    <div class="route-badge">/ai-whale-watcher</div>
-                    <div class="route-badge">/ai-market-regime</div>
-                    <div class="route-badge">/stats-dashboard</div>
-                    <div class="route-badge">/market-simulation</div>
-                    <div class="route-badge">/success-stories</div>
-                </div>
-            </div>
-            
-            <div class="route-group">
-                <h3>👑 Elite (1 an) - +3 Pages + Toutes Fonctionnalités</h3>
-                <div class="route-list">
-                    <div class="route-badge">/graphiques</div>
-                    <div class="route-badge">/bullrun-phase</div>
-                    <div class="route-badge">/telegram-test</div>
-                </div>
-            </div>
-            
-            <div class="info-box">
-                <h4>📝 Système de Permissions</h4>
-                <ul>
-                    <li><strong>Héritage:</strong> Chaque plan hérite des permissions des plans inférieurs</li>
-                    <li><strong>Premium 3 mois:</strong> Même accès que 1 mois avec meilleur prix</li>
-                    <li><strong>Elite 1 an:</strong> Accès total à TOUTES les 25+ fonctionnalités</li>
-                    <li><strong>Routes Admin:</strong> Protégées par role='admin' (indépendant des plans)</li>
-                    <li><strong>Total pages:</strong> Free (8) + Premium (9) + Pro (5) + Elite (3) = 25+ pages</li>
-                </ul>
-            </div>
+            <button type="submit" class="save-btn">💾 Sauvegarder Elite</button>
+        </form>
+        
+        <div style="background: #dbeafe; padding: 20px; border-radius: 10px; margin-top: 30px; border-left: 4px solid #3b82f6;">
+            <h4 style="color: #1e40af; margin-bottom: 10px;">ℹ️ Informations Importantes</h4>
+            <ul style="color: #1e40af; line-height: 2;">
+                <li>Les modifications sont sauvegardées dans /data/pricing_config.json</li>
+                <li>Les utilisateurs héritent des permissions des plans inférieurs</li>
+                <li>Premium 3_months utilise automatiquement les mêmes routes que 1_month</li>
+                <li>Pour appliquer les changements au système, redémarrez l'application</li>
+            </ul>
         </div>
         
-        <a href="/admin-dashboard" class="back-btn">← Retour au Dashboard Admin</a>
+        <a href="/admin-dashboard" style="display: inline-block; margin-top: 30px; padding: 12px 24px; background: white; color: #667eea; text-decoration: none; border-radius: 8px; font-weight: 600;">← Retour au Dashboard</a>
     </div>
 </body>
 </html>
     """)
+
+
+@app.post("/admin/pricing/update")
+async def admin_pricing_update(request: Request):
+    """Mise à jour d'un plan"""
+    session_token = request.cookies.get("session_token")
+    if not session_token:
+        return RedirectResponse("/login", status_code=303)
+    
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return HTMLResponse("<h1>403</h1>", status_code=403)
+    
+    try:
+        form = await request.form()
+        plan_id = form.get("plan_id")
+        name = form.get("name")
+        price = float(form.get("price", 0))
+        duration = form.get("duration")
+        routes = form.getlist("routes")
+        
+        # Save to file
+        import json
+        import os
+        
+        config_file = "/data/pricing_config.json"
+        
+        # Load existing
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+        else:
+            config = {}
+        
+        # Update
+        config[plan_id] = {
+            'name': name,
+            'price': price,
+            'duration': duration,
+            'routes': routes,
+            'updated_at': str(datetime.now())
+        }
+        
+        # Save
+        os.makedirs("/data", exist_ok=True)
+        with open(config_file, 'w') as f:
+            json.dump(config, f, indent=2)
+        
+        return RedirectResponse("/admin/pricing?success=1", status_code=303)
+        
+    except Exception as e:
+        print(f"Erreur pricing update: {e}")
+        return RedirectResponse("/admin/pricing?error=1", status_code=303)
 @app.get("/admin/init-promo-table")
 async def admin_init_promo_table(session_token: Optional[str] = Cookie(None)):
     """Initialise la table promo_codes (à exécuter une seule fois)"""

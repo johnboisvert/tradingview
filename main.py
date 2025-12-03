@@ -820,6 +820,7 @@ async def auth_middleware(request: Request, call_next):
     
     # ✅ ROUTES FREE - Accessibles SANS login
     free_routes = [
+        "/",                    # Page d'accueil (racine)
         "/dashboard",
         "/fear-greed",
         "/dominance",
@@ -860,7 +861,8 @@ async def auth_middleware(request: Request, call_next):
     all_public = free_routes + public_paths
     
     # Si c'est une route publique ou FREE, laisser passer
-    if any(request.url.path.startswith(path) or request.url.path == path for path in all_public):
+    # IMPORTANT: Vérifier "/" en premier car startswith("/") match tout
+    if request.url.path == "/" or any(request.url.path == path or (path != "/" and request.url.path.startswith(path)) for path in all_public):
         return await call_next(request)
     
     # Vérifier le token de session

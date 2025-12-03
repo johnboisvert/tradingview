@@ -816,11 +816,13 @@ app.add_middleware(
 # 🔐 Middleware d'authentification
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    """Vérifier l'authentification sur toutes les routes sauf /login"""
+    """Vérifier l'authentification sur toutes les routes sauf routes FREE et publiques"""
     
-    # ✅ ROUTES FREE - Accessibles SANS login
-    free_routes = [
-        "/",                    # Page d'accueil (racine)
+    path = request.url.path
+    
+    # ✅ ROUTES FREE - Accessibles SANS login (9 pages)
+    free_routes = {
+        "/",
         "/dashboard",
         "/fear-greed",
         "/dominance",
@@ -829,56 +831,55 @@ async def auth_middleware(request: Request, call_next):
         "/nouvelles",
         "/convertisseur",
         "/calendrier"
-    ]
+    }
     
-    # Routes publiques (pas besoin d'authentification)
-    public_paths = [
-        "/login", 
+    # Routes publiques (authentification, paiements, webhooks)
+    public_routes = {
+        "/login",
         "/register",
-        "/health", 
-        "/tv-webhook", 
-        "/debug-files", 
-        "/pricing", 
-        "/pricing-new", 
-        "/pricing-complete", 
-        "/api/test-payment", 
-        "/api/stripe-checkout", 
-        "/api/coinbase-checkout", 
-        "/api/payment-success", 
-        "/api/payment-cancel", 
-        "/test-webhook-stripe",
-        "/webhook/stripe-permissions",
-        "/webhook/coinbase-permissions",
-        "/webhook/stripe-permissions-debug",
-        "/admin/init-promo-table",
+        "/logout",
+        "/health",
+        "/pricing",
+        "/pricing-new",
+        "/pricing-complete"
+    }
+    
+    # Routes qui commencent par ces préfixes
+    public_prefixes = [
+        "/tv-webhook",
+        "/webhook/",
+        "/api/stripe-checkout",
+        "/api/coinbase-checkout",
+        "/api/payment-",
+        "/test-webhook",
+        "/admin/init-promo",
         "/admin/create-promo",
         "/admin/list-promos",
-        "/admin/test-promo",
-        "/admin/create-launch-promos"
+        "/admin/test-promo"
     ]
     
-    # Combiner FREE routes + public paths
-    all_public = free_routes + public_paths
-    
-    # Si c'est une route publique ou FREE, laisser passer
-    # IMPORTANT: Vérifier "/" en premier car startswith("/") match tout
-    if request.url.path == "/" or any(request.url.path == path or (path != "/" and request.url.path.startswith(path)) for path in all_public):
+    # Check exact match pour FREE et public
+    if path in free_routes or path in public_routes:
+        print(f"✅ FREE/PUBLIC ACCESS: {path}")
         return await call_next(request)
     
-    # Vérifier le token de session
+    # Check prefixes
+    if any(path.startswith(prefix) for prefix in public_prefixes):
+        print(f"✅ PUBLIC PREFIX: {path}")
+        return await call_next(request)
+    
+    # Sinon, vérifier authentification
     session_token = request.cookies.get("session_token")
     user = get_user_from_token(session_token)
     
-    # Si pas authentifié, rediriger vers login
     if not user:
+        print(f"❌ NO AUTH: {path} → redirecting to /login")
         if request.url.path.startswith("/api/"):
-            # Pour les routes API, retourner 401
             return Response(content="Non authentifié", status_code=401)
         else:
-            # Pour les routes HTML, rediriger vers login
             return RedirectResponse(url="/login", status_code=303)
     
-    # Utilisateur authentifié, continuer
+    print(f"✅ AUTHENTICATED: {path} (user: {user.get('username')})")
     return await call_next(request)
 
 # ✅ DÉFINITIONS OBLIGATOIRES (AVANT les routes !)

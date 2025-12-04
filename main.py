@@ -22028,7 +22028,7 @@ async def api_backtest(request: Request):
         'macd': {'win_rate': 0.55, 'avg_trades_per_month': 10, 'risk_reward': 2.0},
         'bollinger': {'win_rate': 0.60, 'avg_trades_per_month': 12, 'risk_reward': 2.5},
         'sma_cross': {'win_rate': 0.65, 'avg_trades_per_month': 4, 'risk_reward': 3.0}
-    }}
+    }
     
     params = strategy_params.get(strategy, strategy_params['ema_cross'])
     

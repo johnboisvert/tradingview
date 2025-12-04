@@ -34,7 +34,7 @@ import hmac
 import hashlib
 import requests  # Pour API externe
 import aiohttp
-from typing import List, Dict (Fear & Greed, etc.)
+from typing import List, Dict
 
 # ============================================================================
 # 🆕 SYSTÈME DE PERMISSIONS - IMPORTS
@@ -24147,11 +24147,18 @@ async def refresh_gems():
     """API pour rafraîchir les données des pépites"""
     try:
         gems = await analyze_all_gems()
-        return {{
+        return {
             "success": True,
             "count": len(gems),
             "gems": gems
-        }}
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "gems": []
+        }
+
 
 if __name__ == "__main__":
     import uvicorn

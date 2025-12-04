@@ -1551,37 +1551,92 @@ http_client = httpx.AsyncClient(timeout=10.0)
 
 async def calculate_altcoin_season_index():
     """
-    🔥 ALTCOIN SEASON INDEX - VERSION RAPIDE ET PRÉCISE
-    Basé sur BTC Dominance selon la méthode de Blockchain Center
-    Formule: Index = 100 - BTC_dominance
+    🔥 ALTCOIN SEASON INDEX - MÉTHODE BLOCKCHAIN CENTER (CORRECTE)
     
-    Exemples:
-    - BTC dom 63% → Index 37 (Bitcoin Season)
-    - BTC dom 50% → Index 50 (Neutre)
-    - BTC dom 25% → Index 75 (Altcoin Season)
+    Méthodologie officielle:
+    1. Prendre les Top 50 cryptos (sans stablecoins/wrapped)
+    2. Comparer CHAQUE crypto vs Bitcoin sur 90 jours
+    3. Index = (nombre qui battent BTC / 50) × 100
+    
+    Si index = 37: 37% des top 50 ont battu BTC sur 90 jours
+    Si index = 75+: C'est Altcoin Season!
     """
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            print("🔄 Calcul Altcoin Season Index (rapide)...")
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            print("🔄 Calcul Altcoin Season Index (méthode Blockchain Center)...")
             
-            # 1. Récupérer BTC Dominance et données globales
-            global_response = await client.get('https://api.coingecko.com/api/v3/global')
-            global_data = global_response.json()['data']
-            btc_dominance = global_data.get('market_cap_percentage', {}).get('btc', 62)
-            eth_dominance = global_data.get('market_cap_percentage', {}).get('eth', 12)
+            # 1. Récupérer les Top 100 coins avec performance 90j en UNE SEULE requête!
+            markets_response = await client.get(
+                'https://api.coingecko.com/api/v3/coins/markets',
+                params={
+                    'vs_currency': 'usd',
+                    'order': 'market_cap_desc',
+                    'per_page': 100,
+                    'page': 1,
+                    'price_change_percentage': '90d'
+                }
+            )
             
-            # 2. Calculer l'index avec la formule simple
-            # Plus BTC dominance est élevée, plus l'index est bas (Bitcoin Season)
-            # Plus BTC dominance est basse, plus l'index est élevé (Altcoin Season)
-            index = 100 - btc_dominance
+            if markets_response.status_code != 200:
+                raise Exception(f"CoinGecko API error: {markets_response.status_code}")
             
-            # 3. S'assurer que l'index est entre 0 et 100
-            index = max(0, min(100, index))
+            coins_data = markets_response.json()
             
-            print(f"📊 BTC Dominance: {btc_dominance:.1f}%")
-            print(f"🎯 Altcoin Season Index: {index:.1f}/100")
+            # 2. Trouver Bitcoin et sa performance 90j
+            btc_performance = None
+            for coin in coins_data:
+                if coin['symbol'].lower() == 'btc':
+                    btc_performance = coin.get('price_change_percentage_90d_in_currency', 0)
+                    print(f"📊 BTC 90d: +{btc_performance:.1f}%")
+                    break
             
-            # 4. Déterminer phase
+            if btc_performance is None:
+                raise Exception("Bitcoin data not found")
+            
+            # 3. Filtrer: Top 50 altcoins (pas Bitcoin, pas stablecoins, pas wrapped)
+            stablecoins = {'usdt', 'usdc', 'busd', 'dai', 'tusd', 'usdp', 'gusd', 'usdd'}
+            wrapped = {'wbtc', 'steth', 'weth', 'renbtc', 'hbtc'}
+            
+            altcoins = []
+            for coin in coins_data:
+                symbol = coin['symbol'].lower()
+                if symbol == 'btc':
+                    continue
+                if symbol in stablecoins or symbol in wrapped:
+                    continue
+                if coin.get('price_change_percentage_90d_in_currency') is not None:
+                    altcoins.append(coin)
+                if len(altcoins) >= 50:
+                    break
+            
+            # 4. Compter combien battent Bitcoin
+            alts_beating_btc = 0
+            for alt in altcoins:
+                alt_perf = alt.get('price_change_percentage_90d_in_currency', 0)
+                if alt_perf > btc_performance:
+                    alts_beating_btc += 1
+            
+            # 5. Calculer l'index
+            total_compared = len(altcoins)
+            if total_compared == 0:
+                raise Exception("No altcoins data")
+            
+            index = (alts_beating_btc / total_compared) * 100
+            
+            print(f"📈 RÉSULTAT: {alts_beating_btc}/{total_compared} alts battent BTC")
+            print(f"🎯 INDEX: {index:.1f}/100")
+            
+            # 6. Récupérer dominances
+            try:
+                global_response = await client.get('https://api.coingecko.com/api/v3/global')
+                global_data = global_response.json()['data']
+                btc_dominance = global_data.get('market_cap_percentage', {}).get('btc', 0)
+                eth_dominance = global_data.get('market_cap_percentage', {}).get('eth', 0)
+            except:
+                btc_dominance = 0
+                eth_dominance = 0
+            
+            # 7. Déterminer phase basée sur l'INDEX (pas la dominance!)
             if index >= 75:
                 phase = "🔥 ALTCOIN SEASON"
                 description = "Les altcoins EXPLOSENT!"
@@ -1614,25 +1669,21 @@ async def calculate_altcoin_season_index():
             else:
                 trend = "❄️ Bitcoin Season"
             
-            # 5. Estimation des alts battant BTC (pour affichage)
-            # Si index = 37, environ 37% des top 50 battent BTC = 18-19 alts
-            alts_beating_btc = int((index / 100) * 50)
-            total_compared = 50
-            
+            # Retourner les VRAIES données calculées
             return {
                 "index": round(index, 1),
-                "alts_winning": alts_beating_btc,
-                "total_compared": total_compared,
+                "alts_winning": alts_beating_btc,  # Valeur réelle calculée!
+                "total_compared": total_compared,  # Valeur réelle calculée!
                 "phase": phase,
                 "description": description,
                 "trend": trend,
                 "momentum": momentum,
-                "btc_change_90d": 0,  # Non calculé dans cette version
+                "btc_change_90d": round(btc_performance, 2),  # Performance réelle BTC 90j!
                 "btc_dominance": round(btc_dominance, 2),
                 "eth_dominance": round(eth_dominance, 2),
                 "others_dominance": round(100 - btc_dominance - eth_dominance, 2),
                 "status": "real_data",
-                "source": "Basé sur BTC Dominance (méthode Blockchain Center)",
+                "source": "CoinGecko Top 50 vs BTC 90d (méthode Blockchain Center)",
                 "timestamp": datetime.now().isoformat()
             }
             
@@ -1644,44 +1695,53 @@ async def calculate_altcoin_season_index():
 
 def generate_fallback_altcoin_data():
     """
-    Données fallback basées sur BTC Dominance actuelle (~63%)
-    Retourne des valeurs réalistes pour décembre 2024
+    Données fallback réalistes pour décembre 2024
+    Basées sur l'index réel Blockchain Center (~37)
     """
-    # BTC Dominance actuelle (décembre 2024)
-    btc_dom = 63
-    eth_dom = 12
+    # Valeurs réalistes décembre 2024
+    idx = 37  # Index actuel Blockchain Center
+    alts_winning = 18  # Environ 37% de 50 = 18-19 alts
+    total_compared = 50
+    btc_dom = 63  # BTC Dominance actuelle
+    eth_dom = 11  # ETH Dominance actuelle
+    btc_perf_90d = 45.0  # BTC +45% sur 90j (octobre-décembre 2024)
     
-    # Calculer l'index: 100 - BTC_dominance
-    idx = 100 - btc_dom  # = 37 (Bitcoin Season)
-    
-    alts = int((idx / 100) * 50)  # 37% des 50 = 18-19 alts
-    
-    trend = "🔥 Altcoin Season!" if idx > 70 else (
-        "📈 Altcoins en hausse" if idx > 55 else (
-            "⚖️ Phase mixte" if idx > 40 else (
-                "📉 Bitcoin domine" if idx > 25 else "❄️ Bitcoin Season"
-            )
-        )
-    )
-    
-    mom = "🚀 EXPLOSIF!" if idx > 70 else (
-        "🔥 HOT" if idx > 55 else (
-            "⚡ ACTIF" if idx > 40 else "😴 FAIBLE"
-        )
-    )
+    # Déterminer la phase basée sur l'index
+    if idx >= 75:
+        phase = "🔥 ALTCOIN SEASON"
+        trend = "🔥 Altcoin Season!"
+        mom = "🚀 EXPLOSIF"
+    elif idx >= 60:
+        phase = "📈 FORTE ROTATION ALTS"
+        trend = "📈 Altcoins en hausse"
+        mom = "🔥 TRÈS HOT"
+    elif idx >= 45:
+        phase = "⚖️ PHASE MIXTE"
+        trend = "⚖️ Phase mixte"
+        mom = "⚡ MODÉRÉ"
+    elif idx >= 25:
+        phase = "📉 BTC DOMINE"
+        trend = "📉 Bitcoin domine"
+        mom = "😴 FAIBLE"
+    else:
+        phase = "❄️ BITCOIN SEASON"
+        trend = "❄️ Bitcoin Season"
+        mom = "🥶 GLACIAL"
     
     return {
         "index": round(idx, 1),
-        "alts_winning": int(alts),
-        "total_compared": 50,
+        "alts_winning": alts_winning,
+        "total_compared": total_compared,
+        "phase": phase,
+        "description": f"{alts_winning}/{total_compared} altcoins battent BTC",
         "trend": trend,
         "momentum": mom,
-        "btc_change_90d": 35.0,  # BTC +35% sur 90j (réaliste fin 2024)
+        "btc_change_90d": btc_perf_90d,
         "btc_dominance": round(btc_dom, 2),
         "eth_dominance": round(eth_dom, 2),
         "others_dominance": round(100 - btc_dom - eth_dom, 2),
         "status": "fallback",
-        "source": "Fallback (CoinGecko rate limited - réessayez dans quelques minutes)",
+        "source": "Données fallback (CoinGecko indisponible - réessayez dans quelques minutes)",
         "timestamp": datetime.now().isoformat()
     }
 

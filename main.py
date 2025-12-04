@@ -21651,10 +21651,19 @@ async def backtesting_page(request: Request):
         let equityChart, drawdownChart;
         
         function switchTab(tab) {{
+            // Retirer active de tous les onglets et contenus
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            event.target.classList.add('active');
+            
+            // Activer le contenu correspondant
             document.getElementById('tab-' + tab).classList.add('active');
+            
+            // Activer le bon bouton d'onglet
+            const tabs = document.querySelectorAll('.tab');
+            const tabMapping = {{'config': 0, 'results': 1, 'trades': 2}};
+            if (tabs[tabMapping[tab]]) {{
+                tabs[tabMapping[tab]].classList.add('active');
+            }}
         }}
         
         function showStrategyDescription() {{
@@ -21716,8 +21725,6 @@ async def backtesting_page(request: Request):
                 if (result.success) {{
                     displayResults(result.results);
                     switchTab('results');
-                    document.querySelectorAll('.tab')[1].classList.add('active');
-                    document.querySelectorAll('.tab')[0].classList.remove('active');
                 }} else {{
                     alert('Erreur lors du backtest: ' + (result.error || 'Erreur inconnue'));
                 }}

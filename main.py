@@ -748,6 +748,7 @@ NAV_MENU = """
         <a href="/bullrun-phase" class="nav-btn">🚀 Bullrun Phase</a>
         <a href="/graphiques" class="nav-btn">📊 Graphiques</a>
         <a href="/generate-pdf-report" class="nav-btn">📄 Rapport PDF</a>
+        <a href="/api-keys" class="nav-btn">🔑 Clés API</a>
         <a href="/telegram-setup" class="nav-btn">📱 Telegram</a>
         
         <a href="/pricing-complete" class="nav-btn premium">💎 Abonnements</a>
@@ -3275,6 +3276,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
 <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
 <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
+<a href="/api-keys" class="universal-nav-btn">🔑 API</a>
 <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
 <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
 <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
@@ -21677,6 +21679,7 @@ async def onchain_metrics():
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
+        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
         <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
@@ -21940,6 +21943,7 @@ async def testimonials_widget():
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
+        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
         <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>

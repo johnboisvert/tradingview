@@ -793,7 +793,7 @@ async def fetch_coingecko_data():
                 'price_change_percentage': '24h,7d,30d'
             }
             
-            timeout = aiohttp.ClientTimeout(total=10)
+            timeout = aiohttp.ClientTimeout(total=30)
             async with session.get(url, params=params, timeout=timeout) as response:
                 if response.status == 200:
                     data = await response.json()
@@ -999,8 +999,15 @@ async def analyze_all_gems() -> List[Dict]:
         cryptos = await fetch_coingecko_data()
         
         if not cryptos:
-            print("⚠️ Aucune crypto récupérée, retour fallback data")
+            print("⚠️ Aucune crypto, retry dans 2s...")
+            await asyncio.sleep(2)
+            cryptos = await fetch_coingecko_data()
+            
+        if not cryptos:
+            print("⚠️ API définitivement inaccessible, fallback activé")
             return get_fallback_gems()
+        
+        print(f"✅ CoinGecko API: {len(cryptos)} cryptos chargées!")
         
         gems = []
         for crypto in cryptos:
@@ -3592,7 +3599,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
 <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
 <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
 <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
 <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
 <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
@@ -17189,7 +17196,7 @@ async def stats_dashboard():
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
@@ -20291,7 +20298,7 @@ async def admin_dashboard(request: Request):
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
@@ -21051,7 +21058,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
@@ -21383,7 +21390,7 @@ async def mon_compte(request: Request):
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
@@ -22445,7 +22452,7 @@ async def backtesting_page(request: Request):
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
         <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
@@ -22847,7 +22854,7 @@ async def onchain_metrics():
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
         <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
@@ -23113,7 +23120,7 @@ async def testimonials_widget():
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
         <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
@@ -23201,7 +23208,7 @@ async def api_keys_page(request: Request):
 <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
 <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
 <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
 <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
 <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
 <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
@@ -23923,7 +23930,7 @@ async def ai_gem_hunter(request: Request):
 <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
 <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
 <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-<a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+<a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
 <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
 <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
 <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>

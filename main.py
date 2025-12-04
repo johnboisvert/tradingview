@@ -857,6 +857,7 @@ async def auth_middleware(request: Request, call_next):
         "/api/btc-dominance",        # API BTC Dominance
         "/api/heatmap",              # API Heatmap
         "/api/crypto-news",          # API News
+        "/api/backtest",             # API Backtesting
         "/api/stripe-checkout",
         "/api/coinbase-checkout",
         "/api/payment-",

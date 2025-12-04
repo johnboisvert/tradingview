@@ -21326,7 +21326,7 @@ async def backtesting_page(request: Request):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Backtesting Pro | {SITE_NAME}</title>
+        <title>Backtesting Pro | Trading Dashboard Pro</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
         <style>
             * {{ margin: 0; padding: 0; box-sizing: border-box; }}

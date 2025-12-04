@@ -22049,13 +22049,13 @@ async def api_backtest(request: Request):
     all_pnl = []
     
     # Prix de départ (exemple)
-    base_prices = {{
+    base_prices = {
         'BTCUSDT': 42000,
         'ETHUSDT': 2200,
         'BNBUSDT': 320,
         'ADAUSDT': 0.48,
         'SOLUSDT': 95
-    }}
+    }
     current_price = base_prices.get(symbol, 42000)
     
     for i in range(total_trades):
@@ -22102,14 +22102,14 @@ async def api_backtest(request: Request):
         entry_price = current_price
         exit_price = current_price * (1 + pnl_pct)
         
-        trades.append({{
+        trades.append({
             'date': trade_date,
             'type': 'LONG',
             'entry_price': round(entry_price, 2),
             'exit_price': round(exit_price, 2),
             'pnl': round(pnl, 2),
             'roi': round(pnl_pct * 100, 2)
-        }})
+        })
     
     # Calculer les statistiques
     win_rate = round((winning_trades / total_trades) * 100, 2) if total_trades > 0 else 0
@@ -22133,9 +22133,9 @@ async def api_backtest(request: Request):
     else:
         sharpe_ratio = 0
     
-    return {{
+    return {
         'success': True,
-        'results': {{
+        'results': {
             'initial_capital': initial_capital,
             'final_capital': round(current_capital, 2),
             'net_profit': round(net_profit, 2),
@@ -22154,8 +22154,8 @@ async def api_backtest(request: Request):
             'equity_curve': [round(x, 2) for x in equity_curve],
             'drawdown_curve': [round(x, 2) for x in drawdown_curve],
             'trades': trades[-20:]  # Derniers 20 trades pour l'affichage
-        }}
-    }}
+        }
+    }
 
 
 

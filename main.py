@@ -21742,57 +21742,57 @@ async def backtesting_page(request: Request):
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-label">Capital Final</div>
-                        <div class="stat-value \${{r.final_capital >= r.initial_capital ? '' : 'negative'}}">
-                            $\${{r.final_capital.toLocaleString()}}
+                        <div class="stat-value ${{{{r.final_capital >= r.initial_capital ? '' : 'negative'}}}}">
+                            $${{{{r.final_capital.toLocaleString()}}}}
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Profit Net</div>
-                        <div class="stat-value \${{r.net_profit >= 0 ? '' : 'negative'}}">
-                            \${{r.net_profit >= 0 ? '+' : ''}}\${{r.net_profit.toLocaleString()}}
+                        <div class="stat-value ${{{{r.net_profit >= 0 ? '' : 'negative'}}}}">
+                            ${{{{r.net_profit >= 0 ? '+' : ''}}}}$${{{{r.net_profit.toLocaleString()}}}}
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">ROI</div>
-                        <div class="stat-value \${{r.roi >= 0 ? '' : 'negative'}}">
-                            \${{r.roi >= 0 ? '+' : ''}}\${{r.roi}}%
+                        <div class="stat-value ${{{{r.roi >= 0 ? '' : 'negative'}}}}">
+                            ${{{{r.roi >= 0 ? '+' : ''}}}}$${{{{r.roi}}}}%
                         </div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Total Trades</div>
-                        <div class="stat-value neutral">\${{r.total_trades}}</div>
+                        <div class="stat-value neutral">${{{{r.total_trades}}}}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Win Rate</div>
-                        <div class="stat-value \${{r.win_rate >= 50 ? '' : 'negative'}}">\${{r.win_rate}}%</div>
+                        <div class="stat-value ${{{{r.win_rate >= 50 ? '' : 'negative'}}}}">${{{{r.win_rate}}}}%</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Profit Factor</div>
-                        <div class="stat-value \${{r.profit_factor >= 1 ? '' : 'negative'}}">\${{r.profit_factor}}</div>
+                        <div class="stat-value ${{{{r.profit_factor >= 1 ? '' : 'negative'}}}}">${{{{r.profit_factor}}}}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Max Drawdown</div>
-                        <div class="stat-value negative">\${{r.max_drawdown}}%</div>
+                        <div class="stat-value negative">${{{{r.max_drawdown}}}}%</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Sharpe Ratio</div>
-                        <div class="stat-value \${{r.sharpe_ratio >= 1 ? '' : 'negative'}}">\${{r.sharpe_ratio}}</div>
+                        <div class="stat-value ${{{{r.sharpe_ratio >= 1 ? '' : 'negative'}}}}">${{{{r.sharpe_ratio}}}}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Avg Win</div>
-                        <div class="stat-value">$\${{r.avg_win}}</div>
+                        <div class="stat-value">$$${{{{r.avg_win}}}}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Avg Loss</div>
-                        <div class="stat-value negative">$\${{Math.abs(r.avg_loss)}}</div>
+                        <div class="stat-value negative">$$${{{{Math.abs(r.avg_loss)}}}}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Best Trade</div>
-                        <div class="stat-value">$\${{r.best_trade}}</div>
+                        <div class="stat-value">$$${{{{r.best_trade}}}}</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">Worst Trade</div>
-                        <div class="stat-value negative">$\${{Math.abs(r.worst_trade)}}</div>
+                        <div class="stat-value negative">$$${{{{Math.abs(r.worst_trade)}}}}</div>
                     </div>
                 </div>
                 
@@ -21928,20 +21928,20 @@ async def backtesting_page(request: Request):
                 const isWin = trade.pnl >= 0;
                 tradesHTML += `
                     <tr>
-                        <td>\${{i + 1}}</td>
-                        <td>\${{trade.date}}</td>
-                        <td>\${{trade.type}}</td>
-                        <td>$\${{trade.entry_price}}</td>
-                        <td>$\${{trade.exit_price}}</td>
-                        <td style="color: \${{isWin ? '#10b981' : '#ef4444'}}">
-                            \${{isWin ? '+' : ''}}\${{trade.pnl.toFixed(2)}}
+                        <td>${{{{i + 1}}}}</td>
+                        <td>${{{{trade.date}}}}</td>
+                        <td>${{{{trade.type}}}}</td>
+                        <td>$$${{{{trade.entry_price}}}}</td>
+                        <td>$$${{{{trade.exit_price}}}}</td>
+                        <td style="color: ${{{{isWin ? '#10b981' : '#ef4444'}}}}">
+                            ${{{{isWin ? '+' : ''}}}}$${{{{trade.pnl.toFixed(2)}}}}
                         </td>
-                        <td style="color: \${{isWin ? '#10b981' : '#ef4444'}}">
-                            \${{isWin ? '+' : ''}}\${{trade.roi}}%
+                        <td style="color: ${{{{isWin ? '#10b981' : '#ef4444'}}}}">
+                            ${{{{isWin ? '+' : ''}}}}$${{{{trade.roi}}}}%
                         </td>
                         <td>
-                            <span class="badge \${{isWin ? 'win' : 'loss'}}">
-                                \${{isWin ? 'WIN' : 'LOSS'}}
+                            <span class="badge ${{{{isWin ? 'win' : 'loss'}}}}">
+                                ${{{{isWin ? 'WIN' : 'LOSS'}}}}
                             </span>
                         </td>
                     </tr>

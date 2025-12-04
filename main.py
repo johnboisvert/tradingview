@@ -1695,16 +1695,16 @@ async def calculate_altcoin_season_index():
 
 def generate_fallback_altcoin_data():
     """
-    Données fallback réalistes pour décembre 2024
+    Données fallback réalistes pour DÉCEMBRE 2025
     Basées sur l'index réel Blockchain Center (~37)
     """
-    # Valeurs réalistes décembre 2024
+    # Valeurs réalistes décembre 2025
     idx = 37  # Index actuel Blockchain Center
     alts_winning = 18  # Environ 37% de 50 = 18-19 alts
     total_compared = 50
-    btc_dom = 63  # BTC Dominance actuelle
-    eth_dom = 11  # ETH Dominance actuelle
-    btc_perf_90d = 45.0  # BTC +45% sur 90j (octobre-décembre 2024)
+    btc_dom = 57.5  # BTC Dominance actuelle décembre 2025
+    eth_dom = 11.2  # ETH Dominance actuelle
+    btc_perf_90d = 15.0  # BTC +15% sur 90j (sept-déc 2025, correction depuis ATH)
     
     # Déterminer la phase basée sur l'index
     if idx >= 75:
@@ -8873,7 +8873,7 @@ async def fetch_bullrun_data():
                 fg_data = fg_response.json()
                 fear_greed = int(fg_data["data"][0]["value"]) if fg_data.get("data") else 67
             except:
-                fear_greed = 67  # Fallback: Greed (décembre 2024)
+                fear_greed = 26  # Fallback: Fear (décembre 2025, correction)
             
             # Récupérer BTC Dominance et market data
             try:
@@ -8883,9 +8883,9 @@ async def fetch_bullrun_data():
                 eth_dominance = round(btc_data["data"]["market_cap_percentage"]["eth"], 2)
                 total_market_cap = btc_data["data"]["total_market_cap"]["usd"]
             except:
-                btc_dominance = 61.5  # Fin décembre 2024
-                eth_dominance = 11.8
-                total_market_cap = 3270000000000  # $3.27T
+                btc_dominance = 57.5  # Décembre 2025
+                eth_dominance = 11.2
+                total_market_cap = 1850000000000  # $1.85T
             
             # Récupérer prix BTC
             try:
@@ -8894,11 +8894,15 @@ async def fetch_bullrun_data():
                 btc_price = btc_price_data["bitcoin"]["usd"]
                 btc_24h_change = round(btc_price_data["bitcoin"]["usd_24h_change"], 2)
             except:
-                btc_price = 95000  # Fin décembre 2024
-                btc_24h_change = -2.1
+                btc_price = 93000  # Décembre 2025 (correction depuis ATH $126k)
+                btc_24h_change = -1.5
             
-            # Calculer l'Altcoin Season Index
-            altcoin_season_index = max(0, min(100, 100 - (btc_dominance - 40)))
+            # Calculer l'Altcoin Season Index (méthode Blockchain Center)
+            try:
+                altcoin_data = await calculate_altcoin_season_index()
+                altcoin_season_index = altcoin_data.get("index", 37)
+            except:
+                altcoin_season_index = 37  # Fallback décembre 2025
             
             # ⚠️ CORRECTION CRITIQUE: Nouvelle logique de phase
             phase_data = determine_bullrun_phase(
@@ -9065,30 +9069,30 @@ def determine_bullrun_phase(btc_dom, eth_dom, fear_greed, alt_index, btc_price, 
 def get_fallback_bullrun_data():
     """
     Données de secours CORRIGÉES si l'API échoue
-    ⚠️ Basées sur les données réelles de fin décembre 2024
+    ⚠️ Basées sur les données réelles de DÉCEMBRE 2025
     """
     return {
-        "current_phase": 2.5,  # Transition BTC → ETH
-        "phase_name": "Transition BTC → ETH",
-        "phase_description": "Bitcoin a atteint ATH $108k en décembre. Correction en cours. Début de rotation vers ETH et large caps.",
-        "confidence": 82,
+        "current_phase": 2.0,  # Bitcoin Rally (correction depuis ATH)
+        "phase_name": "Bitcoin Rally - Correction",
+        "phase_description": "Bitcoin a atteint ATH $126k en octobre 2025. Correction saine en cours à $93k (-27%). Market en consolidation.",
+        "confidence": 78,
         "indicators": {
-            "btc_dominance": 61.5,  # Fin décembre 2024
-            "eth_dominance": 11.8,
-            "fear_greed": 67,  # Greed (fin décembre après correction)
-            "altcoin_season_index": 46,  # Bitcoin Season
-            "btc_price": 95000,  # Correction depuis ATH $108k
-            "btc_24h_change": -2.1,
-            "total_market_cap": 3270000000000  # $3.27T
+            "btc_dominance": 57.5,  # Décembre 2025
+            "eth_dominance": 11.2,
+            "fear_greed": 26,  # Fear (correction en cours)
+            "altcoin_season_index": 37,  # Bitcoin Season
+            "btc_price": 93000,  # Correction depuis ATH $126k
+            "btc_24h_change": -1.5,
+            "total_market_cap": 1850000000000  # $1.85T
         },
         "signals": [
-            {"type": "bullish_btc", "strength": "fort", "message": "BTC dominance 61.5% - Bitcoin fort mais rotation commence"},
-            {"type": "opportunity", "strength": "modéré", "message": "Correction saine après ATH $108k - Bon point d'entrée"},
-            {"type": "bitcoin_season", "strength": "actif", "message": "Bitcoin Season (46/100) - Alts en attente"},
-            {"type": "bullish_alt", "strength": "modéré", "message": "ETH commence à se réveiller"}
+            {"type": "correction", "strength": "modéré", "message": "BTC correction -27% depuis ATH $126k - Zone d'accumulation"},
+            {"type": "fear", "strength": "actif", "message": "Fear Index 26 - Opportunité potentielle"},
+            {"type": "bitcoin_season", "strength": "fort", "message": "Bitcoin Season (37/100) - BTC domine"},
+            {"type": "dominance", "strength": "élevé", "message": "BTC dominance 57.5% - Bitcoin reste fort"}
         ],
-        "next_phase": "Phase 3 - ETH & Large Caps",
-        "time_estimate": "2-8 semaines",
+        "next_phase": "Phase 2.5 - Transition vers ETH",
+        "time_estimate": "2-8 semaines si reprise confirmée",
         "timestamp": datetime.now().isoformat()
     }
 

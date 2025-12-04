@@ -3276,6 +3276,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
 <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
 <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
+<a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
 <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
 <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
 <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
@@ -20292,7 +20293,7 @@ async def admin_pricing_view(request: Request):
         const existing = document.querySelector('.universal-nav-injected');
         if (existing) existing.remove();
         
-        const menuHTML = '<style>.universal-nav-injected{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%)!important;padding:15px 20px!important;min-height:80px!important;box-shadow:0 2px 15px rgba(0,0,0,0.5)!important;position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:999999999!important;border-bottom:1px solid rgba(255,255,255,0.05)!important;display:block!important;visibility:visible!important}}.universal-nav-container-injected{{max-width:1600px!important;margin:0 auto!important;display:flex!important;gap:10px!important;align-items:center!important;flex-wrap:wrap!important;justify-content:center!important}}.universal-nav-btn-injected{{background:rgba(255,255,255,0.05)!important;color:#e2e8f0!important;padding:10px 16px!important;border-radius:6px!important;text-decoration:none!important;font-size:13px!important;font-weight:500!important;transition:all 0.2s!important;border:1px solid rgba(255,255,255,0.08)!important;white-space:nowrap!important}}.universal-nav-btn-injected:hover{{background:rgba(255,255,255,0.12)!important;border-color:rgba(96,165,250,0.4)!important;color:white!important}}.universal-nav-btn-injected.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)!important;border:none!important}}.universal-nav-btn-injected.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)!important;border:none!important}}.universal-nav-btn-injected.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%)!important;border:none!important}}.universal-nav-btn-injected.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%)!important;border:none!important}}</style><nav class="universal-nav-injected"><div class="universal-nav-container-injected"><a href="/dashboard" class="universal-nav-btn-injected">🏠 Accueil</a><a href="/fear-greed" class="universal-nav-btn-injected">😨 Fear&Greed</a><a href="/dominance" class="universal-nav-btn-injected">👑 Dominance</a><a href="/altcoin-season" class="universal-nav-btn-injected">⭐ Altcoin</a><a href="/heatmap" class="universal-nav-btn-injected">🔥 Heatmap</a><a href="/strategie" class="universal-nav-btn-injected">📚 Stratégie</a><a href="/spot-trading" class="universal-nav-btn-injected">💎 Spot</a><a href="/calculatrice" class="universal-nav-btn-injected">🧮 Calc</a><a href="/nouvelles" class="universal-nav-btn-injected">📰 News</a><a href="/trades" class="universal-nav-btn-injected">📈 Trades</a><a href="/risk-management" class="universal-nav-btn-injected">⚠️ Risk</a><a href="/watchlist" class="universal-nav-btn-injected">👁️ Watch</a><a href="/ai-assistant" class="universal-nav-btn-injected">🤖 AI</a><a href="/prediction-ia" class="universal-nav-btn-injected">🔮 Predict</a><a href="/ai-opportunity-scanner" class="universal-nav-btn-injected">🔍 Scanner</a><a href="/ai-market-regime" class="universal-nav-btn-injected">🌊 Regime</a><a href="/ai-whale-watcher" class="universal-nav-btn-injected">🐋 Whale</a><a href="/stats-dashboard" class="universal-nav-btn-injected">📊 Stats</a><a href="/market-simulation" class="universal-nav-btn-injected">🎮 Sim</a><a href="/success-stories" class="universal-nav-btn-injected">⭐ Success</a><a href="/convertisseur" class="universal-nav-btn-injected">💱 Convert</a><a href="/calendrier" class="universal-nav-btn-injected">📅 Cal</a><a href="/bullrun-phase" class="universal-nav-btn-injected">🚀 Bullrun</a><a href="/graphiques" class="universal-nav-btn-injected">📊 Charts</a><a href="/telegram-test" class="universal-nav-btn-injected">📱 Telegram</a><a href="/pricing-complete" class="universal-nav-btn-injected premium">💎 Abonnements</a><a href="/admin-dashboard" class="universal-nav-btn-injected admin">🔧 Admin</a><a href="/mon-compte" class="universal-nav-btn-injected account">👤 Compte</a><a href="/logout" class="universal-nav-btn-injected logout">🚪 Déconnexion</a></div></nav>';
+        const menuHTML = '<style>.universal-nav-injected{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%)!important;padding:15px 20px!important;min-height:80px!important;box-shadow:0 2px 15px rgba(0,0,0,0.5)!important;position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:999999999!important;border-bottom:1px solid rgba(255,255,255,0.05)!important;display:block!important;visibility:visible!important}}.universal-nav-container-injected{{max-width:1600px!important;margin:0 auto!important;display:flex!important;gap:10px!important;align-items:center!important;flex-wrap:wrap!important;justify-content:center!important}}.universal-nav-btn-injected{{background:rgba(255,255,255,0.05)!important;color:#e2e8f0!important;padding:10px 16px!important;border-radius:6px!important;text-decoration:none!important;font-size:13px!important;font-weight:500!important;transition:all 0.2s!important;border:1px solid rgba(255,255,255,0.08)!important;white-space:nowrap!important}}.universal-nav-btn-injected:hover{{background:rgba(255,255,255,0.12)!important;border-color:rgba(96,165,250,0.4)!important;color:white!important}}.universal-nav-btn-injected.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)!important;border:none!important}}.universal-nav-btn-injected.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)!important;border:none!important}}.universal-nav-btn-injected.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%)!important;border:none!important}}.universal-nav-btn-injected.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%)!important;border:none!important}}</style><nav class="universal-nav-injected"><div class="universal-nav-container-injected"><a href="/dashboard" class="universal-nav-btn-injected">🏠 Accueil</a><a href="/fear-greed" class="universal-nav-btn-injected">😨 Fear&Greed</a><a href="/dominance" class="universal-nav-btn-injected">👑 Dominance</a><a href="/altcoin-season" class="universal-nav-btn-injected">⭐ Altcoin</a><a href="/heatmap" class="universal-nav-btn-injected">🔥 Heatmap</a><a href="/strategie" class="universal-nav-btn-injected">📚 Stratégie</a><a href="/spot-trading" class="universal-nav-btn-injected">💎 Spot</a><a href="/calculatrice" class="universal-nav-btn-injected">🧮 Calc</a><a href="/nouvelles" class="universal-nav-btn-injected">📰 News</a><a href="/trades" class="universal-nav-btn-injected">📈 Trades</a><a href="/risk-management" class="universal-nav-btn-injected">⚠️ Risk</a><a href="/watchlist" class="universal-nav-btn-injected">👁️ Watch</a><a href="/ai-assistant" class="universal-nav-btn-injected">🤖 AI</a><a href="/prediction-ia" class="universal-nav-btn-injected">🔮 Predict</a><a href="/ai-opportunity-scanner" class="universal-nav-btn-injected">🔍 Scanner</a><a href="/ai-market-regime" class="universal-nav-btn-injected">🌊 Regime</a><a href="/ai-whale-watcher" class="universal-nav-btn-injected">🐋 Whale</a><a href="/stats-dashboard" class="universal-nav-btn-injected">📊 Stats</a><a href="/market-simulation" class="universal-nav-btn-injected">🎮 Sim</a><a href="/success-stories" class="universal-nav-btn-injected">⭐ Success</a><a href="/convertisseur" class="universal-nav-btn-injected">💱 Convert</a><a href="/calendrier" class="universal-nav-btn-injected">📅 Cal</a><a href="/bullrun-phase" class="universal-nav-btn-injected">🚀 Bullrun</a><a href="/graphiques" class="universal-nav-btn-injected">📊 Charts</a><a href="/backtesting" class="universal-nav-btn-injected">⚙️ Backtest</a><a href="/telegram-test" class="universal-nav-btn-injected">📱 Telegram</a><a href="/pricing-complete" class="universal-nav-btn-injected premium">💎 Abonnements</a><a href="/admin-dashboard" class="universal-nav-btn-injected admin">🔧 Admin</a><a href="/mon-compte" class="universal-nav-btn-injected account">👤 Compte</a><a href="/logout" class="universal-nav-btn-injected logout">🚪 Déconnexion</a></div></nav>';
         
         document.body.insertAdjacentHTML('afterbegin', menuHTML);
         document.body.style.paddingTop = '60px';
@@ -21643,6 +21644,117 @@ async def backtesting_page(request: Request):
             <div id="tab-trades" class="tab-content">
                 <div id="tradesContainer">
                     <div class="loading">Aucun backtest effectué. Les trades apparaîtront ici.</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SECTION EXPLICATIVE -->
+        <div class="config-card" style="margin-top: 40px;">
+            <h2 style="margin-bottom: 20px;">📚 Comment ça marche ?</h2>
+            
+            <div style="display: grid; gap: 20px;">
+                <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #6366f1;">
+                    <h3 style="color: #6366f1; margin-bottom: 10px;">🎯 Qu'est-ce que le Backtesting ?</h3>
+                    <p style="color: #cbd5e1; line-height: 1.6;">
+                        Le backtesting est une méthode d'évaluation d'une stratégie de trading en l'appliquant sur des données historiques. 
+                        Cela permet de voir comment la stratégie aurait performé dans le passé avant de l'utiliser avec de l'argent réel.
+                    </p>
+                </div>
+                
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">⚙️ Comment utiliser cet outil ?</h3>
+                    <ol style="color: #cbd5e1; line-height: 1.8; padding-left: 20px;">
+                        <li><strong>Choisissez vos paramètres</strong> : Sélectionnez une paire crypto, une stratégie, un timeframe et définissez votre capital initial.</li>
+                        <li><strong>Configurez le risque</strong> : Définissez la taille de position (% du capital par trade), le stop loss et le take profit.</li>
+                        <li><strong>Lancez le test</strong> : Cliquez sur "🚀 Lancer le Backtest" pour voir comment la stratégie aurait performé sur 11 mois (2024).</li>
+                        <li><strong>Analysez les résultats</strong> : Consultez les statistiques, la courbe de capital et l'historique des trades.</li>
+                    </ol>
+                </div>
+                
+                <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #f59e0b;">
+                    <h3 style="color: #f59e0b; margin-bottom: 10px;">📊 Les 5 Stratégies Disponibles</h3>
+                    <div style="display: grid; gap: 12px; margin-top: 15px;">
+                        <div style="background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 6px;">
+                            <strong style="color: #60a5fa;">Croisement EMA (20/50)</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 5px;">Simple et efficace, suit les tendances. Win rate: 58%</p>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 6px;">
+                            <strong style="color: #60a5fa;">RSI Oversold/Overbought</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 5px;">Achète en zone de survente, vend en zone de surachat. Win rate: 52%</p>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 6px;">
+                            <strong style="color: #60a5fa;">MACD Signal Line</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 5px;">Utilise les croisements MACD pour identifier les tendances. Win rate: 55%</p>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 6px;">
+                            <strong style="color: #60a5fa;">Bollinger Bands</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 5px;">Exploite la volatilité et les retours à la moyenne. Win rate: 60%</p>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.5); padding: 12px; border-radius: 6px;">
+                            <strong style="color: #60a5fa;">Croisement SMA (50/200)</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 5px;">La "Golden Cross" et "Death Cross" pour les tendances long terme. Win rate: 65%</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ef4444;">
+                    <h3 style="color: #ef4444; margin-bottom: 10px;">⚠️ Points Importants</h3>
+                    <ul style="color: #cbd5e1; line-height: 1.8; padding-left: 20px;">
+                        <li><strong>Les performances passées ne garantissent pas les résultats futurs</strong> : Un backtest positif ne signifie pas que la stratégie fonctionnera toujours.</li>
+                        <li><strong>Utilisez une gestion du risque appropriée</strong> : Ne risquez jamais plus de 1-2% de votre capital par trade.</li>
+                        <li><strong>Testez plusieurs scénarios</strong> : Essayez différentes paires, timeframes et tailles de position pour trouver ce qui fonctionne le mieux.</li>
+                        <li><strong>Les commissions sont incluses</strong> : Les résultats prennent en compte les frais de trading (0.1% par défaut).</li>
+                        <li><strong>Commencez petit</strong> : Même avec de bons résultats en backtest, commencez avec de petites positions en réel.</li>
+                    </ul>
+                </div>
+                
+                <div style="background: rgba(139, 92, 246, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #8b5cf6;">
+                    <h3 style="color: #8b5cf6; margin-bottom: 10px;">💡 Comprendre les Statistiques</h3>
+                    <div style="display: grid; gap: 10px; margin-top: 15px;">
+                        <div>
+                            <strong style="color: #a78bfa;">Capital Final & Profit Net</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 3px;">Votre capital après tous les trades. Le profit net est la différence avec le capital initial.</p>
+                        </div>
+                        <div>
+                            <strong style="color: #a78bfa;">ROI (Return on Investment)</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 3px;">Pourcentage de gain ou perte sur votre capital initial. Ex: +24% signifie que vous avez gagné 24% de votre capital.</p>
+                        </div>
+                        <div>
+                            <strong style="color: #a78bfa;">Win Rate</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 3px;">Pourcentage de trades gagnants. 58% signifie que 58 trades sur 100 sont profitables.</p>
+                        </div>
+                        <div>
+                            <strong style="color: #a78bfa;">Profit Factor</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 3px;">Ratio entre gains totaux et pertes totales. >1 = profitable, >2 = très bon, >3 = excellent.</p>
+                        </div>
+                        <div>
+                            <strong style="color: #a78bfa;">Max Drawdown</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 3px;">La plus grande perte depuis un pic. -8.5% signifie que vous avez perdu jusqu'à 8.5% depuis votre plus haut.</p>
+                        </div>
+                        <div>
+                            <strong style="color: #a78bfa;">Sharpe Ratio</strong>
+                            <p style="color: #94a3b8; font-size: 0.9em; margin-top: 3px;">Mesure le rendement ajusté au risque. >1 = bon, >2 = très bon, >3 = excellent.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(34, 211, 238, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #22d3ee; text-align: center;">
+                    <h3 style="color: #22d3ee; margin-bottom: 10px;">🚀 Prêt à commencer ?</h3>
+                    <p style="color: #cbd5e1; margin-bottom: 15px;">
+                        Testez différentes stratégies et paramètres pour trouver ce qui fonctionne le mieux pour vous !
+                    </p>
+                    <button onclick="window.scrollTo({{top: 0, behavior: 'smooth'}})" 
+                            style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); 
+                                   color: white; 
+                                   padding: 12px 30px; 
+                                   border: none; 
+                                   border-radius: 8px; 
+                                   font-size: 16px; 
+                                   font-weight: 600; 
+                                   cursor: pointer;
+                                   transition: transform 0.2s;">
+                        ⬆️ Retour en haut
+                    </button>
                 </div>
             </div>
         </div>

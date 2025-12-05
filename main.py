@@ -4211,7 +4211,7 @@ async def home():
     </body>
     </html>
     """
-    return HTMLResponse(content=html_content)
+    return HTMLResponse(content=SIDEBAR + html_content)
 
 @app.get("/spot-trading", response_class=HTMLResponse)
 async def spot_trading_page():

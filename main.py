@@ -24291,6 +24291,18 @@ async def ai_gem_hunter(request: Request):
         <nav class="universal-menu">
             <div class="universal-menu-container">
                 <a href="/dashboard" class="menu-btn">🏠 Accueil</a>
+                <a href="/ai-gem-hunter" class="menu-btn">💎 Gem Hunter</a>
+                <a href="/ai-signals" class="menu-btn">🎯 Signaux</a>
+                <a href="/ai-news" class="menu-btn">📰 News Impact</a>
+                <a href="/ai-predictor" class="menu-btn">🔮 Prédictions</a>
+                <a href="/ai-whale" class="menu-btn">🐋 Baleines</a>
+                <a href="/ai-patterns" class="menu-btn">📊 Patterns</a>
+                <a href="/ai-sentiment" class="menu-btn">🎭 Sentiment</a>
+                <a href="/ai-sizer" class="menu-btn">📏 Position</a>
+                <a href="/ai-exit" class="menu-btn">🚪 Exit</a>
+                <a href="/ai-timeframe" class="menu-btn">📈 Multi-TF</a>
+                <a href="/ai-liquidity" class="menu-btn">🌊 Liquidité</a>
+                <a href="/ai-alerts" class="menu-btn">🎯 Alertes</a>
                 <a href="/fear-greed" class="menu-btn">😨 Fear&Greed</a>
                 <a href="/dominance" class="menu-btn">👑 Dominance</a>
                 <a href="/altcoin-season" class="menu-btn">⭐ Altcoin</a>

@@ -14883,7 +14883,7 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 async def pricing_complete():
     """Page de pricing avec support codes promo"""
     return HTMLResponse(SIDEBAR + """
-SIDEBAR + <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -15744,8 +15744,8 @@ SIDEBAR + <!DOCTYPE html>
 @app.get("/pricing-new", response_class=HTMLResponse)
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
-    return HTMLResponse("""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + """
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -16966,8 +16966,8 @@ async def get_crypto_prices(crypto_id: str):
 @app.get("/market-simulation", response_class=HTMLResponse)
 async def market_simulation():
     """Simulation réaliste avec cycles bull/bear et DCA discipline - Top 10 Crypto"""
-    return HTMLResponse("""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + """
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -17540,8 +17540,8 @@ async def generate_pdf_report():
 @app.get("/success-stories", response_class=HTMLResponse)
 async def success_stories():
     """Success Stories: Histoires vraies de DCA réussies"""
-    return HTMLResponse("""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + """
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -18397,8 +18397,8 @@ loadSentiment();
 @app.get("/calculatrice", response_class=HTMLResponse)
 async def calculatrice_trades():
     """Calculatrice de trades professionnelle en français"""
-    return HTMLResponse("""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + """
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -19114,8 +19114,8 @@ SIDEBAR + <!DOCTYPE html>
 @app.get("/prediction-ia", response_class=HTMLResponse)
 async def prediction_ia():
     """Page de prédiction IA avec navigation"""
-    return HTMLResponse("""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + """
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -19935,7 +19935,7 @@ async def admin_pricing_view(request: Request):
     ]
     
     return HTMLResponse(SIDEBAR + f"""
-SIDEBAR + <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">

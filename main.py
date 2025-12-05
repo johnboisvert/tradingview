@@ -1011,35 +1011,35 @@ def identify_upcoming_gems(all_cryptos: List[Dict]) -> List[Dict]:
                 symbol = (crypto.get('symbol') or '').lower()
                 
                 # Filtrer stablecoins et wrapped
-                stablecoins = ['usdt', 'usdc', 'busd', 'dai', 'tusd', 'usdp', 'gusd', 'usdd']
+                stablecoins = ['usdt', 'usdc', 'busd', 'dai', 'tusd', 'usdp', 'gusd', 'usdd', 'fdusd']
                 wrapped = ['wbtc', 'weth', 'wbnb', 'steth']
                 if symbol in stablecoins or symbol in wrapped:
                     continue
                 
-                # CRITÈRES POUR "PROCHAINS GEMS":
+                # CRITÈRES ASSOUPLIS POUR "PROCHAINS GEMS":
                 
-                # 1. Très petit market cap (< $50M) - Early stage
-                if market_cap > 50_000_000 or market_cap < 500_000:
+                # 1. Market cap plus large (< $100M au lieu de $50M)
+                if market_cap > 100_000_000 or market_cap < 500_000:
                     continue
                 
-                # 2. Volume/MCap ratio élevé (> 0.15) - Intérêt croissant
+                # 2. Volume/MCap ratio plus bas (> 0.05 au lieu de 0.15)
                 if market_cap > 0:
                     vol_ratio = volume_24h / market_cap
-                    if vol_ratio < 0.15:
+                    if vol_ratio < 0.05:
                         continue
                 else:
                     continue
                 
-                # 3. Momentum positif sur 7d ET 30d
-                if price_change_7d < 5 or price_change_30d < 10:
+                # 3. Momentum juste positif (> 0% au lieu de +5% et +10%)
+                if price_change_7d < 0 or price_change_30d < 0:
                     continue
                 
-                # 4. Pas trop proche de ATH (minimum -40% pour potentiel)
-                if ath_change > -40:
+                # 4. ATH change assoupli (< -30% au lieu de -40%)
+                if ath_change > -30:
                     continue
                 
-                # 5. Rank entre 200 et 800 (pas trop mainstream, pas trop obscur)
-                if rank < 200 or rank > 800:
+                # 5. Rank élargi (100-1000 au lieu de 200-800)
+                if rank < 100 or rank > 1000:
                     continue
                 
                 # Calculer un "Upcoming Score"
@@ -1048,11 +1048,14 @@ def identify_upcoming_gems(all_cryptos: List[Dict]) -> List[Dict]:
                 
                 # Score basé sur market cap (plus petit = plus de potentiel)
                 if market_cap < 5_000_000:
-                    upcoming_score += 25
+                    upcoming_score += 30
                     reasons.append(f"🚀 Micro-cap: ${market_cap/1_000_000:.1f}M")
                 elif market_cap < 20_000_000:
-                    upcoming_score += 20
+                    upcoming_score += 25
                     reasons.append(f"💎 Small-cap: ${market_cap/1_000_000:.1f}M")
+                elif market_cap < 50_000_000:
+                    upcoming_score += 20
+                    reasons.append(f"✨ Mid-cap: ${market_cap/1_000_000:.1f}M")
                 else:
                     upcoming_score += 15
                     reasons.append(f"✅ Market cap: ${market_cap/1_000_000:.1f}M")
@@ -1064,8 +1067,12 @@ def identify_upcoming_gems(all_cryptos: List[Dict]) -> List[Dict]:
                 elif vol_ratio > 0.3:
                     upcoming_score += 20
                     reasons.append(f"⚡ Volume élevé: {vol_ratio*100:.0f}% du MCap")
-                else:
+                elif vol_ratio > 0.15:
                     upcoming_score += 15
+                    reasons.append(f"📊 Volume bon: {vol_ratio*100:.0f}% du MCap")
+                else:
+                    upcoming_score += 10
+                    reasons.append(f"✅ Volume: {vol_ratio*100:.1f}% du MCap")
                 
                 # Score basé sur momentum
                 momentum_score = (price_change_7d * 2) + price_change_30d
@@ -1075,9 +1082,12 @@ def identify_upcoming_gems(all_cryptos: List[Dict]) -> List[Dict]:
                 elif momentum_score > 50:
                     upcoming_score += 20
                     reasons.append(f"📈 Momentum fort: +{momentum_score:.0f}%")
-                else:
+                elif momentum_score > 20:
                     upcoming_score += 15
-                    reasons.append(f"✅ Momentum positif")
+                    reasons.append(f"✅ Momentum solide: +{momentum_score:.0f}%")
+                else:
+                    upcoming_score += 10
+                    reasons.append(f"✅ Momentum positif: +{momentum_score:.0f}%")
                 
                 # Score basé sur potentiel ATH
                 ath_potential = abs(ath_change)
@@ -1087,8 +1097,11 @@ def identify_upcoming_gems(all_cryptos: List[Dict]) -> List[Dict]:
                 elif ath_potential > 60:
                     upcoming_score += 20
                     reasons.append(f"✨ {ath_potential:.0f}% sous ATH")
-                else:
+                elif ath_potential > 40:
                     upcoming_score += 15
+                    reasons.append(f"✅ {ath_potential:.0f}% sous ATH")
+                else:
+                    upcoming_score += 10
                 
                 # Bonus pour catégories hot
                 name_lower = (crypto.get('name') or '').lower()
@@ -1096,11 +1109,14 @@ def identify_upcoming_gems(all_cryptos: List[Dict]) -> List[Dict]:
                 
                 hot_keywords = {
                     'ai': ('🤖 Secteur AI', 10),
+                    'artificial': ('🤖 Secteur AI', 10),
                     'gaming': ('🎮 Gaming', 10),
+                    'game': ('🎮 Gaming', 10),
                     'defi': ('🔥 DeFi', 8),
                     'metaverse': ('🌐 Metaverse', 10),
                     'layer': ('⚡ L1/L2', 8),
                     'protocol': ('🔗 Protocol', 5),
+                    'meme': ('😄 Meme', 5),
                 }
                 
                 for keyword, (label, bonus) in hot_keywords.items():
@@ -1109,8 +1125,8 @@ def identify_upcoming_gems(all_cryptos: List[Dict]) -> List[Dict]:
                         reasons.append(label)
                         break
                 
-                # Ne garder que les scores > 70
-                if upcoming_score < 70:
+                # Score minimum abaissé à 50 (au lieu de 70)
+                if upcoming_score < 50:
                     continue
                 
                 upcoming.append({
@@ -1137,9 +1153,11 @@ def identify_upcoming_gems(all_cryptos: List[Dict]) -> List[Dict]:
         
         # Trier par upcoming_score décroissant
         upcoming.sort(key=lambda x: x['upcoming_score'], reverse=True)
+        
+        # Garantir au moins 10 gems
         result = upcoming[:10]
         
-        print(f"✅ {len(result)} prochains gems identifiés")
+        print(f"✅ {len(upcoming)} gems trouvés → Top {len(result)} sélectionnés")
         
         return result
         

@@ -20716,7 +20716,7 @@ async def admin_dashboard(request: Request):
 
 @app.get("/admin/pricing", response_class=HTMLResponse)
 async def admin_pricing_view(request: Request):
-    """Page de gestion des plans - AVEC 44 ROUTES"""
+    """Page de gestion des plans - ISOLÉE"""
     session_token = request.cookies.get("session_token")
     if not session_token:
         return RedirectResponse("/login", status_code=303)
@@ -20734,7 +20734,8 @@ async def admin_pricing_view(request: Request):
     elif error:
         alert = '<div class="alert error">❌ Erreur lors de la mise à jour</div>'
     
-    # TOUTES les 44 routes disponibles (33 + 11 IA)
+    # TOUTES les 33 routes disponibles
+    all_routes_html = ""
     routes_list = [
         '/dashboard', '/fear-greed', '/dominance', '/altcoin-season', '/heatmap',
         '/strategie', '/spot-trading', '/calculatrice', '/nouvelles', '/trades',
@@ -20743,49 +20744,20 @@ async def admin_pricing_view(request: Request):
         '/stats-dashboard', '/market-simulation', '/success-stories',
         '/convertisseur', '/calendrier', '/bullrun-phase', '/graphiques',
         '/generate-pdf-report', '/backtesting', '/onchain-metrics',
-        '/api-keys', '/testimonials-widget', '/telegram-test', 
-        '/pricing-complete', '/admin-dashboard', '/mon-compte',
-        # 11 ROUTES IA
-        '/ai-gem-hunter', '/ai-signals', '/ai-news', '/ai-predictor',
-        '/ai-whale', '/ai-patterns', '/ai-sentiment', '/ai-sizer',
-        '/ai-exit', '/ai-timeframe', '/ai-liquidity', '/ai-alerts'
+        '/api-keys', '/testimonials-widget',
+        '/telegram-test', '/pricing-complete', '/admin-dashboard', '/mon-compte'
     ]
-    
-    # Fonction helper pour générer checkboxes
-    def generate_checkboxes(checked_routes):
-        html = ""
-        for route in routes_list:
-            checked = "checked" if route in checked_routes else ""
-            html += f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {checked}> {route}</label>'
-        return html
-    
-    # Routes par plan
-    free_routes = ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap",
-                   "/nouvelles","/convertisseur","/calendrier","/ai-gem-hunter"]
-    
-    month1_routes = ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie",
-                     "/spot-trading","/calculatrice","/trades","/risk-management","/watchlist",
-                     "/ai-signals","/ai-news","/ai-sizer"]
-    
-    months3_routes = ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard",
-                      "/market-simulation","/success-stories","/bullrun-phase","/graphiques",
-                      "/backtesting","/ai-predictor","/ai-whale","/ai-patterns"]
-    
-    months6_routes = ["/onchain-metrics","/api-keys","/testimonials-widget","/telegram-test",
-                      "/ai-sentiment","/ai-exit","/ai-timeframe","/ai-liquidity"]
-    
-    year1_routes = ["/generate-pdf-report","/ai-alerts"]
     
     return HTMLResponse(f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Pricing - Trading Dashboard Pro</title>
+    <title>Admin Pricing</title>
     <style>
         * {{ margin:0; padding:0; box-sizing:border-box; }}
         body {{ font-family:'Segoe UI',sans-serif; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; }}
         
+        /* MENU ISOLÉ */
         .top-menu {{
             background:#1a1a2e;
             padding:15px 20px;
@@ -20836,9 +20808,9 @@ async def admin_pricing_view(request: Request):
         
         .routes-section {{ background:#f8f9fa; padding:20px; border-radius:10px; margin-top:20px; }}
         .routes-section h4 {{ color:#333; margin-bottom:15px; }}
-        .routes-grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; margin-top:15px; max-height:400px; overflow-y:auto; }}
-        .route-checkbox {{ display:flex; align-items:center; background:white; padding:10px; border-radius:6px; border:2px solid #e0e0e0; cursor:pointer; }}
-        .route-checkbox input {{ margin-right:10px; width:18px; height:18px; cursor:pointer; }}
+        .routes-grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:15px; }}
+        .route-checkbox {{ display:flex; align-items:center; background:white; padding:10px; border-radius:6px; border:2px solid #e0e0e0; }}
+        .route-checkbox input {{ margin-right:10px; width:18px; height:18px; }}
         .route-checkbox:has(input:checked) {{ background:#e8f0ff; border-color:#667eea; }}
         
         .save-btn {{ background:#10b981; color:white; padding:12px 30px; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; margin-top:15px; }}
@@ -20864,12 +20836,11 @@ async def admin_pricing_view(request: Request):
     <div class="container">
         <div class="header">
             <h1>💎 Gestion des Plans d'Abonnement</h1>
-            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (44 routes disponibles)</p>
+            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (33 routes disponibles)</p>
         </div>
         
         {alert}
         
-        <!-- FREE PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="free">
             <div class="plan-header">
@@ -20891,15 +20862,14 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Routes FREE (9 routes dont 1 IA)</h4>
+                <h4>🔐 Toutes les 33 Routes Disponibles (cochez celles accessibles en Free)</h4>
                 <div class="routes-grid">
-                    {generate_checkboxes(free_routes)}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap","/nouvelles","/convertisseur","/calendrier"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Free</button>
         </form>
         
-        <!-- 1 MONTH PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="1_month">
             <div class="plan-header">
@@ -20921,15 +20891,14 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Routes 1 MOIS (12 routes dont 3 IA + hérite FREE)</h4>
+                <h4>🔐 Toutes les 33 Routes (+ hérite de Free)</h4>
                 <div class="routes-grid">
-                    {generate_checkboxes(month1_routes)}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Premium</button>
         </form>
         
-        <!-- 3 MONTHS PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="3_months">
             <div class="plan-header">
@@ -20951,19 +20920,18 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Routes 3 MOIS (11 routes dont 3 IA + hérite 1 MOIS)</h4>
+                <h4>🔐 Toutes les 33 Routes (hérite de Premium)</h4>
                 <div class="routes-grid">
-                    {generate_checkboxes(months3_routes)}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Advanced</button>
         </form>
         
-        <!-- 6 MONTHS PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="6_months">
             <div class="plan-header">
-                <div class="plan-title">💎 Pro 6 mois</div>
+                <div class="plan-title">⭐ Pro 6 mois</div>
                 <div class="plan-id">ID: 6_months</div>
             </div>
             <div class="editor-row">
@@ -20981,19 +20949,18 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Routes 6 MOIS (8 routes dont 4 IA + hérite 3 MOIS)</h4>
+                <h4>🔐 Toutes les 33 Routes (+ hérite de Premium)</h4>
                 <div class="routes-grid">
-                    {generate_checkboxes(months6_routes)}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard","/market-simulation","/success-stories"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Pro</button>
         </form>
         
-        <!-- 1 YEAR PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="1_year">
             <div class="plan-header">
-                <div class="plan-title">💎 Elite 1 an</div>
+                <div class="plan-title">👑 Elite 1 an</div>
                 <div class="plan-id">ID: 1_year</div>
             </div>
             <div class="editor-row">
@@ -21011,29 +20978,43 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Routes 1 AN (2 routes dont 1 IA EXCLUSIF + hérite 6 MOIS)</h4>
+                <h4>🔐 Toutes les 33 Routes (+ hérite de Pro = TOUT)</h4>
                 <div class="routes-grid">
-                    {generate_checkboxes(year1_routes)}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/graphiques","/bullrun-phase","/telegram-test"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Elite</button>
         </form>
         
         <div class="info">
-            <h4>ℹ️ Informations Importantes</h4>
+            <h4>ℹ️ Informations</h4>
             <ul>
-                <li><strong>Héritage:</strong> Chaque plan hérite des routes du plan inférieur</li>
-                <li><strong>FREE:</strong> 9 routes dont 1 IA (Gem Hunter basic)</li>
-                <li><strong>1 MOIS:</strong> +12 routes dont 3 IA (Signaux, News, Position Sizer)</li>
-                <li><strong>3 MOIS:</strong> +11 routes dont 3 IA (Prédictions, Baleines, Patterns)</li>
-                <li><strong>6 MOIS:</strong> +8 routes dont 4 IA (Sentiment, Exit, Multi-TF, Liquidité)</li>
-                <li><strong>1 AN:</strong> +2 routes dont 1 IA EXCLUSIF (Alertes Intelligentes)</li>
-                <li><strong>Total:</strong> 44 routes disponibles dont 11 features IA</li>
+                <li><strong>29 routes totales</strong> disponibles dans le système</li>
+                <li>Chaque plan hérite des permissions des plans inférieurs</li>
+                <li>Cochez/décochez les routes pour chaque plan</li>
+                <li>Les modifications sont sauvegardées dans /data/pricing_config.json</li>
             </ul>
         </div>
+        
+        <a href="/admin-dashboard" style="display:inline-block; margin-top:30px; padding:12px 24px; background:white; color:#667eea; text-decoration:none; border-radius:8px; font-weight:600;">← Retour</a>
     </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {{
+        const existing = document.querySelector('.universal-nav-injected');
+        if (existing) existing.remove();
+        
+        const menuHTML = '<style>.universal-nav-injected{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%)!important;padding:15px 20px!important;min-height:120px!important;box-shadow:0 2px 15px rgba(0,0,0,0.5)!important;position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:999999999!important;border-bottom:1px solid rgba(255,255,255,0.05)!important;display:block!important;visibility:visible!important}.universal-nav-container-injected{max-width:1600px!important;margin:0 auto!important;display:flex!important;gap:8px!important;align-items:center!important;flex-wrap:wrap!important;justify-content:center!important}.universal-nav-btn-injected{background:rgba(255,255,255,0.05)!important;color:#e2e8f0!important;padding:8px 14px!important;border-radius:6px!important;text-decoration:none!important;font-size:12px!important;font-weight:500!important;transition:all 0.2s!important;border:1px solid rgba(255,255,255,0.08)!important;white-space:nowrap!important}.universal-nav-btn-injected:hover{background:rgba(255,255,255,0.12)!important;border-color:rgba(96,165,250,0.4)!important;color:white!important}.universal-nav-btn-injected.premium{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)!important;border:none!important}.universal-nav-btn-injected.admin{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)!important;border:none!important}.universal-nav-btn-injected.account{background:linear-gradient(135deg,#10b981 0%,#059669 100%)!important;border:none!important}.universal-nav-btn-injected.logout{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%)!important;border:none!important}.universal-nav-btn-injected.ai-new{background:linear-gradient(135deg,#06b6d4 0%,#0891b2 100%)!important;border:none!important;font-weight:700!important}</style><nav class="universal-nav-injected"><div class="universal-nav-container-injected"><a href="/dashboard" class="universal-nav-btn-injected">🏠 Accueil</a><a href="/fear-greed" class="universal-nav-btn-injected">😨 Fear&Greed</a><a href="/dominance" class="universal-nav-btn-injected">👑 Dominance</a><a href="/altcoin-season" class="universal-nav-btn-injected">⭐ Altcoin</a><a href="/heatmap" class="universal-nav-btn-injected">🔥 Heatmap</a><a href="/strategie" class="universal-nav-btn-injected">📚 Stratégie</a><a href="/spot-trading" class="universal-nav-btn-injected">💎 Spot</a><a href="/calculatrice" class="universal-nav-btn-injected">🧮 Calc</a><a href="/nouvelles" class="universal-nav-btn-injected">📰 News</a><a href="/trades" class="universal-nav-btn-injected">📈 Trades</a><a href="/risk-management" class="universal-nav-btn-injected">⚠️ Risk</a><a href="/watchlist" class="universal-nav-btn-injected">👁️ Watch</a><br><a href="/ai-gem-hunter" class="universal-nav-btn-injected ai-new">💎 Gem Hunter</a><a href="/ai-signals" class="universal-nav-btn-injected ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn-injected ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn-injected ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn-injected ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn-injected ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn-injected ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn-injected ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn-injected ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn-injected ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn-injected ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn-injected ai-new">🎯 Alertes</a><br><a href="/ai-assistant" class="universal-nav-btn-injected">🤖 AI</a><a href="/prediction-ia" class="universal-nav-btn-injected">🔮 Predict</a><a href="/ai-opportunity-scanner" class="universal-nav-btn-injected">🔍 Scanner</a><a href="/ai-market-regime" class="universal-nav-btn-injected">🌊 Regime</a><a href="/ai-whale-watcher" class="universal-nav-btn-injected">🐋 Whale</a><a href="/stats-dashboard" class="universal-nav-btn-injected">📊 Stats</a><a href="/market-simulation" class="universal-nav-btn-injected">🎮 Sim</a><a href="/success-stories" class="universal-nav-btn-injected">⭐ Success</a><a href="/onchain-analytics" class="universal-nav-btn-injected">⛓️ OnChain</a><a href="/temoignages" class="universal-nav-btn-injected">💬 Témoignages</a><br><a href="/convertisseur" class="universal-nav-btn-injected">💱 Convert</a><a href="/calendrier" class="universal-nav-btn-injected">📅 Cal</a><a href="/bullrun-phase" class="universal-nav-btn-injected">🚀 Bullrun</a><a href="/graphiques" class="universal-nav-btn-injected">📊 Charts</a><a href="/backtesting" class="universal-nav-btn-injected">⚙️ Backtest</a><a href="/pdf-generator" class="universal-nav-btn-injected">📄 PDF</a><a href="/api-docs" class="universal-nav-btn-injected">⚡ API</a><a href="/telegram-test" class="universal-nav-btn-injected">📱 Telegram</a><br><a href="/pricing-complete" class="universal-nav-btn-injected premium">💎 Abonnements</a><a href="/admin-dashboard" class="universal-nav-btn-injected admin">🔧 Admin</a><a href="/mon-compte" class="universal-nav-btn-injected account">👤 Compte</a><a href="/logout" class="universal-nav-btn-injected logout">🚪 Déconnexion</a></div></nav>';
+        
+        document.body.insertAdjacentHTML('afterbegin', menuHTML);
+        document.body.style.paddingTop = '60px';
+        console.log('Menu universel injecté');
+    }});
+    </script>
 </body>
-</html>""")
+</html>
+    """)
+
 
 @app.post("/admin/pricing/update")
 async def admin_pricing_update(request: Request):

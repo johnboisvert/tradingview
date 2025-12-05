@@ -1372,6 +1372,41 @@ def get_fallback_gems() -> List[Dict]:
     print(f"✅ {len(fallback_sorted)} pépites fallback triées par score")
     return fallback_sorted
 
+# ============================================================================
+# 🔐 FONCTION DE VÉRIFICATION DES PERMISSIONS
+# ============================================================================
+
+def check_permission(user_plan: str, feature: str) -> bool:
+    """Vérifie si un plan a accès à une feature IA"""
+    
+    # Mapping des features par plan
+    permissions = {
+        "free": ["ai_gem_hunter_basic"],
+        "1_month": ["ai_signals", "ai_news", "ai_sizer"],
+        "3_months": ["ai_predictor", "ai_whale", "ai_patterns"],
+        "6_months": ["ai_sentiment", "ai_exit", "ai_timeframe", "ai_liquidity"],
+        "1_year": ["ai_alerts"]
+    }
+    
+    # Héritage: chaque plan hérite des plans inférieurs
+    hierarchy = ["free", "1_month", "3_months", "6_months", "1_year"]
+    
+    # Trouver l'index du plan utilisateur
+    try:
+        user_plan_index = hierarchy.index(user_plan)
+    except ValueError:
+        return False
+    
+    # Vérifier si la feature est accessible
+    for i in range(user_plan_index + 1):
+        plan_name = hierarchy[i]
+        if feature in permissions.get(plan_name, []):
+            return True
+    
+    return False
+
+# ============================================================================
+
 @app.get("/debug-files")
 async def debug_files():
     import os

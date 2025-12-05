@@ -20734,7 +20734,7 @@ async def admin_pricing_view(request: Request):
     elif error:
         alert = '<div class="alert error">❌ Erreur lors de la mise à jour</div>'
     
-    # TOUTES les 33 routes disponibles
+    # TOUTES les 44 routes disponibles (33 + 11 IA)
     all_routes_html = ""
     routes_list = [
         '/dashboard', '/fear-greed', '/dominance', '/altcoin-season', '/heatmap',
@@ -20745,7 +20745,11 @@ async def admin_pricing_view(request: Request):
         '/convertisseur', '/calendrier', '/bullrun-phase', '/graphiques',
         '/generate-pdf-report', '/backtesting', '/onchain-metrics',
         '/api-keys', '/testimonials-widget',
-        '/telegram-test', '/pricing-complete', '/admin-dashboard', '/mon-compte'
+        '/telegram-test', '/pricing-complete', '/admin-dashboard', '/mon-compte',
+        # 11 NOUVELLES ROUTES IA
+        '/ai-gem-hunter', '/ai-signals', '/ai-news', '/ai-predictor',
+        '/ai-whale', '/ai-patterns', '/ai-sentiment', '/ai-sizer',
+        '/ai-exit', '/ai-timeframe', '/ai-liquidity', '/ai-alerts'
     ]
     
     return HTMLResponse(f"""<!DOCTYPE html>
@@ -20836,7 +20840,7 @@ async def admin_pricing_view(request: Request):
     <div class="container">
         <div class="header">
             <h1>💎 Gestion des Plans d'Abonnement</h1>
-            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (33 routes disponibles)</p>
+            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (44 routes disponibles)</p>
         </div>
         
         {alert}
@@ -20862,9 +20866,9 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes Disponibles (cochez celles accessibles en Free)</h4>
+                <h4>🔐 Toutes les 44 Routes Disponibles (cochez celles accessibles en Free)</h4>
                 <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap","/nouvelles","/convertisseur","/calendrier"] else ""}> {route}</label>' for route in routes_list])}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap","/nouvelles","/convertisseur","/calendrier","/ai-gem-hunter"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Free</button>
@@ -20891,9 +20895,9 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (+ hérite de Free)</h4>
+                <h4>🔐 Toutes les 44 Routes (+ hérite de Free)</h4>
                 <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist","/ai-signals","/ai-news","/ai-sizer","/ai-predictor","/ai-whale","/ai-patterns"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Premium</button>
@@ -20920,9 +20924,9 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (hérite de Premium)</h4>
+                <h4>🔐 Toutes les 44 Routes (hérite de Premium)</h4>
                 <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist","/ai-signals","/ai-news","/ai-sizer","/ai-predictor","/ai-whale","/ai-patterns"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Advanced</button>
@@ -20949,9 +20953,9 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (+ hérite de Premium)</h4>
+                <h4>🔐 Toutes les 44 Routes (+ hérite de Premium)</h4>
                 <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard","/market-simulation","/success-stories"] else ""}> {route}</label>' for route in routes_list])}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard","/market-simulation","/success-stories","/ai-sentiment","/ai-exit","/ai-timeframe","/ai-liquidity"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Pro</button>
@@ -20978,9 +20982,9 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (+ hérite de Pro = TOUT)</h4>
+                <h4>🔐 Toutes les 44 Routes (+ hérite de Pro = TOUT)</h4>
                 <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/graphiques","/bullrun-phase","/telegram-test"] else ""}> {route}</label>' for route in routes_list])}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/graphiques","/bullrun-phase","/telegram-test","/ai-alerts"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Elite</button>

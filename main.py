@@ -990,7 +990,166 @@ def calculate_potential(score: int, market_cap: float, ath_distance: float) -> s
     except:
         return "N/A"
 
-async def analyze_all_gems() -> Tuple[List[Dict], bool]:
+
+def identify_upcoming_gems(all_cryptos: List[Dict]) -> List[Dict]:
+    """Identifie les 10 prochaines pépites à fort potentiel"""
+    
+    try:
+        print("🔮 Recherche des prochains gems...")
+        
+        upcoming = []
+        
+        for crypto in all_cryptos:
+            try:
+                market_cap = crypto.get('market_cap') or 0
+                volume_24h = crypto.get('total_volume') or 0
+                price_change_7d = crypto.get('price_change_percentage_7d_in_currency') or 0
+                price_change_30d = crypto.get('price_change_percentage_30d_in_currency') or 0
+                ath_change = crypto.get('ath_change_percentage') or 0
+                ath_date = crypto.get('ath_date') or ''
+                rank = crypto.get('market_cap_rank') or 9999
+                symbol = (crypto.get('symbol') or '').lower()
+                
+                # Filtrer stablecoins et wrapped
+                stablecoins = ['usdt', 'usdc', 'busd', 'dai', 'tusd', 'usdp', 'gusd', 'usdd']
+                wrapped = ['wbtc', 'weth', 'wbnb', 'steth']
+                if symbol in stablecoins or symbol in wrapped:
+                    continue
+                
+                # CRITÈRES POUR "PROCHAINS GEMS":
+                
+                # 1. Très petit market cap (< $50M) - Early stage
+                if market_cap > 50_000_000 or market_cap < 500_000:
+                    continue
+                
+                # 2. Volume/MCap ratio élevé (> 0.15) - Intérêt croissant
+                if market_cap > 0:
+                    vol_ratio = volume_24h / market_cap
+                    if vol_ratio < 0.15:
+                        continue
+                else:
+                    continue
+                
+                # 3. Momentum positif sur 7d ET 30d
+                if price_change_7d < 5 or price_change_30d < 10:
+                    continue
+                
+                # 4. Pas trop proche de ATH (minimum -40% pour potentiel)
+                if ath_change > -40:
+                    continue
+                
+                # 5. Rank entre 200 et 800 (pas trop mainstream, pas trop obscur)
+                if rank < 200 or rank > 800:
+                    continue
+                
+                # Calculer un "Upcoming Score"
+                upcoming_score = 0
+                reasons = []
+                
+                # Score basé sur market cap (plus petit = plus de potentiel)
+                if market_cap < 5_000_000:
+                    upcoming_score += 25
+                    reasons.append(f"🚀 Micro-cap: ${market_cap/1_000_000:.1f}M")
+                elif market_cap < 20_000_000:
+                    upcoming_score += 20
+                    reasons.append(f"💎 Small-cap: ${market_cap/1_000_000:.1f}M")
+                else:
+                    upcoming_score += 15
+                    reasons.append(f"✅ Market cap: ${market_cap/1_000_000:.1f}M")
+                
+                # Score basé sur volume/mcap
+                if vol_ratio > 0.5:
+                    upcoming_score += 25
+                    reasons.append(f"🔥 Volume massif: {vol_ratio*100:.0f}% du MCap")
+                elif vol_ratio > 0.3:
+                    upcoming_score += 20
+                    reasons.append(f"⚡ Volume élevé: {vol_ratio*100:.0f}% du MCap")
+                else:
+                    upcoming_score += 15
+                
+                # Score basé sur momentum
+                momentum_score = (price_change_7d * 2) + price_change_30d
+                if momentum_score > 100:
+                    upcoming_score += 25
+                    reasons.append(f"🚀 Momentum explosif: +{momentum_score:.0f}%")
+                elif momentum_score > 50:
+                    upcoming_score += 20
+                    reasons.append(f"📈 Momentum fort: +{momentum_score:.0f}%")
+                else:
+                    upcoming_score += 15
+                    reasons.append(f"✅ Momentum positif")
+                
+                # Score basé sur potentiel ATH
+                ath_potential = abs(ath_change)
+                if ath_potential > 80:
+                    upcoming_score += 25
+                    reasons.append(f"💎 {ath_potential:.0f}% sous ATH - Énorme upside!")
+                elif ath_potential > 60:
+                    upcoming_score += 20
+                    reasons.append(f"✨ {ath_potential:.0f}% sous ATH")
+                else:
+                    upcoming_score += 15
+                
+                # Bonus pour catégories hot
+                name_lower = (crypto.get('name') or '').lower()
+                id_lower = (crypto.get('id') or '').lower()
+                
+                hot_keywords = {
+                    'ai': ('🤖 Secteur AI', 10),
+                    'gaming': ('🎮 Gaming', 10),
+                    'defi': ('🔥 DeFi', 8),
+                    'metaverse': ('🌐 Metaverse', 10),
+                    'layer': ('⚡ L1/L2', 8),
+                    'protocol': ('🔗 Protocol', 5),
+                }
+                
+                for keyword, (label, bonus) in hot_keywords.items():
+                    if keyword in name_lower or keyword in id_lower:
+                        upcoming_score += bonus
+                        reasons.append(label)
+                        break
+                
+                # Ne garder que les scores > 70
+                if upcoming_score < 70:
+                    continue
+                
+                upcoming.append({
+                    'id': crypto.get('id', ''),
+                    'symbol': (crypto.get('symbol') or '').upper(),
+                    'name': crypto.get('name', 'Unknown'),
+                    'image': crypto.get('image', ''),
+                    'price': crypto.get('current_price') or 0,
+                    'market_cap': market_cap,
+                    'volume_24h': volume_24h,
+                    'price_change_24h': crypto.get('price_change_percentage_24h') or 0,
+                    'price_change_7d': price_change_7d,
+                    'price_change_30d': price_change_30d,
+                    'ath_change': ath_change,
+                    'rank': rank,
+                    'upcoming_score': upcoming_score,
+                    'reasons': reasons,
+                    'potential': f"{abs(ath_change) / 20:.0f}x" if abs(ath_change) > 40 else "2-3x",
+                    'category': 'Upcoming Gem'
+                })
+                
+            except Exception as e:
+                continue
+        
+        # Trier par upcoming_score décroissant
+        upcoming.sort(key=lambda x: x['upcoming_score'], reverse=True)
+        result = upcoming[:10]
+        
+        print(f"✅ {len(result)} prochains gems identifiés")
+        
+        return result
+        
+    except Exception as e:
+        print(f"❌ Erreur identify_upcoming_gems: {str(e)}")
+        return []
+
+
+
+async def analyze_all_gems() -> Tuple[List[Dict], bool, List[Dict]]:
     """Analyse toutes les cryptos et retourne (top 50 pépites, is_live_data)"""
     
     try:
@@ -1067,11 +1226,14 @@ async def analyze_all_gems() -> Tuple[List[Dict], bool]:
         
         print(f"✅ {len(result)} pépites trouvées")
         
-        return (result, True) if result else (get_fallback_gems(), False)
+        # Identifier les prochains gems
+        upcoming_gems = identify_upcoming_gems(cryptos) if cryptos else []
+        
+        return (result, True, upcoming_gems) if result else (get_fallback_gems(), False, [])
         
     except Exception as e:
         print(f"❌ Erreur analyze_all_gems: {type(e).__name__}: {str(e)}")
-        return (get_fallback_gems(), False)
+        return (get_fallback_gems(), False, [])
 
 def get_fallback_gems() -> List[Dict]:
     """Retourne 50 pépites de test si l'API ne fonctionne pas"""
@@ -23540,7 +23702,7 @@ async def ai_gem_hunter(request: Request):
         print("="*70)
         
         # Analyser toutes les pépites
-        gems, is_live = await analyze_all_gems()
+        gems, is_live, upcoming_gems = await analyze_all_gems()
         
         if is_live:
             print("✅ DONNÉES EN TEMPS RÉEL - CoinGecko API")
@@ -23558,6 +23720,7 @@ async def ai_gem_hunter(request: Request):
         # Convertir en JSON pour JavaScript
         import json
         gems_json = json.dumps(gems)
+        upcoming_json = json.dumps(upcoming_gems)
         is_live_json = json.dumps(is_live)
         from datetime import datetime
         last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
@@ -23565,7 +23728,9 @@ async def ai_gem_hunter(request: Request):
     except Exception as e:
         print(f"❌ Erreur dans route: {str(e)}")
         gems = []
+        upcoming_gems = []
         gems_json = "[]"
+        upcoming_json = "[]"
         is_live_json = "false"
         last_update = "Error"
         total_gems = 0
@@ -23982,6 +24147,105 @@ async def ai_gem_hunter(request: Request):
                 font-weight: 600;
             }}
             
+            /* UPCOMING GEMS STYLES */
+            .upcoming-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 20px;
+                margin-bottom: 40px;
+            }}
+            
+            .upcoming-card {{
+                background: linear-gradient(135deg, var(--bg-card), rgba(0, 212, 255, 0.05));
+                border: 2px solid var(--cyber-accent-2);
+                border-radius: 15px;
+                padding: 20px;
+                transition: all 0.4s ease;
+                position: relative;
+                overflow: hidden;
+            }}
+            
+            .upcoming-card::before {{
+                content: '🔮';
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                font-size: 2rem;
+                opacity: 0.3;
+            }}
+            
+            .upcoming-card:hover {{
+                transform: translateY(-8px) scale(1.03);
+                border-color: var(--cyber-accent-2);
+                box-shadow: 0 10px 40px rgba(0, 212, 255, 0.5);
+            }}
+            
+            .upcoming-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+            }}
+            
+            .upcoming-name {{
+                font-family: 'Orbitron', sans-serif;
+                font-size: 1.2rem;
+                font-weight: 700;
+                color: var(--cyber-accent-2);
+            }}
+            
+            .upcoming-symbol {{
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+                background: rgba(0, 212, 255, 0.1);
+                padding: 4px 10px;
+                border-radius: 15px;
+                font-weight: 600;
+            }}
+            
+            .upcoming-score {{
+                text-align: center;
+                margin: 15px 0;
+                padding: 12px;
+                background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 255, 136, 0.1));
+                border-radius: 10px;
+            }}
+            
+            .upcoming-score-label {{
+                font-size: 0.75rem;
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }}
+            
+            .upcoming-score-value {{
+                font-family: 'Orbitron', sans-serif;
+                font-size: 2rem;
+                font-weight: 900;
+                color: var(--cyber-accent-2);
+                margin-top: 5px;
+            }}
+            
+            .upcoming-potential {{
+                text-align: center;
+                font-size: 1.5rem;
+                font-weight: 900;
+                color: var(--cyber-accent);
+                margin: 10px 0;
+                text-shadow: 0 0 10px var(--cyber-accent);
+            }}
+            
+            .upcoming-reasons {{
+                font-size: 0.85rem;
+                line-height: 1.6;
+                color: var(--text-secondary);
+            }}
+            
+            .upcoming-reasons div {{
+                padding: 5px 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            }}
+            
             @media (max-width: 768px) {{
                 .main-title {{
                     font-size: 2rem;
@@ -23993,6 +24257,10 @@ async def ai_gem_hunter(request: Request):
                 }}
                 
                 .gems-grid {{
+                    grid-template-columns: 1fr;
+                }}
+                
+                .upcoming-grid {{
                     grid-template-columns: 1fr;
                 }}
             }}
@@ -24085,6 +24353,29 @@ async def ai_gem_hunter(request: Request):
             <button class="filter-btn" data-filter="top10">🏆 TOP 10</button>
         </div>
         
+        <!-- SECTION UPCOMING GEMS -->
+        <div id="upcoming-section" style="max-width: 1400px; margin: 0 auto 50px; padding: 0 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2 style="font-family: 'Orbitron', sans-serif; font-size: 2.5rem; color: var(--cyber-accent-2); margin-bottom: 10px;">
+                    🔮 10 PROCHAINS GEMS
+                </h2>
+                <p style="color: var(--text-secondary); font-size: 1.1rem;">
+                    Cryptos à fort potentiel - Early stage avec fondamentaux solides
+                </p>
+            </div>
+            
+            <div id="upcoming-grid" class="upcoming-grid"></div>
+        </div>
+        
+        <div style="text-align: center; margin: 40px 0;">
+            <h2 style="font-family: 'Orbitron', sans-serif; font-size: 2rem; color: var(--cyber-accent); margin-bottom: 10px;">
+                💎 TOP 50 PÉPITES ACTUELLES
+            </h2>
+            <p style="color: var(--text-secondary); font-size: 1rem;">
+                Cryptos établies avec meilleur score
+            </p>
+        </div>
+        
         <div id="loading" class="loading">
             <div class="spinner"></div>
             <div class="loading-text">Analyse des pépites en cours...</div>
@@ -24096,6 +24387,7 @@ async def ai_gem_hunter(request: Request):
             console.log('💎 AI Gem Hunter - Script démarré');
             
             let allGems = {gems_json};
+            let upcomingGems = {upcoming_json};
             let isLiveData = {is_live_json};
             let lastUpdate = "{last_update}";
             
@@ -24109,6 +24401,60 @@ async def ai_gem_hunter(request: Request):
                 if (num >= 1000000) return '$' + (num/1000000).toFixed(1) + 'M';
                 if (num >= 1000) return '$' + (num/1000).toFixed(1) + 'K';
                 return '$' + num.toFixed(2);
+            }}
+            
+            function renderUpcomingGems() {{
+                const grid = document.getElementById('upcoming-grid');
+                
+                if (!upcomingGems || upcomingGems.length === 0) {{
+                    grid.innerHTML = '<div style="text-align: center; color: var(--text-secondary); grid-column: 1 / -1;">Aucun prochain gem détecté pour le moment</div>';
+                    return;
+                }}
+                
+                console.log('🔮 Rendering', upcomingGems.length, 'upcoming gems');
+                
+                grid.innerHTML = upcomingGems.map((gem, index) => `
+                    <div class="upcoming-card">
+                        <div class="upcoming-header">
+                            <div class="upcoming-name">${{gem.name}}</div>
+                            <div class="upcoming-symbol">${{gem.symbol}}</div>
+                        </div>
+                        
+                        <div class="upcoming-score">
+                            <div class="upcoming-score-label">Score Potentiel</div>
+                            <div class="upcoming-score-value">${{gem.upcoming_score}}</div>
+                        </div>
+                        
+                        <div class="upcoming-potential">
+                            ⚡ Potentiel: ${{gem.potential}}
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; font-size: 0.85rem;">
+                            <div style="text-align: center;">
+                                <div style="color: var(--text-secondary);">Prix</div>
+                                <div style="font-weight: 700; color: var(--text-primary);">${{gem.price < 0.01 ? gem.price.toFixed(6) : gem.price.toFixed(4)}}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: var(--text-secondary);">MCap</div>
+                                <div style="font-weight: 700; color: var(--text-primary);">${{formatNumber(gem.market_cap)}}</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: var(--text-secondary);">7j</div>
+                                <div style="font-weight: 700; color: ${{gem.price_change_7d >= 0 ? 'var(--cyber-accent)' : 'var(--danger)'}}">${{gem.price_change_7d >= 0 ? '+' : ''}}${{gem.price_change_7d.toFixed(1)}}%</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="color: var(--text-secondary);">30j</div>
+                                <div style="font-weight: 700; color: ${{gem.price_change_30d >= 0 ? 'var(--cyber-accent)' : 'var(--danger)'}}">${{gem.price_change_30d >= 0 ? '+' : ''}}${{gem.price_change_30d.toFixed(1)}}%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="upcoming-reasons">
+                            ${{gem.reasons.slice(0, 4).map(r => `<div>${{r}}</div>`).join('')}}
+                        </div>
+                    </div>
+                `).join('');
+                
+                console.log('✅ Upcoming gems rendered');
             }}
             
             function renderGems(gems) {{

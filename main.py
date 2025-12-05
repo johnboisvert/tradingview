@@ -20517,7 +20517,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             </tr>
             """
         
-        html = f"""
+        html = SIDEBAR + f"""
         <!DOCTYPE html>
         <html>
         <head>

@@ -3203,7 +3203,6 @@ async def strategie_page():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Magic Mike 1H - Guide ULTIME</title>
         """ + CSS + """
-    sidebar_html = SIDEBAR_HTML
         <style>
             * {
                 margin: 0;
@@ -4647,7 +4646,6 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 async def home():
     """Page d'accueil professionnelle du dashboard"""
     html_content = """
-    sidebar_html = SIDEBAR_HTML
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -5127,7 +5125,6 @@ async def home():
 async def spot_trading_page():
     """Page complète et professionnelle sur le trading SPOT"""
     html_content = """
-    sidebar_html = SIDEBAR_HTML
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -9303,6 +9300,7 @@ async def get_exchange_rates_live():
 
 
 def get_fallback_rates():
+    sidebar_html = SIDEBAR_HTML
     """Taux de secours si l'API échoue"""
     return {
         "rates": {
@@ -9324,7 +9322,6 @@ def get_fallback_rates():
 async def convertisseur_page():
     """Page du convertisseur de devises et crypto"""
     return HTMLResponse(f"""<!DOCTYPE html>
-    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -10530,12 +10527,10 @@ async def fear_greed_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body>
     {SIDEBAR_HTML}
 <div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
-    sidebar_html = SIDEBAR_HTML
     return HTMLResponse(html)
 
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
-    sidebar_html = SIDEBAR_HTML
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body>
     {sidebar_html}
 <div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div><div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
@@ -10720,7 +10715,6 @@ async def heatmap_page():
     <title>🔥 Crypto Heatmap Pro</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     """ + CSS + """
-    sidebar_html = SIDEBAR_HTML
     <style>
         /* ================================
            HEATMAP PRO - STYLES MODERNES
@@ -11579,7 +11573,6 @@ async def heatmap_page():
 async def altcoin_page():
     """Page Altcoin Season - SIMPLE avec juste la jauge"""
     html = """<!DOCTYPE html>
-    sidebar_html = SIDEBAR_HTML
 <html>
 <head>
     <meta charset="UTF-8">
@@ -11932,7 +11925,6 @@ async def bullrun_page():
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🚀 Bullrun Phase Tracker</title>
     """ + CSS + """
-    sidebar_html = SIDEBAR_HTML
     <style>
         /* Styles spécifiques pour Bullrun Phase */
         .phase-hero {
@@ -12615,7 +12607,6 @@ async def bullrun_page():
 
 @app.get("/graphiques", response_class=HTMLResponse)
 async def charts_page():
-    sidebar_html = SIDEBAR_HTML
     html = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -13773,13 +13764,11 @@ async def telegram_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body>
     {SIDEBAR_HTML}
 <div class="container"><div class="header"><h1>📱 Test Telegram</h1></div><div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
-    sidebar_html = SIDEBAR_HTML
     return HTMLResponse(html)
 
 
 @app.get("/trades", response_class=HTMLResponse)
 async def trades_page():
-    sidebar_html = SIDEBAR_HTML
     html = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -15840,7 +15829,6 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 async def pricing_complete():
     """Page de pricing avec support codes promo"""
     return HTMLResponse("""<!DOCTYPE html>
-    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -16704,7 +16692,6 @@ async def pricing_complete():
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
     return HTMLResponse("""<!DOCTYPE html>
-    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -18006,7 +17993,6 @@ async def get_crypto_prices(crypto_id: str):
 async def market_simulation():
     """Simulation réaliste avec cycles bull/bear et DCA discipline - Top 10 Crypto"""
     return HTMLResponse("""<!DOCTYPE html>
-    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -18582,7 +18568,6 @@ async def generate_pdf_report():
 async def success_stories():
     """Success Stories: Histoires vraies de DCA réussies"""
     return HTMLResponse("""<!DOCTYPE html>
-    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -18967,7 +18952,6 @@ async def success_stories():
 
 @app.get("/risk-management", response_class=HTMLResponse)
 async def risk_management_page():
-    sidebar_html = SIDEBAR_HTML
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
 <body>
@@ -19143,7 +19127,6 @@ loadSettings();
 # ============= PAGE WATCHLIST & ALERTES =============
 @app.get("/watchlist", response_class=HTMLResponse)
 async def watchlist_page():
-    sidebar_html = SIDEBAR_HTML
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
 <body>
@@ -19286,7 +19269,6 @@ loadWatchlist();
 # ============= PAGE AI TRADING ASSISTANT =============
 @app.get("/ai-assistant", response_class=HTMLResponse)
 async def ai_assistant_page():
-    sidebar_html = SIDEBAR_HTML
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
 <body>
@@ -19450,7 +19432,6 @@ loadSentiment();
 async def calculatrice_trades():
     """Calculatrice de trades professionnelle en français"""
     return HTMLResponse("""<!DOCTYPE html>
-    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -20169,7 +20150,6 @@ async def calculatrice_trades():
 async def prediction_ia():
     """Page de prédiction IA avec navigation"""
     return HTMLResponse("""<!DOCTYPE html>
-    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -22047,7 +22027,6 @@ async def fear_greed_history():
 async def fear_greed_chart():
     """Page graphique Fear & Greed 12 mois"""
     return HTMLResponse(f"""
-    sidebar_html = SIDEBAR_HTML
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -22239,7 +22218,6 @@ async def live_stats():
 async def backtesting_page(request: Request):
     """Page de backtesting professionnelle avec graphiques et statistiques avancées"""
     return HTMLResponse(f"""
-    sidebar_html = SIDEBAR_HTML
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -23628,7 +23606,6 @@ async def api_keys_page(request: Request):
         raise HTTPException(status_code=401, detail="Non authentifié")
     
     return HTMLResponse(f"""
-    sidebar_html = SIDEBAR_HTML
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -24995,7 +24972,6 @@ async def ai_sizer(request: Request):
         return RedirectResponse(url="/pricing-complete")
     
     html = f"""<!DOCTYPE html><html><head><title>📏 Position Sizer</title>{CSS}</head><body>{SIDEBAR_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📏 AI POSITION SIZER</h1></div><div style="max-width:800px;margin:0 auto;padding:20px"><div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:30px"><form id="sizerForm"><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Capital total ($)</label><input type="number" id="capital" value="10000" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Risque max (%)</label><input type="number" id="risk" value="2" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Entry ($)</label><input type="number" id="entry" value="2650" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Stop-loss ($)</label><input type="number" id="sl" value="2500" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><button type="button" onclick="calculate()" style="width:100%;padding:15px;background:var(--cyber-accent);color:var(--bg-primary);border:none;border-radius:10px;font-size:1.2rem;font-weight:700;cursor:pointer;margin-top:20px">🔮 CALCULER</button></form><div id="result" style="margin-top:30px"></div></div></div><script>function calculate(){{const capital=parseFloat(document.getElementById('capital').value);const risk=parseFloat(document.getElementById('risk').value);const entry=parseFloat(document.getElementById('entry').value);const sl=parseFloat(document.getElementById('sl').value);const riskAmount=capital*risk/100;const slPercent=((entry-sl)/entry)*100;const positionSize=(riskAmount/(slPercent/100))/entry;const profit10=positionSize*entry*0.1;document.getElementById('result').innerHTML=`<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent);margin-bottom:20px">🤖 RECOMMANDATION IA</div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Taille position:</span><strong style="color:var(--text-primary);font-size:1.2rem">$${{positionSize.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Risque réel:</span><strong style="color:var(--danger)">$${{riskAmount.toFixed(0)}} (${{risk}}%)</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Profit si +10%:</span><strong style="color:var(--cyber-accent)">$${{profit10.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Stop-loss %:</span><strong style="color:var(--danger)">-${{slPercent.toFixed(1)}}%</strong></div><div style="margin-top:20px;padding:12px;background:rgba(255,59,92,0.1);border-radius:8px;color:var(--danger);font-weight:700;text-align:center">⚠️ NE PAS DÉPASSER cette taille!</div></div>`}}</script>
-    sidebar_html = SIDEBAR_HTML
     {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)

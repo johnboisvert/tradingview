@@ -1494,6 +1494,65 @@ def check_permission(user_plan: str, feature: str) -> bool:
             return True
     return False
 
+
+# ============================================================================
+# 🗺️ MENU UNIVERSEL COMPLET - UTILISÉ PARTOUT
+# ============================================================================
+
+UNIVERSAL_MENU_HTML = """<nav class="universal-top-nav">
+    <div class="universal-nav-container">
+        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
+        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
+        
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a>
+        <a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a>
+        <a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a>
+        <a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a>
+        <a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a>
+        <a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a>
+        <a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a>
+        <a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a>
+        <a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a>
+        <a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a>
+        <a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
+        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
+        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
+        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
+        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
+        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
+        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
+        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
+        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
+        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
+        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
+        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
+        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
+        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
+        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
+        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
+        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
+        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
+        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
+        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
+        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
+        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
+        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
+        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
+        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
+        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
+        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
+        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
+        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
+        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
+        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
+        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
+    </div>
+</nav>"""
+
+# ============================================================================
+
 # ============================================================================
 
 @app.get("/debug-files")
@@ -20974,16 +21033,57 @@ async def admin_pricing_view(request: Request):
     </style>
 </head>
 <body>
-    <nav class="top-menu">
-        <div class="menu-items">
-            <a href="/dashboard" class="menu-btn">🏠 Accueil</a>
-            <a href="/admin-dashboard" class="menu-btn">🔧 Admin</a>
-            <a href="/admin/list-promos" class="menu-btn">💰 Promos</a>
-            <a href="/admin/pricing" class="menu-btn active">💎 Pricing</a>
-            <a href="/mon-compte" class="menu-btn">👤 Compte</a>
-            <a href="/logout" class="menu-btn">🚪 Déconnexion</a>
-        </div>
-    </nav>
+    <nav class="universal-top-nav">
+    <div class="universal-nav-container">
+        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
+        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
+        
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a>
+        <a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a>
+        <a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a>
+        <a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a>
+        <a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a>
+        <a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a>
+        <a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a>
+        <a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a>
+        <a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a>
+        <a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a>
+        <a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
+        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
+        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
+        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
+        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
+        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
+        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
+        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
+        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
+        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
+        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
+        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
+        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
+        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
+        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
+        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
+        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
+        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
+        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
+        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
+        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
+        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
+        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
+        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
+        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
+        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
+        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
+        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
+        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
+        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
+        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
+        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
+        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
+        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
+    </div>
+</nav>
     
     <div class="container">
         <div class="header">
@@ -21157,7 +21257,7 @@ async def admin_pricing_view(request: Request):
         </div>
     </div>
 
-    {MENU_SCRIPT}
+    
 </body>
 </html>""")
 
@@ -24998,7 +25098,7 @@ async def ai_signals(request: Request):
     </style>
 </head>
 <body>
-    {MENU_SCRIPT}
+    {UNIVERSAL_MENU_HTML}
     
     <div style="text-align: center; padding: 50px 20px 20px;">
         <h1 style="font-family: 'Orbitron', sans-serif; font-size: 3rem; color: var(--cyber-accent); margin-bottom: 10px;">
@@ -25097,7 +25197,7 @@ async def ai_signals(request: Request):
         renderSignals();
     </script>
 
-    {MENU_SCRIPT}
+    {UNIVERSAL_MENU_HTML}
 </body>
 </html>"""
         
@@ -25123,8 +25223,8 @@ async def ai_sentiment(request: Request):
         {"coin": "ETH", "twitter": 70, "reddit": 68, "news": 75, "trend": "+120%", "conf": 78}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🎭 AI Sentiment</title>{CSS}</head><body>{MENU_SCRIPT}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎭 AI SOCIAL SENTIMENT</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:20px;margin:20px 0"><h2 style="color:var(--cyber-accent);margin-bottom:15px">{s['coin']}</h2><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin:15px 0"><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Twitter</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['twitter']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Reddit</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['reddit']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">News</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['news']}%</div></div></div><div style="display:flex;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div><span style="color:var(--text-secondary)">Trending:</span> <strong style="color:var(--cyber-accent)">{s['trend']}</strong></div><div><span style="color:var(--text-secondary)">Confiance:</span> <strong>{s['conf']}%</strong></div></div></div>""" for s in sents]) + """</div>
-    {MENU_SCRIPT}
+    html = f"""<!DOCTYPE html><html><head><title>🎭 AI Sentiment</title>{CSS}</head><body>{UNIVERSAL_MENU_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎭 AI SOCIAL SENTIMENT</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:20px;margin:20px 0"><h2 style="color:var(--cyber-accent);margin-bottom:15px">{s['coin']}</h2><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin:15px 0"><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Twitter</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['twitter']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Reddit</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['reddit']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">News</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['news']}%</div></div></div><div style="display:flex;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div><span style="color:var(--text-secondary)">Trending:</span> <strong style="color:var(--cyber-accent)">{s['trend']}</strong></div><div><span style="color:var(--text-secondary)">Confiance:</span> <strong>{s['conf']}%</strong></div></div></div>""" for s in sents]) + """</div>
+    {UNIVERSAL_MENU_HTML}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -25135,8 +25235,8 @@ async def ai_sizer(request: Request):
     if not check_permission(user_plan, "ai_sizer"):
         return RedirectResponse(url="/pricing-complete")
     
-    html = f"""<!DOCTYPE html><html><head><title>📏 Position Sizer</title>{CSS}</head><body>{MENU_SCRIPT}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📏 AI POSITION SIZER</h1></div><div style="max-width:800px;margin:0 auto;padding:20px"><div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:30px"><form id="sizerForm"><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Capital total ($)</label><input type="number" id="capital" value="10000" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Risque max (%)</label><input type="number" id="risk" value="2" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Entry ($)</label><input type="number" id="entry" value="2650" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Stop-loss ($)</label><input type="number" id="sl" value="2500" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><button type="button" onclick="calculate()" style="width:100%;padding:15px;background:var(--cyber-accent);color:var(--bg-primary);border:none;border-radius:10px;font-size:1.2rem;font-weight:700;cursor:pointer;margin-top:20px">🔮 CALCULER</button></form><div id="result" style="margin-top:30px"></div></div></div><script>function calculate(){{const capital=parseFloat(document.getElementById('capital').value);const risk=parseFloat(document.getElementById('risk').value);const entry=parseFloat(document.getElementById('entry').value);const sl=parseFloat(document.getElementById('sl').value);const riskAmount=capital*risk/100;const slPercent=((entry-sl)/entry)*100;const positionSize=(riskAmount/(slPercent/100))/entry;const profit10=positionSize*entry*0.1;document.getElementById('result').innerHTML=`<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent);margin-bottom:20px">🤖 RECOMMANDATION IA</div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Taille position:</span><strong style="color:var(--text-primary);font-size:1.2rem">$${{positionSize.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Risque réel:</span><strong style="color:var(--danger)">$${{riskAmount.toFixed(0)}} (${{risk}}%)</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Profit si +10%:</span><strong style="color:var(--cyber-accent)">$${{profit10.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Stop-loss %:</span><strong style="color:var(--danger)">-${{slPercent.toFixed(1)}}%</strong></div><div style="margin-top:20px;padding:12px;background:rgba(255,59,92,0.1);border-radius:8px;color:var(--danger);font-weight:700;text-align:center">⚠️ NE PAS DÉPASSER cette taille!</div></div>`}}</script>
-    {MENU_SCRIPT}
+    html = f"""<!DOCTYPE html><html><head><title>📏 Position Sizer</title>{CSS}</head><body>{UNIVERSAL_MENU_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📏 AI POSITION SIZER</h1></div><div style="max-width:800px;margin:0 auto;padding:20px"><div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:30px"><form id="sizerForm"><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Capital total ($)</label><input type="number" id="capital" value="10000" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Risque max (%)</label><input type="number" id="risk" value="2" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Entry ($)</label><input type="number" id="entry" value="2650" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Stop-loss ($)</label><input type="number" id="sl" value="2500" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><button type="button" onclick="calculate()" style="width:100%;padding:15px;background:var(--cyber-accent);color:var(--bg-primary);border:none;border-radius:10px;font-size:1.2rem;font-weight:700;cursor:pointer;margin-top:20px">🔮 CALCULER</button></form><div id="result" style="margin-top:30px"></div></div></div><script>function calculate(){{const capital=parseFloat(document.getElementById('capital').value);const risk=parseFloat(document.getElementById('risk').value);const entry=parseFloat(document.getElementById('entry').value);const sl=parseFloat(document.getElementById('sl').value);const riskAmount=capital*risk/100;const slPercent=((entry-sl)/entry)*100;const positionSize=(riskAmount/(slPercent/100))/entry;const profit10=positionSize*entry*0.1;document.getElementById('result').innerHTML=`<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent);margin-bottom:20px">🤖 RECOMMANDATION IA</div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Taille position:</span><strong style="color:var(--text-primary);font-size:1.2rem">$${{positionSize.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Risque réel:</span><strong style="color:var(--danger)">$${{riskAmount.toFixed(0)}} (${{risk}}%)</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Profit si +10%:</span><strong style="color:var(--cyber-accent)">$${{profit10.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Stop-loss %:</span><strong style="color:var(--danger)">-${{slPercent.toFixed(1)}}%</strong></div><div style="margin-top:20px;padding:12px;background:rgba(255,59,92,0.1);border-radius:8px;color:var(--danger);font-weight:700;text-align:center">⚠️ NE PAS DÉPASSER cette taille!</div></div>`}}</script>
+    {UNIVERSAL_MENU_HTML}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -25152,8 +25252,8 @@ async def ai_exit(request: Request):
         {"coin": "ETH", "entry": 2400, "current": 2650, "profit": "+10.4%", "momentum": 15, "rsi": 62, "volume": 12, "action": "HOLD - Laisser courir", "prob": 45}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🚪 Exit Strategy</title>{CSS}</head><body>{MENU_SCRIPT}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🚪 AI EXIT STRATEGY</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="color:var(--cyber-accent);font-size:2rem;margin:0">{e['coin']}</h2><div style="background:var(--cyber-accent);color:var(--bg-primary);padding:10px 20px;border-radius:10px;font-size:1.5rem;font-weight:900">{e['profit']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['momentum']<0 else 'var(--cyber-accent)'}">{e['momentum']:+d}%</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['rsi']>70 else 'var(--cyber-accent)'}">{e['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['volume']<0 else 'var(--cyber-accent)'}">{e['volume']:+d}%</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">💡 SUGGESTION IA</div><div style="font-size:1.1rem;margin-bottom:10px">{e['action']}</div><div style="color:var(--text-secondary);font-size:0.9rem">Probabilité correction: {e['prob']}%</div></div></div>""" for e in exits]) + """</div>
-    {MENU_SCRIPT}
+    html = f"""<!DOCTYPE html><html><head><title>🚪 Exit Strategy</title>{CSS}</head><body>{UNIVERSAL_MENU_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🚪 AI EXIT STRATEGY</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="color:var(--cyber-accent);font-size:2rem;margin:0">{e['coin']}</h2><div style="background:var(--cyber-accent);color:var(--bg-primary);padding:10px 20px;border-radius:10px;font-size:1.5rem;font-weight:900">{e['profit']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['momentum']<0 else 'var(--cyber-accent)'}">{e['momentum']:+d}%</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['rsi']>70 else 'var(--cyber-accent)'}">{e['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['volume']<0 else 'var(--cyber-accent)'}">{e['volume']:+d}%</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">💡 SUGGESTION IA</div><div style="font-size:1.1rem;margin-bottom:10px">{e['action']}</div><div style="color:var(--text-secondary);font-size:0.9rem">Probabilité correction: {e['prob']}%</div></div></div>""" for e in exits]) + """</div>
+    {UNIVERSAL_MENU_HTML}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -25169,8 +25269,8 @@ async def ai_timeframe(request: Request):
         {"coin": "BTC", "5m": 48, "15m": 45, "1h": 50, "4h": 55, "1d": 58, "consensus": 51, "trend": "NEUTRE"}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>📈 Multi-Timeframe</title>{CSS}</head><body>{MENU_SCRIPT}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📈 AI MULTI-TIMEFRAME</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px"><h2 style="color:var(--cyber-accent);font-size:2rem">{t['coin']}</h2><div style="background:{'var(--cyber-accent)' if t['trend']=='BULLISH' else '#ffb800'};color:{'var(--bg-primary)' if t['trend']=='BULLISH' else 'var(--bg-primary)'};padding:10px 25px;border-radius:12px;font-weight:900;font-size:1.3rem">{t['trend']}</div></div><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0">""" + "".join([f"""<div style="text-align:center;padding:15px;background:rgba({'0,255,136' if t[tf]>60 else '255,255,255'},0.1);border-radius:10px"><div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">{tf.upper()}</div><div style="font-size:1.8rem;font-weight:900;color:{'var(--cyber-accent)' if t[tf]>60 else 'var(--text-primary)'}">{t[tf]}</div></div>""" for tf in ['5m','15m','1h','4h','1d']]) + f"""</div><div style="background:rgba(0,212,255,0.15);padding:20px;border-radius:15px;text-align:center;margin-top:20px"><div style="font-size:1.1rem;color:var(--text-secondary);margin-bottom:8px">🤖 CONSENSUS IA</div><div style="font-size:2.5rem;font-weight:900;color:var(--cyber-accent)">{t['consensus']}/100</div></div></div>""" for t in tfs]) + """</div>
-    {MENU_SCRIPT}
+    html = f"""<!DOCTYPE html><html><head><title>📈 Multi-Timeframe</title>{CSS}</head><body>{UNIVERSAL_MENU_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📈 AI MULTI-TIMEFRAME</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px"><h2 style="color:var(--cyber-accent);font-size:2rem">{t['coin']}</h2><div style="background:{'var(--cyber-accent)' if t['trend']=='BULLISH' else '#ffb800'};color:{'var(--bg-primary)' if t['trend']=='BULLISH' else 'var(--bg-primary)'};padding:10px 25px;border-radius:12px;font-weight:900;font-size:1.3rem">{t['trend']}</div></div><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0">""" + "".join([f"""<div style="text-align:center;padding:15px;background:rgba({'0,255,136' if t[tf]>60 else '255,255,255'},0.1);border-radius:10px"><div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">{tf.upper()}</div><div style="font-size:1.8rem;font-weight:900;color:{'var(--cyber-accent)' if t[tf]>60 else 'var(--text-primary)'}">{t[tf]}</div></div>""" for tf in ['5m','15m','1h','4h','1d']]) + f"""</div><div style="background:rgba(0,212,255,0.15);padding:20px;border-radius:15px;text-align:center;margin-top:20px"><div style="font-size:1.1rem;color:var(--text-secondary);margin-bottom:8px">🤖 CONSENSUS IA</div><div style="font-size:2.5rem;font-weight:900;color:var(--cyber-accent)">{t['consensus']}/100</div></div></div>""" for t in tfs]) + """</div>
+    {UNIVERSAL_MENU_HTML}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -25188,8 +25288,8 @@ async def ai_liquidity(request: Request):
         {"type": "Support", "price": 42000, "liq": 18, "strength": "BON"}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🌊 Liquidity</title>{CSS}</head><body>{MENU_SCRIPT}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🌊 AI LIQUIDITY HEATMAP</h1><p style="color:var(--text-secondary);font-size:1.1rem">BTC/USDT</p></div><div style="max-width:800px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:{'rgba(255,59,92,0.1)' if l['type']=='Résistance' else 'rgba(0,255,136,0.1)' if l['type']=='Support' else 'rgba(0,212,255,0.2)'};border:2px solid {'var(--danger)' if l['type']=='Résistance' else 'var(--cyber-accent)' if l['type']=='Support' else 'var(--cyber-accent-2)'};border-radius:15px;padding:20px;margin:15px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:0.9rem;color:var(--text-secondary)">{l['type']}</div><div style="font-size:1.8rem;font-weight:900;color:var(--text-primary)">${{l['price']:,}}</div></div><div style="text-align:right">{f'<div style="font-size:0.9rem;color:var(--text-secondary)">Liquidité</div><div style="font-size:1.5rem;font-weight:900;color:var(--cyber-accent)">${{l["liq"]}}M</div><div style="background:{"var(--danger)" if l["strength"]=="MUR" else "var(--cyber-accent)"};color:white;padding:5px 12px;border-radius:8px;font-size:0.85rem;font-weight:700;margin-top:8px">{l["strength"]}</div>' if l['type']!='Prix actuel' else '<div style="font-size:1.2rem;color:var(--cyber-accent-2);font-weight:700">CURRENT</div>'}</div></div></div>""" for l in levels]) + """<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;margin-top:30px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">🤖 ANALYSE IA</div><div style="line-height:1.8">Difficulté casser $44,500 (mur liquide)<br>Si cassé → +5% facile vers $47k<br>Stop-loss suggéré: $42,500</div></div></div>
-    {MENU_SCRIPT}
+    html = f"""<!DOCTYPE html><html><head><title>🌊 Liquidity</title>{CSS}</head><body>{UNIVERSAL_MENU_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🌊 AI LIQUIDITY HEATMAP</h1><p style="color:var(--text-secondary);font-size:1.1rem">BTC/USDT</p></div><div style="max-width:800px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:{'rgba(255,59,92,0.1)' if l['type']=='Résistance' else 'rgba(0,255,136,0.1)' if l['type']=='Support' else 'rgba(0,212,255,0.2)'};border:2px solid {'var(--danger)' if l['type']=='Résistance' else 'var(--cyber-accent)' if l['type']=='Support' else 'var(--cyber-accent-2)'};border-radius:15px;padding:20px;margin:15px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:0.9rem;color:var(--text-secondary)">{l['type']}</div><div style="font-size:1.8rem;font-weight:900;color:var(--text-primary)">${{l['price']:,}}</div></div><div style="text-align:right">{f'<div style="font-size:0.9rem;color:var(--text-secondary)">Liquidité</div><div style="font-size:1.5rem;font-weight:900;color:var(--cyber-accent)">${{l["liq"]}}M</div><div style="background:{"var(--danger)" if l["strength"]=="MUR" else "var(--cyber-accent)"};color:white;padding:5px 12px;border-radius:8px;font-size:0.85rem;font-weight:700;margin-top:8px">{l["strength"]}</div>' if l['type']!='Prix actuel' else '<div style="font-size:1.2rem;color:var(--cyber-accent-2);font-weight:700">CURRENT</div>'}</div></div></div>""" for l in levels]) + """<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;margin-top:30px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">🤖 ANALYSE IA</div><div style="line-height:1.8">Difficulté casser $44,500 (mur liquide)<br>Si cassé → +5% facile vers $47k<br>Stop-loss suggéré: $42,500</div></div></div>
+    {UNIVERSAL_MENU_HTML}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -25205,8 +25305,8 @@ async def ai_alerts(request: Request):
         {"condition": "ETH > $2,800", "rsi": 65, "volume": "Élevé", "momentum": "Croissant", "action": "ACHETER", "reason": "Breakout confirmé", "suggest": "Entry NOW, TP $3,000"}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🎯 Smart Alerts</title>{CSS}</head><body>{MENU_SCRIPT}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎯 AI SMART ALERTS</h1><p style="color:var(--text-secondary);font-size:1.1rem">Alertes intelligentes contextuelles</p></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid {'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h3 style="color:var(--text-primary);font-size:1.5rem">{a['condition']}</h3><div style="background:{'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};color:white;padding:10px 20px;border-radius:10px;font-weight:900">{a['action']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if a['rsi']>70 else 'var(--cyber-accent)'}">{a['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.1rem;font-weight:700">{a['volume']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.1rem;font-weight:700">{a['momentum']}</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.1rem;font-weight:700;color:var(--cyber-accent);margin-bottom:12px">💡 RECOMMANDATION IA</div><div style="line-height:1.8;margin-bottom:10px">{a['reason']}</div><div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;font-weight:700">{a['suggest']}</div></div></div>""" for a in alerts]) + """</div>
-    {MENU_SCRIPT}
+    html = f"""<!DOCTYPE html><html><head><title>🎯 Smart Alerts</title>{CSS}</head><body>{UNIVERSAL_MENU_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎯 AI SMART ALERTS</h1><p style="color:var(--text-secondary);font-size:1.1rem">Alertes intelligentes contextuelles</p></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid {'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h3 style="color:var(--text-primary);font-size:1.5rem">{a['condition']}</h3><div style="background:{'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};color:white;padding:10px 20px;border-radius:10px;font-weight:900">{a['action']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if a['rsi']>70 else 'var(--cyber-accent)'}">{a['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.1rem;font-weight:700">{a['volume']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.1rem;font-weight:700">{a['momentum']}</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.1rem;font-weight:700;color:var(--cyber-accent);margin-bottom:12px">💡 RECOMMANDATION IA</div><div style="line-height:1.8;margin-bottom:10px">{a['reason']}</div><div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;font-weight:700">{a['suggest']}</div></div></div>""" for a in alerts]) + """</div>
+    {UNIVERSAL_MENU_HTML}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -25347,7 +25447,7 @@ async def ai_news(request: Request):
     ]
     
     html = f"""<!DOCTYPE html><html><head><title>📰 AI News Impact</title>{CSS}</head>
-    <body>{MENU_SCRIPT}
+    <body>{UNIVERSAL_MENU_HTML}
     <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📰 AI NEWS IMPACT</h1></div>
     <div style="max-width:1200px;margin:0 auto;padding:20px">
     """ + "".join([f"""
@@ -25361,7 +25461,7 @@ async def ai_news(request: Request):
         <div><span style="color:var(--text-secondary)">Tokens affectés:</span> {' '.join([f'<span style="background:rgba(0,212,255,0.2);padding:5px 10px;border-radius:8px;margin:0 5px;font-weight:700">{c}</span>' for c in n['coins']])}</div>
     </div>
     """ for n in news_data]) + """</div>
-    {MENU_SCRIPT}
+    {UNIVERSAL_MENU_HTML}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -25379,7 +25479,7 @@ async def ai_predictor(request: Request):
     ]
     
     html = f"""<!DOCTYPE html><html><head><title>🔮 AI Price Predictor</title>{CSS}</head>
-    <body>{MENU_SCRIPT}
+    <body>{UNIVERSAL_MENU_HTML}
     <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🔮 AI PRICE PREDICTOR</h1></div>
     <div style="max-width:1400px;margin:0 auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px">
     """ + "".join([f"""
@@ -25394,7 +25494,7 @@ async def ai_predictor(request: Request):
         <div style="margin:15px 0"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>📅 30j</span><span style="color:var(--cyber-accent);font-weight:700">${p['30d'][0]:,} - ${p['30d'][1]:,}</span></div><div style="background:rgba(255,255,255,0.1);height:20px;border-radius:10px;overflow:hidden"><div style="background:var(--cyber-accent);width:{p['conf30']}%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">{p['conf30']}%</div></div></div>
     </div>
     """ for p in predictions]) + """</div>
-    {MENU_SCRIPT}
+    {UNIVERSAL_MENU_HTML}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -25412,7 +25512,7 @@ async def ai_whale(request: Request):
     ]
     
     html = f"""<!DOCTYPE html><html><head><title>🐋 AI Whale Tracker</title>{CSS}</head>
-    <body>{MENU_SCRIPT}
+    <body>{UNIVERSAL_MENU_HTML}
     <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🐋 AI WHALE TRACKER</h1></div>
     <div style="max-width:1200px;margin:0 auto;padding:20px">
     """ + "".join([f"""
@@ -25433,7 +25533,7 @@ async def ai_whale(request: Request):
         </div>
     </div>
     """ for m in moves]) + """</div>
-    {MENU_SCRIPT}
+    {UNIVERSAL_MENU_HTML}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -25451,7 +25551,7 @@ async def ai_patterns(request: Request):
     ]
     
     html = f"""<!DOCTYPE html><html><head><title>📊 AI Patterns</title>{CSS}</head>
-    <body>{MENU_SCRIPT}
+    <body>{UNIVERSAL_MENU_HTML}
     <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📊 AI PATTERN RECOGNITION</h1></div>
     <div style="max-width:1400px;margin:0 auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px">
     """ + "".join([f"""
@@ -25465,6 +25565,6 @@ async def ai_patterns(request: Request):
         </div>
     </div>
     """ for p in patterns]) + """</div>
-    {MENU_SCRIPT}
+    {UNIVERSAL_MENU_HTML}
 </body></html>"""
     return HTMLResponse(html)

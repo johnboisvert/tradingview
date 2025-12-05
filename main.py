@@ -990,8 +990,8 @@ def calculate_potential(score: int, market_cap: float, ath_distance: float) -> s
     except:
         return "N/A"
 
-async def analyze_all_gems() -> List[Dict]:
-    """Analyse toutes les cryptos et retourne top 50 pépites"""
+async def analyze_all_gems() -> Tuple[List[Dict], bool]:
+    """Analyse toutes les cryptos et retourne (top 50 pépites, is_live_data)"""
     
     try:
         print("🚀 Starting analyze_all_gems...")
@@ -1011,7 +1011,7 @@ async def analyze_all_gems() -> List[Dict]:
         if not cryptos:
             print("⚠️ API CoinGecko inaccessible après 3 tentatives")
             print("🔄 Utilisation des 50 pépites fallback")
-            return get_fallback_gems()
+            return (get_fallback_gems(), False)
         
         print(f"✅ CoinGecko API: {len(cryptos)} cryptos chargées!")
         
@@ -1067,11 +1067,11 @@ async def analyze_all_gems() -> List[Dict]:
         
         print(f"✅ {len(result)} pépites trouvées")
         
-        return result if result else get_fallback_gems()
+        return (result, True) if result else (get_fallback_gems(), False)
         
     except Exception as e:
         print(f"❌ Erreur analyze_all_gems: {type(e).__name__}: {str(e)}")
-        return get_fallback_gems()
+        return (get_fallback_gems(), False)
 
 def get_fallback_gems() -> List[Dict]:
     """Retourne 50 pépites de test si l'API ne fonctionne pas"""
@@ -23540,7 +23540,12 @@ async def ai_gem_hunter(request: Request):
         print("="*70)
         
         # Analyser toutes les pépites
-        gems = await analyze_all_gems()
+        gems, is_live = await analyze_all_gems()
+        
+        if is_live:
+            print("✅ DONNÉES EN TEMPS RÉEL - CoinGecko API")
+        else:
+            print("⚠️ DONNÉES FALLBACK - API non disponible")
         
         print(f"✅ Returning {len(gems)} gems to frontend")
         print("="*70 + "\n")
@@ -23553,11 +23558,16 @@ async def ai_gem_hunter(request: Request):
         # Convertir en JSON pour JavaScript
         import json
         gems_json = json.dumps(gems)
+        is_live_json = json.dumps(is_live)
+        from datetime import datetime
+        last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
         
     except Exception as e:
         print(f"❌ Erreur dans route: {str(e)}")
         gems = []
         gems_json = "[]"
+        is_live_json = "false"
+        last_update = "Error"
         total_gems = 0
         avg_score = 0
         total_mcap = 0
@@ -24053,6 +24063,17 @@ async def ai_gem_hunter(request: Request):
                 <div class="stat-value">${total_mcap/1000000:.0f}M</div>
                 <div class="stat-label">Market Cap Total</div>
             </div>
+            <div class="stat-card" id="status-card">
+                <div class="stat-value" id="status-indicator">●</div>
+                <div class="stat-label" id="status-text">Chargement...</div>
+                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px;" id="last-update">--</div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <button id="refresh-btn" class="filter-btn" style="padding: 15px 30px; font-size: 1.1rem; cursor: pointer;">
+                🔄 Actualiser les Données
+            </button>
         </div>
         
         <div class="filters">
@@ -24075,6 +24096,11 @@ async def ai_gem_hunter(request: Request):
             console.log('💎 AI Gem Hunter - Script démarré');
             
             let allGems = {gems_json};
+            let isLiveData = {is_live_json};
+            let lastUpdate = "{last_update}";
+            
+            console.log('📡 Data source:', isLiveData ? 'LIVE (CoinGecko API)' : 'FALLBACK (Test data)');
+            console.log('🕒 Last update:', lastUpdate);
             
             console.log('📦 Gems loaded:', allGems.length);
             

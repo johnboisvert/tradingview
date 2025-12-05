@@ -23575,6 +23575,88 @@ async def ai_gem_hunter(request: Request):
         <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
         
         <style>
+            /* MENU UNIVERSEL STYLES */
+            .universal-menu {{
+                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+                padding: 15px 20px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+                position: sticky;
+                top: 0;
+                z-index: 99999;
+                border-bottom: 2px solid rgba(255,255,255,0.1);
+                width: 100%;
+                margin: 0;
+            }}
+            
+            .universal-menu-container {{
+                max-width: 1600px;
+                margin: 0 auto;
+                display: flex !important;
+                gap: 10px !important;
+                flex-wrap: wrap !important;
+                justify-content: center !important;
+                align-items: center !important;
+            }}
+            
+            .menu-btn {{
+                background: rgba(255,255,255,0.08) !important;
+                color: #e2e8f0 !important;
+                padding: 10px 16px !important;
+                border-radius: 8px !important;
+                text-decoration: none !important;
+                font-size: 14px !important;
+                font-weight: 600 !important;
+                transition: all 0.3s ease !important;
+                border: 1px solid rgba(255,255,255,0.12) !important;
+                white-space: nowrap !important;
+                display: inline-block !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+                cursor: pointer !important;
+            }}
+            
+            .menu-btn:hover {{
+                background: rgba(255,255,255,0.15) !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 4px 12px rgba(96,165,250,0.3) !important;
+            }}
+            
+            .menu-btn.active {{
+                background: rgba(96,165,250,0.25) !important;
+                color: #60a5fa !important;
+                border-color: #60a5fa !important;
+                font-weight: 700 !important;
+                box-shadow: 0 0 20px rgba(96,165,250,0.4) !important;
+            }}
+            
+            .menu-btn.premium {{
+                background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+                color: white !important;
+                border: none !important;
+                font-weight: 700 !important;
+            }}
+            
+            .menu-btn.admin {{
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+                color: white !important;
+                border: none !important;
+                font-weight: 700 !important;
+            }}
+            
+            .menu-btn.account {{
+                background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+                color: white !important;
+                border: none !important;
+                font-weight: 700 !important;
+            }}
+            
+            .menu-btn.logout {{
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+                color: white !important;
+                border: none !important;
+                font-weight: 700 !important;
+            }}
+            
+            /* PAGE STYLES */
             :root {{
                 --bg-dark: #0a0e27;
                 --bg-surface: #151932;
@@ -23601,7 +23683,6 @@ async def ai_gem_hunter(request: Request):
                 overflow-x: hidden;
             }}
             
-            /* Animated Grid Background */
             .grid-bg {{
                 position: fixed;
                 top: 0;
@@ -23622,7 +23703,6 @@ async def ai_gem_hunter(request: Request):
                 100% {{ transform: translateY(50px); }}
             }}
             
-            /* Header */
             .header {{
                 text-align: center;
                 padding: 60px 20px 40px;
@@ -23669,7 +23749,6 @@ async def ai_gem_hunter(request: Request):
                 letter-spacing: 2px;
             }}
             
-            /* Stats Banner */
             .stats-banner {{
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -23709,377 +23788,249 @@ async def ai_gem_hunter(request: Request):
                 letter-spacing: 1px;
             }}
             
-            /* Filters */
             .filters {{
                 display: flex;
+                gap: 15px;
                 justify-content: center;
                 flex-wrap: wrap;
-                gap: 15px;
-                max-width: 1400px;
-                margin: 0 auto 40px;
-                padding: 0 20px;
+                padding: 0 20px 30px;
+                max-width: 900px;
+                margin: 0 auto;
             }}
             
             .filter-btn {{
-                font-family: 'Rajdhani', sans-serif;
-                font-size: 1rem;
-                font-weight: 600;
-                padding: 15px 30px;
+                padding: 12px 24px;
                 background: var(--bg-card);
-                color: var(--text-primary);
-                border: 2px solid transparent;
+                border: 2px solid var(--cyber-accent);
                 border-radius: 10px;
+                color: var(--text-primary);
+                font-weight: 600;
                 cursor: pointer;
                 transition: all 0.3s ease;
-                text-transform: uppercase;
-                letter-spacing: 1px;
+                font-family: 'Rajdhani', sans-serif;
+                font-size: 1rem;
             }}
             
-            .filter-btn:hover {{
-                border-color: var(--cyber-accent);
-                transform: translateY(-3px);
-                box-shadow: 0 5px 20px rgba(0, 255, 136, 0.3);
-            }}
-            
+            .filter-btn:hover,
             .filter-btn.active {{
                 background: var(--cyber-accent);
                 color: var(--bg-dark);
-                border-color: var(--cyber-accent);
-                box-shadow: 0 5px 20px rgba(0, 255, 136, 0.5);
+                box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
             }}
             
-            /* Gems Grid */
-            .gems-container {{
+            .gems-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                gap: 25px;
                 max-width: 1400px;
                 margin: 0 auto;
                 padding: 0 20px 60px;
             }}
             
-            .gems-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-                gap: 25px;
-            }}
-            
-            /* Gem Card */
             .gem-card {{
                 background: var(--bg-card);
                 border: 2px solid rgba(0, 255, 136, 0.3);
-                border-radius: 20px;
+                border-radius: 15px;
                 padding: 25px;
+                transition: all 0.4s ease;
                 position: relative;
-                transition: all 0.3s ease;
-                opacity: 0;
-                animation: fadeInUp 0.6s ease forwards;
+                overflow: hidden;
             }}
             
-            @keyframes fadeInUp {{
-                from {{
-                    opacity: 0;
-                    transform: translateY(30px);
-                }}
-                to {{
-                    opacity: 1;
-                    transform: translateY(0);
-                }}
+            .gem-card::before {{
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: linear-gradient(
+                    45deg,
+                    transparent,
+                    rgba(0, 255, 136, 0.1),
+                    transparent
+                );
+                transform: rotate(45deg);
+                transition: all 0.6s ease;
+            }}
+            
+            .gem-card:hover::before {{
+                left: 100%;
             }}
             
             .gem-card:hover {{
-                transform: translateY(-10px);
+                transform: translateY(-10px) scale(1.02);
                 border-color: var(--cyber-accent);
-                box-shadow: 0 20px 40px rgba(0, 255, 136, 0.3);
-            }}
-            
-            .gem-rank {{
-                position: absolute;
-                top: -15px;
-                left: 20px;
-                background: linear-gradient(135deg, var(--cyber-accent), var(--cyber-accent-2));
-                color: var(--bg-dark);
-                font-family: 'Orbitron', sans-serif;
-                font-weight: 900;
-                font-size: 1rem;
-                padding: 8px 16px;
-                border-radius: 20px;
-                box-shadow: 0 5px 15px rgba(0, 255, 136, 0.5);
-                animation: pulse 2s ease-in-out infinite;
-            }}
-            
-            @keyframes pulse {{
-                0%, 100% {{ transform: scale(1); }}
-                50% {{ transform: scale(1.05); }}
+                box-shadow: 0 10px 40px rgba(0, 255, 136, 0.4);
             }}
             
             .gem-header {{
                 display: flex;
+                justify-content: space-between;
                 align-items: center;
-                gap: 15px;
                 margin-bottom: 20px;
-                margin-top: 15px;
-            }}
-            
-            .gem-icon {{
-                width: 60px;
-                height: 60px;
-                border-radius: 50%;
-                border: 3px solid var(--cyber-accent);
-                box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
-            }}
-            
-            .gem-info {{
-                flex: 1;
             }}
             
             .gem-name {{
                 font-family: 'Orbitron', sans-serif;
-                font-size: 1.3rem;
+                font-size: 1.4rem;
                 font-weight: 700;
                 color: var(--cyber-accent);
-                margin-bottom: 5px;
             }}
             
             .gem-symbol {{
-                font-size: 0.9rem;
+                font-size: 1.1rem;
                 color: var(--text-secondary);
+                background: rgba(0, 255, 136, 0.1);
+                padding: 5px 12px;
+                border-radius: 20px;
                 font-weight: 600;
+            }}
+            
+            .gem-score {{
+                text-align: center;
+                margin: 20px 0;
+                padding: 15px;
+                background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));
+                border-radius: 10px;
+            }}
+            
+            .score-label {{
+                font-size: 0.8rem;
+                color: var(--text-secondary);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }}
+            
+            .score-value {{
+                font-family: 'Orbitron', sans-serif;
+                font-size: 2.5rem;
+                font-weight: 900;
+                color: var(--cyber-accent);
+                margin-top: 5px;
+            }}
+            
+            .gem-details {{
+                display: grid;
+                gap: 10px;
+            }}
+            
+            .gem-detail {{
+                display: flex;
+                justify-content: space-between;
+                padding: 8px 0;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }}
+            
+            .detail-label {{
+                color: var(--text-secondary);
+                font-size: 0.9rem;
+            }}
+            
+            .detail-value {{
+                font-weight: 700;
+                color: var(--text-primary);
             }}
             
             .gem-category {{
                 display: inline-block;
-                padding: 5px 12px;
-                background: rgba(0, 255, 136, 0.2);
-                color: var(--cyber-accent);
-                border-radius: 15px;
-                font-size: 0.8rem;
-                font-weight: 600;
-                margin-top: 5px;
-            }}
-            
-            /* Score Bar */
-            .score-section {{
-                margin: 20px 0;
-            }}
-            
-            .score-label {{
-                font-size: 0.9rem;
-                color: var(--text-secondary);
-                margin-bottom: 8px;
-            }}
-            
-            .score-bar-container {{
-                width: 100%;
-                height: 30px;
-                background: rgba(0, 0, 0, 0.5);
-                border-radius: 15px;
-                overflow: hidden;
-                position: relative;
-            }}
-            
-            .score-bar {{
-                height: 100%;
-                background: linear-gradient(90deg, var(--cyber-accent), var(--cyber-accent-2));
-                border-radius: 15px;
-                transition: width 1s ease;
-                position: relative;
-                box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
-            }}
-            
-            .score-bar::after {{
-                content: '';
-                position: absolute;
-                top: 0;
-                left: -100%;
-                width: 100%;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-                animation: shimmer 2s infinite;
-            }}
-            
-            @keyframes shimmer {{
-                to {{ left: 100%; }}
-            }}
-            
-            .score-value {{
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                font-family: 'Orbitron', sans-serif;
-                font-weight: 700;
-                font-size: 1rem;
-                color: var(--bg-dark);
-                text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-            }}
-            
-            /* Stats Grid */
-            .stats-grid {{
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 15px;
-                margin: 20px 0;
-            }}
-            
-            .stat-item {{
-                background: rgba(0, 0, 0, 0.3);
-                padding: 12px;
-                border-radius: 10px;
-                border: 1px solid rgba(0, 255, 136, 0.2);
-            }}
-            
-            .stat-item-label {{
-                font-size: 0.8rem;
-                color: var(--text-secondary);
-                margin-bottom: 5px;
-            }}
-            
-            .stat-item-value {{
-                font-size: 1.1rem;
-                font-weight: 700;
-                color: var(--cyber-accent);
-            }}
-            
-            .positive {{
-                color: var(--cyber-accent) !important;
-            }}
-            
-            .negative {{
-                color: var(--danger) !important;
-            }}
-            
-            /* Reasons & Risks */
-            .reasons-section, .risks-section {{
-                margin: 20px 0;
-            }}
-            
-            .section-title {{
-                font-size: 0.9rem;
-                font-weight: 700;
-                margin-bottom: 10px;
-                text-transform: uppercase;
-            }}
-            
-            .reasons-list {{
-                list-style: none;
-            }}
-            
-            .reasons-list li {{
-                font-size: 0.9rem;
-                padding: 5px 0;
-                color: var(--text-secondary);
-            }}
-            
-            .potential-badge {{
-                display: inline-block;
-                padding: 10px 20px;
-                background: linear-gradient(135deg, var(--cyber-accent-3), var(--cyber-accent-2));
-                color: white;
-                font-family: 'Orbitron', sans-serif;
-                font-weight: 700;
-                border-radius: 20px;
                 margin-top: 15px;
-                box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
-            }}
-            
-            /* Disclaimer */
-            .disclaimer {{
-                max-width: 1400px;
-                margin: 40px auto;
-                padding: 30px;
-                background: rgba(255, 51, 102, 0.1);
-                border: 2px solid var(--danger);
+                padding: 8px 16px;
+                background: rgba(255, 0, 255, 0.2);
+                border: 1px solid var(--cyber-accent-3);
                 border-radius: 20px;
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: var(--cyber-accent-3);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }}
+            
+            .loading {{
                 text-align: center;
+                padding: 100px 20px;
             }}
             
-            .disclaimer h3 {{
-                color: var(--danger);
-                margin-bottom: 15px;
-                font-family: 'Orbitron', sans-serif;
+            .spinner {{
+                width: 80px;
+                height: 80px;
+                border: 8px solid rgba(0, 255, 136, 0.1);
+                border-top: 8px solid var(--cyber-accent);
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 30px;
             }}
             
-            .disclaimer-list {{
-                list-style: none;
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 20px;
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
             }}
             
-            .disclaimer-list li {{
-                font-size: 0.9rem;
+            .loading-text {{
+                font-size: 1.5rem;
+                color: var(--text-secondary);
+                font-weight: 600;
             }}
             
-            /* Responsive */
             @media (max-width: 768px) {{
-                .gems-grid {{
-                    grid-template-columns: 1fr;
+                .main-title {{
+                    font-size: 2rem;
+                    letter-spacing: 2px;
                 }}
                 
                 .stats-banner {{
                     grid-template-columns: 1fr;
                 }}
                 
-                .filters {{
-                    justify-content: center;
+                .gems-grid {{
+                    grid-template-columns: 1fr;
                 }}
-            }}
-            
-            /* Loading State */
-            .loading {{
-                text-align: center;
-                padding: 60px 20px;
-                font-size: 1.5rem;
-                color: var(--cyber-accent);
-            }}
-            
-            .no-results {{
-                text-align: center;
-                padding: 60px 20px;
-                font-size: 1.5rem;
-                color: var(--text-secondary);
             }}
         </style>
     </head>
     <body>
         <div class="grid-bg"></div>
         
-        <!-- MENU UNIVERSEL -->
-        <nav class="universal-top-nav"><div class="universal-nav-container">
-<a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-<a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-<a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-<a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-<a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-<a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-<a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-<a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-<a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-<a href="/trades" class="universal-nav-btn">📈 Trades</a>
-<a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-<a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-<a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-<a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-<a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-<a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-<a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-<a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-<a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-<a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-<a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-<a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-<a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-<a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-<a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-<a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
-<a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-<a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
-<a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-<a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-<a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-<a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-<a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-<a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-</div></nav>
+        <!-- MENU UNIVERSEL INTÉGRÉ -->
+        <nav class="universal-menu">
+            <div class="universal-menu-container">
+                <a href="/dashboard" class="menu-btn">🏠 Accueil</a>
+                <a href="/fear-greed" class="menu-btn">😨 Fear&Greed</a>
+                <a href="/dominance" class="menu-btn">👑 Dominance</a>
+                <a href="/altcoin-season" class="menu-btn">⭐ Altcoin</a>
+                <a href="/heatmap" class="menu-btn">🔥 Heatmap</a>
+                <a href="/strategie" class="menu-btn">📚 Stratégie</a>
+                <a href="/spot-trading" class="menu-btn">💎 Spot</a>
+                <a href="/calculatrice" class="menu-btn">🧮 Calc</a>
+                <a href="/nouvelles" class="menu-btn">📰 News</a>
+                <a href="/trades" class="menu-btn">📈 Trades</a>
+                <a href="/risk-management" class="menu-btn">⚠️ Risk</a>
+                <a href="/watchlist" class="menu-btn">👁️ Watch</a>
+                <a href="/ai-assistant" class="menu-btn">🤖 AI</a>
+                <a href="/prediction-ia" class="menu-btn">🔮 Predict</a>
+                <a href="/ai-opportunity-scanner" class="menu-btn">🔍 Scanner</a>
+                <a href="/ai-market-regime" class="menu-btn">🌊 Regime</a>
+                <a href="/ai-whale-watcher" class="menu-btn">🐋 Whale</a>
+                <a href="/stats-dashboard" class="menu-btn">📊 Stats</a>
+                <a href="/market-simulation" class="menu-btn">🎮 Sim</a>
+                <a href="/success-stories" class="menu-btn">⭐ Success</a>
+                <a href="/onchain-metrics" class="menu-btn">⛓️ OnChain</a>
+                <a href="/testimonials-widget" class="menu-btn">💬 Témoignages</a>
+                <a href="/convertisseur" class="menu-btn">💱 Convert</a>
+                <a href="/calendrier" class="menu-btn">📅 Cal</a>
+                <a href="/bullrun-phase" class="menu-btn">🚀 Bullrun</a>
+                <a href="/ai-gem-hunter" class="menu-btn active">💎 Gem Hunter</a>
+                <a href="/graphiques" class="menu-btn">📊 Charts</a>
+                <a href="/backtesting" class="menu-btn">⚙️ Backtest</a>
+                <a href="/generate-pdf-report" class="menu-btn">📄 PDF</a>
+                <a href="/api-keys" class="menu-btn">🔑 API</a>
+                <a href="/telegram-test" class="menu-btn">📱 Telegram</a>
+                <a href="/pricing-complete" class="menu-btn premium">💎 Abonnements</a>
+                <a href="/admin-dashboard" class="menu-btn admin">🔧 Admin</a>
+                <a href="/mon-compte" class="menu-btn account">👤 Compte</a>
+                <a href="/logout" class="menu-btn logout">🚪 Déconnexion</a>
+            </div>
+        </nav>
         
         <div class="header">
             <h1 class="main-title">
@@ -24091,203 +24042,135 @@ async def ai_gem_hunter(request: Request):
         
         <div class="stats-banner">
             <div class="stat-card">
-                <div class="stat-value" id="totalGems">{total_gems}</div>
+                <div class="stat-value">{total_gems}</div>
                 <div class="stat-label">Pépites Actives</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" id="avgScore">{avg_score:.1f}</div>
+                <div class="stat-value">{avg_score:.1f}</div>
                 <div class="stat-label">Score Moyen</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value" id="totalMcap">${total_mcap/1_000_000:.0f}M</div>
+                <div class="stat-value">${total_mcap/1000000:.0f}M</div>
                 <div class="stat-label">Market Cap Total</div>
             </div>
         </div>
         
         <div class="filters">
-            <button class="filter-btn active" data-filter="all">🌐 Toutes</button>
-            <button class="filter-btn" data-filter="DeFi">💰 DeFi</button>
-            <button class="filter-btn" data-filter="Gaming/Metaverse">🎮 Gaming</button>
-            <button class="filter-btn" data-filter="AI/Data">🤖 AI</button>
-            <button class="filter-btn" data-filter="Infrastructure">⚡ Infrastructure</button>
-            <button class="filter-btn" data-filter="top10">🔥 Top 10</button>
+            <button class="filter-btn active" data-filter="all">🔥 TOUTES</button>
+            <button class="filter-btn" data-filter="DeFi">🔥 DEFI</button>
+            <button class="filter-btn" data-filter="Gaming">🎮 GAMING</button>
+            <button class="filter-btn" data-filter="AI">🤖 AI</button>
+            <button class="filter-btn" data-filter="Infrastructure">⚡ INFRASTRUCTURE</button>
+            <button class="filter-btn" data-filter="top10">🏆 TOP 10</button>
         </div>
         
-        <div class="gems-container">
-            <div class="gems-grid" id="gemsGrid">
-                <!-- Cards générées par JavaScript -->
-            </div>
-            
-            <div id="loading" class="loading">
-                🔄 Chargement des pépites...
-            </div>
-            
-            <div id="noResults" class="no-results" style="display: none;">
-                Aucune pépite trouvée pour ce filtre
-            </div>
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <div class="loading-text">Analyse des pépites en cours...</div>
         </div>
         
-        <div class="disclaimer">
-            <h3>⚠️ AVERTISSEMENT IMPORTANT</h3>
-            <ul class="disclaimer-list">
-                <li>⚠️ Ceci n'est PAS un conseil financier</li>
-                <li>⚠️ À titre éducatif uniquement</li>
-                <li>⚠️ DYOR (Do Your Own Research)</li>
-                <li>⚠️ Volatilité élevée - Risque de perte totale</li>
-                <li>⚠️ N'investissez que ce que vous pouvez vous permettre de perdre</li>
-            </ul>
-        </div>
+        <div id="gems-grid" class="gems-grid" style="display: none;"></div>
         
         <script>
             console.log('💎 AI Gem Hunter - Script démarré');
             
-            // Données des pépites (injectées par le backend)
             let allGems = {gems_json};
+            
             console.log('📦 Gems loaded:', allGems.length);
             
-            let currentFilter = 'all';
-            
-            // Initialisation
-            document.addEventListener('DOMContentLoaded', function() {{
-                console.log('✅ DOM loaded');
-                renderGems(allGems);
-                setupFilters();
-                updateStats(allGems);
-            }});
+            function formatNumber(num) {{
+                if (num >= 1000000000) return '$' + (num/1000000000).toFixed(2) + 'B';
+                if (num >= 1000000) return '$' + (num/1000000).toFixed(1) + 'M';
+                if (num >= 1000) return '$' + (num/1000).toFixed(1) + 'K';
+                return '$' + num.toFixed(2);
+            }}
             
             function renderGems(gems) {{
-                console.log('🎨 Rendering', gems.length, 'gems');
-                
-                const grid = document.getElementById('gemsGrid');
-                const loading = document.getElementById('loading');
-                const noResults = document.getElementById('noResults');
-                
-                // Cacher loading
-                loading.style.display = 'none';
+                const grid = document.getElementById('gems-grid');
                 
                 if (gems.length === 0) {{
-                    grid.innerHTML = '';
-                    noResults.style.display = 'block';
+                    grid.innerHTML = '<div class="loading-text">Aucune pépite trouvée</div>';
                     return;
                 }}
                 
-                noResults.style.display = 'none';
+                console.log('🎨 Rendering', gems.length, 'gems');
                 
                 grid.innerHTML = gems.map((gem, index) => `
-                    <div class="gem-card" style="animation-delay: ${{index * 0.05}}s">
-                        <div class="gem-rank">#${{index + 1}}</div>
-                        
+                    <div class="gem-card" data-category="${{gem.category}}">
                         <div class="gem-header">
-                            <img src="${{gem.image || 'https://via.placeholder.com/60'}}" alt="${{gem.symbol}}" class="gem-icon">
-                            <div class="gem-info">
-                                <div class="gem-name">${{gem.name}}</div>
-                                <div class="gem-symbol">${{gem.symbol}}</div>
-                                <span class="gem-category">${{gem.category}}</span>
+                            <div class="gem-name">${{gem.name}}</div>
+                            <div class="gem-symbol">${{gem.symbol}}</div>
+                        </div>
+                        
+                        <div class="gem-score">
+                            <div class="score-label">Potentiel Score</div>
+                            <div class="score-value">${{gem.score}}</div>
+                        </div>
+                        
+                        <div class="gem-details">
+                            <div class="gem-detail">
+                                <span class="detail-label">Prix</span>
+                                <span class="detail-value">${{gem.price}}</span>
+                            </div>
+                            <div class="gem-detail">
+                                <span class="detail-label">Market Cap</span>
+                                <span class="detail-value">${{formatNumber(gem.market_cap)}}</span>
+                            </div>
+                            <div class="gem-detail">
+                                <span class="detail-label">Volume 24h</span>
+                                <span class="detail-value">${{formatNumber(gem.volume_24h)}}</span>
+                            </div>
+                            <div class="gem-detail">
+                                <span class="detail-label">Change 24h</span>
+                                <span class="detail-value" style="color: ${{gem.price_change_24h >= 0 ? '#00ff88' : '#ff3366'}}">${{gem.price_change_24h >= 0 ? '+' : ''}}${{gem.price_change_24h}}%</span>
                             </div>
                         </div>
                         
-                        <div class="score-section">
-                            <div class="score-label">Score IA</div>
-                            <div class="score-bar-container">
-                                <div class="score-bar" style="width: ${{gem.score}}%">
-                                    <div class="score-value">${{gem.score}}/100</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="stats-grid">
-                            <div class="stat-item">
-                                <div class="stat-item-label">Prix</div>
-                                <div class="stat-item-value">$${{gem.price < 1 ? gem.price.toFixed(6) : gem.price.toFixed(2)}}</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">Market Cap</div>
-                                <div class="stat-item-value">$${{(gem.market_cap / 1000000).toFixed(1)}}M</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">24h</div>
-                                <div class="stat-item-value ${{gem.price_change_24h >= 0 ? 'positive' : 'negative'}}">
-                                    ${{gem.price_change_24h >= 0 ? '+' : ''}}${{gem.price_change_24h.toFixed(2)}}%
-                                </div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-item-label">7j</div>
-                                <div class="stat-item-value ${{gem.price_change_7d >= 0 ? 'positive' : 'negative'}}">
-                                    ${{gem.price_change_7d >= 0 ? '+' : ''}}${{gem.price_change_7d.toFixed(2)}}%
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="reasons-section">
-                            <div class="section-title">✅ Points Forts</div>
-                            <ul class="reasons-list">
-                                ${{gem.reasons.map(r => `<li>${{r}}</li>`).join('')}}
-                            </ul>
-                        </div>
-                        
-                        ${{gem.risks.length > 0 ? `
-                        <div class="risks-section">
-                            <div class="section-title" style="color: var(--danger);">⚠️ Risques</div>
-                            <ul class="reasons-list">
-                                ${{gem.risks.map(r => `<li>${{r}}</li>`).join('')}}
-                            </ul>
-                        </div>
-                        ` : ''}}
-                        
-                        <div class="potential-badge">${{gem.potential}}</div>
+                        <div class="gem-category">${{gem.category}}</div>
                     </div>
                 `).join('');
                 
                 console.log('✅ Render complete');
             }}
             
-            function setupFilters() {{
-                const filterBtns = document.querySelectorAll('.filter-btn');
+            function filterGems(category) {{
+                console.log('🔍 Filtering:', category);
                 
-                filterBtns.forEach(btn => {{
-                    btn.addEventListener('click', () => {{
-                        // Update active button
-                        filterBtns.forEach(b => b.classList.remove('active'));
-                        btn.classList.add('active');
-                        
-                        // Get filter
-                        currentFilter = btn.dataset.filter;
-                        console.log('🔍 Filter:', currentFilter);
-                        
-                        // Filter gems
-                        let filtered = allGems;
-                        
-                        if (currentFilter === 'top10') {{
-                            filtered = allGems.slice(0, 10);
-                        }} else if (currentFilter !== 'all') {{
-                            filtered = allGems.filter(g => g.category === currentFilter);
-                        }}
-                        
-                        // Render
-                        renderGems(filtered);
-                        updateStats(filtered);
-                    }});
+                let filtered;
+                if (category === 'all') {{
+                    filtered = allGems;
+                }} else if (category === 'top10') {{
+                    filtered = allGems.slice(0, 10);
+                }} else {{
+                    filtered = allGems.filter(g => g.category === category);
+                }}
+                
+                console.log('✅ Filtered:', filtered.length, 'gems');
+                renderGems(filtered);
+            }}
+            
+            // Event listeners pour les filtres
+            document.querySelectorAll('.filter-btn').forEach(btn => {{
+                btn.addEventListener('click', () => {{
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    filterGems(btn.dataset.filter);
                 }});
-            }}
+            }});
             
-            function updateStats(gems) {{
-                const totalGems = gems.length;
-                const avgScore = totalGems > 0 ? gems.reduce((sum, g) => sum + g.score, 0) / totalGems : 0;
-                const totalMcap = totalGems > 0 ? gems.reduce((sum, g) => sum + g.market_cap, 0) : 0;
-                
-                document.getElementById('totalGems').textContent = totalGems;
-                document.getElementById('avgScore').textContent = avgScore.toFixed(1);
-                document.getElementById('totalMcap').textContent = `$${{(totalMcap / 1000000).toFixed(0)}}M`;
-            }}
-            
-            console.log('✅ AI Gem Hunter initialized');
+            // Charger au démarrage
+            document.addEventListener('DOMContentLoaded', () => {{
+                console.log('✅ DOM loaded');
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('gems-grid').style.display = 'grid';
+                renderGems(allGems);
+            }});
         </script>
     </body>
     </html>
     """
     
     return HTMLResponse(content=html)
-
 
 @app.get("/api/gem-hunter/refresh")
 async def refresh_gems():

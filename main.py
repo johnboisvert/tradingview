@@ -1870,8 +1870,7 @@ async def login_page(request: Request, error: str = None):
     if error:
         error_msg = '<div class="alert alert-error">❌ Identifiants incorrects</div>'
     
-    return HTMLResponse(f"""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -2064,8 +2063,7 @@ async def admin_panel(username: str = Depends(require_admin)):
         </tr>
         """
     
-    return HTMLResponse(f"""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -3722,8 +3720,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     
     username = user.get('username', 'Utilisateur')
     
-    return HTMLResponse(f"""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
 <body>
     <div style="padding: 40px; text-align: center;">
@@ -8398,8 +8395,7 @@ def get_fallback_rates():
 @app.get("/convertisseur", response_class=HTMLResponse)
 async def convertisseur_page():
     """Page du convertisseur de devises et crypto"""
-    return HTMLResponse(f"""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -16350,8 +16346,7 @@ async def coinbase_checkout(request: Request):
 @app.get("/api/payment-success")
 async def payment_success(request: Request, plan: str = "monthly"):
     """Page de succès après paiement Stripe"""
-    return HTMLResponse(f"""
-SIDEBAR + 
+    return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -16452,8 +16447,7 @@ SIDEBAR +
 @app.get("/api/payment-cancel")
 async def payment_cancel(request: Request, plan: str = "monthly"):
     """Page d'annulation de paiement"""
-    return HTMLResponse(f"""
-SIDEBAR + 
+    return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -17930,8 +17924,7 @@ SIDEBAR + <!DOCTYPE html>
 
 @app.get("/risk-management", response_class=HTMLResponse)
 async def risk_management_page():
-    return HTMLResponse(f"""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
 <body>
 <div class="container">
@@ -18104,8 +18097,7 @@ loadSettings();
 # ============= PAGE WATCHLIST & ALERTES =============
 @app.get("/watchlist", response_class=HTMLResponse)
 async def watchlist_page():
-    return HTMLResponse(f"""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
 <body>
 <div class="container">
@@ -18245,8 +18237,7 @@ loadWatchlist();
 # ============= PAGE AI TRADING ASSISTANT =============
 @app.get("/ai-assistant", response_class=HTMLResponse)
 async def ai_assistant_page():
-    return HTMLResponse(f"""
-SIDEBAR + <!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
 <body>
 <div class="container">
@@ -19814,8 +19805,7 @@ async def admin_dashboard(request: Request):
         </tr>
         """
     
-    return HTMLResponse(f"""
-SIDEBAR + 
+    return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -20978,8 +20968,7 @@ async def fear_greed_history():
 @app.get("/fear-greed-chart", response_class=HTMLResponse)
 async def fear_greed_chart():
     """Page graphique Fear & Greed 12 mois"""
-    return HTMLResponse(f"""
-SIDEBAR + 
+    return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -21168,8 +21157,7 @@ async def live_stats():
 @app.get("/backtesting", response_class=HTMLResponse)
 async def backtesting_page(request: Request):
     """Page de backtesting professionnelle avec graphiques et statistiques avancées"""
-    return HTMLResponse(f"""
-SIDEBAR + 
+    return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -22551,8 +22539,7 @@ async def api_keys_page(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Non authentifié")
     
-    return HTMLResponse(f"""
-SIDEBAR + 
+    return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -22683,8 +22670,7 @@ async def admin_update_plan_features_page(request: Request):
     for plan_name, features_json in plans:
         plans_html += f"<h3>Plan: {plan_name}</h3><textarea name='features_{plan_name}' rows='5' style='width:100%'>{features_json}</textarea><br><br>"
 
-    return HTMLResponse(f"""
-SIDEBAR + 
+    return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>

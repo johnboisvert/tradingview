@@ -661,6 +661,104 @@ except Exception as e:
 # FIN DU SYSTÈME SQL INTÉGRÉ
 # ============================================================================
 
+
+# ============================================================================
+# 🗺️ MENU UNIVERSEL GLOBAL - S'INJECTE SUR TOUTES LES PAGES
+# ============================================================================
+
+MENU_SCRIPT = """
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.querySelector('.universal-nav-injected')) return;
+    
+    const menuCSS = `
+        .universal-nav-injected {
+            background: linear-gradient(135deg, rgb(30,41,59) 0%, rgb(15,23,42) 100%);
+            padding: 15px 20px;
+            min-height: 120px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.5);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 999999;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .universal-nav-container-injected {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .universal-nav-btn-injected {
+            background: rgba(255,255,255,0.05);
+            color: rgb(226,232,240);
+            padding: 8px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border: 1px solid rgba(255,255,255,0.08);
+            white-space: nowrap;
+        }
+        .universal-nav-btn-injected:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(96,165,250,0.4);
+        }
+        .universal-nav-btn-injected.ai-new {
+            background: linear-gradient(135deg, rgb(6,182,212) 0%, rgb(8,145,178) 100%);
+            border: none;
+            font-weight: 700;
+        }
+        .universal-nav-btn-injected.premium {
+            background: linear-gradient(135deg, rgb(99,102,241) 0%, rgb(139,92,246) 100%);
+            border: none;
+        }
+    `;
+    
+    const style = document.createElement('style');
+    style.textContent = menuCSS;
+    document.head.appendChild(style);
+    
+    const menuHTML = `
+        <nav class="universal-nav-injected">
+            <div class="universal-nav-container-injected">
+                <a href="/dashboard" class="universal-nav-btn-injected">🏠 Accueil</a>
+                <a href="/fear-greed" class="universal-nav-btn-injected">😨 Fear&Greed</a>
+                <a href="/heatmap" class="universal-nav-btn-injected">🔥 Heatmap</a>
+                <a href="/trades" class="universal-nav-btn-injected">📈 Trades</a>
+                <br>
+                <a href="/ai-gem-hunter" class="universal-nav-btn-injected ai-new">💎 Gem Hunter</a>
+                <a href="/ai-signals" class="universal-nav-btn-injected ai-new">🎯 Signaux</a>
+                <a href="/ai-news" class="universal-nav-btn-injected ai-new">📰 News</a>
+                <a href="/ai-predictor" class="universal-nav-btn-injected ai-new">🔮 Predict</a>
+                <a href="/ai-whale" class="universal-nav-btn-injected ai-new">🐋 Whale</a>
+                <a href="/ai-patterns" class="universal-nav-btn-injected ai-new">📊 Patterns</a>
+                <a href="/ai-sentiment" class="universal-nav-btn-injected ai-new">🎭 Sentiment</a>
+                <a href="/ai-sizer" class="universal-nav-btn-injected ai-new">📏 Sizer</a>
+                <a href="/ai-exit" class="universal-nav-btn-injected ai-new">🚪 Exit</a>
+                <a href="/ai-timeframe" class="universal-nav-btn-injected ai-new">📈 Multi-TF</a>
+                <a href="/ai-liquidity" class="universal-nav-btn-injected ai-new">🌊 Liquidité</a>
+                <a href="/ai-alerts" class="universal-nav-btn-injected ai-new">🎯 Alertes</a>
+                <br>
+                <a href="/pricing-complete" class="universal-nav-btn-injected premium">💎 Abonnements</a>
+                <a href="/admin-dashboard" class="universal-nav-btn-injected">🔧 Admin</a>
+                <a href="/mon-compte" class="universal-nav-btn-injected">👤 Compte</a>
+            </div>
+        </nav>
+    `;
+    
+    document.body.insertAdjacentHTML('afterbegin', menuHTML);
+    document.body.style.paddingTop = '140px';
+});
+</script>
+"""
+
+# ============================================================================
+
 app = FastAPI()
 
 # ============================================================================
@@ -1372,14 +1470,13 @@ def get_fallback_gems() -> List[Dict]:
     print(f"✅ {len(fallback_sorted)} pépites fallback triées par score")
     return fallback_sorted
 
+
 # ============================================================================
-# 🔐 FONCTION DE VÉRIFICATION DES PERMISSIONS
+# 🔐 PERMISSION SYSTEM
 # ============================================================================
 
 def check_permission(user_plan: str, feature: str) -> bool:
-    """Vérifie si un plan a accès à une feature IA"""
-    
-    # Mapping des features par plan
+    """Vérifie permissions par plan"""
     permissions = {
         "free": ["ai_gem_hunter_basic"],
         "1_month": ["ai_signals", "ai_news", "ai_sizer"],
@@ -1387,22 +1484,14 @@ def check_permission(user_plan: str, feature: str) -> bool:
         "6_months": ["ai_sentiment", "ai_exit", "ai_timeframe", "ai_liquidity"],
         "1_year": ["ai_alerts"]
     }
-    
-    # Héritage: chaque plan hérite des plans inférieurs
     hierarchy = ["free", "1_month", "3_months", "6_months", "1_year"]
-    
-    # Trouver l'index du plan utilisateur
     try:
         user_plan_index = hierarchy.index(user_plan)
     except ValueError:
         return False
-    
-    # Vérifier si la feature est accessible
     for i in range(user_plan_index + 1):
-        plan_name = hierarchy[i]
-        if feature in permissions.get(plan_name, []):
+        if feature in permissions.get(hierarchy[i], []):
             return True
-    
     return False
 
 # ============================================================================
@@ -20751,7 +20840,7 @@ async def admin_dashboard(request: Request):
 
 @app.get("/admin/pricing", response_class=HTMLResponse)
 async def admin_pricing_view(request: Request):
-    """Page de gestion des plans - ISOLÉE"""
+    """Page de gestion des plans - AVEC 44 ROUTES"""
     session_token = request.cookies.get("session_token")
     if not session_token:
         return RedirectResponse("/login", status_code=303)
@@ -20769,8 +20858,7 @@ async def admin_pricing_view(request: Request):
     elif error:
         alert = '<div class="alert error">❌ Erreur lors de la mise à jour</div>'
     
-    # TOUTES les 33 routes disponibles
-    all_routes_html = ""
+    # TOUTES les 44 routes disponibles (33 + 11 IA)
     routes_list = [
         '/dashboard', '/fear-greed', '/dominance', '/altcoin-season', '/heatmap',
         '/strategie', '/spot-trading', '/calculatrice', '/nouvelles', '/trades',
@@ -20779,20 +20867,49 @@ async def admin_pricing_view(request: Request):
         '/stats-dashboard', '/market-simulation', '/success-stories',
         '/convertisseur', '/calendrier', '/bullrun-phase', '/graphiques',
         '/generate-pdf-report', '/backtesting', '/onchain-metrics',
-        '/api-keys', '/testimonials-widget',
-        '/telegram-test', '/pricing-complete', '/admin-dashboard', '/mon-compte'
+        '/api-keys', '/testimonials-widget', '/telegram-test', 
+        '/pricing-complete', '/admin-dashboard', '/mon-compte',
+        # 11 ROUTES IA
+        '/ai-gem-hunter', '/ai-signals', '/ai-news', '/ai-predictor',
+        '/ai-whale', '/ai-patterns', '/ai-sentiment', '/ai-sizer',
+        '/ai-exit', '/ai-timeframe', '/ai-liquidity', '/ai-alerts'
     ]
+    
+    # Fonction helper pour générer checkboxes
+    def generate_checkboxes(checked_routes):
+        html = ""
+        for route in routes_list:
+            checked = "checked" if route in checked_routes else ""
+            html += f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {checked}> {route}</label>'
+        return html
+    
+    # Routes par plan
+    free_routes = ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap",
+                   "/nouvelles","/convertisseur","/calendrier","/ai-gem-hunter"]
+    
+    month1_routes = ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie",
+                     "/spot-trading","/calculatrice","/trades","/risk-management","/watchlist",
+                     "/ai-signals","/ai-news","/ai-sizer"]
+    
+    months3_routes = ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard",
+                      "/market-simulation","/success-stories","/bullrun-phase","/graphiques",
+                      "/backtesting","/ai-predictor","/ai-whale","/ai-patterns"]
+    
+    months6_routes = ["/onchain-metrics","/api-keys","/testimonials-widget","/telegram-test",
+                      "/ai-sentiment","/ai-exit","/ai-timeframe","/ai-liquidity"]
+    
+    year1_routes = ["/generate-pdf-report","/ai-alerts"]
     
     return HTMLResponse(f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Pricing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Pricing - Trading Dashboard Pro</title>
     <style>
         * {{ margin:0; padding:0; box-sizing:border-box; }}
         body {{ font-family:'Segoe UI',sans-serif; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; }}
         
-        /* MENU ISOLÉ */
         .top-menu {{
             background:#1a1a2e;
             padding:15px 20px;
@@ -20843,9 +20960,9 @@ async def admin_pricing_view(request: Request):
         
         .routes-section {{ background:#f8f9fa; padding:20px; border-radius:10px; margin-top:20px; }}
         .routes-section h4 {{ color:#333; margin-bottom:15px; }}
-        .routes-grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:15px; }}
-        .route-checkbox {{ display:flex; align-items:center; background:white; padding:10px; border-radius:6px; border:2px solid #e0e0e0; }}
-        .route-checkbox input {{ margin-right:10px; width:18px; height:18px; }}
+        .routes-grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; margin-top:15px; max-height:400px; overflow-y:auto; }}
+        .route-checkbox {{ display:flex; align-items:center; background:white; padding:10px; border-radius:6px; border:2px solid #e0e0e0; cursor:pointer; }}
+        .route-checkbox input {{ margin-right:10px; width:18px; height:18px; cursor:pointer; }}
         .route-checkbox:has(input:checked) {{ background:#e8f0ff; border-color:#667eea; }}
         
         .save-btn {{ background:#10b981; color:white; padding:12px 30px; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; margin-top:15px; }}
@@ -20871,11 +20988,12 @@ async def admin_pricing_view(request: Request):
     <div class="container">
         <div class="header">
             <h1>💎 Gestion des Plans d'Abonnement</h1>
-            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (33 routes disponibles)</p>
+            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (44 routes disponibles)</p>
         </div>
         
         {alert}
         
+        <!-- FREE PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="free">
             <div class="plan-header">
@@ -20897,14 +21015,15 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes Disponibles (cochez celles accessibles en Free)</h4>
+                <h4>🔐 Routes FREE (9 routes dont 1 IA)</h4>
                 <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap","/nouvelles","/convertisseur","/calendrier"] else ""}> {route}</label>' for route in routes_list])}
+                    {generate_checkboxes(free_routes)}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Free</button>
         </form>
         
+        <!-- 1 MONTH PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="1_month">
             <div class="plan-header">
@@ -20926,14 +21045,15 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (+ hérite de Free)</h4>
+                <h4>🔐 Routes 1 MOIS (12 routes dont 3 IA + hérite FREE)</h4>
                 <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
+                    {generate_checkboxes(month1_routes)}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Premium</button>
         </form>
         
+        <!-- 3 MONTHS PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="3_months">
             <div class="plan-header">
@@ -20955,18 +21075,19 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (hérite de Premium)</h4>
+                <h4>🔐 Routes 3 MOIS (11 routes dont 3 IA + hérite 1 MOIS)</h4>
                 <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
+                    {generate_checkboxes(months3_routes)}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Advanced</button>
         </form>
         
+        <!-- 6 MONTHS PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="6_months">
             <div class="plan-header">
-                <div class="plan-title">⭐ Pro 6 mois</div>
+                <div class="plan-title">💎 Pro 6 mois</div>
                 <div class="plan-id">ID: 6_months</div>
             </div>
             <div class="editor-row">
@@ -20984,18 +21105,19 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (+ hérite de Premium)</h4>
+                <h4>🔐 Routes 6 MOIS (8 routes dont 4 IA + hérite 3 MOIS)</h4>
                 <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard","/market-simulation","/success-stories"] else ""}> {route}</label>' for route in routes_list])}
+                    {generate_checkboxes(months6_routes)}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Pro</button>
         </form>
         
+        <!-- 1 YEAR PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="1_year">
             <div class="plan-header">
-                <div class="plan-title">👑 Elite 1 an</div>
+                <div class="plan-title">💎 Elite 1 an</div>
                 <div class="plan-id">ID: 1_year</div>
             </div>
             <div class="editor-row">
@@ -21013,43 +21135,29 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (+ hérite de Pro = TOUT)</h4>
+                <h4>🔐 Routes 1 AN (2 routes dont 1 IA EXCLUSIF + hérite 6 MOIS)</h4>
                 <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/graphiques","/bullrun-phase","/telegram-test"] else ""}> {route}</label>' for route in routes_list])}
+                    {generate_checkboxes(year1_routes)}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Elite</button>
         </form>
         
         <div class="info">
-            <h4>ℹ️ Informations</h4>
+            <h4>ℹ️ Informations Importantes</h4>
             <ul>
-                <li><strong>29 routes totales</strong> disponibles dans le système</li>
-                <li>Chaque plan hérite des permissions des plans inférieurs</li>
-                <li>Cochez/décochez les routes pour chaque plan</li>
-                <li>Les modifications sont sauvegardées dans /data/pricing_config.json</li>
+                <li><strong>Héritage:</strong> Chaque plan hérite des routes du plan inférieur</li>
+                <li><strong>FREE:</strong> 9 routes dont 1 IA (Gem Hunter basic)</li>
+                <li><strong>1 MOIS:</strong> +12 routes dont 3 IA (Signaux, News, Position Sizer)</li>
+                <li><strong>3 MOIS:</strong> +11 routes dont 3 IA (Prédictions, Baleines, Patterns)</li>
+                <li><strong>6 MOIS:</strong> +8 routes dont 4 IA (Sentiment, Exit, Multi-TF, Liquidité)</li>
+                <li><strong>1 AN:</strong> +2 routes dont 1 IA EXCLUSIF (Alertes Intelligentes)</li>
+                <li><strong>Total:</strong> 44 routes disponibles dont 11 features IA</li>
             </ul>
         </div>
-        
-        <a href="/admin-dashboard" style="display:inline-block; margin-top:30px; padding:12px 24px; background:white; color:#667eea; text-decoration:none; border-radius:8px; font-weight:600;">← Retour</a>
     </div>
-    
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {{
-        const existing = document.querySelector('.universal-nav-injected');
-        if (existing) existing.remove();
-        
-        const menuHTML = '<style>.universal-nav-injected{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%)!important;padding:15px 20px!important;min-height:120px!important;box-shadow:0 2px 15px rgba(0,0,0,0.5)!important;position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:999999999!important;border-bottom:1px solid rgba(255,255,255,0.05)!important;display:block!important;visibility:visible!important}.universal-nav-container-injected{max-width:1600px!important;margin:0 auto!important;display:flex!important;gap:8px!important;align-items:center!important;flex-wrap:wrap!important;justify-content:center!important}.universal-nav-btn-injected{background:rgba(255,255,255,0.05)!important;color:#e2e8f0!important;padding:8px 14px!important;border-radius:6px!important;text-decoration:none!important;font-size:12px!important;font-weight:500!important;transition:all 0.2s!important;border:1px solid rgba(255,255,255,0.08)!important;white-space:nowrap!important}.universal-nav-btn-injected:hover{background:rgba(255,255,255,0.12)!important;border-color:rgba(96,165,250,0.4)!important;color:white!important}.universal-nav-btn-injected.premium{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)!important;border:none!important}.universal-nav-btn-injected.admin{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)!important;border:none!important}.universal-nav-btn-injected.account{background:linear-gradient(135deg,#10b981 0%,#059669 100%)!important;border:none!important}.universal-nav-btn-injected.logout{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%)!important;border:none!important}.universal-nav-btn-injected.ai-new{background:linear-gradient(135deg,#06b6d4 0%,#0891b2 100%)!important;border:none!important;font-weight:700!important}</style><nav class="universal-nav-injected"><div class="universal-nav-container-injected"><a href="/dashboard" class="universal-nav-btn-injected">🏠 Accueil</a><a href="/fear-greed" class="universal-nav-btn-injected">😨 Fear&Greed</a><a href="/dominance" class="universal-nav-btn-injected">👑 Dominance</a><a href="/altcoin-season" class="universal-nav-btn-injected">⭐ Altcoin</a><a href="/heatmap" class="universal-nav-btn-injected">🔥 Heatmap</a><a href="/strategie" class="universal-nav-btn-injected">📚 Stratégie</a><a href="/spot-trading" class="universal-nav-btn-injected">💎 Spot</a><a href="/calculatrice" class="universal-nav-btn-injected">🧮 Calc</a><a href="/nouvelles" class="universal-nav-btn-injected">📰 News</a><a href="/trades" class="universal-nav-btn-injected">📈 Trades</a><a href="/risk-management" class="universal-nav-btn-injected">⚠️ Risk</a><a href="/watchlist" class="universal-nav-btn-injected">👁️ Watch</a><br><a href="/ai-gem-hunter" class="universal-nav-btn-injected ai-new">💎 Gem Hunter</a><a href="/ai-signals" class="universal-nav-btn-injected ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn-injected ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn-injected ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn-injected ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn-injected ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn-injected ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn-injected ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn-injected ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn-injected ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn-injected ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn-injected ai-new">🎯 Alertes</a><br><a href="/ai-assistant" class="universal-nav-btn-injected">🤖 AI</a><a href="/prediction-ia" class="universal-nav-btn-injected">🔮 Predict</a><a href="/ai-opportunity-scanner" class="universal-nav-btn-injected">🔍 Scanner</a><a href="/ai-market-regime" class="universal-nav-btn-injected">🌊 Regime</a><a href="/ai-whale-watcher" class="universal-nav-btn-injected">🐋 Whale</a><a href="/stats-dashboard" class="universal-nav-btn-injected">📊 Stats</a><a href="/market-simulation" class="universal-nav-btn-injected">🎮 Sim</a><a href="/success-stories" class="universal-nav-btn-injected">⭐ Success</a><a href="/onchain-analytics" class="universal-nav-btn-injected">⛓️ OnChain</a><a href="/temoignages" class="universal-nav-btn-injected">💬 Témoignages</a><br><a href="/convertisseur" class="universal-nav-btn-injected">💱 Convert</a><a href="/calendrier" class="universal-nav-btn-injected">📅 Cal</a><a href="/bullrun-phase" class="universal-nav-btn-injected">🚀 Bullrun</a><a href="/graphiques" class="universal-nav-btn-injected">📊 Charts</a><a href="/backtesting" class="universal-nav-btn-injected">⚙️ Backtest</a><a href="/pdf-generator" class="universal-nav-btn-injected">📄 PDF</a><a href="/api-docs" class="universal-nav-btn-injected">⚡ API</a><a href="/telegram-test" class="universal-nav-btn-injected">📱 Telegram</a><br><a href="/pricing-complete" class="universal-nav-btn-injected premium">💎 Abonnements</a><a href="/admin-dashboard" class="universal-nav-btn-injected admin">🔧 Admin</a><a href="/mon-compte" class="universal-nav-btn-injected account">👤 Compte</a><a href="/logout" class="universal-nav-btn-injected logout">🚪 Déconnexion</a></div></nav>';
-        
-        document.body.insertAdjacentHTML('afterbegin', menuHTML);
-        document.body.style.paddingTop = '60px';
-        console.log('Menu universel injecté');
-    }});
-    </script>
 </body>
-</html>
-    """)
-
+</html>""")
 
 @app.post("/admin/pricing/update")
 async def admin_pricing_update(request: Request):
@@ -24986,6 +25094,8 @@ async def ai_signals(request: Request):
         
         renderSignals();
     </script>
+
+    {MENU_SCRIPT}
 </body>
 </html>"""
         
@@ -25011,7 +25121,9 @@ async def ai_sentiment(request: Request):
         {"coin": "ETH", "twitter": 70, "reddit": 68, "news": 75, "trend": "+120%", "conf": 78}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🎭 AI Sentiment</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎭 AI SOCIAL SENTIMENT</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:20px;margin:20px 0"><h2 style="color:var(--cyber-accent);margin-bottom:15px">{s['coin']}</h2><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin:15px 0"><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Twitter</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['twitter']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Reddit</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['reddit']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">News</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['news']}%</div></div></div><div style="display:flex;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div><span style="color:var(--text-secondary)">Trending:</span> <strong style="color:var(--cyber-accent)">{s['trend']}</strong></div><div><span style="color:var(--text-secondary)">Confiance:</span> <strong>{s['conf']}%</strong></div></div></div>""" for s in sents]) + """</div></body></html>"""
+    html = f"""<!DOCTYPE html><html><head><title>🎭 AI Sentiment</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎭 AI SOCIAL SENTIMENT</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:20px;margin:20px 0"><h2 style="color:var(--cyber-accent);margin-bottom:15px">{s['coin']}</h2><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin:15px 0"><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Twitter</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['twitter']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Reddit</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['reddit']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">News</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['news']}%</div></div></div><div style="display:flex;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div><span style="color:var(--text-secondary)">Trending:</span> <strong style="color:var(--cyber-accent)">{s['trend']}</strong></div><div><span style="color:var(--text-secondary)">Confiance:</span> <strong>{s['conf']}%</strong></div></div></div>""" for s in sents]) + """</div>
+    {MENU_SCRIPT}
+</body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-sizer")
@@ -25021,7 +25133,9 @@ async def ai_sizer(request: Request):
     if not check_permission(user_plan, "ai_sizer"):
         return RedirectResponse(url="/pricing-complete")
     
-    html = f"""<!DOCTYPE html><html><head><title>📏 Position Sizer</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📏 AI POSITION SIZER</h1></div><div style="max-width:800px;margin:0 auto;padding:20px"><div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:30px"><form id="sizerForm"><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Capital total ($)</label><input type="number" id="capital" value="10000" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Risque max (%)</label><input type="number" id="risk" value="2" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Entry ($)</label><input type="number" id="entry" value="2650" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Stop-loss ($)</label><input type="number" id="sl" value="2500" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><button type="button" onclick="calculate()" style="width:100%;padding:15px;background:var(--cyber-accent);color:var(--bg-primary);border:none;border-radius:10px;font-size:1.2rem;font-weight:700;cursor:pointer;margin-top:20px">🔮 CALCULER</button></form><div id="result" style="margin-top:30px"></div></div></div><script>function calculate(){{const capital=parseFloat(document.getElementById('capital').value);const risk=parseFloat(document.getElementById('risk').value);const entry=parseFloat(document.getElementById('entry').value);const sl=parseFloat(document.getElementById('sl').value);const riskAmount=capital*risk/100;const slPercent=((entry-sl)/entry)*100;const positionSize=(riskAmount/(slPercent/100))/entry;const profit10=positionSize*entry*0.1;document.getElementById('result').innerHTML=`<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent);margin-bottom:20px">🤖 RECOMMANDATION IA</div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Taille position:</span><strong style="color:var(--text-primary);font-size:1.2rem">$${{positionSize.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Risque réel:</span><strong style="color:var(--danger)">$${{riskAmount.toFixed(0)}} (${{risk}}%)</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Profit si +10%:</span><strong style="color:var(--cyber-accent)">$${{profit10.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Stop-loss %:</span><strong style="color:var(--danger)">-${{slPercent.toFixed(1)}}%</strong></div><div style="margin-top:20px;padding:12px;background:rgba(255,59,92,0.1);border-radius:8px;color:var(--danger);font-weight:700;text-align:center">⚠️ NE PAS DÉPASSER cette taille!</div></div>`}}</script></body></html>"""
+    html = f"""<!DOCTYPE html><html><head><title>📏 Position Sizer</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📏 AI POSITION SIZER</h1></div><div style="max-width:800px;margin:0 auto;padding:20px"><div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:30px"><form id="sizerForm"><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Capital total ($)</label><input type="number" id="capital" value="10000" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Risque max (%)</label><input type="number" id="risk" value="2" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Entry ($)</label><input type="number" id="entry" value="2650" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Stop-loss ($)</label><input type="number" id="sl" value="2500" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><button type="button" onclick="calculate()" style="width:100%;padding:15px;background:var(--cyber-accent);color:var(--bg-primary);border:none;border-radius:10px;font-size:1.2rem;font-weight:700;cursor:pointer;margin-top:20px">🔮 CALCULER</button></form><div id="result" style="margin-top:30px"></div></div></div><script>function calculate(){{const capital=parseFloat(document.getElementById('capital').value);const risk=parseFloat(document.getElementById('risk').value);const entry=parseFloat(document.getElementById('entry').value);const sl=parseFloat(document.getElementById('sl').value);const riskAmount=capital*risk/100;const slPercent=((entry-sl)/entry)*100;const positionSize=(riskAmount/(slPercent/100))/entry;const profit10=positionSize*entry*0.1;document.getElementById('result').innerHTML=`<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent);margin-bottom:20px">🤖 RECOMMANDATION IA</div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Taille position:</span><strong style="color:var(--text-primary);font-size:1.2rem">$${{positionSize.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Risque réel:</span><strong style="color:var(--danger)">$${{riskAmount.toFixed(0)}} (${{risk}}%)</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Profit si +10%:</span><strong style="color:var(--cyber-accent)">$${{profit10.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Stop-loss %:</span><strong style="color:var(--danger)">-${{slPercent.toFixed(1)}}%</strong></div><div style="margin-top:20px;padding:12px;background:rgba(255,59,92,0.1);border-radius:8px;color:var(--danger);font-weight:700;text-align:center">⚠️ NE PAS DÉPASSER cette taille!</div></div>`}}</script>
+    {MENU_SCRIPT}
+</body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-exit")
@@ -25036,7 +25150,9 @@ async def ai_exit(request: Request):
         {"coin": "ETH", "entry": 2400, "current": 2650, "profit": "+10.4%", "momentum": 15, "rsi": 62, "volume": 12, "action": "HOLD - Laisser courir", "prob": 45}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🚪 Exit Strategy</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🚪 AI EXIT STRATEGY</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="color:var(--cyber-accent);font-size:2rem;margin:0">{e['coin']}</h2><div style="background:var(--cyber-accent);color:var(--bg-primary);padding:10px 20px;border-radius:10px;font-size:1.5rem;font-weight:900">{e['profit']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['momentum']<0 else 'var(--cyber-accent)'}">{e['momentum']:+d}%</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['rsi']>70 else 'var(--cyber-accent)'}">{e['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['volume']<0 else 'var(--cyber-accent)'}">{e['volume']:+d}%</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">💡 SUGGESTION IA</div><div style="font-size:1.1rem;margin-bottom:10px">{e['action']}</div><div style="color:var(--text-secondary);font-size:0.9rem">Probabilité correction: {e['prob']}%</div></div></div>""" for e in exits]) + """</div></body></html>"""
+    html = f"""<!DOCTYPE html><html><head><title>🚪 Exit Strategy</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🚪 AI EXIT STRATEGY</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="color:var(--cyber-accent);font-size:2rem;margin:0">{e['coin']}</h2><div style="background:var(--cyber-accent);color:var(--bg-primary);padding:10px 20px;border-radius:10px;font-size:1.5rem;font-weight:900">{e['profit']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['momentum']<0 else 'var(--cyber-accent)'}">{e['momentum']:+d}%</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['rsi']>70 else 'var(--cyber-accent)'}">{e['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['volume']<0 else 'var(--cyber-accent)'}">{e['volume']:+d}%</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">💡 SUGGESTION IA</div><div style="font-size:1.1rem;margin-bottom:10px">{e['action']}</div><div style="color:var(--text-secondary);font-size:0.9rem">Probabilité correction: {e['prob']}%</div></div></div>""" for e in exits]) + """</div>
+    {MENU_SCRIPT}
+</body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-timeframe")
@@ -25051,7 +25167,9 @@ async def ai_timeframe(request: Request):
         {"coin": "BTC", "5m": 48, "15m": 45, "1h": 50, "4h": 55, "1d": 58, "consensus": 51, "trend": "NEUTRE"}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>📈 Multi-Timeframe</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📈 AI MULTI-TIMEFRAME</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px"><h2 style="color:var(--cyber-accent);font-size:2rem">{t['coin']}</h2><div style="background:{'var(--cyber-accent)' if t['trend']=='BULLISH' else '#ffb800'};color:{'var(--bg-primary)' if t['trend']=='BULLISH' else 'var(--bg-primary)'};padding:10px 25px;border-radius:12px;font-weight:900;font-size:1.3rem">{t['trend']}</div></div><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0">""" + "".join([f"""<div style="text-align:center;padding:15px;background:rgba({'0,255,136' if t[tf]>60 else '255,255,255'},0.1);border-radius:10px"><div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">{tf.upper()}</div><div style="font-size:1.8rem;font-weight:900;color:{'var(--cyber-accent)' if t[tf]>60 else 'var(--text-primary)'}">{t[tf]}</div></div>""" for tf in ['5m','15m','1h','4h','1d']]) + f"""</div><div style="background:rgba(0,212,255,0.15);padding:20px;border-radius:15px;text-align:center;margin-top:20px"><div style="font-size:1.1rem;color:var(--text-secondary);margin-bottom:8px">🤖 CONSENSUS IA</div><div style="font-size:2.5rem;font-weight:900;color:var(--cyber-accent)">{t['consensus']}/100</div></div></div>""" for t in tfs]) + """</div></body></html>"""
+    html = f"""<!DOCTYPE html><html><head><title>📈 Multi-Timeframe</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📈 AI MULTI-TIMEFRAME</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px"><h2 style="color:var(--cyber-accent);font-size:2rem">{t['coin']}</h2><div style="background:{'var(--cyber-accent)' if t['trend']=='BULLISH' else '#ffb800'};color:{'var(--bg-primary)' if t['trend']=='BULLISH' else 'var(--bg-primary)'};padding:10px 25px;border-radius:12px;font-weight:900;font-size:1.3rem">{t['trend']}</div></div><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0">""" + "".join([f"""<div style="text-align:center;padding:15px;background:rgba({'0,255,136' if t[tf]>60 else '255,255,255'},0.1);border-radius:10px"><div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">{tf.upper()}</div><div style="font-size:1.8rem;font-weight:900;color:{'var(--cyber-accent)' if t[tf]>60 else 'var(--text-primary)'}">{t[tf]}</div></div>""" for tf in ['5m','15m','1h','4h','1d']]) + f"""</div><div style="background:rgba(0,212,255,0.15);padding:20px;border-radius:15px;text-align:center;margin-top:20px"><div style="font-size:1.1rem;color:var(--text-secondary);margin-bottom:8px">🤖 CONSENSUS IA</div><div style="font-size:2.5rem;font-weight:900;color:var(--cyber-accent)">{t['consensus']}/100</div></div></div>""" for t in tfs]) + """</div>
+    {MENU_SCRIPT}
+</body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-liquidity")
@@ -25068,7 +25186,9 @@ async def ai_liquidity(request: Request):
         {"type": "Support", "price": 42000, "liq": 18, "strength": "BON"}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🌊 Liquidity</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🌊 AI LIQUIDITY HEATMAP</h1><p style="color:var(--text-secondary);font-size:1.1rem">BTC/USDT</p></div><div style="max-width:800px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:{'rgba(255,59,92,0.1)' if l['type']=='Résistance' else 'rgba(0,255,136,0.1)' if l['type']=='Support' else 'rgba(0,212,255,0.2)'};border:2px solid {'var(--danger)' if l['type']=='Résistance' else 'var(--cyber-accent)' if l['type']=='Support' else 'var(--cyber-accent-2)'};border-radius:15px;padding:20px;margin:15px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:0.9rem;color:var(--text-secondary)">{l['type']}</div><div style="font-size:1.8rem;font-weight:900;color:var(--text-primary)">${{l['price']:,}}</div></div><div style="text-align:right">{f'<div style="font-size:0.9rem;color:var(--text-secondary)">Liquidité</div><div style="font-size:1.5rem;font-weight:900;color:var(--cyber-accent)">${{l["liq"]}}M</div><div style="background:{"var(--danger)" if l["strength"]=="MUR" else "var(--cyber-accent)"};color:white;padding:5px 12px;border-radius:8px;font-size:0.85rem;font-weight:700;margin-top:8px">{l["strength"]}</div>' if l['type']!='Prix actuel' else '<div style="font-size:1.2rem;color:var(--cyber-accent-2);font-weight:700">CURRENT</div>'}</div></div></div>""" for l in levels]) + """<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;margin-top:30px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">🤖 ANALYSE IA</div><div style="line-height:1.8">Difficulté casser $44,500 (mur liquide)<br>Si cassé → +5% facile vers $47k<br>Stop-loss suggéré: $42,500</div></div></div></body></html>"""
+    html = f"""<!DOCTYPE html><html><head><title>🌊 Liquidity</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🌊 AI LIQUIDITY HEATMAP</h1><p style="color:var(--text-secondary);font-size:1.1rem">BTC/USDT</p></div><div style="max-width:800px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:{'rgba(255,59,92,0.1)' if l['type']=='Résistance' else 'rgba(0,255,136,0.1)' if l['type']=='Support' else 'rgba(0,212,255,0.2)'};border:2px solid {'var(--danger)' if l['type']=='Résistance' else 'var(--cyber-accent)' if l['type']=='Support' else 'var(--cyber-accent-2)'};border-radius:15px;padding:20px;margin:15px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:0.9rem;color:var(--text-secondary)">{l['type']}</div><div style="font-size:1.8rem;font-weight:900;color:var(--text-primary)">${{l['price']:,}}</div></div><div style="text-align:right">{f'<div style="font-size:0.9rem;color:var(--text-secondary)">Liquidité</div><div style="font-size:1.5rem;font-weight:900;color:var(--cyber-accent)">${{l["liq"]}}M</div><div style="background:{"var(--danger)" if l["strength"]=="MUR" else "var(--cyber-accent)"};color:white;padding:5px 12px;border-radius:8px;font-size:0.85rem;font-weight:700;margin-top:8px">{l["strength"]}</div>' if l['type']!='Prix actuel' else '<div style="font-size:1.2rem;color:var(--cyber-accent-2);font-weight:700">CURRENT</div>'}</div></div></div>""" for l in levels]) + """<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;margin-top:30px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">🤖 ANALYSE IA</div><div style="line-height:1.8">Difficulté casser $44,500 (mur liquide)<br>Si cassé → +5% facile vers $47k<br>Stop-loss suggéré: $42,500</div></div></div>
+    {MENU_SCRIPT}
+</body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-alerts")
@@ -25083,7 +25203,9 @@ async def ai_alerts(request: Request):
         {"condition": "ETH > $2,800", "rsi": 65, "volume": "Élevé", "momentum": "Croissant", "action": "ACHETER", "reason": "Breakout confirmé", "suggest": "Entry NOW, TP $3,000"}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🎯 Smart Alerts</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎯 AI SMART ALERTS</h1><p style="color:var(--text-secondary);font-size:1.1rem">Alertes intelligentes contextuelles</p></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid {'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h3 style="color:var(--text-primary);font-size:1.5rem">{a['condition']}</h3><div style="background:{'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};color:white;padding:10px 20px;border-radius:10px;font-weight:900">{a['action']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if a['rsi']>70 else 'var(--cyber-accent)'}">{a['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.1rem;font-weight:700">{a['volume']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.1rem;font-weight:700">{a['momentum']}</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.1rem;font-weight:700;color:var(--cyber-accent);margin-bottom:12px">💡 RECOMMANDATION IA</div><div style="line-height:1.8;margin-bottom:10px">{a['reason']}</div><div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;font-weight:700">{a['suggest']}</div></div></div>""" for a in alerts]) + """</div></body></html>"""
+    html = f"""<!DOCTYPE html><html><head><title>🎯 Smart Alerts</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎯 AI SMART ALERTS</h1><p style="color:var(--text-secondary);font-size:1.1rem">Alertes intelligentes contextuelles</p></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid {'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h3 style="color:var(--text-primary);font-size:1.5rem">{a['condition']}</h3><div style="background:{'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};color:white;padding:10px 20px;border-radius:10px;font-weight:900">{a['action']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if a['rsi']>70 else 'var(--cyber-accent)'}">{a['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.1rem;font-weight:700">{a['volume']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.1rem;font-weight:700">{a['momentum']}</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.1rem;font-weight:700;color:var(--cyber-accent);margin-bottom:12px">💡 RECOMMANDATION IA</div><div style="line-height:1.8;margin-bottom:10px">{a['reason']}</div><div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;font-weight:700">{a['suggest']}</div></div></div>""" for a in alerts]) + """</div>
+    {MENU_SCRIPT}
+</body></html>"""
     return HTMLResponse(html)
 
 
@@ -25236,7 +25358,9 @@ async def ai_news(request: Request):
         </div>
         <div><span style="color:var(--text-secondary)">Tokens affectés:</span> {' '.join([f'<span style="background:rgba(0,212,255,0.2);padding:5px 10px;border-radius:8px;margin:0 5px;font-weight:700">{c}</span>' for c in n['coins']])}</div>
     </div>
-    """ for n in news_data]) + """</div></body></html>"""
+    """ for n in news_data]) + """</div>
+    {MENU_SCRIPT}
+</body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-predictor")
@@ -25267,7 +25391,9 @@ async def ai_predictor(request: Request):
         <div style="margin:15px 0"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>📅 7j</span><span style="color:var(--cyber-accent);font-weight:700">${p['7d'][0]:,} - ${p['7d'][1]:,}</span></div><div style="background:rgba(255,255,255,0.1);height:20px;border-radius:10px;overflow:hidden"><div style="background:var(--cyber-accent);width:{p['conf7']}%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">{p['conf7']}%</div></div></div>
         <div style="margin:15px 0"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>📅 30j</span><span style="color:var(--cyber-accent);font-weight:700">${p['30d'][0]:,} - ${p['30d'][1]:,}</span></div><div style="background:rgba(255,255,255,0.1);height:20px;border-radius:10px;overflow:hidden"><div style="background:var(--cyber-accent);width:{p['conf30']}%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">{p['conf30']}%</div></div></div>
     </div>
-    """ for p in predictions]) + """</div></body></html>"""
+    """ for p in predictions]) + """</div>
+    {MENU_SCRIPT}
+</body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-whale")
@@ -25304,7 +25430,9 @@ async def ai_whale(request: Request):
             <div style="display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Détecté:</span><strong>Il y a {m['time']}</strong></div>
         </div>
     </div>
-    """ for m in moves]) + """</div></body></html>"""
+    """ for m in moves]) + """</div>
+    {MENU_SCRIPT}
+</body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-patterns")
@@ -25334,5 +25462,7 @@ async def ai_patterns(request: Request):
             <div style="background:rgba(255,59,92,0.1);padding:12px;border-radius:8px;text-align:center"><div style="color:var(--text-secondary);font-size:0.8rem">Stop-loss</div><div style="color:var(--danger);font-weight:700;font-size:1.2rem">{p['sl']}</div><div style="color:var(--danger);font-size:0.85rem">{p['loss']}</div></div>
         </div>
     </div>
-    """ for p in patterns]) + """</div></body></html>"""
+    """ for p in patterns]) + """</div>
+    {MENU_SCRIPT}
+</body></html>"""
     return HTMLResponse(html)

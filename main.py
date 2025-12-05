@@ -3613,43 +3613,45 @@ document.addEventListener('DOMContentLoaded', function() {
 .universal-nav-btn.admin{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}
 .universal-nav-btn.account{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}
 .universal-nav-btn.logout{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}
-</style><nav class="universal-top-nav"><div class="universal-nav-container">
-<a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-<a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-<a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-<a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-<a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-<a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-<a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-<a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-<a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-<a href="/trades" class="universal-nav-btn">📈 Trades</a>
-<a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-<a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-<a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-<a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-<a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-<a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-<a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-<a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-<a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-<a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-<a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-<a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-<a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-<a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-<a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
-<a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-<a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
-<a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-<a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-<a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-<a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-<a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-<a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-<a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-</div></nav>`;
+</style><nav style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 15px 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); position: sticky; top: 0; z-index: 9999; border-bottom: 2px solid rgba(255,255,255,0.1); width: 100%; margin: 0;">
+    <div style="max-width: 1600px; margin: 0 auto; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center;">
+        <a href="/dashboard" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🏠 Accueil</a>
+        <a href="/fear-greed" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">😨 Fear&Greed</a>
+        <a href="/dominance" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">👑 Dominance</a>
+        <a href="/altcoin-season" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⭐ Altcoin</a>
+        <a href="/heatmap" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔥 Heatmap</a>
+        <a href="/strategie" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📚 Stratégie</a>
+        <a href="/spot-trading" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">💎 Spot</a>
+        <a href="/calculatrice" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🧮 Calc</a>
+        <a href="/nouvelles" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📰 News</a>
+        <a href="/trades" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📈 Trades</a>
+        <a href="/risk-management" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⚠️ Risk</a>
+        <a href="/watchlist" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">👁️ Watch</a>
+        <a href="/ai-assistant" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🤖 AI</a>
+        <a href="/prediction-ia" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔮 Predict</a>
+        <a href="/ai-opportunity-scanner" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔍 Scanner</a>
+        <a href="/ai-market-regime" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🌊 Regime</a>
+        <a href="/ai-whale-watcher" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🐋 Whale</a>
+        <a href="/stats-dashboard" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📊 Stats</a>
+        <a href="/market-simulation" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🎮 Sim</a>
+        <a href="/success-stories" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⭐ Success</a>
+        <a href="/onchain-metrics" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⛓️ OnChain</a>
+        <a href="/testimonials-widget" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">💬 Témoignages</a>
+        <a href="/convertisseur" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">💱 Convert</a>
+        <a href="/calendrier" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📅 Cal</a>
+        <a href="/bullrun-phase" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🚀 Bullrun</a>
+        <a href="/ai-gem-hunter" style="background: rgba(96,165,250,0.25); color: #60a5fa; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700; transition: all 0.3s ease; border: 1px solid #60a5fa; white-space: nowrap; display: inline-block; box-shadow: 0 0 20px rgba(96,165,250,0.4);">💎 Gem Hunter</a>
+        <a href="/graphiques" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📊 Charts</a>
+        <a href="/backtesting" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⚙️ Backtest</a>
+        <a href="/generate-pdf-report" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📄 PDF</a>
+        <a href="/api-keys" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🔑 API</a>
+        <a href="/telegram-test" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📱 Telegram</a>
+        <a href="/pricing-complete" style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700; transition: all 0.3s ease; border: none; white-space: nowrap; display: inline-block; box-shadow: 0 4px 15px rgba(99,102,241,0.4);">💎 Abonnements</a>
+        <a href="/admin-dashboard" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700; transition: all 0.3s ease; border: none; white-space: nowrap; display: inline-block; box-shadow: 0 4px 15px rgba(245,158,11,0.4);">🔧 Admin</a>
+        <a href="/mon-compte" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700; transition: all 0.3s ease; border: none; white-space: nowrap; display: inline-block; box-shadow: 0 4px 15px rgba(16,185,129,0.4);">👤 Compte</a>
+        <a href="/logout" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700; transition: all 0.3s ease; border: none; white-space: nowrap; display: inline-block; box-shadow: 0 4px 15px rgba(239,68,68,0.4);">🚪 Déconnexion</a>
+    </div>
+</nav>`;
     
     document.body.insertAdjacentHTML('afterbegin', menuHTML);
 });

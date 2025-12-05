@@ -719,6 +719,12 @@ NAV_MENU = """
         background: rgba(239,68,68,0.8);
         border: none;
     }
+    .nav-btn.ai-new {
+        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+        border: none;
+        font-weight: 700;
+    }
+
 </style>
 
 <nav class="top-nav">
@@ -726,15 +732,30 @@ NAV_MENU = """
         <a href="/dashboard" class="nav-btn">🏠 Accueil</a>
         <a href="/fear-greed" class="nav-btn">😨 Fear&Greed</a>
         <a href="/dominance" class="nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin Season</a>
+        <a href="/altcoin-season" class="nav-btn">🌟 Altcoin</a>
         <a href="/heatmap" class="nav-btn">🔥 Heatmap</a>
-        <a href="/strategy" class="nav-btn">📊 Stratégie</a>
-        <a href="/spot-trading" class="nav-btn">💎 Spot Trading</a>
-        <a href="/calculatrice" class="nav-btn">🧮 Calculatrice</a>
-        <a href="/news" class="nav-btn">📰 Nouvelles</a>
+        <a href="/strategie" class="nav-btn">📚 Stratégie</a>
+        <a href="/spot-trading" class="nav-btn">💎 Spot</a>
+        <a href="/calculatrice" class="nav-btn">🧮 Calc</a>
+        <a href="/nouvelles" class="nav-btn">📰 News</a>
         <a href="/trades" class="nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="nav-btn">⚠️ Risk Management</a>
-        <a href="/watchlist" class="nav-btn">👁️ Watchlist</a>
+        <a href="/risk-management" class="nav-btn">⚠️ Risk</a>
+        <a href="/watchlist" class="nav-btn">👁️ Watch</a>
+        
+        <!-- 11 NOUVEAUX LIENS IA -->
+        <a href="/ai-gem-hunter" class="nav-btn ai-new">💎 Gem Hunter</a>
+        <a href="/ai-signals" class="nav-btn ai-new">🎯 Signaux</a>
+        <a href="/ai-news" class="nav-btn ai-new">📰 News Impact</a>
+        <a href="/ai-predictor" class="nav-btn ai-new">🔮 Prédictions</a>
+        <a href="/ai-whale" class="nav-btn ai-new">🐋 Baleines</a>
+        <a href="/ai-patterns" class="nav-btn ai-new">📊 Patterns</a>
+        <a href="/ai-sentiment" class="nav-btn ai-new">🎭 Sentiment</a>
+        <a href="/ai-sizer" class="nav-btn ai-new">📏 Position</a>
+        <a href="/ai-exit" class="nav-btn ai-new">🚪 Exit</a>
+        <a href="/ai-timeframe" class="nav-btn ai-new">📈 Multi-TF</a>
+        <a href="/ai-liquidity" class="nav-btn ai-new">🌊 Liquidité</a>
+        <a href="/ai-alerts" class="nav-btn ai-new">🎯 Alertes</a>
+        
         <a href="/ai-assistant" class="nav-btn">🤖 AI Assistant</a>
         <a href="/prediction-ia" class="nav-btn">🔮 Prédiction IA</a>
         <a href="/ai-scanner" class="nav-btn">🔍 AI Scanner</a>

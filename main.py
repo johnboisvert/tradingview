@@ -17205,15 +17205,89 @@ async def stats_dashboard():
 </head>
 <body>
 <style>
-.universal-top-nav{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}
-.universal-nav-container{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.universal-nav-btn{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}
-.universal-nav-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}
-.universal-nav-btn.active{background:rgba(96,165,250,0.2);border-color:#60a5fa;color:#60a5fa}
-.universal-nav-btn.premium{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}
-.universal-nav-btn.admin{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}
-.universal-nav-btn.account{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}
-.universal-nav-btn.logout{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}
+.universal-top-nav {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
+    padding: 15px 20px !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 9999 !important;
+    border-bottom: 2px solid rgba(255,255,255,0.1) !important;
+    width: 100% !important;
+}
+
+.universal-nav-container {
+    max-width: 1600px !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+.universal-nav-btn {
+    background: rgba(255,255,255,0.08) !important;
+    color: #e2e8f0 !important;
+    padding: 10px 16px !important;
+    border-radius: 8px !important;
+    text-decoration: none !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    white-space: nowrap !important;
+    display: inline-block !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+}
+
+.universal-nav-btn:hover {
+    background: rgba(255,255,255,0.15) !important;
+    border-color: rgba(96,165,250,0.5) !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(96,165,250,0.3) !important;
+}
+
+.universal-nav-btn.active {
+    background: rgba(96,165,250,0.25) !important;
+    border-color: #60a5fa !important;
+    color: #60a5fa !important;
+    box-shadow: 0 0 20px rgba(96,165,250,0.4) !important;
+    font-weight: 700 !important;
+}
+
+.universal-nav-btn.premium {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 15px rgba(99,102,241,0.4) !important;
+}
+
+.universal-nav-btn.admin {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 15px rgba(245,158,11,0.4) !important;
+}
+
+.universal-nav-btn.account {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 15px rgba(16,185,129,0.4) !important;
+}
+
+.universal-nav-btn.logout {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 15px rgba(239,68,68,0.4) !important;
+}
 </style>
 <nav class="universal-top-nav">
     <div class="universal-nav-container">

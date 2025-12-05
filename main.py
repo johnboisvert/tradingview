@@ -24316,6 +24316,17 @@ async def ai_gem_hunter(request: Request):
                 <a href="/calendrier" class="menu-btn">📅 Cal</a>
                 <a href="/bullrun-phase" class="menu-btn">🚀 Bullrun</a>
                 <a href="/ai-gem-hunter" class="menu-btn active">💎 Gem Hunter</a>
+        <a href="/ai-signals" class="menu-btn">🎯 Signaux</a>
+        <a href="/ai-news" class="menu-btn">📰 News Impact</a>
+        <a href="/ai-predictor" class="menu-btn">🔮 Prédictions</a>
+        <a href="/ai-whale" class="menu-btn">🐋 Baleines</a>
+        <a href="/ai-patterns" class="menu-btn">📊 Patterns</a>
+        <a href="/ai-sentiment" class="menu-btn">🎭 Sentiment</a>
+        <a href="/ai-sizer" class="menu-btn">📏 Position</a>
+        <a href="/ai-exit" class="menu-btn">🚪 Exit</a>
+        <a href="/ai-timeframe" class="menu-btn">📈 Multi-TF</a>
+        <a href="/ai-liquidity" class="menu-btn">🌊 Liquidité</a>
+        <a href="/ai-alerts" class="menu-btn">🎯 Alertes</a>
                 <a href="/graphiques" class="menu-btn">📊 Charts</a>
                 <a href="/backtesting" class="menu-btn">⚙️ Backtest</a>
                 <a href="/generate-pdf-report" class="menu-btn">📄 PDF</a>
@@ -24562,6 +24573,410 @@ async def ai_gem_hunter(request: Request):
     
     return HTMLResponse(content=html)
 
+
+
+# ============================================================================
+# ROUTES IA AVANCÉES
+# ============================================================================
+
+@app.get("/ai-signals")
+async def ai_signals(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """🎯 AI Trading Signals - Signaux trading intelligents"""
+    try:
+        from datetime import datetime
+        
+        # Vérifier permission
+        user_plan = get_user_plan(user_email) if user_email else "free"
+        has_access = check_permission(user_plan, "ai_signals")
+        
+        if not has_access:
+            return RedirectResponse(url="/pricing-complete")
+        
+        # Mock data pour démo
+        signals = [
+            {
+                "symbol": "BTC",
+                "name": "Bitcoin",
+                "signal": "BUY",
+                "confidence": 87,
+                "entry": 43250,
+                "tp1": 45200,
+                "tp2": 46800,
+                "sl": 41500,
+                "reason": "RSI oversold + Volume spike + Support hold",
+                "timeframe": "4H",
+                "risk_reward": 2.8
+            },
+            {
+                "symbol": "ETH",
+                "name": "Ethereum", 
+                "signal": "BUY",
+                "confidence": 82,
+                "entry": 2650,
+                "tp1": 2780,
+                "tp2": 2850,
+                "sl": 2550,
+                "reason": "Bullish divergence + EMA cross",
+                "timeframe": "1H",
+                "risk_reward": 2.0
+            },
+            {
+                "symbol": "SOL",
+                "name": "Solana",
+                "signal": "SELL",
+                "confidence": 76,
+                "entry": 108.50,
+                "tp1": 102.00,
+                "tp2": 98.00,
+                "sl": 112.00,
+                "reason": "Overbought RSI + Resistance rejection",
+                "timeframe": "4H",
+                "risk_reward": 3.0
+            },
+            {
+                "symbol": "MATIC",
+                "name": "Polygon",
+                "signal": "HOLD",
+                "confidence": 65,
+                "entry": 0.85,
+                "tp1": 0.92,
+                "tp2": 0.98,
+                "sl": 0.79,
+                "reason": "Consolidation - Wait for breakout",
+                "timeframe": "1D",
+                "risk_reward": 2.2
+            }
+        ]
+        
+        signals_json = json.dumps(signals)
+        last_update = datetime.now().strftime("%Y-%m-%d %H:%M UTC")
+        
+        html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 AI Trading Signals - Trading Dashboard Pro</title>
+    {CSS}
+    <style>
+        .signals-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }}
+        
+        .signal-card {{
+            background: linear-gradient(135deg, var(--bg-card), rgba(0, 255, 136, 0.05));
+            border: 2px solid var(--cyber-accent);
+            border-radius: 20px;
+            padding: 25px;
+            transition: all 0.4s ease;
+        }}
+        
+        .signal-card.sell {{
+            background: linear-gradient(135deg, var(--bg-card), rgba(255, 59, 92, 0.05));
+            border-color: var(--danger);
+        }}
+        
+        .signal-card.hold {{
+            background: linear-gradient(135deg, var(--bg-card), rgba(255, 184, 0, 0.05));
+            border-color: #ffb800;
+        }}
+        
+        .signal-card:hover {{
+            transform: translateY(-10px) scale(1.03);
+            box-shadow: 0 15px 50px rgba(0, 255, 136, 0.4);
+        }}
+        
+        .signal-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }}
+        
+        .signal-badge {{
+            font-size: 1.8rem;
+            font-weight: 900;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-family: 'Orbitron', sans-serif;
+        }}
+        
+        .signal-badge.buy {{
+            background: var(--cyber-accent);
+            color: var(--bg-primary);
+        }}
+        
+        .signal-badge.sell {{
+            background: var(--danger);
+            color: white;
+        }}
+        
+        .signal-badge.hold {{
+            background: #ffb800;
+            color: var(--bg-primary);
+        }}
+        
+        .confidence-bar {{
+            width: 100%;
+            height: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+        }}
+        
+        .confidence-fill {{
+            height: 100%;
+            background: linear-gradient(90deg, var(--cyber-accent), var(--cyber-accent-2));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }}
+        
+        .price-levels {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 20px 0;
+        }}
+        
+        .price-level {{
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+        }}
+        
+        .price-level-label {{
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }}
+        
+        .price-level-value {{
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }}
+        
+        .reason-box {{
+            background: rgba(0, 212, 255, 0.1);
+            border-left: 4px solid var(--cyber-accent-2);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-top: 15px;
+        }}
+    </style>
+</head>
+<body>
+    {get_universal_menu()}
+    
+    <div style="text-align: center; padding: 50px 20px 20px;">
+        <h1 style="font-family: 'Orbitron', sans-serif; font-size: 3rem; color: var(--cyber-accent); margin-bottom: 10px;">
+            🎯 AI TRADING SIGNALS
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 1.2rem;">
+            Signaux de trading générés par intelligence artificielle
+        </p>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 10px;">
+            Dernière mise à jour: {last_update}
+        </p>
+    </div>
+    
+    <div class="signals-grid" id="signals-grid"></div>
+    
+    <script>
+        const signals = {signals_json};
+        
+        function renderSignals() {{
+            const grid = document.getElementById('signals-grid');
+            
+            grid.innerHTML = signals.map(signal => `
+                <div class="signal-card ${{signal.signal.toLowerCase()}}">
+                    <div class="signal-header">
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">
+                                ${{signal.symbol}}
+                            </div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                                ${{signal.name}}
+                            </div>
+                        </div>
+                        <div class="signal-badge ${{signal.signal.toLowerCase()}}">
+                            ${{signal.signal}}
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin: 15px 0;">
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 5px;">
+                            CONFIANCE
+                        </div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${{signal.confidence}}%">
+                                ${{signal.confidence}}%
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="price-levels">
+                        <div class="price-level">
+                            <div class="price-level-label">ENTRY</div>
+                            <div class="price-level-value">$${{signal.entry.toLocaleString()}}</div>
+                        </div>
+                        <div class="price-level">
+                            <div class="price-level-label">STOP LOSS</div>
+                            <div class="price-level-value" style="color: var(--danger);">
+                                $${{signal.sl.toLocaleString()}}
+                            </div>
+                        </div>
+                        <div class="price-level">
+                            <div class="price-level-label">TARGET 1</div>
+                            <div class="price-level-value" style="color: var(--cyber-accent);">
+                                $${{signal.tp1.toLocaleString()}}
+                            </div>
+                        </div>
+                        <div class="price-level">
+                            <div class="price-level-label">TARGET 2</div>
+                            <div class="price-level-value" style="color: var(--cyber-accent);">
+                                $${{signal.tp2.toLocaleString()}}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; margin: 15px 0; font-size: 0.85rem;">
+                        <div>
+                            <span style="color: var(--text-secondary);">Timeframe:</span>
+                            <span style="color: var(--text-primary); font-weight: 700; margin-left: 5px;">
+                                ${{signal.timeframe}}
+                            </span>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-secondary);">R/R:</span>
+                            <span style="color: var(--cyber-accent); font-weight: 700; margin-left: 5px;">
+                                ${{signal.risk_reward.toFixed(1)}}:1
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="reason-box">
+                        💡 ${{signal.reason}}
+                    </div>
+                </div>
+            `).join('');
+        }}
+        
+        renderSignals();
+    </script>
+</body>
+</html>"""
+        
+        return HTMLResponse(html)
+        
+    except Exception as e:
+        print(f"❌ Erreur ai_signals: {{str(e)}}")
+        return HTMLResponse("<h1>Erreur</h1>", status_code=500)
+
+
+
+
+@app.get("/ai-sentiment")
+async def ai_sentiment(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """🎭 AI Social Sentiment"""
+    user_plan = get_user_plan(user_email) if user_email else "free"
+    if not check_permission(user_plan, "ai_sentiment"):
+        return RedirectResponse(url="/pricing-complete")
+    
+    sents = [
+        {"coin": "SOL", "twitter": 82, "reddit": 75, "news": 69, "trend": "+347%", "conf": 76},
+        {"coin": "BTC", "twitter": 65, "reddit": 72, "news": 80, "trend": "+45%", "conf": 85},
+        {"coin": "ETH", "twitter": 70, "reddit": 68, "news": 75, "trend": "+120%", "conf": 78}
+    ]
+    
+    html = f"""<!DOCTYPE html><html><head><title>🎭 AI Sentiment</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎭 AI SOCIAL SENTIMENT</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:20px;margin:20px 0"><h2 style="color:var(--cyber-accent);margin-bottom:15px">{s['coin']}</h2><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin:15px 0"><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Twitter</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['twitter']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Reddit</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['reddit']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">News</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['news']}%</div></div></div><div style="display:flex;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div><span style="color:var(--text-secondary)">Trending:</span> <strong style="color:var(--cyber-accent)">{s['trend']}</strong></div><div><span style="color:var(--text-secondary)">Confiance:</span> <strong>{s['conf']}%</strong></div></div></div>""" for s in sents]) + """</div></body></html>"""
+    return HTMLResponse(html)
+
+@app.get("/ai-sizer")
+async def ai_sizer(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """📏 AI Position Sizer"""
+    user_plan = get_user_plan(user_email) if user_email else "free"
+    if not check_permission(user_plan, "ai_sizer"):
+        return RedirectResponse(url="/pricing-complete")
+    
+    html = f"""<!DOCTYPE html><html><head><title>📏 Position Sizer</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📏 AI POSITION SIZER</h1></div><div style="max-width:800px;margin:0 auto;padding:20px"><div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:30px"><form id="sizerForm"><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Capital total ($)</label><input type="number" id="capital" value="10000" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Risque max (%)</label><input type="number" id="risk" value="2" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Entry ($)</label><input type="number" id="entry" value="2650" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Stop-loss ($)</label><input type="number" id="sl" value="2500" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><button type="button" onclick="calculate()" style="width:100%;padding:15px;background:var(--cyber-accent);color:var(--bg-primary);border:none;border-radius:10px;font-size:1.2rem;font-weight:700;cursor:pointer;margin-top:20px">🔮 CALCULER</button></form><div id="result" style="margin-top:30px"></div></div></div><script>function calculate(){{const capital=parseFloat(document.getElementById('capital').value);const risk=parseFloat(document.getElementById('risk').value);const entry=parseFloat(document.getElementById('entry').value);const sl=parseFloat(document.getElementById('sl').value);const riskAmount=capital*risk/100;const slPercent=((entry-sl)/entry)*100;const positionSize=(riskAmount/(slPercent/100))/entry;const profit10=positionSize*entry*0.1;document.getElementById('result').innerHTML=`<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent);margin-bottom:20px">🤖 RECOMMANDATION IA</div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Taille position:</span><strong style="color:var(--text-primary);font-size:1.2rem">$${{positionSize.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Risque réel:</span><strong style="color:var(--danger)">$${{riskAmount.toFixed(0)}} (${{risk}}%)</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Profit si +10%:</span><strong style="color:var(--cyber-accent)">$${{profit10.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Stop-loss %:</span><strong style="color:var(--danger)">-${{slPercent.toFixed(1)}}%</strong></div><div style="margin-top:20px;padding:12px;background:rgba(255,59,92,0.1);border-radius:8px;color:var(--danger);font-weight:700;text-align:center">⚠️ NE PAS DÉPASSER cette taille!</div></div>`}}</script></body></html>"""
+    return HTMLResponse(html)
+
+@app.get("/ai-exit")
+async def ai_exit(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """🚪 AI Exit Strategy"""
+    user_plan = get_user_plan(user_email) if user_email else "free"
+    if not check_permission(user_plan, "ai_exit"):
+        return RedirectResponse(url="/pricing-complete")
+    
+    exits = [
+        {"coin": "BTC", "entry": 40200, "current": 44500, "profit": "+10.7%", "momentum": -23, "rsi": 73, "volume": -34, "action": "Vendre 50% NOW", "prob": 68},
+        {"coin": "ETH", "entry": 2400, "current": 2650, "profit": "+10.4%", "momentum": 15, "rsi": 62, "volume": 12, "action": "HOLD - Laisser courir", "prob": 45}
+    ]
+    
+    html = f"""<!DOCTYPE html><html><head><title>🚪 Exit Strategy</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🚪 AI EXIT STRATEGY</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="color:var(--cyber-accent);font-size:2rem;margin:0">{e['coin']}</h2><div style="background:var(--cyber-accent);color:var(--bg-primary);padding:10px 20px;border-radius:10px;font-size:1.5rem;font-weight:900">{e['profit']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['momentum']<0 else 'var(--cyber-accent)'}">{e['momentum']:+d}%</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['rsi']>70 else 'var(--cyber-accent)'}">{e['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['volume']<0 else 'var(--cyber-accent)'}">{e['volume']:+d}%</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">💡 SUGGESTION IA</div><div style="font-size:1.1rem;margin-bottom:10px">{e['action']}</div><div style="color:var(--text-secondary);font-size:0.9rem">Probabilité correction: {e['prob']}%</div></div></div>""" for e in exits]) + """</div></body></html>"""
+    return HTMLResponse(html)
+
+@app.get("/ai-timeframe")
+async def ai_timeframe(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """📈 AI Multi-Timeframe"""
+    user_plan = get_user_plan(user_email) if user_email else "free"
+    if not check_permission(user_plan, "ai_timeframe"):
+        return RedirectResponse(url="/pricing-complete")
+    
+    tfs = [
+        {"coin": "ETH", "5m": 52, "15m": 68, "1h": 71, "4h": 78, "1d": 82, "consensus": 74, "trend": "BULLISH"},
+        {"coin": "BTC", "5m": 48, "15m": 45, "1h": 50, "4h": 55, "1d": 58, "consensus": 51, "trend": "NEUTRE"}
+    ]
+    
+    html = f"""<!DOCTYPE html><html><head><title>📈 Multi-Timeframe</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📈 AI MULTI-TIMEFRAME</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px"><h2 style="color:var(--cyber-accent);font-size:2rem">{t['coin']}</h2><div style="background:{'var(--cyber-accent)' if t['trend']=='BULLISH' else '#ffb800'};color:{'var(--bg-primary)' if t['trend']=='BULLISH' else 'var(--bg-primary)'};padding:10px 25px;border-radius:12px;font-weight:900;font-size:1.3rem">{t['trend']}</div></div><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0">""" + "".join([f"""<div style="text-align:center;padding:15px;background:rgba({'0,255,136' if t[tf]>60 else '255,255,255'},0.1);border-radius:10px"><div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">{tf.upper()}</div><div style="font-size:1.8rem;font-weight:900;color:{'var(--cyber-accent)' if t[tf]>60 else 'var(--text-primary)'}">{t[tf]}</div></div>""" for tf in ['5m','15m','1h','4h','1d']]) + f"""</div><div style="background:rgba(0,212,255,0.15);padding:20px;border-radius:15px;text-align:center;margin-top:20px"><div style="font-size:1.1rem;color:var(--text-secondary);margin-bottom:8px">🤖 CONSENSUS IA</div><div style="font-size:2.5rem;font-weight:900;color:var(--cyber-accent)">{t['consensus']}/100</div></div></div>""" for t in tfs]) + """</div></body></html>"""
+    return HTMLResponse(html)
+
+@app.get("/ai-liquidity")
+async def ai_liquidity(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """🌊 AI Liquidity Heatmap"""
+    user_plan = get_user_plan(user_email) if user_email else "free"
+    if not check_permission(user_plan, "ai_liquidity"):
+        return RedirectResponse(url="/pricing-complete")
+    
+    levels = [
+        {"type": "Résistance", "price": 44500, "liq": 31, "strength": "MUR"},
+        {"type": "Prix actuel", "price": 43250, "liq": 0, "strength": "-"},
+        {"type": "Support", "price": 43200, "liq": 24, "strength": "FORT"},
+        {"type": "Support", "price": 42000, "liq": 18, "strength": "BON"}
+    ]
+    
+    html = f"""<!DOCTYPE html><html><head><title>🌊 Liquidity</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🌊 AI LIQUIDITY HEATMAP</h1><p style="color:var(--text-secondary);font-size:1.1rem">BTC/USDT</p></div><div style="max-width:800px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:{'rgba(255,59,92,0.1)' if l['type']=='Résistance' else 'rgba(0,255,136,0.1)' if l['type']=='Support' else 'rgba(0,212,255,0.2)'};border:2px solid {'var(--danger)' if l['type']=='Résistance' else 'var(--cyber-accent)' if l['type']=='Support' else 'var(--cyber-accent-2)'};border-radius:15px;padding:20px;margin:15px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:0.9rem;color:var(--text-secondary)">{l['type']}</div><div style="font-size:1.8rem;font-weight:900;color:var(--text-primary)">${{l['price']:,}}</div></div><div style="text-align:right">{f'<div style="font-size:0.9rem;color:var(--text-secondary)">Liquidité</div><div style="font-size:1.5rem;font-weight:900;color:var(--cyber-accent)">${{l["liq"]}}M</div><div style="background:{"var(--danger)" if l["strength"]=="MUR" else "var(--cyber-accent)"};color:white;padding:5px 12px;border-radius:8px;font-size:0.85rem;font-weight:700;margin-top:8px">{l["strength"]}</div>' if l['type']!='Prix actuel' else '<div style="font-size:1.2rem;color:var(--cyber-accent-2);font-weight:700">CURRENT</div>'}</div></div></div>""" for l in levels]) + """<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;margin-top:30px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">🤖 ANALYSE IA</div><div style="line-height:1.8">Difficulté casser $44,500 (mur liquide)<br>Si cassé → +5% facile vers $47k<br>Stop-loss suggéré: $42,500</div></div></div></body></html>"""
+    return HTMLResponse(html)
+
+@app.get("/ai-alerts")
+async def ai_alerts(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """🎯 AI Smart Alerts"""
+    user_plan = get_user_plan(user_email) if user_email else "free"
+    if not check_permission(user_plan, "ai_alerts"):
+        return RedirectResponse(url="/pricing-complete")
+    
+    alerts = [
+        {"condition": "BTC = $45,000", "rsi": 78, "volume": "Faible", "momentum": "Décroissant", "action": "NE PAS acheter", "reason": "Contexte pas idéal", "suggest": "Attendre pullback $43,500"},
+        {"condition": "ETH > $2,800", "rsi": 65, "volume": "Élevé", "momentum": "Croissant", "action": "ACHETER", "reason": "Breakout confirmé", "suggest": "Entry NOW, TP $3,000"}
+    ]
+    
+    html = f"""<!DOCTYPE html><html><head><title>🎯 Smart Alerts</title>{CSS}</head><body>{get_universal_menu()}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎯 AI SMART ALERTS</h1><p style="color:var(--text-secondary);font-size:1.1rem">Alertes intelligentes contextuelles</p></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid {'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h3 style="color:var(--text-primary);font-size:1.5rem">{a['condition']}</h3><div style="background:{'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};color:white;padding:10px 20px;border-radius:10px;font-weight:900">{a['action']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if a['rsi']>70 else 'var(--cyber-accent)'}">{a['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.1rem;font-weight:700">{a['volume']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.1rem;font-weight:700">{a['momentum']}</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.1rem;font-weight:700;color:var(--cyber-accent);margin-bottom:12px">💡 RECOMMANDATION IA</div><div style="line-height:1.8;margin-bottom:10px">{a['reason']}</div><div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;font-weight:700">{a['suggest']}</div></div></div>""" for a in alerts]) + """</div></body></html>"""
+    return HTMLResponse(html)
+
+
 @app.get("/api/gem-hunter/refresh")
 async def refresh_gems():
     """API pour rafraîchir les données des pépites"""
@@ -24683,3 +25098,131 @@ if __name__ == "__main__":
     # ===========================================
     
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+
+@app.get("/ai-news")
+async def ai_news(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """📰 AI News Impact - Impact des news sur les prix"""
+    user_plan = get_user_plan(user_email) if user_email else "free"
+    if not check_permission(user_plan, "ai_news"):
+        return RedirectResponse(url="/pricing-complete")
+    
+    news_data = [
+        {"title": "Ethereum Shanghai Upgrade Confirmed", "sentiment": 95, "impact": "HIGH", "coins": ["ETH", "LDO", "RPL"], "predicted": "+8-15%"},
+        {"title": "Bitcoin ETF Decision Delayed", "sentiment": 35, "impact": "MEDIUM", "coins": ["BTC"], "predicted": "-3-5%"},
+        {"title": "Binance Launches New DeFi Platform", "sentiment": 82, "impact": "MEDIUM", "coins": ["BNB", "CAKE"], "predicted": "+5-10%"}
+    ]
+    
+    html = f"""<!DOCTYPE html><html><head><title>📰 AI News Impact</title>{CSS}</head>
+    <body>{get_universal_menu()}
+    <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📰 AI NEWS IMPACT</h1></div>
+    <div style="max-width:1200px;margin:0 auto;padding:20px">
+    """ + "".join([f"""
+    <div style="background:var(--bg-card);border:2px solid {'var(--cyber-accent)' if n['sentiment']>70 else 'var(--danger)' if n['sentiment']<50 else '#ffb800'};border-radius:15px;padding:20px;margin:20px 0">
+        <h3 style="color:var(--text-primary);margin-bottom:10px">{n['title']}</h3>
+        <div style="display:flex;gap:20px;margin:15px 0">
+            <div><span style="color:var(--text-secondary)">Sentiment:</span> <strong style="color:{'var(--cyber-accent)' if n['sentiment']>70 else 'var(--danger)' if n['sentiment']<50 else '#ffb800'}">{n['sentiment']}%</strong></div>
+            <div><span style="color:var(--text-secondary)">Impact:</span> <strong>{n['impact']}</strong></div>
+            <div><span style="color:var(--text-secondary)">Prédiction:</span> <strong style="color:var(--cyber-accent)">{n['predicted']}</strong></div>
+        </div>
+        <div><span style="color:var(--text-secondary)">Tokens affectés:</span> {' '.join([f'<span style="background:rgba(0,212,255,0.2);padding:5px 10px;border-radius:8px;margin:0 5px;font-weight:700">{c}</span>' for c in n['coins']])}</div>
+    </div>
+    """ for n in news_data]) + """</div></body></html>"""
+    return HTMLResponse(html)
+
+@app.get("/ai-predictor")
+async def ai_predictor(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """🔮 AI Price Predictor - Prédictions de prix"""
+    user_plan = get_user_plan(user_email) if user_email else "free"
+    if not check_permission(user_plan, "ai_predictor"):
+        return RedirectResponse(url="/pricing-complete")
+    
+    predictions = [
+        {"coin": "BTC", "current": 43250, "24h": [43800, 44500], "7d": [45000, 48500], "30d": [48000, 55000], "conf24": 78, "conf7": 65, "conf30": 52},
+        {"coin": "ETH", "current": 2650, "24h": [2700, 2820], "7d": [2800, 3100], "30d": [3000, 3500], "conf24": 75, "conf7": 68, "conf30": 55},
+        {"coin": "SOL", "current": 108, "24h": [105, 112], "7d": [110, 125], "30d": [115, 145], "conf24": 72, "conf7": 63, "conf30": 48}
+    ]
+    
+    html = f"""<!DOCTYPE html><html><head><title>🔮 AI Price Predictor</title>{CSS}</head>
+    <body>{get_universal_menu()}
+    <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🔮 AI PRICE PREDICTOR</h1></div>
+    <div style="max-width:1400px;margin:0 auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px">
+    """ + "".join([f"""
+    <div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px">
+        <h2 style="color:var(--cyber-accent);font-size:2rem;margin-bottom:20px">{p['coin']}</h2>
+        <div style="background:rgba(0,212,255,0.1);padding:15px;border-radius:10px;margin-bottom:20px">
+            <div style="color:var(--text-secondary);font-size:0.9rem">Prix actuel</div>
+            <div style="font-size:1.8rem;font-weight:700;color:var(--text-primary)">${p['current']:,}</div>
+        </div>
+        <div style="margin:15px 0"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>📅 24h</span><span style="color:var(--cyber-accent);font-weight:700">${p['24h'][0]:,} - ${p['24h'][1]:,}</span></div><div style="background:rgba(255,255,255,0.1);height:20px;border-radius:10px;overflow:hidden"><div style="background:var(--cyber-accent);width:{p['conf24']}%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">{p['conf24']}%</div></div></div>
+        <div style="margin:15px 0"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>📅 7j</span><span style="color:var(--cyber-accent);font-weight:700">${p['7d'][0]:,} - ${p['7d'][1]:,}</span></div><div style="background:rgba(255,255,255,0.1);height:20px;border-radius:10px;overflow:hidden"><div style="background:var(--cyber-accent);width:{p['conf7']}%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">{p['conf7']}%</div></div></div>
+        <div style="margin:15px 0"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>📅 30j</span><span style="color:var(--cyber-accent);font-weight:700">${p['30d'][0]:,} - ${p['30d'][1]:,}</span></div><div style="background:rgba(255,255,255,0.1);height:20px;border-radius:10px;overflow:hidden"><div style="background:var(--cyber-accent);width:{p['conf30']}%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">{p['conf30']}%</div></div></div>
+    </div>
+    """ for p in predictions]) + """</div></body></html>"""
+    return HTMLResponse(html)
+
+@app.get("/ai-whale")
+async def ai_whale(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """🐋 AI Whale Tracker - Mouvements des baleines"""
+    user_plan = get_user_plan(user_email) if user_email else "free"
+    if not check_permission(user_plan, "ai_whale"):
+        return RedirectResponse(url="/pricing-complete")
+    
+    moves = [
+        {"amount": "5,000 BTC", "usd": "$212M", "from": "Unknown", "to": "Binance", "action": "SELL", "impact": "-2 à -4%", "conf": 82, "time": "5 min"},
+        {"amount": "15,000 ETH", "usd": "$39M", "from": "Coinbase", "to": "Cold Wallet", "action": "HOLD", "impact": "+1 à +2%", "conf": 75, "time": "15 min"},
+        {"amount": "2M USDT", "usd": "$2M", "from": "Tether", "to": "Binance", "action": "NEUTRAL", "impact": "Minimal", "conf": 60, "time": "1h"}
+    ]
+    
+    html = f"""<!DOCTYPE html><html><head><title>🐋 AI Whale Tracker</title>{CSS}</head>
+    <body>{get_universal_menu()}
+    <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🐋 AI WHALE TRACKER</h1></div>
+    <div style="max-width:1200px;margin:0 auto;padding:20px">
+    """ + "".join([f"""
+    <div style="background:var(--bg-card);border:2px solid {'var(--danger)' if m['action']=='SELL' else 'var(--cyber-accent)' if m['action']=='HOLD' else '#ffb800'};border-radius:15px;padding:20px;margin:20px 0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
+            <div><div style="font-size:1.5rem;font-weight:700;color:var(--text-primary)">{m['amount']}</div><div style="color:var(--text-secondary)">{m['usd']}</div></div>
+            <div style="background:{'var(--danger)' if m['action']=='SELL' else 'var(--cyber-accent)' if m['action']=='HOLD' else '#ffb800'};color:white;padding:10px 20px;border-radius:10px;font-weight:900">{m['action']}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:15px 0">
+            <div style="text-align:right"><div style="color:var(--text-secondary);font-size:0.85rem">De</div><div style="font-weight:700">{m['from']}</div></div>
+            <div style="font-size:1.5rem;color:var(--cyber-accent)">→</div>
+            <div><div style="color:var(--text-secondary);font-size:0.85rem">Vers</div><div style="font-weight:700">{m['to']}</div></div>
+        </div>
+        <div style="background:rgba(0,212,255,0.1);padding:12px;border-radius:10px;margin-top:15px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--text-secondary)">Impact prédit:</span><strong style="color:{'var(--danger)' if m['action']=='SELL' else 'var(--cyber-accent)' if m['action']=='HOLD' else '#ffb800'}">{m['impact']}</strong></div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--text-secondary)">Confiance:</span><strong>{m['conf']}%</strong></div>
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Détecté:</span><strong>Il y a {m['time']}</strong></div>
+        </div>
+    </div>
+    """ for m in moves]) + """</div></body></html>"""
+    return HTMLResponse(html)
+
+@app.get("/ai-patterns")
+async def ai_patterns(request: Request, user_email: str = Depends(get_optional_user_email)):
+    """📊 AI Pattern Recognition - Détection patterns"""
+    user_plan = get_user_plan(user_email) if user_email else "free"
+    if not check_permission(user_plan, "ai_patterns"):
+        return RedirectResponse(url="/pricing-complete")
+    
+    patterns = [
+        {"coin": "ETH", "pattern": "Triangle ascendant", "formed": "12 jours", "breakout": "72h", "target": "$2,850", "gain": "+8%", "sl": "$2,550", "loss": "-3%", "success": 67},
+        {"coin": "BTC", "pattern": "Head & Shoulders", "formed": "8 jours", "breakout": "48h", "target": "$41,000", "gain": "-5%", "sl": "$44,500", "loss": "+3%", "success": 72},
+        {"coin": "MATIC", "pattern": "Cup & Handle", "formed": "15 jours", "breakout": "96h", "target": "$0.95", "gain": "+12%", "sl": "$0.80", "loss": "-6%", "success": 64}
+    ]
+    
+    html = f"""<!DOCTYPE html><html><head><title>📊 AI Patterns</title>{CSS}</head>
+    <body>{get_universal_menu()}
+    <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📊 AI PATTERN RECOGNITION</h1></div>
+    <div style="max-width:1400px;margin:0 auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px">
+    """ + "".join([f"""
+    <div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="color:var(--cyber-accent);font-size:2rem;margin:0">{p['coin']}</h2><div style="background:var(--cyber-accent);color:var(--bg-primary);padding:8px 15px;border-radius:10px;font-weight:700">{p['success']}%</div></div>
+        <div style="background:rgba(0,212,255,0.1);padding:15px;border-radius:10px;margin-bottom:15px;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:var(--text-primary)">{p['pattern']}</div><div style="color:var(--text-secondary);font-size:0.85rem;margin-top:5px">Formé depuis {p['formed']}</div></div>
+        <div style="margin:15px 0;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:5px">Breakout probable</div><div style="font-weight:700;font-size:1.1rem">{p['breakout']}</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:15px 0">
+            <div style="background:rgba(0,255,136,0.1);padding:12px;border-radius:8px;text-align:center"><div style="color:var(--text-secondary);font-size:0.8rem">Target</div><div style="color:var(--cyber-accent);font-weight:700;font-size:1.2rem">{p['target']}</div><div style="color:var(--cyber-accent);font-size:0.85rem">{p['gain']}</div></div>
+            <div style="background:rgba(255,59,92,0.1);padding:12px;border-radius:8px;text-align:center"><div style="color:var(--text-secondary);font-size:0.8rem">Stop-loss</div><div style="color:var(--danger);font-weight:700;font-size:1.2rem">{p['sl']}</div><div style="color:var(--danger);font-size:0.85rem">{p['loss']}</div></div>
+        </div>
+    </div>
+    """ for p in patterns]) + """</div></body></html>"""
+    return HTMLResponse(html)

@@ -22748,6 +22748,381 @@ async def update_plan_features(request: Request):
     
     return {'success': True, 'message': f'Plan {plan} mis à jour'}
 
+# ========== ROUTES AI FEATURES ==========
+
+@app.get("/ai-signals", response_class=HTMLResponse)
+async def ai_signals():
+    """Signaux de trading générés par IA"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>🎯 Signaux AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+            .features{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}
+            .feature{background:#f8f9fa;padding:25px;border-radius:12px;border-left:4px solid #667eea}
+            .feature h3{color:#667eea;margin-bottom:15px}
+            .feature p{color:#666;line-height:1.6}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎯 Signaux de Trading AI</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">Cette feature sera bientôt disponible!</p>
+            </div>
+            <div class="features">
+                <div class="feature">
+                    <h3>📊 Analyse Multi-Indicateurs</h3>
+                    <p>Combinaison de RSI, MACD, Bandes de Bollinger et plus pour générer des signaux précis</p>
+                </div>
+                <div class="feature">
+                    <h3>🤖 Machine Learning</h3>
+                    <p>Algorithmes d'IA entraînés sur des milliers de patterns pour détecter les opportunités</p>
+                </div>
+                <div class="feature">
+                    <h3>⚡ Temps Réel</h3>
+                    <p>Signaux générés en temps réel avec alertes instantanées</p>
+                </div>
+                <div class="feature">
+                    <h3>📈 Backtesting</h3>
+                    <p>Tous les signaux sont testés sur historique avant publication</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-news", response_class=HTMLResponse)
+async def ai_news():
+    """Impact des actualités analysé par IA"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>📰 News Impact AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📰 Analyse News par IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">L'IA analysera l'impact des news sur le marché crypto!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-predictor", response_class=HTMLResponse)
+async def ai_predictor():
+    """Prédictions de prix par IA"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>🔮 Prédictions AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🔮 Prédictions de Prix IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">Prédictions basées sur l'apprentissage automatique!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-whale", response_class=HTMLResponse)
+async def ai_whale():
+    """Détection des mouvements de whales"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>🐋 Whale Tracker AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🐋 Détection Whales IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">Tracking des gros mouvements de capitaux!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-patterns", response_class=HTMLResponse)
+async def ai_patterns():
+    """Reconnaissance de patterns chartistes"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>📊 Patterns AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📊 Reconnaissance Patterns IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">Détection automatique des patterns chartistes!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-sentiment", response_class=HTMLResponse)
+async def ai_sentiment():
+    """Analyse de sentiment du marché"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>🎭 Sentiment AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎭 Analyse Sentiment IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">Sentiment Twitter, Reddit, News analysé par IA!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-sizer", response_class=HTMLResponse)
+async def ai_sizer():
+    """Calcul optimal de position"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>📏 Position Size AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📏 Position Sizing IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">Calcul optimal basé sur votre capital et risque!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-exit", response_class=HTMLResponse)
+async def ai_exit():
+    """Stratégies de sortie optimales"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>🚪 Exit Strategy AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🚪 Stratégie Sortie IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">TP/SL optimaux calculés par IA!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-timeframe", response_class=HTMLResponse)
+async def ai_timeframe():
+    """Analyse multi-timeframes"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>📈 Multi-TF AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📈 Analyse Multi-Timeframe IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">Corrélation 1H, 4H, 1D par IA!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-liquidity", response_class=HTMLResponse)
+async def ai_liquidity():
+    """Analyse de liquidité"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>🌊 Liquidité AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🌊 Analyse Liquidité IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">Zones de liquidité et support/résistance!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-alerts", response_class=HTMLResponse)
+async def ai_alerts():
+    """Alertes intelligentes"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>🎯 Alertes AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎯 Alertes Intelligentes IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">Alertes personnalisées selon votre profil!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+@app.get("/ai-gem-hunter", response_class=HTMLResponse)
+async def ai_gem_hunter():
+    """Détection de nouveaux projets prometteurs"""
+    return HTMLResponse(SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <title>💎 Gem Hunter AI - Trading Dashboard</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:40px 20px}
+            .container{max-width:1200px;margin:0 auto;background:white;border-radius:15px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
+            h1{color:#667eea;font-size:2.5em;margin-bottom:20px;text-align:center}
+            .status{text-align:center;padding:40px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border-radius:12px;color:white;margin:30px 0}
+            .status h2{font-size:2em;margin-bottom:10px}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>💎 Gem Hunter IA</h1>
+            <div class="status">
+                <h2>🚧 Fonctionnalité en développement</h2>
+                <p style="font-size:1.2em">Détection de gems avant qu'ils explosent!</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """)
+
+# ========================================
+
+
 
 # ============================================================================
 # DÉMARRAGE DE L'APPLICATION

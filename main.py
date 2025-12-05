@@ -7787,7 +7787,7 @@ async def ai_whale_watcher():
     html_content = html_content.replace('WHALE_DATA_PLACEHOLDER', whale_data_json)
     html_content = html_content.replace('STATUS_BADGE_PLACEHOLDER', status_badge)
     
-    return HTMLResponse(content=html_content)
+    return HTMLResponse(content=SIDEBAR + html_content)
 
 @app.get("/api/fear-greed-full")
 async def fear_greed_full():
@@ -14545,7 +14545,7 @@ async def calendrier_economique():
 </body>
 </html>"""
     
-    return HTMLResponse(html)
+    return HTMLResponse(SIDEBAR + html)
 
 
 
@@ -19944,7 +19944,7 @@ async def admin_pricing_view(request: Request):
         '/telegram-test', '/pricing-complete', '/admin-dashboard', '/mon-compte'
     ]
     
-    return HTMLResponse(f"""
+    return HTMLResponse(SIDEBAR + f"""
 SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -20787,7 +20787,7 @@ async def mon_compte(request: Request):
     finally:
         conn.close()
     
-    return HTMLResponse(f"""
+    return HTMLResponse(SIDEBAR + f"""
 SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
@@ -22121,7 +22121,7 @@ async def onchain_metrics():
         }
     }
     
-    return HTMLResponse(f"""
+    return HTMLResponse(SIDEBAR + f"""
 SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
@@ -22358,7 +22358,7 @@ async def testimonials_widget():
         </div>
         """
     
-    return HTMLResponse(f"""
+    return HTMLResponse(SIDEBAR + f"""
 SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">

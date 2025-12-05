@@ -32,9 +32,7 @@ import hashlib
 import secrets
 import hmac
 import hashlib
-import requests  # Pour API externe
-import aiohttp
-from typing import List, Dict, Tuple
+import requests  # Pour API externe (Fear & Greed, etc.)
 
 # ============================================================================
 # 🆕 SYSTÈME DE PERMISSIONS - IMPORTS
@@ -661,18 +659,12 @@ except Exception as e:
 # FIN DU SYSTÈME SQL INTÉGRÉ
 # ============================================================================
 
-
-# ============================================================================
-# 🗺️ MENU UNIVERSEL GLOBAL - S'INJECTE SUR TOUTES LES PAGES
-# ============================================================================
-
-MENU_SCRIPT = """
-<script>/* Menu injection removed */</script>
-"""
-
-# ============================================================================
-
 app = FastAPI()
+
+
+# ========== SIDEBAR MENU ==========
+SIDEBAR = """<style>.sidebar{position:fixed;left:0;top:0;width:280px;height:100vh;background:linear-gradient(180deg,#0f172a 0%,#1e293b 50%,#334155 100%);padding:20px 0;overflow-y:auto;z-index:99999;box-shadow:4px 0 20px rgba(0,0,0,0.5);border-right:2px solid rgba(6,182,212,0.3)}.sidebar::-webkit-scrollbar{width:8px}.sidebar::-webkit-scrollbar-track{background:rgba(0,0,0,0.2)}.sidebar::-webkit-scrollbar-thumb{background:rgba(6,182,212,0.5);border-radius:4px}.sidebar-header{padding:0 20px 20px 20px;border-bottom:2px solid rgba(6,182,212,0.3);margin-bottom:15px}.sidebar-title{color:#06b6d4;font-size:20px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:1px}.menu-section{margin-bottom:10px}.section-title{color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;padding:10px 20px 8px 20px;border-bottom:1px solid rgba(255,255,255,0.1)}.menu-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:#e2e8f0;text-decoration:none;font-size:14px;font-weight:500;transition:all 0.3s ease;border-left:3px solid transparent}.menu-item:hover{background:rgba(6,182,212,0.15);border-left-color:#06b6d4;color:#fff;padding-left:25px}.menu-item.ai-feature{background:linear-gradient(90deg,rgba(6,182,212,0.15) 0%,transparent 100%);border-left:3px solid #06b6d4;font-weight:600}.menu-item.premium{background:linear-gradient(90deg,rgba(139,92,246,0.2) 0%,transparent 100%);border-left:3px solid #8b5cf6;font-weight:600}.menu-item.admin{background:linear-gradient(90deg,rgba(245,158,11,0.2) 0%,transparent 100%);border-left:3px solid #f59e0b;font-weight:600}.menu-item.account{background:linear-gradient(90deg,rgba(16,185,129,0.2) 0%,transparent 100%);border-left:3px solid #10b981;font-weight:600}.menu-item.logout{background:linear-gradient(90deg,rgba(239,68,68,0.2) 0%,transparent 100%);border-left:3px solid #ef4444;font-weight:600}.icon{font-size:18px;min-width:20px}body.has-sidebar{margin:0!important;padding:0!important}.content-wrapper{margin-left:280px!important;padding:20px!important;min-height:100vh!important}.sidebar-toggle{display:none;position:fixed;top:15px;left:15px;z-index:100000;background:#06b6d4;color:white;border:none;padding:10px 15px;border-radius:8px;cursor:pointer;font-size:20px}@media (max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.active{transform:translateX(0)}.sidebar-toggle{display:block}.content-wrapper{margin-left:0!important}}</style><button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">☰</button><nav class="sidebar"><div class="sidebar-header"><div class="sidebar-title">🚀 Trading Pro</div></div><div class="menu-section"><div class="section-title">📊 Tableau de Bord</div><a href="/dashboard" class="menu-item"><span class="icon">🏠</span> Accueil</a><a href="/fear-greed" class="menu-item"><span class="icon">😨</span> Fear & Greed</a><a href="/dominance" class="menu-item"><span class="icon">👑</span> Dominance BTC</a><a href="/altcoin-season" class="menu-item"><span class="icon">⭐</span> Altcoin Season</a><a href="/heatmap" class="menu-item"><span class="icon">🔥</span> Heatmap</a></div><div class="menu-section"><div class="section-title">🤖 Features IA</div><a href="/ai-signals" class="menu-item ai-feature"><span class="icon">🎯</span> Signaux AI</a><a href="/ai-news" class="menu-item ai-feature"><span class="icon">📰</span> News Impact</a><a href="/ai-predictor" class="menu-item ai-feature"><span class="icon">🔮</span> Prédictions</a><a href="/ai-whale" class="menu-item ai-feature"><span class="icon">🐋</span> Whale Tracker</a><a href="/ai-patterns" class="menu-item ai-feature"><span class="icon">📊</span> Patterns</a><a href="/ai-sentiment" class="menu-item ai-feature"><span class="icon">🎭</span> Sentiment</a><a href="/ai-sizer" class="menu-item ai-feature"><span class="icon">📏</span> Position Size</a><a href="/ai-exit" class="menu-item ai-feature"><span class="icon">🚪</span> Exit Strategy</a><a href="/ai-timeframe" class="menu-item ai-feature"><span class="icon">📈</span> Multi-TF</a><a href="/ai-liquidity" class="menu-item ai-feature"><span class="icon">🌊</span> Liquidité</a><a href="/ai-alerts" class="menu-item ai-feature"><span class="icon">🎯</span> Alertes</a><a href="/ai-gem-hunter" class="menu-item ai-feature"><span class="icon">💎</span> Gem Hunter</a></div><div class="menu-section"><div class="section-title">💰 Trading</div><a href="/strategie" class="menu-item"><span class="icon">📚</span> Stratégies</a><a href="/spot-trading" class="menu-item"><span class="icon">💎</span> Spot</a><a href="/trades" class="menu-item"><span class="icon">📈</span> Trades</a><a href="/risk-management" class="menu-item"><span class="icon">⚠️</span> Risk</a><a href="/watchlist" class="menu-item"><span class="icon">👁️</span> Watchlist</a><a href="/calculatrice" class="menu-item"><span class="icon">🧮</span> Calc</a></div><div class="menu-section"><div class="section-title">🔍 Analyse</div><a href="/ai-assistant" class="menu-item"><span class="icon">🤖</span> Assistant</a><a href="/prediction-ia" class="menu-item"><span class="icon">🔮</span> Prédictions</a><a href="/ai-opportunity-scanner" class="menu-item"><span class="icon">🔍</span> Scanner</a><a href="/ai-market-regime" class="menu-item"><span class="icon">🌊</span> Regime</a><a href="/ai-whale-watcher" class="menu-item"><span class="icon">🐋</span> Whales</a><a href="/stats-dashboard" class="menu-item"><span class="icon">📊</span> Stats</a><a href="/onchain-metrics" class="menu-item"><span class="icon">⛓️</span> OnChain</a></div><div class="menu-section"><div class="section-title">🛠️ Outils</div><a href="/market-simulation" class="menu-item"><span class="icon">🎮</span> Simulation</a><a href="/backtesting" class="menu-item"><span class="icon">⚙️</span> Backtesting</a><a href="/graphiques" class="menu-item"><span class="icon">📊</span> Graphiques</a><a href="/convertisseur" class="menu-item"><span class="icon">💱</span> Convertisseur</a><a href="/calendrier" class="menu-item"><span class="icon">📅</span> Calendrier</a><a href="/nouvelles" class="menu-item"><span class="icon">📰</span> News</a></div><div class="menu-section"><div class="section-title">⚙️ Système</div><a href="/bullrun-phase" class="menu-item"><span class="icon">🚀</span> Bull Run</a><a href="/success-stories" class="menu-item"><span class="icon">⭐</span> Success</a><a href="/testimonials-widget" class="menu-item"><span class="icon">💬</span> Témoignages</a><a href="/generate-pdf-report" class="menu-item"><span class="icon">📄</span> PDF</a><a href="/api-keys" class="menu-item"><span class="icon">🔑</span> API Keys</a><a href="/telegram-test" class="menu-item"><span class="icon">📱</span> Telegram</a></div><div class="menu-section"><div class="section-title">👤 Mon Compte</div><a href="/pricing-complete" class="menu-item premium"><span class="icon">💎</span> Abonnements</a><a href="/admin-dashboard" class="menu-item admin"><span class="icon">🔧</span> Admin</a><a href="/mon-compte" class="menu-item account"><span class="icon">👤</span> Mon Compte</a><a href="/logout" class="menu-item logout"><span class="icon">🚪</span> Déconnexion</a></div></nav><script>(function(){document.body.classList.add('has-sidebar');const sidebar=document.querySelector('.sidebar');if(!sidebar)return;const wrapper=document.createElement('div');wrapper.className='content-wrapper';const elements=Array.from(document.body.children);elements.forEach(el=>{if(!el.classList.contains('sidebar')&&!el.classList.contains('sidebar-toggle')&&el.tagName!=='SCRIPT'&&el.tagName!=='STYLE'){wrapper.appendChild(el)}});document.body.appendChild(wrapper)})();</script>"""
+# ==================================
 
 # ============================================================================
 # 🎨 MENU DE NAVIGATION COMPLET
@@ -730,12 +722,6 @@ NAV_MENU = """
         background: rgba(239,68,68,0.8);
         border: none;
     }
-    .nav-btn.ai-new {
-        background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-        border: none;
-        font-weight: 700;
-    }
-
 </style>
 
 
@@ -751,870 +737,55 @@ if PERMISSIONS_AVAILABLE and protected_router:
 # ============================================================================
 
 # ===== ROUTE DE DEBUG =====
-
-
-# ============================================================================
-# 💎 AI GEM HUNTER - BACKEND SCORING IA (VERSION CORRIGÉE + DEBUG)
-# ============================================================================
-
-async def fetch_coingecko_data():
-    """Récupère les données des cryptos depuis CoinGecko"""
+@app.get("/debug-files")
+async def debug_files():
+    import os
+    files = os.listdir('/app')
+    
+    # Vérifier si les modules existent
+    subscription_exists = 'subscription_system.py' in files
+    admin_exists = 'admin_pricing.py' in files
+    
+    # Tester l'import
+    import_test = {}
     try:
-        print("🔍 Fetching CoinGecko data...")
-        
-        async with aiohttp.ClientSession() as session:
-            url = "https://api.coingecko.com/api/v3/coins/markets"
-            params = {
-                'vs_currency': 'usd',
-                'order': 'market_cap_desc',
-                'per_page': 500,
-                'page': 1,
-                'sparkline': False,
-                'price_change_percentage': '24h,7d,30d'
-            }
-            
-            timeout = aiohttp.ClientTimeout(total=60)
-            async with session.get(url, params=params, timeout=timeout) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    print(f"✅ CoinGecko: {len(data)} cryptos récupérées")
-                    return data
-                else:
-                    print(f"⚠️ CoinGecko API status: {response.status}")
-                    return []
-                    
-    except asyncio.TimeoutError:
-        print("⚠️ Timeout CoinGecko API")
-        return []
+        import subscription_system
+        import_test['subscription_system'] = '✅ Importable'
     except Exception as e:
-        print(f"⚠️ Erreur fetch CoinGecko: {type(e).__name__}: {str(e)}")
-        return []
-
-def calculate_gem_score(crypto: Dict) -> Dict:
-    """Calcule le score de pépite (0-100) basé sur 15 critères"""
+        import_test['subscription_system'] = f'❌ {str(e)}'
     
     try:
-        score = 0
-        reasons = []
-        risks = []
-        
-        # Récupérer les données avec defaults pour éviter None
-        market_cap = crypto.get('market_cap') or 0
-        volume_24h = crypto.get('total_volume') or 0
-        price_change_7d = crypto.get('price_change_percentage_7d_in_currency') or 0
-        price_change_30d = crypto.get('price_change_percentage_30d_in_currency') or 0
-        ath_change = crypto.get('ath_change_percentage') or 0
-        rank = crypto.get('market_cap_rank') or 999
-        
-        # 1. MARKET CAP SCORE (10 points)
-        if 5_000_000 <= market_cap <= 50_000_000:
-            score += 10
-            reasons.append(f"💎 Market cap optimal: ${market_cap/1_000_000:.1f}M")
-        elif 50_000_000 <= market_cap <= 200_000_000:
-            score += 7
-            reasons.append(f"✅ Market cap prometteur: ${market_cap/1_000_000:.1f}M")
-        elif market_cap < 5_000_000:
-            score += 3
-            risks.append(f"⚠️ Market cap très petit: ${market_cap/1_000_000:.1f}M")
-        else:
-            score += 2
-        
-        # 2. VOLUME/MCAP RATIO (10 points)
-        if market_cap > 0:
-            vol_ratio = volume_24h / market_cap
-            if vol_ratio > 0.3:
-                score += 10
-                reasons.append(f"🔥 Volume élevé: {vol_ratio*100:.1f}% du MCap")
-            elif vol_ratio > 0.15:
-                score += 7
-                reasons.append(f"✅ Volume bon: {vol_ratio*100:.1f}% du MCap")
-            elif vol_ratio < 0.05:
-                score += 2
-                risks.append(f"⚠️ Volume faible: {vol_ratio*100:.1f}% du MCap")
-            else:
-                score += 5
-        
-        # 3. MOMENTUM 7D (15 points)
-        if price_change_7d > 20:
-            score += 15
-            reasons.append(f"🚀 Momentum fort: +{price_change_7d:.1f}% (7j)")
-        elif price_change_7d > 10:
-            score += 12
-            reasons.append(f"📈 Momentum positif: +{price_change_7d:.1f}% (7j)")
-        elif price_change_7d > 0:
-            score += 8
-        elif price_change_7d > -10:
-            score += 4
-        else:
-            score += 1
-            risks.append(f"📉 Baisse récente: {price_change_7d:.1f}% (7j)")
-        
-        # 4. TENDANCE 30D (10 points)
-        if price_change_30d > 50:
-            score += 10
-            reasons.append(f"🔥 Tendance explosive: +{price_change_30d:.1f}% (30j)")
-        elif price_change_30d > 20:
-            score += 8
-        elif price_change_30d > 0:
-            score += 5
-        else:
-            score += 2
-        
-        # 5. DISTANCE ATH (15 points)
-        ath_distance = abs(ath_change)
-        if ath_distance > 70:
-            score += 15
-            reasons.append(f"💎 À {ath_distance:.0f}% sous ATH - Gros potentiel!")
-        elif ath_distance > 50:
-            score += 12
-        elif ath_distance > 30:
-            score += 8
-        else:
-            score += 5
-            if ath_distance < 10:
-                risks.append(f"⚠️ Proche ATH ({ath_distance:.0f}%)")
-        
-        # 6. RANK (5 points)
-        if 100 <= rank <= 300:
-            score += 5
-            reasons.append(f"🎯 Rank #{rank} - Zone découverte")
-        elif 300 < rank <= 500:
-            score += 4
-        elif rank < 100:
-            score += 2
-        else:
-            score += 3
-        
-        # 7-10. SIMULATION SCORING (35 points)
-        tech_score = min(10, int(market_cap / 10_000_000) + random.randint(3, 7))
-        score += tech_score
-        if tech_score >= 8:
-            reasons.append("✅ Projet technique solide")
-        
-        team_score = random.randint(5, 10)
-        score += team_score
-        if team_score >= 8:
-            reasons.append("✅ Équipe expérimentée")
-        
-        tokenomics_score = random.randint(6, 10)
-        score += tokenomics_score
-        
-        social_score = random.randint(4, 10)
-        score += social_score
-        if social_score >= 8:
-            reasons.append("🔥 Buzz communauté fort")
-        
-        # RED FLAGS
-        if market_cap < 1_000_000:
-            risks.append("🚨 Market cap extrêmement bas")
-            score = max(0, score - 15)
-        
-        if volume_24h < 100_000 and market_cap > 5_000_000:
-            risks.append("🚨 Liquidité insuffisante")
-            score = max(0, score - 10)
-        
-        score = min(100, max(0, score))
-        
-        return {
-            'score': score,
-            'reasons': reasons[:6],
-            'risks': risks[:4],
-            'category': categorize_crypto(crypto),
-            'potential': calculate_potential(score, market_cap, ath_distance)
-        }
-        
+        import admin_pricing
+        import_test['admin_pricing'] = '✅ Importable'
     except Exception as e:
-        print(f"⚠️ Erreur calculate_gem_score: {str(e)}")
-        return {
-            'score': 0,
-            'reasons': [],
-            'risks': ['⚠️ Erreur calcul score'],
-            'category': 'Other',
-            'potential': '1-2x ⚠️'
-        }
-
-def categorize_crypto(crypto: Dict) -> str:
-    """Catégorise la crypto"""
-    try:
-        name = crypto.get('name', '').lower()
-        symbol = crypto.get('symbol', '').lower()
-        
-        if any(x in name or x in symbol for x in ['game', 'gaming', 'play', 'meta', 'verse']):
-            return 'Gaming/Metaverse'
-        elif any(x in name or x in symbol for x in ['ai', 'artificial', 'intelligence', 'data', 'neural']):
-            return 'AI/Data'
-        elif any(x in name or x in symbol for x in ['defi', 'swap', 'dex', 'lend', 'yield', 'finance']):
-            return 'DeFi'
-        elif any(x in name or x in symbol for x in ['layer', 'chain', 'network', 'protocol', 'node']):
-            return 'Infrastructure'
-        elif any(x in name or x in symbol for x in ['nft', 'art', 'collectible']):
-            return 'NFT'
-        else:
-            return 'Other'
-    except:
-        return 'Other'
-
-def calculate_potential(score: int, market_cap: float, ath_distance: float) -> str:
-    """Calcule potentiel multiplicateur"""
-    try:
-        if score >= 85 and market_cap < 20_000_000:
-            return "100-500x 🚀🚀🚀"
-        elif score >= 75 and market_cap < 50_000_000:
-            return "20-100x 🚀🚀"
-        elif score >= 65 and market_cap < 100_000_000:
-            return "5-20x 🚀"
-        elif score >= 55:
-            return "2-5x 📈"
-        else:
-            return "1-2x ⚠️"
-    except:
-        return "N/A"
-
-
-def identify_upcoming_gems(all_cryptos: List[Dict]) -> List[Dict]:
-    """Identifie les 10 prochaines pépites à fort potentiel"""
+        import_test['admin_pricing'] = f'❌ {str(e)}'
     
-    try:
-        print("🔮 Recherche des prochains gems...")
-        
-        upcoming = []
-        
-        for crypto in all_cryptos:
-            try:
-                market_cap = crypto.get('market_cap') or 0
-                volume_24h = crypto.get('total_volume') or 0
-                price_change_7d = crypto.get('price_change_percentage_7d_in_currency') or 0
-                price_change_30d = crypto.get('price_change_percentage_30d_in_currency') or 0
-                ath_change = crypto.get('ath_change_percentage') or 0
-                ath_date = crypto.get('ath_date') or ''
-                rank = crypto.get('market_cap_rank') or 9999
-                symbol = (crypto.get('symbol') or '').lower()
-                
-                # Filtrer stablecoins et wrapped
-                stablecoins = ['usdt', 'usdc', 'busd', 'dai', 'tusd', 'usdp', 'gusd', 'usdd', 'fdusd']
-                wrapped = ['wbtc', 'weth', 'wbnb', 'steth']
-                if symbol in stablecoins or symbol in wrapped:
-                    continue
-                
-                # CRITÈRES ASSOUPLIS POUR "PROCHAINS GEMS":
-                
-                # 1. Market cap plus large (< $100M au lieu de $50M)
-                if market_cap > 100_000_000 or market_cap < 500_000:
-                    continue
-                
-                # 2. Volume/MCap ratio plus bas (> 0.05 au lieu de 0.15)
-                if market_cap > 0:
-                    vol_ratio = volume_24h / market_cap
-                    if vol_ratio < 0.05:
-                        continue
-                else:
-                    continue
-                
-                # 3. Momentum juste positif (> 0% au lieu de +5% et +10%)
-                if price_change_7d < 0 or price_change_30d < 0:
-                    continue
-                
-                # 4. ATH change assoupli (< -30% au lieu de -40%)
-                if ath_change > -30:
-                    continue
-                
-                # 5. Rank élargi (100-1000 au lieu de 200-800)
-                if rank < 100 or rank > 1000:
-                    continue
-                
-                # Calculer un "Upcoming Score"
-                upcoming_score = 0
-                reasons = []
-                
-                # Score basé sur market cap (plus petit = plus de potentiel)
-                if market_cap < 5_000_000:
-                    upcoming_score += 30
-                    reasons.append(f"🚀 Micro-cap: ${market_cap/1_000_000:.1f}M")
-                elif market_cap < 20_000_000:
-                    upcoming_score += 25
-                    reasons.append(f"💎 Small-cap: ${market_cap/1_000_000:.1f}M")
-                elif market_cap < 50_000_000:
-                    upcoming_score += 20
-                    reasons.append(f"✨ Mid-cap: ${market_cap/1_000_000:.1f}M")
-                else:
-                    upcoming_score += 15
-                    reasons.append(f"✅ Market cap: ${market_cap/1_000_000:.1f}M")
-                
-                # Score basé sur volume/mcap
-                if vol_ratio > 0.5:
-                    upcoming_score += 25
-                    reasons.append(f"🔥 Volume massif: {vol_ratio*100:.0f}% du MCap")
-                elif vol_ratio > 0.3:
-                    upcoming_score += 20
-                    reasons.append(f"⚡ Volume élevé: {vol_ratio*100:.0f}% du MCap")
-                elif vol_ratio > 0.15:
-                    upcoming_score += 15
-                    reasons.append(f"📊 Volume bon: {vol_ratio*100:.0f}% du MCap")
-                else:
-                    upcoming_score += 10
-                    reasons.append(f"✅ Volume: {vol_ratio*100:.1f}% du MCap")
-                
-                # Score basé sur momentum
-                momentum_score = (price_change_7d * 2) + price_change_30d
-                if momentum_score > 100:
-                    upcoming_score += 25
-                    reasons.append(f"🚀 Momentum explosif: +{momentum_score:.0f}%")
-                elif momentum_score > 50:
-                    upcoming_score += 20
-                    reasons.append(f"📈 Momentum fort: +{momentum_score:.0f}%")
-                elif momentum_score > 20:
-                    upcoming_score += 15
-                    reasons.append(f"✅ Momentum solide: +{momentum_score:.0f}%")
-                else:
-                    upcoming_score += 10
-                    reasons.append(f"✅ Momentum positif: +{momentum_score:.0f}%")
-                
-                # Score basé sur potentiel ATH
-                ath_potential = abs(ath_change)
-                if ath_potential > 80:
-                    upcoming_score += 25
-                    reasons.append(f"💎 {ath_potential:.0f}% sous ATH - Énorme upside!")
-                elif ath_potential > 60:
-                    upcoming_score += 20
-                    reasons.append(f"✨ {ath_potential:.0f}% sous ATH")
-                elif ath_potential > 40:
-                    upcoming_score += 15
-                    reasons.append(f"✅ {ath_potential:.0f}% sous ATH")
-                else:
-                    upcoming_score += 10
-                
-                # Bonus pour catégories hot
-                name_lower = (crypto.get('name') or '').lower()
-                id_lower = (crypto.get('id') or '').lower()
-                
-                hot_keywords = {
-                    'ai': ('🤖 Secteur AI', 10),
-                    'artificial': ('🤖 Secteur AI', 10),
-                    'gaming': ('🎮 Gaming', 10),
-                    'game': ('🎮 Gaming', 10),
-                    'defi': ('🔥 DeFi', 8),
-                    'metaverse': ('🌐 Metaverse', 10),
-                    'layer': ('⚡ L1/L2', 8),
-                    'protocol': ('🔗 Protocol', 5),
-                    'meme': ('😄 Meme', 5),
-                }
-                
-                for keyword, (label, bonus) in hot_keywords.items():
-                    if keyword in name_lower or keyword in id_lower:
-                        upcoming_score += bonus
-                        reasons.append(label)
-                        break
-                
-                # Score minimum abaissé à 50 (au lieu de 70)
-                if upcoming_score < 50:
-                    continue
-                
-                upcoming.append({
-                    'id': crypto.get('id', ''),
-                    'symbol': (crypto.get('symbol') or '').upper(),
-                    'name': crypto.get('name', 'Unknown'),
-                    'image': crypto.get('image', ''),
-                    'price': crypto.get('current_price') or 0,
-                    'market_cap': market_cap,
-                    'volume_24h': volume_24h,
-                    'price_change_24h': crypto.get('price_change_percentage_24h') or 0,
-                    'price_change_7d': price_change_7d,
-                    'price_change_30d': price_change_30d,
-                    'ath_change': ath_change,
-                    'rank': rank,
-                    'upcoming_score': upcoming_score,
-                    'reasons': reasons,
-                    'potential': f"{abs(ath_change) / 20:.0f}x" if abs(ath_change) > 40 else "2-3x",
-                    'category': 'Upcoming Gem'
-                })
-                
-            except Exception as e:
-                continue
-        
-        # Trier par upcoming_score décroissant
-        upcoming.sort(key=lambda x: x['upcoming_score'], reverse=True)
-        
-        # Garantir au moins 10 gems
-        result = upcoming[:10]
-        
-        print(f"✅ {len(upcoming)} gems trouvés → Top {len(result)} sélectionnés")
-        
-        return result
-        
-    except Exception as e:
-        print(f"❌ Erreur identify_upcoming_gems: {str(e)}")
-        return []
-
-
-
-async def analyze_all_gems() -> Tuple[List[Dict], bool, List[Dict]]:
-    """Analyse toutes les cryptos et retourne (top 50 pépites, is_live_data)"""
-    
-    try:
-        print("🚀 Starting analyze_all_gems...")
-        
-        cryptos = await fetch_coingecko_data()
-        
-        if not cryptos:
-            print("⚠️ Tentative 1 échouée, retry dans 2s...")
-            await asyncio.sleep(2)
-            cryptos = await fetch_coingecko_data()
-            
-        if not cryptos:
-            print("⚠️ Tentative 2 échouée, retry dans 3s...")
-            await asyncio.sleep(3)
-            cryptos = await fetch_coingecko_data()
-            
-        if not cryptos:
-            print("⚠️ API CoinGecko inaccessible après 3 tentatives")
-            print("🔄 Utilisation des 50 pépites fallback")
-            return (get_fallback_gems(), False, [])
-        
-        print(f"✅ CoinGecko API: {len(cryptos)} cryptos chargées!")
-        
-        gems = []
-        for crypto in cryptos:
-            try:
-                market_cap = crypto.get('market_cap') or 0
-                symbol = (crypto.get('symbol') or '').lower()
-                
-                # Filtrer stablecoins
-                stablecoins = ['usdt', 'usdc', 'busd', 'dai', 'tusd', 'usdp', 'gusd', 'usdd']
-                if symbol in stablecoins:
-                    continue
-                
-                # Filtrer wrapped tokens
-                wrapped = ['wbtc', 'weth', 'wbnb', 'steth']
-                if symbol in wrapped:
-                    continue
-                
-                # Filtrer par market cap
-                if market_cap > 1_000_000_000 or market_cap < 500_000:
-                    continue
-                
-                # Calculer score
-                analysis = calculate_gem_score(crypto)
-                
-                # Garder seulement score >= 50
-                if analysis['score'] >= 50:
-                    gem = {
-                        'id': crypto.get('id', ''),
-                        'symbol': (crypto.get('symbol') or '').upper(),
-                        'name': crypto.get('name', 'Unknown'),
-                        'image': crypto.get('image', ''),
-                        'price': crypto.get('current_price') or 0,
-                        'market_cap': market_cap,
-                        'volume_24h': crypto.get('total_volume') or 0,
-                        'price_change_24h': crypto.get('price_change_percentage_24h') or 0,
-                        'price_change_7d': crypto.get('price_change_percentage_7d_in_currency') or 0,
-                        'price_change_30d': crypto.get('price_change_percentage_30d_in_currency') or 0,
-                        'ath_change': crypto.get('ath_change_percentage') or 0,
-                        'rank': crypto.get('market_cap_rank') or 999,
-                        **analysis
-                    }
-                    gems.append(gem)
-                    
-            except Exception as e:
-                print(f"⚠️ Erreur processing crypto {crypto.get('symbol', 'unknown')}: {str(e)}")
-                continue
-        
-        # Trier par score
-        gems.sort(key=lambda x: x['score'], reverse=True)
-        result = gems[:50]
-        
-        print(f"✅ {len(result)} pépites trouvées")
-        
-        # Identifier les prochains gems
-        upcoming_gems = identify_upcoming_gems(cryptos) if cryptos else []
-        
-        return (result, True, upcoming_gems) if result else (get_fallback_gems(), False, [])
-        
-    except Exception as e:
-        print(f"❌ Erreur analyze_all_gems: {type(e).__name__}: {str(e)}")
-        return (get_fallback_gems(), False, [])
-
-def get_fallback_gems() -> List[Dict]:
-    """Retourne 50 pépites de test si l'API ne fonctionne pas"""
-    print("📦 Utilisation 50 pépites fallback...")
-    
-    fallback = []
-    
-    # Générer 50 pépites fictives pour test
-    tokens = [
-        {'name': 'InjectiveProtocol', 'symbol': 'INJ', 'cat': 'DeFi'},
-        {'name': 'Render', 'symbol': 'RNDR', 'cat': 'AI/Data'},
-        {'name': 'ImmutableX', 'symbol': 'IMX', 'cat': 'Gaming/Metaverse'},
-        {'name': 'Celestia', 'symbol': 'TIA', 'cat': 'Infrastructure'},
-        {'name': 'Kaspa', 'symbol': 'KAS', 'cat': 'Infrastructure'},
-        {'name': 'Arbitrum', 'symbol': 'ARB', 'cat': 'Infrastructure'},
-        {'name': 'Optimism', 'symbol': 'OP', 'cat': 'Infrastructure'},
-        {'name': 'Pendle', 'symbol': 'PENDLE', 'cat': 'DeFi'},
-        {'name': 'Aave', 'symbol': 'AAVE', 'cat': 'DeFi'},
-        {'name': 'TheGraph', 'symbol': 'GRT', 'cat': 'Infrastructure'},
-        {'name': 'Gala', 'symbol': 'GALA', 'cat': 'Gaming/Metaverse'},
-        {'name': 'SingularityNET', 'symbol': 'AGIX', 'cat': 'AI/Data'},
-        {'name': 'Ronin', 'symbol': 'RON', 'cat': 'Gaming/Metaverse'},
-        {'name': 'Axelar', 'symbol': 'AXL', 'cat': 'Infrastructure'},
-        {'name': 'dYdX', 'symbol': 'DYDX', 'cat': 'DeFi'},
-        {'name': 'Lido', 'symbol': 'LDO', 'cat': 'DeFi'},
-        {'name': 'Synthetix', 'symbol': 'SNX', 'cat': 'DeFi'},
-        {'name': 'Worldcoin', 'symbol': 'WLD', 'cat': 'AI/Data'},
-        {'name': 'Sui', 'symbol': 'SUI', 'cat': 'Infrastructure'},
-        {'name': 'Aptos', 'symbol': 'APT', 'cat': 'Infrastructure'},
-        # 30 tokens supplémentaires pour atteindre 50
-        {'name': 'Fantom', 'symbol': 'FTM', 'cat': 'Infrastructure'},
-        {'name': 'NEAR Protocol', 'symbol': 'NEAR', 'cat': 'Infrastructure'},
-        {'name': 'Avalanche', 'symbol': 'AVAX', 'cat': 'Infrastructure'},
-        {'name': 'Cosmos', 'symbol': 'ATOM', 'cat': 'Infrastructure'},
-        {'name': 'Polkadot', 'symbol': 'DOT', 'cat': 'Infrastructure'},
-        {'name': 'Polygon', 'symbol': 'MATIC', 'cat': 'Infrastructure'},
-        {'name': 'Chainlink', 'symbol': 'LINK', 'cat': 'Infrastructure'},
-        {'name': 'Uniswap', 'symbol': 'UNI', 'cat': 'DeFi'},
-        {'name': 'Curve DAO', 'symbol': 'CRV', 'cat': 'DeFi'},
-        {'name': 'Maker', 'symbol': 'MKR', 'cat': 'DeFi'},
-        {'name': 'Compound', 'symbol': 'COMP', 'cat': 'DeFi'},
-        {'name': 'Yearn Finance', 'symbol': 'YFI', 'cat': 'DeFi'},
-        {'name': 'SushiSwap', 'symbol': 'SUSHI', 'cat': 'DeFi'},
-        {'name': 'Balancer', 'symbol': 'BAL', 'cat': 'DeFi'},
-        {'name': 'Ethereum Name Service', 'symbol': 'ENS', 'cat': 'Infrastructure'},
-        {'name': 'Blur', 'symbol': 'BLUR', 'cat': 'Gaming/Metaverse'},
-        {'name': 'Decentraland', 'symbol': 'MANA', 'cat': 'Gaming/Metaverse'},
-        {'name': 'The Sandbox', 'symbol': 'SAND', 'cat': 'Gaming/Metaverse'},
-        {'name': 'ApeCoin', 'symbol': 'APE', 'cat': 'Gaming/Metaverse'},
-        {'name': 'Magic', 'symbol': 'MAGIC', 'cat': 'Gaming/Metaverse'},
-        {'name': 'STEPN', 'symbol': 'GMT', 'cat': 'Gaming/Metaverse'},
-        {'name': 'Fetch.ai', 'symbol': 'FET', 'cat': 'AI/Data'},
-        {'name': 'Ocean Protocol', 'symbol': 'OCEAN', 'cat': 'AI/Data'},
-        {'name': 'Oasis Network', 'symbol': 'ROSE', 'cat': 'Infrastructure'},
-        {'name': 'THORChain', 'symbol': 'RUNE', 'cat': 'DeFi'},
-        {'name': 'Kava', 'symbol': 'KAVA', 'cat': 'DeFi'},
-        {'name': 'Celer Network', 'symbol': 'CELR', 'cat': 'Infrastructure'},
-        {'name': 'Ankr', 'symbol': 'ANKR', 'cat': 'Infrastructure'},
-        {'name': 'SKALE', 'symbol': 'SKL', 'cat': 'Infrastructure'},
-        {'name': 'Zilliqa', 'symbol': 'ZIL', 'cat': 'Infrastructure'},
-    ]
-    
-    for i, token in enumerate(tokens):
-        score = random.randint(65, 95)
-        mcap = random.randint(10_000_000, 500_000_000)
-        
-        fallback.append({
-            'id': token['symbol'].lower(),
-            'symbol': token['symbol'],
-            'name': token['name'],
-            'image': f"https://via.placeholder.com/60?text={token['symbol']}",
-            'price': round(random.uniform(0.5, 50), 4),
-            'market_cap': mcap,
-            'volume_24h': mcap * random.uniform(0.05, 0.3),
-            'price_change_24h': round(random.uniform(-10, 15), 2),
-            'price_change_7d': round(random.uniform(-20, 40), 2),
-            'price_change_30d': round(random.uniform(-30, 80), 2),
-            'ath_change': round(random.uniform(-80, -20), 2),
-            'rank': i + 50,
-            'score': score,
-            'reasons': [
-                f"💎 Market cap: ${mcap/1_000_000:.1f}M",
-                "🔥 Volume élevé",
-                "🚀 Momentum fort",
-                "✅ Projet technique solide"
-            ][:random.randint(3, 4)],
-            'risks': [
-                "⚠️ Volatilité élevée",
-                "⚠️ Projet récent"
-            ][:random.randint(1, 2)],
-            'category': token['cat'],
-            'potential': calculate_potential(score, mcap, 60)
-        })
-    
-    # Trier par score décroissant
-    fallback_sorted = sorted(fallback, key=lambda x: x['score'], reverse=True)
-    print(f"✅ {len(fallback_sorted)} pépites fallback triées par score")
-    return fallback_sorted
-
-
-# ============================================================================
-# 🔐 PERMISSION SYSTEM
-# ============================================================================
-
-def check_permission(user_plan: str, feature: str) -> bool:
-    """Vérifie permissions par plan"""
-    permissions = {
-        "free": ["ai_gem_hunter_basic"],
-        "1_month": ["ai_signals", "ai_news", "ai_sizer"],
-        "3_months": ["ai_predictor", "ai_whale", "ai_patterns"],
-        "6_months": ["ai_sentiment", "ai_exit", "ai_timeframe", "ai_liquidity"],
-        "1_year": ["ai_alerts"]
+    return {
+        "files_in_app": files,
+        "subscription_system_exists": subscription_exists,
+        "admin_pricing_exists": admin_exists,
+        "import_tests": import_test,
+        "SUBSCRIPTION_ENABLED": SUBSCRIPTION_ENABLED
     }
-    hierarchy = ["free", "1_month", "3_months", "6_months", "1_year"]
-    try:
-        user_plan_index = hierarchy.index(user_plan)
-    except ValueError:
-        return False
-    for i in range(user_plan_index + 1):
-        if feature in permissions.get(hierarchy[i], []):
-            return True
-    return False
+# ========================
+
+# ===== NOUVEAU: Monter les routeurs d'abonnement =====
+if SUBSCRIPTION_ENABLED:
+    app.include_router(subscription_router)
+    app.include_router(admin_pricing_router)
+    print("✅ Routes d'abonnement activées")
+# =====================================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 
-
-
-def get_sidebar_menu():
-    """Retourne le sidebar + script qui wrappe automatiquement le contenu"""
-    return """
-<style>
-/* ===================================== */
-/* 🎨 SIDEBAR MENU - FIXÉ GAUCHE */
-/* ===================================== */
-.sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 280px;
-    height: 100vh;
-    background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-    padding: 20px 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    z-index: 99999;
-    box-shadow: 4px 0 20px rgba(0,0,0,0.5);
-    border-right: 2px solid rgba(6,182,212,0.3);
-}
-
-.sidebar::-webkit-scrollbar { width: 8px; }
-.sidebar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-.sidebar::-webkit-scrollbar-thumb { background: rgba(6,182,212,0.5); border-radius: 4px; }
-
-.sidebar-header {
-    padding: 0 20px 20px 20px;
-    border-bottom: 2px solid rgba(6,182,212,0.3);
-    margin-bottom: 15px;
-}
-
-.sidebar-title {
-    color: #06b6d4;
-    font-size: 20px;
-    font-weight: 700;
-    text-align: center;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-.menu-section { margin-bottom: 10px; }
-
-.section-title {
-    color: rgba(255,255,255,0.5);
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    padding: 10px 20px 8px 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-
-.menu-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-    color: #e2e8f0;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    border-left: 3px solid transparent;
-}
-
-.menu-item:hover {
-    background: rgba(6,182,212,0.15);
-    border-left-color: #06b6d4;
-    color: #fff;
-    padding-left: 25px;
-}
-
-.menu-item.ai-feature {
-    background: linear-gradient(90deg, rgba(6,182,212,0.15) 0%, transparent 100%);
-    border-left: 3px solid #06b6d4;
-    font-weight: 600;
-}
-
-.menu-item.premium {
-    background: linear-gradient(90deg, rgba(139,92,246,0.2) 0%, transparent 100%);
-    border-left: 3px solid #8b5cf6;
-    font-weight: 600;
-}
-
-.menu-item.admin {
-    background: linear-gradient(90deg, rgba(245,158,11,0.2) 0%, transparent 100%);
-    border-left: 3px solid #f59e0b;
-    font-weight: 600;
-}
-
-.menu-item.account {
-    background: linear-gradient(90deg, rgba(16,185,129,0.2) 0%, transparent 100%);
-    border-left: 3px solid #10b981;
-    font-weight: 600;
-}
-
-.menu-item.logout {
-    background: linear-gradient(90deg, rgba(239,68,68,0.2) 0%, transparent 100%);
-    border-left: 3px solid #ef4444;
-    font-weight: 600;
-}
-
-.icon { font-size: 18px; min-width: 20px; }
-
-/* CRITIQUE: Wrapper automatique du contenu */
-body.has-sidebar { margin: 0 !important; padding: 0 !important; }
-.content-wrapper {
-    margin-left: 280px !important;
-    padding: 20px !important;
-    min-height: 100vh !important;
-}
-
-/* Mobile */
-.sidebar-toggle {
-    display: none;
-    position: fixed;
-    top: 15px;
-    left: 15px;
-    z-index: 100000;
-    background: #06b6d4;
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 20px;
-}
-
-@media (max-width: 768px) {
-    .sidebar { transform: translateX(-100%); }
-    .sidebar.active { transform: translateX(0); }
-    .sidebar-toggle { display: block; }
-    .content-wrapper { margin-left: 0 !important; }
-}
-
-/* CACHER ANCIEN MENU EN HAUT */
-.universal-top-nav,
-.universal-menu-fixed,
-.top-menu {
-    display: none !important;
-}
-</style>
-
-<button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">☰</button>
-
-<nav class="sidebar">
-    <div class="sidebar-header">
-        <div class="sidebar-title">🚀 Trading Pro</div>
-    </div>
-    
-    <div class="menu-section">
-        <div class="section-title">📊 Tableau de Bord</div>
-        <a href="/dashboard" class="menu-item"><span class="icon">🏠</span> Accueil</a>
-        <a href="/fear-greed" class="menu-item"><span class="icon">😨</span> Fear & Greed</a>
-        <a href="/dominance" class="menu-item"><span class="icon">👑</span> Dominance BTC</a>
-        <a href="/altcoin-season" class="menu-item"><span class="icon">⭐</span> Altcoin Season</a>
-        <a href="/heatmap" class="menu-item"><span class="icon">🔥</span> Heatmap</a>
-    </div>
-    
-    <div class="menu-section">
-        <div class="section-title">🤖 Features IA</div>
-        <a href="/ai-signals" class="menu-item ai-feature"><span class="icon">🎯</span> Signaux AI</a>
-        <a href="/ai-news" class="menu-item ai-feature"><span class="icon">📰</span> News Impact</a>
-        <a href="/ai-predictor" class="menu-item ai-feature"><span class="icon">🔮</span> Prédictions</a>
-        <a href="/ai-whale" class="menu-item ai-feature"><span class="icon">🐋</span> Whale Tracker</a>
-        <a href="/ai-patterns" class="menu-item ai-feature"><span class="icon">📊</span> Patterns</a>
-        <a href="/ai-sentiment" class="menu-item ai-feature"><span class="icon">🎭</span> Sentiment</a>
-        <a href="/ai-sizer" class="menu-item ai-feature"><span class="icon">📏</span> Position Size</a>
-        <a href="/ai-exit" class="menu-item ai-feature"><span class="icon">🚪</span> Exit Strategy</a>
-        <a href="/ai-timeframe" class="menu-item ai-feature"><span class="icon">📈</span> Multi-Timeframe</a>
-        <a href="/ai-liquidity" class="menu-item ai-feature"><span class="icon">🌊</span> Liquidité</a>
-        <a href="/ai-alerts" class="menu-item ai-feature"><span class="icon">🎯</span> Alertes Smart</a>
-        <a href="/ai-gem-hunter" class="menu-item ai-feature"><span class="icon">💎</span> Gem Hunter</a>
-    </div>
-    
-    <div class="menu-section">
-        <div class="section-title">💰 Trading</div>
-        <a href="/strategie" class="menu-item"><span class="icon">📚</span> Stratégies</a>
-        <a href="/spot-trading" class="menu-item"><span class="icon">💎</span> Spot Trading</a>
-        <a href="/trades" class="menu-item"><span class="icon">📈</span> Mes Trades</a>
-        <a href="/risk-management" class="menu-item"><span class="icon">⚠️</span> Risk Management</a>
-        <a href="/watchlist" class="menu-item"><span class="icon">👁️</span> Watchlist</a>
-        <a href="/calculatrice" class="menu-item"><span class="icon">🧮</span> Calculatrice</a>
-    </div>
-    
-    <div class="menu-section">
-        <div class="section-title">🔍 Analyse</div>
-        <a href="/ai-assistant" class="menu-item"><span class="icon">🤖</span> Assistant AI</a>
-        <a href="/prediction-ia" class="menu-item"><span class="icon">🔮</span> Prédictions</a>
-        <a href="/ai-opportunity-scanner" class="menu-item"><span class="icon">🔍</span> Scanner</a>
-        <a href="/ai-market-regime" class="menu-item"><span class="icon">🌊</span> Market Regime</a>
-        <a href="/ai-whale-watcher" class="menu-item"><span class="icon">🐋</span> Whale Watcher</a>
-        <a href="/stats-dashboard" class="menu-item"><span class="icon">📊</span> Statistiques</a>
-        <a href="/onchain-metrics" class="menu-item"><span class="icon">⛓️</span> OnChain</a>
-    </div>
-    
-    <div class="menu-section">
-        <div class="section-title">🛠️ Outils</div>
-        <a href="/market-simulation" class="menu-item"><span class="icon">🎮</span> Simulation</a>
-        <a href="/backtesting" class="menu-item"><span class="icon">⚙️</span> Backtesting</a>
-        <a href="/graphiques" class="menu-item"><span class="icon">📊</span> Graphiques</a>
-        <a href="/convertisseur" class="menu-item"><span class="icon">💱</span> Convertisseur</a>
-        <a href="/calendrier" class="menu-item"><span class="icon">📅</span> Calendrier</a>
-        <a href="/nouvelles" class="menu-item"><span class="icon">📰</span> Actualités</a>
-    </div>
-    
-    <div class="menu-section">
-        <div class="section-title">⚙️ Système</div>
-        <a href="/bullrun-phase" class="menu-item"><span class="icon">🚀</span> Bull Run Phase</a>
-        <a href="/success-stories" class="menu-item"><span class="icon">⭐</span> Success Stories</a>
-        <a href="/testimonials-widget" class="menu-item"><span class="icon">💬</span> Témoignages</a>
-        <a href="/generate-pdf-report" class="menu-item"><span class="icon">📄</span> Rapport PDF</a>
-        <a href="/api-keys" class="menu-item"><span class="icon">🔑</span> API Keys</a>
-        <a href="/telegram-test" class="menu-item"><span class="icon">📱</span> Telegram</a>
-    </div>
-    
-    <div class="menu-section">
-        <div class="section-title">👤 Mon Compte</div>
-        <a href="/pricing-complete" class="menu-item premium"><span class="icon">💎</span> Abonnements</a>
-        <a href="/admin-dashboard" class="menu-item admin"><span class="icon">🔧</span> Admin Dashboard</a>
-        <a href="/mon-compte" class="menu-item account"><span class="icon">👤</span> Mon Compte</a>
-        <a href="/logout" class="menu-item logout"><span class="icon">🚪</span> Déconnexion</a>
-    </div>
-</nav>
-
-<script>
-// WRAPPER AUTOMATIQUE DU CONTENU
-(function() {
-    // Marquer le body
-    document.body.classList.add('has-sidebar');
-    
-    // Trouver le contenu principal (après le sidebar)
-    const sidebar = document.querySelector('.sidebar');
-    if (!sidebar) return;
-    
-    // Créer le wrapper
-    const wrapper = document.createElement('div');
-    wrapper.className = 'content-wrapper';
-    
-    // Déplacer tout le contenu (sauf sidebar et toggle) dans le wrapper
-    const elements = Array.from(document.body.children);
-    elements.forEach(el => {
-        if (!el.classList.contains('sidebar') && 
-            !el.classList.contains('sidebar-toggle') &&
-            el.tagName !== 'SCRIPT' &&
-            el.tagName !== 'STYLE') {
-            wrapper.appendChild(el);
-        }
-    });
-    
-    // Ajouter le wrapper au body
-    document.body.appendChild(wrapper);
-})();
-</script>
-"""
-
+# 🔐 Middleware d'authentification
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     """Vérifier l'authentification sur toutes les routes sauf routes FREE et publiques"""
@@ -2649,139 +1820,6 @@ async def get_crypto_news_real():
 # 🔐 ROUTES D'AUTHENTIFICATION
 # ============================================================================
 
-
-# ===================================
-# SIDEBAR MENU - VARIABLE GLOBALE
-# ===================================
-SIDEBAR_HTML = """<style>
-.sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 280px;
-    height: 100vh;
-    background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-    padding: 20px 0;
-    overflow-y: auto;
-    z-index: 99999;
-    box-shadow: 4px 0 20px rgba(0,0,0,0.5);
-    border-right: 2px solid rgba(6,182,212,0.3);
-}
-.sidebar::-webkit-scrollbar { width: 8px; }
-.sidebar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-.sidebar::-webkit-scrollbar-thumb { background: rgba(6,182,212,0.5); border-radius: 4px; }
-.sidebar-header { padding: 0 20px 20px 20px; border-bottom: 2px solid rgba(6,182,212,0.3); margin-bottom: 15px; }
-.sidebar-title { color: #06b6d4; font-size: 20px; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
-.menu-section { margin-bottom: 10px; }
-.section-title { color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; padding: 10px 20px 8px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-.menu-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: #e2e8f0; text-decoration: none; font-size: 14px; font-weight: 500; transition: all 0.3s ease; border-left: 3px solid transparent; }
-.menu-item:hover { background: rgba(6,182,212,0.15); border-left-color: #06b6d4; color: #fff; padding-left: 25px; }
-.menu-item.ai-feature { background: linear-gradient(90deg, rgba(6,182,212,0.15) 0%, transparent 100%); border-left: 3px solid #06b6d4; font-weight: 600; }
-.menu-item.premium { background: linear-gradient(90deg, rgba(139,92,246,0.2) 0%, transparent 100%); border-left: 3px solid #8b5cf6; font-weight: 600; }
-.menu-item.admin { background: linear-gradient(90deg, rgba(245,158,11,0.2) 0%, transparent 100%); border-left: 3px solid #f59e0b; font-weight: 600; }
-.menu-item.account { background: linear-gradient(90deg, rgba(16,185,129,0.2) 0%, transparent 100%); border-left: 3px solid #10b981; font-weight: 600; }
-.menu-item.logout { background: linear-gradient(90deg, rgba(239,68,68,0.2) 0%, transparent 100%); border-left: 3px solid #ef4444; font-weight: 600; }
-.icon { font-size: 18px; min-width: 20px; }
-body.has-sidebar { margin: 0 !important; padding: 0 !important; }
-.content-wrapper { margin-left: 280px !important; padding: 20px !important; min-height: 100vh !important; }
-.sidebar-toggle { display: none; position: fixed; top: 15px; left: 15px; z-index: 100000; background: #06b6d4; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 20px; }
-@media (max-width: 768px) {
-    .sidebar { transform: translateX(-100%); }
-    .sidebar.active { transform: translateX(0); }
-    .sidebar-toggle { display: block; }
-    .content-wrapper { margin-left: 0 !important; }
-}
-</style>
-<button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">☰</button>
-<nav class="sidebar">
-    <div class="sidebar-header"><div class="sidebar-title">🚀 Trading Pro</div></div>
-    <div class="menu-section">
-        <div class="section-title">📊 Tableau de Bord</div>
-        <a href="/dashboard" class="menu-item"><span class="icon">🏠</span> Accueil</a>
-        <a href="/fear-greed" class="menu-item"><span class="icon">😨</span> Fear & Greed</a>
-        <a href="/dominance" class="menu-item"><span class="icon">👑</span> Dominance BTC</a>
-        <a href="/altcoin-season" class="menu-item"><span class="icon">⭐</span> Altcoin Season</a>
-        <a href="/heatmap" class="menu-item"><span class="icon">🔥</span> Heatmap</a>
-    </div>
-    <div class="menu-section">
-        <div class="section-title">🤖 Features IA</div>
-        <a href="/ai-signals" class="menu-item ai-feature"><span class="icon">🎯</span> Signaux AI</a>
-        <a href="/ai-news" class="menu-item ai-feature"><span class="icon">📰</span> News Impact</a>
-        <a href="/ai-predictor" class="menu-item ai-feature"><span class="icon">🔮</span> Prédictions</a>
-        <a href="/ai-whale" class="menu-item ai-feature"><span class="icon">🐋</span> Whale Tracker</a>
-        <a href="/ai-patterns" class="menu-item ai-feature"><span class="icon">📊</span> Patterns</a>
-        <a href="/ai-sentiment" class="menu-item ai-feature"><span class="icon">🎭</span> Sentiment</a>
-        <a href="/ai-sizer" class="menu-item ai-feature"><span class="icon">📏</span> Position Size</a>
-        <a href="/ai-exit" class="menu-item ai-feature"><span class="icon">🚪</span> Exit Strategy</a>
-        <a href="/ai-timeframe" class="menu-item ai-feature"><span class="icon">📈</span> Multi-Timeframe</a>
-        <a href="/ai-liquidity" class="menu-item ai-feature"><span class="icon">🌊</span> Liquidité</a>
-        <a href="/ai-alerts" class="menu-item ai-feature"><span class="icon">🎯</span> Alertes Smart</a>
-        <a href="/ai-gem-hunter" class="menu-item ai-feature"><span class="icon">💎</span> Gem Hunter</a>
-    </div>
-    <div class="menu-section">
-        <div class="section-title">💰 Trading</div>
-        <a href="/strategie" class="menu-item"><span class="icon">📚</span> Stratégies</a>
-        <a href="/spot-trading" class="menu-item"><span class="icon">💎</span> Spot Trading</a>
-        <a href="/trades" class="menu-item"><span class="icon">📈</span> Mes Trades</a>
-        <a href="/risk-management" class="menu-item"><span class="icon">⚠️</span> Risk Management</a>
-        <a href="/watchlist" class="menu-item"><span class="icon">👁️</span> Watchlist</a>
-        <a href="/calculatrice" class="menu-item"><span class="icon">🧮</span> Calculatrice</a>
-    </div>
-    <div class="menu-section">
-        <div class="section-title">🔍 Analyse</div>
-        <a href="/ai-assistant" class="menu-item"><span class="icon">🤖</span> Assistant AI</a>
-        <a href="/prediction-ia" class="menu-item"><span class="icon">🔮</span> Prédictions</a>
-        <a href="/ai-opportunity-scanner" class="menu-item"><span class="icon">🔍</span> Scanner</a>
-        <a href="/ai-market-regime" class="menu-item"><span class="icon">🌊</span> Market Regime</a>
-        <a href="/ai-whale-watcher" class="menu-item"><span class="icon">🐋</span> Whale Watcher</a>
-        <a href="/stats-dashboard" class="menu-item"><span class="icon">📊</span> Statistiques</a>
-        <a href="/onchain-metrics" class="menu-item"><span class="icon">⛓️</span> OnChain</a>
-    </div>
-    <div class="menu-section">
-        <div class="section-title">🛠️ Outils</div>
-        <a href="/market-simulation" class="menu-item"><span class="icon">🎮</span> Simulation</a>
-        <a href="/backtesting" class="menu-item"><span class="icon">⚙️</span> Backtesting</a>
-        <a href="/graphiques" class="menu-item"><span class="icon">📊</span> Graphiques</a>
-        <a href="/convertisseur" class="menu-item"><span class="icon">💱</span> Convertisseur</a>
-        <a href="/calendrier" class="menu-item"><span class="icon">📅</span> Calendrier</a>
-        <a href="/nouvelles" class="menu-item"><span class="icon">📰</span> Actualités</a>
-    </div>
-    <div class="menu-section">
-        <div class="section-title">⚙️ Système</div>
-        <a href="/bullrun-phase" class="menu-item"><span class="icon">🚀</span> Bull Run Phase</a>
-        <a href="/success-stories" class="menu-item"><span class="icon">⭐</span> Success Stories</a>
-        <a href="/testimonials-widget" class="menu-item"><span class="icon">💬</span> Témoignages</a>
-        <a href="/generate-pdf-report" class="menu-item"><span class="icon">📄</span> Rapport PDF</a>
-        <a href="/api-keys" class="menu-item"><span class="icon">🔑</span> API Keys</a>
-        <a href="/telegram-test" class="menu-item"><span class="icon">📱</span> Telegram</a>
-    </div>
-    <div class="menu-section">
-        <div class="section-title">👤 Mon Compte</div>
-        <a href="/pricing-complete" class="menu-item premium"><span class="icon">💎</span> Abonnements</a>
-        <a href="/admin-dashboard" class="menu-item admin"><span class="icon">🔧</span> Admin Dashboard</a>
-        <a href="/mon-compte" class="menu-item account"><span class="icon">👤</span> Mon Compte</a>
-        <a href="/logout" class="menu-item logout"><span class="icon">🚪</span> Déconnexion</a>
-    </div>
-</nav>
-<script>
-(function() {
-    document.body.classList.add('has-sidebar');
-    const sidebar = document.querySelector('.sidebar');
-    if (!sidebar) return;
-    const wrapper = document.createElement('div');
-    wrapper.className = 'content-wrapper';
-    const elements = Array.from(document.body.children);
-    elements.forEach(el => {
-        if (!el.classList.contains('sidebar') && !el.classList.contains('sidebar-toggle') && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE') {
-            wrapper.appendChild(el);
-        }
-    });
-    document.body.appendChild(wrapper);
-})();
-</script>"""
-
-
-
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = None):
     """Page de connexion"""
@@ -2789,7 +1827,8 @@ async def login_page(request: Request, error: str = None):
     if error:
         error_msg = '<div class="alert alert-error">❌ Identifiants incorrects</div>'
     
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(f"""
+SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -2958,7 +1997,6 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(username: str = Depends(require_admin)):
-    sidebar_html = SIDEBAR_HTML
     """Panel d'administration pour gérer les utilisateurs"""
     
     # Récupérer tous les utilisateurs
@@ -2983,7 +2021,8 @@ async def admin_panel(username: str = Depends(require_admin)):
         </tr>
         """
     
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(f"""
+SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -3020,8 +2059,6 @@ async def admin_panel(username: str = Depends(require_admin)):
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <div class="header">
             <h1>👑 Panel d'Administration</h1>
@@ -3477,8 +2514,6 @@ async def strategie_page():
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <div class="container">
             <header>
                 <h1>🎯 MAGIC MIKE 1H - GUIDE ULTIME 🎯</h1>
@@ -4132,7 +3167,25 @@ last_telegram_message_time = 0
 TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 
-CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style><script>/* Menu injection removed */</script>"""
+CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style><script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.location.pathname === '/login' || window.location.pathname === '/logout') return;
+    if (document.querySelector('.universal-top-nav')) return;
+    
+    const menuHTML = `<style>
+.universal-top-nav{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}
+.universal-nav-container{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.universal-nav-btn{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}
+.universal-nav-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}
+.universal-nav-btn.premium{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}
+.universal-nav-btn.admin{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}
+.universal-nav-btn.account{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}
+.universal-nav-btn.logout{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}
+</style>`;
+    
+    document.body.insertAdjacentHTML('afterbegin', menuHTML);
+});
+</script>"""
 
 
 
@@ -4620,18 +3673,16 @@ async def health_check():
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(session_token: Optional[str] = Cookie(None)):
-    sidebar_html = SIDEBAR_HTML
     user = get_user_from_token(session_token)
     if not user:
         return RedirectResponse("/login")
     
     username = user.get('username', 'Utilisateur')
     
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(f"""
+SIDEBAR + <!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
 <body>
-    {sidebar_html}
-
     <div style="padding: 40px; text-align: center;">
         <h1 style="color:white; font-size: 48px; margin-bottom: 20px;">🏠 Bienvenue {username}!</h1>
         <p style="color: #94a3b8; font-size: 20px;">Votre tableau de bord de trading</p>
@@ -4855,8 +3906,6 @@ async def home():
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <div class="hero">
             <h1>🎯 Magic Mike Trading Dashboard</h1>
             <p>Plateforme complète d'analyse crypto & outils professionnels pour traders</p>
@@ -5405,8 +4454,6 @@ async def spot_trading_page():
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <div class="container">
             <header>
                 <h1>💎 TRADING SPOT - GUIDE COMPLET</h1>
@@ -6800,7 +5847,6 @@ async def ai_opportunity_scanner():
     Scanner IA des meilleures opportunités de trading en temps réel
     ✅ DONNÉES RÉELLES EN TEMPS RÉEL DE COINGECKO API (Pas de données simulées!)
     """
-    sidebar_html = SIDEBAR_HTML
     html_content = """
     <!DOCTYPE html>
     <html lang="fr">
@@ -7088,8 +6134,6 @@ async def ai_opportunity_scanner():
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <div class="container">
             <header>
                 <h1>🎯 AI OPPORTUNITY SCANNER</h1>
@@ -7355,7 +6399,6 @@ async def ai_opportunity_scanner():
 # ============= AI MARKET REGIME DETECTOR =============
 @app.get("/ai-market-regime", response_class=HTMLResponse)
 async def ai_market_regime():
-    sidebar_html = SIDEBAR_HTML
     """
     Détecteur IA du régime de marché actuel
     
@@ -7610,8 +6653,6 @@ async def ai_market_regime():
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <div class="container">
             <header>
                 <h1>🌊 AI MARKET REGIME DETECTOR</h1>
@@ -8143,7 +7184,6 @@ async def ai_whale_watcher():
     🐋 WHALE WATCHER - DONNÉES VRAIES OU DÉMO AVEC PRIX LIVE
     ✅ Prix BTC ACTUALISÉ TOUJOURS
     """
-    sidebar_html = SIDEBAR_HTML
     
     # 1️⃣ Récupérer le prix BTC EN DIRECT SYSTÉMATIQUEMENT
     btc_price = 43000  # Valeur par défaut
@@ -8530,8 +7570,6 @@ async def ai_whale_watcher():
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <div class="container">
             <header>
                 <h1>🐋 AI WHALE WATCHER</h1>
@@ -8819,10 +7857,7 @@ def generate_heatmap_fallback():
         "source": "Local Fallback",
         "timestamp": datetime.now().isoformat()
     }
-    # Trier par score décroissant
-    fallback_sorted = sorted(fallback, key=lambda x: x['score'], reverse=True)
-    print(f"✅ {len(fallback_sorted)} pépites fallback triées par score")
-    return fallback_sorted
+    return fallback
 
 # ✅ CACHE PERSISTANT POUR ALTCOIN SEASON
 altcoin_cache = {
@@ -9300,7 +8335,6 @@ async def get_exchange_rates_live():
 
 
 def get_fallback_rates():
-    sidebar_html = SIDEBAR_HTML
     """Taux de secours si l'API échoue"""
     return {
         "rates": {
@@ -9321,7 +8355,8 @@ def get_fallback_rates():
 @app.get("/convertisseur", response_class=HTMLResponse)
 async def convertisseur_page():
     """Page du convertisseur de devises et crypto"""
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(f"""
+SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -9472,8 +8507,6 @@ async def convertisseur_page():
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <div class="header">
             <h1>💱 Convertisseur Universel</h1>
@@ -10524,16 +9557,12 @@ async def telegram_test():
 # FIN SECTION ALTCOIN SEASON
 @app.get("/fear-greed", response_class=HTMLResponse)
 async def fear_greed_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body>
-    {SIDEBAR_HTML}
-<div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
     return HTMLResponse(html)
 
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body>
-    {sidebar_html}
-<div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div><div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body><div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div><div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
 let mainChart=null;
 let fullData=[];
 let currentPeriod='30d';
@@ -11180,8 +10209,6 @@ async def heatmap_page():
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <!-- HEADER -->
         <div class="heatmap-header">
@@ -11735,8 +10762,6 @@ async def altcoin_page():
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <div class="altcoin-header">
             <h1>🌟 Altcoin Season Index</h1>
@@ -12296,8 +11321,6 @@ async def bullrun_page():
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <div class="header">
             <h1>🚀 Bullrun Phase Tracker</h1>
@@ -12901,8 +11924,6 @@ async def charts_page():
     </style>
 """ + CSS + """</head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <!-- Header -->
         <div class="header">
@@ -13761,9 +12782,7 @@ async def charts_page():
     return HTMLResponse(html)
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body>
-    {SIDEBAR_HTML}
-<div class="container"><div class="header"><h1>📱 Test Telegram</h1></div><div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📱 Test Telegram</h1></div><div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
     return HTMLResponse(html)
 
 
@@ -13846,8 +12865,6 @@ async def trades_page():
     </style>
 """ + CSS + """</head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <div class="header fade-in">
             <h1>📊 Gestion des Trades Premium</h1>
@@ -15268,8 +14285,6 @@ async def calendrier_economique():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
-
     <div class="container">
         <div class="header">
             <h1>📅 Calendrier Économique Détaillé</h1>
@@ -15828,7 +14843,8 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
     """Page de pricing avec support codes promo"""
-    return HTMLResponse("""<!DOCTYPE html>
+    return HTMLResponse("""
+SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -16050,8 +15066,6 @@ async def pricing_complete():
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <div class="header">
             <h1>💎 Plans & Tarifs</h1>
@@ -16691,7 +15705,8 @@ async def pricing_complete():
 @app.get("/pricing-new", response_class=HTMLResponse)
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
-    return HTMLResponse("""<!DOCTYPE html>
+    return HTMLResponse("""
+SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -16845,8 +15860,6 @@ async def pricing_page_new(request: Request):
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <div id="successMsg" class="success-message">
             ✅ Paiement reçu! Merci! Votre abonnement est actif.
@@ -17295,6 +16308,7 @@ async def coinbase_checkout(request: Request):
 async def payment_success(request: Request, plan: str = "monthly"):
     """Page de succès après paiement Stripe"""
     return HTMLResponse(f"""
+SIDEBAR + 
     <!DOCTYPE html>
     <html>
     <head>
@@ -17396,6 +16410,7 @@ async def payment_success(request: Request, plan: str = "monthly"):
 async def payment_cancel(request: Request, plan: str = "monthly"):
     """Page d'annulation de paiement"""
     return HTMLResponse(f"""
+SIDEBAR + 
     <!DOCTYPE html>
     <html>
     <head>
@@ -17563,7 +16578,6 @@ async def reset_weekly_pnl_manual():
 # ============================================================================
 @app.get("/stats-dashboard", response_class=HTMLResponse)
 async def stats_dashboard():
-    sidebar_html = SIDEBAR_HTML
     """$ DASHBOARD STATISTIQUES - TOUTES DONNÉES RÉELLES 100% $"""
     
     # ========== RÉCUPÉRATION DONNÉES MARCHÉ RÉELLES ==========
@@ -17725,92 +16739,15 @@ async def stats_dashboard():
     </style>
 </head>
 <body>
-    {sidebar_html}
-
 <style>
-.universal-top-nav {
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
-    padding: 15px 20px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 9999 !important;
-    border-bottom: 2px solid rgba(255,255,255,0.1) !important;
-    width: 100% !important;
-}
-
-.universal-nav-container {
-    max-width: 1600px !important;
-    margin: 0 auto !important;
-    display: flex !important;
-    gap: 10px !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    align-items: center !important;
-}
-
-.universal-nav-btn {
-    background: rgba(255,255,255,0.08) !important;
-    color: #e2e8f0 !important;
-    padding: 10px 16px !important;
-    border-radius: 8px !important;
-    text-decoration: none !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    white-space: nowrap !important;
-    display: inline-block !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
-}
-
-.universal-nav-btn:hover {
-    background: rgba(255,255,255,0.15) !important;
-    border-color: rgba(96,165,250,0.5) !important;
-    color: white !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 12px rgba(96,165,250,0.3) !important;
-}
-
-.universal-nav-btn.active {
-    background: rgba(96,165,250,0.25) !important;
-    border-color: #60a5fa !important;
-    color: #60a5fa !important;
-    box-shadow: 0 0 20px rgba(96,165,250,0.4) !important;
-    font-weight: 700 !important;
-}
-
-.universal-nav-btn.premium {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
-    border: none !important;
-    color: white !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 15px rgba(99,102,241,0.4) !important;
-}
-
-.universal-nav-btn.admin {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-    border: none !important;
-    color: white !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 15px rgba(245,158,11,0.4) !important;
-}
-
-.universal-nav-btn.account {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    border: none !important;
-    color: white !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 15px rgba(16,185,129,0.4) !important;
-}
-
-.universal-nav-btn.logout {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-    border: none !important;
-    color: white !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 15px rgba(239,68,68,0.4) !important;
-}
+.universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
+.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
+.universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
+.universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
+.universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
+.universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}}
+.universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
+.universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
 </style>
 
 
@@ -17992,7 +16929,8 @@ async def get_crypto_prices(crypto_id: str):
 @app.get("/market-simulation", response_class=HTMLResponse)
 async def market_simulation():
     """Simulation réaliste avec cycles bull/bear et DCA discipline - Top 10 Crypto"""
-    return HTMLResponse("""<!DOCTYPE html>
+    return HTMLResponse("""
+SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -18176,8 +17114,6 @@ async def market_simulation():
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <h1>📈 SIMULATION DE MARCHÉ - Top 10 Crypto</h1>
         <p class="subtitle">Comparez l'impact du DCA vs Émotions sur les cryptos réelles</p>
@@ -18567,7 +17503,8 @@ async def generate_pdf_report():
 @app.get("/success-stories", response_class=HTMLResponse)
 async def success_stories():
     """Success Stories: Histoires vraies de DCA réussies"""
-    return HTMLResponse("""<!DOCTYPE html>
+    return HTMLResponse("""
+SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -18760,8 +17697,6 @@ async def success_stories():
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     
 
     <div class="container">
@@ -18952,11 +17887,10 @@ async def success_stories():
 
 @app.get("/risk-management", response_class=HTMLResponse)
 async def risk_management_page():
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(f"""
+SIDEBAR + <!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
 <body>
-    {sidebar_html}
-
 <div class="container">
 <div class="header"><h1>⚖️ RISK MANAGEMENT</h1><p>Gestion professionnelle du risque</p></div>
 
@@ -19127,11 +18061,10 @@ loadSettings();
 # ============= PAGE WATCHLIST & ALERTES =============
 @app.get("/watchlist", response_class=HTMLResponse)
 async def watchlist_page():
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(f"""
+SIDEBAR + <!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
 <body>
-    {sidebar_html}
-
 <div class="container">
 <div class="header"><h1>👀 WATCHLIST & ALERTES</h1><p>Surveillez vos cryptos préférées</p></div>
 
@@ -19269,11 +18202,10 @@ loadWatchlist();
 # ============= PAGE AI TRADING ASSISTANT =============
 @app.get("/ai-assistant", response_class=HTMLResponse)
 async def ai_assistant_page():
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(f"""
+SIDEBAR + <!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
 <body>
-    {sidebar_html}
-
 <div class="container">
 <div class="header"><h1>🤖 AI TRADING ASSISTANT</h1><p>Intelligence artificielle pour optimiser vos trades</p></div>
 
@@ -19431,7 +18363,8 @@ loadSentiment();
 @app.get("/calculatrice", response_class=HTMLResponse)
 async def calculatrice_trades():
     """Calculatrice de trades professionnelle en français"""
-    return HTMLResponse("""<!DOCTYPE html>
+    return HTMLResponse("""
+SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -19737,8 +18670,6 @@ async def calculatrice_trades():
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <div class="header">
             <h1>🧮 Calculatrice de Trades</h1>
@@ -20149,7 +19080,8 @@ async def calculatrice_trades():
 @app.get("/prediction-ia", response_class=HTMLResponse)
 async def prediction_ia():
     """Page de prédiction IA avec navigation"""
-    return HTMLResponse("""<!DOCTYPE html>
+    return HTMLResponse("""
+SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -20192,8 +19124,6 @@ async def prediction_ia():
     </style>
 </head>
 <body>
-    {sidebar_html}
-
     <div class="container">
         <div class="header">
             <h1>🤖 Prédiction Crypto IA Pro</h1>
@@ -20764,7 +19694,6 @@ async def stripe_webhook_debug(request: Request):
 
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
-    sidebar_html = SIDEBAR_HTML
     """Page d'administration pour gérer les utilisateurs et abonnements"""
     
     # Vérifier l'authentification
@@ -20843,6 +19772,7 @@ async def admin_dashboard(request: Request):
         """
     
     return HTMLResponse(f"""
+SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -20886,8 +19816,6 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
 .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
@@ -20941,8 +19869,7 @@ async def admin_dashboard(request: Request):
 
 @app.get("/admin/pricing", response_class=HTMLResponse)
 async def admin_pricing_view(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """Page de gestion des plans - AVEC 44 ROUTES"""
+    """Page de gestion des plans - ISOLÉE"""
     session_token = request.cookies.get("session_token")
     if not session_token:
         return RedirectResponse("/login", status_code=303)
@@ -20960,7 +19887,8 @@ async def admin_pricing_view(request: Request):
     elif error:
         alert = '<div class="alert error">❌ Erreur lors de la mise à jour</div>'
     
-    # TOUTES les 44 routes disponibles (33 + 11 IA)
+    # TOUTES les 33 routes disponibles
+    all_routes_html = ""
     routes_list = [
         '/dashboard', '/fear-greed', '/dominance', '/altcoin-season', '/heatmap',
         '/strategie', '/spot-trading', '/calculatrice', '/nouvelles', '/trades',
@@ -20969,49 +19897,21 @@ async def admin_pricing_view(request: Request):
         '/stats-dashboard', '/market-simulation', '/success-stories',
         '/convertisseur', '/calendrier', '/bullrun-phase', '/graphiques',
         '/generate-pdf-report', '/backtesting', '/onchain-metrics',
-        '/api-keys', '/testimonials-widget', '/telegram-test', 
-        '/pricing-complete', '/admin-dashboard', '/mon-compte',
-        # 11 ROUTES IA
-        '/ai-gem-hunter', '/ai-signals', '/ai-news', '/ai-predictor',
-        '/ai-whale', '/ai-patterns', '/ai-sentiment', '/ai-sizer',
-        '/ai-exit', '/ai-timeframe', '/ai-liquidity', '/ai-alerts'
+        '/api-keys', '/testimonials-widget',
+        '/telegram-test', '/pricing-complete', '/admin-dashboard', '/mon-compte'
     ]
     
-    # Fonction helper pour générer checkboxes
-    def generate_checkboxes(checked_routes):
-        html = ""
-        for route in routes_list:
-            checked = "checked" if route in checked_routes else ""
-            html += f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {checked}> {route}</label>'
-        return html
-    
-    # Routes par plan
-    free_routes = ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap",
-                   "/nouvelles","/convertisseur","/calendrier","/ai-gem-hunter"]
-    
-    month1_routes = ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie",
-                     "/spot-trading","/calculatrice","/trades","/risk-management","/watchlist",
-                     "/ai-signals","/ai-news","/ai-sizer"]
-    
-    months3_routes = ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard",
-                      "/market-simulation","/success-stories","/bullrun-phase","/graphiques",
-                      "/backtesting","/ai-predictor","/ai-whale","/ai-patterns"]
-    
-    months6_routes = ["/onchain-metrics","/api-keys","/testimonials-widget","/telegram-test",
-                      "/ai-sentiment","/ai-exit","/ai-timeframe","/ai-liquidity"]
-    
-    year1_routes = ["/generate-pdf-report","/ai-alerts"]
-    
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(f"""
+SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Pricing - Trading Dashboard Pro</title>
+    <title>Admin Pricing</title>
     <style>
         * {{ margin:0; padding:0; box-sizing:border-box; }}
         body {{ font-family:'Segoe UI',sans-serif; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; }}
         
+        /* MENU ISOLÉ */
         .top-menu {{
             background:#1a1a2e;
             padding:15px 20px;
@@ -21062,9 +19962,9 @@ async def admin_pricing_view(request: Request):
         
         .routes-section {{ background:#f8f9fa; padding:20px; border-radius:10px; margin-top:20px; }}
         .routes-section h4 {{ color:#333; margin-bottom:15px; }}
-        .routes-grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; margin-top:15px; max-height:400px; overflow-y:auto; }}
-        .route-checkbox {{ display:flex; align-items:center; background:white; padding:10px; border-radius:6px; border:2px solid #e0e0e0; cursor:pointer; }}
-        .route-checkbox input {{ margin-right:10px; width:18px; height:18px; cursor:pointer; }}
+        .routes-grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:15px; }}
+        .route-checkbox {{ display:flex; align-items:center; background:white; padding:10px; border-radius:6px; border:2px solid #e0e0e0; }}
+        .route-checkbox input {{ margin-right:10px; width:18px; height:18px; }}
         .route-checkbox:has(input:checked) {{ background:#e8f0ff; border-color:#667eea; }}
         
         .save-btn {{ background:#10b981; color:white; padding:12px 30px; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; margin-top:15px; }}
@@ -21076,19 +19976,25 @@ async def admin_pricing_view(request: Request):
     </style>
 </head>
 <body>
-    {sidebar_html}
-
-    
+    <nav class="top-menu">
+        <div class="menu-items">
+            <a href="/dashboard" class="menu-btn">🏠 Accueil</a>
+            <a href="/admin-dashboard" class="menu-btn">🔧 Admin</a>
+            <a href="/admin/list-promos" class="menu-btn">💰 Promos</a>
+            <a href="/admin/pricing" class="menu-btn active">💎 Pricing</a>
+            <a href="/mon-compte" class="menu-btn">👤 Compte</a>
+            <a href="/logout" class="menu-btn">🚪 Déconnexion</a>
+        </div>
+    </nav>
     
     <div class="container">
         <div class="header">
             <h1>💎 Gestion des Plans d'Abonnement</h1>
-            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (44 routes disponibles)</p>
+            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (33 routes disponibles)</p>
         </div>
         
         {alert}
         
-        <!-- FREE PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="free">
             <div class="plan-header">
@@ -21110,15 +20016,14 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Routes FREE (9 routes dont 1 IA)</h4>
+                <h4>🔐 Toutes les 33 Routes Disponibles (cochez celles accessibles en Free)</h4>
                 <div class="routes-grid">
-                    {generate_checkboxes(free_routes)}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap","/nouvelles","/convertisseur","/calendrier"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Free</button>
         </form>
         
-        <!-- 1 MONTH PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="1_month">
             <div class="plan-header">
@@ -21140,15 +20045,14 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Routes 1 MOIS (12 routes dont 3 IA + hérite FREE)</h4>
+                <h4>🔐 Toutes les 33 Routes (+ hérite de Free)</h4>
                 <div class="routes-grid">
-                    {generate_checkboxes(month1_routes)}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Premium</button>
         </form>
         
-        <!-- 3 MONTHS PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="3_months">
             <div class="plan-header">
@@ -21170,19 +20074,18 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Routes 3 MOIS (11 routes dont 3 IA + hérite 1 MOIS)</h4>
+                <h4>🔐 Toutes les 33 Routes (hérite de Premium)</h4>
                 <div class="routes-grid">
-                    {generate_checkboxes(months3_routes)}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Advanced</button>
         </form>
         
-        <!-- 6 MONTHS PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="6_months">
             <div class="plan-header">
-                <div class="plan-title">💎 Pro 6 mois</div>
+                <div class="plan-title">⭐ Pro 6 mois</div>
                 <div class="plan-id">ID: 6_months</div>
             </div>
             <div class="editor-row">
@@ -21200,19 +20103,18 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Routes 6 MOIS (8 routes dont 4 IA + hérite 3 MOIS)</h4>
+                <h4>🔐 Toutes les 33 Routes (+ hérite de Premium)</h4>
                 <div class="routes-grid">
-                    {generate_checkboxes(months6_routes)}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard","/market-simulation","/success-stories"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Pro</button>
         </form>
         
-        <!-- 1 YEAR PLAN -->
         <form method="POST" action="/admin/pricing/update" class="plan-editor">
             <input type="hidden" name="plan_id" value="1_year">
             <div class="plan-header">
-                <div class="plan-title">💎 Elite 1 an</div>
+                <div class="plan-title">👑 Elite 1 an</div>
                 <div class="plan-id">ID: 1_year</div>
             </div>
             <div class="editor-row">
@@ -21230,31 +20132,43 @@ async def admin_pricing_view(request: Request):
                 </div>
             </div>
             <div class="routes-section">
-                <h4>🔐 Routes 1 AN (2 routes dont 1 IA EXCLUSIF + hérite 6 MOIS)</h4>
+                <h4>🔐 Toutes les 33 Routes (+ hérite de Pro = TOUT)</h4>
                 <div class="routes-grid">
-                    {generate_checkboxes(year1_routes)}
+                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/graphiques","/bullrun-phase","/telegram-test"] else ""}> {route}</label>' for route in routes_list])}
                 </div>
             </div>
             <button type="submit" class="save-btn">💾 Sauvegarder Elite</button>
         </form>
         
         <div class="info">
-            <h4>ℹ️ Informations Importantes</h4>
+            <h4>ℹ️ Informations</h4>
             <ul>
-                <li><strong>Héritage:</strong> Chaque plan hérite des routes du plan inférieur</li>
-                <li><strong>FREE:</strong> 9 routes dont 1 IA (Gem Hunter basic)</li>
-                <li><strong>1 MOIS:</strong> +12 routes dont 3 IA (Signaux, News, Position Sizer)</li>
-                <li><strong>3 MOIS:</strong> +11 routes dont 3 IA (Prédictions, Baleines, Patterns)</li>
-                <li><strong>6 MOIS:</strong> +8 routes dont 4 IA (Sentiment, Exit, Multi-TF, Liquidité)</li>
-                <li><strong>1 AN:</strong> +2 routes dont 1 IA EXCLUSIF (Alertes Intelligentes)</li>
-                <li><strong>Total:</strong> 44 routes disponibles dont 11 features IA</li>
+                <li><strong>29 routes totales</strong> disponibles dans le système</li>
+                <li>Chaque plan hérite des permissions des plans inférieurs</li>
+                <li>Cochez/décochez les routes pour chaque plan</li>
+                <li>Les modifications sont sauvegardées dans /data/pricing_config.json</li>
             </ul>
         </div>
+        
+        <a href="/admin-dashboard" style="display:inline-block; margin-top:30px; padding:12px 24px; background:white; color:#667eea; text-decoration:none; border-radius:8px; font-weight:600;">← Retour</a>
     </div>
-
     
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {{
+        const existing = document.querySelector('.universal-nav-injected');
+        if (existing) existing.remove();
+        
+        const menuHTML = '<style>.universal-nav-injected{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%)!important;padding:15px 20px!important;min-height:80px!important;box-shadow:0 2px 15px rgba(0,0,0,0.5)!important;position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:999999999!important;border-bottom:1px solid rgba(255,255,255,0.05)!important;display:block!important;visibility:visible!important}}.universal-nav-container-injected{{max-width:1600px!important;margin:0 auto!important;display:flex!important;gap:10px!important;align-items:center!important;flex-wrap:wrap!important;justify-content:center!important}}.universal-nav-btn-injected{{background:rgba(255,255,255,0.05)!important;color:#e2e8f0!important;padding:10px 16px!important;border-radius:6px!important;text-decoration:none!important;font-size:13px!important;font-weight:500!important;transition:all 0.2s!important;border:1px solid rgba(255,255,255,0.08)!important;white-space:nowrap!important}}.universal-nav-btn-injected:hover{{background:rgba(255,255,255,0.12)!important;border-color:rgba(96,165,250,0.4)!important;color:white!important}}.universal-nav-btn-injected.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)!important;border:none!important}}.universal-nav-btn-injected.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)!important;border:none!important}}.universal-nav-btn-injected.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%)!important;border:none!important}}.universal-nav-btn-injected.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%)!important;border:none!important}}</style>';
+        
+        document.body.insertAdjacentHTML('afterbegin', menuHTML);
+        document.body.style.paddingTop = '60px';
+        console.log('Menu universel injecté');
+    }});
+    </script>
 </body>
-</html>""")
+</html>
+    """)
+
 
 @app.post("/admin/pricing/update")
 async def admin_pricing_update(request: Request):
@@ -21513,7 +20427,6 @@ async def admin_create_promo(
 
 @app.get("/admin/list-promos", response_class=HTMLResponse)
 async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
-    sidebar_html = SIDEBAR_HTML
     """Page admin: liste tous les codes promo avec stats"""
     user = get_user_from_token(session_token)
     if not user:
@@ -21631,8 +20544,6 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             </style>
         </head>
         <body>
-    {sidebar_html}
-
 <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
 .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
@@ -21753,7 +20664,6 @@ async def admin_test_promo(
 
 @app.get("/mon-compte", response_class=HTMLResponse)
 async def mon_compte(request: Request):
-    sidebar_html = SIDEBAR_HTML
     """Dashboard personnel utilisateur avec son abonnement"""
     session_token = request.cookies.get("session_token")
     user = get_user_from_token(session_token)
@@ -21835,6 +20745,7 @@ async def mon_compte(request: Request):
         conn.close()
     
     return HTMLResponse(f"""
+SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -21933,8 +20844,6 @@ async def mon_compte(request: Request):
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
 .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
@@ -22027,6 +20936,7 @@ async def fear_greed_history():
 async def fear_greed_chart():
     """Page graphique Fear & Greed 12 mois"""
     return HTMLResponse(f"""
+SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -22071,8 +20981,6 @@ async def fear_greed_chart():
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         
         <div class="container">
             <h1>📊 Fear & Greed Index - Historique 12 Mois</h1>
@@ -22218,6 +21126,7 @@ async def live_stats():
 async def backtesting_page(request: Request):
     """Page de backtesting professionnelle avec graphiques et statistiques avancées"""
     return HTMLResponse(f"""
+SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -22438,8 +21347,6 @@ async def backtesting_page(request: Request):
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         
         <div class="container">
             <div class="header">
@@ -23148,7 +22055,6 @@ async def api_backtest(request: Request):
 
 @app.get("/onchain-metrics", response_class=HTMLResponse)
 async def onchain_metrics():
-    sidebar_html = SIDEBAR_HTML
     """Page Métriques On-Chain - Whale movements, exchange flows"""
     
     # Données métriques (exemple - à remplacer par vraies APIs)
@@ -23173,6 +22079,7 @@ async def onchain_metrics():
     }
     
     return HTMLResponse(f"""
+SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -23282,8 +22189,6 @@ async def onchain_metrics():
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <div class="container">
             <div class="header">
                 <h1>⛓️ Métriques On-Chain</h1>
@@ -23363,7 +22268,6 @@ async def onchain_metrics():
 
 @app.get("/testimonials-widget", response_class=HTMLResponse)
 async def testimonials_widget():
-    sidebar_html = SIDEBAR_HTML
     """Page Témoignages Clients"""
     testimonials = [
         {
@@ -23412,6 +22316,7 @@ async def testimonials_widget():
         """
     
     return HTMLResponse(f"""
+SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -23545,8 +22450,6 @@ async def testimonials_widget():
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <div class="container">
             <div class="header">
                 <h1>⭐ Ce Que Disent Nos Clients</h1>
@@ -23606,6 +22509,7 @@ async def api_keys_page(request: Request):
         raise HTTPException(status_code=401, detail="Non authentifié")
     
     return HTMLResponse(f"""
+SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -23620,8 +22524,6 @@ async def api_keys_page(request: Request):
         </style>
     </head>
     <body>
-    {sidebar_html}
-
         <script>
         // Menu universel - Injection automatique
         document.addEventListener('DOMContentLoaded', function() {{
@@ -23704,6 +22606,7 @@ async def api_signals(api_key: str):
 async def api_documentation():
     """Documentation API"""
     return HTMLResponse("""
+SIDEBAR + 
     <h1>API Documentation</h1>
     <h2>GET /api/v1/signals</h2>
     <p>Récupère les signaux de trading actuels</p>
@@ -23720,7 +22623,6 @@ curl -H "api-key: YOUR_KEY" \\
 # Page d'admin pour modifier les plans
 @app.get("/admin/update-plan-features", response_class=HTMLResponse)
 async def admin_update_plan_features_page(request: Request):
-    sidebar_html = SIDEBAR_HTML
     """Page admin pour modifier les features d'un plan"""
     # On vérifie si l'utilisateur est admin
     user = get_user_from_token(request.cookies.get("session_token"))
@@ -23739,6 +22641,7 @@ async def admin_update_plan_features_page(request: Request):
         plans_html += f"<h3>Plan: {plan_name}</h3><textarea name='features_{plan_name}' rows='5' style='width:100%'>{features_json}</textarea><br><br>"
 
     return HTMLResponse(f"""
+SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -23753,8 +22656,6 @@ async def admin_update_plan_features_page(request: Request):
         </style>
     </head>
     <body class="bg-gray-900 text-white min-h-screen">
-    {sidebar_html}
-
         
         <div class="container mx-auto px-4 py-8">
             <div class="max-w-4xl mx-auto">
@@ -23808,1269 +22709,6 @@ async def update_plan_features(request: Request):
 # ============================================================================
 # DÉMARRAGE DE L'APPLICATION
 # ============================================================================
-
-
-
-@app.get("/ai-gem-hunter", response_class=HTMLResponse)
-async def ai_gem_hunter(request: Request):
-    """Page AI Gem Hunter - Top 50 pépites crypto"""
-    
-    try:
-        print("\n" + "="*70)
-        print("💎 AI GEM HUNTER - REQUEST")
-        print("="*70)
-        
-        # Analyser toutes les pépites
-        gems, is_live, upcoming_gems = await analyze_all_gems()
-        
-        if is_live:
-            print("✅ DONNÉES EN TEMPS RÉEL - CoinGecko API")
-        else:
-            print("⚠️ DONNÉES FALLBACK - API non disponible")
-        
-        print(f"✅ Returning {len(gems)} gems to frontend")
-        print("="*70 + "\n")
-        
-        # Calculer stats
-        total_gems = len(gems)
-        avg_score = sum(g['score'] for g in gems) / total_gems if total_gems > 0 else 0
-        total_mcap = sum(g['market_cap'] for g in gems) if total_gems > 0 else 0
-        
-        # Convertir en JSON pour JavaScript
-        import json
-        gems_json = json.dumps(gems)
-        upcoming_json = json.dumps(upcoming_gems)
-        is_live_json = json.dumps(is_live)
-        from datetime import datetime
-        last_update = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
-        
-    except Exception as e:
-        print(f"❌ Erreur dans route: {str(e)}")
-        gems = []
-        upcoming_gems = []
-        gems_json = "[]"
-        upcoming_json = "[]"
-        is_live_json = "false"
-        last_update = "Error"
-        total_gems = 0
-        avg_score = 0
-        total_mcap = 0
-    
-    html = f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>💎 AI Gem Hunter - Top 50 Crypto Pépites</title>
-        
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
-        
-        <style>
-            /* MENU UNIVERSEL STYLES */
-            .universal-menu {{
-                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-                padding: 15px 20px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-                position: sticky;
-                top: 0;
-                z-index: 99999;
-                border-bottom: 2px solid rgba(255,255,255,0.1);
-                width: 100%;
-                margin: 0;
-            }}
-            
-            .universal-menu-container {{
-                max-width: 1600px;
-                margin: 0 auto;
-                display: flex !important;
-                gap: 10px !important;
-                flex-wrap: wrap !important;
-                justify-content: center !important;
-                align-items: center !important;
-            }}
-            
-            .menu-btn {{
-                background: rgba(255,255,255,0.08) !important;
-                color: #e2e8f0 !important;
-                padding: 10px 16px !important;
-                border-radius: 8px !important;
-                text-decoration: none !important;
-                font-size: 14px !important;
-                font-weight: 600 !important;
-                transition: all 0.3s ease !important;
-                border: 1px solid rgba(255,255,255,0.12) !important;
-                white-space: nowrap !important;
-                display: inline-block !important;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
-                cursor: pointer !important;
-            }}
-            
-            .menu-btn:hover {{
-                background: rgba(255,255,255,0.15) !important;
-                transform: translateY(-2px) !important;
-                box-shadow: 0 4px 12px rgba(96,165,250,0.3) !important;
-            }}
-            
-            .menu-btn.active {{
-                background: rgba(96,165,250,0.25) !important;
-                color: #60a5fa !important;
-                border-color: #60a5fa !important;
-                font-weight: 700 !important;
-                box-shadow: 0 0 20px rgba(96,165,250,0.4) !important;
-            }}
-            
-            .menu-btn.premium {{
-                background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
-                color: white !important;
-                border: none !important;
-                font-weight: 700 !important;
-            }}
-            
-            .menu-btn.admin {{
-                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-                color: white !important;
-                border: none !important;
-                font-weight: 700 !important;
-            }}
-            
-            .menu-btn.account {{
-                background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-                color: white !important;
-                border: none !important;
-                font-weight: 700 !important;
-            }}
-            
-            .menu-btn.logout {{
-                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-                color: white !important;
-                border: none !important;
-                font-weight: 700 !important;
-            }}
-            
-            /* PAGE STYLES */
-            :root {{
-                --bg-dark: #0a0e27;
-                --bg-surface: #151932;
-                --bg-card: #1a1f3a;
-                --cyber-accent: #00ff88;
-                --cyber-accent-2: #00d4ff;
-                --cyber-accent-3: #ff00ff;
-                --danger: #ff3366;
-                --text-primary: #e0e7ff;
-                --text-secondary: #9ca3af;
-            }}
-            
-            * {{
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-            }}
-            
-            body {{
-                font-family: 'Rajdhani', sans-serif;
-                background: var(--bg-dark);
-                color: var(--text-primary);
-                min-height: 100vh;
-                overflow-x: hidden;
-            }}
-            
-            .grid-bg {{
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background-image: 
-                    linear-gradient(var(--cyber-accent) 1px, transparent 1px),
-                    linear-gradient(90deg, var(--cyber-accent) 1px, transparent 1px);
-                background-size: 50px 50px;
-                opacity: 0.03;
-                animation: gridScroll 20s linear infinite;
-                pointer-events: none;
-            }}
-            
-            @keyframes gridScroll {{
-                0% {{ transform: translateY(0); }}
-                100% {{ transform: translateY(50px); }}
-            }}
-            
-            .header {{
-                text-align: center;
-                padding: 60px 20px 40px;
-                position: relative;
-                z-index: 10;
-            }}
-            
-            .main-title {{
-                font-family: 'Orbitron', sans-serif;
-                font-size: clamp(2rem, 5vw, 4rem);
-                font-weight: 900;
-                color: var(--cyber-accent);
-                text-transform: uppercase;
-                letter-spacing: 4px;
-                margin-bottom: 20px;
-                text-shadow: 
-                    0 0 20px var(--cyber-accent),
-                    0 0 40px var(--cyber-accent),
-                    0 0 60px var(--cyber-accent);
-                animation: glow 2s ease-in-out infinite alternate;
-            }}
-            
-            @keyframes glow {{
-                from {{ text-shadow: 0 0 20px var(--cyber-accent); }}
-                to {{ text-shadow: 0 0 40px var(--cyber-accent), 0 0 60px var(--cyber-accent); }}
-            }}
-            
-            .diamond-icon {{
-                display: inline-block;
-                margin-right: 15px;
-                font-size: 0.8em;
-                animation: rotate 3s linear infinite;
-            }}
-            
-            @keyframes rotate {{
-                from {{ transform: rotate(0deg); }}
-                to {{ transform: rotate(360deg); }}
-            }}
-            
-            .subtitle {{
-                font-size: clamp(0.9rem, 2vw, 1.2rem);
-                color: var(--text-secondary);
-                text-transform: uppercase;
-                letter-spacing: 2px;
-            }}
-            
-            .stats-banner {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 20px;
-                max-width: 1400px;
-                margin: 0 auto 40px;
-                padding: 0 20px;
-            }}
-            
-            .stat-card {{
-                background: var(--bg-card);
-                border: 2px solid var(--cyber-accent);
-                border-radius: 15px;
-                padding: 30px;
-                text-align: center;
-                box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
-                transition: all 0.3s ease;
-            }}
-            
-            .stat-card:hover {{
-                transform: translateY(-5px);
-                box-shadow: 0 0 40px rgba(0, 255, 136, 0.4);
-            }}
-            
-            .stat-value {{
-                font-family: 'Orbitron', sans-serif;
-                font-size: 2.5rem;
-                font-weight: 900;
-                color: var(--cyber-accent);
-                margin-bottom: 10px;
-            }}
-            
-            .stat-label {{
-                font-size: 0.9rem;
-                color: var(--text-secondary);
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }}
-            
-            .filters {{
-                display: flex;
-                gap: 15px;
-                justify-content: center;
-                flex-wrap: wrap;
-                padding: 0 20px 30px;
-                max-width: 900px;
-                margin: 0 auto;
-            }}
-            
-            .filter-btn {{
-                padding: 12px 24px;
-                background: var(--bg-card);
-                border: 2px solid var(--cyber-accent);
-                border-radius: 10px;
-                color: var(--text-primary);
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s ease;
-                font-family: 'Rajdhani', sans-serif;
-                font-size: 1rem;
-            }}
-            
-            .filter-btn:hover,
-            .filter-btn.active {{
-                background: var(--cyber-accent);
-                color: var(--bg-dark);
-                box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
-            }}
-            
-            .gems-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-                gap: 25px;
-                max-width: 1400px;
-                margin: 0 auto;
-                padding: 0 20px 60px;
-            }}
-            
-            .gem-card {{
-                background: var(--bg-card);
-                border: 2px solid rgba(0, 255, 136, 0.3);
-                border-radius: 15px;
-                padding: 25px;
-                transition: all 0.4s ease;
-                position: relative;
-                overflow: hidden;
-            }}
-            
-            .gem-card::before {{
-                content: '';
-                position: absolute;
-                top: -50%;
-                left: -50%;
-                width: 200%;
-                height: 200%;
-                background: linear-gradient(
-                    45deg,
-                    transparent,
-                    rgba(0, 255, 136, 0.1),
-                    transparent
-                );
-                transform: rotate(45deg);
-                transition: all 0.6s ease;
-            }}
-            
-            .gem-card:hover::before {{
-                left: 100%;
-            }}
-            
-            .gem-card:hover {{
-                transform: translateY(-10px) scale(1.02);
-                border-color: var(--cyber-accent);
-                box-shadow: 0 10px 40px rgba(0, 255, 136, 0.4);
-            }}
-            
-            .gem-header {{
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 20px;
-            }}
-            
-            .gem-name {{
-                font-family: 'Orbitron', sans-serif;
-                font-size: 1.4rem;
-                font-weight: 700;
-                color: var(--cyber-accent);
-            }}
-            
-            .gem-symbol {{
-                font-size: 1.1rem;
-                color: var(--text-secondary);
-                background: rgba(0, 255, 136, 0.1);
-                padding: 5px 12px;
-                border-radius: 20px;
-                font-weight: 600;
-            }}
-            
-            .gem-score {{
-                text-align: center;
-                margin: 20px 0;
-                padding: 15px;
-                background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.1));
-                border-radius: 10px;
-            }}
-            
-            .score-label {{
-                font-size: 0.8rem;
-                color: var(--text-secondary);
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }}
-            
-            .score-value {{
-                font-family: 'Orbitron', sans-serif;
-                font-size: 2.5rem;
-                font-weight: 900;
-                color: var(--cyber-accent);
-                margin-top: 5px;
-            }}
-            
-            .gem-details {{
-                display: grid;
-                gap: 10px;
-            }}
-            
-            .gem-detail {{
-                display: flex;
-                justify-content: space-between;
-                padding: 8px 0;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            }}
-            
-            .detail-label {{
-                color: var(--text-secondary);
-                font-size: 0.9rem;
-            }}
-            
-            .detail-value {{
-                font-weight: 700;
-                color: var(--text-primary);
-            }}
-            
-            .gem-category {{
-                display: inline-block;
-                margin-top: 15px;
-                padding: 8px 16px;
-                background: rgba(255, 0, 255, 0.2);
-                border: 1px solid var(--cyber-accent-3);
-                border-radius: 20px;
-                font-size: 0.85rem;
-                font-weight: 600;
-                color: var(--cyber-accent-3);
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }}
-            
-            .loading {{
-                text-align: center;
-                padding: 100px 20px;
-            }}
-            
-            .spinner {{
-                width: 80px;
-                height: 80px;
-                border: 8px solid rgba(0, 255, 136, 0.1);
-                border-top: 8px solid var(--cyber-accent);
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 30px;
-            }}
-            
-            @keyframes spin {{
-                0% {{ transform: rotate(0deg); }}
-                100% {{ transform: rotate(360deg); }}
-            }}
-            
-            .loading-text {{
-                font-size: 1.5rem;
-                color: var(--text-secondary);
-                font-weight: 600;
-            }}
-            
-            /* UPCOMING GEMS STYLES */
-            .upcoming-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                gap: 20px;
-                margin-bottom: 40px;
-            }}
-            
-            .upcoming-card {{
-                background: linear-gradient(135deg, var(--bg-card), rgba(0, 212, 255, 0.05));
-                border: 2px solid var(--cyber-accent-2);
-                border-radius: 15px;
-                padding: 20px;
-                transition: all 0.4s ease;
-                position: relative;
-                overflow: hidden;
-            }}
-            
-            .upcoming-card::before {{
-                content: '🔮';
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                font-size: 2rem;
-                opacity: 0.3;
-            }}
-            
-            .upcoming-card:hover {{
-                transform: translateY(-8px) scale(1.03);
-                border-color: var(--cyber-accent-2);
-                box-shadow: 0 10px 40px rgba(0, 212, 255, 0.5);
-            }}
-            
-            .upcoming-header {{
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 15px;
-            }}
-            
-            .upcoming-name {{
-                font-family: 'Orbitron', sans-serif;
-                font-size: 1.2rem;
-                font-weight: 700;
-                color: var(--cyber-accent-2);
-            }}
-            
-            .upcoming-symbol {{
-                font-size: 0.9rem;
-                color: var(--text-secondary);
-                background: rgba(0, 212, 255, 0.1);
-                padding: 4px 10px;
-                border-radius: 15px;
-                font-weight: 600;
-            }}
-            
-            .upcoming-score {{
-                text-align: center;
-                margin: 15px 0;
-                padding: 12px;
-                background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 255, 136, 0.1));
-                border-radius: 10px;
-            }}
-            
-            .upcoming-score-label {{
-                font-size: 0.75rem;
-                color: var(--text-secondary);
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }}
-            
-            .upcoming-score-value {{
-                font-family: 'Orbitron', sans-serif;
-                font-size: 2rem;
-                font-weight: 900;
-                color: var(--cyber-accent-2);
-                margin-top: 5px;
-            }}
-            
-            .upcoming-potential {{
-                text-align: center;
-                font-size: 1.5rem;
-                font-weight: 900;
-                color: var(--cyber-accent);
-                margin: 10px 0;
-                text-shadow: 0 0 10px var(--cyber-accent);
-            }}
-            
-            .upcoming-reasons {{
-                font-size: 0.85rem;
-                line-height: 1.6;
-                color: var(--text-secondary);
-            }}
-            
-            .upcoming-reasons div {{
-                padding: 5px 0;
-                border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-            }}
-            
-            @media (max-width: 768px) {{
-                .main-title {{
-                    font-size: 2rem;
-                    letter-spacing: 2px;
-                }}
-                
-                .stats-banner {{
-                    grid-template-columns: 1fr;
-                }}
-                
-                .gems-grid {{
-                    grid-template-columns: 1fr;
-                }}
-                
-                .upcoming-grid {{
-                    grid-template-columns: 1fr;
-                }}
-            }}
-        </style>
-    </head>
-    <body>
-    {SIDEBAR_HTML}
-
-        <div class="grid-bg"></div>
-        
-        <!-- MENU UNIVERSEL INTÉGRÉ -->
-        
-        
-        <div class="header">
-            <h1 class="main-title">
-                <span class="diamond-icon">💎</span>
-                AI GEM HUNTER
-            </h1>
-            <p class="subtitle">Top 50 Crypto Pépites Analysées par Intelligence Artificielle</p>
-        </div>
-        
-        <div class="stats-banner">
-            <div class="stat-card">
-                <div class="stat-value">{total_gems}</div>
-                <div class="stat-label">Pépites Actives</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{avg_score:.1f}</div>
-                <div class="stat-label">Score Moyen</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">${total_mcap/1000000:.0f}M</div>
-                <div class="stat-label">Market Cap Total</div>
-            </div>
-            <div class="stat-card" id="status-card">
-                <div class="stat-value" id="status-indicator">●</div>
-                <div class="stat-label" id="status-text">Chargement...</div>
-                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px;" id="last-update">--</div>
-            </div>
-        </div>
-        
-        <div style="text-align: center; margin: 20px 0;">
-            <button id="refresh-btn" class="filter-btn" style="padding: 15px 30px; font-size: 1.1rem; cursor: pointer;">
-                🔄 Actualiser les Données
-            </button>
-        </div>
-        
-        <div class="filters">
-            <button class="filter-btn active" data-filter="all">🔥 TOUTES</button>
-            <button class="filter-btn" data-filter="DeFi">🔥 DEFI</button>
-            <button class="filter-btn" data-filter="Gaming">🎮 GAMING</button>
-            <button class="filter-btn" data-filter="AI">🤖 AI</button>
-            <button class="filter-btn" data-filter="Infrastructure">⚡ INFRASTRUCTURE</button>
-            <button class="filter-btn" data-filter="top10">🏆 TOP 10</button>
-        </div>
-        
-        <!-- SECTION UPCOMING GEMS -->
-        <div id="upcoming-section" style="max-width: 1400px; margin: 0 auto 50px; padding: 0 20px;">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <h2 style="font-family: 'Orbitron', sans-serif; font-size: 2.5rem; color: var(--cyber-accent-2); margin-bottom: 10px;">
-                    🔮 10 PROCHAINS GEMS
-                </h2>
-                <p style="color: var(--text-secondary); font-size: 1.1rem;">
-                    Cryptos à fort potentiel - Early stage avec fondamentaux solides
-                </p>
-            </div>
-            
-            <div id="upcoming-grid" class="upcoming-grid"></div>
-        </div>
-        
-        <div style="text-align: center; margin: 40px 0;">
-            <h2 style="font-family: 'Orbitron', sans-serif; font-size: 2rem; color: var(--cyber-accent); margin-bottom: 10px;">
-                💎 TOP 50 PÉPITES ACTUELLES
-            </h2>
-            <p style="color: var(--text-secondary); font-size: 1rem;">
-                Cryptos établies avec meilleur score
-            </p>
-        </div>
-        
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <div class="loading-text">Analyse des pépites en cours...</div>
-        </div>
-        
-        <div id="gems-grid" class="gems-grid" style="display: none;"></div>
-        
-        <script>
-            console.log('💎 AI Gem Hunter - Script démarré');
-            
-            let allGems = {gems_json};
-            let upcomingGems = {upcoming_json};
-            let isLiveData = {is_live_json};
-            let lastUpdate = "{last_update}";
-            
-            console.log('📡 Data source:', isLiveData ? 'LIVE (CoinGecko API)' : 'FALLBACK (Test data)');
-            console.log('🕒 Last update:', lastUpdate);
-            
-            console.log('📦 Gems loaded:', allGems.length);
-            
-            function formatNumber(num) {{
-                if (num >= 1000000000) return '$' + (num/1000000000).toFixed(2) + 'B';
-                if (num >= 1000000) return '$' + (num/1000000).toFixed(1) + 'M';
-                if (num >= 1000) return '$' + (num/1000).toFixed(1) + 'K';
-                return '$' + num.toFixed(2);
-            }}
-            
-            function renderUpcomingGems() {{
-                const grid = document.getElementById('upcoming-grid');
-                
-                if (!upcomingGems || upcomingGems.length === 0) {{
-                    grid.innerHTML = '<div style="text-align: center; color: var(--text-secondary); grid-column: 1 / -1;">Aucun prochain gem détecté pour le moment</div>';
-                    return;
-                }}
-                
-                console.log('🔮 Rendering', upcomingGems.length, 'upcoming gems');
-                
-                grid.innerHTML = upcomingGems.map((gem, index) => `
-                    <div class="upcoming-card">
-                        <div class="upcoming-header">
-                            <div class="upcoming-name">${{gem.name}}</div>
-                            <div class="upcoming-symbol">${{gem.symbol}}</div>
-                        </div>
-                        
-                        <div class="upcoming-score">
-                            <div class="upcoming-score-label">Score Potentiel</div>
-                            <div class="upcoming-score-value">${{gem.upcoming_score}}</div>
-                        </div>
-                        
-                        <div class="upcoming-potential">
-                            ⚡ Potentiel: ${{gem.potential}}
-                        </div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0; font-size: 0.85rem;">
-                            <div style="text-align: center;">
-                                <div style="color: var(--text-secondary);">Prix</div>
-                                <div style="font-weight: 700; color: var(--text-primary);">${{gem.price < 0.01 ? gem.price.toFixed(6) : gem.price.toFixed(4)}}</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="color: var(--text-secondary);">MCap</div>
-                                <div style="font-weight: 700; color: var(--text-primary);">${{formatNumber(gem.market_cap)}}</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="color: var(--text-secondary);">7j</div>
-                                <div style="font-weight: 700; color: ${{gem.price_change_7d >= 0 ? 'var(--cyber-accent)' : 'var(--danger)'}}">${{gem.price_change_7d >= 0 ? '+' : ''}}${{gem.price_change_7d.toFixed(1)}}%</div>
-                            </div>
-                            <div style="text-align: center;">
-                                <div style="color: var(--text-secondary);">30j</div>
-                                <div style="font-weight: 700; color: ${{gem.price_change_30d >= 0 ? 'var(--cyber-accent)' : 'var(--danger)'}}">${{gem.price_change_30d >= 0 ? '+' : ''}}${{gem.price_change_30d.toFixed(1)}}%</div>
-                            </div>
-                        </div>
-                        
-                        <div class="upcoming-reasons">
-                            ${{gem.reasons.slice(0, 4).map(r => `<div>${{r}}</div>`).join('')}}
-                        </div>
-                    </div>
-                `).join('');
-                
-                console.log('✅ Upcoming gems rendered');
-            }}
-            
-            function renderGems(gems) {{
-                const grid = document.getElementById('gems-grid');
-                
-                if (gems.length === 0) {{
-                    grid.innerHTML = '<div class="loading-text">Aucune pépite trouvée</div>';
-                    return;
-                }}
-                
-                console.log('🎨 Rendering', gems.length, 'gems');
-                
-                grid.innerHTML = gems.map((gem, index) => `
-                    <div class="gem-card" data-category="${{gem.category}}">
-                        <div class="gem-header">
-                            <div class="gem-name">${{gem.name}}</div>
-                            <div class="gem-symbol">${{gem.symbol}}</div>
-                        </div>
-                        
-                        <div class="gem-score">
-                            <div class="score-label">Potentiel Score</div>
-                            <div class="score-value">${{gem.score}}</div>
-                        </div>
-                        
-                        <div class="gem-details">
-                            <div class="gem-detail">
-                                <span class="detail-label">Prix</span>
-                                <span class="detail-value">${{gem.price}}</span>
-                            </div>
-                            <div class="gem-detail">
-                                <span class="detail-label">Market Cap</span>
-                                <span class="detail-value">${{formatNumber(gem.market_cap)}}</span>
-                            </div>
-                            <div class="gem-detail">
-                                <span class="detail-label">Volume 24h</span>
-                                <span class="detail-value">${{formatNumber(gem.volume_24h)}}</span>
-                            </div>
-                            <div class="gem-detail">
-                                <span class="detail-label">Change 24h</span>
-                                <span class="detail-value" style="color: ${{gem.price_change_24h >= 0 ? '#00ff88' : '#ff3366'}}">${{gem.price_change_24h >= 0 ? '+' : ''}}${{gem.price_change_24h}}%</span>
-                            </div>
-                        </div>
-                        
-                        <div class="gem-category">${{gem.category}}</div>
-                    </div>
-                `).join('');
-                
-                console.log('✅ Render complete');
-            }}
-            
-            function filterGems(category) {{
-                console.log('🔍 Filtering:', category);
-                
-                let filtered;
-                if (category === 'all') {{
-                    filtered = allGems;
-                }} else if (category === 'top10') {{
-                    filtered = allGems.slice(0, 10);
-                }} else {{
-                    filtered = allGems.filter(g => g.category === category);
-                }}
-                
-                console.log('✅ Filtered:', filtered.length, 'gems');
-                renderGems(filtered);
-            }}
-            
-            // Event listeners pour les filtres
-            document.querySelectorAll('.filter-btn').forEach(btn => {{
-                btn.addEventListener('click', () => {{
-                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    filterGems(btn.dataset.filter);
-                }});
-            }});
-            
-            // Charger au démarrage
-            document.addEventListener('DOMContentLoaded', () => {{
-                console.log('✅ DOM loaded');
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('gems-grid').style.display = 'grid';
-                renderGems(allGems);
-            }});
-        </script>
-    </body>
-    </html>
-    """
-    
-    return HTMLResponse(content=html)
-
-
-
-# ============================================================================
-# ROUTES IA AVANCÉES
-# ============================================================================
-
-@app.get("/ai-signals")
-async def ai_signals(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """🎯 AI Trading Signals - Signaux trading intelligents"""
-    try:
-        from datetime import datetime
-        
-        # Vérifier permission
-        user_plan = "1_year"  # TODO: Implement proper auth
-        has_access = check_permission(user_plan, "ai_signals")
-        
-        if not has_access:
-            return RedirectResponse(url="/pricing-complete")
-        
-        # Mock data pour démo
-        signals = [
-            {
-                "symbol": "BTC",
-                "name": "Bitcoin",
-                "signal": "BUY",
-                "confidence": 87,
-                "entry": 43250,
-                "tp1": 45200,
-                "tp2": 46800,
-                "sl": 41500,
-                "reason": "RSI oversold + Volume spike + Support hold",
-                "timeframe": "4H",
-                "risk_reward": 2.8
-            },
-            {
-                "symbol": "ETH",
-                "name": "Ethereum", 
-                "signal": "BUY",
-                "confidence": 82,
-                "entry": 2650,
-                "tp1": 2780,
-                "tp2": 2850,
-                "sl": 2550,
-                "reason": "Bullish divergence + EMA cross",
-                "timeframe": "1H",
-                "risk_reward": 2.0
-            },
-            {
-                "symbol": "SOL",
-                "name": "Solana",
-                "signal": "SELL",
-                "confidence": 76,
-                "entry": 108.50,
-                "tp1": 102.00,
-                "tp2": 98.00,
-                "sl": 112.00,
-                "reason": "Overbought RSI + Resistance rejection",
-                "timeframe": "4H",
-                "risk_reward": 3.0
-            },
-            {
-                "symbol": "MATIC",
-                "name": "Polygon",
-                "signal": "HOLD",
-                "confidence": 65,
-                "entry": 0.85,
-                "tp1": 0.92,
-                "tp2": 0.98,
-                "sl": 0.79,
-                "reason": "Consolidation - Wait for breakout",
-                "timeframe": "1D",
-                "risk_reward": 2.2
-            }
-        ]
-        
-        signals_json = json.dumps(signals)
-        last_update = datetime.now().strftime("%Y-%m-%d %H:%M UTC")
-        
-        html = f"""<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎯 AI Trading Signals - Trading Dashboard Pro</title>
-    {CSS}
-    <style>
-        .signals-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 25px;
-            max-width: 1400px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }}
-        
-        .signal-card {{
-            background: linear-gradient(135deg, var(--bg-card), rgba(0, 255, 136, 0.05));
-            border: 2px solid var(--cyber-accent);
-            border-radius: 20px;
-            padding: 25px;
-            transition: all 0.4s ease;
-        }}
-        
-        .signal-card.sell {{
-            background: linear-gradient(135deg, var(--bg-card), rgba(255, 59, 92, 0.05));
-            border-color: var(--danger);
-        }}
-        
-        .signal-card.hold {{
-            background: linear-gradient(135deg, var(--bg-card), rgba(255, 184, 0, 0.05));
-            border-color: #ffb800;
-        }}
-        
-        .signal-card:hover {{
-            transform: translateY(-10px) scale(1.03);
-            box-shadow: 0 15px 50px rgba(0, 255, 136, 0.4);
-        }}
-        
-        .signal-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }}
-        
-        .signal-badge {{
-            font-size: 1.8rem;
-            font-weight: 900;
-            padding: 10px 20px;
-            border-radius: 15px;
-            font-family: 'Orbitron', sans-serif;
-        }}
-        
-        .signal-badge.buy {{
-            background: var(--cyber-accent);
-            color: var(--bg-primary);
-        }}
-        
-        .signal-badge.sell {{
-            background: var(--danger);
-            color: white;
-        }}
-        
-        .signal-badge.hold {{
-            background: #ffb800;
-            color: var(--bg-primary);
-        }}
-        
-        .confidence-bar {{
-            width: 100%;
-            height: 25px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            overflow: hidden;
-            margin: 15px 0;
-        }}
-        
-        .confidence-fill {{
-            height: 100%;
-            background: linear-gradient(90deg, var(--cyber-accent), var(--cyber-accent-2));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.9rem;
-        }}
-        
-        .price-levels {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin: 20px 0;
-        }}
-        
-        .price-level {{
-            background: rgba(255, 255, 255, 0.05);
-            padding: 12px;
-            border-radius: 10px;
-            text-align: center;
-        }}
-        
-        .price-level-label {{
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-bottom: 5px;
-        }}
-        
-        .price-level-value {{
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }}
-        
-        .reason-box {{
-            background: rgba(0, 212, 255, 0.1);
-            border-left: 4px solid var(--cyber-accent-2);
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            line-height: 1.6;
-            margin-top: 15px;
-        }}
-    </style>
-</head>
-<body>
-    {sidebar_html}
-    
-    <div style="text-align: center; padding: 50px 20px 20px;">
-        <h1 style="font-family: 'Orbitron', sans-serif; font-size: 3rem; color: var(--cyber-accent); margin-bottom: 10px;">
-            🎯 AI TRADING SIGNALS
-        </h1>
-        <p style="color: var(--text-secondary); font-size: 1.2rem;">
-            Signaux de trading générés par intelligence artificielle
-        </p>
-        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 10px;">
-            Dernière mise à jour: {last_update}
-        </p>
-    </div>
-    
-    <div class="signals-grid" id="signals-grid"></div>
-    
-    <script>
-        const signals = {signals_json};
-        
-        function renderSignals() {{
-            const grid = document.getElementById('signals-grid');
-            
-            grid.innerHTML = signals.map(signal => `
-                <div class="signal-card ${{signal.signal.toLowerCase()}}">
-                    <div class="signal-header">
-                        <div>
-                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--text-primary);">
-                                ${{signal.symbol}}
-                            </div>
-                            <div style="font-size: 0.9rem; color: var(--text-secondary);">
-                                ${{signal.name}}
-                            </div>
-                        </div>
-                        <div class="signal-badge ${{signal.signal.toLowerCase()}}">
-                            ${{signal.signal}}
-                        </div>
-                    </div>
-                    
-                    <div style="text-align: center; margin: 15px 0;">
-                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 5px;">
-                            CONFIANCE
-                        </div>
-                        <div class="confidence-bar">
-                            <div class="confidence-fill" style="width: ${{signal.confidence}}%">
-                                ${{signal.confidence}}%
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="price-levels">
-                        <div class="price-level">
-                            <div class="price-level-label">ENTRY</div>
-                            <div class="price-level-value">$${{signal.entry.toLocaleString()}}</div>
-                        </div>
-                        <div class="price-level">
-                            <div class="price-level-label">STOP LOSS</div>
-                            <div class="price-level-value" style="color: var(--danger);">
-                                $${{signal.sl.toLocaleString()}}
-                            </div>
-                        </div>
-                        <div class="price-level">
-                            <div class="price-level-label">TARGET 1</div>
-                            <div class="price-level-value" style="color: var(--cyber-accent);">
-                                $${{signal.tp1.toLocaleString()}}
-                            </div>
-                        </div>
-                        <div class="price-level">
-                            <div class="price-level-label">TARGET 2</div>
-                            <div class="price-level-value" style="color: var(--cyber-accent);">
-                                $${{signal.tp2.toLocaleString()}}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; justify-content: space-between; margin: 15px 0; font-size: 0.85rem;">
-                        <div>
-                            <span style="color: var(--text-secondary);">Timeframe:</span>
-                            <span style="color: var(--text-primary); font-weight: 700; margin-left: 5px;">
-                                ${{signal.timeframe}}
-                            </span>
-                        </div>
-                        <div>
-                            <span style="color: var(--text-secondary);">R/R:</span>
-                            <span style="color: var(--cyber-accent); font-weight: 700; margin-left: 5px;">
-                                ${{signal.risk_reward.toFixed(1)}}:1
-                            </span>
-                        </div>
-                    </div>
-                    
-                    <div class="reason-box">
-                        💡 ${{signal.reason}}
-                    </div>
-                </div>
-            `).join('');
-        }}
-        
-        renderSignals();
-    </script>
-
-    {sidebar_html}
-</body>
-</html>"""
-        
-        return HTMLResponse(html)
-        
-    except Exception as e:
-        print(f"❌ Erreur ai_signals: {{str(e)}}")
-        return HTMLResponse("<h1>Erreur</h1>", status_code=500)
-
-
-
-
-@app.get("/ai-sentiment")
-async def ai_sentiment(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """🎭 AI Social Sentiment"""
-    user_plan = "1_year"  # TODO: Implement proper auth
-    if not check_permission(user_plan, "ai_sentiment"):
-        return RedirectResponse(url="/pricing-complete")
-    
-    sents = [
-        {"coin": "SOL", "twitter": 82, "reddit": 75, "news": 69, "trend": "+347%", "conf": 76},
-        {"coin": "BTC", "twitter": 65, "reddit": 72, "news": 80, "trend": "+45%", "conf": 85},
-        {"coin": "ETH", "twitter": 70, "reddit": 68, "news": 75, "trend": "+120%", "conf": 78}
-    ]
-    
-    html = f"""<!DOCTYPE html><html><head><title>🎭 AI Sentiment</title>{CSS}</head><body>{sidebar_html}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎭 AI SOCIAL SENTIMENT</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:20px;margin:20px 0"><h2 style="color:var(--cyber-accent);margin-bottom:15px">{s['coin']}</h2><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin:15px 0"><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Twitter</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['twitter']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Reddit</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['reddit']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">News</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['news']}%</div></div></div><div style="display:flex;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div><span style="color:var(--text-secondary)">Trending:</span> <strong style="color:var(--cyber-accent)">{s['trend']}</strong></div><div><span style="color:var(--text-secondary)">Confiance:</span> <strong>{s['conf']}%</strong></div></div></div>""" for s in sents]) + """</div>
-    {sidebar_html}
-</body></html>"""
-    return HTMLResponse(html)
-
-@app.get("/ai-sizer")
-async def ai_sizer(request: Request):
-    """📏 AI Position Sizer"""
-    user_plan = "1_year"  # TODO: Implement proper auth
-    if not check_permission(user_plan, "ai_sizer"):
-        return RedirectResponse(url="/pricing-complete")
-    
-    html = f"""<!DOCTYPE html><html><head><title>📏 Position Sizer</title>{CSS}</head><body>{SIDEBAR_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📏 AI POSITION SIZER</h1></div><div style="max-width:800px;margin:0 auto;padding:20px"><div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:30px"><form id="sizerForm"><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Capital total ($)</label><input type="number" id="capital" value="10000" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Risque max (%)</label><input type="number" id="risk" value="2" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Entry ($)</label><input type="number" id="entry" value="2650" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Stop-loss ($)</label><input type="number" id="sl" value="2500" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><button type="button" onclick="calculate()" style="width:100%;padding:15px;background:var(--cyber-accent);color:var(--bg-primary);border:none;border-radius:10px;font-size:1.2rem;font-weight:700;cursor:pointer;margin-top:20px">🔮 CALCULER</button></form><div id="result" style="margin-top:30px"></div></div></div><script>function calculate(){{const capital=parseFloat(document.getElementById('capital').value);const risk=parseFloat(document.getElementById('risk').value);const entry=parseFloat(document.getElementById('entry').value);const sl=parseFloat(document.getElementById('sl').value);const riskAmount=capital*risk/100;const slPercent=((entry-sl)/entry)*100;const positionSize=(riskAmount/(slPercent/100))/entry;const profit10=positionSize*entry*0.1;document.getElementById('result').innerHTML=`<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent);margin-bottom:20px">🤖 RECOMMANDATION IA</div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Taille position:</span><strong style="color:var(--text-primary);font-size:1.2rem">$${{positionSize.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Risque réel:</span><strong style="color:var(--danger)">$${{riskAmount.toFixed(0)}} (${{risk}}%)</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Profit si +10%:</span><strong style="color:var(--cyber-accent)">$${{profit10.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Stop-loss %:</span><strong style="color:var(--danger)">-${{slPercent.toFixed(1)}}%</strong></div><div style="margin-top:20px;padding:12px;background:rgba(255,59,92,0.1);border-radius:8px;color:var(--danger);font-weight:700;text-align:center">⚠️ NE PAS DÉPASSER cette taille!</div></div>`}}</script>
-    {sidebar_html}
-</body></html>"""
-    return HTMLResponse(html)
-
-@app.get("/ai-exit")
-async def ai_exit(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """🚪 AI Exit Strategy"""
-    user_plan = "1_year"  # TODO: Implement proper auth
-    if not check_permission(user_plan, "ai_exit"):
-        return RedirectResponse(url="/pricing-complete")
-    
-    exits = [
-        {"coin": "BTC", "entry": 40200, "current": 44500, "profit": "+10.7%", "momentum": -23, "rsi": 73, "volume": -34, "action": "Vendre 50% NOW", "prob": 68},
-        {"coin": "ETH", "entry": 2400, "current": 2650, "profit": "+10.4%", "momentum": 15, "rsi": 62, "volume": 12, "action": "HOLD - Laisser courir", "prob": 45}
-    ]
-    
-    html = f"""<!DOCTYPE html><html><head><title>🚪 Exit Strategy</title>{CSS}</head><body>{sidebar_html}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🚪 AI EXIT STRATEGY</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="color:var(--cyber-accent);font-size:2rem;margin:0">{e['coin']}</h2><div style="background:var(--cyber-accent);color:var(--bg-primary);padding:10px 20px;border-radius:10px;font-size:1.5rem;font-weight:900">{e['profit']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['momentum']<0 else 'var(--cyber-accent)'}">{e['momentum']:+d}%</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['rsi']>70 else 'var(--cyber-accent)'}">{e['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['volume']<0 else 'var(--cyber-accent)'}">{e['volume']:+d}%</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">💡 SUGGESTION IA</div><div style="font-size:1.1rem;margin-bottom:10px">{e['action']}</div><div style="color:var(--text-secondary);font-size:0.9rem">Probabilité correction: {e['prob']}%</div></div></div>""" for e in exits]) + """</div>
-    {sidebar_html}
-</body></html>"""
-    return HTMLResponse(html)
-
-@app.get("/ai-timeframe")
-async def ai_timeframe(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """📈 AI Multi-Timeframe"""
-    user_plan = "1_year"  # TODO: Implement proper auth
-    if not check_permission(user_plan, "ai_timeframe"):
-        return RedirectResponse(url="/pricing-complete")
-    
-    tfs = [
-        {"coin": "ETH", "5m": 52, "15m": 68, "1h": 71, "4h": 78, "1d": 82, "consensus": 74, "trend": "BULLISH"},
-        {"coin": "BTC", "5m": 48, "15m": 45, "1h": 50, "4h": 55, "1d": 58, "consensus": 51, "trend": "NEUTRE"}
-    ]
-    
-    html = f"""<!DOCTYPE html><html><head><title>📈 Multi-Timeframe</title>{CSS}</head><body>{sidebar_html}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📈 AI MULTI-TIMEFRAME</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px"><h2 style="color:var(--cyber-accent);font-size:2rem">{t['coin']}</h2><div style="background:{'var(--cyber-accent)' if t['trend']=='BULLISH' else '#ffb800'};color:{'var(--bg-primary)' if t['trend']=='BULLISH' else 'var(--bg-primary)'};padding:10px 25px;border-radius:12px;font-weight:900;font-size:1.3rem">{t['trend']}</div></div><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0">""" + "".join([f"""<div style="text-align:center;padding:15px;background:rgba({'0,255,136' if t[tf]>60 else '255,255,255'},0.1);border-radius:10px"><div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">{tf.upper()}</div><div style="font-size:1.8rem;font-weight:900;color:{'var(--cyber-accent)' if t[tf]>60 else 'var(--text-primary)'}">{t[tf]}</div></div>""" for tf in ['5m','15m','1h','4h','1d']]) + f"""</div><div style="background:rgba(0,212,255,0.15);padding:20px;border-radius:15px;text-align:center;margin-top:20px"><div style="font-size:1.1rem;color:var(--text-secondary);margin-bottom:8px">🤖 CONSENSUS IA</div><div style="font-size:2.5rem;font-weight:900;color:var(--cyber-accent)">{t['consensus']}/100</div></div></div>""" for t in tfs]) + """</div>
-    {sidebar_html}
-</body></html>"""
-    return HTMLResponse(html)
-
-@app.get("/ai-liquidity")
-async def ai_liquidity(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """🌊 AI Liquidity Heatmap"""
-    user_plan = "1_year"  # TODO: Implement proper auth
-    if not check_permission(user_plan, "ai_liquidity"):
-        return RedirectResponse(url="/pricing-complete")
-    
-    levels = [
-        {"type": "Résistance", "price": 44500, "liq": 31, "strength": "MUR"},
-        {"type": "Prix actuel", "price": 43250, "liq": 0, "strength": "-"},
-        {"type": "Support", "price": 43200, "liq": 24, "strength": "FORT"},
-        {"type": "Support", "price": 42000, "liq": 18, "strength": "BON"}
-    ]
-    
-    html = f"""<!DOCTYPE html><html><head><title>🌊 Liquidity</title>{CSS}</head><body>{sidebar_html}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🌊 AI LIQUIDITY HEATMAP</h1><p style="color:var(--text-secondary);font-size:1.1rem">BTC/USDT</p></div><div style="max-width:800px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:{'rgba(255,59,92,0.1)' if l['type']=='Résistance' else 'rgba(0,255,136,0.1)' if l['type']=='Support' else 'rgba(0,212,255,0.2)'};border:2px solid {'var(--danger)' if l['type']=='Résistance' else 'var(--cyber-accent)' if l['type']=='Support' else 'var(--cyber-accent-2)'};border-radius:15px;padding:20px;margin:15px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:0.9rem;color:var(--text-secondary)">{l['type']}</div><div style="font-size:1.8rem;font-weight:900;color:var(--text-primary)">${{l['price']:,}}</div></div><div style="text-align:right">{f'<div style="font-size:0.9rem;color:var(--text-secondary)">Liquidité</div><div style="font-size:1.5rem;font-weight:900;color:var(--cyber-accent)">${{l["liq"]}}M</div><div style="background:{"var(--danger)" if l["strength"]=="MUR" else "var(--cyber-accent)"};color:white;padding:5px 12px;border-radius:8px;font-size:0.85rem;font-weight:700;margin-top:8px">{l["strength"]}</div>' if l['type']!='Prix actuel' else '<div style="font-size:1.2rem;color:var(--cyber-accent-2);font-weight:700">CURRENT</div>'}</div></div></div>""" for l in levels]) + """<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;margin-top:30px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">🤖 ANALYSE IA</div><div style="line-height:1.8">Difficulté casser $44,500 (mur liquide)<br>Si cassé → +5% facile vers $47k<br>Stop-loss suggéré: $42,500</div></div></div>
-    {sidebar_html}
-</body></html>"""
-    return HTMLResponse(html)
-
-@app.get("/ai-alerts")
-async def ai_alerts(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """🎯 AI Smart Alerts"""
-    user_plan = "1_year"  # TODO: Implement proper auth
-    if not check_permission(user_plan, "ai_alerts"):
-        return RedirectResponse(url="/pricing-complete")
-    
-    alerts = [
-        {"condition": "BTC = $45,000", "rsi": 78, "volume": "Faible", "momentum": "Décroissant", "action": "NE PAS acheter", "reason": "Contexte pas idéal", "suggest": "Attendre pullback $43,500"},
-        {"condition": "ETH > $2,800", "rsi": 65, "volume": "Élevé", "momentum": "Croissant", "action": "ACHETER", "reason": "Breakout confirmé", "suggest": "Entry NOW, TP $3,000"}
-    ]
-    
-    html = f"""<!DOCTYPE html><html><head><title>🎯 Smart Alerts</title>{CSS}</head><body>{sidebar_html}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎯 AI SMART ALERTS</h1><p style="color:var(--text-secondary);font-size:1.1rem">Alertes intelligentes contextuelles</p></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid {'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h3 style="color:var(--text-primary);font-size:1.5rem">{a['condition']}</h3><div style="background:{'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};color:white;padding:10px 20px;border-radius:10px;font-weight:900">{a['action']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if a['rsi']>70 else 'var(--cyber-accent)'}">{a['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.1rem;font-weight:700">{a['volume']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.1rem;font-weight:700">{a['momentum']}</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.1rem;font-weight:700;color:var(--cyber-accent);margin-bottom:12px">💡 RECOMMANDATION IA</div><div style="line-height:1.8;margin-bottom:10px">{a['reason']}</div><div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;font-weight:700">{a['suggest']}</div></div></div>""" for a in alerts]) + """</div>
-    {sidebar_html}
-</body></html>"""
-    return HTMLResponse(html)
-
-
-@app.get("/api/gem-hunter/refresh")
-async def refresh_gems():
-    """API pour rafraîchir les données des pépites"""
-    try:
-        gems, is_live, upcoming_gems = await analyze_all_gems()
-        return {
-            "success": True,
-            "count": len(gems),
-            "gems": gems,
-            "upcoming_count": len(upcoming_gems),
-            "upcoming_gems": upcoming_gems,
-            "is_live": is_live
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "gems": []
-        }
-
 
 if __name__ == "__main__":
     import uvicorn
@@ -25172,143 +22810,3 @@ if __name__ == "__main__":
     # ===========================================
     
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
-
-@app.get("/ai-news")
-async def ai_news(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """📰 AI News Impact - Impact des news sur les prix"""
-    user_plan = "1_year"  # TODO: Implement proper auth
-    if not check_permission(user_plan, "ai_news"):
-        return RedirectResponse(url="/pricing-complete")
-    
-    news_data = [
-        {"title": "Ethereum Shanghai Upgrade Confirmed", "sentiment": 95, "impact": "HIGH", "coins": ["ETH", "LDO", "RPL"], "predicted": "+8-15%"},
-        {"title": "Bitcoin ETF Decision Delayed", "sentiment": 35, "impact": "MEDIUM", "coins": ["BTC"], "predicted": "-3-5%"},
-        {"title": "Binance Launches New DeFi Platform", "sentiment": 82, "impact": "MEDIUM", "coins": ["BNB", "CAKE"], "predicted": "+5-10%"}
-    ]
-    
-    html = f"""<!DOCTYPE html><html><head><title>📰 AI News Impact</title>{CSS}</head>
-    <body>{sidebar_html}
-    <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📰 AI NEWS IMPACT</h1></div>
-    <div style="max-width:1200px;margin:0 auto;padding:20px">
-    """ + "".join([f"""
-    <div style="background:var(--bg-card);border:2px solid {'var(--cyber-accent)' if n['sentiment']>70 else 'var(--danger)' if n['sentiment']<50 else '#ffb800'};border-radius:15px;padding:20px;margin:20px 0">
-        <h3 style="color:var(--text-primary);margin-bottom:10px">{n['title']}</h3>
-        <div style="display:flex;gap:20px;margin:15px 0">
-            <div><span style="color:var(--text-secondary)">Sentiment:</span> <strong style="color:{'var(--cyber-accent)' if n['sentiment']>70 else 'var(--danger)' if n['sentiment']<50 else '#ffb800'}">{n['sentiment']}%</strong></div>
-            <div><span style="color:var(--text-secondary)">Impact:</span> <strong>{n['impact']}</strong></div>
-            <div><span style="color:var(--text-secondary)">Prédiction:</span> <strong style="color:var(--cyber-accent)">{n['predicted']}</strong></div>
-        </div>
-        <div><span style="color:var(--text-secondary)">Tokens affectés:</span> {' '.join([f'<span style="background:rgba(0,212,255,0.2);padding:5px 10px;border-radius:8px;margin:0 5px;font-weight:700">{c}</span>' for c in n['coins']])}</div>
-    </div>
-    """ for n in news_data]) + """</div>
-    {sidebar_html}
-</body></html>"""
-    return HTMLResponse(html)
-
-@app.get("/ai-predictor")
-async def ai_predictor(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """🔮 AI Price Predictor - Prédictions de prix"""
-    user_plan = "1_year"  # TODO: Implement proper auth
-    if not check_permission(user_plan, "ai_predictor"):
-        return RedirectResponse(url="/pricing-complete")
-    
-    predictions = [
-        {"coin": "BTC", "current": 43250, "24h": [43800, 44500], "7d": [45000, 48500], "30d": [48000, 55000], "conf24": 78, "conf7": 65, "conf30": 52},
-        {"coin": "ETH", "current": 2650, "24h": [2700, 2820], "7d": [2800, 3100], "30d": [3000, 3500], "conf24": 75, "conf7": 68, "conf30": 55},
-        {"coin": "SOL", "current": 108, "24h": [105, 112], "7d": [110, 125], "30d": [115, 145], "conf24": 72, "conf7": 63, "conf30": 48}
-    ]
-    
-    html = f"""<!DOCTYPE html><html><head><title>🔮 AI Price Predictor</title>{CSS}</head>
-    <body>{sidebar_html}
-    <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🔮 AI PRICE PREDICTOR</h1></div>
-    <div style="max-width:1400px;margin:0 auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px">
-    """ + "".join([f"""
-    <div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px">
-        <h2 style="color:var(--cyber-accent);font-size:2rem;margin-bottom:20px">{p['coin']}</h2>
-        <div style="background:rgba(0,212,255,0.1);padding:15px;border-radius:10px;margin-bottom:20px">
-            <div style="color:var(--text-secondary);font-size:0.9rem">Prix actuel</div>
-            <div style="font-size:1.8rem;font-weight:700;color:var(--text-primary)">${p['current']:,}</div>
-        </div>
-        <div style="margin:15px 0"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>📅 24h</span><span style="color:var(--cyber-accent);font-weight:700">${p['24h'][0]:,} - ${p['24h'][1]:,}</span></div><div style="background:rgba(255,255,255,0.1);height:20px;border-radius:10px;overflow:hidden"><div style="background:var(--cyber-accent);width:{p['conf24']}%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">{p['conf24']}%</div></div></div>
-        <div style="margin:15px 0"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>📅 7j</span><span style="color:var(--cyber-accent);font-weight:700">${p['7d'][0]:,} - ${p['7d'][1]:,}</span></div><div style="background:rgba(255,255,255,0.1);height:20px;border-radius:10px;overflow:hidden"><div style="background:var(--cyber-accent);width:{p['conf7']}%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">{p['conf7']}%</div></div></div>
-        <div style="margin:15px 0"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>📅 30j</span><span style="color:var(--cyber-accent);font-weight:700">${p['30d'][0]:,} - ${p['30d'][1]:,}</span></div><div style="background:rgba(255,255,255,0.1);height:20px;border-radius:10px;overflow:hidden"><div style="background:var(--cyber-accent);width:{p['conf30']}%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">{p['conf30']}%</div></div></div>
-    </div>
-    """ for p in predictions]) + """</div>
-    {sidebar_html}
-</body></html>"""
-    return HTMLResponse(html)
-
-@app.get("/ai-whale")
-async def ai_whale(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """🐋 AI Whale Tracker - Mouvements des baleines"""
-    user_plan = "1_year"  # TODO: Implement proper auth
-    if not check_permission(user_plan, "ai_whale"):
-        return RedirectResponse(url="/pricing-complete")
-    
-    moves = [
-        {"amount": "5,000 BTC", "usd": "$212M", "from": "Unknown", "to": "Binance", "action": "SELL", "impact": "-2 à -4%", "conf": 82, "time": "5 min"},
-        {"amount": "15,000 ETH", "usd": "$39M", "from": "Coinbase", "to": "Cold Wallet", "action": "HOLD", "impact": "+1 à +2%", "conf": 75, "time": "15 min"},
-        {"amount": "2M USDT", "usd": "$2M", "from": "Tether", "to": "Binance", "action": "NEUTRAL", "impact": "Minimal", "conf": 60, "time": "1h"}
-    ]
-    
-    html = f"""<!DOCTYPE html><html><head><title>🐋 AI Whale Tracker</title>{CSS}</head>
-    <body>{sidebar_html}
-    <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🐋 AI WHALE TRACKER</h1></div>
-    <div style="max-width:1200px;margin:0 auto;padding:20px">
-    """ + "".join([f"""
-    <div style="background:var(--bg-card);border:2px solid {'var(--danger)' if m['action']=='SELL' else 'var(--cyber-accent)' if m['action']=='HOLD' else '#ffb800'};border-radius:15px;padding:20px;margin:20px 0">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px">
-            <div><div style="font-size:1.5rem;font-weight:700;color:var(--text-primary)">{m['amount']}</div><div style="color:var(--text-secondary)">{m['usd']}</div></div>
-            <div style="background:{'var(--danger)' if m['action']=='SELL' else 'var(--cyber-accent)' if m['action']=='HOLD' else '#ffb800'};color:white;padding:10px 20px;border-radius:10px;font-weight:900">{m['action']}</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin:15px 0">
-            <div style="text-align:right"><div style="color:var(--text-secondary);font-size:0.85rem">De</div><div style="font-weight:700">{m['from']}</div></div>
-            <div style="font-size:1.5rem;color:var(--cyber-accent)">→</div>
-            <div><div style="color:var(--text-secondary);font-size:0.85rem">Vers</div><div style="font-weight:700">{m['to']}</div></div>
-        </div>
-        <div style="background:rgba(0,212,255,0.1);padding:12px;border-radius:10px;margin-top:15px">
-            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--text-secondary)">Impact prédit:</span><strong style="color:{'var(--danger)' if m['action']=='SELL' else 'var(--cyber-accent)' if m['action']=='HOLD' else '#ffb800'}">{m['impact']}</strong></div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="color:var(--text-secondary)">Confiance:</span><strong>{m['conf']}%</strong></div>
-            <div style="display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Détecté:</span><strong>Il y a {m['time']}</strong></div>
-        </div>
-    </div>
-    """ for m in moves]) + """</div>
-    {sidebar_html}
-</body></html>"""
-    return HTMLResponse(html)
-
-@app.get("/ai-patterns")
-async def ai_patterns(request: Request):
-    sidebar_html = SIDEBAR_HTML
-    """📊 AI Pattern Recognition - Détection patterns"""
-    user_plan = "1_year"  # TODO: Implement proper auth
-    if not check_permission(user_plan, "ai_patterns"):
-        return RedirectResponse(url="/pricing-complete")
-    
-    patterns = [
-        {"coin": "ETH", "pattern": "Triangle ascendant", "formed": "12 jours", "breakout": "72h", "target": "$2,850", "gain": "+8%", "sl": "$2,550", "loss": "-3%", "success": 67},
-        {"coin": "BTC", "pattern": "Head & Shoulders", "formed": "8 jours", "breakout": "48h", "target": "$41,000", "gain": "-5%", "sl": "$44,500", "loss": "+3%", "success": 72},
-        {"coin": "MATIC", "pattern": "Cup & Handle", "formed": "15 jours", "breakout": "96h", "target": "$0.95", "gain": "+12%", "sl": "$0.80", "loss": "-6%", "success": 64}
-    ]
-    
-    html = f"""<!DOCTYPE html><html><head><title>📊 AI Patterns</title>{CSS}</head>
-    <body>{sidebar_html}
-    <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📊 AI PATTERN RECOGNITION</h1></div>
-    <div style="max-width:1400px;margin:0 auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px">
-    """ + "".join([f"""
-    <div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="color:var(--cyber-accent);font-size:2rem;margin:0">{p['coin']}</h2><div style="background:var(--cyber-accent);color:var(--bg-primary);padding:8px 15px;border-radius:10px;font-weight:700">{p['success']}%</div></div>
-        <div style="background:rgba(0,212,255,0.1);padding:15px;border-radius:10px;margin-bottom:15px;text-align:center"><div style="font-size:1.3rem;font-weight:700;color:var(--text-primary)">{p['pattern']}</div><div style="color:var(--text-secondary);font-size:0.85rem;margin-top:5px">Formé depuis {p['formed']}</div></div>
-        <div style="margin:15px 0;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="color:var(--text-secondary);font-size:0.85rem;margin-bottom:5px">Breakout probable</div><div style="font-weight:700;font-size:1.1rem">{p['breakout']}</div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:15px 0">
-            <div style="background:rgba(0,255,136,0.1);padding:12px;border-radius:8px;text-align:center"><div style="color:var(--text-secondary);font-size:0.8rem">Target</div><div style="color:var(--cyber-accent);font-weight:700;font-size:1.2rem">{p['target']}</div><div style="color:var(--cyber-accent);font-size:0.85rem">{p['gain']}</div></div>
-            <div style="background:rgba(255,59,92,0.1);padding:12px;border-radius:8px;text-align:center"><div style="color:var(--text-secondary);font-size:0.8rem">Stop-loss</div><div style="color:var(--danger);font-weight:700;font-size:1.2rem">{p['sl']}</div><div style="color:var(--danger);font-size:0.85rem">{p['loss']}</div></div>
-        </div>
-    </div>
-    """ for p in patterns]) + """</div>
-    {sidebar_html}
-</body></html>"""
-    return HTMLResponse(html)

@@ -3842,6 +3842,18 @@ document.addEventListener('DOMContentLoaded', function() {
         <a href="/calendrier" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📅 Cal</a>
         <a href="/bullrun-phase" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" style="background: rgba(96,165,250,0.25); color: #60a5fa; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 700; transition: all 0.3s ease; border: 1px solid #60a5fa; white-space: nowrap; display: inline-block; box-shadow: 0 0 20px rgba(96,165,250,0.4);">💎 Gem Hunter</a>
+        
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a>
+        <a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a>
+        <a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a>
+        <a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a>
+        <a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a>
+        <a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a>
+        <a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a>
+        <a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a>
+        <a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a>
+        <a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a>
+        <a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
         <a href="/graphiques" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📊 Charts</a>
         <a href="/backtesting" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">⚙️ Backtest</a>
         <a href="/generate-pdf-report" style="background: rgba(255,255,255,0.08); color: #e2e8f0; padding: 10px 16px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.12); white-space: nowrap; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.2);">📄 PDF</a>
@@ -17508,7 +17520,19 @@ async def stats_dashboard():
         <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
         <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
         <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
+        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a>
+        <a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a>
+        <a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a>
+        <a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a>
+        <a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a>
+        <a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a>
+        <a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a>
+        <a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a>
+        <a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a>
+        <a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a>
+        <a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
+        </a>
         <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
         <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
         <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
@@ -20603,6 +20627,18 @@ async def admin_dashboard(request: Request):
     <div class="universal-nav-container">
         <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
         <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
+        
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a>
+        <a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a>
+        <a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a>
+        <a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a>
+        <a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a>
+        <a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a>
+        <a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a>
+        <a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a>
+        <a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a>
+        <a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a>
+        <a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
         <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
         <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
         <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
@@ -21392,6 +21428,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
         <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
@@ -21729,6 +21766,7 @@ async def mon_compte(request: Request):
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
         <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
@@ -22794,6 +22832,7 @@ async def backtesting_page(request: Request):
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
         <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
@@ -23196,6 +23235,7 @@ async def onchain_metrics():
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
         <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
@@ -23462,6 +23502,7 @@ async def testimonials_widget():
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
         <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
         <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
@@ -23550,6 +23591,7 @@ async def api_keys_page(request: Request):
 <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
 <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
+        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
 <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
 <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
 <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>

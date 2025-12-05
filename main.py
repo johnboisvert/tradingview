@@ -787,13 +787,13 @@ async def fetch_coingecko_data():
             params = {
                 'vs_currency': 'usd',
                 'order': 'market_cap_desc',
-                'per_page': 250,
+                'per_page': 500,
                 'page': 1,
                 'sparkline': False,
                 'price_change_percentage': '24h,7d,30d'
             }
             
-            timeout = aiohttp.ClientTimeout(total=30)
+            timeout = aiohttp.ClientTimeout(total=60)
             async with session.get(url, params=params, timeout=timeout) as response:
                 if response.status == 200:
                     data = await response.json()
@@ -999,12 +999,18 @@ async def analyze_all_gems() -> List[Dict]:
         cryptos = await fetch_coingecko_data()
         
         if not cryptos:
-            print("⚠️ Aucune crypto, retry dans 2s...")
+            print("⚠️ Tentative 1 échouée, retry dans 2s...")
             await asyncio.sleep(2)
             cryptos = await fetch_coingecko_data()
             
         if not cryptos:
-            print("⚠️ API définitivement inaccessible, fallback activé")
+            print("⚠️ Tentative 2 échouée, retry dans 3s...")
+            await asyncio.sleep(3)
+            cryptos = await fetch_coingecko_data()
+            
+        if not cryptos:
+            print("⚠️ API CoinGecko inaccessible après 3 tentatives")
+            print("🔄 Utilisation des 50 pépites fallback")
             return get_fallback_gems()
         
         print(f"✅ CoinGecko API: {len(cryptos)} cryptos chargées!")
@@ -1068,12 +1074,12 @@ async def analyze_all_gems() -> List[Dict]:
         return get_fallback_gems()
 
 def get_fallback_gems() -> List[Dict]:
-    """Retourne des données de test si l'API ne fonctionne pas"""
-    print("📦 Utilisation données fallback...")
+    """Retourne 50 pépites de test si l'API ne fonctionne pas"""
+    print("📦 Utilisation 50 pépites fallback...")
     
     fallback = []
     
-    # Générer 20 pépites fictives pour test
+    # Générer 50 pépites fictives pour test
     tokens = [
         {'name': 'InjectiveProtocol', 'symbol': 'INJ', 'cat': 'DeFi'},
         {'name': 'Render', 'symbol': 'RNDR', 'cat': 'AI/Data'},
@@ -1095,6 +1101,37 @@ def get_fallback_gems() -> List[Dict]:
         {'name': 'Worldcoin', 'symbol': 'WLD', 'cat': 'AI/Data'},
         {'name': 'Sui', 'symbol': 'SUI', 'cat': 'Infrastructure'},
         {'name': 'Aptos', 'symbol': 'APT', 'cat': 'Infrastructure'},
+        # 30 tokens supplémentaires pour atteindre 50
+        {'name': 'Fantom', 'symbol': 'FTM', 'cat': 'Infrastructure'},
+        {'name': 'NEAR Protocol', 'symbol': 'NEAR', 'cat': 'Infrastructure'},
+        {'name': 'Avalanche', 'symbol': 'AVAX', 'cat': 'Infrastructure'},
+        {'name': 'Cosmos', 'symbol': 'ATOM', 'cat': 'Infrastructure'},
+        {'name': 'Polkadot', 'symbol': 'DOT', 'cat': 'Infrastructure'},
+        {'name': 'Polygon', 'symbol': 'MATIC', 'cat': 'Infrastructure'},
+        {'name': 'Chainlink', 'symbol': 'LINK', 'cat': 'Infrastructure'},
+        {'name': 'Uniswap', 'symbol': 'UNI', 'cat': 'DeFi'},
+        {'name': 'Curve DAO', 'symbol': 'CRV', 'cat': 'DeFi'},
+        {'name': 'Maker', 'symbol': 'MKR', 'cat': 'DeFi'},
+        {'name': 'Compound', 'symbol': 'COMP', 'cat': 'DeFi'},
+        {'name': 'Yearn Finance', 'symbol': 'YFI', 'cat': 'DeFi'},
+        {'name': 'SushiSwap', 'symbol': 'SUSHI', 'cat': 'DeFi'},
+        {'name': 'Balancer', 'symbol': 'BAL', 'cat': 'DeFi'},
+        {'name': 'Ethereum Name Service', 'symbol': 'ENS', 'cat': 'Infrastructure'},
+        {'name': 'Blur', 'symbol': 'BLUR', 'cat': 'Gaming/Metaverse'},
+        {'name': 'Decentraland', 'symbol': 'MANA', 'cat': 'Gaming/Metaverse'},
+        {'name': 'The Sandbox', 'symbol': 'SAND', 'cat': 'Gaming/Metaverse'},
+        {'name': 'ApeCoin', 'symbol': 'APE', 'cat': 'Gaming/Metaverse'},
+        {'name': 'Magic', 'symbol': 'MAGIC', 'cat': 'Gaming/Metaverse'},
+        {'name': 'STEPN', 'symbol': 'GMT', 'cat': 'Gaming/Metaverse'},
+        {'name': 'Fetch.ai', 'symbol': 'FET', 'cat': 'AI/Data'},
+        {'name': 'Ocean Protocol', 'symbol': 'OCEAN', 'cat': 'AI/Data'},
+        {'name': 'Oasis Network', 'symbol': 'ROSE', 'cat': 'Infrastructure'},
+        {'name': 'THORChain', 'symbol': 'RUNE', 'cat': 'DeFi'},
+        {'name': 'Kava', 'symbol': 'KAVA', 'cat': 'DeFi'},
+        {'name': 'Celer Network', 'symbol': 'CELR', 'cat': 'Infrastructure'},
+        {'name': 'Ankr', 'symbol': 'ANKR', 'cat': 'Infrastructure'},
+        {'name': 'SKALE', 'symbol': 'SKL', 'cat': 'Infrastructure'},
+        {'name': 'Zilliqa', 'symbol': 'ZIL', 'cat': 'Infrastructure'},
     ]
     
     for i, token in enumerate(tokens):

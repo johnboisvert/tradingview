@@ -2232,7 +2232,7 @@ async def change_password(request: Request, username: str = Depends(require_auth
 # ✅ ROUTE STRATÉGIE MAGIC MIKE COMPLÈTE (tous les 5 niveaux)
 @app.get("/strategie", response_class=HTMLResponse)
 async def strategie_page():
-    html_content = """
+    html_content = SIDEBAR + """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -3696,7 +3696,7 @@ SIDEBAR + <!DOCTYPE html>
 @app.get("/", response_class=HTMLResponse)
 async def home():
     """Page d'accueil professionnelle du dashboard"""
-    html_content = """
+    html_content = SIDEBAR + """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -4173,7 +4173,7 @@ async def home():
 @app.get("/spot-trading", response_class=HTMLResponse)
 async def spot_trading_page():
     """Page complète et professionnelle sur le trading SPOT"""
-    html_content = """
+    html_content = SIDEBAR + """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -5847,7 +5847,7 @@ async def ai_opportunity_scanner():
     Scanner IA des meilleures opportunités de trading en temps réel
     ✅ DONNÉES RÉELLES EN TEMPS RÉEL DE COINGECKO API (Pas de données simulées!)
     """
-    html_content = """
+    html_content = SIDEBAR + """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -6413,7 +6413,7 @@ async def ai_market_regime():
     
     ⚠️ OUI, nous sommes au début/milieu d'un bull run, PAS à la fin!
     """
-    html_content = """
+    html_content = SIDEBAR + """
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -9558,7 +9558,7 @@ async def telegram_test():
 @app.get("/fear-greed", response_class=HTMLResponse)
 async def fear_greed_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
-    return HTMLResponse(html)
+    return HTMLResponse(SIDEBAR + html)
 
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
@@ -12783,7 +12783,7 @@ async def charts_page():
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📱 Test Telegram</h1></div><div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
-    return HTMLResponse(html)
+    return HTMLResponse(SIDEBAR + html)
 
 
 @app.get("/trades", response_class=HTMLResponse)
@@ -14843,7 +14843,7 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
     """Page de pricing avec support codes promo"""
-    return HTMLResponse("""
+    return HTMLResponse(SIDEBAR + """
 SIDEBAR + <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -19703,7 +19703,7 @@ async def admin_dashboard(request: Request):
     
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
-        return HTMLResponse("<h1>403 - Accès refusé</h1><p>Admin seulement</p>", status_code=403)
+        return HTMLResponse(SIDEBAR + "<h1>403 - Accès refusé</h1><p>Admin seulement</p>", status_code=403)
     
     # Récupérer tous les utilisateurs
     conn = db_manager.get_connection()
@@ -20179,7 +20179,7 @@ async def admin_pricing_update(request: Request):
     
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
-        return HTMLResponse("<h1>403</h1>", status_code=403)
+        return HTMLResponse(SIDEBAR + "<h1>403</h1>", status_code=403)
     
     try:
         form = await request.form()
@@ -20225,7 +20225,7 @@ async def admin_pricing_update(request: Request):
     
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
-        return HTMLResponse("<h1>403</h1>", status_code=403)
+        return HTMLResponse(SIDEBAR + "<h1>403</h1>", status_code=403)
     
     try:
         form = await request.form()
@@ -20433,7 +20433,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         return RedirectResponse("/login")
     
     if not PROMO_CODES_AVAILABLE:
-        return HTMLResponse("<h1>❌ Module promo_codes non disponible</h1>")
+        return HTMLResponse(SIDEBAR + "<h1>❌ Module promo_codes non disponible</h1>")
     
     try:
         conn = get_db_connection()

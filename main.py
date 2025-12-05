@@ -34,7 +34,7 @@ import hmac
 import hashlib
 import requests  # Pour API externe
 import aiohttp
-from typing import List, Dict
+from typing import List, Dict, Tuple
 
 # ============================================================================
 # 🆕 SYSTÈME DE PERMISSIONS - IMPORTS

@@ -1170,7 +1170,7 @@ async def analyze_all_gems() -> Tuple[List[Dict], bool, List[Dict]]:
         if not cryptos:
             print("⚠️ API CoinGecko inaccessible après 3 tentatives")
             print("🔄 Utilisation des 50 pépites fallback")
-            return (get_fallback_gems(), False)
+            return (get_fallback_gems(), False, [])
         
         print(f"✅ CoinGecko API: {len(cryptos)} cryptos chargées!")
         
@@ -24548,11 +24548,14 @@ async def ai_gem_hunter(request: Request):
 async def refresh_gems():
     """API pour rafraîchir les données des pépites"""
     try:
-        gems = await analyze_all_gems()
+        gems, is_live, upcoming_gems = await analyze_all_gems()
         return {
             "success": True,
             "count": len(gems),
-            "gems": gems
+            "gems": gems,
+            "upcoming_count": len(upcoming_gems),
+            "upcoming_gems": upcoming_gems,
+            "is_live": is_live
         }
     except Exception as e:
         return {

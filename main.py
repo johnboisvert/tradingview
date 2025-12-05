@@ -24580,13 +24580,13 @@ async def ai_gem_hunter(request: Request):
 # ============================================================================
 
 @app.get("/ai-signals")
-async def ai_signals(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_signals(request: Request):
     """🎯 AI Trading Signals - Signaux trading intelligents"""
     try:
         from datetime import datetime
         
         # Vérifier permission
-        user_plan = get_user_plan(user_email) if user_email else "free"
+        user_plan = "1_year"  # TODO: Implement proper auth
         has_access = check_permission(user_plan, "ai_signals")
         
         if not has_access:
@@ -24889,9 +24889,9 @@ async def ai_signals(request: Request, user_email: str = Depends(get_optional_us
 
 
 @app.get("/ai-sentiment")
-async def ai_sentiment(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_sentiment(request: Request):
     """🎭 AI Social Sentiment"""
-    user_plan = get_user_plan(user_email) if user_email else "free"
+    user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_sentiment"):
         return RedirectResponse(url="/pricing-complete")
     
@@ -24905,9 +24905,9 @@ async def ai_sentiment(request: Request, user_email: str = Depends(get_optional_
     return HTMLResponse(html)
 
 @app.get("/ai-sizer")
-async def ai_sizer(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_sizer(request: Request):
     """📏 AI Position Sizer"""
-    user_plan = get_user_plan(user_email) if user_email else "free"
+    user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_sizer"):
         return RedirectResponse(url="/pricing-complete")
     
@@ -24915,9 +24915,9 @@ async def ai_sizer(request: Request, user_email: str = Depends(get_optional_user
     return HTMLResponse(html)
 
 @app.get("/ai-exit")
-async def ai_exit(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_exit(request: Request):
     """🚪 AI Exit Strategy"""
-    user_plan = get_user_plan(user_email) if user_email else "free"
+    user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_exit"):
         return RedirectResponse(url="/pricing-complete")
     
@@ -24930,9 +24930,9 @@ async def ai_exit(request: Request, user_email: str = Depends(get_optional_user_
     return HTMLResponse(html)
 
 @app.get("/ai-timeframe")
-async def ai_timeframe(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_timeframe(request: Request):
     """📈 AI Multi-Timeframe"""
-    user_plan = get_user_plan(user_email) if user_email else "free"
+    user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_timeframe"):
         return RedirectResponse(url="/pricing-complete")
     
@@ -24945,9 +24945,9 @@ async def ai_timeframe(request: Request, user_email: str = Depends(get_optional_
     return HTMLResponse(html)
 
 @app.get("/ai-liquidity")
-async def ai_liquidity(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_liquidity(request: Request):
     """🌊 AI Liquidity Heatmap"""
-    user_plan = get_user_plan(user_email) if user_email else "free"
+    user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_liquidity"):
         return RedirectResponse(url="/pricing-complete")
     
@@ -24962,9 +24962,9 @@ async def ai_liquidity(request: Request, user_email: str = Depends(get_optional_
     return HTMLResponse(html)
 
 @app.get("/ai-alerts")
-async def ai_alerts(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_alerts(request: Request):
     """🎯 AI Smart Alerts"""
-    user_plan = get_user_plan(user_email) if user_email else "free"
+    user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_alerts"):
         return RedirectResponse(url="/pricing-complete")
     
@@ -25100,9 +25100,9 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 @app.get("/ai-news")
-async def ai_news(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_news(request: Request):
     """📰 AI News Impact - Impact des news sur les prix"""
-    user_plan = get_user_plan(user_email) if user_email else "free"
+    user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_news"):
         return RedirectResponse(url="/pricing-complete")
     
@@ -25130,9 +25130,9 @@ async def ai_news(request: Request, user_email: str = Depends(get_optional_user_
     return HTMLResponse(html)
 
 @app.get("/ai-predictor")
-async def ai_predictor(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_predictor(request: Request):
     """🔮 AI Price Predictor - Prédictions de prix"""
-    user_plan = get_user_plan(user_email) if user_email else "free"
+    user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_predictor"):
         return RedirectResponse(url="/pricing-complete")
     
@@ -25161,9 +25161,9 @@ async def ai_predictor(request: Request, user_email: str = Depends(get_optional_
     return HTMLResponse(html)
 
 @app.get("/ai-whale")
-async def ai_whale(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_whale(request: Request):
     """🐋 AI Whale Tracker - Mouvements des baleines"""
-    user_plan = get_user_plan(user_email) if user_email else "free"
+    user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_whale"):
         return RedirectResponse(url="/pricing-complete")
     
@@ -25198,9 +25198,9 @@ async def ai_whale(request: Request, user_email: str = Depends(get_optional_user
     return HTMLResponse(html)
 
 @app.get("/ai-patterns")
-async def ai_patterns(request: Request, user_email: str = Depends(get_optional_user_email)):
+async def ai_patterns(request: Request):
     """📊 AI Pattern Recognition - Détection patterns"""
-    user_plan = get_user_plan(user_email) if user_email else "free"
+    user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_patterns"):
         return RedirectResponse(url="/pricing-complete")
     

@@ -1166,7 +1166,10 @@ def get_fallback_gems() -> List[Dict]:
             'potential': calculate_potential(score, mcap, 60)
         })
     
-    return fallback
+    # Trier par score décroissant
+    fallback_sorted = sorted(fallback, key=lambda x: x['score'], reverse=True)
+    print(f"✅ {len(fallback_sorted)} pépites fallback triées par score")
+    return fallback_sorted
 
 @app.get("/debug-files")
 async def debug_files():
@@ -8321,7 +8324,10 @@ def generate_heatmap_fallback():
         "source": "Local Fallback",
         "timestamp": datetime.now().isoformat()
     }
-    return fallback
+    # Trier par score décroissant
+    fallback_sorted = sorted(fallback, key=lambda x: x['score'], reverse=True)
+    print(f"✅ {len(fallback_sorted)} pépites fallback triées par score")
+    return fallback_sorted
 
 # ✅ CACHE PERSISTANT POUR ALTCOIN SEASON
 altcoin_cache = {
@@ -17199,14 +17205,15 @@ async def stats_dashboard():
 </head>
 <body>
 <style>
-.universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
-.universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
-.universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
-.universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
-.universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}}
-.universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
-.universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
+.universal-top-nav{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}
+.universal-nav-container{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.universal-nav-btn{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}
+.universal-nav-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}
+.universal-nav-btn.active{background:rgba(96,165,250,0.2);border-color:#60a5fa;color:#60a5fa}
+.universal-nav-btn.premium{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}
+.universal-nav-btn.admin{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}
+.universal-nav-btn.account{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}
+.universal-nav-btn.logout{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}
 </style>
 <nav class="universal-top-nav">
     <div class="universal-nav-container">
@@ -17230,11 +17237,16 @@ async def stats_dashboard():
         <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
         <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
         <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
+        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
+        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
+        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
+        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
+        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
         <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
@@ -20332,11 +20344,16 @@ async def admin_dashboard(request: Request):
         <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
         <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
         <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
+        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
+        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
+        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
+        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
+        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
         <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
@@ -21092,11 +21109,16 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
         <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
         <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
+        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
+        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
+        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
+        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
+        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
         <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
@@ -21424,11 +21446,16 @@ async def mon_compte(request: Request):
         <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
         <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
         <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
+        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
+        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
         <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
         <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
         <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
         <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
         <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
+        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
+        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
+        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
         <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
         <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
         <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>

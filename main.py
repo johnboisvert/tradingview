@@ -2958,6 +2958,7 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(username: str = Depends(require_admin)):
+    sidebar_html = SIDEBAR_HTML
     """Panel d'administration pour gérer les utilisateurs"""
     
     # Récupérer tous les utilisateurs
@@ -3019,7 +3020,7 @@ async def admin_panel(username: str = Depends(require_admin)):
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <div class="header">
@@ -3202,6 +3203,7 @@ async def strategie_page():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Magic Mike 1H - Guide ULTIME</title>
         """ + CSS + """
+    sidebar_html = SIDEBAR_HTML
         <style>
             * {
                 margin: 0;
@@ -3476,7 +3478,7 @@ async def strategie_page():
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <div class="container">
             <header>
@@ -4619,6 +4621,7 @@ async def health_check():
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(session_token: Optional[str] = Cookie(None)):
+    sidebar_html = SIDEBAR_HTML
     user = get_user_from_token(session_token)
     if not user:
         return RedirectResponse("/login")
@@ -4628,7 +4631,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div style="padding: 40px; text-align: center;">
         <h1 style="color:white; font-size: 48px; margin-bottom: 20px;">🏠 Bienvenue {username}!</h1>
@@ -4644,6 +4647,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 async def home():
     """Page d'accueil professionnelle du dashboard"""
     html_content = """
+    sidebar_html = SIDEBAR_HTML
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -4853,7 +4857,7 @@ async def home():
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <div class="hero">
             <h1>🎯 Magic Mike Trading Dashboard</h1>
@@ -5123,6 +5127,7 @@ async def home():
 async def spot_trading_page():
     """Page complète et professionnelle sur le trading SPOT"""
     html_content = """
+    sidebar_html = SIDEBAR_HTML
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -5403,7 +5408,7 @@ async def spot_trading_page():
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <div class="container">
             <header>
@@ -6798,6 +6803,7 @@ async def ai_opportunity_scanner():
     Scanner IA des meilleures opportunités de trading en temps réel
     ✅ DONNÉES RÉELLES EN TEMPS RÉEL DE COINGECKO API (Pas de données simulées!)
     """
+    sidebar_html = SIDEBAR_HTML
     html_content = """
     <!DOCTYPE html>
     <html lang="fr">
@@ -7085,7 +7091,7 @@ async def ai_opportunity_scanner():
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <div class="container">
             <header>
@@ -7352,6 +7358,7 @@ async def ai_opportunity_scanner():
 # ============= AI MARKET REGIME DETECTOR =============
 @app.get("/ai-market-regime", response_class=HTMLResponse)
 async def ai_market_regime():
+    sidebar_html = SIDEBAR_HTML
     """
     Détecteur IA du régime de marché actuel
     
@@ -7606,7 +7613,7 @@ async def ai_market_regime():
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <div class="container">
             <header>
@@ -8139,6 +8146,7 @@ async def ai_whale_watcher():
     🐋 WHALE WATCHER - DONNÉES VRAIES OU DÉMO AVEC PRIX LIVE
     ✅ Prix BTC ACTUALISÉ TOUJOURS
     """
+    sidebar_html = SIDEBAR_HTML
     
     # 1️⃣ Récupérer le prix BTC EN DIRECT SYSTÉMATIQUEMENT
     btc_price = 43000  # Valeur par défaut
@@ -8525,7 +8533,7 @@ async def ai_whale_watcher():
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <div class="container">
             <header>
@@ -9316,6 +9324,7 @@ def get_fallback_rates():
 async def convertisseur_page():
     """Page du convertisseur de devises et crypto"""
     return HTMLResponse(f"""<!DOCTYPE html>
+    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -9466,7 +9475,7 @@ async def convertisseur_page():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <div class="header">
@@ -10521,12 +10530,14 @@ async def fear_greed_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body>
     {SIDEBAR_HTML}
 <div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
+    sidebar_html = SIDEBAR_HTML
     return HTMLResponse(html)
 
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
+    sidebar_html = SIDEBAR_HTML
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 <div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div><div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
 let mainChart=null;
 let fullData=[];
@@ -10709,6 +10720,7 @@ async def heatmap_page():
     <title>🔥 Crypto Heatmap Pro</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     """ + CSS + """
+    sidebar_html = SIDEBAR_HTML
     <style>
         /* ================================
            HEATMAP PRO - STYLES MODERNES
@@ -11174,7 +11186,7 @@ async def heatmap_page():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <!-- HEADER -->
@@ -11567,6 +11579,7 @@ async def heatmap_page():
 async def altcoin_page():
     """Page Altcoin Season - SIMPLE avec juste la jauge"""
     html = """<!DOCTYPE html>
+    sidebar_html = SIDEBAR_HTML
 <html>
 <head>
     <meta charset="UTF-8">
@@ -11729,7 +11742,7 @@ async def altcoin_page():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <div class="altcoin-header">
@@ -11919,6 +11932,7 @@ async def bullrun_page():
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🚀 Bullrun Phase Tracker</title>
     """ + CSS + """
+    sidebar_html = SIDEBAR_HTML
     <style>
         /* Styles spécifiques pour Bullrun Phase */
         .phase-hero {
@@ -12290,7 +12304,7 @@ async def bullrun_page():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <div class="header">
@@ -12601,6 +12615,7 @@ async def bullrun_page():
 
 @app.get("/graphiques", response_class=HTMLResponse)
 async def charts_page():
+    sidebar_html = SIDEBAR_HTML
     html = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -12895,7 +12910,7 @@ async def charts_page():
     </style>
 """ + CSS + """</head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <!-- Header -->
@@ -13758,11 +13773,13 @@ async def telegram_page():
     html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body>
     {SIDEBAR_HTML}
 <div class="container"><div class="header"><h1>📱 Test Telegram</h1></div><div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
+    sidebar_html = SIDEBAR_HTML
     return HTMLResponse(html)
 
 
 @app.get("/trades", response_class=HTMLResponse)
 async def trades_page():
+    sidebar_html = SIDEBAR_HTML
     html = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -13840,7 +13857,7 @@ async def trades_page():
     </style>
 """ + CSS + """</head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <div class="header fade-in">
@@ -15823,6 +15840,7 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 async def pricing_complete():
     """Page de pricing avec support codes promo"""
     return HTMLResponse("""<!DOCTYPE html>
+    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -16044,7 +16062,7 @@ async def pricing_complete():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <div class="header">
@@ -16686,6 +16704,7 @@ async def pricing_complete():
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
     return HTMLResponse("""<!DOCTYPE html>
+    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -16839,7 +16858,7 @@ async def pricing_page_new(request: Request):
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <div id="successMsg" class="success-message">
@@ -17557,6 +17576,7 @@ async def reset_weekly_pnl_manual():
 # ============================================================================
 @app.get("/stats-dashboard", response_class=HTMLResponse)
 async def stats_dashboard():
+    sidebar_html = SIDEBAR_HTML
     """$ DASHBOARD STATISTIQUES - TOUTES DONNÉES RÉELLES 100% $"""
     
     # ========== RÉCUPÉRATION DONNÉES MARCHÉ RÉELLES ==========
@@ -17718,7 +17738,7 @@ async def stats_dashboard():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
 <style>
 .universal-top-nav {
@@ -17986,6 +18006,7 @@ async def get_crypto_prices(crypto_id: str):
 async def market_simulation():
     """Simulation réaliste avec cycles bull/bear et DCA discipline - Top 10 Crypto"""
     return HTMLResponse("""<!DOCTYPE html>
+    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -18169,7 +18190,7 @@ async def market_simulation():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <h1>📈 SIMULATION DE MARCHÉ - Top 10 Crypto</h1>
@@ -18561,6 +18582,7 @@ async def generate_pdf_report():
 async def success_stories():
     """Success Stories: Histoires vraies de DCA réussies"""
     return HTMLResponse("""<!DOCTYPE html>
+    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -18753,7 +18775,7 @@ async def success_stories():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     
 
@@ -18945,10 +18967,11 @@ async def success_stories():
 
 @app.get("/risk-management", response_class=HTMLResponse)
 async def risk_management_page():
+    sidebar_html = SIDEBAR_HTML
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
 <div class="container">
 <div class="header"><h1>⚖️ RISK MANAGEMENT</h1><p>Gestion professionnelle du risque</p></div>
@@ -19120,10 +19143,11 @@ loadSettings();
 # ============= PAGE WATCHLIST & ALERTES =============
 @app.get("/watchlist", response_class=HTMLResponse)
 async def watchlist_page():
+    sidebar_html = SIDEBAR_HTML
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
 <div class="container">
 <div class="header"><h1>👀 WATCHLIST & ALERTES</h1><p>Surveillez vos cryptos préférées</p></div>
@@ -19262,10 +19286,11 @@ loadWatchlist();
 # ============= PAGE AI TRADING ASSISTANT =============
 @app.get("/ai-assistant", response_class=HTMLResponse)
 async def ai_assistant_page():
+    sidebar_html = SIDEBAR_HTML
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
 <div class="container">
 <div class="header"><h1>🤖 AI TRADING ASSISTANT</h1><p>Intelligence artificielle pour optimiser vos trades</p></div>
@@ -19425,6 +19450,7 @@ loadSentiment();
 async def calculatrice_trades():
     """Calculatrice de trades professionnelle en français"""
     return HTMLResponse("""<!DOCTYPE html>
+    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -19730,7 +19756,7 @@ async def calculatrice_trades():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <div class="header">
@@ -20143,6 +20169,7 @@ async def calculatrice_trades():
 async def prediction_ia():
     """Page de prédiction IA avec navigation"""
     return HTMLResponse("""<!DOCTYPE html>
+    sidebar_html = SIDEBAR_HTML
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -20185,7 +20212,7 @@ async def prediction_ia():
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     <div class="container">
         <div class="header">
@@ -20757,6 +20784,7 @@ async def stripe_webhook_debug(request: Request):
 
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """Page d'administration pour gérer les utilisateurs et abonnements"""
     
     # Vérifier l'authentification
@@ -20878,7 +20906,7 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
@@ -20933,6 +20961,7 @@ async def admin_dashboard(request: Request):
 
 @app.get("/admin/pricing", response_class=HTMLResponse)
 async def admin_pricing_view(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """Page de gestion des plans - AVEC 44 ROUTES"""
     session_token = request.cookies.get("session_token")
     if not session_token:
@@ -21067,7 +21096,7 @@ async def admin_pricing_view(request: Request):
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
     
     
@@ -21504,6 +21533,7 @@ async def admin_create_promo(
 
 @app.get("/admin/list-promos", response_class=HTMLResponse)
 async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
+    sidebar_html = SIDEBAR_HTML
     """Page admin: liste tous les codes promo avec stats"""
     user = get_user_from_token(session_token)
     if not user:
@@ -21621,7 +21651,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             </style>
         </head>
         <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
 <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
@@ -21743,6 +21773,7 @@ async def admin_test_promo(
 
 @app.get("/mon-compte", response_class=HTMLResponse)
 async def mon_compte(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """Dashboard personnel utilisateur avec son abonnement"""
     session_token = request.cookies.get("session_token")
     user = get_user_from_token(session_token)
@@ -21922,7 +21953,7 @@ async def mon_compte(request: Request):
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
@@ -22016,6 +22047,7 @@ async def fear_greed_history():
 async def fear_greed_chart():
     """Page graphique Fear & Greed 12 mois"""
     return HTMLResponse(f"""
+    sidebar_html = SIDEBAR_HTML
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -22060,7 +22092,7 @@ async def fear_greed_chart():
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         
         <div class="container">
@@ -22207,6 +22239,7 @@ async def live_stats():
 async def backtesting_page(request: Request):
     """Page de backtesting professionnelle avec graphiques et statistiques avancées"""
     return HTMLResponse(f"""
+    sidebar_html = SIDEBAR_HTML
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -22427,7 +22460,7 @@ async def backtesting_page(request: Request):
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         
         <div class="container">
@@ -23137,6 +23170,7 @@ async def api_backtest(request: Request):
 
 @app.get("/onchain-metrics", response_class=HTMLResponse)
 async def onchain_metrics():
+    sidebar_html = SIDEBAR_HTML
     """Page Métriques On-Chain - Whale movements, exchange flows"""
     
     # Données métriques (exemple - à remplacer par vraies APIs)
@@ -23270,7 +23304,7 @@ async def onchain_metrics():
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <div class="container">
             <div class="header">
@@ -23351,6 +23385,7 @@ async def onchain_metrics():
 
 @app.get("/testimonials-widget", response_class=HTMLResponse)
 async def testimonials_widget():
+    sidebar_html = SIDEBAR_HTML
     """Page Témoignages Clients"""
     testimonials = [
         {
@@ -23532,7 +23567,7 @@ async def testimonials_widget():
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <div class="container">
             <div class="header">
@@ -23593,6 +23628,7 @@ async def api_keys_page(request: Request):
         raise HTTPException(status_code=401, detail="Non authentifié")
     
     return HTMLResponse(f"""
+    sidebar_html = SIDEBAR_HTML
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -23607,7 +23643,7 @@ async def api_keys_page(request: Request):
         </style>
     </head>
     <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         <script>
         // Menu universel - Injection automatique
@@ -23707,6 +23743,7 @@ curl -H "api-key: YOUR_KEY" \\
 # Page d'admin pour modifier les plans
 @app.get("/admin/update-plan-features", response_class=HTMLResponse)
 async def admin_update_plan_features_page(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """Page admin pour modifier les features d'un plan"""
     # On vérifie si l'utilisateur est admin
     user = get_user_from_token(request.cookies.get("session_token"))
@@ -23739,7 +23776,7 @@ async def admin_update_plan_features_page(request: Request):
         </style>
     </head>
     <body class="bg-gray-900 text-white min-h-screen">
-    {SIDEBAR_HTML}
+    {sidebar_html}
 
         
         <div class="container mx-auto px-4 py-8">
@@ -24621,6 +24658,7 @@ async def ai_gem_hunter(request: Request):
 
 @app.get("/ai-signals")
 async def ai_signals(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """🎯 AI Trading Signals - Signaux trading intelligents"""
     try:
         from datetime import datetime
@@ -24818,7 +24856,7 @@ async def ai_signals(request: Request):
     </style>
 </head>
 <body>
-    {SIDEBAR_HTML}
+    {sidebar_html}
     
     <div style="text-align: center; padding: 50px 20px 20px;">
         <h1 style="font-family: 'Orbitron', sans-serif; font-size: 3rem; color: var(--cyber-accent); margin-bottom: 10px;">
@@ -24917,7 +24955,7 @@ async def ai_signals(request: Request):
         renderSignals();
     </script>
 
-    {SIDEBAR_HTML}
+    {sidebar_html}
 </body>
 </html>"""
         
@@ -24932,6 +24970,7 @@ async def ai_signals(request: Request):
 
 @app.get("/ai-sentiment")
 async def ai_sentiment(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """🎭 AI Social Sentiment"""
     user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_sentiment"):
@@ -24943,8 +24982,8 @@ async def ai_sentiment(request: Request):
         {"coin": "ETH", "twitter": 70, "reddit": 68, "news": 75, "trend": "+120%", "conf": 78}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🎭 AI Sentiment</title>{CSS}</head><body>{SIDEBAR_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎭 AI SOCIAL SENTIMENT</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:20px;margin:20px 0"><h2 style="color:var(--cyber-accent);margin-bottom:15px">{s['coin']}</h2><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin:15px 0"><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Twitter</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['twitter']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Reddit</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['reddit']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">News</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['news']}%</div></div></div><div style="display:flex;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div><span style="color:var(--text-secondary)">Trending:</span> <strong style="color:var(--cyber-accent)">{s['trend']}</strong></div><div><span style="color:var(--text-secondary)">Confiance:</span> <strong>{s['conf']}%</strong></div></div></div>""" for s in sents]) + """</div>
-    {SIDEBAR_HTML}
+    html = f"""<!DOCTYPE html><html><head><title>🎭 AI Sentiment</title>{CSS}</head><body>{sidebar_html}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎭 AI SOCIAL SENTIMENT</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:20px;margin:20px 0"><h2 style="color:var(--cyber-accent);margin-bottom:15px">{s['coin']}</h2><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin:15px 0"><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Twitter</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['twitter']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">Reddit</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['reddit']}%</div></div><div style="text-align:center;padding:12px;background:rgba(0,212,255,0.1);border-radius:10px"><div style="font-size:0.85rem;color:var(--text-secondary)">News</div><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent)">{s['news']}%</div></div></div><div style="display:flex;justify-content:space-between;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div><span style="color:var(--text-secondary)">Trending:</span> <strong style="color:var(--cyber-accent)">{s['trend']}</strong></div><div><span style="color:var(--text-secondary)">Confiance:</span> <strong>{s['conf']}%</strong></div></div></div>""" for s in sents]) + """</div>
+    {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -24956,12 +24995,14 @@ async def ai_sizer(request: Request):
         return RedirectResponse(url="/pricing-complete")
     
     html = f"""<!DOCTYPE html><html><head><title>📏 Position Sizer</title>{CSS}</head><body>{SIDEBAR_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📏 AI POSITION SIZER</h1></div><div style="max-width:800px;margin:0 auto;padding:20px"><div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:30px"><form id="sizerForm"><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Capital total ($)</label><input type="number" id="capital" value="10000" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Risque max (%)</label><input type="number" id="risk" value="2" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Entry ($)</label><input type="number" id="entry" value="2650" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><div style="margin:20px 0"><label style="color:var(--text-secondary);display:block;margin-bottom:8px">Stop-loss ($)</label><input type="number" id="sl" value="2500" step="0.01" style="width:100%;padding:12px;background:rgba(255,255,255,0.05);border:2px solid var(--cyber-accent);border-radius:10px;color:var(--text-primary);font-size:1.1rem"></div><button type="button" onclick="calculate()" style="width:100%;padding:15px;background:var(--cyber-accent);color:var(--bg-primary);border:none;border-radius:10px;font-size:1.2rem;font-weight:700;cursor:pointer;margin-top:20px">🔮 CALCULER</button></form><div id="result" style="margin-top:30px"></div></div></div><script>function calculate(){{const capital=parseFloat(document.getElementById('capital').value);const risk=parseFloat(document.getElementById('risk').value);const entry=parseFloat(document.getElementById('entry').value);const sl=parseFloat(document.getElementById('sl').value);const riskAmount=capital*risk/100;const slPercent=((entry-sl)/entry)*100;const positionSize=(riskAmount/(slPercent/100))/entry;const profit10=positionSize*entry*0.1;document.getElementById('result').innerHTML=`<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.5rem;font-weight:700;color:var(--cyber-accent);margin-bottom:20px">🤖 RECOMMANDATION IA</div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Taille position:</span><strong style="color:var(--text-primary);font-size:1.2rem">$${{positionSize.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Risque réel:</span><strong style="color:var(--danger)">$${{riskAmount.toFixed(0)}} (${{risk}}%)</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Profit si +10%:</span><strong style="color:var(--cyber-accent)">$${{profit10.toFixed(0)}}</strong></div><div style="margin:12px 0;display:flex;justify-content:space-between"><span style="color:var(--text-secondary)">Stop-loss %:</span><strong style="color:var(--danger)">-${{slPercent.toFixed(1)}}%</strong></div><div style="margin-top:20px;padding:12px;background:rgba(255,59,92,0.1);border-radius:8px;color:var(--danger);font-weight:700;text-align:center">⚠️ NE PAS DÉPASSER cette taille!</div></div>`}}</script>
-    {SIDEBAR_HTML}
+    sidebar_html = SIDEBAR_HTML
+    {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-exit")
 async def ai_exit(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """🚪 AI Exit Strategy"""
     user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_exit"):
@@ -24972,13 +25013,14 @@ async def ai_exit(request: Request):
         {"coin": "ETH", "entry": 2400, "current": 2650, "profit": "+10.4%", "momentum": 15, "rsi": 62, "volume": 12, "action": "HOLD - Laisser courir", "prob": 45}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🚪 Exit Strategy</title>{CSS}</head><body>{SIDEBAR_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🚪 AI EXIT STRATEGY</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="color:var(--cyber-accent);font-size:2rem;margin:0">{e['coin']}</h2><div style="background:var(--cyber-accent);color:var(--bg-primary);padding:10px 20px;border-radius:10px;font-size:1.5rem;font-weight:900">{e['profit']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['momentum']<0 else 'var(--cyber-accent)'}">{e['momentum']:+d}%</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['rsi']>70 else 'var(--cyber-accent)'}">{e['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['volume']<0 else 'var(--cyber-accent)'}">{e['volume']:+d}%</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">💡 SUGGESTION IA</div><div style="font-size:1.1rem;margin-bottom:10px">{e['action']}</div><div style="color:var(--text-secondary);font-size:0.9rem">Probabilité correction: {e['prob']}%</div></div></div>""" for e in exits]) + """</div>
-    {SIDEBAR_HTML}
+    html = f"""<!DOCTYPE html><html><head><title>🚪 Exit Strategy</title>{CSS}</head><body>{sidebar_html}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🚪 AI EXIT STRATEGY</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:15px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h2 style="color:var(--cyber-accent);font-size:2rem;margin:0">{e['coin']}</h2><div style="background:var(--cyber-accent);color:var(--bg-primary);padding:10px 20px;border-radius:10px;font-size:1.5rem;font-weight:900">{e['profit']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['momentum']<0 else 'var(--cyber-accent)'}">{e['momentum']:+d}%</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['rsi']>70 else 'var(--cyber-accent)'}">{e['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if e['volume']<0 else 'var(--cyber-accent)'}">{e['volume']:+d}%</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">💡 SUGGESTION IA</div><div style="font-size:1.1rem;margin-bottom:10px">{e['action']}</div><div style="color:var(--text-secondary);font-size:0.9rem">Probabilité correction: {e['prob']}%</div></div></div>""" for e in exits]) + """</div>
+    {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-timeframe")
 async def ai_timeframe(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """📈 AI Multi-Timeframe"""
     user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_timeframe"):
@@ -24989,13 +25031,14 @@ async def ai_timeframe(request: Request):
         {"coin": "BTC", "5m": 48, "15m": 45, "1h": 50, "4h": 55, "1d": 58, "consensus": 51, "trend": "NEUTRE"}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>📈 Multi-Timeframe</title>{CSS}</head><body>{SIDEBAR_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📈 AI MULTI-TIMEFRAME</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px"><h2 style="color:var(--cyber-accent);font-size:2rem">{t['coin']}</h2><div style="background:{'var(--cyber-accent)' if t['trend']=='BULLISH' else '#ffb800'};color:{'var(--bg-primary)' if t['trend']=='BULLISH' else 'var(--bg-primary)'};padding:10px 25px;border-radius:12px;font-weight:900;font-size:1.3rem">{t['trend']}</div></div><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0">""" + "".join([f"""<div style="text-align:center;padding:15px;background:rgba({'0,255,136' if t[tf]>60 else '255,255,255'},0.1);border-radius:10px"><div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">{tf.upper()}</div><div style="font-size:1.8rem;font-weight:900;color:{'var(--cyber-accent)' if t[tf]>60 else 'var(--text-primary)'}">{t[tf]}</div></div>""" for tf in ['5m','15m','1h','4h','1d']]) + f"""</div><div style="background:rgba(0,212,255,0.15);padding:20px;border-radius:15px;text-align:center;margin-top:20px"><div style="font-size:1.1rem;color:var(--text-secondary);margin-bottom:8px">🤖 CONSENSUS IA</div><div style="font-size:2.5rem;font-weight:900;color:var(--cyber-accent)">{t['consensus']}/100</div></div></div>""" for t in tfs]) + """</div>
-    {SIDEBAR_HTML}
+    html = f"""<!DOCTYPE html><html><head><title>📈 Multi-Timeframe</title>{CSS}</head><body>{sidebar_html}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📈 AI MULTI-TIMEFRAME</h1></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid var(--cyber-accent);border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:25px"><h2 style="color:var(--cyber-accent);font-size:2rem">{t['coin']}</h2><div style="background:{'var(--cyber-accent)' if t['trend']=='BULLISH' else '#ffb800'};color:{'var(--bg-primary)' if t['trend']=='BULLISH' else 'var(--bg-primary)'};padding:10px 25px;border-radius:12px;font-weight:900;font-size:1.3rem">{t['trend']}</div></div><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0">""" + "".join([f"""<div style="text-align:center;padding:15px;background:rgba({'0,255,136' if t[tf]>60 else '255,255,255'},0.1);border-radius:10px"><div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px">{tf.upper()}</div><div style="font-size:1.8rem;font-weight:900;color:{'var(--cyber-accent)' if t[tf]>60 else 'var(--text-primary)'}">{t[tf]}</div></div>""" for tf in ['5m','15m','1h','4h','1d']]) + f"""</div><div style="background:rgba(0,212,255,0.15);padding:20px;border-radius:15px;text-align:center;margin-top:20px"><div style="font-size:1.1rem;color:var(--text-secondary);margin-bottom:8px">🤖 CONSENSUS IA</div><div style="font-size:2.5rem;font-weight:900;color:var(--cyber-accent)">{t['consensus']}/100</div></div></div>""" for t in tfs]) + """</div>
+    {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-liquidity")
 async def ai_liquidity(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """🌊 AI Liquidity Heatmap"""
     user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_liquidity"):
@@ -25008,13 +25051,14 @@ async def ai_liquidity(request: Request):
         {"type": "Support", "price": 42000, "liq": 18, "strength": "BON"}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🌊 Liquidity</title>{CSS}</head><body>{SIDEBAR_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🌊 AI LIQUIDITY HEATMAP</h1><p style="color:var(--text-secondary);font-size:1.1rem">BTC/USDT</p></div><div style="max-width:800px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:{'rgba(255,59,92,0.1)' if l['type']=='Résistance' else 'rgba(0,255,136,0.1)' if l['type']=='Support' else 'rgba(0,212,255,0.2)'};border:2px solid {'var(--danger)' if l['type']=='Résistance' else 'var(--cyber-accent)' if l['type']=='Support' else 'var(--cyber-accent-2)'};border-radius:15px;padding:20px;margin:15px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:0.9rem;color:var(--text-secondary)">{l['type']}</div><div style="font-size:1.8rem;font-weight:900;color:var(--text-primary)">${{l['price']:,}}</div></div><div style="text-align:right">{f'<div style="font-size:0.9rem;color:var(--text-secondary)">Liquidité</div><div style="font-size:1.5rem;font-weight:900;color:var(--cyber-accent)">${{l["liq"]}}M</div><div style="background:{"var(--danger)" if l["strength"]=="MUR" else "var(--cyber-accent)"};color:white;padding:5px 12px;border-radius:8px;font-size:0.85rem;font-weight:700;margin-top:8px">{l["strength"]}</div>' if l['type']!='Prix actuel' else '<div style="font-size:1.2rem;color:var(--cyber-accent-2);font-weight:700">CURRENT</div>'}</div></div></div>""" for l in levels]) + """<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;margin-top:30px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">🤖 ANALYSE IA</div><div style="line-height:1.8">Difficulté casser $44,500 (mur liquide)<br>Si cassé → +5% facile vers $47k<br>Stop-loss suggéré: $42,500</div></div></div>
-    {SIDEBAR_HTML}
+    html = f"""<!DOCTYPE html><html><head><title>🌊 Liquidity</title>{CSS}</head><body>{sidebar_html}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🌊 AI LIQUIDITY HEATMAP</h1><p style="color:var(--text-secondary);font-size:1.1rem">BTC/USDT</p></div><div style="max-width:800px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:{'rgba(255,59,92,0.1)' if l['type']=='Résistance' else 'rgba(0,255,136,0.1)' if l['type']=='Support' else 'rgba(0,212,255,0.2)'};border:2px solid {'var(--danger)' if l['type']=='Résistance' else 'var(--cyber-accent)' if l['type']=='Support' else 'var(--cyber-accent-2)'};border-radius:15px;padding:20px;margin:15px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:0.9rem;color:var(--text-secondary)">{l['type']}</div><div style="font-size:1.8rem;font-weight:900;color:var(--text-primary)">${{l['price']:,}}</div></div><div style="text-align:right">{f'<div style="font-size:0.9rem;color:var(--text-secondary)">Liquidité</div><div style="font-size:1.5rem;font-weight:900;color:var(--cyber-accent)">${{l["liq"]}}M</div><div style="background:{"var(--danger)" if l["strength"]=="MUR" else "var(--cyber-accent)"};color:white;padding:5px 12px;border-radius:8px;font-size:0.85rem;font-weight:700;margin-top:8px">{l["strength"]}</div>' if l['type']!='Prix actuel' else '<div style="font-size:1.2rem;color:var(--cyber-accent-2);font-weight:700">CURRENT</div>'}</div></div></div>""" for l in levels]) + """<div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:15px;margin-top:30px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.2rem;font-weight:700;color:var(--cyber-accent);margin-bottom:10px">🤖 ANALYSE IA</div><div style="line-height:1.8">Difficulté casser $44,500 (mur liquide)<br>Si cassé → +5% facile vers $47k<br>Stop-loss suggéré: $42,500</div></div></div>
+    {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-alerts")
 async def ai_alerts(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """🎯 AI Smart Alerts"""
     user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_alerts"):
@@ -25025,8 +25069,8 @@ async def ai_alerts(request: Request):
         {"condition": "ETH > $2,800", "rsi": 65, "volume": "Élevé", "momentum": "Croissant", "action": "ACHETER", "reason": "Breakout confirmé", "suggest": "Entry NOW, TP $3,000"}
     ]
     
-    html = f"""<!DOCTYPE html><html><head><title>🎯 Smart Alerts</title>{CSS}</head><body>{SIDEBAR_HTML}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎯 AI SMART ALERTS</h1><p style="color:var(--text-secondary);font-size:1.1rem">Alertes intelligentes contextuelles</p></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid {'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h3 style="color:var(--text-primary);font-size:1.5rem">{a['condition']}</h3><div style="background:{'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};color:white;padding:10px 20px;border-radius:10px;font-weight:900">{a['action']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if a['rsi']>70 else 'var(--cyber-accent)'}">{a['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.1rem;font-weight:700">{a['volume']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.1rem;font-weight:700">{a['momentum']}</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.1rem;font-weight:700;color:var(--cyber-accent);margin-bottom:12px">💡 RECOMMANDATION IA</div><div style="line-height:1.8;margin-bottom:10px">{a['reason']}</div><div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;font-weight:700">{a['suggest']}</div></div></div>""" for a in alerts]) + """</div>
-    {SIDEBAR_HTML}
+    html = f"""<!DOCTYPE html><html><head><title>🎯 Smart Alerts</title>{CSS}</head><body>{sidebar_html}<div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🎯 AI SMART ALERTS</h1><p style="color:var(--text-secondary);font-size:1.1rem">Alertes intelligentes contextuelles</p></div><div style="max-width:1200px;margin:0 auto;padding:20px">""" + "".join([f"""<div style="background:var(--bg-card);border:2px solid {'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};border-radius:20px;padding:25px;margin:20px 0"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px"><h3 style="color:var(--text-primary);font-size:1.5rem">{a['condition']}</h3><div style="background:{'var(--cyber-accent)' if a['action']=='ACHETER' else 'var(--danger)'};color:white;padding:10px 20px;border-radius:10px;font-weight:900">{a['action']}</div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0"><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">RSI</div><div style="font-size:1.3rem;font-weight:700;color:{'var(--danger)' if a['rsi']>70 else 'var(--cyber-accent)'}">{a['rsi']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Volume</div><div style="font-size:1.1rem;font-weight:700">{a['volume']}</div></div><div style="text-align:center;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px"><div style="font-size:0.8rem;color:var(--text-secondary)">Momentum</div><div style="font-size:1.1rem;font-weight:700">{a['momentum']}</div></div></div><div style="background:rgba(0,212,255,0.1);padding:20px;border-radius:10px;border-left:4px solid var(--cyber-accent)"><div style="font-size:1.1rem;font-weight:700;color:var(--cyber-accent);margin-bottom:12px">💡 RECOMMANDATION IA</div><div style="line-height:1.8;margin-bottom:10px">{a['reason']}</div><div style="background:rgba(0,0,0,0.3);padding:12px;border-radius:8px;font-weight:700">{a['suggest']}</div></div></div>""" for a in alerts]) + """</div>
+    {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)
 
@@ -25155,6 +25199,7 @@ if __name__ == "__main__":
 
 @app.get("/ai-news")
 async def ai_news(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """📰 AI News Impact - Impact des news sur les prix"""
     user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_news"):
@@ -25167,7 +25212,7 @@ async def ai_news(request: Request):
     ]
     
     html = f"""<!DOCTYPE html><html><head><title>📰 AI News Impact</title>{CSS}</head>
-    <body>{SIDEBAR_HTML}
+    <body>{sidebar_html}
     <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📰 AI NEWS IMPACT</h1></div>
     <div style="max-width:1200px;margin:0 auto;padding:20px">
     """ + "".join([f"""
@@ -25181,12 +25226,13 @@ async def ai_news(request: Request):
         <div><span style="color:var(--text-secondary)">Tokens affectés:</span> {' '.join([f'<span style="background:rgba(0,212,255,0.2);padding:5px 10px;border-radius:8px;margin:0 5px;font-weight:700">{c}</span>' for c in n['coins']])}</div>
     </div>
     """ for n in news_data]) + """</div>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-predictor")
 async def ai_predictor(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """🔮 AI Price Predictor - Prédictions de prix"""
     user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_predictor"):
@@ -25199,7 +25245,7 @@ async def ai_predictor(request: Request):
     ]
     
     html = f"""<!DOCTYPE html><html><head><title>🔮 AI Price Predictor</title>{CSS}</head>
-    <body>{SIDEBAR_HTML}
+    <body>{sidebar_html}
     <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🔮 AI PRICE PREDICTOR</h1></div>
     <div style="max-width:1400px;margin:0 auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px">
     """ + "".join([f"""
@@ -25214,12 +25260,13 @@ async def ai_predictor(request: Request):
         <div style="margin:15px 0"><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>📅 30j</span><span style="color:var(--cyber-accent);font-weight:700">${p['30d'][0]:,} - ${p['30d'][1]:,}</span></div><div style="background:rgba(255,255,255,0.1);height:20px;border-radius:10px;overflow:hidden"><div style="background:var(--cyber-accent);width:{p['conf30']}%;height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700">{p['conf30']}%</div></div></div>
     </div>
     """ for p in predictions]) + """</div>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-whale")
 async def ai_whale(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """🐋 AI Whale Tracker - Mouvements des baleines"""
     user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_whale"):
@@ -25232,7 +25279,7 @@ async def ai_whale(request: Request):
     ]
     
     html = f"""<!DOCTYPE html><html><head><title>🐋 AI Whale Tracker</title>{CSS}</head>
-    <body>{SIDEBAR_HTML}
+    <body>{sidebar_html}
     <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">🐋 AI WHALE TRACKER</h1></div>
     <div style="max-width:1200px;margin:0 auto;padding:20px">
     """ + "".join([f"""
@@ -25253,12 +25300,13 @@ async def ai_whale(request: Request):
         </div>
     </div>
     """ for m in moves]) + """</div>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)
 
 @app.get("/ai-patterns")
 async def ai_patterns(request: Request):
+    sidebar_html = SIDEBAR_HTML
     """📊 AI Pattern Recognition - Détection patterns"""
     user_plan = "1_year"  # TODO: Implement proper auth
     if not check_permission(user_plan, "ai_patterns"):
@@ -25271,7 +25319,7 @@ async def ai_patterns(request: Request):
     ]
     
     html = f"""<!DOCTYPE html><html><head><title>📊 AI Patterns</title>{CSS}</head>
-    <body>{SIDEBAR_HTML}
+    <body>{sidebar_html}
     <div style="text-align:center;padding:50px 20px"><h1 style="font-family:Orbitron;font-size:3rem;color:var(--cyber-accent)">📊 AI PATTERN RECOGNITION</h1></div>
     <div style="max-width:1400px;margin:0 auto;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px">
     """ + "".join([f"""
@@ -25285,6 +25333,6 @@ async def ai_patterns(request: Request):
         </div>
     </div>
     """ for p in patterns]) + """</div>
-    {SIDEBAR_HTML}
+    {sidebar_html}
 </body></html>"""
     return HTMLResponse(html)

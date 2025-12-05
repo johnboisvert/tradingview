@@ -3025,6 +3025,8 @@ async def admin_panel(username: str = Depends(require_admin)):
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <div class="header">
             <h1>👑 Panel d'Administration</h1>
@@ -3480,6 +3482,8 @@ async def strategie_page():
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <div class="container">
             <header>
                 <h1>🎯 MAGIC MIKE 1H - GUIDE ULTIME 🎯</h1>
@@ -4698,6 +4702,8 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
 <body>
+    {get_sidebar_menu()}
+
     <div style="padding: 40px; text-align: center;">
         <h1 style="color:white; font-size: 48px; margin-bottom: 20px;">🏠 Bienvenue {username}!</h1>
         <p style="color: #94a3b8; font-size: 20px;">Votre tableau de bord de trading</p>
@@ -4921,6 +4927,8 @@ async def home():
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <div class="hero">
             <h1>🎯 Magic Mike Trading Dashboard</h1>
             <p>Plateforme complète d'analyse crypto & outils professionnels pour traders</p>
@@ -5469,6 +5477,8 @@ async def spot_trading_page():
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <div class="container">
             <header>
                 <h1>💎 TRADING SPOT - GUIDE COMPLET</h1>
@@ -7149,6 +7159,8 @@ async def ai_opportunity_scanner():
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <div class="container">
             <header>
                 <h1>🎯 AI OPPORTUNITY SCANNER</h1>
@@ -7668,6 +7680,8 @@ async def ai_market_regime():
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <div class="container">
             <header>
                 <h1>🌊 AI MARKET REGIME DETECTOR</h1>
@@ -8585,6 +8599,8 @@ async def ai_whale_watcher():
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <div class="container">
             <header>
                 <h1>🐋 AI WHALE WATCHER</h1>
@@ -9524,6 +9540,8 @@ async def convertisseur_page():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <div class="header">
             <h1>💱 Convertisseur Universel</h1>
@@ -10574,12 +10592,16 @@ async def telegram_test():
 # FIN SECTION ALTCOIN SEASON
 @app.get("/fear-greed", response_class=HTMLResponse)
 async def fear_greed_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body><div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fear & Greed</title>""" + CSS + """<style>.gauge-container{position:relative;width:400px;height:400px;margin:40px auto}#gauge-svg{width:100%;height:100%}.needle{transition:transform 1s cubic-bezier(0.68,-0.55,0.265,1.55);transform-origin:200px 200px}.gauge-value{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);text-align:center}.gauge-value-number{font-size:80px;font-weight:900;margin:0;line-height:1}.gauge-value-label{font-size:24px;font-weight:700;margin-top:10px;text-transform:uppercase;letter-spacing:3px}.history-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:40px}.history-card{background:#0f172a;padding:25px;border-radius:12px;border:1px solid #334155;text-align:center}.history-card .label{color:#94a3b8;font-size:14px;margin-bottom:10px;text-transform:uppercase}.history-card .value{font-size:48px;font-weight:900;margin:10px 0}.history-card .classification{font-size:16px;font-weight:600;margin-top:10px}</style></head><body>
+    {get_sidebar_menu()}
+<div class="container"><div class="header"><h1>📊 Fear & Greed Index</h1><p>Indice de sentiment du marché crypto</p></div><div class="card"><h2>Indice Actuel</h2><div class="gauge-container"><svg id="gauge-svg" viewBox="0 0 400 400"><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#ef4444;stop-opacity:1"/><stop offset="25%" style="stop-color:#f59e0b;stop-opacity:1"/><stop offset="50%" style="stop-color:#eab308;stop-opacity:1"/><stop offset="75%" style="stop-color:#84cc16;stop-opacity:1"/><stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/></linearGradient></defs><path d="M 50,200 A 150,150 0 0,1 350,200" fill="none" stroke="url(#grad1)" stroke-width="40" stroke-linecap="round"/><line class="needle" id="needle" x1="200" y1="200" x2="200" y2="80" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><circle cx="200" cy="200" r="20" fill="#e2e8f0"/></svg><div class="gauge-value"><div class="gauge-value-number" id="gauge-number" style="color:#22c55e">75</div><div class="gauge-value-label" id="gauge-label" style="color:#22c55e">GREED</div></div></div><div id="loading" style="text-align:center;padding:40px"><div class="spinner"></div></div></div><div class="card"><h2>Historique</h2><div class="history-grid" id="history-grid"><div class="spinner"></div></div></div></div><script>function getColor(v){if(v<=20)return{color:'#ef4444',name:'EXTREME FEAR'};if(v<=40)return{color:'#f59e0b',name:'FEAR'};if(v<=60)return{color:'#eab308',name:'NEUTRAL'};if(v<=80)return{color:'#84cc16',name:'GREED'};return{color:'#22c55e',name:'EXTREME GREED'}}function updateGauge(value){const angle=-90+(value/100)*180;document.getElementById('needle').style.transform='rotate('+angle+'deg)';const c=getColor(value);document.getElementById('gauge-number').textContent=value;document.getElementById('gauge-number').style.color=c.color;document.getElementById('gauge-label').textContent=c.name;document.getElementById('gauge-label').style.color=c.color}function renderHistory(data){const hist=data.historical;const items=[{label:'Maintenant',value:hist.now.value,classification:hist.now.classification},{label:'Hier',value:hist.yesterday?.value,classification:hist.yesterday?.classification},{label:'Il y a 7j',value:hist.last_week?.value,classification:hist.last_week?.classification},{label:'Il y a 30j',value:hist.last_month?.value,classification:hist.last_month?.classification}];let html='';items.forEach(item=>{if(item.value!==null){const c=getColor(item.value);html+='<div class="history-card"><div class="label">'+item.label+'</div><div class="value" style="color:'+c.color+'">'+item.value+'</div><div class="classification" style="color:'+c.color+'">'+c.name+'</div></div>'}});document.getElementById('history-grid').innerHTML=html}async function load(){try{const r=await fetch('/api/fear-greed-full');const d=await r.json();document.getElementById('loading').style.display='none';updateGauge(d.current_value);renderHistory(d)}catch(e){console.error('Erreur:',e);document.getElementById('loading').innerHTML='<div class="alert alert-error">Erreur de chargement</div>'}}load();setInterval(load,60000);</script><div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Fear & Greed Index ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 Qu'est-ce que c'est ?</h3><p style="line-height: 1.8; color: #666;">Le <strong>Fear & Greed Index</strong> mesure les émotions du marché crypto. Varie de <strong>0 (Fear extrême)</strong> à <strong>100 (Greed extrême)</strong>.</p><ul style="line-height: 2; color: #555; list-style: none; padding: 0;"><li>😱 <strong>0-25:</strong> Extreme Fear - Opportunité</li><li>😟 <strong>25-45:</strong> Fear - Marché prudent</li><li>⚖️ <strong>45-55:</strong> Neutral - Équilibré</li><li>😃 <strong>55-75:</strong> Greed - Optimisme</li><li>🤑 <strong>75-100:</strong> Extreme Greed - Attention!</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Comment c'est calculé ?</h3><p style="line-height: 1.8; color: #666;">6 facteurs analysés:</p><ul style="line-height: 1.8; color: #555;"><li><strong>Volatilité (25%):</strong> Fluctuations prix</li><li><strong>Momentum (25%):</strong> Volume trading</li><li><strong>Social (15%):</strong> Twitter/Reddit</li><li><strong>Sondages (15%):</strong> Avis traders</li><li><strong>Dominance (10%):</strong> Part BTC</li><li><strong>Trends (10%):</strong> Google recherches</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Comment l'utiliser ?</h3><p style="line-height: 1.8; color: #666;"><strong>Stratégie contrarian:</strong> Acheter dans la Fear, vendre dans la Greed.</p><ul style="line-height: 1.8; color: #555;"><li>✅ <strong>&lt; 25:</strong> Zone d'achat potentielle</li><li>⚠️ <strong>&gt; 75:</strong> Envisager prendre profits</li><li>⏸️ <strong>45-55:</strong> Attendre signal clair</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Ne tradez jamais sur UN seul indicateur!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">📈 Sur cette page</h3><ul style="line-height: 1.8; color: #555;"><li>📊 Index actuel temps réel</li><li>📈 Graphique 30 jours</li><li>📉 Moyennes 7j/30j</li><li>🕒 Historique complet</li></ul><p style="color: #666; margin-top: 15px; font-style: italic;">💡 <strong>Astuce:</strong> Les extremes (&lt;20 ou &gt;80) sont rares mais puissants!</p></div></div></div></body></html>"""
     return HTMLResponse(html)
 
 @app.get("/dominance", response_class=HTMLResponse)
 async def dominance_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body><div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div><div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Dominance BTC</title><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script><script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>""" + CSS + """<style>.dom-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}.dom-card{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:30px;border-radius:12px;text-align:center;border:2px solid;transition:all .3s}.dom-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}.dom-icon{font-size:48px;margin-bottom:15px}.dom-label{font-size:14px;color:#94a3b8;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}.dom-value{font-size:56px;font-weight:900;margin:15px 0;text-shadow:0 0 20px currentColor}.dom-change{font-size:14px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:5px}.dom-trend{font-size:20px}.cap-bar{display:flex;height:60px;border-radius:12px;overflow:hidden;border:2px solid #334155;margin:30px 0}.cap-segment{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;transition:all .3s;position:relative}.cap-segment:hover{filter:brightness(1.2)}.cap-btc{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}.cap-eth{background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%)}.cap-others{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%)}.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;margin-top:30px}.insight-card{background:#0f172a;padding:25px;border-radius:12px;border-left:4px solid #60a5fa}.insight-icon{font-size:32px;margin-bottom:10px}.insight-title{color:#60a5fa;font-size:18px;font-weight:700;margin-bottom:10px}.insight-text{color:#cbd5e1;line-height:1.6}.chart-container{position:relative;height:400px;margin-top:20px}.chart-controls{display:flex;gap:10px;margin-bottom:20px;justify-content:center}.chart-btn{padding:10px 20px;background:#1e293b;border:2px solid #334155;border-radius:8px;color:#e2e8f0;cursor:pointer;font-weight:600;transition:all .3s}.chart-btn:hover{background:#334155}.chart-btn.active{background:#f59e0b;border-color:#f59e0b}</style></head><body>
+    {get_sidebar_menu()}
+<div class="container"><div class="header"><h1>📊 Dominance Bitcoin</h1><p>Analyse de la capitalisation du marché crypto</p></div><div class="card"><h2>Parts de Marché</h2><div id="stats-loading"><div class="spinner"></div></div><div id="dom-stats" class="dom-stats"></div><div id="cap-bar" class="cap-bar"></div></div><div id="insights" class="insights"></div><div class="card"><h2>Historique de la Dominance</h2><div class="chart-controls"><button class="chart-btn active" onclick="changePeriod('30d')">30 jours</button><button class="chart-btn" onclick="changePeriod('90d')">90 jours</button><button class="chart-btn" onclick="changePeriod('1y')">1 an</button></div><div class="chart-container"><canvas id="mainChart"></canvas></div></div></div><script>
 let mainChart=null;
 let fullData=[];
 let currentPeriod='30d';
@@ -11226,6 +11248,8 @@ async def heatmap_page():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <!-- HEADER -->
         <div class="heatmap-header">
@@ -11779,6 +11803,8 @@ async def altcoin_page():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <div class="altcoin-header">
             <h1>🌟 Altcoin Season Index</h1>
@@ -12338,6 +12364,8 @@ async def bullrun_page():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <div class="header">
             <h1>🚀 Bullrun Phase Tracker</h1>
@@ -12941,6 +12969,8 @@ async def charts_page():
     </style>
 """ + CSS + """</head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <!-- Header -->
         <div class="header">
@@ -13799,7 +13829,9 @@ async def charts_page():
     return HTMLResponse(html)
 @app.get("/telegram-test", response_class=HTMLResponse)
 async def telegram_page():
-    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body><div class="container"><div class="header"><h1>📱 Test Telegram</h1></div><div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Telegram Test</title>""" + CSS + """</head><body>
+    {get_sidebar_menu()}
+<div class="container"><div class="header"><h1>📱 Test Telegram</h1></div><div class="card"><button onclick="test()">🔔 Envoyer Test</button><div id="result" style="margin-top:20px"></div></div></div><script>async function test(){const r=await fetch('/api/telegram-test');document.getElementById('result').innerHTML='<div class="alert alert-success">✅ Message envoyé!</div>'}</script></body></html>"""
     return HTMLResponse(html)
 
 
@@ -13882,6 +13914,8 @@ async def trades_page():
     </style>
 """ + CSS + """</head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <div class="header fade-in">
             <h1>📊 Gestion des Trades Premium</h1>
@@ -15302,6 +15336,8 @@ async def calendrier_economique():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <div class="header">
             <h1>📅 Calendrier Économique Détaillé</h1>
@@ -16082,6 +16118,8 @@ async def pricing_complete():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <div class="header">
             <h1>💎 Plans & Tarifs</h1>
@@ -16875,6 +16913,8 @@ async def pricing_page_new(request: Request):
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <div id="successMsg" class="success-message">
             ✅ Paiement reçu! Merci! Votre abonnement est actif.
@@ -17752,6 +17792,8 @@ async def stats_dashboard():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
 <style>
 .universal-top-nav {
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
@@ -17837,57 +17879,7 @@ async def stats_dashboard():
     box-shadow: 0 4px 15px rgba(239,68,68,0.4) !important;
 }
 </style>
-<nav class="universal-top-nav">
-    <div class="universal-nav-container">
-        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner
-        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a>
-        <a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a>
-        <a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a>
-        <a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a>
-        <a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a>
-        <a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a>
-        <a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a>
-        <a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a>
-        <a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a>
-        <a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a>
-        <a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
-        </a>
-        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
-        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
-        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
+
 
     
 
@@ -18251,6 +18243,8 @@ async def market_simulation():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <h1>📈 SIMULATION DE MARCHÉ - Top 10 Crypto</h1>
         <p class="subtitle">Comparez l'impact du DCA vs Émotions sur les cryptos réelles</p>
@@ -18833,6 +18827,8 @@ async def success_stories():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     
 
     <div class="container">
@@ -19026,6 +19022,8 @@ async def risk_management_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>⚖️ Risk Management</title>{CSS}</head>
 <body>
+    {get_sidebar_menu()}
+
 <div class="container">
 <div class="header"><h1>⚖️ RISK MANAGEMENT</h1><p>Gestion professionnelle du risque</p></div>
 
@@ -19199,6 +19197,8 @@ async def watchlist_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>👀 Watchlist & Alertes</title>{CSS}</head>
 <body>
+    {get_sidebar_menu()}
+
 <div class="container">
 <div class="header"><h1>👀 WATCHLIST & ALERTES</h1><p>Surveillez vos cryptos préférées</p></div>
 
@@ -19339,6 +19339,8 @@ async def ai_assistant_page():
     return HTMLResponse(f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>🤖 AI Trading Assistant</title>{CSS}</head>
 <body>
+    {get_sidebar_menu()}
+
 <div class="container">
 <div class="header"><h1>🤖 AI TRADING ASSISTANT</h1><p>Intelligence artificielle pour optimiser vos trades</p></div>
 
@@ -19802,6 +19804,8 @@ async def calculatrice_trades():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <div class="header">
             <h1>🧮 Calculatrice de Trades</h1>
@@ -20255,6 +20259,8 @@ async def prediction_ia():
     </style>
 </head>
 <body>
+    {get_sidebar_menu()}
+
     <div class="container">
         <div class="header">
             <h1>🤖 Prédiction Crypto IA Pro</h1>
@@ -20946,6 +20952,8 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
 .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
@@ -20956,57 +20964,7 @@ async def admin_dashboard(request: Request):
 .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
 .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
 </style>
-<nav class="universal-top-nav">
-    <div class="universal-nav-container">
-        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-        
-        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a>
-        <a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a>
-        <a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a>
-        <a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a>
-        <a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a>
-        <a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a>
-        <a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a>
-        <a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a>
-        <a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a>
-        <a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a>
-        <a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
-        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
-        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
-        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
+
 
         <div class="container">
             <div class="header">
@@ -21183,57 +21141,9 @@ async def admin_pricing_view(request: Request):
     </style>
 </head>
 <body>
-    <nav class="universal-top-nav">
-    <div class="universal-nav-container">
-        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-        
-        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a>
-        <a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a>
-        <a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a>
-        <a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a>
-        <a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a>
-        <a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a>
-        <a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a>
-        <a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a>
-        <a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a>
-        <a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a>
-        <a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
-        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
-        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
-        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
+    {get_sidebar_menu()}
+
+    
     
     <div class="container">
         <div class="header">
@@ -21785,6 +21695,8 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             </style>
         </head>
         <body>
+    {get_sidebar_menu()}
+
 <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
 .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
@@ -21795,46 +21707,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
 .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
 .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
 </style>
-<nav class="universal-top-nav">
-    <div class="universal-nav-container">
-        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
-        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
-        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
-        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
+
 
 
             <div class="container">
@@ -22123,6 +21996,8 @@ async def mon_compte(request: Request):
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <style>
 .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
 .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
@@ -22133,46 +22008,7 @@ async def mon_compte(request: Request):
 .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
 .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
 </style>
-<nav class="universal-top-nav">
-    <div class="universal-nav-container">
-        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
-        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
-        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
-        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
+
 
         
         <div class="container">
@@ -22298,6 +22134,8 @@ async def fear_greed_chart():
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         
         <div class="container">
             <h1>📊 Fear & Greed Index - Historique 12 Mois</h1>
@@ -22663,6 +22501,8 @@ async def backtesting_page(request: Request):
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         
         <div class="container">
             <div class="header">
@@ -23200,43 +23040,7 @@ async def backtesting_page(request: Request):
         .universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}}
         .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
         .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
-        </style><nav class="universal-top-nav"><div class="universal-nav-container">
-        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
-        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
-        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-        </div></nav>`;
+        </style>`;
             
             document.body.insertAdjacentHTML('afterbegin', menuHTML);
         }});
@@ -23540,6 +23344,8 @@ async def onchain_metrics():
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <div class="container">
             <div class="header">
                 <h1>⛓️ Métriques On-Chain</h1>
@@ -23603,43 +23409,7 @@ async def onchain_metrics():
         .universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}}
         .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
         .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
-        </style><nav class="universal-top-nav"><div class="universal-nav-container">
-        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
-        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
-        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-        </div></nav>`;
+        </style>`;
             
             document.body.insertAdjacentHTML('afterbegin', menuHTML);
         }});
@@ -23836,6 +23606,8 @@ async def testimonials_widget():
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <div class="container">
             <div class="header">
                 <h1>⭐ Ce Que Disent Nos Clients</h1>
@@ -23870,43 +23642,7 @@ async def testimonials_widget():
         .universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}}
         .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
         .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
-        </style><nav class="universal-top-nav"><div class="universal-nav-container">
-        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
-        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
-        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-        </div></nav>`;
+        </style>`;
             
             document.body.insertAdjacentHTML('afterbegin', menuHTML);
         }});
@@ -23945,6 +23681,8 @@ async def api_keys_page(request: Request):
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <script>
         // Menu universel - Injection automatique
         document.addEventListener('DOMContentLoaded', function() {{
@@ -23959,44 +23697,7 @@ async def api_keys_page(request: Request):
         .universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none}}
         .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none}}
         .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
-</style><nav class="universal-top-nav"><div class="universal-nav-container">
-<a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-<a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-<a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-<a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-<a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-<a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-<a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-<a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-<a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-<a href="/trades" class="universal-nav-btn">📈 Trades</a>
-<a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-<a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-<a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-<a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-<a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-<a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-<a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-<a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-<a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-<a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-<a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-<a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-<a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-<a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-<a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn active">💎 Gem Hunter</a>
-        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a><a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a><a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a><a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a><a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a><a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a><a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a><a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a><a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a><a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a><a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
-<a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-<a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
-<a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-<a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-<a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-<a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-<a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-<a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-<a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-</div></nav>`;
+</style>`;
             
             document.body.insertAdjacentHTML('afterbegin', menuHTML);
         }});
@@ -24112,6 +23813,8 @@ async def admin_update_plan_features_page(request: Request):
         </style>
     </head>
     <body class="bg-gray-900 text-white min-h-screen">
+    {get_sidebar_menu()}
+
         
         <div class="container mx-auto px-4 py-8">
             <div class="max-w-4xl mx-auto">
@@ -24743,6 +24446,8 @@ async def ai_gem_hunter(request: Request):
         </style>
     </head>
     <body>
+    {get_sidebar_menu()}
+
         <div class="grid-bg"></div>
         
         <!-- MENU UNIVERSEL INTÉGRÉ -->

@@ -1496,15 +1496,14 @@ def check_permission(user_plan: str, feature: str) -> bool:
 
 
 
+
 def get_sidebar_menu():
-    """Retourne le menu sidebar moderne fixé sur le côté gauche"""
+    """Retourne le sidebar + script qui wrappe automatiquement le contenu"""
     return """
 <style>
 /* ===================================== */
-/* 🎨 SIDEBAR MENU MODERNE - FIXÉ GAUCHE */
+/* 🎨 SIDEBAR MENU - FIXÉ GAUCHE */
 /* ===================================== */
-* { margin: 0; padding: 0; box-sizing: border-box; }
-
 .sidebar {
     position: fixed;
     left: 0;
@@ -1515,10 +1514,9 @@ def get_sidebar_menu():
     padding: 20px 0;
     overflow-y: auto;
     overflow-x: hidden;
-    z-index: 10000;
+    z-index: 99999;
     box-shadow: 4px 0 20px rgba(0,0,0,0.5);
     border-right: 2px solid rgba(6,182,212,0.3);
-    transition: transform 0.3s ease;
 }
 
 .sidebar::-webkit-scrollbar { width: 8px; }
@@ -1540,9 +1538,7 @@ def get_sidebar_menu():
     letter-spacing: 1px;
 }
 
-.menu-section {
-    margin-bottom: 10px;
-}
+.menu-section { margin-bottom: 10px; }
 
 .section-title {
     color: rgba(255,255,255,0.5);
@@ -1580,11 +1576,6 @@ def get_sidebar_menu():
     font-weight: 600;
 }
 
-.menu-item.ai-feature:hover {
-    background: linear-gradient(90deg, rgba(6,182,212,0.25) 0%, transparent 100%);
-    box-shadow: inset 0 0 20px rgba(6,182,212,0.2);
-}
-
 .menu-item.premium {
     background: linear-gradient(90deg, rgba(139,92,246,0.2) 0%, transparent 100%);
     border-left: 3px solid #8b5cf6;
@@ -1611,13 +1602,21 @@ def get_sidebar_menu():
 
 .icon { font-size: 18px; min-width: 20px; }
 
-/* Toggle button pour mobile */
+/* CRITIQUE: Wrapper automatique du contenu */
+body.has-sidebar { margin: 0 !important; padding: 0 !important; }
+.content-wrapper {
+    margin-left: 280px !important;
+    padding: 20px !important;
+    min-height: 100vh !important;
+}
+
+/* Mobile */
 .sidebar-toggle {
     display: none;
     position: fixed;
     top: 15px;
     left: 15px;
-    z-index: 10001;
+    z-index: 100000;
     background: #06b6d4;
     color: white;
     border: none;
@@ -1625,43 +1624,30 @@ def get_sidebar_menu():
     border-radius: 8px;
     cursor: pointer;
     font-size: 20px;
-    box-shadow: 0 4px 15px rgba(6,182,212,0.4);
 }
 
-/* Main content avec marge pour sidebar */
-.main-content {
-    margin-left: 280px;
-    padding: 20px;
-    min-height: 100vh;
-}
-
-/* Responsive */
 @media (max-width: 768px) {
-    .sidebar {
-        transform: translateX(-100%);
-    }
-    .sidebar.active {
-        transform: translateX(0);
-    }
-    .sidebar-toggle {
-        display: block;
-    }
-    .main-content {
-        margin-left: 0;
-    }
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.active { transform: translateX(0); }
+    .sidebar-toggle { display: block; }
+    .content-wrapper { margin-left: 0 !important; }
+}
+
+/* CACHER ANCIEN MENU EN HAUT */
+.universal-top-nav,
+.universal-menu-fixed,
+.top-menu {
+    display: none !important;
 }
 </style>
 
-<!-- Toggle button mobile -->
 <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">☰</button>
 
-<!-- Sidebar Menu -->
 <nav class="sidebar">
     <div class="sidebar-header">
         <div class="sidebar-title">🚀 Trading Pro</div>
     </div>
     
-    <!-- Section: Tableau de bord -->
     <div class="menu-section">
         <div class="section-title">📊 Tableau de Bord</div>
         <a href="/dashboard" class="menu-item"><span class="icon">🏠</span> Accueil</a>
@@ -1671,7 +1657,6 @@ def get_sidebar_menu():
         <a href="/heatmap" class="menu-item"><span class="icon">🔥</span> Heatmap</a>
     </div>
     
-    <!-- Section: Features IA -->
     <div class="menu-section">
         <div class="section-title">🤖 Features IA</div>
         <a href="/ai-signals" class="menu-item ai-feature"><span class="icon">🎯</span> Signaux AI</a>
@@ -1688,7 +1673,6 @@ def get_sidebar_menu():
         <a href="/ai-gem-hunter" class="menu-item ai-feature"><span class="icon">💎</span> Gem Hunter</a>
     </div>
     
-    <!-- Section: Trading -->
     <div class="menu-section">
         <div class="section-title">💰 Trading</div>
         <a href="/strategie" class="menu-item"><span class="icon">📚</span> Stratégies</a>
@@ -1699,7 +1683,6 @@ def get_sidebar_menu():
         <a href="/calculatrice" class="menu-item"><span class="icon">🧮</span> Calculatrice</a>
     </div>
     
-    <!-- Section: Analyse -->
     <div class="menu-section">
         <div class="section-title">🔍 Analyse</div>
         <a href="/ai-assistant" class="menu-item"><span class="icon">🤖</span> Assistant AI</a>
@@ -1711,7 +1694,6 @@ def get_sidebar_menu():
         <a href="/onchain-metrics" class="menu-item"><span class="icon">⛓️</span> OnChain</a>
     </div>
     
-    <!-- Section: Outils -->
     <div class="menu-section">
         <div class="section-title">🛠️ Outils</div>
         <a href="/market-simulation" class="menu-item"><span class="icon">🎮</span> Simulation</a>
@@ -1722,7 +1704,6 @@ def get_sidebar_menu():
         <a href="/nouvelles" class="menu-item"><span class="icon">📰</span> Actualités</a>
     </div>
     
-    <!-- Section: Système -->
     <div class="menu-section">
         <div class="section-title">⚙️ Système</div>
         <a href="/bullrun-phase" class="menu-item"><span class="icon">🚀</span> Bull Run Phase</a>
@@ -1733,7 +1714,6 @@ def get_sidebar_menu():
         <a href="/telegram-test" class="menu-item"><span class="icon">📱</span> Telegram</a>
     </div>
     
-    <!-- Section: Compte -->
     <div class="menu-section">
         <div class="section-title">👤 Mon Compte</div>
         <a href="/pricing-complete" class="menu-item premium"><span class="icon">💎</span> Abonnements</a>
@@ -1742,151 +1722,37 @@ def get_sidebar_menu():
         <a href="/logout" class="menu-item logout"><span class="icon">🚪</span> Déconnexion</a>
     </div>
 </nav>
+
+<script>
+// WRAPPER AUTOMATIQUE DU CONTENU
+(function() {
+    // Marquer le body
+    document.body.classList.add('has-sidebar');
+    
+    // Trouver le contenu principal (après le sidebar)
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
+    
+    // Créer le wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'content-wrapper';
+    
+    // Déplacer tout le contenu (sauf sidebar et toggle) dans le wrapper
+    const elements = Array.from(document.body.children);
+    elements.forEach(el => {
+        if (!el.classList.contains('sidebar') && 
+            !el.classList.contains('sidebar-toggle') &&
+            el.tagName !== 'SCRIPT' &&
+            el.tagName !== 'STYLE') {
+            wrapper.appendChild(el);
+        }
+    });
+    
+    // Ajouter le wrapper au body
+    document.body.appendChild(wrapper);
+})();
+</script>
 """
-
-
-# ============================================================================
-# 🗺️ MENU UNIVERSEL COMPLET - UTILISÉ PARTOUT
-# ============================================================================
-
-UNIVERSAL_MENU_HTML = '''
-<style>
-.universal-top-nav {
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%) !important;
-    padding: 15px 20px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.6) !important;
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 9999 !important;
-    border-bottom: 2px solid rgba(255,255,255,0.1) !important;
-    width: 100% !important;
-}
-
-.universal-nav-container {
-    max-width: 1600px !important;
-    margin: 0 auto !important;
-    display: flex !important;
-    gap: 10px !important;
-    flex-wrap: wrap !important;
-    justify-content: center !important;
-    align-items: center !important;
-}
-
-.universal-nav-btn {
-    background: rgba(255,255,255,0.08) !important;
-    color: #e2e8f0 !important;
-    padding: 10px 16px !important;
-    border-radius: 8px !important;
-    text-decoration: none !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    white-space: nowrap !important;
-    display: inline-block !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
-}
-
-.universal-nav-btn:hover {
-    background: rgba(255,255,255,0.15) !important;
-    border-color: rgba(96,165,250,0.5) !important;
-    color: white !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 12px rgba(96,165,250,0.3) !important;
-}
-
-.universal-nav-btn.ai-new {
-    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
-    border: none !important;
-    color: white !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 15px rgba(6,182,212,0.4) !important;
-}
-
-.universal-nav-btn.premium {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
-    border: none !important;
-    color: white !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 15px rgba(99,102,241,0.4) !important;
-}
-
-.universal-nav-btn.admin {
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
-    border: none !important;
-    color: white !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 15px rgba(245,158,11,0.4) !important;
-}
-
-.universal-nav-btn.account {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    border: none !important;
-    color: white !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 15px rgba(16,185,129,0.4) !important;
-}
-
-.universal-nav-btn.logout {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-    border: none !important;
-    color: white !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 15px rgba(239,68,68,0.4) !important;
-}
-</style>
-<nav class="universal-top-nav">
-    <div class="universal-nav-container">
-        <a href="/dashboard" class="universal-nav-btn">🏠 Accueil</a>
-        <a href="/fear-greed" class="universal-nav-btn">😨 Fear&Greed</a>
-        
-        <a href="/ai-signals" class="universal-nav-btn ai-new">🎯 Signaux</a>
-        <a href="/ai-news" class="universal-nav-btn ai-new">📰 News Impact</a>
-        <a href="/ai-predictor" class="universal-nav-btn ai-new">🔮 Prédictions</a>
-        <a href="/ai-whale" class="universal-nav-btn ai-new">🐋 Baleines</a>
-        <a href="/ai-patterns" class="universal-nav-btn ai-new">📊 Patterns</a>
-        <a href="/ai-sentiment" class="universal-nav-btn ai-new">🎭 Sentiment</a>
-        <a href="/ai-sizer" class="universal-nav-btn ai-new">📏 Position</a>
-        <a href="/ai-exit" class="universal-nav-btn ai-new">🚪 Exit</a>
-        <a href="/ai-timeframe" class="universal-nav-btn ai-new">📈 Multi-TF</a>
-        <a href="/ai-liquidity" class="universal-nav-btn ai-new">🌊 Liquidité</a>
-        <a href="/ai-alerts" class="universal-nav-btn ai-new">🎯 Alertes</a>
-        <a href="/dominance" class="universal-nav-btn">👑 Dominance</a>
-        <a href="/altcoin-season" class="universal-nav-btn">⭐ Altcoin</a>
-        <a href="/heatmap" class="universal-nav-btn">🔥 Heatmap</a>
-        <a href="/strategie" class="universal-nav-btn">📚 Stratégie</a>
-        <a href="/spot-trading" class="universal-nav-btn">💎 Spot</a>
-        <a href="/calculatrice" class="universal-nav-btn">🧮 Calc</a>
-        <a href="/nouvelles" class="universal-nav-btn">📰 News</a>
-        <a href="/trades" class="universal-nav-btn">📈 Trades</a>
-        <a href="/risk-management" class="universal-nav-btn">⚠️ Risk</a>
-        <a href="/watchlist" class="universal-nav-btn">👁️ Watch</a>
-        <a href="/ai-assistant" class="universal-nav-btn">🤖 AI</a>
-        <a href="/prediction-ia" class="universal-nav-btn">🔮 Predict</a>
-        <a href="/ai-opportunity-scanner" class="universal-nav-btn">🔍 Scanner</a>
-        <a href="/ai-market-regime" class="universal-nav-btn">🌊 Regime</a>
-        <a href="/ai-whale-watcher" class="universal-nav-btn">🐋 Whale</a>
-        <a href="/stats-dashboard" class="universal-nav-btn">📊 Stats</a>
-        <a href="/market-simulation" class="universal-nav-btn">🎮 Sim</a>
-        <a href="/success-stories" class="universal-nav-btn">⭐ Success</a>
-        <a href="/onchain-metrics" class="universal-nav-btn">⛓️ OnChain</a>
-        <a href="/testimonials-widget" class="universal-nav-btn">💬 Témoignages</a>
-        <a href="/convertisseur" class="universal-nav-btn">💱 Convert</a>
-        <a href="/calendrier" class="universal-nav-btn">📅 Cal</a>
-        <a href="/bullrun-phase" class="universal-nav-btn">🚀 Bullrun</a>
-        <a href="/ai-gem-hunter" class="universal-nav-btn">💎 Gem Hunter</a>
-        <a href="/graphiques" class="universal-nav-btn">📊 Charts</a>
-        <a href="/backtesting" class="universal-nav-btn">⚙️ Backtest</a>
-        <a href="/generate-pdf-report" class="universal-nav-btn">📄 PDF</a>
-        <a href="/api-keys" class="universal-nav-btn">🔑 API</a>
-        <a href="/telegram-test" class="universal-nav-btn">📱 Telegram</a>
-        <a href="/pricing-complete" class="universal-nav-btn premium">💎 Abonnements</a>
-        <a href="/admin-dashboard" class="universal-nav-btn admin">🔧 Admin</a>
-        <a href="/mon-compte" class="universal-nav-btn account">👤 Compte</a>
-        <a href="/logout" class="universal-nav-btn logout">🚪 Déconnexion</a>
-    </div>
-</nav>
-'''
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):

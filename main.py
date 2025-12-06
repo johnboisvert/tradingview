@@ -22769,7 +22769,7 @@ async def get_crypto_data_realtime():
     }
 
 async def get_top_50_cryptos():
-    """Récupère le top 50 des cryptos par market cap"""
+    """Récupère le top 50 des cryptos par market cap depuis CoinGecko"""
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
@@ -22778,11 +22778,12 @@ async def get_top_50_cryptos():
                 "&sparkline=false&price_change_percentage=24h,7d"
             )
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                return data if data else []
     except:
         pass
     
-    # Fallback data - top 10 minimum
+    # Fallback data - top 10
     return [
         {'id': 'bitcoin', 'symbol': 'btc', 'name': 'Bitcoin', 'current_price': 43250, 
          'price_change_percentage_24h': 2.45, 'market_cap': 845000000000, 
@@ -22825,7 +22826,11 @@ async def ai_signals():
     # Récupérer le top 50
     cryptos = await get_top_50_cryptos()
     
-    # Générer les cartes
+    # S'assurer qu'on a des données
+    if not cryptos:
+        cryptos = []
+    
+    # Générer les cartes pour top 50
     cards_html = ""
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
@@ -22898,10 +22903,8 @@ async def ai_signals():
             .live-badge{{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(239,68,68,0.2);border:1px solid #ef4444;border-radius:20px;margin:20px 0;animation:pulse 2s infinite}}
             .live-dot{{width:10px;height:10px;background:#ef4444;border-radius:50%}}
             .signals-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}}
-            .signal-card{{background:rgba(30,41,59,0.6);backdrop-filter:blur(10px);border:2px solid rgba(96,165,250,0.2);border-radius:15px;padding:20px;transition:all 0.3s;position:relative;overflow:hidden}}
-            .signal-card::before{{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,#60a5fa,#a78bfa);transform:scaleX(0);transition:transform 0.6s}}
+            .signal-card{{background:rgba(30,41,59,0.6);backdrop-filter:blur(10px);border:2px solid rgba(96,165,250,0.2);border-radius:15px;padding:20px;transition:all 0.3s}}
             .signal-card:hover{{transform:translateY(-5px);border-color:rgba(96,165,250,0.5);box-shadow:0 15px 40px rgba(96,165,250,0.3)}}
-            .signal-card:hover::before{{transform:scaleX(1)}}
             .signal-header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}}
             .crypto-name{{font-size:1.2em;font-weight:700;font-family:'Space Mono',monospace}}
             .signal-badge{{padding:6px 12px;border-radius:15px;font-weight:700;font-size:0.85em}}
@@ -22914,7 +22917,7 @@ async def ai_signals():
             .price-change.positive{{color:#10b981}}
             .price-change.negative{{color:#ef4444}}
             .indicators{{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}}
-            .indicator{{padding:10px;background:rgba(30,41,59,0.4);border-radius:8px;border:1px solid rgba(96,165,250,0.1)}}
+            .indicator{{padding:10px;background:rgba(30,41,59,0.4);border-radius:8px}}
             .indicator-label{{color:#94a3b8;font-size:0.8em;margin-bottom:3px}}
             .indicator-value{{font-size:1.1em;font-weight:700;font-family:'Space Mono',monospace}}
             .indicator-value.bullish{{color:#10b981}}
@@ -22922,10 +22925,6 @@ async def ai_signals():
             .confidence{{margin-top:15px;padding:12px;background:rgba(96,165,250,0.1);border-radius:8px;text-align:center;font-size:0.9em}}
             .confidence-bar{{width:100%;height:6px;background:rgba(30,41,59,0.6);border-radius:10px;overflow:hidden;margin-top:8px}}
             .confidence-fill{{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:10px;transition:width 1s}}
-            .explanation{{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #60a5fa;border-radius:15px}}
-            .explanation h2{{font-size:2em;margin-bottom:20px;color:#60a5fa}}
-            .explanation h3{{font-size:1.3em;margin:20px 0 10px 0;color:#60a5fa}}
-            .explanation p{{line-height:1.8;color:#cbd5e1;margin-bottom:15px}}
             @keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
         </style>
     </head>
@@ -22937,17 +22936,6 @@ async def ai_signals():
                 <div class="live-badge"><div class="live-dot"></div><span>DONNÉES EN TEMPS RÉEL</span></div>
             </div>
             <div class="signals-grid">{cards_html}</div>
-            <div class="explanation">
-                <h2>📚 Comment ça fonctionne?</h2>
-                <h3>🎯 Objectif</h3>
-                <p>Cette page analyse le top 50 des cryptomonnaies et génère des signaux d'achat, de vente ou d'attente basés sur plusieurs indicateurs techniques combinés.</p>
-                <h3>⚙️ Fonctionnement</h3>
-                <p>L'IA analyse en temps réel: RSI (14 périodes) pour détecter surachat/survente, tendance haussière/baissière selon les variations, et calcule un score de confiance basé sur la cohérence des signaux.</p>
-                <h3>📊 Données</h3>
-                <p>Prix en temps réel via CoinGecko API (top 50 par capitalisation boursière). Rafraîchissement automatique toutes les 60 secondes.</p>
-                <h3>💡 Utilisation</h3>
-                <p>Utilisez les signaux comme aide à la décision, jamais comme unique critère. Un score de confiance >80% indique une forte probabilité mais combinez toujours avec votre propre analyse.</p>
-            </div>
         </div>
         <script>setTimeout(() => window.location.reload(), 60000);</script>
     </body>
@@ -24007,15 +23995,19 @@ async def ai_alerts():
 
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
 async def ai_gem_hunter():
-    """Détection de cryptos prometteuses dans le top 50 - FUTURES GEMS"""
+    """Détection de cryptos prometteuses dans le top 50 - FUTURES GEMS avec scoring"""
     
     # Récupérer le top 50
     cryptos = await get_top_50_cryptos()
     
+    # S'assurer qu'on a des données
+    if not cryptos:
+        cryptos = []
+    
     # Scorer chaque crypto
     gems = []
     for c in cryptos:
-        score = 0
+        score = 0.0
         
         mcap = c.get('market_cap', 0)
         volume = c.get('total_volume', 0)
@@ -24026,7 +24018,7 @@ async def ai_gem_hunter():
         # Market cap bas = plus de potentiel (max 3 pts)
         if mcap > 0:
             if mcap < 500000000:  # < $500M
-                score += 3
+                score += 3.0
             elif mcap < 2000000000:  # < $2B
                 score += 2.5
             elif mcap < 5000000000:  # < $5B
@@ -24036,7 +24028,7 @@ async def ai_gem_hunter():
         if mcap > 0 and volume > 0:
             vol_ratio = (volume / mcap) * 100
             if vol_ratio > 20:
-                score += 2
+                score += 2.0
             elif vol_ratio > 10:
                 score += 1.5
             elif vol_ratio > 5:
@@ -24044,15 +24036,15 @@ async def ai_gem_hunter():
         
         # Momentum 24h (max 2 pts)
         if change_24h > 10:
-            score += 2
+            score += 2.0
         elif change_24h > 5:
             score += 1.5
         elif change_24h > 2:
             score += 0.5
         
-        # Momentum 7j estimé (max 2 pts)
+        # Momentum 7j (max 2 pts)
         if change_7d > 25:
-            score += 2
+            score += 2.0
         elif change_7d > 15:
             score += 1.5
         elif change_7d > 8:
@@ -24060,20 +24052,20 @@ async def ai_gem_hunter():
         
         # Rang market cap (max 1 pt)
         if rank >= 30 and rank <= 50:
-            score += 1
+            score += 1.0
         elif rank >= 20 and rank < 30:
             score += 0.5
         
-        c['gem_score'] = min(score, 10)
+        c['gem_score'] = min(score, 10.0)
         
         # Garder seulement celles avec score >= 4
-        if score >= 4:
+        if score >= 4.0:
             gems.append(c)
     
     # Trier par score
     gems.sort(key=lambda x: x['gem_score'], reverse=True)
     
-    # Top 50 gems (toutes celles qui ont passé le seuil)
+    # Générer HTML pour toutes les gems
     gems_html = ""
     for gem in gems[:50]:
         score = gem['gem_score']
@@ -24161,7 +24153,7 @@ async def ai_gem_hunter():
             h1{{font-size:2.8em;text-align:center;margin-bottom:10px;text-shadow:0 0 30px rgba(255,255,255,0.5)}}
             .subtitle{{text-align:center;font-size:1.1em;margin-bottom:10px;opacity:0.9}}
             .stats{{text-align:center;font-size:1em;margin-bottom:40px;color:#fbbf24}}
-            .gems-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:25px;margin-bottom:60px}}
+            .gems-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:25px}}
             .gem-card{{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,0.2);border-radius:15px;padding:25px;transition:all 0.3s}}
             .gem-card:hover{{transform:scale(1.05);border-color:rgba(255,255,255,0.5);box-shadow:0 0 40px rgba(255,255,255,0.3)}}
             .gem-header{{display:flex;justify-content:space-between;align-items:start;margin-bottom:20px}}
@@ -24186,10 +24178,6 @@ async def ai_gem_hunter():
             .potential.medium{{background:rgba(245,158,11,0.2);border-color:#f59e0b}}
             .potential.low{{background:rgba(100,100,100,0.2);border-color:#666}}
             .potential strong{{font-size:1.2em}}
-            .explanation{{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #fbbf24;border-radius:15px}}
-            .explanation h2{{font-size:2em;margin-bottom:20px;color:#fbbf24}}
-            .explanation h3{{font-size:1.3em;margin:20px 0 10px 0;color:#fbbf24}}
-            .explanation p{{line-height:1.8;color:rgba(255,255,255,0.9);margin-bottom:15px}}
         </style>
     </head>
     <body>
@@ -24198,25 +24186,6 @@ async def ai_gem_hunter():
             <p class="subtitle">Détection de cryptos prometteuses - Analyse TOP 50 avec scoring intelligent</p>
             <p class="stats">🔍 {total_gems} futures gems détectées sur 50 cryptos analysées</p>
             <div class="gems-grid">{gems_html}</div>
-            <div class="explanation">
-                <h2>📚 Comment ça fonctionne?</h2>
-                <h3>🎯 Objectif</h3>
-                <p>Détecter les cryptos du top 50 avec le meilleur potentiel de croissance (futures gems 3-30x) en analysant plusieurs critères fondamentaux et techniques.</p>
-                <h3>⚙️ Fonctionnement - Scoring sur 10 points</h3>
-                <p><strong>Market Cap (3 pts):</strong> Plus bas = plus de potentiel. <$500M = 3pts, <$2B = 2.5pts, <$5B = 1.5pts</p>
-                <p><strong>Liquidité (2 pts):</strong> Volume/MCap ratio. >20% = 2pts (haute liquidité), >10% = 1.5pts, >5% = 0.5pt</p>
-                <p><strong>Momentum 24h (2 pts):</strong> >10% = 2pts, >5% = 1.5pts, >2% = 0.5pt</p>
-                <p><strong>Momentum 7j (2 pts):</strong> >25% = 2pts, >15% = 1.5pts, >8% = 0.5pt</p>
-                <p><strong>Position (1 pt):</strong> Rang 30-50 = 1pt (marge de croissance), 20-30 = 0.5pt</p>
-                <h3>📊 Données</h3>
-                <p>Top 50 CoinGecko en temps réel: prix, market cap, volume, variations 24h. Scoring recalculé toutes les 3 minutes avec rafraîchissement automatique de la page.</p>
-                <h3>💡 Utilisation</h3>
-                <p><strong>Score >8.5:</strong> Potentiel exceptionnel 15-30x - Haute conviction</p>
-                <p><strong>Score 7.5-8.5:</strong> Très bon potentiel 10-20x - Fort intérêt</p>
-                <p><strong>Score 6-7.5:</strong> Bon potentiel 5-10x - À surveiller</p>
-                <p><strong>Score 4-6:</strong> Potentiel modéré 3-5x - Opportuniste</p>
-                <p><strong>⚠️ ATTENTION:</strong> Gems = risque élevé. Ne jamais investir plus de 5-10% de votre portfolio total sur les gems. Toujours DYOR (Do Your Own Research). Ces scores sont des indicateurs, pas des conseils d'investissement.</p>
-            </div>
         </div>
         <script>setTimeout(() => window.location.reload(), 180000);</script>
     </body>

@@ -22820,26 +22820,65 @@ async def get_top_50_cryptos():
 
 @app.get("/ai-signals", response_class=HTMLResponse)
 async def ai_signals():
-    """Signaux de trading basés sur analyse technique multi-indicateurs"""
+    """Signaux de trading basés sur analyse technique - TOP 50"""
     
-    # Récupérer les données en temps réel
-    crypto_data = await get_crypto_data_realtime()
+    # Récupérer le top 50
+    cryptos = await get_top_50_cryptos()
     
-    btc = crypto_data.get('bitcoin', {})
-    btc_price = btc.get('usd', 43250)
-    btc_change = btc.get('usd_24h_change', 2.45)
-    
-    eth = crypto_data.get('ethereum', {})
-    eth_price = eth.get('usd', 2280)
-    eth_change = eth.get('usd_24h_change', 3.12)
-    
-    sol = crypto_data.get('solana', {})
-    sol_price = sol.get('usd', 98.75)
-    sol_change = sol.get('usd_24h_change', -1.23)
-    
-    ada = crypto_data.get('cardano', {})
-    ada_price = ada.get('usd', 0.52)
-    ada_change = ada.get('usd_24h_change', 1.85)
+    # Générer les cartes
+    cards_html = ""
+    for crypto in cryptos[:50]:
+        price = crypto.get('current_price', 0)
+        change_24h = crypto.get('price_change_percentage_24h', 0)
+        name = crypto.get('name', 'Unknown')
+        symbol = crypto.get('symbol', '').upper()
+        rank = crypto.get('market_cap_rank', 0)
+        
+        # Signal basé sur variation
+        if change_24h > 3:
+            signal_class = "buy"
+            signal_text = "🚀 ACHAT"
+            conf = min(int(abs(change_24h) * 10 + 70), 95)
+        elif change_24h < -3:
+            signal_class = "sell"
+            signal_text = "📉 VENTE"
+            conf = min(int(abs(change_24h) * 10 + 60), 90)
+        else:
+            signal_class = "hold"
+            signal_text = "⏸️ ATTENDRE"
+            conf = 50 + int(abs(change_24h) * 5)
+        
+        rsi = 50 + (change_24h * 2)
+        
+        cards_html += f"""
+        <div class="signal-card">
+            <div class="signal-header">
+                <div>
+                    <div class="crypto-name">#{rank} {symbol}</div>
+                    <div style="font-size:0.85em;color:#94a3b8">{name}</div>
+                </div>
+                <div class="signal-badge {signal_class}">{signal_text}</div>
+            </div>
+            <div class="price-section">
+                <div class="current-price">${price:,.6f if price < 1 else price:,.2f}</div>
+                <div class="price-change {'positive' if change_24h > 0 else 'negative'}">{change_24h:+.2f}% (24h)</div>
+            </div>
+            <div class="indicators">
+                <div class="indicator">
+                    <div class="indicator-label">RSI (14)</div>
+                    <div class="indicator-value {'bullish' if rsi < 50 else 'bearish' if rsi > 70 else ''}">{rsi:.1f}</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-label">Tendance</div>
+                    <div class="indicator-value {'bullish' if change_24h > 0 else 'bearish'}">{'Haussier' if change_24h > 0 else 'Baissier'}</div>
+                </div>
+            </div>
+            <div class="confidence">
+                <strong>Confiance: {conf}%</strong>
+                <div class="confidence-bar"><div class="confidence-fill" style="width:{conf}%"></div></div>
+            </div>
+        </div>
+        """
     
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
@@ -22847,301 +22886,73 @@ async def ai_signals():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Signals - Trading Dashboard</title>
+        <title>AI Signals - Top 50</title>
         <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
         <style>
-            * {{margin:0;padding:0;box-sizing:border-box}}
-            body {{
-                font-family:'IBM Plex Sans',sans-serif;
-                background:linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%);
-                color:#e0e7ff;
-                min-height:100vh;
-                padding:40px 20px
-            }}
-            .container {{max-width:1400px;margin:0 auto}}
-            .header {{text-align:center;margin-bottom:50px}}
-            h1 {{
-                font-size:3.5em;
-                font-weight:700;
-                background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 100%);
-                -webkit-background-clip:text;
-                -webkit-text-fill-color:transparent;
-                margin-bottom:10px;
-                font-family:'Space Mono',monospace
-            }}
-            .live-badge {{
-                display:inline-flex;
-                align-items:center;
-                gap:8px;
-                padding:8px 16px;
-                background:rgba(239,68,68,0.2);
-                border:1px solid #ef4444;
-                border-radius:20px;
-                margin:20px 0;
-                animation:pulse 2s infinite
-            }}
-            .live-dot {{
-                width:10px;
-                height:10px;
-                background:#ef4444;
-                border-radius:50%;
-            }}
-            .signals-grid {{
-                display:grid;
-                grid-template-columns:repeat(auto-fit,minmax(350px,1fr));
-                gap:25px
-            }}
-            .signal-card {{
-                background:rgba(30,41,59,0.6);
-                backdrop-filter:blur(10px);
-                border:2px solid rgba(96,165,250,0.2);
-                border-radius:20px;
-                padding:30px;
-                transition:all 0.4s;
-                position:relative;
-                overflow:hidden
-            }}
-            .signal-card::before {{
-                content:'';
-                position:absolute;
-                top:0;
-                left:0;
-                width:100%;
-                height:5px;
-                background:linear-gradient(90deg,#60a5fa,#a78bfa);
-                transform:scaleX(0);
-                transition:transform 0.6s
-            }}
-            .signal-card:hover {{
-                transform:translateY(-10px);
-                border-color:rgba(96,165,250,0.5);
-                box-shadow:0 20px 60px rgba(96,165,250,0.3)
-            }}
-            .signal-card:hover::before {{transform:scaleX(1)}}
-            .signal-header {{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}}
-            .crypto-name {{font-size:1.5em;font-weight:700;font-family:'Space Mono',monospace}}
-            .signal-badge {{
-                padding:8px 16px;
-                border-radius:20px;
-                font-weight:700;
-                font-size:0.9em
-            }}
-            .signal-badge.buy {{
-                background:linear-gradient(135deg,#10b981,#059669);
-                box-shadow:0 0 20px rgba(16,185,129,0.5)
-            }}
-            .signal-badge.sell {{
-                background:linear-gradient(135deg,#ef4444,#dc2626);
-                box-shadow:0 0 20px rgba(239,68,68,0.5)
-            }}
-            .signal-badge.hold {{
-                background:linear-gradient(135deg,#f59e0b,#d97706);
-                box-shadow:0 0 20px rgba(245,158,11,0.5)
-            }}
-            .price-section {{
-                margin:20px 0;
-                padding:20px;
-                background:rgba(15,23,42,0.6);
-                border-radius:12px;
-                border-left:4px solid #60a5fa
-            }}
-            .current-price {{
-                font-size:2em;
-                font-weight:700;
-                color:#60a5fa;
-                font-family:'Space Mono',monospace
-            }}
-            .price-change {{font-size:1.1em;margin-top:5px}}
-            .price-change.positive {{color:#10b981}}
-            .price-change.negative {{color:#ef4444}}
-            .indicators {{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:20px}}
-            .indicator {{
-                padding:15px;
-                background:rgba(30,41,59,0.4);
-                border-radius:10px;
-                border:1px solid rgba(96,165,250,0.1)
-            }}
-            .indicator-label {{color:#94a3b8;font-size:0.85em;margin-bottom:5px}}
-            .indicator-value {{font-size:1.3em;font-weight:700;font-family:'Space Mono',monospace}}
-            .indicator-value.bullish {{color:#10b981}}
-            .indicator-value.bearish {{color:#ef4444}}
-            .confidence {{
-                margin-top:20px;
-                padding:15px;
-                background:rgba(96,165,250,0.1);
-                border-radius:10px;
-                text-align:center
-            }}
-            .confidence-bar {{
-                width:100%;
-                height:8px;
-                background:rgba(30,41,59,0.6);
-                border-radius:10px;
-                overflow:hidden;
-                margin-top:10px
-            }}
-            .confidence-fill {{
-                height:100%;
-                background:linear-gradient(90deg,#60a5fa,#a78bfa);
-                border-radius:10px;
-                transition:width 1s
-            }}
-            @keyframes pulse {{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
+            *{{margin:0;padding:0;box-sizing:border-box}}
+            body{{font-family:'IBM Plex Sans',sans-serif;background:linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%);color:#e0e7ff;min-height:100vh;padding:40px 20px}}
+            .container{{max-width:1400px;margin:0 auto}}
+            .header{{text-align:center;margin-bottom:50px}}
+            h1{{font-size:3.5em;font-weight:700;background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;font-family:'Space Mono',monospace}}
+            .subtitle{{color:#94a3b8;font-size:1.1em;margin-top:10px}}
+            .live-badge{{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(239,68,68,0.2);border:1px solid #ef4444;border-radius:20px;margin:20px 0;animation:pulse 2s infinite}}
+            .live-dot{{width:10px;height:10px;background:#ef4444;border-radius:50%}}
+            .signals-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}}
+            .signal-card{{background:rgba(30,41,59,0.6);backdrop-filter:blur(10px);border:2px solid rgba(96,165,250,0.2);border-radius:15px;padding:20px;transition:all 0.3s;position:relative;overflow:hidden}}
+            .signal-card::before{{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,#60a5fa,#a78bfa);transform:scaleX(0);transition:transform 0.6s}}
+            .signal-card:hover{{transform:translateY(-5px);border-color:rgba(96,165,250,0.5);box-shadow:0 15px 40px rgba(96,165,250,0.3)}}
+            .signal-card:hover::before{{transform:scaleX(1)}}
+            .signal-header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}}
+            .crypto-name{{font-size:1.2em;font-weight:700;font-family:'Space Mono',monospace}}
+            .signal-badge{{padding:6px 12px;border-radius:15px;font-weight:700;font-size:0.85em}}
+            .signal-badge.buy{{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 15px rgba(16,185,129,0.5)}}
+            .signal-badge.sell{{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 0 15px rgba(239,68,68,0.5)}}
+            .signal-badge.hold{{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 0 15px rgba(245,158,11,0.5)}}
+            .price-section{{margin:15px 0;padding:15px;background:rgba(15,23,42,0.6);border-radius:10px;border-left:3px solid #60a5fa}}
+            .current-price{{font-size:1.5em;font-weight:700;color:#60a5fa;font-family:'Space Mono',monospace}}
+            .price-change{{font-size:1em;margin-top:5px}}
+            .price-change.positive{{color:#10b981}}
+            .price-change.negative{{color:#ef4444}}
+            .indicators{{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}}
+            .indicator{{padding:10px;background:rgba(30,41,59,0.4);border-radius:8px;border:1px solid rgba(96,165,250,0.1)}}
+            .indicator-label{{color:#94a3b8;font-size:0.8em;margin-bottom:3px}}
+            .indicator-value{{font-size:1.1em;font-weight:700;font-family:'Space Mono',monospace}}
+            .indicator-value.bullish{{color:#10b981}}
+            .indicator-value.bearish{{color:#ef4444}}
+            .confidence{{margin-top:15px;padding:12px;background:rgba(96,165,250,0.1);border-radius:8px;text-align:center;font-size:0.9em}}
+            .confidence-bar{{width:100%;height:6px;background:rgba(30,41,59,0.6);border-radius:10px;overflow:hidden;margin-top:8px}}
+            .confidence-fill{{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:10px;transition:width 1s}}
+            .explanation{{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #60a5fa;border-radius:15px}}
+            .explanation h2{{font-size:2em;margin-bottom:20px;color:#60a5fa}}
+            .explanation h3{{font-size:1.3em;margin:20px 0 10px 0;color:#60a5fa}}
+            .explanation p{{line-height:1.8;color:#cbd5e1;margin-bottom:15px}}
+            @keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
                 <h1>🎯 AI SIGNALS</h1>
-                <p style="color:#94a3b8;font-size:1.1em">Signaux de trading basés sur analyse technique avancée</p>
-                <div class="live-badge">
-                    <div class="live-dot"></div>
-                    <span>DONNÉES EN TEMPS RÉEL</span>
-                </div>
+                <p class="subtitle">Signaux de trading - TOP 50 Cryptomonnaies par capitalisation</p>
+                <div class="live-badge"><div class="live-dot"></div><span>DONNÉES EN TEMPS RÉEL</span></div>
             </div>
-            
-            <div class="signals-grid">
-                <div class="signal-card">
-                    <div class="signal-header">
-                        <div class="crypto-name">₿ BITCOIN</div>
-                        <div class="signal-badge buy">🚀 ACHAT</div>
-                    </div>
-                    <div class="price-section">
-                        <div class="current-price">${btc_price:,.2f}</div>
-                        <div class="price-change {'positive' if btc_change > 0 else 'negative'}">{btc_change:+.2f}% (24h)</div>
-                    </div>
-                    <div class="indicators">
-                        <div class="indicator">
-                            <div class="indicator-label">RSI (14)</div>
-                            <div class="indicator-value bullish">45.2</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">MACD</div>
-                            <div class="indicator-value bullish">+125</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">EMA 20/50</div>
-                            <div class="indicator-value bullish">Croix d'or</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Volume</div>
-                            <div class="indicator-value bullish">+35%</div>
-                        </div>
-                    </div>
-                    <div class="confidence">
-                        <strong>Confiance: 87%</strong>
-                        <div class="confidence-bar"><div class="confidence-fill" style="width:87%"></div></div>
-                    </div>
-                </div>
-                
-                <div class="signal-card">
-                    <div class="signal-header">
-                        <div class="crypto-name">Ξ ETHEREUM</div>
-                        <div class="signal-badge buy">📈 ACHAT</div>
-                    </div>
-                    <div class="price-section">
-                        <div class="current-price">${eth_price:,.2f}</div>
-                        <div class="price-change {'positive' if eth_change > 0 else 'negative'}">{eth_change:+.2f}% (24h)</div>
-                    </div>
-                    <div class="indicators">
-                        <div class="indicator">
-                            <div class="indicator-label">RSI (14)</div>
-                            <div class="indicator-value bullish">42.8</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">MACD</div>
-                            <div class="indicator-value bullish">+89</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Bollinger</div>
-                            <div class="indicator-value bullish">Bas</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Volume</div>
-                            <div class="indicator-value bullish">+42%</div>
-                        </div>
-                    </div>
-                    <div class="confidence">
-                        <strong>Confiance: 82%</strong>
-                        <div class="confidence-bar"><div class="confidence-fill" style="width:82%"></div></div>
-                    </div>
-                </div>
-                
-                <div class="signal-card">
-                    <div class="signal-header">
-                        <div class="crypto-name">◎ SOLANA</div>
-                        <div class="signal-badge hold">⏸️ ATTENDRE</div>
-                    </div>
-                    <div class="price-section">
-                        <div class="current-price">${sol_price:,.2f}</div>
-                        <div class="price-change {'positive' if sol_change > 0 else 'negative'}">{sol_change:+.2f}% (24h)</div>
-                    </div>
-                    <div class="indicators">
-                        <div class="indicator">
-                            <div class="indicator-label">RSI (14)</div>
-                            <div class="indicator-value">52.3</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">MACD</div>
-                            <div class="indicator-value bearish">-15</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Support</div>
-                            <div class="indicator-value">$95.20</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Résistance</div>
-                            <div class="indicator-value">$102.50</div>
-                        </div>
-                    </div>
-                    <div class="confidence">
-                        <strong>Confiance: 65%</strong>
-                        <div class="confidence-bar"><div class="confidence-fill" style="width:65%"></div></div>
-                    </div>
-                </div>
-                
-                <div class="signal-card">
-                    <div class="signal-header">
-                        <div class="crypto-name">₳ CARDANO</div>
-                        <div class="signal-badge buy">📊 ACHAT</div>
-                    </div>
-                    <div class="price-section">
-                        <div class="current-price">${ada_price:,.4f}</div>
-                        <div class="price-change {'positive' if ada_change > 0 else 'negative'}">{ada_change:+.2f}% (24h)</div>
-                    </div>
-                    <div class="indicators">
-                        <div class="indicator">
-                            <div class="indicator-label">RSI (14)</div>
-                            <div class="indicator-value bullish">38.5</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">MACD</div>
-                            <div class="indicator-value bullish">+0.02</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Tendance</div>
-                            <div class="indicator-value bullish">Haussière</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Volume</div>
-                            <div class="indicator-value bullish">+28%</div>
-                        </div>
-                    </div>
-                    <div class="confidence">
-                        <strong>Confiance: 75%</strong>
-                        <div class="confidence-bar"><div class="confidence-fill" style="width:75%"></div></div>
-                    </div>
-                </div>
+            <div class="signals-grid">{cards_html}</div>
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Cette page analyse le top 50 des cryptomonnaies et génère des signaux d'achat, de vente ou d'attente basés sur plusieurs indicateurs techniques combinés.</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>L'IA analyse en temps réel: RSI (14 périodes) pour détecter surachat/survente, tendance haussière/baissière selon les variations, et calcule un score de confiance basé sur la cohérence des signaux.</p>
+                <h3>📊 Données</h3>
+                <p>Prix en temps réel via CoinGecko API (top 50 par capitalisation boursière). Rafraîchissement automatique toutes les 60 secondes.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Utilisez les signaux comme aide à la décision, jamais comme unique critère. Un score de confiance >80% indique une forte probabilité mais combinez toujours avec votre propre analyse.</p>
             </div>
         </div>
-        <script>
-            setTimeout(() => window.location.reload(), 60000);
-        </script>
+        <script>setTimeout(() => window.location.reload(), 60000);</script>
     </body>
     </html>
     """)
-
-print("Route 1/12 créée: AI Signals")
 
 
 @app.get("/ai-news", response_class=HTMLResponse)
@@ -24196,122 +24007,223 @@ async def ai_alerts():
 
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
 async def ai_gem_hunter():
-    """Détection de cryptos prometteuses"""
+    """Détection de cryptos prometteuses dans le top 50 - FUTURES GEMS"""
+    
+    # Récupérer le top 50
+    cryptos = await get_top_50_cryptos()
+    
+    # Scorer chaque crypto
+    gems = []
+    for c in cryptos:
+        score = 0
+        
+        mcap = c.get('market_cap', 0)
+        volume = c.get('total_volume', 0)
+        change_24h = c.get('price_change_percentage_24h', 0)
+        change_7d = c.get('price_change_percentage_7d_in_currency', change_24h * 3)
+        rank = c.get('market_cap_rank', 100)
+        
+        # Market cap bas = plus de potentiel (max 3 pts)
+        if mcap > 0:
+            if mcap < 500000000:  # < $500M
+                score += 3
+            elif mcap < 2000000000:  # < $2B
+                score += 2.5
+            elif mcap < 5000000000:  # < $5B
+                score += 1.5
+        
+        # Volume/MCap ratio (max 2 pts)
+        if mcap > 0 and volume > 0:
+            vol_ratio = (volume / mcap) * 100
+            if vol_ratio > 20:
+                score += 2
+            elif vol_ratio > 10:
+                score += 1.5
+            elif vol_ratio > 5:
+                score += 0.5
+        
+        # Momentum 24h (max 2 pts)
+        if change_24h > 10:
+            score += 2
+        elif change_24h > 5:
+            score += 1.5
+        elif change_24h > 2:
+            score += 0.5
+        
+        # Momentum 7j estimé (max 2 pts)
+        if change_7d > 25:
+            score += 2
+        elif change_7d > 15:
+            score += 1.5
+        elif change_7d > 8:
+            score += 0.5
+        
+        # Rang market cap (max 1 pt)
+        if rank >= 30 and rank <= 50:
+            score += 1
+        elif rank >= 20 and rank < 30:
+            score += 0.5
+        
+        c['gem_score'] = min(score, 10)
+        
+        # Garder seulement celles avec score >= 4
+        if score >= 4:
+            gems.append(c)
+    
+    # Trier par score
+    gems.sort(key=lambda x: x['gem_score'], reverse=True)
+    
+    # Top 50 gems (toutes celles qui ont passé le seuil)
+    gems_html = ""
+    for gem in gems[:50]:
+        score = gem['gem_score']
+        name = gem.get('name', '')
+        symbol = gem.get('symbol', '').upper()
+        price = gem.get('current_price', 0)
+        mcap = gem.get('market_cap', 0)
+        volume = gem.get('total_volume', 0)
+        change_24h = gem.get('price_change_percentage_24h', 0)
+        change_7d = gem.get('price_change_percentage_7d_in_currency', change_24h * 3)
+        rank = gem.get('market_cap_rank', 0)
+        
+        vol_ratio = (volume / mcap * 100) if mcap > 0 else 0
+        
+        # Déterminer potentiel
+        if score >= 8.5:
+            potential = "15-30x"
+            potential_class = "ultra"
+        elif score >= 7.5:
+            potential = "10-20x"
+            potential_class = "high"
+        elif score >= 6:
+            potential = "5-10x"
+            potential_class = "medium"
+        else:
+            potential = "3-5x"
+            potential_class = "low"
+        
+        # Couleur du score
+        if score >= 8:
+            score_class = "excellent"
+        elif score >= 6:
+            score_class = "good"
+        else:
+            score_class = "ok"
+        
+        gems_html += f"""
+        <div class="gem-card">
+            <div class="gem-header">
+                <div>
+                    <div class="gem-rank">#{rank} Rank</div>
+                    <div class="gem-name">{symbol}</div>
+                    <div class="gem-fullname">{name}</div>
+                </div>
+                <div class="gem-score {score_class}">{score:.1f}/10</div>
+            </div>
+            <div class="gem-price">${price:,.6f if price < 1 else price:,.2f}</div>
+            <div class="gem-change">
+                <span class="{'positive' if change_24h > 0 else 'negative'}">{change_24h:+.2f}% (24h)</span>
+                <span class="{'positive' if change_7d > 0 else 'negative'}">{change_7d:+.2f}% (7j est.)</span>
+            </div>
+            <div class="gem-metrics">
+                <div class="metric">
+                    <span>Market Cap</span>
+                    <strong>${mcap/1000000:.1f}M</strong>
+                </div>
+                <div class="metric">
+                    <span>Volume/MCap</span>
+                    <strong>{vol_ratio:.1f}%</strong>
+                </div>
+                <div class="metric">
+                    <span>Momentum</span>
+                    <strong class="{'positive' if change_24h > 0 else 'negative'}">{'Fort' if abs(change_24h) > 5 else 'Moyen' if abs(change_24h) > 2 else 'Faible'}</strong>
+                </div>
+            </div>
+            <div class="potential {potential_class}">
+                <strong>💎 Potentiel: {potential}</strong>
+            </div>
+        </div>
+        """
+    
+    total_gems = len(gems)
     
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
-        <title>AI Gem Hunter - Détection Gems</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AI Gem Hunter - Top 50</title>
         <style>
             *{{margin:0;padding:0;box-sizing:border-box}}
             body{{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e3a8a,#7e22ce);color:#fff;padding:40px 20px;min-height:100vh}}
-            .container{{max-width:1200px;margin:0 auto}}
-            h1{{font-size:2.5em;text-align:center;margin-bottom:40px;text-shadow:0 0 30px rgba(255,255,255,0.5)}}
-            .gems-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:25px}}
+            .container{{max-width:1400px;margin:0 auto}}
+            h1{{font-size:2.8em;text-align:center;margin-bottom:10px;text-shadow:0 0 30px rgba(255,255,255,0.5)}}
+            .subtitle{{text-align:center;font-size:1.1em;margin-bottom:10px;opacity:0.9}}
+            .stats{{text-align:center;font-size:1em;margin-bottom:40px;color:#fbbf24}}
+            .gems-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:25px;margin-bottom:60px}}
             .gem-card{{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,0.2);border-radius:15px;padding:25px;transition:all 0.3s}}
             .gem-card:hover{{transform:scale(1.05);border-color:rgba(255,255,255,0.5);box-shadow:0 0 40px rgba(255,255,255,0.3)}}
-            .gem-header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}}
-            .gem-name{{font-size:1.5em;font-weight:700}}
-            .gem-score{{font-size:2em;font-weight:700;color:#fbbf24}}
+            .gem-header{{display:flex;justify-content:space-between;align-items:start;margin-bottom:20px}}
+            .gem-rank{{font-size:0.9em;color:#fbbf24;margin-bottom:5px}}
+            .gem-name{{font-size:1.8em;font-weight:700}}
+            .gem-fullname{{font-size:0.9em;color:rgba(255,255,255,0.7);margin-top:5px}}
+            .gem-score{{font-size:2.5em;font-weight:700;padding:10px;border-radius:10px}}
+            .gem-score.excellent{{color:#10b981;background:rgba(16,185,129,0.2)}}
+            .gem-score.good{{color:#fbbf24;background:rgba(251,191,36,0.2)}}
+            .gem-score.ok{{color:#f59e0b;background:rgba(245,158,11,0.2)}}
+            .gem-price{{font-size:1.5em;font-weight:700;margin:15px 0}}
+            .gem-change{{display:flex;gap:15px;font-size:1em;margin-bottom:20px}}
+            .gem-change .positive{{color:#10b981}}
+            .gem-change .negative{{color:#ef4444}}
             .gem-metrics{{margin:20px 0}}
             .metric{{display:flex;justify-content:space-between;margin:10px 0;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px}}
-            .potential{{margin-top:20px;padding:15px;background:rgba(251,191,36,0.2);border-radius:10px;text-align:center;border:2px solid #fbbf24}}
+            .metric strong.positive{{color:#10b981}}
+            .metric strong.negative{{color:#ef4444}}
+            .potential{{margin-top:20px;padding:15px;border-radius:10px;text-align:center;border:2px solid}}
+            .potential.ultra{{background:rgba(16,185,129,0.2);border-color:#10b981}}
+            .potential.high{{background:rgba(251,191,36,0.2);border-color:#fbbf24}}
+            .potential.medium{{background:rgba(245,158,11,0.2);border-color:#f59e0b}}
+            .potential.low{{background:rgba(100,100,100,0.2);border-color:#666}}
+            .potential strong{{font-size:1.2em}}
+            .explanation{{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #fbbf24;border-radius:15px}}
+            .explanation h2{{font-size:2em;margin-bottom:20px;color:#fbbf24}}
+            .explanation h3{{font-size:1.3em;margin:20px 0 10px 0;color:#fbbf24}}
+            .explanation p{{line-height:1.8;color:rgba(255,255,255,0.9);margin-bottom:15px}}
         </style>
     </head>
     <body>
         <div class="container">
             <h1>💎 AI GEM HUNTER</h1>
-            <p style="text-align:center;font-size:1.2em;margin-bottom:40px;opacity:0.9">Détection de cryptos à fort potentiel</p>
-            
-            <div class="gems-grid">
-                <div class="gem-card">
-                    <div class="gem-header">
-                        <div>
-                            <div class="gem-name">RENDER (RNDR)</div>
-                            <div style="color:#94a3b8;font-size:0.9em">AI Rendering</div>
-                        </div>
-                        <div class="gem-score">9.2/10</div>
-                    </div>
-                    <div class="gem-metrics">
-                        <div class="metric">
-                            <span>Market Cap</span>
-                            <strong>$1.2B</strong>
-                        </div>
-                        <div class="metric">
-                            <span>Volume 24h</span>
-                            <strong>+340%</strong>
-                        </div>
-                        <div class="metric">
-                            <span>Holders</span>
-                            <strong>+25% (7j)</strong>
-                        </div>
-                    </div>
-                    <div class="potential">
-                        <strong style="font-size:1.2em">Potentiel: 5-10x</strong>
-                    </div>
-                </div>
-                
-                <div class="gem-card">
-                    <div class="gem-header">
-                        <div>
-                            <div class="gem-name">ONDO Finance</div>
-                            <div style="color:#94a3b8;font-size:0.9em">RWA Tokenization</div>
-                        </div>
-                        <div class="gem-score">8.8/10</div>
-                    </div>
-                    <div class="gem-metrics">
-                        <div class="metric">
-                            <span>Market Cap</span>
-                            <strong>$850M</strong>
-                        </div>
-                        <div class="metric">
-                            <span>TVL Growth</span>
-                            <strong>+180%</strong>
-                        </div>
-                        <div class="metric">
-                            <span>Partnerships</span>
-                            <strong>12 institutions</strong>
-                        </div>
-                    </div>
-                    <div class="potential">
-                        <strong style="font-size:1.2em">Potentiel: 3-8x</strong>
-                    </div>
-                </div>
-                
-                <div class="gem-card">
-                    <div class="gem-header">
-                        <div>
-                            <div class="gem-name">PYTH Network</div>
-                            <div style="color:#94a3b8;font-size:0.9em">Oracle DeFi</div>
-                        </div>
-                        <div class="gem-score">8.5/10</div>
-                    </div>
-                    <div class="gem-metrics">
-                        <div class="metric">
-                            <span>Market Cap</span>
-                            <strong>$650M</strong>
-                        </div>
-                        <div class="metric">
-                            <span>Intégrations</span>
-                            <strong>200+ dApps</strong>
-                        </div>
-                        <div class="metric">
-                            <span>Data Feeds</span>
-                            <strong>380+</strong>
-                        </div>
-                    </div>
-                    <div class="potential">
-                        <strong style="font-size:1.2em">Potentiel: 4-7x</strong>
-                    </div>
-                </div>
+            <p class="subtitle">Détection de cryptos prometteuses - Analyse TOP 50 avec scoring intelligent</p>
+            <p class="stats">🔍 {total_gems} futures gems détectées sur 50 cryptos analysées</p>
+            <div class="gems-grid">{gems_html}</div>
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Détecter les cryptos du top 50 avec le meilleur potentiel de croissance (futures gems 3-30x) en analysant plusieurs critères fondamentaux et techniques.</p>
+                <h3>⚙️ Fonctionnement - Scoring sur 10 points</h3>
+                <p><strong>Market Cap (3 pts):</strong> Plus bas = plus de potentiel. <$500M = 3pts, <$2B = 2.5pts, <$5B = 1.5pts</p>
+                <p><strong>Liquidité (2 pts):</strong> Volume/MCap ratio. >20% = 2pts (haute liquidité), >10% = 1.5pts, >5% = 0.5pt</p>
+                <p><strong>Momentum 24h (2 pts):</strong> >10% = 2pts, >5% = 1.5pts, >2% = 0.5pt</p>
+                <p><strong>Momentum 7j (2 pts):</strong> >25% = 2pts, >15% = 1.5pts, >8% = 0.5pt</p>
+                <p><strong>Position (1 pt):</strong> Rang 30-50 = 1pt (marge de croissance), 20-30 = 0.5pt</p>
+                <h3>📊 Données</h3>
+                <p>Top 50 CoinGecko en temps réel: prix, market cap, volume, variations 24h. Scoring recalculé toutes les 3 minutes avec rafraîchissement automatique de la page.</p>
+                <h3>💡 Utilisation</h3>
+                <p><strong>Score >8.5:</strong> Potentiel exceptionnel 15-30x - Haute conviction</p>
+                <p><strong>Score 7.5-8.5:</strong> Très bon potentiel 10-20x - Fort intérêt</p>
+                <p><strong>Score 6-7.5:</strong> Bon potentiel 5-10x - À surveiller</p>
+                <p><strong>Score 4-6:</strong> Potentiel modéré 3-5x - Opportuniste</p>
+                <p><strong>⚠️ ATTENTION:</strong> Gems = risque élevé. Ne jamais investir plus de 5-10% de votre portfolio total sur les gems. Toujours DYOR (Do Your Own Research). Ces scores sont des indicateurs, pas des conseils d'investissement.</p>
             </div>
         </div>
         <script>setTimeout(() => window.location.reload(), 180000);</script>
     </body>
     </html>
     """)
+
+
 
 print("✅ TOUTES LES 12 ROUTES AI CRÉÉES!")
 print("Routes 1-12 complètes avec vraies données et designs professionnels")

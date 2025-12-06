@@ -22779,42 +22779,43 @@ async def get_top_50_cryptos():
             )
             if response.status_code == 200:
                 data = response.json()
-                return data if data else []
-    except:
-        pass
+                if data and len(data) > 0:
+                    return data
+    except Exception as e:
+        print(f"Erreur API CoinGecko top 50: {e}")
     
-    # Fallback data - top 10
+    # Fallback data - top 10 minimum
     return [
         {'id': 'bitcoin', 'symbol': 'btc', 'name': 'Bitcoin', 'current_price': 43250, 
-         'price_change_percentage_24h': 2.45, 'market_cap': 845000000000, 
-         'total_volume': 28500000000, 'market_cap_rank': 1},
+         'price_change_percentage_24h': 2.45, 'price_change_percentage_7d_in_currency': 5.2,
+         'market_cap': 845000000000, 'total_volume': 28500000000, 'market_cap_rank': 1},
         {'id': 'ethereum', 'symbol': 'eth', 'name': 'Ethereum', 'current_price': 2280,
-         'price_change_percentage_24h': 3.12, 'market_cap': 274000000000,
-         'total_volume': 16000000000, 'market_cap_rank': 2},
+         'price_change_percentage_24h': 3.12, 'price_change_percentage_7d_in_currency': 8.5,
+         'market_cap': 274000000000, 'total_volume': 16000000000, 'market_cap_rank': 2},
         {'id': 'tether', 'symbol': 'usdt', 'name': 'Tether', 'current_price': 1.00,
-         'price_change_percentage_24h': 0.01, 'market_cap': 95000000000,
-         'total_volume': 45000000000, 'market_cap_rank': 3},
+         'price_change_percentage_24h': 0.01, 'price_change_percentage_7d_in_currency': 0.02,
+         'market_cap': 95000000000, 'total_volume': 45000000000, 'market_cap_rank': 3},
         {'id': 'binancecoin', 'symbol': 'bnb', 'name': 'BNB', 'current_price': 312,
-         'price_change_percentage_24h': 1.8, 'market_cap': 48000000000,
-         'total_volume': 980000000, 'market_cap_rank': 4},
+         'price_change_percentage_24h': 1.8, 'price_change_percentage_7d_in_currency': 4.2,
+         'market_cap': 48000000000, 'total_volume': 980000000, 'market_cap_rank': 4},
         {'id': 'solana', 'symbol': 'sol', 'name': 'Solana', 'current_price': 98.75,
-         'price_change_percentage_24h': -1.23, 'market_cap': 42000000000,
-         'total_volume': 2100000000, 'market_cap_rank': 5},
+         'price_change_percentage_24h': -1.23, 'price_change_percentage_7d_in_currency': -2.5,
+         'market_cap': 42000000000, 'total_volume': 2100000000, 'market_cap_rank': 5},
         {'id': 'ripple', 'symbol': 'xrp', 'name': 'XRP', 'current_price': 0.61,
-         'price_change_percentage_24h': -0.45, 'market_cap': 33000000000,
-         'total_volume': 1200000000, 'market_cap_rank': 6},
+         'price_change_percentage_24h': -0.45, 'price_change_percentage_7d_in_currency': 1.2,
+         'market_cap': 33000000000, 'total_volume': 1200000000, 'market_cap_rank': 6},
         {'id': 'cardano', 'symbol': 'ada', 'name': 'Cardano', 'current_price': 0.52,
-         'price_change_percentage_24h': 1.85, 'market_cap': 18000000000,
-         'total_volume': 450000000, 'market_cap_rank': 7},
+         'price_change_percentage_24h': 1.85, 'price_change_percentage_7d_in_currency': 3.5,
+         'market_cap': 18000000000, 'total_volume': 450000000, 'market_cap_rank': 7},
         {'id': 'avalanche-2', 'symbol': 'avax', 'name': 'Avalanche', 'current_price': 36.50,
-         'price_change_percentage_24h': 4.2, 'market_cap': 14000000000,
-         'total_volume': 620000000, 'market_cap_rank': 8},
+         'price_change_percentage_24h': 4.2, 'price_change_percentage_7d_in_currency': 12.5,
+         'market_cap': 14000000000, 'total_volume': 620000000, 'market_cap_rank': 8},
         {'id': 'dogecoin', 'symbol': 'doge', 'name': 'Dogecoin', 'current_price': 0.082,
-         'price_change_percentage_24h': -0.8, 'market_cap': 11500000000,
-         'total_volume': 580000000, 'market_cap_rank': 9},
+         'price_change_percentage_24h': -0.8, 'price_change_percentage_7d_in_currency': -1.5,
+         'market_cap': 11500000000, 'total_volume': 580000000, 'market_cap_rank': 9},
         {'id': 'polkadot', 'symbol': 'dot', 'name': 'Polkadot', 'current_price': 7.12,
-         'price_change_percentage_24h': 2.1, 'market_cap': 10200000000,
-         'total_volume': 320000000, 'market_cap_rank': 10}
+         'price_change_percentage_24h': 2.1, 'price_change_percentage_7d_in_currency': 5.8,
+         'market_cap': 10200000000, 'total_volume': 320000000, 'market_cap_rank': 10}
     ]
 
 # ========== 1. AI SIGNALS - SIGNAUX DE TRADING ==========
@@ -22825,10 +22826,6 @@ async def ai_signals():
     
     # Récupérer le top 50
     cryptos = await get_top_50_cryptos()
-    
-    # S'assurer qu'on a des données
-    if not cryptos:
-        cryptos = []
     
     # Générer les cartes pour top 50
     cards_html = ""
@@ -22854,6 +22851,7 @@ async def ai_signals():
             conf = 50 + int(abs(change_24h) * 5)
         
         rsi = 50 + (change_24h * 2)
+        rsi = max(0, min(100, rsi))  # Limiter entre 0 et 100
         
         cards_html += f"""
         <div class="signal-card">
@@ -22894,38 +22892,38 @@ async def ai_signals():
         <title>AI Signals - Top 50</title>
         <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
         <style>
-            *{{margin:0;padding:0;box-sizing:border-box}}
-            body{{font-family:'IBM Plex Sans',sans-serif;background:linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%);color:#e0e7ff;min-height:100vh;padding:40px 20px}}
-            .container{{max-width:1400px;margin:0 auto}}
-            .header{{text-align:center;margin-bottom:50px}}
-            h1{{font-size:3.5em;font-weight:700;background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;font-family:'Space Mono',monospace}}
-            .subtitle{{color:#94a3b8;font-size:1.1em;margin-top:10px}}
-            .live-badge{{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(239,68,68,0.2);border:1px solid #ef4444;border-radius:20px;margin:20px 0;animation:pulse 2s infinite}}
-            .live-dot{{width:10px;height:10px;background:#ef4444;border-radius:50%}}
-            .signals-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}}
-            .signal-card{{background:rgba(30,41,59,0.6);backdrop-filter:blur(10px);border:2px solid rgba(96,165,250,0.2);border-radius:15px;padding:20px;transition:all 0.3s}}
-            .signal-card:hover{{transform:translateY(-5px);border-color:rgba(96,165,250,0.5);box-shadow:0 15px 40px rgba(96,165,250,0.3)}}
-            .signal-header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}}
-            .crypto-name{{font-size:1.2em;font-weight:700;font-family:'Space Mono',monospace}}
-            .signal-badge{{padding:6px 12px;border-radius:15px;font-weight:700;font-size:0.85em}}
-            .signal-badge.buy{{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 15px rgba(16,185,129,0.5)}}
-            .signal-badge.sell{{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 0 15px rgba(239,68,68,0.5)}}
-            .signal-badge.hold{{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 0 15px rgba(245,158,11,0.5)}}
-            .price-section{{margin:15px 0;padding:15px;background:rgba(15,23,42,0.6);border-radius:10px;border-left:3px solid #60a5fa}}
-            .current-price{{font-size:1.5em;font-weight:700;color:#60a5fa;font-family:'Space Mono',monospace}}
-            .price-change{{font-size:1em;margin-top:5px}}
-            .price-change.positive{{color:#10b981}}
-            .price-change.negative{{color:#ef4444}}
-            .indicators{{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}}
-            .indicator{{padding:10px;background:rgba(30,41,59,0.4);border-radius:8px}}
-            .indicator-label{{color:#94a3b8;font-size:0.8em;margin-bottom:3px}}
-            .indicator-value{{font-size:1.1em;font-weight:700;font-family:'Space Mono',monospace}}
-            .indicator-value.bullish{{color:#10b981}}
-            .indicator-value.bearish{{color:#ef4444}}
-            .confidence{{margin-top:15px;padding:12px;background:rgba(96,165,250,0.1);border-radius:8px;text-align:center;font-size:0.9em}}
-            .confidence-bar{{width:100%;height:6px;background:rgba(30,41,59,0.6);border-radius:10px;overflow:hidden;margin-top:8px}}
-            .confidence-fill{{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:10px;transition:width 1s}}
-            @keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
+            * {{margin:0;padding:0;box-sizing:border-box}}
+            body {{font-family:'IBM Plex Sans',sans-serif;background:linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%);color:#e0e7ff;min-height:100vh;padding:40px 20px}}
+            .container {{max-width:1400px;margin:0 auto}}
+            .header {{text-align:center;margin-bottom:50px}}
+            h1 {{font-size:3.5em;font-weight:700;background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;font-family:'Space Mono',monospace}}
+            .subtitle {{color:#94a3b8;font-size:1.1em;margin-top:10px}}
+            .live-badge {{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(239,68,68,0.2);border:1px solid #ef4444;border-radius:20px;margin:20px 0;animation:pulse 2s infinite}}
+            .live-dot {{width:10px;height:10px;background:#ef4444;border-radius:50%}}
+            .signals-grid {{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}}
+            .signal-card {{background:rgba(30,41,59,0.6);backdrop-filter:blur(10px);border:2px solid rgba(96,165,250,0.2);border-radius:15px;padding:20px;transition:all 0.3s}}
+            .signal-card:hover {{transform:translateY(-5px);border-color:rgba(96,165,250,0.5);box-shadow:0 15px 40px rgba(96,165,250,0.3)}}
+            .signal-header {{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}}
+            .crypto-name {{font-size:1.2em;font-weight:700;font-family:'Space Mono',monospace}}
+            .signal-badge {{padding:6px 12px;border-radius:15px;font-weight:700;font-size:0.85em}}
+            .signal-badge.buy {{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 15px rgba(16,185,129,0.5)}}
+            .signal-badge.sell {{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 0 15px rgba(239,68,68,0.5)}}
+            .signal-badge.hold {{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 0 15px rgba(245,158,11,0.5)}}
+            .price-section {{margin:15px 0;padding:15px;background:rgba(15,23,42,0.6);border-radius:10px;border-left:3px solid #60a5fa}}
+            .current-price {{font-size:1.5em;font-weight:700;color:#60a5fa;font-family:'Space Mono',monospace}}
+            .price-change {{font-size:1em;margin-top:5px}}
+            .price-change.positive {{color:#10b981}}
+            .price-change.negative {{color:#ef4444}}
+            .indicators {{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}}
+            .indicator {{padding:10px;background:rgba(30,41,59,0.4);border-radius:8px}}
+            .indicator-label {{color:#94a3b8;font-size:0.8em;margin-bottom:3px}}
+            .indicator-value {{font-size:1.1em;font-weight:700;font-family:'Space Mono',monospace}}
+            .indicator-value.bullish {{color:#10b981}}
+            .indicator-value.bearish {{color:#ef4444}}
+            .confidence {{margin-top:15px;padding:12px;background:rgba(96,165,250,0.1);border-radius:8px;text-align:center;font-size:0.9em}}
+            .confidence-bar {{width:100%;height:6px;background:rgba(30,41,59,0.6);border-radius:10px;overflow:hidden;margin-top:8px}}
+            .confidence-fill {{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:10px;transition:width 1s}}
+            @keyframes pulse {{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
         </style>
     </head>
     <body>
@@ -22937,10 +22935,16 @@ async def ai_signals():
             </div>
             <div class="signals-grid">{cards_html}</div>
         </div>
-        <script>setTimeout(() => window.location.reload(), 60000);</script>
+        <script>
+            setTimeout(() => window.location.reload(), 60000);
+        </script>
     </body>
     </html>
     """)
+
+print("Route 1/12 créée: AI Signals")
+
+
 
 
 @app.get("/ai-news", response_class=HTMLResponse)
@@ -24000,10 +24004,6 @@ async def ai_gem_hunter():
     # Récupérer le top 50
     cryptos = await get_top_50_cryptos()
     
-    # S'assurer qu'on a des données
-    if not cryptos:
-        cryptos = []
-    
     # Scorer chaque crypto
     gems = []
     for c in cryptos:
@@ -24187,7 +24187,9 @@ async def ai_gem_hunter():
             <p class="stats">🔍 {total_gems} futures gems détectées sur 50 cryptos analysées</p>
             <div class="gems-grid">{gems_html}</div>
         </div>
-        <script>setTimeout(() => window.location.reload(), 180000);</script>
+        <script>
+            setTimeout(() => window.location.reload(), 180000);
+        </script>
     </body>
     </html>
     """)

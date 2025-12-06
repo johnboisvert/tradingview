@@ -22782,9 +22782,9 @@ async def get_top_50_cryptos():
                 if data and len(data) > 0:
                     return data
     except Exception as e:
-        print(f"Erreur API CoinGecko top 50: {e}")
+        print(f"Erreur API CoinGecko: {e}")
     
-    # Fallback data - top 10 minimum
+    # Fallback
     return [
         {'id': 'bitcoin', 'symbol': 'btc', 'name': 'Bitcoin', 'current_price': 43250, 
          'price_change_percentage_24h': 2.45, 'price_change_percentage_7d_in_currency': 5.2,
@@ -22836,6 +22836,12 @@ async def ai_signals():
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
         
+        # Formater le prix CORRECTEMENT
+        if price < 1:
+            price_formatted = f"{price:,.6f}"
+        else:
+            price_formatted = f"{price:,.2f}"
+        
         # Signal basé sur variation
         if change_24h > 3:
             signal_class = "buy"
@@ -22851,7 +22857,13 @@ async def ai_signals():
             conf = 50 + int(abs(change_24h) * 5)
         
         rsi = 50 + (change_24h * 2)
-        rsi = max(0, min(100, rsi))  # Limiter entre 0 et 100
+        rsi = max(0, min(100, rsi))
+        
+        # Couleurs pour change
+        change_class = "positive" if change_24h > 0 else "negative"
+        rsi_class = "bullish" if rsi < 50 else ("bearish" if rsi > 70 else "")
+        trend_class = "bullish" if change_24h > 0 else "bearish"
+        trend_text = "Haussier" if change_24h > 0 else "Baissier"
         
         cards_html += f"""
         <div class="signal-card">
@@ -22863,17 +22875,17 @@ async def ai_signals():
                 <div class="signal-badge {signal_class}">{signal_text}</div>
             </div>
             <div class="price-section">
-                <div class="current-price">${price:,.6f if price < 1 else price:,.2f}</div>
-                <div class="price-change {'positive' if change_24h > 0 else 'negative'}">{change_24h:+.2f}% (24h)</div>
+                <div class="current-price">${price_formatted}</div>
+                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
             </div>
             <div class="indicators">
                 <div class="indicator">
                     <div class="indicator-label">RSI (14)</div>
-                    <div class="indicator-value {'bullish' if rsi < 50 else 'bearish' if rsi > 70 else ''}">{rsi:.1f}</div>
+                    <div class="indicator-value {rsi_class}">{rsi:.1f}</div>
                 </div>
                 <div class="indicator">
                     <div class="indicator-label">Tendance</div>
-                    <div class="indicator-value {'bullish' if change_24h > 0 else 'bearish'}">{'Haussier' if change_24h > 0 else 'Baissier'}</div>
+                    <div class="indicator-value {trend_class}">{trend_text}</div>
                 </div>
             </div>
             <div class="confidence">
@@ -22889,7 +22901,7 @@ async def ai_signals():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Signals - Top 50</title>
+        <title>AI Signals - Top 50 Cryptos</title>
         <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
         <style>
             * {{margin:0;padding:0;box-sizing:border-box}}
@@ -22936,7 +22948,7 @@ async def ai_signals():
             <div class="signals-grid">{cards_html}</div>
         </div>
         <script>
-            setTimeout(() => window.location.reload(), 60000);
+            setTimeout(function() {{ window.location.reload(); }}, 60000);
         </script>
     </body>
     </html>
@@ -23999,7 +24011,7 @@ async def ai_alerts():
 
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
 async def ai_gem_hunter():
-    """Détection de cryptos prometteuses dans le top 50 - FUTURES GEMS avec scoring"""
+    """Détection de cryptos prometteuses - TOP 50 avec scoring"""
     
     # Récupérer le top 50
     cryptos = await get_top_50_cryptos()
@@ -24015,16 +24027,15 @@ async def ai_gem_hunter():
         change_7d = c.get('price_change_percentage_7d_in_currency', change_24h * 3)
         rank = c.get('market_cap_rank', 100)
         
-        # Market cap bas = plus de potentiel (max 3 pts)
+        # Scoring
         if mcap > 0:
-            if mcap < 500000000:  # < $500M
+            if mcap < 500000000:
                 score += 3.0
-            elif mcap < 2000000000:  # < $2B
+            elif mcap < 2000000000:
                 score += 2.5
-            elif mcap < 5000000000:  # < $5B
+            elif mcap < 5000000000:
                 score += 1.5
         
-        # Volume/MCap ratio (max 2 pts)
         if mcap > 0 and volume > 0:
             vol_ratio = (volume / mcap) * 100
             if vol_ratio > 20:
@@ -24034,7 +24045,6 @@ async def ai_gem_hunter():
             elif vol_ratio > 5:
                 score += 0.5
         
-        # Momentum 24h (max 2 pts)
         if change_24h > 10:
             score += 2.0
         elif change_24h > 5:
@@ -24042,7 +24052,6 @@ async def ai_gem_hunter():
         elif change_24h > 2:
             score += 0.5
         
-        # Momentum 7j (max 2 pts)
         if change_7d > 25:
             score += 2.0
         elif change_7d > 15:
@@ -24050,7 +24059,6 @@ async def ai_gem_hunter():
         elif change_7d > 8:
             score += 0.5
         
-        # Rang market cap (max 1 pt)
         if rank >= 30 and rank <= 50:
             score += 1.0
         elif rank >= 20 and rank < 30:
@@ -24058,14 +24066,12 @@ async def ai_gem_hunter():
         
         c['gem_score'] = min(score, 10.0)
         
-        # Garder seulement celles avec score >= 4
         if score >= 4.0:
             gems.append(c)
     
-    # Trier par score
     gems.sort(key=lambda x: x['gem_score'], reverse=True)
     
-    # Générer HTML pour toutes les gems
+    # Générer HTML
     gems_html = ""
     for gem in gems[:50]:
         score = gem['gem_score']
@@ -24078,9 +24084,15 @@ async def ai_gem_hunter():
         change_7d = gem.get('price_change_percentage_7d_in_currency', change_24h * 3)
         rank = gem.get('market_cap_rank', 0)
         
+        # Formater le prix CORRECTEMENT
+        if price < 1:
+            price_formatted = f"{price:,.6f}"
+        else:
+            price_formatted = f"{price:,.2f}"
+        
         vol_ratio = (volume / mcap * 100) if mcap > 0 else 0
         
-        # Déterminer potentiel
+        # Potentiel
         if score >= 8.5:
             potential = "15-30x"
             potential_class = "ultra"
@@ -24094,13 +24106,19 @@ async def ai_gem_hunter():
             potential = "3-5x"
             potential_class = "low"
         
-        # Couleur du score
+        # Couleur score
         if score >= 8:
             score_class = "excellent"
         elif score >= 6:
             score_class = "good"
         else:
             score_class = "ok"
+        
+        # Couleurs
+        change_24h_class = "positive" if change_24h > 0 else "negative"
+        change_7d_class = "positive" if change_7d > 0 else "negative"
+        momentum_class = "positive" if change_24h > 0 else "negative"
+        momentum_text = "Fort" if abs(change_24h) > 5 else ("Moyen" if abs(change_24h) > 2 else "Faible")
         
         gems_html += f"""
         <div class="gem-card">
@@ -24112,10 +24130,10 @@ async def ai_gem_hunter():
                 </div>
                 <div class="gem-score {score_class}">{score:.1f}/10</div>
             </div>
-            <div class="gem-price">${price:,.6f if price < 1 else price:,.2f}</div>
+            <div class="gem-price">${price_formatted}</div>
             <div class="gem-change">
-                <span class="{'positive' if change_24h > 0 else 'negative'}">{change_24h:+.2f}% (24h)</span>
-                <span class="{'positive' if change_7d > 0 else 'negative'}">{change_7d:+.2f}% (7j est.)</span>
+                <span class="{change_24h_class}">{change_24h:+.2f}% (24h)</span>
+                <span class="{change_7d_class}">{change_7d:+.2f}% (7j est.)</span>
             </div>
             <div class="gem-metrics">
                 <div class="metric">
@@ -24128,7 +24146,7 @@ async def ai_gem_hunter():
                 </div>
                 <div class="metric">
                     <span>Momentum</span>
-                    <strong class="{'positive' if change_24h > 0 else 'negative'}">{'Fort' if abs(change_24h) > 5 else 'Moyen' if abs(change_24h) > 2 else 'Faible'}</strong>
+                    <strong class="{momentum_class}">{momentum_text}</strong>
                 </div>
             </div>
             <div class="potential {potential_class}">
@@ -24145,7 +24163,7 @@ async def ai_gem_hunter():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Gem Hunter - Top 50</title>
+        <title>AI Gem Hunter - Top 50 Gems</title>
         <style>
             *{{margin:0;padding:0;box-sizing:border-box}}
             body{{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e3a8a,#7e22ce);color:#fff;padding:40px 20px;min-height:100vh}}
@@ -24183,12 +24201,12 @@ async def ai_gem_hunter():
     <body>
         <div class="container">
             <h1>💎 AI GEM HUNTER</h1>
-            <p class="subtitle">Détection de cryptos prometteuses - Analyse TOP 50 avec scoring intelligent</p>
-            <p class="stats">🔍 {total_gems} futures gems détectées sur 50 cryptos analysées</p>
+            <p class="subtitle">Détection de cryptos prometteuses - Analyse TOP 50</p>
+            <p class="stats">🔍 {total_gems} futures gems détectées sur 50 cryptos</p>
             <div class="gems-grid">{gems_html}</div>
         </div>
         <script>
-            setTimeout(() => window.location.reload(), 180000);
+            setTimeout(function() {{ window.location.reload(); }}, 180000);
         </script>
     </body>
     </html>

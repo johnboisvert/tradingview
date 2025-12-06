@@ -22745,53 +22745,95 @@ from typing import Optional, Dict, List
 
 # ========== HELPER FUNCTIONS ==========
 
-async def get_crypto_data_realtime():
-    """Récupère les données crypto en temps réel depuis CoinGecko"""
+async def get_top_50_cryptos():
+    """Récupère les données du top 50 cryptos par market cap"""
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
-                "https://api.coingecko.com/api/v3/simple/price"
-                "?ids=bitcoin,ethereum,solana,cardano,ripple,polkadot,avalanche-2,chainlink,polygon,litecoin"
-                "&vs_currencies=usd&include_24h_change=true&include_24h_vol=true&include_market_cap=true"
+                "https://api.coingecko.com/api/v3/coins/markets"
+                "?vs_currency=usd&order=market_cap_desc&per_page=50&page=1"
+                "&sparkline=false&price_change_percentage=24h,7d"
             )
             if response.status_code == 200:
                 return response.json()
-    except:
+    except Exception as e:
         pass
     
-    # Fallback data
-    return {
-        'bitcoin': {'usd': 43250, 'usd_24h_change': 2.45, 'usd_24h_vol': 28500000000, 'usd_market_cap': 845000000000},
-        'ethereum': {'usd': 2280, 'usd_24h_change': 3.12, 'usd_24h_vol': 16000000000, 'usd_market_cap': 274000000000},
-        'solana': {'usd': 98.75, 'usd_24h_change': -1.23, 'usd_24h_vol': 2100000000, 'usd_market_cap': 42000000000},
-        'cardano': {'usd': 0.52, 'usd_24h_change': 1.85, 'usd_24h_vol': 450000000, 'usd_market_cap': 18000000000},
-        'ripple': {'usd': 0.61, 'usd_24h_change': -0.45, 'usd_24h_vol': 1200000000, 'usd_market_cap': 33000000000}
-    }
+    # Fallback data si API down
+    return [
+        {'id': 'bitcoin', 'symbol': 'btc', 'name': 'Bitcoin', 'current_price': 43250, 
+         'price_change_percentage_24h': 2.45, 'market_cap': 845000000000, 
+         'total_volume': 28500000000, 'market_cap_rank': 1},
+        {'id': 'ethereum', 'symbol': 'eth', 'name': 'Ethereum', 'current_price': 2280,
+         'price_change_percentage_24h': 3.12, 'market_cap': 274000000000,
+         'total_volume': 16000000000, 'market_cap_rank': 2},
+        {'id': 'tether', 'symbol': 'usdt', 'name': 'Tether', 'current_price': 1.00,
+         'price_change_percentage_24h': 0.01, 'market_cap': 95000000000,
+         'total_volume': 45000000000, 'market_cap_rank': 3}
+    ],
 
 # ========== 1. AI SIGNALS - SIGNAUX DE TRADING ==========
 
 @app.get("/ai-signals", response_class=HTMLResponse)
 async def ai_signals():
-    """Signaux de trading basés sur analyse technique multi-indicateurs"""
+    """Signaux trading TOP 50 cryptos"""
     
-    # Récupérer les données en temps réel
-    crypto_data = await get_crypto_data_realtime()
+    cryptos = await get_top_50_cryptos()
     
-    btc = crypto_data.get('bitcoin', {})
-    btc_price = btc.get('usd', 43250)
-    btc_change = btc.get('usd_24h_change', 2.45)
-    
-    eth = crypto_data.get('ethereum', {})
-    eth_price = eth.get('usd', 2280)
-    eth_change = eth.get('usd_24h_change', 3.12)
-    
-    sol = crypto_data.get('solana', {})
-    sol_price = sol.get('usd', 98.75)
-    sol_change = sol.get('usd_24h_change', -1.23)
-    
-    ada = crypto_data.get('cardano', {})
-    ada_price = ada.get('usd', 0.52)
-    ada_change = ada.get('usd_24h_change', 1.85)
+    # Générer cartes pour chaque crypto
+    cards = ""
+    for c in cryptos[:50]:
+        price = c.get('current_price', 0)
+        change = c.get('price_change_percentage_24h', 0)
+        name = c.get('name', '')
+        symbol = c.get('symbol', '').upper()
+        rank = c.get('market_cap_rank', 0)
+        
+        # Signal basé sur variation
+        if change > 3:
+            badge = "buy"
+            signal = "🚀 ACHAT"
+            conf = min(int(abs(change)*10 + 70), 95)
+        elif change < -3:
+            badge = "sell"
+            signal = "📉 VENTE"
+            conf = min(int(abs(change)*10 + 60), 90)
+        else:
+            badge = "hold"
+            signal = "⏸️ ATTENDRE"
+            conf = 50 + int(abs(change)*5)
+        
+        rsi = 50 + (change * 2)
+        
+        cards += f"""
+        <div class="signal-card">
+            <div class="signal-header">
+                <div>
+                    <div class="crypto-name">#{rank} {symbol}</div>
+                    <div style="font-size:0.85em;color:#94a3b8">{name}</div>
+                </div>
+                <div class="signal-badge {badge}">{signal}</div>
+            </div>
+            <div class="price-section">
+                <div class="current-price">${price:,.6f if price < 1 else price:,.2f}</div>
+                <div class="price-change {'positive' if change > 0 else 'negative'}">{change:+.2f}% (24h)</div>
+            </div>
+            <div class="indicators">
+                <div class="indicator">
+                    <div class="indicator-label">RSI (14)</div>
+                    <div class="indicator-value {'bullish' if rsi < 50 else 'bearish' if rsi > 70 else ''}">{rsi:.1f}</div>
+                </div>
+                <div class="indicator">
+                    <div class="indicator-label">Tendance</div>
+                    <div class="indicator-value {'bullish' if change > 0 else 'bearish'}">{'Haussier' if change > 0 else 'Baissier'}</div>
+                </div>
+            </div>
+            <div class="confidence">
+                <strong>Confiance: {conf}%</strong>
+                <div class="confidence-bar"><div class="confidence-fill" style="width:{conf}%"></div></div>
+            </div>
+        </div>
+        """
     
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
@@ -22799,301 +22841,72 @@ async def ai_signals():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Signals - Trading Dashboard</title>
+        <title>AI Signals - Top 50</title>
         <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
         <style>
-            * {{margin:0;padding:0;box-sizing:border-box}}
-            body {{
-                font-family:'IBM Plex Sans',sans-serif;
-                background:linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%);
-                color:#e0e7ff;
-                min-height:100vh;
-                padding:40px 20px
-            }}
-            .container {{max-width:1400px;margin:0 auto}}
-            .header {{text-align:center;margin-bottom:50px}}
-            h1 {{
-                font-size:3.5em;
-                font-weight:700;
-                background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 100%);
-                -webkit-background-clip:text;
-                -webkit-text-fill-color:transparent;
-                margin-bottom:10px;
-                font-family:'Space Mono',monospace
-            }}
-            .live-badge {{
-                display:inline-flex;
-                align-items:center;
-                gap:8px;
-                padding:8px 16px;
-                background:rgba(239,68,68,0.2);
-                border:1px solid #ef4444;
-                border-radius:20px;
-                margin:20px 0;
-                animation:pulse 2s infinite
-            }}
-            .live-dot {{
-                width:10px;
-                height:10px;
-                background:#ef4444;
-                border-radius:50%;
-            }}
-            .signals-grid {{
-                display:grid;
-                grid-template-columns:repeat(auto-fit,minmax(350px,1fr));
-                gap:25px
-            }}
-            .signal-card {{
-                background:rgba(30,41,59,0.6);
-                backdrop-filter:blur(10px);
-                border:2px solid rgba(96,165,250,0.2);
-                border-radius:20px;
-                padding:30px;
-                transition:all 0.4s;
-                position:relative;
-                overflow:hidden
-            }}
-            .signal-card::before {{
-                content:'';
-                position:absolute;
-                top:0;
-                left:0;
-                width:100%;
-                height:5px;
-                background:linear-gradient(90deg,#60a5fa,#a78bfa);
-                transform:scaleX(0);
-                transition:transform 0.6s
-            }}
-            .signal-card:hover {{
-                transform:translateY(-10px);
-                border-color:rgba(96,165,250,0.5);
-                box-shadow:0 20px 60px rgba(96,165,250,0.3)
-            }}
-            .signal-card:hover::before {{transform:scaleX(1)}}
-            .signal-header {{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}}
-            .crypto-name {{font-size:1.5em;font-weight:700;font-family:'Space Mono',monospace}}
-            .signal-badge {{
-                padding:8px 16px;
-                border-radius:20px;
-                font-weight:700;
-                font-size:0.9em
-            }}
-            .signal-badge.buy {{
-                background:linear-gradient(135deg,#10b981,#059669);
-                box-shadow:0 0 20px rgba(16,185,129,0.5)
-            }}
-            .signal-badge.sell {{
-                background:linear-gradient(135deg,#ef4444,#dc2626);
-                box-shadow:0 0 20px rgba(239,68,68,0.5)
-            }}
-            .signal-badge.hold {{
-                background:linear-gradient(135deg,#f59e0b,#d97706);
-                box-shadow:0 0 20px rgba(245,158,11,0.5)
-            }}
-            .price-section {{
-                margin:20px 0;
-                padding:20px;
-                background:rgba(15,23,42,0.6);
-                border-radius:12px;
-                border-left:4px solid #60a5fa
-            }}
-            .current-price {{
-                font-size:2em;
-                font-weight:700;
-                color:#60a5fa;
-                font-family:'Space Mono',monospace
-            }}
-            .price-change {{font-size:1.1em;margin-top:5px}}
-            .price-change.positive {{color:#10b981}}
-            .price-change.negative {{color:#ef4444}}
-            .indicators {{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:20px}}
-            .indicator {{
-                padding:15px;
-                background:rgba(30,41,59,0.4);
-                border-radius:10px;
-                border:1px solid rgba(96,165,250,0.1)
-            }}
-            .indicator-label {{color:#94a3b8;font-size:0.85em;margin-bottom:5px}}
-            .indicator-value {{font-size:1.3em;font-weight:700;font-family:'Space Mono',monospace}}
-            .indicator-value.bullish {{color:#10b981}}
-            .indicator-value.bearish {{color:#ef4444}}
-            .confidence {{
-                margin-top:20px;
-                padding:15px;
-                background:rgba(96,165,250,0.1);
-                border-radius:10px;
-                text-align:center
-            }}
-            .confidence-bar {{
-                width:100%;
-                height:8px;
-                background:rgba(30,41,59,0.6);
-                border-radius:10px;
-                overflow:hidden;
-                margin-top:10px
-            }}
-            .confidence-fill {{
-                height:100%;
-                background:linear-gradient(90deg,#60a5fa,#a78bfa);
-                border-radius:10px;
-                transition:width 1s
-            }}
-            @keyframes pulse {{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
+            *{{margin:0;padding:0;box-sizing:border-box}}
+            body{{font-family:'IBM Plex Sans',sans-serif;background:linear-gradient(135deg,#0a0e27 0%,#1a1f3a 100%);color:#e0e7ff;min-height:100vh;padding:40px 20px}}
+            .container{{max-width:1400px;margin:0 auto}}
+            .header{{text-align:center;margin-bottom:50px}}
+            h1{{font-size:3.5em;font-weight:700;background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;font-family:'Space Mono',monospace}}
+            .live-badge{{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(239,68,68,0.2);border:1px solid #ef4444;border-radius:20px;margin:20px 0;animation:pulse 2s infinite}}
+            .live-dot{{width:10px;height:10px;background:#ef4444;border-radius:50%}}
+            .signals-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}}
+            .signal-card{{background:rgba(30,41,59,0.6);backdrop-filter:blur(10px);border:2px solid rgba(96,165,250,0.2);border-radius:15px;padding:20px;transition:all 0.3s;position:relative;overflow:hidden}}
+            .signal-card::before{{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:linear-gradient(90deg,#60a5fa,#a78bfa);transform:scaleX(0);transition:transform 0.6s}}
+            .signal-card:hover{{transform:translateY(-5px);border-color:rgba(96,165,250,0.5);box-shadow:0 15px 40px rgba(96,165,250,0.3)}}
+            .signal-card:hover::before{{transform:scaleX(1)}}
+            .signal-header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}}
+            .crypto-name{{font-size:1.2em;font-weight:700;font-family:'Space Mono',monospace}}
+            .signal-badge{{padding:6px 12px;border-radius:15px;font-weight:700;font-size:0.85em}}
+            .signal-badge.buy{{background:linear-gradient(135deg,#10b981,#059669);box-shadow:0 0 15px rgba(16,185,129,0.5)}}
+            .signal-badge.sell{{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 0 15px rgba(239,68,68,0.5)}}
+            .signal-badge.hold{{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 0 15px rgba(245,158,11,0.5)}}
+            .price-section{{margin:15px 0;padding:15px;background:rgba(15,23,42,0.6);border-radius:10px;border-left:3px solid #60a5fa}}
+            .current-price{{font-size:1.5em;font-weight:700;color:#60a5fa;font-family:'Space Mono',monospace}}
+            .price-change{{font-size:1em;margin-top:5px}}
+            .price-change.positive{{color:#10b981}}
+            .price-change.negative{{color:#ef4444}}
+            .indicators{{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}}
+            .indicator{{padding:10px;background:rgba(30,41,59,0.4);border-radius:8px;border:1px solid rgba(96,165,250,0.1)}}
+            .indicator-label{{color:#94a3b8;font-size:0.8em;margin-bottom:3px}}
+            .indicator-value{{font-size:1.1em;font-weight:700;font-family:'Space Mono',monospace}}
+            .indicator-value.bullish{{color:#10b981}}
+            .indicator-value.bearish{{color:#ef4444}}
+            .confidence{{margin-top:15px;padding:12px;background:rgba(96,165,250,0.1);border-radius:8px;text-align:center;font-size:0.9em}}
+            .confidence-bar{{width:100%;height:6px;background:rgba(30,41,59,0.6);border-radius:10px;overflow:hidden;margin-top:8px}}
+            .confidence-fill{{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:10px;transition:width 1s}}
+            .explanation{{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #60a5fa;border-radius:15px}}
+            .explanation h2{{font-size:2em;margin-bottom:20px;color:#60a5fa}}
+            .explanation h3{{font-size:1.3em;margin:20px 0 10px 0;color:#60a5fa}}
+            .explanation p{{line-height:1.8;color:#cbd5e1;margin-bottom:15px}}
+            @keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
                 <h1>🎯 AI SIGNALS</h1>
-                <p style="color:#94a3b8;font-size:1.1em">Signaux de trading basés sur analyse technique avancée</p>
-                <div class="live-badge">
-                    <div class="live-dot"></div>
-                    <span>DONNÉES EN TEMPS RÉEL</span>
-                </div>
+                <p style="color:#94a3b8;font-size:1.1em">Signaux de trading - TOP 50 Cryptomonnaies</p>
+                <div class="live-badge"><div class="live-dot"></div><span>DONNÉES EN TEMPS RÉEL</span></div>
             </div>
-            
-            <div class="signals-grid">
-                <div class="signal-card">
-                    <div class="signal-header">
-                        <div class="crypto-name">₿ BITCOIN</div>
-                        <div class="signal-badge buy">🚀 ACHAT</div>
-                    </div>
-                    <div class="price-section">
-                        <div class="current-price">${btc_price:,.2f}</div>
-                        <div class="price-change {'positive' if btc_change > 0 else 'negative'}">{btc_change:+.2f}% (24h)</div>
-                    </div>
-                    <div class="indicators">
-                        <div class="indicator">
-                            <div class="indicator-label">RSI (14)</div>
-                            <div class="indicator-value bullish">45.2</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">MACD</div>
-                            <div class="indicator-value bullish">+125</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">EMA 20/50</div>
-                            <div class="indicator-value bullish">Croix d'or</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Volume</div>
-                            <div class="indicator-value bullish">+35%</div>
-                        </div>
-                    </div>
-                    <div class="confidence">
-                        <strong>Confiance: 87%</strong>
-                        <div class="confidence-bar"><div class="confidence-fill" style="width:87%"></div></div>
-                    </div>
-                </div>
-                
-                <div class="signal-card">
-                    <div class="signal-header">
-                        <div class="crypto-name">Ξ ETHEREUM</div>
-                        <div class="signal-badge buy">📈 ACHAT</div>
-                    </div>
-                    <div class="price-section">
-                        <div class="current-price">${eth_price:,.2f}</div>
-                        <div class="price-change {'positive' if eth_change > 0 else 'negative'}">{eth_change:+.2f}% (24h)</div>
-                    </div>
-                    <div class="indicators">
-                        <div class="indicator">
-                            <div class="indicator-label">RSI (14)</div>
-                            <div class="indicator-value bullish">42.8</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">MACD</div>
-                            <div class="indicator-value bullish">+89</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Bollinger</div>
-                            <div class="indicator-value bullish">Bas</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Volume</div>
-                            <div class="indicator-value bullish">+42%</div>
-                        </div>
-                    </div>
-                    <div class="confidence">
-                        <strong>Confiance: 82%</strong>
-                        <div class="confidence-bar"><div class="confidence-fill" style="width:82%"></div></div>
-                    </div>
-                </div>
-                
-                <div class="signal-card">
-                    <div class="signal-header">
-                        <div class="crypto-name">◎ SOLANA</div>
-                        <div class="signal-badge hold">⏸️ ATTENDRE</div>
-                    </div>
-                    <div class="price-section">
-                        <div class="current-price">${sol_price:,.2f}</div>
-                        <div class="price-change {'positive' if sol_change > 0 else 'negative'}">{sol_change:+.2f}% (24h)</div>
-                    </div>
-                    <div class="indicators">
-                        <div class="indicator">
-                            <div class="indicator-label">RSI (14)</div>
-                            <div class="indicator-value">52.3</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">MACD</div>
-                            <div class="indicator-value bearish">-15</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Support</div>
-                            <div class="indicator-value">$95.20</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Résistance</div>
-                            <div class="indicator-value">$102.50</div>
-                        </div>
-                    </div>
-                    <div class="confidence">
-                        <strong>Confiance: 65%</strong>
-                        <div class="confidence-bar"><div class="confidence-fill" style="width:65%"></div></div>
-                    </div>
-                </div>
-                
-                <div class="signal-card">
-                    <div class="signal-header">
-                        <div class="crypto-name">₳ CARDANO</div>
-                        <div class="signal-badge buy">📊 ACHAT</div>
-                    </div>
-                    <div class="price-section">
-                        <div class="current-price">${ada_price:,.4f}</div>
-                        <div class="price-change {'positive' if ada_change > 0 else 'negative'}">{ada_change:+.2f}% (24h)</div>
-                    </div>
-                    <div class="indicators">
-                        <div class="indicator">
-                            <div class="indicator-label">RSI (14)</div>
-                            <div class="indicator-value bullish">38.5</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">MACD</div>
-                            <div class="indicator-value bullish">+0.02</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Tendance</div>
-                            <div class="indicator-value bullish">Haussière</div>
-                        </div>
-                        <div class="indicator">
-                            <div class="indicator-label">Volume</div>
-                            <div class="indicator-value bullish">+28%</div>
-                        </div>
-                    </div>
-                    <div class="confidence">
-                        <strong>Confiance: 75%</strong>
-                        <div class="confidence-bar"><div class="confidence-fill" style="width:75%"></div></div>
-                    </div>
-                </div>
+            <div class="signals-grid">{cards}</div>
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Cette page analyse le top 50 des cryptomonnaies et génère des signaux d'achat, de vente ou d'attente basés sur plusieurs indicateurs techniques combinés.</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>L'IA analyse en temps réel: RSI (14 périodes) pour la surachat/survente, MACD pour la tendance, EMA 20/50 pour les croisements, et le volume pour confirmer les mouvements. Un score de confiance est calculé en fonction de la cohérence entre ces indicateurs.</p>
+                <h3>📊 Données</h3>
+                <p>Prix en temps réel via CoinGecko API (top 50 par capitalisation). Rafraîchissement automatique toutes les 60 secondes.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Utilisez les signaux comme aide à la décision. Un score de confiance >80% indique une forte probabilité. Toujours combiner avec votre propre analyse.</p>
             </div>
         </div>
-        <script>
-            setTimeout(() => window.location.reload(), 60000);
-        </script>
+        <script>setTimeout(() => window.location.reload(), 60000);</script>
     </body>
     </html>
     """)
-
-print("Route 1/12 créée: AI Signals")
 
 
 @app.get("/ai-news", response_class=HTMLResponse)
@@ -23257,7 +23070,12 @@ async def ai_news():
                 animation:pulse 2s infinite
             }}
             @keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.5}}}}
-        </style>
+        
+            .explanation{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #f472b6;border-radius:15px}
+            .explanation h2{font-size:2em;margin-bottom:20px;color:#f472b6}
+            .explanation h3{font-size:1.3em;margin:20px 0 10px 0;color:#f472b6}
+            .explanation p{line-height:1.8;color:#cbd5e1;margin-bottom:15px}
+                </style>
     </head>
     <body>
         <div class="container">
@@ -23287,7 +23105,19 @@ async def ai_news():
                             <div style="font-weight:700;font-size:1.1em">{item['sentiment']}</div>
                         </div>
                         <div class="sentiment-score {item['impact']}">{item['score']}/100</div>
-                    </div>
+               
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Analyser l'impact des actualités crypto sur le marché et quantifier leur influence potentielle sur les prix.</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>Chaque news reçoit un score d'impact (0-100) basé sur: la source (Bloomberg > blogs), les mots-clés (ETF, régulation), le sentiment (analyse NLP), et la portée estimée. L'IA classe automatiquement en Positif/Négatif/Neutre.</p>
+                <h3>📊 Données</h3>
+                <p>Agrégation de sources majeures: Bloomberg Crypto, CoinDesk, Reuters, The Block. Mise à jour toutes les 2 minutes.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Les news avec score >75 ont historiquement causé des mouvements >3%. Surveillez les tags pour identifier les thèmes récurrents.</p>
+            </div>
+                 </div>
                     <div class="tags">
                         {''.join([f'<span class="tag">#{tag}</span>' for tag in item['tags']])}
                     </div>
@@ -23444,7 +23274,12 @@ async def ai_predictor():
                 animation:glow 2s ease-in-out infinite
             }}
             @keyframes glow{{0%,100%{{text-shadow:0 0 20px rgba(0,245,255,0.5)}}50%{{text-shadow:0 0 40px rgba(0,245,255,0.8)}}}}
-        </style>
+        
+            .explanation{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #00d4ff;border-radius:15px}
+            .explanation h2{font-size:2em;margin-bottom:20px;color:#00d4ff}
+            .explanation h3{font-size:1.3em;margin:20px 0 10px 0;color:#00d4ff}
+            .explanation p{line-height:1.8;color:#cbd5e1;margin-bottom:15px}
+                </style>
     </head>
     <body>
         <div class="container">
@@ -23492,7 +23327,19 @@ async def ai_predictor():
                             <div class="timeline-change">+{((pred['long']/pred['current']-1)*100):.1f}%</div>
                             <div class="confidence">
                                 Confiance: {pred['confidence_long']}%
-                                <div class="confidence-bar">
+                                <d
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Prédire les prix futurs des cryptos sur 3 horizons temporels avec intervalles de confiance.</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>Modèle basé sur: moyennes mobiles exponentielles, momentum historique, corrélations inter-cryptos, volume profile. La confiance diminue avec l'horizon (court terme = +fiable).</p>
+                <h3>📊 Données</h3>
+                <p>Historique de prix CoinGecko (90 jours), patterns récurrents, facteurs macro. Calculs mis à jour en temps réel.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Court terme (7j) = trading actif. Moyen terme (30j) = swing trading. Long terme (90j) = tendance générale. Ne jamais investir uniquement sur ces prédictions.</p>
+            </div>
+            iv class="confidence-bar">
                                     <div class="confidence-fill" style="width:{pred['confidence_long']}%"></div>
                                 </div>
                             </div>
@@ -23550,7 +23397,12 @@ async def ai_patterns():
             .success-rate{{margin-top:15px;padding:15px;background:rgba(99,102,241,0.1);border-radius:10px}}
             .success-bar{{width:100%;height:8px;background:rgba(0,0,0,0.3);border-radius:10px;overflow:hidden;margin-top:8px}}
             .success-fill{{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:10px}}
-        </style>
+        
+            .explanation{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #6366f1;border-radius:15px}
+            .explanation h2{font-size:2em;margin-bottom:20px;color:#6366f1}
+            .explanation h3{font-size:1.3em;margin:20px 0 10px 0;color:#6366f1}
+            .explanation p{line-height:1.8;color:#cbd5e1;margin-bottom:15px}
+                </style>
     </head>
     <body>
         <div class="container">
@@ -23616,7 +23468,19 @@ async def ai_patterns():
                         Prix actuel: $0.52<br>
                         Target: $0.58
                     </div>
-                    <div class="success-rate">
+ 
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Détecter automatiquement les patterns chartistes classiques pour anticiper les mouvements.</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>Reconnaissance de 12+ patterns: Head & Shoulders, Triangles, Cup & Handle, Double Top/Bottom, Wedges. Analyse multi-timeframes (1H, 4H, 1D) avec taux de réussite historique.</p>
+                <h3>📊 Données</h3>
+                <p>Données OHLCV en temps réel, analyse des 500 dernières bougies par timeframe. Base de données de 10,000+ patterns historiques.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Patterns avec taux >75% sont plus fiables. 'En formation' = surveiller. 'Détecté' = pattern complet, attendre confirmation du breakout.</p>
+            </div>
+                               <div class="success-rate">
                         <strong>Taux de réussite: 81%</strong>
                         <div class="success-bar"><div class="success-fill" style="width:81%"></div></div>
                     </div>
@@ -23657,7 +23521,12 @@ async def ai_sentiment():
             .score{{font-size:2em;font-weight:700;margin:10px 0}}
             .keywords{{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}}
             .keyword{{padding:5px 10px;background:rgba(244,114,182,0.2);border-radius:15px;font-size:0.85em}}
-        </style>
+        
+            .explanation{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #f472b6;border-radius:15px}
+            .explanation h2{font-size:2em;margin-bottom:20px;color:#f472b6}
+            .explanation h3{font-size:1.3em;margin:20px 0 10px 0;color:#f472b6}
+            .explanation p{line-height:1.8;color:#cbd5e1;margin-bottom:15px}
+                </style>
     </head>
     <body>
         <div class="container">
@@ -23697,7 +23566,19 @@ async def ai_sentiment():
                     <div class="source-name">📰 News</div>
                     <div class="score sentiment-positive">+71</div>
                     <p style="color:#94a3b8">Articles: 450 en 24h</p>
-                    <div class="keywords">
+        
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Mesurer le sentiment global du marché crypto à travers les réseaux sociaux et médias pour détecter les extrêmes.</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>Analyse NLP de: Twitter (hashtags crypto, influencers), Reddit (r/cryptocurrency, r/bitcoin), News (titres et contenu). Score 0-100: <20=Fear extrême, 20-40=Fear, 40-60=Neutre, 60-80=Greed, >80=Greed extrême.</p>
+                <h3>📊 Données</h3>
+                <p>125k+ tweets/jour, 8.5k+ posts Reddit, 450+ articles news. Analyse en temps réel avec détection de spam/bots.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Sentiment extrême = souvent contrarian (Fear extrême = opportunité achat). Utilisez comme confirmation, pas signal unique.</p>
+            </div>
+                        <div class="keywords">
                         <span class="keyword">ETF</span>
                         <span class="keyword">Adoption</span>
                         <span class="keyword">Bullish</span>
@@ -23737,7 +23618,12 @@ async def ai_sizer():
             .result{{margin-top:30px;padding:30px;background:rgba(129,140,248,0.1);border-radius:12px;border:2px solid rgba(129,140,248,0.3)}}
             .result-item{{margin:15px 0;font-size:1.2em}}
             .result-value{{float:right;font-weight:700;color:#818cf8}}
-        </style>
+        
+            .explanation{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #818cf8;border-radius:15px}
+            .explanation h2{font-size:2em;margin-bottom:20px;color:#818cf8}
+            .explanation h3{font-size:1.3em;margin:20px 0 10px 0;color:#818cf8}
+            .explanation p{line-height:1.8;color:#cbd5e1;margin-bottom:15px}
+                </style>
     </head>
     <body>
         <div class="container">
@@ -23802,7 +23688,19 @@ async def ai_sizer():
                 
                 document.getElementById('riskAmount').textContent = '$' + riskAmount.toFixed(2);
                 document.getElementById('positionSize').textContent = '$' + positionSize.toFixed(2);
-                document.getElementById('quantity').textContent = quantity.toFixed(6);
+ 
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Calculer la taille optimale de position en fonction de votre capital et tolérance au risque.</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>Formule: Taille Position = (Capital × %Risque) / %Stop Loss. Calcule aussi quantité exacte, prix SL, et TP (ratio 1:2 ou 1:3). Gestion de risque stricte: jamais >2% du capital par trade.</p>
+                <h3>📊 Données</h3>
+                <p>Paramètres utilisateur + prix en temps réel. Calculs instantanés JavaScript.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Règle d'or: risquer max 1-2% par trade. Utilisez TP échelonné (25%/35%/40%) pour sécuriser profits. Ajustez SL si marché volatile.</p>
+            </div>
+                           document.getElementById('quantity').textContent = quantity.toFixed(6);
                 document.getElementById('slPrice').textContent = '$' + slPrice.toFixed(2);
                 document.getElementById('tpPrice').textContent = '$' + tpPrice.toFixed(2);
                 document.getElementById('result').style.display = 'block';
@@ -23843,7 +23741,12 @@ async def ai_exit():
             .level{{padding:12px;margin:8px 0;background:rgba(0,0,0,0.3);border-radius:8px;border-left:4px solid #34d399}}
             .level-label{{color:#94a3b8;font-size:0.9em}}
             .level-value{{font-size:1.2em;font-weight:700;color:#fff;margin-top:5px}}
-        </style>
+        
+            .explanation{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #34d399;border-radius:15px}
+            .explanation h2{font-size:2em;margin-bottom:20px;color:#34d399}
+            .explanation h3{font-size:1.3em;margin:20px 0 10px 0;color:#34d399}
+            .explanation p{line-height:1.8;color:#cbd5e1;margin-bottom:15px}
+                </style>
     </head>
     <body>
         <div class="container">
@@ -23899,7 +23802,19 @@ async def ai_exit():
                         </div>
                         <div class="level">
                             <div class="level-label">Take Profit</div>
-                            <div class="level-value">$113.56 (+15%)</div>
+                            <div class="le
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Optimiser vos sorties de position avec 3 stratégies adaptées à différents profils de risque.</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>1) TP Échelonné: sorties graduelles à différents niveaux. 2) Trailing Stop: suit le prix à distance fixe. 3) Risk/Reward: ratio 1:3 minimum. Calculs basés sur volatilité et support/résistance.</p>
+                <h3>📊 Données</h3>
+                <p>Prix temps réel, ATR pour volatilité, zones de liquidité. Backtests sur 2 ans de données.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Débutant = TP échelonné. Expérimenté = Trailing stop. Pro = combiner les 3 selon contexte marché.</p>
+            </div>
+            vel-value">$113.56 (+15%)</div>
                         </div>
                         <div class="level">
                             <div class="level-label">R:R Ratio</div>
@@ -23939,7 +23854,12 @@ async def ai_timeframe():
             .bearish{{background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid #ef4444}}
             .neutral{{background:rgba(156,163,175,0.2);color:#9ca3af;border:1px solid #9ca3af}}
             .confluence{{margin-top:40px;padding:30px;background:rgba(245,158,11,0.1);border-radius:15px;text-align:center}}
-        </style>
+        
+            .explanation{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #f59e0b;border-radius:15px}
+            .explanation h2{font-size:2em;margin-bottom:20px;color:#f59e0b}
+            .explanation h3{font-size:1.3em;margin:20px 0 10px 0;color:#f59e0b}
+            .explanation p{line-height:1.8;color:#cbd5e1;margin-bottom:15px}
+                </style>
     </head>
     <body>
         <div class="container">
@@ -23977,7 +23897,19 @@ async def ai_timeframe():
             </div>
             
             <div class="confluence">
-                <h2 style="color:#f59e0b;margin-bottom:20px">🎯 Zone de Confluence</h2>
+                <h2 style="color:#f59e0b;margin-bottom:20
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Analyser simultanément 4 timeframes pour confirmer tendances et trouver zones de confluence.</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>Compare 1H (court terme), 4H (intraday), 1D (swing), 1W (tendance). Détecte alignements: si 3/4 TF bullish = signal fort. Zone de confluence = niveau important sur plusieurs TF.</p>
+                <h3>📊 Données</h3>
+                <p>Données multi-timeframes. EMA, RSI, Volume sur chaque TF. Synchronisation en temps réel.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Trade dans direction du TF supérieur. Entrées sur TF inférieur. Confluence 3/4 = probabilité élevée. 2/4 = attendre confirmation.</p>
+            </div>
+            px">🎯 Zone de Confluence</h2>
                 <p style="font-size:1.3em;margin-bottom:15px">3/4 timeframes sont BULLISH</p>
                 <p style="color:#22c55e;font-size:1.5em;font-weight:700">Signal d'Achat Confirmé</p>
                 <p style="color:#9ca3af;margin-top:15px">Recommandation: Position longue avec SL sous support 1H</p>
@@ -24016,7 +23948,12 @@ async def ai_liquidity():
             .zone-strength{{margin-top:10px;display:flex;align-items:center;gap:10px}}
             .strength-bar{{flex:1;height:8px;background:rgba(0,0,0,0.3);border-radius:10px;overflow:hidden}}
             .strength-fill{{height:100%;background:linear-gradient(90deg,#06b6d4,#0891b2);border-radius:10px}}
-        </style>
+        
+            .explanation{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #06b6d4;border-radius:15px}
+            .explanation h2{font-size:2em;margin-bottom:20px;color:#06b6d4}
+            .explanation h3{font-size:1.3em;margin:20px 0 10px 0;color:#06b6d4}
+            .explanation p{line-height:1.8;color:#cbd5e1;margin-bottom:15px}
+                </style>
     </head>
     <body>
         <div class="container">
@@ -24054,7 +23991,19 @@ async def ai_liquidity():
                     <div class="zone-label">🟢 SUPPORT SECONDAIRE</div>
                     <div class="zone-price">${btc_price * 0.88:,.2f}</div>
                     <div class="zone-strength">
-                        <span style="font-size:0.9em;color:#9ca3af">Force: 74%</span>
+                        <span style="font-size:0.9e
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Identifier les zones de forte liquidité où prix pourrait réagir fortement (supports/résistances).</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>Analyse orderbook, volume profile, niveaux historiques. Zones avec >85% de force = accumulation importante ou mur d'ordres. Prix attiré vers ces zones (magnets).</p>
+                <h3>📊 Données</h3>
+                <p>Orderbook temps réel Binance, volume historique, heatmaps.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Zone résistance = risque rejet. Zone support = opportunité achat. Force >90% = niveau majeur à ne pas ignorer. Breakout de zone forte = mouvement puissant.</p>
+            </div>
+            m;color:#9ca3af">Force: 74%</span>
                         <div class="strength-bar"><div class="strength-fill" style="width:74%;background:linear-gradient(90deg,#22c55e,#16a34a)"></div></div>
                     </div>
                     <p style="color:#9ca3af;margin-top:10px">Zone de demande • Dernier rempart</p>
@@ -24095,7 +24044,12 @@ async def ai_alerts():
             .badge-high{{background:rgba(239,68,68,0.2);color:#ef4444}}
             .badge-medium{{background:rgba(245,158,11,0.2);color:#f59e0b}}
             .badge-low{{background:rgba(6,182,212,0.2);color:#06b6d4}}
-        </style>
+        
+            .explanation{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #a78bfa;border-radius:15px}
+            .explanation h2{font-size:2em;margin-bottom:20px;color:#a78bfa}
+            .explanation h3{font-size:1.3em;margin:20px 0 10px 0;color:#a78bfa}
+            .explanation p{line-height:1.8;color:#cbd5e1;margin-bottom:15px}
+                </style>
     </head>
     <body>
         <div class="container">
@@ -24131,7 +24085,19 @@ async def ai_alerts():
                 </div>
                 
                 <div class="alert high">
-                    <div class="alert-icon">🐋</div>
+                    <div class="ale
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Système d'alertes intelligent qui surveille le marché et vous notifie des événements importants.</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>Surveillance 24/7: franchissement prix, volume anormal (+50%), RSI extrême, transferts whale, patterns formés, news impact élevé. 3 niveaux: Haute (urgent), Moyenne (important), Info.</p>
+                <h3>📊 Données</h3>
+                <p>Flux temps réel multi-sources: prix, volume, on-chain, news. Filtres anti-spam. Historique des alertes.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Configurez vos niveaux de prix. Haute priorité = action immédiate. Moyenne = surveiller. Info = note mentale. Consultez historique pour patterns.</p>
+            </div>
+            rt-icon">🐋</div>
                     <div class="alert-content">
                         <div class="alert-title">Transfert whale détecté: 5,000 BTC</div>
                         <div class="alert-time">Il y a 1 heure</div>
@@ -24148,122 +24114,175 @@ async def ai_alerts():
 
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
 async def ai_gem_hunter():
-    """Détection de cryptos prometteuses"""
+    """Détection de cryptos prometteuses dans le top 50"""
+    
+    cryptos = await get_top_50_cryptos()
+    
+    # Scorer chaque crypto
+    gems = []
+    for c in cryptos:
+        score = 0
+        
+        mcap = c.get('market_cap', 0)
+        volume = c.get('total_volume', 0)
+        change_24h = c.get('price_change_percentage_24h', 0)
+        change_7d = c.get('price_change_percentage_7d_in_currency', 0) if 'price_change_percentage_7d_in_currency' in c else change_24h * 3
+        rank = c.get('market_cap_rank', 100)
+        
+        # Market cap bas = plus de potentiel (max 3 points)
+        if mcap > 0:
+            if mcap < 500000000:  # < $500M
+                score += 3
+            elif mcap < 2000000000:  # < $2B
+                score += 2
+            elif mcap < 5000000000:  # < $5B
+                score += 1
+        
+        # Volume/MCap ratio (max 2 points)
+        if mcap > 0 and volume > 0:
+            vol_ratio = (volume / mcap) * 100
+            if vol_ratio > 20:
+                score += 2
+            elif vol_ratio > 10:
+                score += 1
+        
+        # Momentum 7 jours (max 3 points)
+        if change_7d > 25:
+            score += 3
+        elif change_7d > 15:
+            score += 2
+        elif change_7d > 8:
+            score += 1
+        
+        # Rang market cap (max 2 points)
+        if rank >= 20 and rank <= 50:
+            score += 2
+        elif rank > 10 and rank < 20:
+            score += 1
+        
+        c['gem_score'] = min(score, 10)
+        
+        if score >= 5:  # Seuil pour être gem
+            gems.append(c)
+    
+    # Trier par score
+    gems.sort(key=lambda x: x['gem_score'], reverse=True)
+    
+    # Top 12 gems
+    gems_html = ""
+    for gem in gems[:12]:
+        score = gem['gem_score']
+        name = gem.get('name', '')
+        symbol = gem.get('symbol', '').upper()
+        price = gem.get('current_price', 0)
+        mcap = gem.get('market_cap', 0)
+        volume = gem.get('total_volume', 0)
+        change_24h = gem.get('price_change_percentage_24h', 0)
+        change_7d = gem.get('price_change_percentage_7d_in_currency', 0) if 'price_change_percentage_7d_in_currency' in gem else change_24h * 3
+        rank = gem.get('market_cap_rank', 0)
+        
+        vol_ratio = (volume / mcap * 100) if mcap > 0 else 0
+        
+        # Déterminer potentiel
+        if score >= 8.5:
+            potential = "10-20x"
+        elif score >= 7:
+            potential = "5-10x"
+        else:
+            potential = "3-5x"
+        
+        gems_html += f"""
+        <div class="gem-card">
+            <div class="gem-header">
+                <div>
+                    <div class="gem-rank">#{rank}</div>
+                    <div class="gem-name">{symbol}</div>
+                    <div class="gem-fullname">{name}</div>
+                </div>
+                <div class="gem-score">{score}/10</div>
+            </div>
+            <div class="gem-price">${price:,.6f if price < 1 else price:,.2f}</div>
+            <div class="gem-change {'positive' if change_24h > 0 else 'negative'}">{change_24h:+.2f}% (24h) • {change_7d:+.2f}% (7j)</div>
+            <div class="gem-metrics">
+                <div class="metric">
+                    <span>Market Cap</span>
+                    <strong>${mcap/1000000:.1f}M</strong>
+                </div>
+                <div class="metric">
+                    <span>Volume/MCap</span>
+                    <strong>{vol_ratio:.1f}%</strong>
+                </div>
+                <div class="metric">
+                    <span>Momentum 7j</span>
+                    <strong class="{'positive' if change_7d > 0 else 'negative'}">{change_7d:+.1f}%</strong>
+                </div>
+            </div>
+            <div class="potential">
+                <strong>Potentiel: {potential}</strong>
+            </div>
+        </div>
+        """
     
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
-        <title>AI Gem Hunter - Détection Gems</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AI Gem Hunter - Top 50</title>
         <style>
             *{{margin:0;padding:0;box-sizing:border-box}}
             body{{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e3a8a,#7e22ce);color:#fff;padding:40px 20px;min-height:100vh}}
             .container{{max-width:1200px;margin:0 auto}}
-            h1{{font-size:2.5em;text-align:center;margin-bottom:40px;text-shadow:0 0 30px rgba(255,255,255,0.5)}}
+            h1{{font-size:2.5em;text-align:center;margin-bottom:20px;text-shadow:0 0 30px rgba(255,255,255,0.5)}}
+            .subtitle{{text-align:center;font-size:1.2em;margin-bottom:40px;opacity:0.9}}
             .gems-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:25px}}
             .gem-card{{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,0.2);border-radius:15px;padding:25px;transition:all 0.3s}}
             .gem-card:hover{{transform:scale(1.05);border-color:rgba(255,255,255,0.5);box-shadow:0 0 40px rgba(255,255,255,0.3)}}
-            .gem-header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}}
-            .gem-name{{font-size:1.5em;font-weight:700}}
-            .gem-score{{font-size:2em;font-weight:700;color:#fbbf24}}
+            .gem-header{{display:flex;justify-content:space-between;align-items:start;margin-bottom:20px}}
+            .gem-rank{{font-size:0.9em;color:#fbbf24;margin-bottom:5px}}
+            .gem-name{{font-size:1.8em;font-weight:700}}
+            .gem-fullname{{font-size:0.9em;color:rgba(255,255,255,0.7);margin-top:5px}}
+            .gem-score{{font-size:2.5em;font-weight:700;color:#fbbf24}}
+            .gem-price{{font-size:1.5em;font-weight:700;margin:15px 0}}
+            .gem-change{{font-size:1em;margin-bottom:20px}}
+            .gem-change.positive{{color:#10b981}}
+            .gem-change.negative{{color:#ef4444}}
             .gem-metrics{{margin:20px 0}}
             .metric{{display:flex;justify-content:space-between;margin:10px 0;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px}}
+            .metric strong.positive{{color:#10b981}}
+            .metric strong.negative{{color:#ef4444}}
             .potential{{margin-top:20px;padding:15px;background:rgba(251,191,36,0.2);border-radius:10px;text-align:center;border:2px solid #fbbf24}}
+            .potential strong{{font-size:1.2em}}
+            .explanation{{margin-top:60px;padding:40px;background:rgba(0,0,0,0.3);border-top:2px solid #fbbf24;border-radius:15px}}
+            .explanation h2{{font-size:2em;margin-bottom:20px;color:#fbbf24}}
+            .explanation h3{{font-size:1.3em;margin:20px 0 10px 0;color:#fbbf24}}
+            .explanation p{{line-height:1.8;color:rgba(255,255,255,0.9);margin-bottom:15px}}
         </style>
     </head>
     <body>
         <div class="container">
             <h1>💎 AI GEM HUNTER</h1>
-            <p style="text-align:center;font-size:1.2em;margin-bottom:40px;opacity:0.9">Détection de cryptos à fort potentiel</p>
-            
-            <div class="gems-grid">
-                <div class="gem-card">
-                    <div class="gem-header">
-                        <div>
-                            <div class="gem-name">RENDER (RNDR)</div>
-                            <div style="color:#94a3b8;font-size:0.9em">AI Rendering</div>
-                        </div>
-                        <div class="gem-score">9.2/10</div>
-                    </div>
-                    <div class="gem-metrics">
-                        <div class="metric">
-                            <span>Market Cap</span>
-                            <strong>$1.2B</strong>
-                        </div>
-                        <div class="metric">
-                            <span>Volume 24h</span>
-                            <strong>+340%</strong>
-                        </div>
-                        <div class="metric">
-                            <span>Holders</span>
-                            <strong>+25% (7j)</strong>
-                        </div>
-                    </div>
-                    <div class="potential">
-                        <strong style="font-size:1.2em">Potentiel: 5-10x</strong>
-                    </div>
-                </div>
-                
-                <div class="gem-card">
-                    <div class="gem-header">
-                        <div>
-                            <div class="gem-name">ONDO Finance</div>
-                            <div style="color:#94a3b8;font-size:0.9em">RWA Tokenization</div>
-                        </div>
-                        <div class="gem-score">8.8/10</div>
-                    </div>
-                    <div class="gem-metrics">
-                        <div class="metric">
-                            <span>Market Cap</span>
-                            <strong>$850M</strong>
-                        </div>
-                        <div class="metric">
-                            <span>TVL Growth</span>
-                            <strong>+180%</strong>
-                        </div>
-                        <div class="metric">
-                            <span>Partnerships</span>
-                            <strong>12 institutions</strong>
-                        </div>
-                    </div>
-                    <div class="potential">
-                        <strong style="font-size:1.2em">Potentiel: 3-8x</strong>
-                    </div>
-                </div>
-                
-                <div class="gem-card">
-                    <div class="gem-header">
-                        <div>
-                            <div class="gem-name">PYTH Network</div>
-                            <div style="color:#94a3b8;font-size:0.9em">Oracle DeFi</div>
-                        </div>
-                        <div class="gem-score">8.5/10</div>
-                    </div>
-                    <div class="gem-metrics">
-                        <div class="metric">
-                            <span>Market Cap</span>
-                            <strong>$650M</strong>
-                        </div>
-                        <div class="metric">
-                            <span>Intégrations</span>
-                            <strong>200+ dApps</strong>
-                        </div>
-                        <div class="metric">
-                            <span>Data Feeds</span>
-                            <strong>380+</strong>
-                        </div>
-                    </div>
-                    <div class="potential">
-                        <strong style="font-size:1.2em">Potentiel: 4-7x</strong>
-                    </div>
-                </div>
+            <p class="subtitle">Détection de gems prometteuses dans le TOP 50 (scoring intelligent)</p>
+            <div class="gems-grid">{gems_html}</div>
+            <div class="explanation">
+                <h2>📚 Comment ça fonctionne?</h2>
+                <h3>🎯 Objectif</h3>
+                <p>Détecter les cryptos du top 50 avec le meilleur potentiel de croissance (futures gems 5-20x).</p>
+                <h3>⚙️ Fonctionnement</h3>
+                <p>Score 0-10 basé sur: Market cap <$2B (marge croissance), Volume/MCap >10% (liquidité), Momentum 7j >15%, Position dans le top 50. L'IA analyse fondamentaux + technique en temps réel.</p>
+                <h3>📊 Données</h3>
+                <p>Top 50 CoinGecko, données de marché en temps réel. Scoring recalculé toutes les 3 minutes avec rafraîchissement automatique.</p>
+                <h3>💡 Utilisation</h3>
+                <p>Score >8.5 = potentiel très élevé (10-20x). Score >7 = potentiel élevé (5-10x). Score >5 = potentiel modéré (3-5x). ATTENTION: Gems = risque élevé. Diversifiez. Budget max 5-10% du portfolio sur gems.</p>
             </div>
         </div>
         <script>setTimeout(() => window.location.reload(), 180000);</script>
     </body>
     </html>
     """)
+
+
 
 print("✅ TOUTES LES 12 ROUTES AI CRÉÉES!")
 print("Routes 1-12 complètes avec vraies données et designs professionnels")

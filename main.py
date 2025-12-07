@@ -24319,387 +24319,326 @@ print("✅ TOUTES LES 12 ROUTES AI CRÉÉES!")
 
 
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
-async def ai_gem_hunter():
-    """Détection de cryptos prometteuses - TOP 50 avec scoring + Upcoming Gems + Prédictions IA"""
-    
-    # Fondamentaux des cryptos
-    CRYPTO_FUNDAMENTALS = {
-        'btc': {'category': 'Store of Value', 'description': 'Première crypto, réserve de valeur numérique décentralisée', 'usecase': 'Paiements P2P, hedge contre inflation, réserve de valeur'},
-        'eth': {'category': 'Smart Contracts Platform', 'description': 'Plateforme de smart contracts et DeFi leader mondial', 'usecase': 'DeFi, NFTs, dApps, tokenisation, staking'},
-        'usdt': {'category': 'Stablecoin', 'description': 'Stablecoin adossé au dollar américain', 'usecase': 'Trading, réserve de valeur stable, transferts'},
-        'xrp': {'category': 'Payments', 'description': 'Réseau de paiements transfrontaliers pour institutions', 'usecase': 'Paiements internationaux, liquidité bancaire'},
-        'bnb': {'category': 'Exchange Token', 'description': 'Token natif de Binance, fees réduits et staking', 'usecase': 'Fees Binance, BNB Chain, DeFi, launchpad'},
-        'sol': {'category': 'Smart Contracts Platform', 'description': 'Blockchain haute performance, 65k TPS', 'usecase': 'DeFi, NFTs, Gaming, Web3, ultra rapide'},
-        'usdc': {'category': 'Stablecoin', 'description': 'Stablecoin régulé adossé au dollar', 'usecase': 'DeFi, paiements, réserve stable'},
-        'trx': {'category': 'Content Platform', 'description': 'Plateforme de contenu décentralisé', 'usecase': 'Distribution de contenu, dApps, DeFi'},
-        'doge': {'category': 'Meme Coin', 'description': 'Crypto communautaire originale, paiements', 'usecase': 'Paiements, tips, communauté'},
-        'ada': {'category': 'Smart Contracts Platform', 'description': 'Blockchain proof-of-stake, approche scientifique', 'usecase': 'Smart contracts, DeFi, identity, governance'},
-        'link': {'category': 'Oracle Network', 'description': 'Réseau oracles décentralisé leader', 'usecase': 'Données on-chain, DeFi, smart contracts'},
-        'xlm': {'category': 'Payments', 'description': 'Paiements transfrontaliers rapides et low-cost', 'usecase': 'Remittances, micropaiements, inclusion financière'},
-        'bch': {'category': 'Payments', 'description': 'Fork de Bitcoin optimisé pour paiements', 'usecase': 'Paiements quotidiens, cash électronique'},
-        'dot': {'category': 'Interoperability', 'description': 'Multi-chain, interopérabilité entre blockchains', 'usecase': 'Parachains, cross-chain, Web3'},
-        'ltc': {'category': 'Payments', 'description': 'Silver to Bitcoin gold, paiements rapides', 'usecase': 'Paiements quotidiens, transactions rapides'},
-        'uni': {'category': 'DeFi DEX', 'description': 'DEX leader, automated market maker', 'usecase': 'Échange tokens, liquidité, yield farming'},
-        'avax': {'category': 'Smart Contracts Platform', 'description': 'Blockchain haute performance, sous-réseaux', 'usecase': 'DeFi, entreprises, gaming, subnets'},
-        'near': {'category': 'Smart Contracts Platform', 'description': 'Sharding, developer-friendly, scalable', 'usecase': 'dApps, NFTs, DeFi, Web3'},
-        'hbar': {'category': 'Enterprise Blockchain', 'description': 'Hashgraph, ultra rapide, enterprise-grade', 'usecase': 'Entreprises, supply chain, tokenisation'},
-        'etc': {'category': 'Smart Contracts Platform', 'description': 'Ethereum Classic, original Ethereum chain', 'usecase': 'Smart contracts, immutabilité'},
-        'atom': {'category': 'Interoperability', 'description': 'Hub pour blockchains interconnectées', 'usecase': 'IBC, zones Cosmos, interopérabilité'},
-        'algo': {'category': 'Smart Contracts Platform', 'description': 'Pure proof-of-stake, finance décentralisée', 'usecase': 'DeFi, CBDCs, NFTs, enterprises'},
-        'vet': {'category': 'Supply Chain', 'description': 'Blockchain pour supply chain et IoT', 'usecase': 'Traçabilité, anti-contrefaçon, logistics'},
-        'fil': {'category': 'Storage', 'description': 'Stockage décentralisé peer-to-peer', 'usecase': 'Stockage cloud décentralisé, NFTs'},
-        'icp': {'category': 'Web3 Platform', 'description': 'Internet Computer, Web3 à vitesse web', 'usecase': 'dApps full-stack, websites on-chain'},
-        'apt': {'category': 'Smart Contracts Platform', 'description': 'Move language, ex-Diem, haute performance', 'usecase': 'DeFi, gaming, NFTs, Move VM'},
-        'arb': {'category': 'Layer 2', 'description': 'Optimistic rollup pour Ethereum', 'usecase': 'Scaling Ethereum, low fees, DeFi'},
-        'op': {'category': 'Layer 2', 'description': 'Optimistic rollup, scaling Ethereum', 'usecase': 'Low fees, DeFi, NFTs, dApps'},
-        'matic': {'category': 'Layer 2', 'description': 'Polygon, scaling solution pour Ethereum', 'usecase': 'Gaming, NFTs, DeFi, entreprises'},
-        'rndr': {'category': 'GPU Rendering', 'description': 'Réseau de rendering GPU décentralisé', 'usecase': 'Rendering 3D, AI, metaverse, CGI'},
-        'grt': {'category': 'Indexing', 'description': 'Indexation et requêtes blockchain', 'usecase': 'Données blockchain, GraphQL, Web3'},
-        'imx': {'category': 'NFT Layer 2', 'description': 'Layer 2 pour NFTs, zero gas', 'usecase': 'Gaming NFTs, marketplaces, carbon neutral'},
-        'flow': {'category': 'NFT Platform', 'description': 'Blockchain pour NFTs et gaming', 'usecase': 'NBA Top Shot, gaming, collectibles'},
-        'aave': {'category': 'DeFi Lending', 'description': 'Protocole de lending/borrowing décentralisé', 'usecase': 'Prêts crypto, yield farming, flash loans'},
-        'egld': {'category': 'Smart Contracts Platform', 'description': 'MultiversX, sharding adaptatif', 'usecase': 'DeFi, metaverse, internet economy'},
-        'sand': {'category': 'Metaverse', 'description': 'Metaverse gaming, virtual real estate', 'usecase': 'Gaming, NFTs, virtual worlds, créateurs'},
-        'mana': {'category': 'Metaverse', 'description': 'Decentraland, monde virtuel 3D', 'usecase': 'Virtual real estate, events, gaming'},
-        'axs': {'category': 'Gaming', 'description': 'Axie Infinity, play-to-earn pioneer', 'usecase': 'Gaming, NFTs, breeding, scholarships'},
-        'ftm': {'category': 'Smart Contracts Platform', 'description': 'Fantom, DAG-based, DeFi optimisé', 'usecase': 'DeFi, ultra rapide, low fees'},
-        'theta': {'category': 'Video Streaming', 'description': 'Réseau de streaming vidéo décentralisé', 'usecase': 'Video CDN, edge computing, NFTs'},
-        'eos': {'category': 'Smart Contracts Platform', 'description': 'EOSIO, gouvernance on-chain', 'usecase': 'dApps, DeFi, gaming'},
-        'xtz': {'category': 'Smart Contracts Platform', 'description': 'Tezos, self-amending blockchain', 'usecase': 'NFTs, DeFi, governance, formal verification'},
-        'cake': {'category': 'DeFi DEX', 'description': 'PancakeSwap DEX sur BSC', 'usecase': 'DEX, yield farming, lottery, NFTs'},
-        'mkr': {'category': 'DeFi Stablecoin', 'description': 'Maker DAO, gouvernance de DAI stablecoin', 'usecase': 'DAI stablecoin, governance, CDP'},
-        'crv': {'category': 'DeFi DEX', 'description': 'Curve Finance, stablecoin DEX', 'usecase': 'Stablecoin swaps, low slippage'},
-        'neo': {'category': 'Smart Contracts Platform', 'description': 'Smart economy, digital identity', 'usecase': 'dApps, digital assets, China focus'},
-        'kcs': {'category': 'Exchange Token', 'description': 'KuCoin token, trading discounts', 'usecase': 'KuCoin fees, staking, yield'},
-        'snx': {'category': 'DeFi Derivatives', 'description': 'Synthetix, actifs synthétiques', 'usecase': 'Synthetic assets, derivatives, trading'},
-        'comp': {'category': 'DeFi Lending', 'description': 'Compound, lending protocol algorithmique', 'usecase': 'Lending/borrowing, yield, governance'},
-        'zil': {'category': 'Smart Contracts Platform', 'description': 'Zilliqa, sharding blockchain', 'usecase': 'High throughput, dApps, gaming'},
-    }
+async def ai_opportunity_scanner():
+    """🎯 AI OPPORTUNITY SCANNER - Système professionnel de détection d'opportunités crypto"""
     
     # Récupérer le top 50
     cryptos = await get_top_50_cryptos()
     
-    # Scorer chaque crypto
-    gems = []
-    for c in cryptos:
-        score = 0.0
-        
-        mcap = c.get('market_cap', 0)
-        volume = c.get('total_volume', 0)
-        change_24h = c.get('price_change_percentage_24h', 0)
-        change_7d = c.get('price_change_percentage_7d_in_currency', change_24h * 3)
-        rank = c.get('market_cap_rank', 100)
-        
-        # NOUVEAU SYSTÈME DE SCORING ÉQUILIBRÉ (qualité + potentiel)
-        # 1. QUALITY SCORE (0-4 pts) - Position de marché
-        if rank <= 10:
-            score += 3.5  # Top 10 = excellence établie
-        elif rank <= 20:
-            score += 3.0
-        elif rank <= 50:
-            score += 2.5
-        elif rank <= 100:
-            score += 2.0
-        else:
-            score += 1.0
-        
-        # 2. VOLUME SCORE (0-2 pts) - Liquidité
-        if mcap > 0 and volume > 0:
-            vol_ratio = (volume / mcap) * 100
-            if vol_ratio > 20:
-                score += 2.0
-            elif vol_ratio > 10:
-                score += 1.5
-            elif vol_ratio > 5:
-                score += 1.0
-            elif vol_ratio > 2:
-                score += 0.5
-        
-        # 3. MOMENTUM SCORE (0-2 pts) - Performance récente
-        if change_24h > 10:
-            score += 2.0
-        elif change_24h > 5:
-            score += 1.5
-        elif change_24h > 2:
-            score += 1.0
-        elif change_24h > 0:
-            score += 0.5
-        elif change_24h > -5:
-            score += 0.25
-        
-        # 4. GROWTH POTENTIAL (0-2 pts) - Upside potentiel
-        if mcap > 0:
-            if mcap < 500000000:  # < $500M
-                score += 2.0
-            elif mcap < 2000000000:  # < $2B
-                score += 1.5
-            elif mcap < 10000000000:  # < $10B
-                score += 1.0
-            elif mcap < 50000000000:  # < $50B
-                score += 0.5
-        
-        c['gem_score'] = min(score, 10.0)
-        gems.append(c)
+    # Analyser chaque crypto avec l'algorithme IA
+    analyzed = []
+    for crypto in cryptos:
+        analysis = analyze_opportunity_signal(crypto)
+        if analysis:
+            analyzed.append(analysis)
     
-    gems.sort(key=lambda x: x['gem_score'], reverse=True)
+    # Catégoriser en 3 sections
+    hot_opps = []
+    hidden_gems = []
+    danger_zone = []
     
-    # Générer HTML pour cryptos existantes AVEC PRÉDICTIONS IA
-    gems_html = ""
-    for gem in gems[:50]:
-        score = gem['gem_score']
-        name = gem.get('name', '')
-        symbol = gem.get('symbol', '').upper()
-        symbol_lower = gem.get('symbol', '').lower()
-        price = gem.get('current_price', 0)
-        mcap = gem.get('market_cap', 0)
-        volume = gem.get('total_volume', 0)
-        change_24h = gem.get('price_change_percentage_24h', 0)
-        change_7d = gem.get('price_change_percentage_7d_in_currency', change_24h * 3)
-        rank = gem.get('market_cap_rank', 0)
+    for crypto in analyzed:
+        signal = crypto['signal']
+        mcap = crypto['mcap']
+        total_score = crypto['total_score']
+        momentum_score = crypto['momentum_score']
         
-        # Formater le prix
+        # HOT OPPORTUNITIES
+        if signal in ['ACHAT FORT', 'ACHAT'] and total_score >= 7.0:
+            hot_opps.append(crypto)
+        # HIDDEN GEMS
+        elif mcap < 500000000 and total_score >= 6.0 and signal not in ['VENDRE', 'PRUDENCE']:
+            hidden_gems.append(crypto)
+        # DANGER ZONE
+        elif signal in ['VENDRE', 'PRUDENCE'] or momentum_score < -2.0:
+            danger_zone.append(crypto)
+    
+    # Trier
+    hot_opps.sort(key=lambda x: (x['total_score'], x['confidence']), reverse=True)
+    hidden_gems.sort(key=lambda x: (x['potential_score'], x['total_score']), reverse=True)
+    danger_zone.sort(key=lambda x: x['momentum_score'])
+    
+    # Limiter
+    hot_opps = hot_opps[:10]
+    hidden_gems = hidden_gems[:15]
+    danger_zone = danger_zone[:5]
+    
+    # Générer HTML pour HOT OPPORTUNITIES
+    hot_html = ""
+    for i, opp in enumerate(hot_opps, 1):
+        name = opp.get('name', '')
+        symbol = opp['symbol']
+        price = opp['price']
+        signal = opp['signal']
+        signal_emoji = opp['signal_emoji']
+        confidence = opp['confidence']
+        timeframe = opp['timeframe']
+        entry_low = opp['entry_low']
+        entry_high = opp['entry_high']
+        target_1 = opp['target_1']
+        target_2 = opp['target_2']
+        target_3 = opp['target_3']
+        stop_loss = opp['stop_loss']
+        target_1_pct = opp['target_1_pct']
+        target_2_pct = opp['target_2_pct']
+        target_3_pct = opp['target_3_pct']
+        stop_loss_pct = opp['stop_loss_pct']
+        risk_reward_2 = opp['risk_reward_2']
+        rr_quality = opp['rr_quality']
+        risk_level = opp['risk_level']
+        risk_emoji = opp['risk_emoji']
+        total_score = opp['total_score']
+        momentum_signal = opp['momentum_signal']
+        volume_signal = opp['volume_signal']
+        change_24h = opp['change_24h']
+        vol_ratio = opp['vol_ratio']
+        
+        # Format prix
         if price < 1:
-            price_formatted = f"{price:,.6f}"
+            price_fmt = f"${price:,.6f}"
+            entry_fmt = f"${entry_low:,.6f} - ${entry_high:,.6f}"
+            tp1_fmt = f"${target_1:,.6f}"
+            tp2_fmt = f"${target_2:,.6f}"
+            tp3_fmt = f"${target_3:,.6f}"
+            sl_fmt = f"${stop_loss:,.6f}"
         else:
-            price_formatted = f"{price:,.2f}"
+            price_fmt = f"${price:,.2f}"
+            entry_fmt = f"${entry_low:,.2f} - ${entry_high:,.2f}"
+            tp1_fmt = f"${target_1:,.2f}"
+            tp2_fmt = f"${target_2:,.2f}"
+            tp3_fmt = f"${target_3:,.2f}"
+            sl_fmt = f"${stop_loss:,.2f}"
         
-        vol_ratio = (volume / mcap * 100) if mcap > 0 else 0
-        
-        # Fondamentaux
-        fundamentals = CRYPTO_FUNDAMENTALS.get(symbol_lower, {
-            'category': 'Cryptocurrency',
-            'description': f'{name} cryptocurrency',
-            'usecase': 'Trading, store of value'
-        })
-        
-        category = fundamentals.get('category', 'Crypto')
-        description = fundamentals.get('description', '')
-        usecase = fundamentals.get('usecase', '')
-        
-        # ✨ PRÉDICTIONS IA
-        try:
-            predictions = predict_price_ai(gem)
-            pred_1m = predictions['predictions']['1_month']['target']
-            pred_3m = predictions['predictions']['3_months']['target']
-            pred_6m = predictions['predictions']['6_months']['target']
-            pred_1y = predictions['predictions']['1_year']['target']
-            recommendation = predictions['recommendation']
-            confidence = predictions['confidence']
-            
-            # Calculer changements
-            change_1m = ((pred_1m - price) / price * 100) if price > 0 else 0
-            change_3m = ((pred_3m - price) / price * 100) if price > 0 else 0
-            change_6m = ((pred_6m - price) / price * 100) if price > 0 else 0
-            change_1y = ((pred_1y - price) / price * 100) if price > 0 else 0
-            
-            # Formater prédictions
-            if price < 1:
-                pred_1m_fmt = f"${pred_1m:,.6f}"
-                pred_3m_fmt = f"${pred_3m:,.6f}"
-                pred_6m_fmt = f"${pred_6m:,.6f}"
-                pred_1y_fmt = f"${pred_1y:,.6f}"
-            else:
-                pred_1m_fmt = f"${pred_1m:,.0f}"
-                pred_3m_fmt = f"${pred_3m:,.0f}"
-                pred_6m_fmt = f"${pred_6m:,.0f}"
-                pred_1y_fmt = f"${pred_1y:,.0f}"
-            
-            predictions_html = f"""
-            <div class="ai-predictions">
-                <div class="prediction-header">🤖 PRÉDICTIONS IA (Confiance: {confidence})</div>
-                <div class="prediction-item">
-                    <span class="timeframe">📊 1 MOIS:</span>
-                    <span class="prediction-value">{pred_1m_fmt} <span class="{'positive' if change_1m > 0 else 'negative'}">({change_1m:+.1f}%)</span></span>
-                </div>
-                <div class="prediction-item">
-                    <span class="timeframe">📊 3 MOIS:</span>
-                    <span class="prediction-value">{pred_3m_fmt} <span class="{'positive' if change_3m > 0 else 'negative'}">({change_3m:+.1f}%)</span></span>
-                </div>
-                <div class="prediction-item">
-                    <span class="timeframe">📊 6 MOIS:</span>
-                    <span class="prediction-value">{pred_6m_fmt} <span class="{'positive' if change_6m > 0 else 'negative'}">({change_6m:+.1f}%)</span></span>
-                </div>
-                <div class="prediction-item">
-                    <span class="timeframe">📊 1 AN:</span>
-                    <span class="prediction-value">{pred_1y_fmt} <span class="{'positive' if change_1y > 0 else 'negative'}">({change_1y:+.1f}%)</span></span>
-                </div>
-                <div class="recommendation">🎯 Recommandation: {recommendation}</div>
+        hot_html += f"""
+        <div class="opportunity-card hot-card">
+            <div class="opp-header">
+                <div class="opp-rank">#{i} HOT</div>
+                <div class="opp-score">{total_score}/10</div>
             </div>
-            """
-        except:
-            predictions_html = ""
+            <div class="opp-title">
+                <span class="opp-symbol">{symbol}</span>
+                <span class="opp-name">{name}</span>
+            </div>
+            <div class="opp-price">{price_fmt}</div>
+            <div class="opp-signal-badge {signal.lower().replace(' ', '-')}">
+                {signal_emoji} {signal}
+            </div>
+            
+            <div class="opp-section">
+                <div class="section-title">💰 PRIX D'ENTRÉE RECOMMANDÉ</div>
+                <div class="entry-price">{entry_fmt}</div>
+            </div>
+            
+            <div class="opp-section">
+                <div class="section-title">🎯 OBJECTIFS (TAKE PROFIT)</div>
+                <div class="targets">
+                    <div class="target-item">
+                        <span class="target-label">TP1:</span>
+                        <span class="target-value">{tp1_fmt} <span class="positive">(+{target_1_pct:.1f}%)</span></span>
+                    </div>
+                    <div class="target-item">
+                        <span class="target-label">TP2:</span>
+                        <span class="target-value">{tp2_fmt} <span class="positive">(+{target_2_pct:.1f}%)</span></span>
+                    </div>
+                    <div class="target-item">
+                        <span class="target-label">TP3:</span>
+                        <span class="target-value">{tp3_fmt} <span class="positive">(+{target_3_pct:.1f}%)</span></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="opp-section">
+                <div class="section-title">🛑 STOP LOSS (PROTECTION)</div>
+                <div class="stop-loss">
+                    {sl_fmt} <span class="negative">({stop_loss_pct:.1f}%)</span>
+                </div>
+            </div>
+            
+            <div class="opp-metrics">
+                <div class="metric-box">
+                    <span class="metric-label">⏰ Timeframe</span>
+                    <strong>{timeframe}</strong>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">📊 Risk/Reward</span>
+                    <strong>1:{risk_reward_2:.1f} ({rr_quality})</strong>
+                </div>
+            </div>
+            
+            <div class="opp-metrics">
+                <div class="metric-box">
+                    <span class="metric-label">🤖 Confiance IA</span>
+                    <strong>{confidence}%</strong>
+                </div>
+                <div class="metric-box">
+                    <span class="metric-label">⚠️ Risque</span>
+                    <strong>{risk_emoji} {risk_level}</strong>
+                </div>
+            </div>
+            
+            <div class="opp-details">
+                <div class="detail-item">
+                    <span>Momentum 24h:</span>
+                    <strong class="{'positive' if change_24h > 0 else 'negative'}">{change_24h:+.1f}% ({momentum_signal})</strong>
+                </div>
+                <div class="detail-item">
+                    <span>Volume/MCap:</span>
+                    <strong>{vol_ratio:.1f}% ({volume_signal})</strong>
+                </div>
+            </div>
+        </div>
+        """
+    
+    # Générer HTML pour HIDDEN GEMS
+    gems_html = ""
+    for i, gem in enumerate(hidden_gems, 1):
+        name = gem.get('name', '')
+        symbol = gem['symbol']
+        price = gem['price']
+        mcap = gem['mcap']
+        signal = gem['signal']
+        signal_emoji = gem['signal_emoji']
+        confidence = gem['confidence']
+        target_2 = gem['target_2']
+        target_2_pct = gem['target_2_pct']
+        risk_level = gem['risk_level']
+        risk_emoji = gem['risk_emoji']
+        total_score = gem['total_score']
+        potential_multiplier = gem['potential_multiplier']
+        change_24h = gem['change_24h']
         
-        # Potentiel
-        if score >= 8.5:
-            potential = "15-30x"
-            potential_class = "ultra"
-        elif score >= 7.5:
-            potential = "10-20x"
-            potential_class = "high"
-        elif score >= 6:
-            potential = "5-10x"
-            potential_class = "medium"
+        if price < 1:
+            price_fmt = f"${price:,.6f}"
+            target_fmt = f"${target_2:,.6f}"
         else:
-            potential = "3-5x"
-            potential_class = "low"
+            price_fmt = f"${price:,.2f}"
+            target_fmt = f"${target_2:,.2f}"
         
-        # Couleur score
-        if score >= 8:
-            score_class = "excellent"
-        elif score >= 6:
-            score_class = "good"
-        else:
-            score_class = "ok"
-        
-        # Couleurs
-        change_24h_class = "positive" if change_24h > 0 else "negative"
-        change_7d_class = "positive" if change_7d > 0 else "negative"
-        momentum_class = "positive" if change_24h > 0 else "negative"
-        momentum_text = "Fort" if abs(change_24h) > 5 else ("Moyen" if abs(change_24h) > 2 else "Faible")
+        mcap_fmt = f"${mcap/1000000:.1f}M" if mcap < 1000000000 else f"${mcap/1000000000:.2f}B"
         
         gems_html += f"""
-        <div class="gem-card">
-            <div class="gem-header">
-                <div>
-                    <div class="gem-rank">#{rank} Rank</div>
-                    <div class="gem-name">{symbol}</div>
-                    <div class="gem-fullname">{name}</div>
-                    <div class="gem-category">{category}</div>
-                </div>
-                <div class="gem-score {score_class}">{score:.1f}/10</div>
+        <div class="opportunity-card gem-card">
+            <div class="opp-header">
+                <div class="opp-rank">#{i} GEM</div>
+                <div class="opp-score">{total_score}/10</div>
             </div>
-            <div class="gem-price">${price_formatted}</div>
-            <div class="gem-change">
-                <span class="{change_24h_class}">{change_24h:+.2f}% (24h)</span>
-                <span class="{change_7d_class}">{change_7d:+.2f}% (7j est.)</span>
+            <div class="opp-title">
+                <span class="opp-symbol">{symbol}</span>
+                <span class="opp-name">{name}</span>
             </div>
-            <div class="gem-fundamentals">
-                <div class="fundamental-label">📋 Description:</div>
-                <div class="fundamental-text">{description}</div>
-                <div class="fundamental-label">🎯 Use Case:</div>
-                <div class="fundamental-text">{usecase}</div>
+            <div class="opp-price">{price_fmt}</div>
+            <div class="gem-mcap">💎 Market Cap: {mcap_fmt}</div>
+            
+            <div class="opp-signal-badge {signal.lower().replace(' ', '-')}">
+                {signal_emoji} {signal}
             </div>
-            {predictions_html}
-            <div class="gem-metrics">
-                <div class="metric">
-                    <span>Market Cap</span>
-                    <strong>${mcap/1000000:.1f}M</strong>
+            
+            <div class="gem-potential">
+                <div class="potential-title">🚀 POTENTIEL</div>
+                <div class="potential-value">x{potential_multiplier:.1f} <span class="positive">(+{target_2_pct:.0f}%)</span></div>
+                <div class="potential-target">Target: {target_fmt}</div>
+            </div>
+            
+            <div class="opp-metrics">
+                <div class="metric-box">
+                    <span class="metric-label">🤖 Confiance IA</span>
+                    <strong>{confidence}%</strong>
                 </div>
-                <div class="metric">
-                    <span>Volume/MCap</span>
-                    <strong>{vol_ratio:.1f}%</strong>
-                </div>
-                <div class="metric">
-                    <span>Momentum</span>
-                    <strong class="{momentum_class}">{momentum_text}</strong>
+                <div class="metric-box">
+                    <span class="metric-label">⚠️ Risque</span>
+                    <strong>{risk_emoji} {risk_level}</strong>
                 </div>
             </div>
-            <div class="potential {potential_class}">
-                <strong>💎 Potentiel: {potential}</strong>
+            
+            <div class="opp-details">
+                <div class="detail-item">
+                    <span>Performance 24h:</span>
+                    <strong class="{'positive' if change_24h > 0 else 'negative'}">{change_24h:+.1f}%</strong>
+                </div>
             </div>
         </div>
         """
     
-    total_gems = len(gems)
-    
-    # Section UPCOMING GEMS AVEC DATES EXACTES
-    upcoming_html = ""
-    
-    for i, upcoming in enumerate(UPCOMING_GEMS_COMPLETE, 1):
-        score = upcoming['score']
-        name = upcoming['name']
-        ticker = upcoming.get('ticker', '')
-        category = upcoming['category']
-        launch_date = upcoming['launch_date']
-        description = upcoming['description']
-        usecase = upcoming['usecase']
-        potential = upcoming['potential']
-        backed_by = upcoming.get('backed_by', 'N/A')
-        status = upcoming.get('status', 'Coming Soon')
-        initial_mcap = upcoming.get('initial_mcap', 'TBA')
-        exact_dates = upcoming.get('exact_dates', {})
+    # Générer HTML pour DANGER ZONE
+    danger_html = ""
+    for i, danger in enumerate(danger_zone, 1):
+        name = danger.get('name', '')
+        symbol = danger['symbol']
+        price = danger['price']
+        signal = danger['signal']
+        signal_emoji = danger['signal_emoji']
+        momentum_score = danger['momentum_score']
+        momentum_signal = danger['momentum_signal']
+        change_24h = danger['change_24h']
+        change_7d = danger['change_7d']
+        vol_ratio = danger['vol_ratio']
         
-        # Couleur score
-        if score >= 9.5:
-            score_class = "excellent"
-        elif score >= 9.0:
-            score_class = "good"
-        else:
-            score_class = "ok"
+        price_fmt = f"${price:,.6f}" if price < 1 else f"${price:,.2f}"
         
-        # Couleur status
-        if 'Live' in status or 'Mainnet' in status:
-            status_class = "live"
-        elif 'Testnet' in status or 'Devnet' in status:
-            status_class = "testnet"
-        else:
-            status_class = "soon"
+        # Raisons du danger
+        raisons = []
+        if momentum_score < -2.0:
+            raisons.append("📉 Momentum très négatif")
+        if vol_ratio < 2.0:
+            raisons.append("💀 Volume très faible (liquidité)")
+        if change_24h < -10:
+            raisons.append("⚠️ Chute >10% en 24h")
+        if change_7d < -20:
+            raisons.append("🔻 Chute >20% en 7 jours")
         
-        # Générer HTML pour dates exactes
-        dates_html = "<div class='exchange-dates'>"
-        dates_html += "<div class='dates-header'>🏦 DATES DE LISTING:</div>"
+        raisons_html = "".join([f"<div class='danger-reason'>{r}</div>" for r in raisons])
         
-        # Mainnet
-        if 'mainnet' in exact_dates:
-            dates_html += f"<div class='date-item mainnet'><span class='exchange-name'>Mainnet:</span> <span class='date-value'>{exact_dates['mainnet']}</span></div>"
-        
-        # Exchanges
-        dates_html += "<div class='exchanges-section'>"
-        for key, value in exact_dates.items():
-            if key != 'mainnet' and key != 'token_launch':
-                icon = ""
-                if 'binance' in key.lower():
-                    icon = "🟡"
-                elif 'coinbase' in key.lower():
-                    icon = "🔵"
-                elif 'bybit' in key.lower():
-                    icon = "🟠"
-                elif 'okx' in key.lower():
-                    icon = "⚪"
-                elif 'kraken' in key.lower():
-                    icon = "🔴"
-                elif 'gate' in key.lower():
-                    icon = "🟢"
-                
-                exchange_display = key.replace('_', ' ').title()
-                confirmed = "(confirmé)" if "confirmé" in value.lower() else ""
-                dates_html += f"<div class='date-item'><span class='exchange-name'>{icon} {exchange_display}:</span> <span class='date-value'>{value} {confirmed}</span></div>"
-        
-        dates_html += "</div></div>"
-        
-        # Market cap initial
-        mcap_html = f"<div class='initial-mcap'>💰 Market Cap Initial: {initial_mcap}</div>"
-        
-        upcoming_html += f"""
-        <div class="upcoming-card">
-            <div class="upcoming-header">
-                <div>
-                    <div class="upcoming-rank">#{i} Upcoming</div>
-                    <div class="upcoming-name">{name}</div>
-                    <div class="upcoming-launch-date">📅 LAUNCH: {launch_date}</div>
-                    <div class="upcoming-ticker">{ticker}</div>
-                    <div class="upcoming-category">{category}</div>
+        danger_html += f"""
+        <div class="opportunity-card danger-card">
+            <div class="opp-header">
+                <div class="opp-rank">#{i} DANGER</div>
+                <div class="danger-badge">🚨 À ÉVITER</div>
+            </div>
+            <div class="opp-title">
+                <span class="opp-symbol">{symbol}</span>
+                <span class="opp-name">{name}</span>
+            </div>
+            <div class="opp-price">{price_fmt}</div>
+            
+            <div class="opp-signal-badge {signal.lower().replace(' ', '-')}">
+                {signal_emoji} {signal}
+            </div>
+            
+            <div class="danger-reasons">
+                <div class="section-title">⚠️ RAISONS DU DANGER</div>
+                {raisons_html}
+            </div>
+            
+            <div class="opp-details">
+                <div class="detail-item">
+                    <span>Performance 24h:</span>
+                    <strong class="negative">{change_24h:.1f}%</strong>
                 </div>
-                <div class="upcoming-score {score_class}">{score}/10</div>
+                <div class="detail-item">
+                    <span>Performance 7j:</span>
+                    <strong class="negative">{change_7d:.1f}%</strong>
+                </div>
+                <div class="detail-item">
+                    <span>Momentum:</span>
+                    <strong class="negative">{momentum_signal}</strong>
+                </div>
+                <div class="detail-item">
+                    <span>Volume/MCap:</span>
+                    <strong class="negative">{vol_ratio:.1f}%</strong>
+                </div>
             </div>
-            <div class="upcoming-status {status_class}">
-                🔄 Status: {status}
-            </div>
-            {dates_html}
-            {mcap_html}
-            <div class="gem-fundamentals">
-                <div class="fundamental-label">📋 Description:</div>
-                <div class="fundamental-text">{description}</div>
-                <div class="fundamental-label">🎯 Use Case:</div>
-                <div class="fundamental-text">{usecase}</div>
-                <div class="fundamental-label">💰 Backed By:</div>
-                <div class="fundamental-text">{backed_by}</div>
-            </div>
-            <div class="potential ultra">
-                <strong>🚀 Potentiel: {potential}</strong>
+            
+            <div class="danger-action">
+                🎯 Action: SORTIR ou NE PAS ACHETER
             </div>
         </div>
         """
+    
+    # Stats globales
+    total_analyzed = len(analyzed)
+    total_hot = len(hot_opps)
+    total_gems = len(hidden_gems)
+    total_danger = len(danger_zone)
     
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
@@ -24707,84 +24646,354 @@ async def ai_gem_hunter():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Gem Hunter - Top 50 Gems + Upcoming + Prédictions IA</title>
+        <title>🎯 AI Opportunity Scanner - Trading Dashboard Pro</title>
         <style>
             *{{margin:0;padding:0;box-sizing:border-box}}
-            body{{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e3a8a,#7e22ce);color:#fff;padding:40px 20px;min-height:100vh}}
-            .container{{max-width:1400px;margin:0 auto}}
-            h1{{font-size:2.8em;text-align:center;margin-bottom:10px;text-shadow:0 0 30px rgba(255,255,255,0.5)}}
-            .subtitle{{text-align:center;font-size:1.1em;margin-bottom:10px;opacity:0.9}}
-            .stats{{text-align:center;font-size:1em;margin-bottom:40px;color:#fbbf24}}
-            .section-title{{font-size:2.2em;text-align:center;margin:60px 0 30px;padding:20px;background:rgba(0,0,0,0.3);border-radius:15px;border:2px solid rgba(255,255,255,0.2)}}
-            .gems-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:25px}}
-            .gem-card,.upcoming-card{{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,0.2);border-radius:15px;padding:25px;transition:all 0.3s}}
-            .gem-card:hover,.upcoming-card:hover{{transform:scale(1.02);border-color:rgba(255,255,255,0.5);box-shadow:0 0 40px rgba(255,255,255,0.3)}}
-            .gem-header,.upcoming-header{{display:flex;justify-content:space-between;align-items:start;margin-bottom:20px}}
-            .gem-rank,.upcoming-rank{{font-size:0.9em;color:#fbbf24;margin-bottom:5px;font-weight:600}}
-            .gem-name,.upcoming-name{{font-size:1.8em;font-weight:700}}
-            .gem-fullname,.upcoming-ticker{{font-size:0.9em;color:rgba(255,255,255,0.7);margin-top:5px}}
-            .upcoming-launch-date{{font-size:1.3em;color:#fbbf24;font-weight:700;margin:10px 0;padding:8px 12px;background:rgba(251,191,36,0.15);border-radius:8px;border-left:4px solid #fbbf24}}
-            .gem-category,.upcoming-category{{font-size:0.85em;color:#60a5fa;margin-top:5px;padding:5px 10px;background:rgba(96,165,250,0.2);border-radius:5px;display:inline-block}}
-            .gem-score,.upcoming-score{{font-size:2.5em;font-weight:700;padding:10px;border-radius:10px;min-width:90px;text-align:center}}
-            .gem-score.excellent,.upcoming-score.excellent{{color:#10b981;background:rgba(16,185,129,0.2);border:2px solid #10b981}}
-            .gem-score.good,.upcoming-score.good{{color:#fbbf24;background:rgba(251,191,36,0.2);border:2px solid #fbbf24}}
-            .gem-score.ok,.upcoming-score.ok{{color:#f59e0b;background:rgba(245,158,11,0.2);border:2px solid #f59e0b}}
-            .gem-price{{font-size:1.5em;font-weight:700;margin:15px 0}}
-            .gem-change{{display:flex;gap:15px;font-size:1em;margin-bottom:20px;flex-wrap:wrap}}
-            .gem-change .positive{{color:#10b981}}
-            .gem-change .negative{{color:#ef4444}}
-            .gem-fundamentals{{margin:20px 0;padding:15px;background:rgba(0,0,0,0.3);border-radius:10px;border-left:4px solid #60a5fa}}
-            .fundamental-label{{font-weight:700;color:#60a5fa;margin-top:10px;margin-bottom:5px;font-size:0.9em}}
-            .fundamental-text{{color:rgba(255,255,255,0.9);font-size:0.95em;line-height:1.5}}
-            .ai-predictions{{margin:20px 0;padding:15px;background:rgba(16,185,129,0.15);border-radius:10px;border:2px solid #10b981}}
-            .prediction-header{{font-weight:700;color:#10b981;margin-bottom:12px;font-size:1.05em}}
-            .prediction-item{{margin:8px 0;display:flex;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px}}
-            .timeframe{{font-weight:600;color:rgba(255,255,255,0.9)}}
-            .prediction-value{{font-weight:700;color:#fff}}
-            .recommendation{{margin-top:12px;padding:10px;background:rgba(16,185,129,0.2);border-radius:6px;text-align:center;font-weight:700}}
-            .gem-metrics{{margin:20px 0}}
-            .metric{{display:flex;justify-content:space-between;margin:10px 0;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px}}
-            .metric strong.positive{{color:#10b981}}
-            .metric strong.negative{{color:#ef4444}}
-            .potential{{margin-top:20px;padding:15px;border-radius:10px;text-align:center;border:2px solid}}
-            .potential.ultra{{background:rgba(16,185,129,0.2);border-color:#10b981}}
-            .potential.high{{background:rgba(251,191,36,0.2);border-color:#fbbf24}}
-            .potential.medium{{background:rgba(245,158,11,0.2);border-color:#f59e0b}}
-            .potential.low{{background:rgba(100,100,100,0.2);border-color:#666}}
-            .potential strong{{font-size:1.2em}}
-            .upcoming-status{{padding:10px;border-radius:8px;margin-bottom:15px;font-weight:600;text-align:center}}
-            .upcoming-status.live{{background:rgba(16,185,129,0.3);border:2px solid #10b981;color:#10b981}}
-            .upcoming-status.testnet{{background:rgba(251,191,36,0.3);border:2px solid #fbbf24;color:#fbbf24}}
-            .upcoming-status.soon{{background:rgba(96,165,250,0.3);border:2px solid #60a5fa;color:#60a5fa}}
-            .exchange-dates{{margin:15px 0;padding:15px;background:rgba(255,255,255,0.05);border-radius:10px;border-left:4px solid #fbbf24}}
-            .dates-header{{font-weight:700;color:#fbbf24;margin-bottom:12px;font-size:1.05em}}
-            .date-item{{margin:8px 0;padding:8px;background:rgba(0,0,0,0.2);border-radius:6px;display:flex;justify-content:space-between;align-items:center}}
-            .date-item.mainnet{{background:rgba(16,185,129,0.2);border:1px solid #10b981}}
-            .exchange-name{{font-weight:600;color:rgba(255,255,255,0.9)}}
-            .date-value{{color:#fff;font-weight:700}}
-            .initial-mcap{{margin:15px 0;padding:12px;background:rgba(251,191,36,0.15);border-radius:8px;border-left:4px solid #fbbf24;font-weight:600;color:#fbbf24}}
-            .exchanges-section{{margin-top:8px}}
+            body{{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#0f172a,#1e293b,#0f172a);color:#fff;padding:40px 20px;min-height:100vh}}
+            .container{{max-width:1600px;margin:0 auto}}
+            
+            /* Header */
+            .page-header{{text-align:center;margin-bottom:50px}}
+            .page-title{{font-size:3.5em;font-weight:900;background:linear-gradient(135deg,#fbbf24,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:15px;text-shadow:0 0 40px rgba(251,191,36,0.5)}}
+            .page-subtitle{{font-size:1.4em;color:rgba(255,255,255,0.8);margin-bottom:20px}}
+            .page-stats{{display:flex;justify-content:center;gap:30px;flex-wrap:wrap;margin-top:25px}}
+            .stat-box{{background:rgba(255,255,255,0.1);padding:15px 30px;border-radius:12px;border:2px solid rgba(255,255,255,0.2)}}
+            .stat-number{{font-size:2.2em;font-weight:700;color:#fbbf24}}
+            .stat-label{{font-size:0.95em;color:rgba(255,255,255,0.7);margin-top:5px}}
+            
+            /* Section Headers */
+            .section-header{{margin:60px 0 30px;text-align:center}}
+            .section-header.hot{{background:linear-gradient(135deg,rgba(239,68,68,0.2),rgba(251,191,36,0.2));border:2px solid #ef4444;border-radius:15px;padding:25px}}
+            .section-header.gems{{background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(59,130,246,0.2));border:2px solid #22c55e;border-radius:15px;padding:25px}}
+            .section-header.danger{{background:linear-gradient(135deg,rgba(153,27,27,0.3),rgba(127,29,29,0.3));border:2px solid #dc2626;border-radius:15px;padding:25px}}
+            .section-title{{font-size:2.5em;font-weight:800;margin-bottom:10px}}
+            .section-subtitle{{font-size:1.2em;color:rgba(255,255,255,0.8)}}
+            
+            /* Grid */
+            .opportunities-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:25px}}
+            
+            /* Cards */
+            .opportunity-card{{background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border-radius:18px;padding:25px;transition:all 0.3s;position:relative;overflow:hidden}}
+            .opportunity-card:hover{{transform:translateY(-5px);box-shadow:0 20px 60px rgba(0,0,0,0.5)}}
+            .opportunity-card::before{{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#fbbf24,#ef4444)}}
+            
+            .hot-card{{border:2px solid rgba(239,68,68,0.3)}}
+            .hot-card:hover{{border-color:#ef4444;box-shadow:0 20px 60px rgba(239,68,68,0.4)}}
+            
+            .gem-card{{border:2px solid rgba(34,197,94,0.3)}}
+            .gem-card:hover{{border-color:#22c55e;box-shadow:0 20px 60px rgba(34,197,94,0.4)}}
+            
+            .danger-card{{border:2px solid rgba(220,38,38,0.5)}}
+            .danger-card:hover{{border-color:#dc2626;box-shadow:0 20px 60px rgba(220,38,38,0.5)}}
+            .danger-card::before{{background:linear-gradient(90deg,#dc2626,#991b1b)}}
+            
+            /* Card Header */
+            .opp-header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}}
+            .opp-rank{{background:rgba(251,191,36,0.2);color:#fbbf24;padding:6px 14px;border-radius:8px;font-weight:700;font-size:0.9em;border:1px solid #fbbf24}}
+            .opp-score{{font-size:2em;font-weight:800;color:#22c55e}}
+            .danger-badge{{background:#dc2626;color:#fff;padding:6px 14px;border-radius:8px;font-weight:700;font-size:0.9em;animation:pulse 2s infinite}}
+            
+            @keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.7}}}}
+            
+            /* Title */
+            .opp-title{{margin-bottom:12px}}
+            .opp-symbol{{font-size:2em;font-weight:800;margin-right:10px}}
+            .opp-name{{font-size:1em;color:rgba(255,255,255,0.7)}}
+            .opp-price{{font-size:1.8em;font-weight:700;color:#fbbf24;margin-bottom:15px}}
+            .gem-mcap{{font-size:1.1em;color:rgba(255,255,255,0.8);margin-bottom:15px}}
+            
+            /* Signal Badge */
+            .opp-signal-badge{{display:inline-block;padding:12px 20px;border-radius:10px;font-weight:800;font-size:1.1em;margin-bottom:20px;text-align:center;width:100%}}
+            .opp-signal-badge.achat-fort{{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 5px 20px rgba(239,68,68,0.5)}}
+            .opp-signal-badge.achat{{background:linear-gradient(135deg,#22c55e,#16a34a);box-shadow:0 5px 20px rgba(34,197,94,0.5)}}
+            .opp-signal-badge.accumulation{{background:linear-gradient(135deg,#3b82f6,#2563eb);box-shadow:0 5px 20px rgba(59,130,246,0.5)}}
+            .opp-signal-badge.hold{{background:linear-gradient(135deg,#06b6d4,#0891b2)}}
+            .opp-signal-badge.prudence{{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 5px 20px rgba(245,158,11,0.5)}}
+            .opp-signal-badge.vendre{{background:linear-gradient(135deg,#dc2626,#991b1b);box-shadow:0 5px 20px rgba(220,38,38,0.5)}}
+            
+            /* Sections */
+            .opp-section{{margin:20px 0;padding:15px;background:rgba(0,0,0,0.3);border-radius:10px;border-left:4px solid #fbbf24}}
+            .section-title{{font-weight:700;color:#fbbf24;margin-bottom:12px;font-size:1.05em}}
+            .entry-price{{font-size:1.4em;font-weight:700;color:#fff}}
+            
+            /* Targets */
+            .targets{{display:flex;flex-direction:column;gap:10px}}
+            .target-item{{display:flex;justify-content:space-between;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px}}
+            .target-label{{font-weight:600;color:rgba(255,255,255,0.8)}}
+            .target-value{{font-weight:700}}
+            
+            /* Stop Loss */
+            .stop-loss{{font-size:1.4em;font-weight:700;color:#ef4444}}
+            
+            /* Metrics */
+            .opp-metrics{{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:15px 0}}
+            .metric-box{{background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;text-align:center}}
+            .metric-label{{display:block;font-size:0.85em;color:rgba(255,255,255,0.7);margin-bottom:5px}}
+            .metric-box strong{{font-size:1.1em;color:#fff}}
+            
+            /* Details */
+            .opp-details{{margin-top:15px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1)}}
+            .detail-item{{display:flex;justify-content:space-between;padding:8px 0;font-size:0.95em}}
+            .detail-item span{{color:rgba(255,255,255,0.7)}}
+            
+            /* Gem Potential */
+            .gem-potential{{background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(16,185,129,0.2));padding:20px;border-radius:12px;border:2px solid #22c55e;margin:15px 0;text-align:center}}
+            .potential-title{{font-weight:700;color:#22c55e;margin-bottom:10px;font-size:1.1em}}
+            .potential-value{{font-size:2.5em;font-weight:800;color:#fff;margin-bottom:8px}}
+            .potential-target{{font-size:1.2em;color:rgba(255,255,255,0.8)}}
+            
+            /* Danger */
+            .danger-reasons{{background:rgba(220,38,38,0.1);padding:15px;border-radius:10px;border:2px solid #dc2626;margin:15px 0}}
+            .danger-reason{{padding:10px;margin:8px 0;background:rgba(0,0,0,0.3);border-radius:8px;border-left:4px solid #dc2626}}
+            .danger-action{{background:#dc2626;color:#fff;padding:15px;border-radius:10px;font-weight:700;font-size:1.1em;text-align:center;margin-top:15px}}
+            
+            /* Colors */
+            .positive{{color:#22c55e}}
+            .negative{{color:#ef4444}}
+            
+            /* Disclaimers */
+            .disclaimers{{max-width:900px;margin:60px auto;padding:30px;background:rgba(220,38,38,0.1);border:2px solid #dc2626;border-radius:15px}}
+            .disclaimers h3{{color:#dc2626;margin-bottom:15px;font-size:1.4em}}
+            .disclaimers ul{{margin-left:25px;line-height:1.8}}
+            .disclaimers li{{color:rgba(255,255,255,0.9);margin:8px 0}}
         </style>
     </head>
     <body>
         <div class="container">
-            <h1>💎 AI GEM HUNTER</h1>
-            <p class="subtitle">Détection de cryptos prometteuses - Analyse TOP 50 + Prédictions IA + Upcoming Gems</p>
-            <p class="stats">🔍 {total_gems} cryptos analysées et scorées (triées par potentiel)</p>
+            <div class="page-header">
+                <h1 class="page-title">🎯 AI OPPORTUNITY SCANNER</h1>
+                <p class="page-subtitle">Détection Intelligente d'Opportunités Crypto • Signaux d'Achat/Vente • Analyse Temps Réel</p>
+                <div class="page-stats">
+                    <div class="stat-box">
+                        <div class="stat-number">{total_analyzed}</div>
+                        <div class="stat-label">Cryptos Analysées</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{total_hot}</div>
+                        <div class="stat-label">Hot Opportunities</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{total_gems}</div>
+                        <div class="stat-label">Hidden Gems</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">{total_danger}</div>
+                        <div class="stat-label">Danger Zone</div>
+                    </div>
+                </div>
+            </div>
             
-            <div class="gems-grid">{gems_html}</div>
+            <!-- HOT OPPORTUNITIES -->
+            <div class="section-header hot">
+                <h2 class="section-title">🔥 HOT OPPORTUNITIES</h2>
+                <p class="section-subtitle">Signaux d'achat forts • Opportunités chaudes • Action immédiate</p>
+            </div>
+            <div class="opportunities-grid">{hot_html if hot_html else '<p style="text-align:center;font-size:1.2em;color:rgba(255,255,255,0.7)">Aucune opportunité chaude détectée pour le moment. Revenez plus tard!</p>'}</div>
             
-            <h2 class="section-title">🚀 UPCOMING GEMS - Top 10 Projets À Venir</h2>
-            <p class="stats">🔥 Nouveaux projets prometteurs avec dates de listing exactes</p>
+            <!-- HIDDEN GEMS -->
+            <div class="section-header gems">
+                <h2 class="section-title">💎 HIDDEN GEMS</h2>
+                <p class="section-subtitle">Small/Mid Caps à Fort Potentiel • Pépites cachées • Opportunités x3-x10</p>
+            </div>
+            <div class="opportunities-grid">{gems_html if gems_html else '<p style="text-align:center;font-size:1.2em;color:rgba(255,255,255,0.7)">Aucune pépite cachée détectée pour le moment.</p>'}</div>
             
-            <div class="gems-grid">{upcoming_html}</div>
+            <!-- DANGER ZONE -->
+            <div class="section-header danger">
+                <h2 class="section-title">⚠️ DANGER ZONE</h2>
+                <p class="section-subtitle">Cryptos à éviter • Momentum négatif • NE PAS ACHETER</p>
+            </div>
+            <div class="opportunities-grid">{danger_html if danger_html else '<p style="text-align:center;font-size:1.2em;color:rgba(255,255,255,0.7)">Aucun danger détecté. Marché sain!</p>'}</div>
+            
+            <!-- Disclaimers -->
+            <div class="disclaimers">
+                <h3>⚠️ AVERTISSEMENTS IMPORTANTS</h3>
+                <ul>
+                    <li><strong>Les signaux sont INDICATIFS uniquement</strong> - Ne constituent PAS des conseils d'investissement</li>
+                    <li><strong>Basés sur analyse technique IA</strong> - Les marchés crypto sont TRÈS volatiles</li>
+                    <li><strong>AUCUNE GARANTIE</strong> - Les prédictions peuvent être incorrectes</li>
+                    <li><strong>DYOR (Do Your Own Research)</strong> - Faites vos propres recherches</li>
+                    <li><strong>N'investissez QUE ce que vous pouvez perdre</strong> - Ne mettez jamais en danger vos finances</li>
+                    <li><strong>Utilisez TOUJOURS un Stop Loss</strong> - Protégez votre capital</li>
+                    <li><strong>Performances passées ≠ résultats futurs</strong> - Le marché peut changer rapidement</li>
+                </ul>
+            </div>
         </div>
         <script>
-            setTimeout(function() {{ window.location.reload(); }}, 300000);
+            setTimeout(function() {{ window.location.reload(); }}, 300000);  // Refresh toutes les 5 min
         </script>
     </body>
     </html>
     """)
+
+
+# Fonction d'analyse simplifiée pour la route
+def analyze_opportunity_signal(crypto_data):
+    """Version simplifiée de l'analyse pour la route"""
+    
+    symbol = crypto_data.get('symbol', '').upper()
+    name = crypto_data.get('name', '')
+    price = crypto_data.get('current_price', 0)
+    mcap = crypto_data.get('market_cap', 0)
+    volume = crypto_data.get('total_volume', 0)
+    change_24h = crypto_data.get('price_change_percentage_24h', 0)
+    change_7d = crypto_data.get('price_change_percentage_7d_in_currency', change_24h * 3)
+    rank = crypto_data.get('market_cap_rank', 999)
+    
+    if price == 0 or mcap == 0:
+        return None
+    
+    # Momentum
+    momentum_score = 0
+    if change_24h > 15: momentum_score += 4.0
+    elif change_24h > 10: momentum_score += 3.5
+    elif change_24h > 5: momentum_score += 2.5
+    elif change_24h > 2: momentum_score += 1.5
+    elif change_24h > 0: momentum_score += 0.5
+    elif change_24h > -5: momentum_score -= 0.5
+    elif change_24h > -10: momentum_score -= 1.5
+    else: momentum_score -= 3.0
+    
+    if change_7d > 30: momentum_score += 2.0
+    elif change_7d > 15: momentum_score += 1.0
+    elif change_7d < -20: momentum_score -= 2.0
+    
+    momentum_signal = "TRÈS FORT" if momentum_score >= 3.5 else ("FORT" if momentum_score >= 2.5 else ("POSITIF" if momentum_score >= 0.5 else ("NÉGATIF" if momentum_score < 0 else "NEUTRE")))
+    
+    # Volume
+    vol_ratio = (volume / mcap * 100) if mcap > 0 else 0
+    volume_score = 0
+    if vol_ratio > 50: volume_score += 3.0
+    elif vol_ratio > 30: volume_score += 2.5
+    elif vol_ratio > 20: volume_score += 2.0
+    elif vol_ratio > 10: volume_score += 1.0
+    elif vol_ratio > 5: volume_score += 0.5
+    elif vol_ratio < 2: volume_score -= 1.0
+    
+    volume_signal = "MASSIF" if vol_ratio > 50 else ("TRÈS ÉLEVÉ" if vol_ratio > 30 else ("ÉLEVÉ" if vol_ratio > 20 else ("BON" if vol_ratio > 10 else ("NORMAL" if vol_ratio > 5 else "FAIBLE"))))
+    
+    # Quality
+    quality_score = 0
+    if rank <= 10: quality_score += 4.0
+    elif rank <= 20: quality_score += 3.5
+    elif rank <= 50: quality_score += 3.0
+    elif rank <= 100: quality_score += 2.0
+    else: quality_score += 1.0
+    
+    # Potential
+    potential_score = 0
+    potential_multiplier = 1.0
+    if mcap < 500000000:
+        potential_score += 3.5
+        potential_multiplier = 5.0
+    elif mcap < 2000000000:
+        potential_score += 3.0
+        potential_multiplier = 3.0
+    elif mcap < 10000000000:
+        potential_score += 2.0
+        potential_multiplier = 2.0
+    else:
+        potential_score += 1.0
+        potential_multiplier = 1.5
+    
+    total_score = min(momentum_score + volume_score + quality_score + potential_score, 10.0)
+    
+    # Signal
+    if momentum_score >= 3.0 and volume_score >= 2.0 and total_score >= 8.0:
+        signal, signal_emoji = "ACHAT FORT", "🔥"
+    elif momentum_score >= 1.5 and volume_score >= 1.0 and total_score >= 6.5:
+        signal, signal_emoji = "ACHAT", "🟢"
+    elif quality_score >= 3.0 and momentum_score >= 0 and total_score >= 5.0:
+        signal, signal_emoji = "ACCUMULATION", "💎"
+    elif momentum_score >= -0.5:
+        signal, signal_emoji = "HOLD", "👍"
+    elif momentum_score >= -2.0:
+        signal, signal_emoji = "PRUDENCE", "⚠️"
+    else:
+        signal, signal_emoji = "VENDRE", "🔴"
+    
+    # Prices
+    if change_24h > 5:
+        entry_low, entry_high = price * 0.97, price
+    elif change_24h > 0:
+        entry_low, entry_high = price * 0.98, price * 1.02
+    else:
+        entry_low, entry_high = price * 0.95, price
+    
+    # Targets
+    base_1, base_2, base_3 = 1.10, 1.25, 1.50
+    if mcap < 500000000:
+        base_1 *= 1.5; base_2 *= 1.8; base_3 *= 2.5
+    elif mcap < 2000000000:
+        base_1 *= 1.2; base_2 *= 1.5; base_3 *= 2.0
+    
+    if momentum_score >= 3.0:
+        base_1 *= 1.2; base_2 *= 1.3; base_3 *= 1.5
+    
+    target_1, target_2, target_3 = price * base_1, price * base_2, price * base_3
+    
+    # Stop Loss
+    stop_loss = price * (0.92 if quality_score >= 3.5 else (0.90 if quality_score >= 2.5 else (0.87 if quality_score >= 1.5 else 0.85)))
+    
+    # Risk/Reward
+    risk = price - stop_loss
+    risk_reward_2 = ((target_2 - price) / risk) if risk > 0 else 0
+    rr_quality = "EXCELLENT" if risk_reward_2 >= 4.0 else ("TRÈS BON" if risk_reward_2 >= 3.0 else ("BON" if risk_reward_2 >= 2.0 else "FAIBLE"))
+    
+    # Confidence
+    confidence = 50
+    if momentum_score >= 3.0 and volume_score >= 2.0: confidence += 25
+    elif momentum_score >= 1.5: confidence += 15
+    if quality_score >= 3.5: confidence += 15
+    elif quality_score >= 2.5: confidence += 10
+    if volume_score >= 2.0: confidence += 10
+    if momentum_score < 0 and volume_score < 1.0: confidence -= 20
+    confidence = max(min(confidence, 95), 40)
+    
+    # Timeframe
+    if momentum_score >= 3.0 and volume_score >= 2.0: timeframe = "3-7 jours"
+    elif momentum_score >= 1.5: timeframe = "7-14 jours"
+    elif momentum_score >= 0: timeframe = "14-30 jours"
+    else: timeframe = "1-3 mois"
+    
+    # Risk Level
+    if quality_score >= 3.5 and volume_score >= 1.5:
+        risk_level, risk_emoji = "FAIBLE", "🟢"
+    elif quality_score >= 2.5 and volume_score >= 1.0:
+        risk_level, risk_emoji = "MOYEN", "🟡"
+    elif quality_score >= 1.5:
+        risk_level, risk_emoji = "ÉLEVÉ", "🟠"
+    else:
+        risk_level, risk_emoji = "TRÈS ÉLEVÉ", "🔴"
+    
+    return {
+        'name': name, 'symbol': symbol, 'price': price, 'mcap': mcap, 'volume': volume,
+        'change_24h': change_24h, 'change_7d': change_7d, 'rank': rank,
+        'total_score': round(total_score, 1), 'momentum_score': round(momentum_score, 1),
+        'volume_score': round(volume_score, 1), 'quality_score': round(quality_score, 1),
+        'potential_score': round(potential_score, 1), 'momentum_signal': momentum_signal,
+        'volume_signal': volume_signal, 'signal': signal, 'signal_emoji': signal_emoji,
+        'entry_low': round(entry_low, 6 if price < 1 else 2),
+        'entry_high': round(entry_high, 6 if price < 1 else 2),
+        'target_1': round(target_1, 6 if price < 1 else 2),
+        'target_2': round(target_2, 6 if price < 1 else 2),
+        'target_3': round(target_3, 6 if price < 1 else 2),
+        'stop_loss': round(stop_loss, 6 if price < 1 else 2),
+        'target_1_pct': round((target_1 - price) / price * 100, 1),
+        'target_2_pct': round((target_2 - price) / price * 100, 1),
+        'target_3_pct': round((target_3 - price) / price * 100, 1),
+        'stop_loss_pct': round((stop_loss - price) / price * 100, 1),
+        'risk_reward_2': round(risk_reward_2, 2), 'rr_quality': rr_quality,
+        'confidence': confidence, 'timeframe': timeframe, 'risk_level': risk_level,
+        'risk_emoji': risk_emoji, 'potential_multiplier': round(potential_multiplier, 1),
+        'vol_ratio': round(vol_ratio, 1)
+    }
+
+
+print("✅ NOUVELLE ROUTE AI OPPORTUNITY SCANNER CRÉÉE!")
+print("Routes: /ai-gem-hunter avec 3 sections:")
+print("  1. HOT OPPORTUNITIES (Top 10)")
+print("  2. HIDDEN GEMS (Top 15)")
+print("  3. DANGER ZONE (Top 5)")
 
 
 print("✅ TOUTES LES 12 ROUTES AI CRÉÉES!")

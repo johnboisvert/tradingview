@@ -23979,8 +23979,8 @@ async def ai_gem_hunter():
         
         c['gem_score'] = min(score, 10.0)
         
-        if score >= 4.0:
-            gems.append(c)
+        # AFFICHER TOUTES LES CRYPTOS (pas seulement score >= 4.0)
+        gems.append(c)
     
     gems.sort(key=lambda x: x['gem_score'], reverse=True)
     
@@ -24115,7 +24115,7 @@ async def ai_gem_hunter():
         <div class="container">
             <h1>💎 AI GEM HUNTER</h1>
             <p class="subtitle">Détection de cryptos prometteuses - Analyse TOP 50</p>
-            <p class="stats">🔍 {total_gems} futures gems détectées sur 50 cryptos</p>
+            <p class="stats">🔍 {total_gems} cryptos analysées et scorées (triées par potentiel)</p>
             <div class="gems-grid">{gems_html}</div>
         </div>
         <script>

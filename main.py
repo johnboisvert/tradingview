@@ -23353,7 +23353,91 @@ async def ai_signals():
             .confidence-bar {{width:100%;height:6px;background:rgba(30,41,59,0.6);border-radius:10px;overflow:hidden;margin-top:8px}}
             .confidence-fill {{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:10px;transition:width 1s}}
             @keyframes pulse {{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -23367,7 +23451,43 @@ async def ai_signals():
         <script>
             setTimeout(function() {{ window.location.reload(); }}, 60000);
         </script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 Comment utiliser les Signaux AI?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Analysez le signal global</h3>
+                        <p>Regardez la tendance générale: BUY (achat), SELL (vente) ou HOLD (conserver). Chaque signal est calculé en temps réel avec plusieurs indicateurs.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Vérifiez la force du signal</h3>
+                        <p>Plus le pourcentage est élevé, plus le signal est fort. Signal >70% = action recommandée. Signal <60% = prudence.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Confirmez avec d'autres indicateurs</h3>
+                        <p>Ne tradez JAMAIS sur un seul signal! Utilisez aussi les patterns, sentiment et whale tracker pour confirmer.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Attendez plusieurs signaux consécutifs dans la même direction</li>
+                    <li>Utilisez toujours un stop-loss pour limiter les pertes</li>
+                    <li>Les signaux se mettent à jour toutes les 5 minutes</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -24756,7 +24876,91 @@ async def ai_opportunity_scanner():
             .disclaimers h3{{color:#dc2626;margin-bottom:15px;font-size:1.4em}}
             .disclaimers ul{{margin-left:25px;line-height:1.8}}
             .disclaimers li{{color:rgba(255,255,255,0.9);margin:8px 0}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -24821,7 +25025,46 @@ async def ai_opportunity_scanner():
         <script>
             setTimeout(function() {{ window.location.reload(); }}, 300000);  // Refresh toutes les 5 min
         </script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 Comment utiliser le Gem Hunter?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Parcourez les 3 sections</h3>
+                        <p><strong>Hot Opportunities:</strong> Cryptos avec momentum positif fort<br>
+                        <strong>Hidden Gems:</strong> Pépites sous-évaluées avec potentiel<br>
+                        <strong>Danger Zone:</strong> Cryptos à éviter (tendances négatives)</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Analysez les métriques clés</h3>
+                        <p>Regardez: Signal (BUY/SELL), Score IA (0-100), Risk/Reward ratio, Entry/Target/Stop-Loss.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Faites vos recherches (DYOR)</h3>
+                        <p>Les signaux IA sont un POINT DE DÉPART. Vérifiez toujours les fondamentaux, l'équipe, le projet avant d'investir!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Hot Opportunities = Court terme (swing trading)</li>
+                    <li>Hidden Gems = Moyen/Long terme (hold 3-12 mois)</li>
+                    <li>Danger Zone = NE PAS acheter, ou vendre si vous possédez</li>
+                    <li>Données rafraîchies toutes les 5 minutes</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -25160,11 +25403,11 @@ async def crypto_pepites():
                 <div class="pepite-metrics">
                     <div class="metric">
                         <div class="metric-label">💰 Prix</div>
-                        <div class="metric-value">$42.03</div>
+                        <div class="metric-value">$30.80</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">📈 MCap</div>
-                        <div class="metric-value">$12.0B</div>
+                        <div class="metric-value">$10.4B</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">🚀 Performance</div>
@@ -25244,11 +25487,11 @@ async def crypto_pepites():
                 <div class="pepite-metrics">
                     <div class="metric">
                         <div class="metric-label">💰 Prix</div>
-                        <div class="metric-value">$2.63</div>
+                        <div class="metric-value">$1.52</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">📈 MCap</div>
-                        <div class="metric-value">$9.55B</div>
+                        <div class="metric-value">$5.7B</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">🚀 Performance</div>
@@ -25328,11 +25571,11 @@ async def crypto_pepites():
                 <div class="pepite-metrics">
                     <div class="metric">
                         <div class="metric-label">💰 Prix</div>
-                        <div class="metric-value">$3.98</div>
+                        <div class="metric-value">$1.60</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">📈 MCap</div>
-                        <div class="metric-value">$2.06B</div>
+                        <div class="metric-value">$830M</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">🚀 Performance</div>
@@ -25412,11 +25655,11 @@ async def crypto_pepites():
                 <div class="pepite-metrics">
                     <div class="metric">
                         <div class="metric-label">💰 Prix</div>
-                        <div class="metric-value">$1.50</div>
+                        <div class="metric-value">$0.47</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">📈 MCap</div>
-                        <div class="metric-value">$2.8B</div>
+                        <div class="metric-value">$1.48B</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">🚀 Performance</div>
@@ -25496,11 +25739,11 @@ async def crypto_pepites():
                 <div class="pepite-metrics">
                     <div class="metric">
                         <div class="metric-label">💰 Prix</div>
-                        <div class="metric-value">$55</div>
+                        <div class="metric-value">$335</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">📈 MCap</div>
-                        <div class="metric-value">$850M</div>
+                        <div class="metric-value">$5.5B</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">🚀 Performance</div>

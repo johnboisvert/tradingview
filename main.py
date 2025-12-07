@@ -23994,15 +23994,20 @@ async def ai_gem_hunter():
         change_7d = c.get('price_change_percentage_7d_in_currency', change_24h * 3)
         rank = c.get('market_cap_rank', 100)
         
-        # Scoring
-        if mcap > 0:
-            if mcap < 500000000:
-                score += 3.0
-            elif mcap < 2000000000:
-                score += 2.5
-            elif mcap < 5000000000:
-                score += 1.5
+        # NOUVEAU SYSTÈME DE SCORING ÉQUILIBRÉ (qualité + potentiel)
+        # 1. QUALITY SCORE (0-4 pts) - Position de marché
+        if rank <= 10:
+            score += 3.5  # Top 10 = excellence établie
+        elif rank <= 20:
+            score += 3.0
+        elif rank <= 50:
+            score += 2.5
+        elif rank <= 100:
+            score += 2.0
+        else:
+            score += 1.0
         
+        # 2. VOLUME SCORE (0-2 pts) - Liquidité
         if mcap > 0 and volume > 0:
             vol_ratio = (volume / mcap) * 100
             if vol_ratio > 20:
@@ -24010,26 +24015,32 @@ async def ai_gem_hunter():
             elif vol_ratio > 10:
                 score += 1.5
             elif vol_ratio > 5:
+                score += 1.0
+            elif vol_ratio > 2:
                 score += 0.5
         
+        # 3. MOMENTUM SCORE (0-2 pts) - Performance récente
         if change_24h > 10:
             score += 2.0
         elif change_24h > 5:
             score += 1.5
         elif change_24h > 2:
-            score += 0.5
-        
-        if change_7d > 25:
-            score += 2.0
-        elif change_7d > 15:
-            score += 1.5
-        elif change_7d > 8:
-            score += 0.5
-        
-        if rank >= 30 and rank <= 50:
             score += 1.0
-        elif rank >= 20 and rank < 30:
+        elif change_24h > 0:
             score += 0.5
+        elif change_24h > -5:
+            score += 0.25
+        
+        # 4. GROWTH POTENTIAL (0-2 pts) - Upside potentiel
+        if mcap > 0:
+            if mcap < 500000000:  # < $500M
+                score += 2.0
+            elif mcap < 2000000000:  # < $2B
+                score += 1.5
+            elif mcap < 10000000000:  # < $10B
+                score += 1.0
+            elif mcap < 50000000000:  # < $50B
+                score += 0.5
         
         c['gem_score'] = min(score, 10.0)
         gems.append(c)
@@ -24191,13 +24202,14 @@ async def ai_gem_hunter():
                 <div>
                     <div class="upcoming-rank">#{i} Upcoming</div>
                     <div class="upcoming-name">{name}</div>
+                    <div class="upcoming-launch-date">📅 LAUNCH: {launch_date}</div>
                     <div class="upcoming-ticker">{ticker}</div>
                     <div class="upcoming-category">{category}</div>
                 </div>
                 <div class="upcoming-score {score_class}">{score}/10</div>
             </div>
             <div class="upcoming-status {status_class}">
-                📅 {launch_date} • {status}
+                🔄 Status: {status}
             </div>
             <div class="gem-fundamentals">
                 <div class="fundamental-label">📋 Description:</div>
@@ -24236,6 +24248,7 @@ async def ai_gem_hunter():
             .gem-rank,.upcoming-rank{{font-size:0.9em;color:#fbbf24;margin-bottom:5px;font-weight:600}}
             .gem-name,.upcoming-name{{font-size:1.8em;font-weight:700}}
             .gem-fullname,.upcoming-ticker{{font-size:0.9em;color:rgba(255,255,255,0.7);margin-top:5px}}
+            .upcoming-launch-date{{font-size:1.3em;color:#fbbf24;font-weight:700;margin:10px 0;padding:8px 12px;background:rgba(251,191,36,0.15);border-radius:8px;border-left:4px solid #fbbf24}}
             .gem-category,.upcoming-category{{font-size:0.85em;color:#60a5fa;margin-top:5px;padding:5px 10px;background:rgba(96,165,250,0.2);border-radius:5px;display:inline-block}}
             .gem-score,.upcoming-score{{font-size:2.5em;font-weight:700;padding:10px;border-radius:10px;min-width:90px;text-align:center}}
             .gem-score.excellent,.upcoming-score.excellent{{color:#10b981;background:rgba(16,185,129,0.2);border:2px solid #10b981}}

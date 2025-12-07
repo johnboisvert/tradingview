@@ -23924,7 +23924,61 @@ print("✅ TOUTES LES 12 ROUTES AI CRÉÉES!")
 
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
 async def ai_gem_hunter():
-    """Détection de cryptos prometteuses - TOP 50 avec scoring"""
+    """Détection de cryptos prometteuses - TOP 50 avec scoring + Upcoming Gems"""
+    
+    # Fondamentaux des cryptos
+    CRYPTO_FUNDAMENTALS = {
+        'btc': {'category': 'Store of Value', 'description': 'Première crypto, réserve de valeur numérique décentralisée', 'usecase': 'Paiements P2P, hedge contre inflation, réserve de valeur'},
+        'eth': {'category': 'Smart Contracts Platform', 'description': 'Plateforme de smart contracts et DeFi leader mondial', 'usecase': 'DeFi, NFTs, dApps, tokenisation, staking'},
+        'usdt': {'category': 'Stablecoin', 'description': 'Stablecoin adossé au dollar américain', 'usecase': 'Trading, réserve de valeur stable, transferts'},
+        'xrp': {'category': 'Payments', 'description': 'Réseau de paiements transfrontaliers pour institutions', 'usecase': 'Paiements internationaux, liquidité bancaire'},
+        'bnb': {'category': 'Exchange Token', 'description': 'Token natif de Binance, fees réduits et staking', 'usecase': 'Fees Binance, BNB Chain, DeFi, launchpad'},
+        'sol': {'category': 'Smart Contracts Platform', 'description': 'Blockchain haute performance, 65k TPS', 'usecase': 'DeFi, NFTs, Gaming, Web3, ultra rapide'},
+        'usdc': {'category': 'Stablecoin', 'description': 'Stablecoin régulé adossé au dollar', 'usecase': 'DeFi, paiements, réserve stable'},
+        'trx': {'category': 'Content Platform', 'description': 'Plateforme de contenu décentralisé', 'usecase': 'Distribution de contenu, dApps, DeFi'},
+        'doge': {'category': 'Meme Coin', 'description': 'Crypto communautaire originale, paiements', 'usecase': 'Paiements, tips, communauté'},
+        'ada': {'category': 'Smart Contracts Platform', 'description': 'Blockchain proof-of-stake, approche scientifique', 'usecase': 'Smart contracts, DeFi, identity, governance'},
+        'link': {'category': 'Oracle Network', 'description': 'Réseau oracles décentralisé leader', 'usecase': 'Données on-chain, DeFi, smart contracts'},
+        'xlm': {'category': 'Payments', 'description': 'Paiements transfrontaliers rapides et low-cost', 'usecase': 'Remittances, micropaiements, inclusion financière'},
+        'bch': {'category': 'Payments', 'description': 'Fork de Bitcoin optimisé pour paiements', 'usecase': 'Paiements quotidiens, cash électronique'},
+        'dot': {'category': 'Interoperability', 'description': 'Multi-chain, interopérabilité entre blockchains', 'usecase': 'Parachains, cross-chain, Web3'},
+        'ltc': {'category': 'Payments', 'description': 'Silver to Bitcoin gold, paiements rapides', 'usecase': 'Paiements quotidiens, transactions rapides'},
+        'uni': {'category': 'DeFi DEX', 'description': 'DEX leader, automated market maker', 'usecase': 'Échange tokens, liquidité, yield farming'},
+        'avax': {'category': 'Smart Contracts Platform', 'description': 'Blockchain haute performance, sous-réseaux', 'usecase': 'DeFi, entreprises, gaming, subnets'},
+        'near': {'category': 'Smart Contracts Platform', 'description': 'Sharding, developer-friendly, scalable', 'usecase': 'dApps, NFTs, DeFi, Web3'},
+        'hbar': {'category': 'Enterprise Blockchain', 'description': 'Hashgraph, ultra rapide, enterprise-grade', 'usecase': 'Entreprises, supply chain, tokenisation'},
+        'etc': {'category': 'Smart Contracts Platform', 'description': 'Ethereum Classic, original Ethereum chain', 'usecase': 'Smart contracts, immutabilité'},
+        'atom': {'category': 'Interoperability', 'description': 'Hub pour blockchains interconnectées', 'usecase': 'IBC, zones Cosmos, interopérabilité'},
+        'algo': {'category': 'Smart Contracts Platform', 'description': 'Pure proof-of-stake, finance décentralisée', 'usecase': 'DeFi, CBDCs, NFTs, enterprises'},
+        'vet': {'category': 'Supply Chain', 'description': 'Blockchain pour supply chain et IoT', 'usecase': 'Traçabilité, anti-contrefaçon, logistics'},
+        'fil': {'category': 'Storage', 'description': 'Stockage décentralisé peer-to-peer', 'usecase': 'Stockage cloud décentralisé, NFTs'},
+        'icp': {'category': 'Web3 Platform', 'description': 'Internet Computer, Web3 à vitesse web', 'usecase': 'dApps full-stack, websites on-chain'},
+        'apt': {'category': 'Smart Contracts Platform', 'description': 'Move language, ex-Diem, haute performance', 'usecase': 'DeFi, gaming, NFTs, Move VM'},
+        'arb': {'category': 'Layer 2', 'description': 'Optimistic rollup pour Ethereum', 'usecase': 'Scaling Ethereum, low fees, DeFi'},
+        'op': {'category': 'Layer 2', 'description': 'Optimistic rollup, scaling Ethereum', 'usecase': 'Low fees, DeFi, NFTs, dApps'},
+        'matic': {'category': 'Layer 2', 'description': 'Polygon, scaling solution pour Ethereum', 'usecase': 'Gaming, NFTs, DeFi, entreprises'},
+        'rndr': {'category': 'GPU Rendering', 'description': 'Réseau de rendering GPU décentralisé', 'usecase': 'Rendering 3D, AI, metaverse, CGI'},
+        'grt': {'category': 'Indexing', 'description': 'Indexation et requêtes blockchain', 'usecase': 'Données blockchain, GraphQL, Web3'},
+        'imx': {'category': 'NFT Layer 2', 'description': 'Layer 2 pour NFTs, zero gas', 'usecase': 'Gaming NFTs, marketplaces, carbon neutral'},
+        'flow': {'category': 'NFT Platform', 'description': 'Blockchain pour NFTs et gaming', 'usecase': 'NBA Top Shot, gaming, collectibles'},
+        'aave': {'category': 'DeFi Lending', 'description': 'Protocole de lending/borrowing décentralisé', 'usecase': 'Prêts crypto, yield farming, flash loans'},
+        'egld': {'category': 'Smart Contracts Platform', 'description': 'MultiversX, sharding adaptatif', 'usecase': 'DeFi, metaverse, internet economy'},
+        'sand': {'category': 'Metaverse', 'description': 'Metaverse gaming, virtual real estate', 'usecase': 'Gaming, NFTs, virtual worlds, créateurs'},
+        'mana': {'category': 'Metaverse', 'description': 'Decentraland, monde virtuel 3D', 'usecase': 'Virtual real estate, events, gaming'},
+        'axs': {'category': 'Gaming', 'description': 'Axie Infinity, play-to-earn pioneer', 'usecase': 'Gaming, NFTs, breeding, scholarships'},
+        'ftm': {'category': 'Smart Contracts Platform', 'description': 'Fantom, DAG-based, DeFi optimisé', 'usecase': 'DeFi, ultra rapide, low fees'},
+        'theta': {'category': 'Video Streaming', 'description': 'Réseau de streaming vidéo décentralisé', 'usecase': 'Video CDN, edge computing, NFTs'},
+        'eos': {'category': 'Smart Contracts Platform', 'description': 'EOSIO, gouvernance on-chain', 'usecase': 'dApps, DeFi, gaming'},
+        'xtz': {'category': 'Smart Contracts Platform', 'description': 'Tezos, self-amending blockchain', 'usecase': 'NFTs, DeFi, governance, formal verification'},
+        'cake': {'category': 'DeFi DEX', 'description': 'PancakeSwap DEX sur BSC', 'usecase': 'DEX, yield farming, lottery, NFTs'},
+        'mkr': {'category': 'DeFi Stablecoin', 'description': 'Maker DAO, gouvernance de DAI stablecoin', 'usecase': 'DAI stablecoin, governance, CDP'},
+        'crv': {'category': 'DeFi DEX', 'description': 'Curve Finance, stablecoin DEX', 'usecase': 'Stablecoin swaps, low slippage'},
+        'neo': {'category': 'Smart Contracts Platform', 'description': 'Smart economy, digital identity', 'usecase': 'dApps, digital assets, China focus'},
+        'kcs': {'category': 'Exchange Token', 'description': 'KuCoin token, trading discounts', 'usecase': 'KuCoin fees, staking, yield'},
+        'snx': {'category': 'DeFi Derivatives', 'description': 'Synthetix, actifs synthétiques', 'usecase': 'Synthetic assets, derivatives, trading'},
+        'comp': {'category': 'DeFi Lending', 'description': 'Compound, lending protocol algorithmique', 'usecase': 'Lending/borrowing, yield, governance'},
+        'zil': {'category': 'Smart Contracts Platform', 'description': 'Zilliqa, sharding blockchain', 'usecase': 'High throughput, dApps, gaming'},
+    }
     
     # Récupérer le top 50
     cryptos = await get_top_50_cryptos()
@@ -23978,18 +24032,17 @@ async def ai_gem_hunter():
             score += 0.5
         
         c['gem_score'] = min(score, 10.0)
-        
-        # AFFICHER TOUTES LES CRYPTOS (pas seulement score >= 4.0)
         gems.append(c)
     
     gems.sort(key=lambda x: x['gem_score'], reverse=True)
     
-    # Générer HTML
+    # Générer HTML pour cryptos existantes
     gems_html = ""
     for gem in gems[:50]:
         score = gem['gem_score']
         name = gem.get('name', '')
         symbol = gem.get('symbol', '').upper()
+        symbol_lower = gem.get('symbol', '').lower()
         price = gem.get('current_price', 0)
         mcap = gem.get('market_cap', 0)
         volume = gem.get('total_volume', 0)
@@ -23997,13 +24050,24 @@ async def ai_gem_hunter():
         change_7d = gem.get('price_change_percentage_7d_in_currency', change_24h * 3)
         rank = gem.get('market_cap_rank', 0)
         
-        # Formater le prix CORRECTEMENT
+        # Formater le prix
         if price < 1:
             price_formatted = f"{price:,.6f}"
         else:
             price_formatted = f"{price:,.2f}"
         
         vol_ratio = (volume / mcap * 100) if mcap > 0 else 0
+        
+        # Fondamentaux
+        fundamentals = CRYPTO_FUNDAMENTALS.get(symbol_lower, {
+            'category': 'Cryptocurrency',
+            'description': f'{name} cryptocurrency',
+            'usecase': 'Trading, store of value'
+        })
+        
+        category = fundamentals.get('category', 'Crypto')
+        description = fundamentals.get('description', '')
+        usecase = fundamentals.get('usecase', '')
         
         # Potentiel
         if score >= 8.5:
@@ -24040,6 +24104,7 @@ async def ai_gem_hunter():
                     <div class="gem-rank">#{rank} Rank</div>
                     <div class="gem-name">{symbol}</div>
                     <div class="gem-fullname">{name}</div>
+                    <div class="gem-category">{category}</div>
                 </div>
                 <div class="gem-score {score_class}">{score:.1f}/10</div>
             </div>
@@ -24047,6 +24112,12 @@ async def ai_gem_hunter():
             <div class="gem-change">
                 <span class="{change_24h_class}">{change_24h:+.2f}% (24h)</span>
                 <span class="{change_7d_class}">{change_7d:+.2f}% (7j est.)</span>
+            </div>
+            <div class="gem-fundamentals">
+                <div class="fundamental-label">📋 Description:</div>
+                <div class="fundamental-text">{description}</div>
+                <div class="fundamental-label">🎯 Use Case:</div>
+                <div class="fundamental-text">{usecase}</div>
             </div>
             <div class="gem-metrics">
                 <div class="metric">
@@ -24069,6 +24140,79 @@ async def ai_gem_hunter():
         """
     
     total_gems = len(gems)
+
+    
+    # Section UPCOMING GEMS
+    upcoming_html = ""
+    UPCOMING_GEMS = [
+        {'name': 'Berachain', 'ticker': 'BERA', 'category': 'Layer 1 DeFi', 'launch_date': 'Q1 2025', 'description': 'Blockchain EVM-compatible avec proof-of-liquidity consensus', 'usecase': 'DeFi natif, MEV optimization, high performance', 'potential': '15-50x', 'score': 9.5, 'backed_by': 'Polychain Capital, Framework Ventures', 'status': 'Testnet Live'},
+        {'name': 'Monad', 'ticker': 'MONAD', 'category': 'Layer 1 EVM', 'launch_date': 'Q2 2025', 'description': 'EVM ultra-performant, 10,000 TPS, parallel execution', 'usecase': 'High-speed DeFi, gaming, next-gen dApps', 'potential': '20-100x', 'score': 9.8, 'backed_by': 'Dragonfly Capital, Placeholder', 'status': 'Devnet'},
+        {'name': 'Celestia TIA', 'ticker': 'TIA', 'category': 'Modular Blockchain', 'launch_date': 'Launched 2024', 'description': 'First modular blockchain network, data availability layer', 'usecase': 'Rollups, modular blockchains, scaling', 'potential': '10-30x', 'score': 9.2, 'backed_by': 'Bain Capital Crypto, Polychain', 'status': 'Mainnet Live'},
+        {'name': 'Starknet', 'ticker': 'STRK', 'category': 'Layer 2 ZK-Rollup', 'launch_date': 'Launched 2024', 'description': 'ZK-rollup scaling Ethereum with Cairo language', 'usecase': 'Ethereum scaling, DeFi, gaming, ultra-low fees', 'potential': '8-25x', 'score': 9.0, 'backed_by': 'Paradigm, Sequoia, Alameda', 'status': 'Mainnet Live'},
+        {'name': 'Blast', 'ticker': 'BLAST', 'category': 'Layer 2', 'launch_date': 'Launched 2024', 'description': 'L2 with native yield for ETH and stablecoins', 'usecase': 'DeFi with built-in yield, gaming', 'potential': '5-20x', 'score': 8.5, 'backed_by': 'Paradigm, Standard Crypto', 'status': 'Mainnet Live'},
+        {'name': 'Worldcoin', 'ticker': 'WLD', 'category': 'Identity/AI', 'launch_date': 'Launched 2024', 'description': 'Global identity and financial network using biometrics', 'usecase': 'Digital identity, UBI, AI-human verification', 'potential': '10-40x', 'score': 8.8, 'backed_by': 'a16z, Coinbase Ventures, Sam Altman', 'status': 'Live'},
+        {'name': 'EigenLayer', 'ticker': 'EIGEN', 'category': 'Restaking Protocol', 'launch_date': 'Token Q1 2025', 'description': 'Restaking protocol, shared security for Ethereum', 'usecase': 'Restaking, AVS, shared security', 'potential': '15-60x', 'score': 9.6, 'backed_by': 'a16z, Polychain, Blockchain Capital', 'status': 'Protocol Live'},
+        {'name': 'Hyperliquid', 'ticker': 'HYPE', 'category': 'DeFi Perps DEX', 'launch_date': 'Launched Nov 2024', 'description': 'Decentralized perpetuals exchange, own L1', 'usecase': 'Perpetuals trading, low latency, high performance', 'potential': '10-50x', 'score': 9.3, 'backed_by': 'Community-driven', 'status': 'Live'},
+        {'name': 'Movement Labs', 'ticker': 'MOVE', 'category': 'Layer 2 Move', 'launch_date': 'Q1-Q2 2025', 'description': 'Move-based L2 for Ethereum, high performance', 'usecase': 'Move VM on Ethereum, DeFi, gaming', 'potential': '12-40x', 'score': 9.1, 'backed_by': 'Polychain, Placeholder, Aptos Labs', 'status': 'Testnet'},
+        {'name': 'Aleo', 'ticker': 'ALEO', 'category': 'Privacy Layer 1', 'launch_date': 'Q1 2025', 'description': 'Zero-knowledge privacy blockchain, programmable privacy', 'usecase': 'Private DeFi, ZK apps, confidential computing', 'potential': '15-70x', 'score': 9.4, 'backed_by': 'a16z, Samsung NEXT, Coinbase Ventures', 'status': 'Testnet Live'},
+    ]
+    
+    for i, upcoming in enumerate(UPCOMING_GEMS, 1):
+        score = upcoming['score']
+        name = upcoming['name']
+        ticker = upcoming.get('ticker', '')
+        category = upcoming['category']
+        launch_date = upcoming['launch_date']
+        description = upcoming['description']
+        usecase = upcoming['usecase']
+        potential = upcoming['potential']
+        backed_by = upcoming.get('backed_by', 'N/A')
+        status = upcoming.get('status', 'Coming Soon')
+        
+        # Couleur score
+        if score >= 9.5:
+            score_class = "excellent"
+        elif score >= 9.0:
+            score_class = "good"
+        else:
+            score_class = "ok"
+        
+        # Couleur status
+        if 'Live' in status or 'Mainnet' in status:
+            status_class = "live"
+        elif 'Testnet' in status or 'Devnet' in status:
+            status_class = "testnet"
+        else:
+            status_class = "soon"
+        
+        upcoming_html += f"""
+        <div class="upcoming-card">
+            <div class="upcoming-header">
+                <div>
+                    <div class="upcoming-rank">#{i} Upcoming</div>
+                    <div class="upcoming-name">{name}</div>
+                    <div class="upcoming-ticker">{ticker}</div>
+                    <div class="upcoming-category">{category}</div>
+                </div>
+                <div class="upcoming-score {score_class}">{score}/10</div>
+            </div>
+            <div class="upcoming-status {status_class}">
+                📅 {launch_date} • {status}
+            </div>
+            <div class="gem-fundamentals">
+                <div class="fundamental-label">📋 Description:</div>
+                <div class="fundamental-text">{description}</div>
+                <div class="fundamental-label">🎯 Use Case:</div>
+                <div class="fundamental-text">{usecase}</div>
+                <div class="fundamental-label">💰 Backed By:</div>
+                <div class="fundamental-text">{backed_by}</div>
+            </div>
+            <div class="potential ultra">
+                <strong>🚀 Potentiel: {potential}</strong>
+            </div>
+        </div>
+        """
+
     
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
@@ -24076,7 +24220,7 @@ async def ai_gem_hunter():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>AI Gem Hunter - Top 50 Gems</title>
+        <title>AI Gem Hunter - Top 50 Gems + Upcoming</title>
         <style>
             *{{margin:0;padding:0;box-sizing:border-box}}
             body{{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e3a8a,#7e22ce);color:#fff;padding:40px 20px;min-height:100vh}}
@@ -24084,21 +24228,26 @@ async def ai_gem_hunter():
             h1{{font-size:2.8em;text-align:center;margin-bottom:10px;text-shadow:0 0 30px rgba(255,255,255,0.5)}}
             .subtitle{{text-align:center;font-size:1.1em;margin-bottom:10px;opacity:0.9}}
             .stats{{text-align:center;font-size:1em;margin-bottom:40px;color:#fbbf24}}
-            .gems-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:25px}}
-            .gem-card{{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,0.2);border-radius:15px;padding:25px;transition:all 0.3s}}
-            .gem-card:hover{{transform:scale(1.05);border-color:rgba(255,255,255,0.5);box-shadow:0 0 40px rgba(255,255,255,0.3)}}
-            .gem-header{{display:flex;justify-content:space-between;align-items:start;margin-bottom:20px}}
-            .gem-rank{{font-size:0.9em;color:#fbbf24;margin-bottom:5px}}
-            .gem-name{{font-size:1.8em;font-weight:700}}
-            .gem-fullname{{font-size:0.9em;color:rgba(255,255,255,0.7);margin-top:5px}}
-            .gem-score{{font-size:2.5em;font-weight:700;padding:10px;border-radius:10px}}
-            .gem-score.excellent{{color:#10b981;background:rgba(16,185,129,0.2)}}
-            .gem-score.good{{color:#fbbf24;background:rgba(251,191,36,0.2)}}
-            .gem-score.ok{{color:#f59e0b;background:rgba(245,158,11,0.2)}}
+            .section-title{{font-size:2.2em;text-align:center;margin:60px 0 30px;padding:20px;background:rgba(0,0,0,0.3);border-radius:15px;border:2px solid rgba(255,255,255,0.2)}}
+            .gems-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:25px}}
+            .gem-card,.upcoming-card{{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,0.2);border-radius:15px;padding:25px;transition:all 0.3s}}
+            .gem-card:hover,.upcoming-card:hover{{transform:scale(1.02);border-color:rgba(255,255,255,0.5);box-shadow:0 0 40px rgba(255,255,255,0.3)}}
+            .gem-header,.upcoming-header{{display:flex;justify-content:space-between;align-items:start;margin-bottom:20px}}
+            .gem-rank,.upcoming-rank{{font-size:0.9em;color:#fbbf24;margin-bottom:5px;font-weight:600}}
+            .gem-name,.upcoming-name{{font-size:1.8em;font-weight:700}}
+            .gem-fullname,.upcoming-ticker{{font-size:0.9em;color:rgba(255,255,255,0.7);margin-top:5px}}
+            .gem-category,.upcoming-category{{font-size:0.85em;color:#60a5fa;margin-top:5px;padding:5px 10px;background:rgba(96,165,250,0.2);border-radius:5px;display:inline-block}}
+            .gem-score,.upcoming-score{{font-size:2.5em;font-weight:700;padding:10px;border-radius:10px;min-width:90px;text-align:center}}
+            .gem-score.excellent,.upcoming-score.excellent{{color:#10b981;background:rgba(16,185,129,0.2);border:2px solid #10b981}}
+            .gem-score.good,.upcoming-score.good{{color:#fbbf24;background:rgba(251,191,36,0.2);border:2px solid #fbbf24}}
+            .gem-score.ok,.upcoming-score.ok{{color:#f59e0b;background:rgba(245,158,11,0.2);border:2px solid #f59e0b}}
             .gem-price{{font-size:1.5em;font-weight:700;margin:15px 0}}
             .gem-change{{display:flex;gap:15px;font-size:1em;margin-bottom:20px}}
             .gem-change .positive{{color:#10b981}}
             .gem-change .negative{{color:#ef4444}}
+            .gem-fundamentals{{margin:20px 0;padding:15px;background:rgba(0,0,0,0.3);border-radius:10px;border-left:4px solid #60a5fa}}
+            .fundamental-label{{font-weight:700;color:#60a5fa;margin-top:10px;margin-bottom:5px;font-size:0.9em}}
+            .fundamental-text{{color:rgba(255,255,255,0.9);font-size:0.95em;line-height:1.5}}
             .gem-metrics{{margin:20px 0}}
             .metric{{display:flex;justify-content:space-between;margin:10px 0;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px}}
             .metric strong.positive{{color:#10b981}}
@@ -24109,22 +24258,31 @@ async def ai_gem_hunter():
             .potential.medium{{background:rgba(245,158,11,0.2);border-color:#f59e0b}}
             .potential.low{{background:rgba(100,100,100,0.2);border-color:#666}}
             .potential strong{{font-size:1.2em}}
+            .upcoming-status{{padding:10px;border-radius:8px;margin-bottom:15px;font-weight:600;text-align:center}}
+            .upcoming-status.live{{background:rgba(16,185,129,0.3);border:2px solid #10b981;color:#10b981}}
+            .upcoming-status.testnet{{background:rgba(251,191,36,0.3);border:2px solid #fbbf24;color:#fbbf24}}
+            .upcoming-status.soon{{background:rgba(96,165,250,0.3);border:2px solid #60a5fa;color:#60a5fa}}
         </style>
     </head>
     <body>
         <div class="container">
             <h1>💎 AI GEM HUNTER</h1>
-            <p class="subtitle">Détection de cryptos prometteuses - Analyse TOP 50</p>
+            <p class="subtitle">Détection de cryptos prometteuses - Analyse TOP 50 + Upcoming Gems</p>
             <p class="stats">🔍 {total_gems} cryptos analysées et scorées (triées par potentiel)</p>
+            
             <div class="gems-grid">{gems_html}</div>
+            
+            <h2 class="section-title">🚀 UPCOMING GEMS - Top 10 Projets À Venir</h2>
+            <p class="stats">🔥 Nouveaux projets prometteurs et lancements imminents</p>
+            
+            <div class="gems-grid">{upcoming_html}</div>
         </div>
         <script>
-            setTimeout(function() {{ window.location.reload(); }}, 180000);
+            setTimeout(function() {{ window.location.reload(); }}, 300000);
         </script>
     </body>
     </html>
     """)
-
 
 
 print("✅ TOUTES LES 12 ROUTES AI CRÉÉES!")

@@ -26277,12 +26277,12 @@ async def ai_opportunity_scanner():
 
 @app.get("/crypto-pepites", response_class=HTMLResponse)
 async def crypto_pepites():
-    """Page Crypto Pépites avec prévisions IA"""
-    html_content = f"""
+    """Page Crypto Pépites avec menu latéral et 15 cryptos"""
+    html_content = """
     <!DOCTYPE html>
     <html>
     <head>
-        <title>🎯 Nouvelles Pépites Crypto 2025 | Trading Dashboard Pro</title>
+        <title>🎯 15 Pépites Crypto 2025 | Trading Dashboard Pro</title>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
@@ -26297,359 +26297,432 @@ async def crypto_pepites():
                 background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
                 color: white;
                 line-height: 1.6;
-            }}
-            
-            .container {{
-                max-width: 1400px;
-                margin: 0 auto;
-                padding: 40px 20px;
-            }}
-            
-            h1 {{
-                text-align: center;
-                font-size: 3em;
-                margin: 40px 0 20px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-            }}
-            
-            .subtitle {{
-                text-align: center;
-                color: #bbb;
-                font-size: 1.2em;
-                margin-bottom: 50px;
+                overflow-x: hidden;
             }}
         </style>
     </head>
     <body>
 
-        <!-- MENU NAVIGATION -->
-        <nav style="background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #1a237e 100%); padding: 15px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 1000;">
-            <div style="max-width: 1400px; margin: 0 auto; padding: 0 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-                    <a href="/" style="color: white; text-decoration: none; font-size: 1.5em; font-weight: bold; margin-bottom: 10px;">
-                        📊 Trading Dashboard Pro
-                    </a>
-                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-                        <a href="/features" style="color: white; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: background 0.3s;">🎯 Features IA</a>
-                        <a href="/pricing-complete" style="color: white; text-decoration: none; padding: 8px 15px; border-radius: 5px; transition: background 0.3s;">💎 Pricing</a>
-                        <a href="/mon-compte" style="color: white; text-decoration: none; padding: 8px 15px; border-radius: 5px; background: rgba(255,255,255,0.1); transition: background 0.3s;">👤 Mon Compte</a>
-                    </div>
-                </div>
-            </div>
-        </nav>
-
-        <div class="container">
-            <h1>🎯 Nouvelles Pépites Crypto 2025</h1>
-            <p class="subtitle">
-                Analyse approfondie des cryptomonnaies à fort potentiel avec prévisions générées par intelligence artificielle
-            </p>
-
-        <!-- PRÉVISIONS BASÉES SUR ANALYSE IA -->
-        <div class="predictions-section">
-            <h2 style="text-align: center; color: white; font-size: 2.2em; margin: 50px 0 30px;">
-                📊 Prévisions IA 2025-2026
-            </h2>
-            <p style="text-align: center; color: #bbb; margin-bottom: 50px; max-width: 900px; margin-left: auto; margin-right: auto;">
-                Analyse technique et fondamentale générée par intelligence artificielle basée sur les données de marché du 7 décembre 2024
-            </p>
-
-            <!-- HYPE -->
-            <div class="crypto-card" style="background: linear-gradient(135deg, #1e3a5f 0%, #2a5f8f 100%); margin-bottom: 40px;">
-                <h3 style="color: #4fc3f7; font-size: 1.8em; margin-bottom: 20px;">🚀 HYPE (Hyperliquid)</h3>
-                
-                <div class="price-current" style="background: rgba(79, 195, 247, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: white;">💰 Prix Actuel (7 déc 2024)</h4>
-                    <p style="font-size: 1.4em; color: #4fc3f7; font-weight: bold;">$30.80 USD</p>
-                    <p style="color: #bbb; font-size: 0.9em;">Market Cap: $10.4B | Rang #12</p>
-                    <p style="color: #f44336; font-size: 0.9em;">📉 -51% depuis ATH $59.39 (Nov 2024)</p>
-                </div>
-
-                <div class="ai-analysis" style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: #ffb74d;">🤖 Analyse IA</h4>
-                    <p style="color: white; line-height: 1.8;">
-                        <strong style="color: #4fc3f7;">Momentum Technique:</strong><br>
-                        - RSI en zone neutre, correction saine après ATH<br>
-                        - Support clé: $28-30, Résistance: $35-40<br>
-                        - Volume quotidien: $200M+, excellente liquidité
-                    </p>
-                    <p style="color: white; line-height: 1.8; margin-top: 15px;">
-                        <strong style="color: #4fc3f7;">Fondamentaux:</strong><br>
-                        - DEX #1 en revenus ($896K/jour)<br>
-                        - 100K ordres/seconde, latence <1s<br>
-                        - Architecture L1 optimisée avec HyperBFT<br>
-                        - Airdrop historique $1.2B complété
-                    </p>
-                </div>
-
-                <div class="predictions-grid">
-                    <div class="prediction-box" style="background: rgba(76, 175, 80, 0.1); border-left: 4px solid #4caf50;">
-                        <h5 style="color: #4caf50;">🎯 2025 (Scénario Bullish)</h5>
-                        <p style="color: white; font-size: 1.3em; font-weight: bold;">$70 - $100</p>
-                        <p style="color: #bbb; font-size: 0.9em;">Catalyseurs: HyperEVM, adoption DeFi, listings majeurs</p>
-                    </div>
-                    <div class="prediction-box" style="background: rgba(33, 150, 243, 0.1); border-left: 4px solid #2196f3;">
-                        <h5 style="color: #2196f3;">📈 2026 (Adoption Massive)</h5>
-                        <p style="color: white; font-size: 1.3em; font-weight: bold;">$150 - $250</p>
-                        <p style="color: #bbb; font-size: 0.9em;">Potentiel: Leader DEX, écosystème mature</p>
-                    </div>
-                </div>
-
-                <div class="risk-assessment" style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; margin-top: 20px;">
-                    <h4 style="color: #ff9800;">⚠️ Risques Identifiés</h4>
-                    <p style="color: #bbb;">• Concurrence intense (dYdX, GMX)</p>
-                    <p style="color: #bbb;">• Volatilité élevée (tokens unlocks à venir)</p>
-                    <p style="color: #bbb;">• Régulation potentielle des DEX</p>
-                </div>
-            </div>
-
-            <!-- SUI -->
-            <div class="crypto-card" style="background: linear-gradient(135deg, #3d2860 0%, #5a3d8f 100%); margin-bottom: 40px;">
-                <h3 style="color: #9c27b0; font-size: 1.8em; margin-bottom: 20px;">⚡ SUI</h3>
-                
-                <div class="price-current" style="background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: white;">💰 Prix Actuel (7 déc 2024)</h4>
-                    <p style="font-size: 1.4em; color: #9c27b0; font-weight: bold;">$1.57 USD</p>
-                    <p style="color: #bbb; font-size: 0.9em;">Market Cap: $5.7B | Rang #19</p>
-                    <p style="color: #4caf50; font-size: 0.9em;">📈 +5.9% sur 7 jours</p>
-                </div>
-
-                <div class="ai-analysis" style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: #ffb74d;">🤖 Analyse IA</h4>
-                    <p style="color: white; line-height: 1.8;">
-                        <strong style="color: #9c27b0;">Momentum Technique:</strong><br>
-                        - RSI 77.40 (territoire suracheté - correction possible)<br>
-                        - 92% indicateurs techniques bullish<br>
-                        - Support: $1.50, Résistance: $1.80-$2.00
-                    </p>
-                    <p style="color: white; line-height: 1.8; margin-top: 15px;">
-                        <strong style="color: #9c27b0;">Fondamentaux:</strong><br>
-                        - TVL: $1.65B+ (croissance rapide)<br>
-                        - 7.5B transactions en 2024<br>
-                        - Frais moyens: $0.011 (ultra compétitif)<br>
-                        - Croissance développeurs: +219%
-                    </p>
-                </div>
-
-                <div class="predictions-grid">
-                    <div class="prediction-box" style="background: rgba(156, 39, 176, 0.1); border-left: 4px solid #9c27b0;">
-                        <h5 style="color: #9c27b0;">🎯 2025 (Consolidation & Croissance)</h5>
-                        <p style="color: white; font-size: 1.3em; font-weight: bold;">$5 - $10</p>
-                        <p style="color: #bbb; font-size: 0.9em;">Catalyseurs: Écosystème DeFi, partenariats</p>
-                    </div>
-                    <div class="prediction-box" style="background: rgba(156, 39, 176, 0.15); border-left: 4px solid #7b1fa2;">
-                        <h5 style="color: #7b1fa2;">📈 2026 (Maturité)</h5>
-                        <p style="color: white; font-size: 1.3em; font-weight: bold;">$15 - $25</p>
-                        <p style="color: #bbb; font-size: 0.9em;">Potentiel: Top 10 smart contract platforms</p>
-                    </div>
-                </div>
-
-                <div class="risk-assessment" style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; margin-top: 20px;">
-                    <h4 style="color: #ff9800;">⚠️ Risques Identifiés</h4>
-                    <p style="color: #bbb;">• RSI élevé suggère correction court terme</p>
-                    <p style="color: #bbb;">• Concurrence féroce (Solana, Aptos)</p>
-                    <p style="color: #bbb;">• 63% supply encore locked</p>
-                </div>
-            </div>
-
-            <!-- ZEC -->
-            <div class="crypto-card" style="background: linear-gradient(135deg, #2d4a1f 0%, #4a7a2f 100%); margin-bottom: 40px;">
-                <h3 style="color: #8bc34a; font-size: 1.8em; margin-bottom: 20px;">🔐 ZEC (Zcash)</h3>
-                
-                <div class="price-current" style="background: rgba(139, 195, 74, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: white;">💰 Prix Actuel (7 déc 2024)</h4>
-                    <p style="font-size: 1.4em; color: #8bc34a; font-weight: bold;">$340 USD</p>
-                    <p style="color: #bbb; font-size: 0.9em;">Market Cap: $5.6B | Rang #47</p>
-                    <p style="color: #f44336; font-size: 0.9em;">📉 -51% depuis ATH $736 (Nov 2024)</p>
-                    <p style="color: #4caf50; font-size: 0.9em;">🚀 +1100% YTD depuis $15.97</p>
-                </div>
-
-                <div class="ai-analysis" style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: #ffb74d;">🤖 Analyse IA</h4>
-                    <p style="color: white; line-height: 1.8;">
-                        <strong style="color: #8bc34a;">Momentum Technique:</strong><br>
-                        - Correction saine après rallye +1100%<br>
-                        - Support clé: $320-350, Résistance: $400-450<br>
-                        - Volume: $742M/24h (forte liquidité)
-                    </p>
-                    <p style="color: white; line-height: 1.8; margin-top: 15px;">
-                        <strong style="color: #8bc34a;">Fondamentaux:</strong><br>
-                        - Privacy coin leader avec zk-SNARKs<br>
-                        - Supply cap: 21M (comme Bitcoin)<br>
-                        - 78% supply en circulation<br>
-                        - Founder présente roundtable SEC (15 déc)
-                    </p>
-                </div>
-
-                <div class="predictions-grid">
-                    <div class="prediction-box" style="background: rgba(139, 195, 74, 0.1); border-left: 4px solid #8bc34a;">
-                        <h5 style="color: #8bc34a;">🎯 2025 (Reprise Momentum)</h5>
-                        <p style="color: white; font-size: 1.3em; font-weight: bold;">$500 - $700</p>
-                        <p style="color: #bbb; font-size: 0.9em;">Catalyseurs: Clarté réglementaire, adoption privacy</p>
-                    </div>
-                    <div class="prediction-box" style="background: rgba(139, 195, 74, 0.15); border-left: 4px solid #689f38;">
-                        <h5 style="color: #689f38;">📈 2026 (Nouveau ATH?)</h5>
-                        <p style="color: white; font-size: 1.3em; font-weight: bold;">$1000 - $1500+</p>
-                        <p style="color: #bbb; font-size: 0.9em;">Potentiel: Privacy mainstream, regulations favorables</p>
-                    </div>
-                </div>
-
-                <div class="risk-assessment" style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; margin-top: 20px;">
-                    <h4 style="color: #ff9800;">⚠️ Risques Identifiés</h4>
-                    <p style="color: #bbb;">• Volatilité extrême (-51% en 1 mois)</p>
-                    <p style="color: #bbb;">• Risques réglementaires (privacy coins)</p>
-                    <p style="color: #bbb;">• Concurrence Monero, autres privacy coins</p>
-                </div>
-            </div>
-
-            <!-- RENDER -->
-            <div class="crypto-card" style="background: linear-gradient(135deg, #4a1f2d 0%, #7a2f4a 100%); margin-bottom: 40px;">
-                <h3 style="color: #e91e63; font-size: 1.8em; margin-bottom: 20px;">🎨 RENDER</h3>
-                
-                <div class="price-current" style="background: rgba(233, 30, 99, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: white;">💰 Prix Actuel (7 déc 2024)</h4>
-                    <p style="font-size: 1.4em; color: #e91e63; font-weight: bold;">$1.60 USD</p>
-                    <p style="color: #bbb; font-size: 0.9em;">Market Cap: $830M | Rang #72</p>
-                    <p style="color: #f44336; font-size: 0.9em;">📉 -88% depuis ATH $13.53 (Mars 2024)</p>
-                </div>
-
-                <div class="ai-analysis" style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: #ffb74d;">🤖 Analyse IA</h4>
-                    <p style="color: white; line-height: 1.8;">
-                        <strong style="color: #e91e63;">Momentum Technique:</strong><br>
-                        - En consolidation après crash -88%<br>
-                        - Support: $1.50, Résistance: $2.00-$2.50<br>
-                        - Volume: $35M/24h (liquidité correcte)
-                    </p>
-                    <p style="color: white; line-height: 1.8; margin-top: 15px;">
-                        <strong style="color: #e91e63;">Fondamentaux:</strong><br>
-                        - DePIN leader pour GPU rendering<br>
-                        - Usage AI inferencing en croissance<br>
-                        - Trial US: 80% utilisation GPU nodes<br>
-                        - Tokenomics: Burn-Mint Equilibrium
-                    </p>
-                </div>
-
-                <div class="predictions-grid">
-                    <div class="prediction-box" style="background: rgba(233, 30, 99, 0.1); border-left: 4px solid #e91e63;">
-                        <h5 style="color: #e91e63;">🎯 2025 (Récupération)</h5>
-                        <p style="color: white; font-size: 1.3em; font-weight: bold;">$4 - $8</p>
-                        <p style="color: #bbb; font-size: 0.9em;">Catalyseurs: AI boom, usage tripling YoY</p>
-                    </div>
-                    <div class="prediction-box" style="background: rgba(233, 30, 99, 0.15); border-left: 4px solid #c2185b;">
-                        <h5 style="color: #c2185b;">📈 2026 (DePIN Narrative)</h5>
-                        <p style="color: white; font-size: 1.3em; font-weight: bold;">$10 - $15</p>
-                        <p style="color: #bbb; font-size: 0.9em;">Potentiel: AI + Gaming adoption mainstream</p>
-                    </div>
-                </div>
-
-                <div class="risk-assessment" style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; margin-top: 20px;">
-                    <h4 style="color: #ff9800;">⚠️ Risques Identifiés</h4>
-                    <p style="color: #bbb;">• Crash sévère -88% (confiance à restaurer)</p>
-                    <p style="color: #bbb;">• Concurrence centralisée (AWS, Azure)</p>
-                    <p style="color: #bbb;">• Adoption AI incertaine</p>
-                </div>
-            </div>
-
-            <!-- ONDO -->
-            <div class="crypto-card" style="background: linear-gradient(135deg, #1f2d4a 0%, #2f4a7a 100%); margin-bottom: 40px;">
-                <h3 style="color: #64b5f6; font-size: 1.8em; margin-bottom: 20px;">🏦 ONDO (Ondo Finance)</h3>
-                
-                <div class="price-current" style="background: rgba(100, 181, 246, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: white;">💰 Prix Actuel (7 déc 2024)</h4>
-                    <p style="font-size: 1.4em; color: #64b5f6; font-weight: bold;">$0.47 USD</p>
-                    <p style="color: #bbb; font-size: 0.9em;">Market Cap: $1.5B | Rang #67</p>
-                    <p style="color: #f44336; font-size: 0.9em;">📉 -78% depuis ATH $2.14 (16 déc 2024)</p>
-                    <p style="color: #ffeb3b; font-size: 0.9em;">⚡ ATH il y a seulement 9 jours!</p>
-                </div>
-
-                <div class="ai-analysis" style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                    <h4 style="color: #ffb74d;">🤖 Analyse IA</h4>
-                    <p style="color: white; line-height: 1.8;">
-                        <strong style="color: #64b5f6;">Momentum Technique:</strong><br>
-                        - Correction brutale post-ATH (-78% en 9 jours!)<br>
-                        - Support: $0.40-0.45, Résistance: $0.70-1.00<br>
-                        - Volume: $40M/24h (sell-off en cours)
-                    </p>
-                    <p style="color: white; line-height: 1.8; margin-top: 15px;">
-                        <strong style="color: #64b5f6;">Fondamentaux:</strong><br>
-                        - RWA tokenization leader<br>
-                        - TVL: $1.859B (ATH récent)<br>
-                        - Partenariats: PayPal, BlackRock BUIDL<br>
-                        - Roadmap réglementaire soumise à la SEC
-                    </p>
-                </div>
-
-                <div class="predictions-grid">
-                    <div class="prediction-box" style="background: rgba(100, 181, 246, 0.1); border-left: 4px solid #64b5f6;">
-                        <h5 style="color: #64b5f6;">🎯 2025 (Stabilisation & Growth)</h5>
-                        <p style="color: white; font-size: 1.3em; font-weight: bold;">$1.50 - $3.00</p>
-                        <p style="color: #bbb; font-size: 0.9em;">Catalyseurs: RWA adoption, clarté réglementaire</p>
-                    </div>
-                    <div class="prediction-box" style="background: rgba(100, 181, 246, 0.15); border-left: 4px solid #42a5f5;">
-                        <h5 style="color: #42a5f5;">📈 2026 (RWA Mainstream)</h5>
-                        <p style="color: white; font-size: 1.3em; font-weight: bold;">$5 - $8</p>
-                        <p style="color: #bbb; font-size: 0.9em;">Potentiel: Wall Street adoption, tokenization boom</p>
-                    </div>
-                </div>
-
-                <div class="risk-assessment" style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; margin-top: 20px;">
-                    <h4 style="color: #ff9800;">⚠️ Risques Identifiés</h4>
-                    <p style="color: #bbb;">• Volatilité extrême (-78% en 9 jours)</p>
-                    <p style="color: #bbb;">• Incertitude réglementaire RWA</p>
-                    <p style="color: #bbb;">• 68% supply encore locked</p>
-                </div>
-            </div>
-
-            <!-- Méthodologie -->
-            <div style="background: rgba(255, 255, 255, 0.05); padding: 30px; border-radius: 15px; margin-top: 50px;">
-                <h3 style="color: white; text-align: center; margin-bottom: 20px;">📚 Méthodologie de l'Analyse IA</h3>
-                <p style="color: #bbb; line-height: 1.8; max-width: 900px; margin: 0 auto;">
-                    Ces prévisions sont générées par intelligence artificielle en analysant:<br><br>
-                    <strong style="color: white;">Données Techniques:</strong> RSI, MACD, volumes, support/résistance, patterns de prix<br>
-                    <strong style="color: white;">Fondamentaux:</strong> Market cap, TVL, adoption, développement, partenariats<br>
-                    <strong style="color: white;">Sentiment:</strong> Social media, news, activité développeurs, momentum institutionnel<br>
-                    <strong style="color: white;">Macro:</strong> Bitcoin dominance, altseason indicators, Fear & Greed Index<br><br>
-                    
-                    <em style="color: #ff9800;">⚠️ Disclaimer:</em> Ces prévisions sont à titre informatif uniquement. Le marché crypto est extrêmement volatile. Faites toujours vos propres recherches (DYOR) et n'investissez que ce que vous pouvez vous permettre de perdre.
-                </p>
-            </div>
-        </div>
-
+        <!-- MENU LATÉRAL FEATURES IA -->
         <style>
-        .predictions-section {{
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }}
-        
-        .crypto-card {{
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }}
-        
-        .predictions-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
-        }}
-        
-        .prediction-box {{
+        .side-menu {{
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(180deg, #1a237e 0%, #0d47a1 100%);
             padding: 20px;
-            border-radius: 10px;
+            overflow-y: auto;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.3);
+            z-index: 999;
         }}
         
-        @media (max-width: 768px) {{
-            .predictions-grid {{
-                grid-template-columns: 1fr;
+        .side-menu h2 {{
+            color: white;
+            font-size: 1.4em;
+            margin-bottom: 30px;
+            text-align: center;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+            padding-bottom: 15px;
+        }}
+        
+        .side-menu a {{
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-size: 0.95em;
+        }}
+        
+        .side-menu a:hover {{
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+        }}
+        
+        .side-menu a.active {{
+            background: rgba(255,255,255,0.15);
+            border-left: 4px solid #4fc3f7;
+        }}
+        
+        .main-content {{
+            margin-left: 300px;
+            padding: 20px;
+        }}
+        
+        @media (max-width: 1024px) {{
+            .side-menu {{
+                width: 100%;
+                height: auto;
+                position: relative;
+            }}
+            .main-content {{
+                margin-left: 0;
             }}
         }}
         </style>
-
+        
+        <div class="side-menu">
+            <h2>📊 Features IA</h2>
+            <a href="/ai-signals">🎯 AI Signals</a>
+            <a href="/ai-gem-hunter">💎 AI Gem Hunter</a>
+            <a href="/crypto-pepites" class="active">🎯 Nouvelles Pépites</a>
+            <a href="/ai-news">📰 AI News Scanner</a>
+            <a href="/ai-predictor">🔮 AI Price Predictor</a>
+            <a href="/ai-whale">🐋 AI Whale Tracker</a>
+            <a href="/ai-patterns">📊 AI Pattern Scanner</a>
+            <a href="/ai-sentiment">😊 AI Sentiment</a>
+            <a href="/ai-sizer">💰 AI Position Sizer</a>
+            <a href="/ai-exit">🚪 AI Exit Strategy</a>
+            <a href="/ai-timeframe">⏰ AI Multi-Timeframe</a>
+            <a href="/ai-liquidity">💧 AI Liquidity Heatmap</a>
+            <a href="/ai-alerts">🔔 AI Smart Alerts</a>
+            
+            <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid rgba(255,255,255,0.2);">
+                <a href="/pricing-complete" style="background: rgba(255,215,0,0.2);">💎 Pricing</a>
+                <a href="/mon-compte">👤 Mon Compte</a>
+                <a href="/">🏠 Dashboard</a>
+            </div>
         </div>
+
+<div class="main-content">
+    <h1 style="text-align: center; font-size: 3em; margin: 40px 0 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+        🎯 15 Pépites Crypto 2025
+    </h1>
+    <p style="text-align: center; color: #bbb; font-size: 1.2em; margin-bottom: 60px; max-width: 900px; margin-left: auto; margin-right: auto;">
+        Analyse IA approfondie des cryptomonnaies à fort potentiel avec prévisions data-driven
+    </p>
+
+    <div class="crypto-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(550px, 1fr)); gap: 30px; max-width: 1400px; margin: 0 auto;">
+    
+    <!-- HYPE -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #1e3a5f 0%, #2a5f8f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #4fc3f7; font-size: 1.6em; margin-bottom: 15px;">🚀 HYPE (Hyperliquid)</h3>
+        <div style="background: rgba(79, 195, 247, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #4fc3f7; font-weight: bold; margin: 5px 0;">💰 $30.80</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $10.4B | Rang #12</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> DEX #1 revenus ($896K/jour), 100K ordres/sec
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(76, 175, 80, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #4caf50; font-weight: bold; font-size: 0.9em;">2025: $70-100</p>
+            </div>
+            <div style="background: rgba(33, 150, 243, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #2196f3; font-weight: bold; font-size: 0.9em;">2026: $150-250</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SUI -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #3d2860 0%, #5a3d8f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #9c27b0; font-size: 1.6em; margin-bottom: 15px;">⚡ SUI</h3>
+        <div style="background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #9c27b0; font-weight: bold; margin: 5px 0;">💰 $1.57</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $5.7B | Rang #19</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> TVL $1.65B+, 7.5B transactions 2024, frais $0.011
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(156, 39, 176, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #9c27b0; font-weight: bold; font-size: 0.9em;">2025: $5-10</p>
+            </div>
+            <div style="background: rgba(156, 39, 176, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #7b1fa2; font-weight: bold; font-size: 0.9em;">2026: $15-25</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ZEC -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #2d4a1f 0%, #4a7a2f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #8bc34a; font-size: 1.6em; margin-bottom: 15px;">🔐 ZEC (Zcash)</h3>
+        <div style="background: rgba(139, 195, 74, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #8bc34a; font-weight: bold; margin: 5px 0;">💰 $340</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $5.6B | +1100% YTD</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> Privacy leader, zk-SNARKs, SEC roundtable
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(139, 195, 74, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #8bc34a; font-weight: bold; font-size: 0.9em;">2025: $500-700</p>
+            </div>
+            <div style="background: rgba(139, 195, 74, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #689f38; font-weight: bold; font-size: 0.9em;">2026: $1000-1500</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- RENDER -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #4a1f2d 0%, #7a2f4a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #e91e63; font-size: 1.6em; margin-bottom: 15px;">🎨 RENDER</h3>
+        <div style="background: rgba(233, 30, 99, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #e91e63; font-weight: bold; margin: 5px 0;">💰 $1.60</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $830M | DePIN Leader</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> GPU rendering, AI trial 80% utilisation
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(233, 30, 99, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #e91e63; font-weight: bold; font-size: 0.9em;">2025: $4-8</p>
+            </div>
+            <div style="background: rgba(233, 30, 99, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #c2185b; font-weight: bold; font-size: 0.9em;">2026: $10-15</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ONDO -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #1f2d4a 0%, #2f4a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #64b5f6; font-size: 1.6em; margin-bottom: 15px;">🏦 ONDO</h3>
+        <div style="background: rgba(100, 181, 246, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #64b5f6; font-weight: bold; margin: 5px 0;">💰 $0.47</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | RWA Leader</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> TVL $1.86B ATH, BlackRock, PayPal
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(100, 181, 246, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #64b5f6; font-weight: bold; font-size: 0.9em;">2025: $1.50-3.00</p>
+            </div>
+            <div style="background: rgba(100, 181, 246, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #42a5f5; font-weight: bold; font-size: 0.9em;">2026: $5-8</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- PEPE -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #1f4a2d 0%, #2f7a4a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #4caf50; font-size: 1.6em; margin-bottom: 15px;">🐸 PEPE</h3>
+        <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #4caf50; font-weight: bold; margin: 5px 0;">💰 $0.0000046</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.9B | Meme King</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> Meme leader, 420T supply, community fort
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(76, 175, 80, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #4caf50; font-weight: bold; font-size: 0.9em;">2025: $0.00001-0.00002</p>
+            </div>
+            <div style="background: rgba(76, 175, 80, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #388e3c; font-weight: bold; font-size: 0.9em;">2026: $0.00003-0.00005</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- WIF -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #4a2d1f 0%, #7a4a2f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #ff9800; font-size: 1.6em; margin-bottom: 15px;">🐶 WIF (dogwifhat)</h3>
+        <div style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #ff9800; font-weight: bold; margin: 5px 0;">💰 $0.38</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $377M | Solana Meme</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> Solana top meme, 999M supply, viral
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(255, 152, 0, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #ff9800; font-weight: bold; font-size: 0.9em;">2025: $1.00-2.00</p>
+            </div>
+            <div style="background: rgba(255, 152, 0, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #f57c00; font-weight: bold; font-size: 0.9em;">2026: $3-5</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JUP -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #1f2d4a 0%, #2f4a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #00bcd4; font-size: 1.6em; margin-bottom: 15px;">🪐 JUP (Jupiter)</h3>
+        <div style="background: rgba(0, 188, 212, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #00bcd4; font-weight: bold; margin: 5px 0;">💰 $0.75</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $975M | DEX #1 Solana</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> Aggregator top Solana, volume massif
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(0, 188, 212, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #00bcd4; font-weight: bold; font-size: 0.9em;">2025: $2-3</p>
+            </div>
+            <div style="background: rgba(0, 188, 212, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #00838f; font-weight: bold; font-size: 0.9em;">2026: $5-8</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ARB -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #1f3d4a 0%, #2f5a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #2196f3; font-size: 1.6em; margin-bottom: 15px;">🔷 ARB (Arbitrum)</h3>
+        <div style="background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #2196f3; font-weight: bold; margin: 5px 0;">💰 $0.62</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $2.5B | L2 Leader</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> Ethereum L2 top, TVL $2.4B, scaling
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(33, 150, 243, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #2196f3; font-weight: bold; font-size: 0.9em;">2025: $1.50-2.50</p>
+            </div>
+            <div style="background: rgba(33, 150, 243, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #1976d2; font-weight: bold; font-size: 0.9em;">2026: $4-6</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- OP -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #4a1f1f 0%, #7a2f2f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #f44336; font-size: 1.6em; margin-bottom: 15px;">🔴 OP (Optimism)</h3>
+        <div style="background: rgba(244, 67, 54, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #f44336; font-weight: bold; margin: 5px 0;">💰 $1.45</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | L2 Superchain</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> L2 optimistic rollup, Base, Coinbase
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(244, 67, 54, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #f44336; font-weight: bold; font-size: 0.9em;">2025: $3-5</p>
+            </div>
+            <div style="background: rgba(244, 67, 54, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #d32f2f; font-weight: bold; font-size: 0.9em;">2026: $8-12</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- INJ -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #1f4a4a 0%, #2f7a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #00bfa5; font-size: 1.6em; margin-bottom: 15px;">💉 INJ (Injective)</h3>
+        <div style="background: rgba(0, 191, 165, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #00bfa5; font-weight: bold; margin: 5px 0;">💰 $18.50</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.8B | DeFi Layer-1</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> Cosmos DEX, derivatives, interchain
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(0, 191, 165, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #00bfa5; font-weight: bold; font-size: 0.9em;">2025: $40-60</p>
+            </div>
+            <div style="background: rgba(0, 191, 165, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #00897b; font-weight: bold; font-size: 0.9em;">2026: $100-150</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEI -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #4a1f3d 0%, #7a2f5a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #e91e8c; font-size: 1.6em; margin-bottom: 15px;">⚡ SEI</h3>
+        <div style="background: rgba(233, 30, 140, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #e91e8c; font-weight: bold; margin: 5px 0;">💰 $0.38</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | Trading Chain</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> L1 trading-focused, 380ms finality
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(233, 30, 140, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #e91e8c; font-weight: bold; font-size: 0.9em;">2025: $1.00-1.50</p>
+            </div>
+            <div style="background: rgba(233, 30, 140, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #c2185b; font-weight: bold; font-size: 0.9em;">2026: $2.50-4.00</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- TIA -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #1f1f4a 0%, #2f2f7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #7c4dff; font-size: 1.6em; margin-bottom: 15px;">🌌 TIA (Celestia)</h3>
+        <div style="background: rgba(124, 77, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #7c4dff; font-weight: bold; margin: 5px 0;">💰 $4.80</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.1B | Modular L1</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> Data availability, modular blockchain
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(124, 77, 255, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #7c4dff; font-weight: bold; font-size: 0.9em;">2025: $12-18</p>
+            </div>
+            <div style="background: rgba(124, 77, 255, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #651fff; font-weight: bold; font-size: 0.9em;">2026: $25-40</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- PYTH -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #3d1f4a 0%, #5a2f7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #ab47bc; font-size: 1.6em; margin-bottom: 15px;">🔮 PYTH</h3>
+        <div style="background: rgba(171, 71, 188, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #ab47bc; font-weight: bold; margin: 5px 0;">💰 $0.35</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.4B | Oracle Leader</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> Prix feed, 400+ price sources
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(171, 71, 188, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #ab47bc; font-weight: bold; font-size: 0.9em;">2025: $1.00-1.50</p>
+            </div>
+            <div style="background: rgba(171, 71, 188, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #8e24aa; font-weight: bold; font-size: 0.9em;">2026: $2.50-4.00</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- BONK -->
+    <div class="crypto-card" style="background: linear-gradient(135deg, #4a2d1f 0%, #7a4a2f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+        <h3 style="color: #ff6b35; font-size: 1.6em; margin-bottom: 15px;">🐕 BONK</h3>
+        <div style="background: rgba(255, 107, 53, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <p style="font-size: 1.3em; color: #ff6b35; font-weight: bold; margin: 5px 0;">💰 $0.000018</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.3B | Solana Meme OG</p>
+        </div>
+        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
+            <strong>🤖 IA:</strong> Premier Solana meme, community fort
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="background: rgba(255, 107, 53, 0.1); padding: 12px; border-radius: 8px;">
+                <p style="color: #ff6b35; font-weight: bold; font-size: 0.9em;">2025: $0.00005-0.0001</p>
+            </div>
+            <div style="background: rgba(255, 107, 53, 0.15); padding: 12px; border-radius: 8px;">
+                <p style="color: #f4511e; font-weight: bold; font-size: 0.9em;">2026: $0.0002-0.0004</p>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- Méthodologie IA -->
+    <div style="background: rgba(255, 255, 255, 0.05); padding: 40px; border-radius: 15px; margin: 60px auto; max-width: 1200px;">
+        <h3 style="color: white; text-align: center; font-size: 2em; margin-bottom: 30px;">📚 Méthodologie IA</h3>
+        <p style="color: #bbb; line-height: 1.8; font-size: 1.05em; max-width: 900px; margin: 0 auto;">
+            Ces prévisions sont générées par intelligence artificielle en analysant:<br><br>
+            <strong style="color: white;">• Données Techniques:</strong> RSI, MACD, volumes, support/résistance<br>
+            <strong style="color: white;">• Fondamentaux:</strong> Market cap, TVL, adoption, développement<br>
+            <strong style="color: white;">• Sentiment:</strong> Social media, momentum, activité développeurs<br>
+            <strong style="color: white;">• Macro:</strong> Bitcoin dominance, altseason, Fear & Greed Index<br><br>
+            
+            <em style="color: #ff9800;">⚠️ Disclaimer:</em> Prévisions à titre informatif uniquement. Le marché crypto est extrêmement volatil. Faites vos propres recherches (DYOR) et n'investissez que ce que vous pouvez perdre.
+        </p>
+    </div>
+</div>
+
+<style>
+@media (max-width: 768px) {{
+    .crypto-grid {{
+        grid-template-columns: 1fr !important;
+    }}
+}}
+</style>
+
     </body>
     </html>
     """

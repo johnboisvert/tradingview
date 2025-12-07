@@ -26277,361 +26277,625 @@ async def ai_opportunity_scanner():
 
 @app.get("/crypto-pepites", response_class=HTMLResponse)
 async def crypto_pepites():
-    """Page Crypto Pépites avec le VRAI menu de l'app"""
+    """
+    🎯 15 PÉPITES CRYPTO 2025 - AVEC API TEMPS RÉEL
+    ================================================
+    ✅ Prix CoinGecko API mis à jour toutes les 30s
+    ✅ 15 cryptos avec prédictions IA 2025-2026
+    ✅ Indicateur temps réel + dernière mise à jour
+    """
     html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>🎯 15 Pépites Crypto 2025 | Trading Dashboard Pro</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            * {{
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 15 Pépites Crypto 2025 | Trading Dashboard Pro</title>
+    <meta name="description" content="Découvrez nos 15 pépites crypto avec IA - Prédictions 2025-2026 + Prix en temps réel">
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%); 
+            color: #e0e6ed; 
+            margin-left: 280px !important;
+            padding: 20px;
+        }}
+        
+        .page-header {{
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+        }}
+        
+        .page-header h1 {{
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }}
+        
+        .page-header p {{
+            font-size: 1.2em;
+            opacity: 0.9;
+        }}
+        
+        .update-indicator {{
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(34, 197, 94, 0.2);
+            border: 2px solid #22c55e;
+            border-radius: 10px;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }}
+        
+        .update-indicator.updating {{
+            border-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.2);
+        }}
+        
+        .pulse-dot {{
+            width: 10px;
+            height: 10px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }}
+        
+        .update-indicator.updating .pulse-dot {{
+            background: #f59e0b;
+        }}
+        
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; transform: scale(1); }}
+            50% {{ opacity: 0.5; transform: scale(1.2); }}
+        }}
+        
+        .crypto-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }}
+        
+        .crypto-card {{
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 20px;
+            padding: 30px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .crypto-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--card-color-1), var(--card-color-2));
+        }}
+        
+        .crypto-card:hover {{
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.3);
+        }}
+        
+        .crypto-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 20px;
+        }}
+        
+        .crypto-name {{
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }}
+        
+        .crypto-category {{
+            display: inline-block;
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-top: 5px;
+        }}
+        
+        .price-box {{
+            background: rgba(var(--rgb-color), 0.1);
+            border: 2px solid rgba(var(--rgb-color), 0.3);
+            border-radius: 15px;
+            padding: 15px;
+            margin: 20px 0;
+        }}
+        
+        .current-price {{
+            font-size: 1.8em;
+            font-weight: bold;
+            color: var(--card-color-1);
+            margin-bottom: 5px;
+        }}
+        
+        .price-change {{
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }}
+        
+        .price-change.positive {{ color: #22c55e; }}
+        .price-change.negative {{ color: #ef4444; }}
+        
+        .market-cap {{
+            font-size: 0.95em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }}
+        
+        .ai-analysis {{
+            background: rgba(139, 92, 246, 0.1);
+            border-left: 4px solid #8b5cf6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }}
+        
+        .ai-analysis h4 {{
+            color: #a78bfa;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .predictions-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }}
+        
+        .prediction-box {{
+            background: rgba(var(--rgb-color), 0.15);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(var(--rgb-color), 0.3);
+        }}
+        
+        .prediction-year {{
+            font-size: 0.9em;
+            color: var(--card-color-1);
+            font-weight: bold;
+            margin-bottom: 5px;
+        }}
+        
+        .prediction-price {{
+            font-size: 1.3em;
+            font-weight: bold;
+        }}
+        
+        .methodology {{
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(16, 185, 129, 0.3);
+        }}
+        
+        .methodology h2 {{
+            color: #10b981;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }}
+        
+        .methodology ul {{
+            list-style-position: inside;
+            line-height: 1.8;
+        }}
+        
+        .methodology li {{
+            margin-bottom: 10px;
+        }}
+        
+        .disclaimer {{
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }}
+        
+        .loading-price {{
+            color: #6b7280;
+            font-style: italic;
+        }}
+        
+        @media (max-width: 768px) {{
+            body {{ margin-left: 0 !important; padding: 10px; }}
+            .crypto-grid {{ grid-template-columns: 1fr; }}
+            .page-header h1 {{ font-size: 2em; }}
+            .predictions-grid {{ grid-template-columns: 1fr; }}
+            .update-indicator {{
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+                font-size: 0.9em;
             }}
-            
-            body {{
-                font-family: 'Segoe UI', Arial, sans-serif;
-                background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-                color: white;
-                line-height: 1.6;
-            }}
-        </style>
-    </head>
-    <body>
+        }}
+    </style>
+</head>
+<body>
 {SIDEBAR}
 
-    <h1 style="text-align: center; font-size: 3em; margin: 40px 0 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-        🎯 15 Pépites Crypto 2025
-    </h1>
-    <p style="text-align: center; color: #bbb; font-size: 1.2em; margin-bottom: 60px; max-width: 900px; margin-left: auto; margin-right: auto;">
-        Analyse IA approfondie des cryptomonnaies à fort potentiel
-    </p>
+<div class="update-indicator" id="updateIndicator">
+    <div class="pulse-dot"></div>
+    <span id="updateText">Initialisation...</span>
+</div>
 
-    <div class="crypto-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 30px; max-width: 1400px; margin: 0 auto; padding: 20px;">
+<div class="page-header">
+    <h1>🎯 15 Pépites Crypto 2025</h1>
+    <p>Prédictions IA + Prix en Temps Réel</p>
+    <p style="font-size: 0.9em; margin-top: 10px; opacity: 0.8;">⚡ Prix CoinGecko mis à jour automatiquement toutes les 30 secondes</p>
+</div>
+
+<div class="crypto-grid" id="cryptoGrid">
+    <!-- Les cartes crypto seront générées dynamiquement par JavaScript -->
+</div>
+
+<div class="methodology">
+    <h2>📊 Méthodologie d'Analyse IA</h2>
+    <p style="margin-bottom: 20px;">Nos prédictions sont basées sur une analyse multi-facteurs:</p>
+    <ul>
+        <li><strong>Analyse Technique:</strong> RSI, MACD, volumes, supports/résistances, patterns de prix</li>
+        <li><strong>Fondamentaux:</strong> Market cap, TVL, adoption, activité développeurs, roadmap</li>
+        <li><strong>Sentiment de Marché:</strong> Social media, tendances Google, activité on-chain</li>
+        <li><strong>Macro-Économie:</strong> Bitcoin dominance, altseason index, Fear & Greed Index</li>
+        <li><strong>Événements Catalyseurs:</strong> Listings exchanges, partenariats, upgrades réseau</li>
+    </ul>
+</div>
+
+<div class="disclaimer">
+    <p><strong>⚠️ AVERTISSEMENT:</strong> Ces prédictions sont basées sur l'analyse IA et ne constituent PAS des conseils financiers. 
+    Le marché crypto est extrêmement volatil. Investissez uniquement ce que vous pouvez vous permettre de perdre. DYOR (Do Your Own Research).</p>
+</div>
+
+<script>
+// Configuration des 15 cryptos avec IDs CoinGecko
+const cryptoConfig = [
+    {{
+        id: 'hyperliquid',
+        symbol: 'HYPE',
+        name: 'Hyperliquid',
+        category: 'DeFi Infrastructure',
+        colors: {{ primary: '#1e3a5f', secondary: '#2a5f8f', rgb: '30, 58, 95' }},
+        analysis: 'L1 performant optimisé pour DeFi. DEX perpetual #1 avec $896K/jour de revenus. HyperBFT consensus <1s. Support EVM natif + CosmWasm.',
+        pred2025: '$70-100',
+        pred2026: '$150-250'
+    }},
+    {{
+        id: 'sui',
+        symbol: 'SUI',
+        name: 'Sui',
+        category: 'Smart Contract Platform',
+        colors: {{ primary: '#4da9ff', secondary: '#00b8d4', rgb: '77, 169, 255' }},
+        analysis: 'Move language, TVL $1.65B+, 7.5B transactions. Gaming & DeFi en croissance explosive. Écosystème mature avec 200+ dApps.',
+        pred2025: '$5-10',
+        pred2026: '$15-25'
+    }},
+    {{
+        id: 'zcash',
+        symbol: 'ZEC',
+        name: 'Zcash',
+        category: 'Privacy',
+        colors: {{ primary: '#f9bb00', secondary: '#e99f00', rgb: '249, 187, 0' }},
+        analysis: 'Privacy leader +1100% YTD. zk-SNARKs. SEC roundtable juin 2024. Adoption institutionnelle croissante. PoW sécurisé.',
+        pred2025: '$500-700',
+        pred2026: '$1000-1500'
+    }},
+    {{
+        id: 'render-token',
+        symbol: 'RENDER',
+        name: 'Render',
+        category: 'DePIN',
+        colors: {{ primary: '#b026ff', secondary: '#9f1aff', rgb: '176, 38, 255' }},
+        analysis: 'DePIN GPU rendering. Réseau 100K+ GPUs. Partnerships Apple, Autodesk. AI/3D render décentralisé. Burn mechanism actif.',
+        pred2025: '$4-8',
+        pred2026: '$10-15'
+    }},
+    {{
+        id: 'ondo-finance',
+        symbol: 'ONDO',
+        name: 'Ondo',
+        category: 'RWA',
+        colors: {{ primary: '#00d4aa', secondary: '#00b894', rgb: '0, 212, 170' }},
+        analysis: 'RWA tokenization leader. BlackRock partnership. USDY + OUSG products. Institutional-grade securities on-chain. TVL croissant.',
+        pred2025: '$1.50-3.00',
+        pred2026: '$5-8'
+    }},
+    {{
+        id: 'pepe',
+        symbol: 'PEPE',
+        name: 'Pepe',
+        category: 'Meme Coin',
+        colors: {{ primary: '#17c654', secondary: '#12a043', rgb: '23, 198, 84' }},
+        analysis: 'Top meme coin. +1900% en 2024. Robinhood listing impact massif. Burns réguliers. Community forte. ATH $0.000028 Dec 2024.',
+        pred2025: '$0.00001-0.00002',
+        pred2026: '$0.00003-0.00005'
+    }},
+    {{
+        id: 'dogwifcoin',
+        symbol: 'WIF',
+        name: 'dogwifhat',
+        category: 'Meme Coin',
+        colors: {{ primary: '#ff6b9d', secondary: '#ff4081', rgb: '255, 107, 157' }},
+        analysis: 'Solana meme leader. Community virale. +1000% en 2024. Momentum social fort. Ecosystem growing.',
+        pred2025: '$1-2',
+        pred2026: '$3-5'
+    }},
+    {{
+        id: 'jupiter-exchange-solana',
+        symbol: 'JUP',
+        name: 'Jupiter',
+        category: 'DeFi',
+        colors: {{ primary: '#fca130', secondary: '#f39200', rgb: '252, 161, 48' }},
+        analysis: 'Solana DEX aggregator #1. Volume $100B+ monthly. Perpetuals launch success. Token burns. Ecosystem central.',
+        pred2025: '$2-3',
+        pred2026: '$5-8'
+    }},
+    {{
+        id: 'arbitrum',
+        symbol: 'ARB',
+        name: 'Arbitrum',
+        category: 'Layer 2',
+        colors: {{ primary: '#28a0f0', secondary: '#1e88e5', rgb: '40, 160, 240' }},
+        analysis: 'Ethereum L2 leader. TVL $3B+. Orbit chains ecosystem. Gaming & DeFi adoption. Stylus (Rust/C++). Developer activity #1.',
+        pred2025: '$1.50-2.50',
+        pred2026: '$4-6'
+    }},
+    {{
+        id: 'optimism',
+        symbol: 'OP',
+        name: 'Optimism',
+        category: 'Layer 2',
+        colors: {{ primary: '#ff0420', secondary: '#e60315', rgb: '255, 4, 32' }},
+        analysis: 'Optimistic rollup pioneer. Superchain vision. Base, Mode, Zora built on OP Stack. Governance OP Collective. Scaling Ethereum.',
+        pred2025: '$3-5',
+        pred2026: '$8-12'
+    }},
+    {{
+        id: 'injective-protocol',
+        symbol: 'INJ',
+        name: 'Injective',
+        category: 'DeFi',
+        colors: {{ primary: '#00f2fe', secondary: '#00d9e6', rgb: '0, 242, 254' }},
+        analysis: 'Cosmos DEX performant. Derivatives on-chain. Cross-chain trading. Developer grants actifs. Institutional focus.',
+        pred2025: '$40-60',
+        pred2026: '$100-150'
+    }},
+    {{
+        id: 'sei-network',
+        symbol: 'SEI',
+        name: 'Sei',
+        category: 'Smart Contract Platform',
+        colors: {{ primary: '#b91c1c', secondary: '#991b1b', rgb: '185, 28, 28' }},
+        analysis: 'Trading-optimized L1. 380ms finality. Parallelization native. EVM + CosmWasm. DeFi & NFT trading focus.',
+        pred2025: '$1.00-1.50',
+        pred2026: '$2.50-4.00'
+    }},
+    {{
+        id: 'celestia',
+        symbol: 'TIA',
+        name: 'Celestia',
+        category: 'Infrastructure',
+        colors: {{ primary: '#7c3aed', secondary: '#6d28d9', rgb: '124, 58, 237' }},
+        analysis: 'Modular blockchain pioneer. Data availability layer. Rollups-as-a-service. Developer adoption croissante. Vision long-terme.',
+        pred2025: '$12-18',
+        pred2026: '$25-40'
+    }},
+    {{
+        id: 'pyth-network',
+        symbol: 'PYTH',
+        name: 'Pyth',
+        category: 'Infrastructure',
+        colors: {{ primary: '#e935c1', secondary: '#d91ea8', rgb: '233, 53, 193' }},
+        analysis: 'Oracle leader. 100+ blockchains. Data publishers premium (Jane Street, Jump). US Gov partnership. TTV $181B+ Q3.',
+        pred2025: '$1.00-1.50',
+        pred2026: '$2.50-4.00'
+    }},
+    {{
+        id: 'bonk',
+        symbol: 'BONK',
+        name: 'Bonk',
+        category: 'Meme Coin',
+        colors: {{ primary: '#f97316', secondary: '#ea580c', rgb: '249, 115, 22' }},
+        analysis: 'Solana meme OG. BURNmas 2024: 1.69T burned ($55M). DeFi integrations. BonkBot, BonkSwap. Community-driven burns.',
+        pred2025: '$0.00005-0.0001',
+        pred2026: '$0.0002-0.0004'
+    }}
+];
+
+// État global
+let pricesData = {{}};
+let lastUpdate = null;
+let updateCount = 0;
+
+// Formatage des prix
+function formatPrice(price, symbol) {{
+    if (!price) return 'Chargement...';
     
-    <!-- HYPE -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #1e3a5f 0%, #2a5f8f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #4fc3f7; font-size: 1.6em; margin-bottom: 15px;">🚀 HYPE (Hyperliquid)</h3>
-        <div style="background: rgba(79, 195, 247, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #4fc3f7; font-weight: bold; margin: 5px 0;">💰 $30.80</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $10.4B | Rang #12</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> DEX #1 revenus ($896K/jour), 100K ordres/sec, L1 optimisée
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(76, 175, 80, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #4caf50; font-weight: bold; font-size: 0.9em;">2025: $70-100</p>
-            </div>
-            <div style="background: rgba(33, 150, 243, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #2196f3; font-weight: bold; font-size: 0.9em;">2026: $150-250</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- SUI -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #3d2860 0%, #5a3d8f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #9c27b0; font-size: 1.6em; margin-bottom: 15px;">⚡ SUI</h3>
-        <div style="background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #9c27b0; font-weight: bold; margin: 5px 0;">💰 $1.57</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $5.7B | Rang #19</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> TVL $1.65B+, 7.5B transactions, frais $0.011
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(156, 39, 176, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #9c27b0; font-weight: bold; font-size: 0.9em;">2025: $5-10</p>
-            </div>
-            <div style="background: rgba(156, 39, 176, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #7b1fa2; font-weight: bold; font-size: 0.9em;">2026: $15-25</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ZEC -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #2d4a1f 0%, #4a7a2f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #8bc34a; font-size: 1.6em; margin-bottom: 15px;">🔐 ZEC (Zcash)</h3>
-        <div style="background: rgba(139, 195, 74, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #8bc34a; font-weight: bold; margin: 5px 0;">💰 $340</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $5.6B | +1100% YTD</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Privacy leader, zk-SNARKs, SEC roundtable
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(139, 195, 74, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #8bc34a; font-weight: bold; font-size: 0.9em;">2025: $500-700</p>
-            </div>
-            <div style="background: rgba(139, 195, 74, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #689f38; font-weight: bold; font-size: 0.9em;">2026: $1000-1500</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- RENDER -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #4a1f2d 0%, #7a2f4a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #e91e63; font-size: 1.6em; margin-bottom: 15px;">🎨 RENDER</h3>
-        <div style="background: rgba(233, 30, 99, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #e91e63; font-weight: bold; margin: 5px 0;">💰 $1.60</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $830M | DePIN</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> GPU rendering, AI 80% utilisation
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(233, 30, 99, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #e91e63; font-weight: bold; font-size: 0.9em;">2025: $4-8</p>
-            </div>
-            <div style="background: rgba(233, 30, 99, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #c2185b; font-weight: bold; font-size: 0.9em;">2026: $10-15</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ONDO -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #1f2d4a 0%, #2f4a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #64b5f6; font-size: 1.6em; margin-bottom: 15px;">🏦 ONDO</h3>
-        <div style="background: rgba(100, 181, 246, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #64b5f6; font-weight: bold; margin: 5px 0;">💰 $0.47</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | RWA</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> TVL $1.86B, BlackRock, PayPal
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(100, 181, 246, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #64b5f6; font-weight: bold; font-size: 0.9em;">2025: $1.50-3.00</p>
-            </div>
-            <div style="background: rgba(100, 181, 246, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #42a5f5; font-weight: bold; font-size: 0.9em;">2026: $5-8</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- PEPE -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #1f4a2d 0%, #2f7a4a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #4caf50; font-size: 1.6em; margin-bottom: 15px;">🐸 PEPE</h3>
-        <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #4caf50; font-weight: bold; margin: 5px 0;">💰 $0.0000046</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.9B | Meme</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Meme king, 420T supply, community
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(76, 175, 80, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #4caf50; font-weight: bold; font-size: 0.9em;">2025: $0.00001-0.00002</p>
-            </div>
-            <div style="background: rgba(76, 175, 80, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #388e3c; font-weight: bold; font-size: 0.9em;">2026: $0.00003-0.00005</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- WIF -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #4a2d1f 0%, #7a4a2f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #ff9800; font-size: 1.6em; margin-bottom: 15px;">🐶 WIF</h3>
-        <div style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #ff9800; font-weight: bold; margin: 5px 0;">💰 $0.38</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $377M | Solana</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Solana meme top, viral
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(255, 152, 0, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #ff9800; font-weight: bold; font-size: 0.9em;">2025: $1-2</p>
-            </div>
-            <div style="background: rgba(255, 152, 0, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #f57c00; font-weight: bold; font-size: 0.9em;">2026: $3-5</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- JUP -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #1f2d4a 0%, #2f4a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #00bcd4; font-size: 1.6em; margin-bottom: 15px;">🪐 JUP</h3>
-        <div style="background: rgba(0, 188, 212, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #00bcd4; font-weight: bold; margin: 5px 0;">💰 $0.75</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $975M | DEX</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Aggregator #1 Solana
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(0, 188, 212, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #00bcd4; font-weight: bold; font-size: 0.9em;">2025: $2-3</p>
-            </div>
-            <div style="background: rgba(0, 188, 212, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #00838f; font-weight: bold; font-size: 0.9em;">2026: $5-8</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ARB -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #1f3d4a 0%, #2f5a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #2196f3; font-size: 1.6em; margin-bottom: 15px;">🔷 ARB</h3>
-        <div style="background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #2196f3; font-weight: bold; margin: 5px 0;">💰 $0.62</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $2.5B | L2</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Ethereum L2, TVL $2.4B
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(33, 150, 243, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #2196f3; font-weight: bold; font-size: 0.9em;">2025: $1.50-2.50</p>
-            </div>
-            <div style="background: rgba(33, 150, 243, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #1976d2; font-weight: bold; font-size: 0.9em;">2026: $4-6</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- OP -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #4a1f1f 0%, #7a2f2f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #f44336; font-size: 1.6em; margin-bottom: 15px;">🔴 OP</h3>
-        <div style="background: rgba(244, 67, 54, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #f44336; font-weight: bold; margin: 5px 0;">💰 $1.45</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | L2</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> L2 optimistic, Base, Superchain
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(244, 67, 54, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #f44336; font-weight: bold; font-size: 0.9em;">2025: $3-5</p>
-            </div>
-            <div style="background: rgba(244, 67, 54, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #d32f2f; font-weight: bold; font-size: 0.9em;">2026: $8-12</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- INJ -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #1f4a4a 0%, #2f7a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #00bfa5; font-size: 1.6em; margin-bottom: 15px;">💉 INJ</h3>
-        <div style="background: rgba(0, 191, 165, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #00bfa5; font-weight: bold; margin: 5px 0;">💰 $18.50</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.8B | DeFi</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Cosmos DEX, derivatives
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(0, 191, 165, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #00bfa5; font-weight: bold; font-size: 0.9em;">2025: $40-60</p>
-            </div>
-            <div style="background: rgba(0, 191, 165, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #00897b; font-weight: bold; font-size: 0.9em;">2026: $100-150</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- SEI -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #4a1f3d 0%, #7a2f5a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #e91e8c; font-size: 1.6em; margin-bottom: 15px;">⚡ SEI</h3>
-        <div style="background: rgba(233, 30, 140, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #e91e8c; font-weight: bold; margin: 5px 0;">💰 $0.38</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | L1</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Trading chain, 380ms finality
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(233, 30, 140, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #e91e8c; font-weight: bold; font-size: 0.9em;">2025: $1.00-1.50</p>
-            </div>
-            <div style="background: rgba(233, 30, 140, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #c2185b; font-weight: bold; font-size: 0.9em;">2026: $2.50-4.00</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- TIA -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #1f1f4a 0%, #2f2f7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #7c4dff; font-size: 1.6em; margin-bottom: 15px;">🌌 TIA</h3>
-        <div style="background: rgba(124, 77, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #7c4dff; font-weight: bold; margin: 5px 0;">💰 $4.80</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.1B | Modular</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Modular blockchain, data layer
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(124, 77, 255, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #7c4dff; font-weight: bold; font-size: 0.9em;">2025: $12-18</p>
-            </div>
-            <div style="background: rgba(124, 77, 255, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #651fff; font-weight: bold; font-size: 0.9em;">2026: $25-40</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- PYTH -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #3d1f4a 0%, #5a2f7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #ab47bc; font-size: 1.6em; margin-bottom: 15px;">🔮 PYTH</h3>
-        <div style="background: rgba(171, 71, 188, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #ab47bc; font-weight: bold; margin: 5px 0;">💰 $0.35</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.4B | Oracle</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Oracle leader, 400+ sources
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(171, 71, 188, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #ab47bc; font-weight: bold; font-size: 0.9em;">2025: $1.00-1.50</p>
-            </div>
-            <div style="background: rgba(171, 71, 188, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #8e24aa; font-weight: bold; font-size: 0.9em;">2026: $2.50-4.00</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- BONK -->
-    <div class="crypto-card" style="background: linear-gradient(135deg, #4a2d1f 0%, #7a4a2f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #ff6b35; font-size: 1.6em; margin-bottom: 15px;">🐕 BONK</h3>
-        <div style="background: rgba(255, 107, 53, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <p style="font-size: 1.3em; color: #ff6b35; font-weight: bold; margin: 5px 0;">💰 $0.000018</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.3B | Meme</p>
-        </div>
-        <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Solana meme OG, community
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-            <div style="background: rgba(255, 107, 53, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #ff6b35; font-weight: bold; font-size: 0.9em;">2025: $0.00005-0.0001</p>
-            </div>
-            <div style="background: rgba(255, 107, 53, 0.15); padding: 12px; border-radius: 8px;">
-                <p style="color: #f4511e; font-weight: bold; font-size: 0.9em;">2026: $0.0002-0.0004</p>
-            </div>
-        </div>
-    </div>
-
-    </div>
-
-    <!-- Méthodologie IA -->
-    <div style="background: rgba(255, 255, 255, 0.05); padding: 40px; border-radius: 15px; margin: 60px auto; max-width: 1200px;">
-        <h3 style="color: white; text-align: center; font-size: 2em; margin-bottom: 30px;">📚 Méthodologie IA</h3>
-        <p style="color: #bbb; line-height: 1.8; font-size: 1.05em; max-width: 900px; margin: 0 auto;">
-            Prévisions générées par IA analysant données techniques (RSI, MACD, volumes), fondamentaux (MCap, TVL, adoption), sentiment (social media, développeurs) et macro (Bitcoin dominance, altseason).<br><br>
-            <em style="color: #ff9800;">⚠️ Disclaimer:</em> Informations à titre éducatif uniquement. Marché crypto extrêmement volatil. DYOR et n'investissez que ce que vous pouvez perdre.
-        </p>
-    </div>
-
-<style>
-@media (max-width: 768px) {{
-    .crypto-grid {{
-        grid-template-columns: 1fr !important;
+    if (price < 0.000001) {{
+        return price.toFixed(10).replace(/(\.\\d*?[1-9])0+$/, '$1');
+    }} else if (price < 0.01) {{
+        return price.toFixed(8).replace(/(\.\\d*?[1-9])0+$/, '$1');
+    }} else if (price < 1) {{
+        return price.toFixed(4);
+    }} else {{
+        return price.toFixed(2);
     }}
 }}
-</style>
 
-    </body>
-    </html>
+// Formatage market cap
+function formatMarketCap(mcap) {{
+    if (!mcap) return 'N/A';
+    
+    if (mcap >= 1e9) {{
+        return `$${{(mcap / 1e9).toFixed(2)}}B`;
+    }} else if (mcap >= 1e6) {{
+        return `$${{(mcap / 1e6).toFixed(2)}}M`;
+    }} else {{
+        return `$${{(mcap / 1e3).toFixed(2)}}K`;
+    }}
+}}
+
+// Générer HTML pour une crypto card
+function generateCryptoCard(crypto) {{
+    const priceData = pricesData[crypto.id] || {{}};
+    const price = priceData.usd || null;
+    const change24h = priceData.usd_24h_change || 0;
+    const marketCap = priceData.usd_market_cap || null;
+    
+    const changeClass = change24h >= 0 ? 'positive' : 'negative';
+    const changeSymbol = change24h >= 0 ? '▲' : '▼';
+    
+    return `
+        <div class="crypto-card" style="--card-color-1: ${{crypto.colors.primary}}; --card-color-2: ${{crypto.colors.secondary}}; --rgb-color: ${{crypto.colors.rgb}}">
+            <div class="crypto-header">
+                <div>
+                    <div class="crypto-name">${{crypto.symbol}}</div>
+                    <div style="opacity: 0.7; margin-bottom: 10px;">${{crypto.name}}</div>
+                    <span class="crypto-category">${{crypto.category}}</span>
+                </div>
+            </div>
+            
+            <div class="price-box">
+                <div class="current-price" id="price-${{crypto.id}}">
+                    $$${{price ? formatPrice(price, crypto.symbol) : '<span class="loading-price">Chargement...</span>'}}
+                </div>
+                <div class="price-change ${{changeClass}}" id="change-${{crypto.id}}">
+                    ${{changeSymbol}} ${{Math.abs(change24h).toFixed(2)}}% (24h)
+                </div>
+                <div class="market-cap" id="mcap-${{crypto.id}}">
+                    MCap: ${{formatMarketCap(marketCap)}}
+                </div>
+            </div>
+            
+            <div class="ai-analysis">
+                <h4>🤖 Analyse IA</h4>
+                <p>${{crypto.analysis}}</p>
+            </div>
+            
+            <div class="predictions-grid">
+                <div class="prediction-box">
+                    <div class="prediction-year">🎯 2025</div>
+                    <div class="prediction-price">${{crypto.pred2025}}</div>
+                </div>
+                <div class="prediction-box">
+                    <div class="prediction-year">🚀 2026</div>
+                    <div class="prediction-price">${{crypto.pred2026}}</div>
+                </div>
+            </div>
+        </div>
+    `;
+}}
+
+// Mettre à jour l'affichage des prix
+function updatePriceDisplay() {{
+    cryptoConfig.forEach(crypto => {{
+        const priceData = pricesData[crypto.id];
+        if (!priceData) return;
+        
+        const priceEl = document.getElementById(`price-${{crypto.id}}`);
+        const changeEl = document.getElementById(`change-${{crypto.id}}`);
+        const mcapEl = document.getElementById(`mcap-${{crypto.id}}`);
+        
+        if (priceEl && priceData.usd) {{
+            priceEl.textContent = `$$${{formatPrice(priceData.usd, crypto.symbol)}}`;
+        }}
+        
+        if (changeEl && priceData.usd_24h_change !== undefined) {{
+            const change = priceData.usd_24h_change;
+            const changeClass = change >= 0 ? 'positive' : 'negative';
+            const changeSymbol = change >= 0 ? '▲' : '▼';
+            changeEl.className = `price-change ${{changeClass}}`;
+            changeEl.textContent = `${{changeSymbol}} ${{Math.abs(change).toFixed(2)}}% (24h)`;
+        }}
+        
+        if (mcapEl && priceData.usd_market_cap) {{
+            mcapEl.textContent = `MCap: ${{formatMarketCap(priceData.usd_market_cap)}}`;
+        }}
+    }});
+}}
+
+// Récupérer les prix via API CoinGecko
+async function fetchPrices() {{
+    const indicator = document.getElementById('updateIndicator');
+    const updateText = document.getElementById('updateText');
+    
+    try {{
+        indicator.classList.add('updating');
+        updateText.textContent = 'Mise à jour...';
+        
+        const ids = cryptoConfig.map(c => c.id).join(',');
+        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${{ids}}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('API Error');
+        
+        const data = await response.json();
+        pricesData = data;
+        lastUpdate = new Date();
+        updateCount++;
+        
+        updatePriceDisplay();
+        
+        indicator.classList.remove('updating');
+        updateText.textContent = `✅ Mis à jour: ${{lastUpdate.toLocaleTimeString('fr-FR')}}`;
+        
+        console.log(`✅ Mise à jour #${{updateCount}} réussie`);
+        
+    }} catch (error) {{
+        console.error('Erreur récupération prix:', error);
+        indicator.classList.remove('updating');
+        updateText.textContent = '❌ Erreur mise à jour';
+    }}
+}}
+
+// Initialisation
+async function init() {{
+    console.log('🚀 Initialisation Crypto Pépites API Temps Réel');
+    
+    // Générer les cartes
+    const grid = document.getElementById('cryptoGrid');
+    grid.innerHTML = cryptoConfig.map(crypto => generateCryptoCard(crypto)).join('');
+    
+    // Première récupération
+    await fetchPrices();
+    
+    // Mise à jour auto toutes les 30 secondes
+    setInterval(fetchPrices, 30000);
+    
+    console.log('✅ Système initialisé - Mise à jour auto toutes les 30s');
+}}
+
+// Lancer au chargement
+document.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
     """
     return HTMLResponse(content=html_content)

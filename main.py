@@ -1117,7 +1117,7 @@ NAV_MENU = """
         position: sticky;
         top: 0;
         z-index: 1000;
-    }
+    }}
     .nav-container {
         max-width: 1600px;
         margin: 0 auto;
@@ -1125,7 +1125,7 @@ NAV_MENU = """
         gap: 10px;
         flex-wrap: wrap;
         align-items: center;
-    }
+    }}
     .nav-btn {
         background: rgba(255,255,255,0.1);
         color: white;
@@ -2682,20 +2682,20 @@ async def strategie_page():
                 margin: 0;
                 padding: 0;
                 box-sizing: border-box;
-            }
+            }}
             
             body {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: #333;
                 line-height: 1.6;
-            }
+            }}
             
             .container {
                 max-width: 1200px;
                 margin: 0 auto;
                 padding: 40px 20px;
-            }
+            }}
             
             header {
                 text-align: center;
@@ -4147,13 +4147,13 @@ async def home():
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 min-height: 100vh;
-            }
+            }}
             
             .hero {
                 text-align: center;
                 padding: 80px 20px 40px 20px;
                 color: white;
-            }
+            }}
             
             .hero h1 {
                 font-size: 3em;
@@ -4626,13 +4626,13 @@ async def spot_trading_page():
                 background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                 color: #333;
                 line-height: 1.6;
-            }
+            }}
             
             .container {
                 max-width: 1200px;
                 margin: 0 auto;
                 padding: 40px 20px;
-            }
+            }}
             
             header {
                 text-align: center;
@@ -6299,13 +6299,13 @@ async def ai_opportunity_scanner():
                 background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
                 color: #333;
                 min-height: 100vh;
-            }
+            }}
             
             .container {
                 max-width: 1400px;
                 margin: 0 auto;
                 padding: 20px;
-            }
+            }}
             
             header {
                 text-align: center;
@@ -6865,13 +6865,13 @@ async def ai_market_regime():
                 background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
                 color: #333;
                 min-height: 100vh;
-            }
+            }}
             
             .container {
                 max-width: 1400px;
                 margin: 0 auto;
                 padding: 20px;
-            }
+            }}
             
             header {
                 text-align: center;
@@ -7737,13 +7737,13 @@ async def ai_whale_watcher():
                 background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
                 color: #333;
                 min-height: 100vh;
-            }
+            }}
             
             .container {
                 max-width: 1400px;
                 margin: 0 auto;
                 padding: 20px;
-            }
+            }}
             
             header {
                 text-align: center;
@@ -10188,14 +10188,14 @@ async def heatmap_page():
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
+        }}
 
         body {
             font-family: 'Inter', 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
             color: #e2e8f0;
             overflow-x: hidden;
-        }
+        }}
 
         .heatmap-header {
             text-align: center;
@@ -11044,7 +11044,7 @@ async def altcoin_page():
     <style>
         body {
             background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-        }
+        }}
 
         .altcoin-header {
             text-align: center;
@@ -11055,7 +11055,7 @@ async def altcoin_page():
             margin-bottom: 30px;
             border: 1px solid rgba(96, 165, 250, 0.2);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-        }
+        }}
 
         .altcoin-header h1 {
             font-size: 48px;
@@ -11395,7 +11395,7 @@ async def bullrun_page():
             position: relative;
             overflow: hidden;
             border: 2px solid #334155;
-        }
+        }}
         
         .phase-hero::before {
             content: '';
@@ -12081,7 +12081,7 @@ async def charts_page():
             color: #e2e8f0; 
             padding: 20px; 
             min-height: 100vh; 
-        }
+        }}
         .container { max-width: 1800px; margin: 0 auto; }
         
         /* Header */
@@ -15292,18 +15292,18 @@ async def pricing_complete():
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
-        }
+        }}
         .container { max-width: 1400px; margin: 0 auto; }
         .header {
             text-align: center;
             color: white;
             margin-bottom: 50px;
-        }
+        }}
         .header h1 {
             font-size: 48px;
             margin-bottom: 15px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
+        }}
         .header p {
             font-size: 20px;
             opacity: 0.9;
@@ -15929,11 +15929,11 @@ async def pricing_complete():
                     min-width: 150px;
                     white-space: nowrap;
                     text-align: center;
-                }
+                }}
                 .plan-tab:hover {
                     border-color: #667eea;
                     transform: scale(1.05);
-                }
+                }}
                 .plan-tab.active-tab {
                     background: #667eea;
                     color: white;
@@ -16153,19 +16153,19 @@ async def pricing_page_new(request: Request):
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             background: #0f172a; 
             color: #e2e8f0;
-        }
+        }}
         .container { max-width: 1200px; margin: 0 auto; padding: 40px 20px; }
         .header {
             text-align: center;
             margin-bottom: 60px;
-        }
+        }}
         .header h1 {
             font-size: 48px;
             margin-bottom: 10px;
             background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-        }
+        }}
         .header p { color: #94a3b8; font-size: 18px; }
         .pricing-grid {
             display: grid;
@@ -17378,7 +17378,7 @@ async def market_simulation():
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
             padding: 20px;
-        }
+        }}
         .container { max-width: 1200px; margin: 0 auto; }
         h1 { text-align: center; margin: 30px 0 10px 0; color: #00ff88; }
         .subtitle { text-align: center; margin-bottom: 30px; color: #aaa; font-size: 0.95em; }
@@ -17952,7 +17952,7 @@ async def success_stories():
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
             padding: 20px;
-        }
+        }}
         
         .container { max-width: 1000px; margin: 0 auto; }
         h1 { text-align: center; margin: 30px 0; color: #00ff88; font-size: 2.5em; }
@@ -17962,7 +17962,7 @@ async def success_stories():
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 25px;
             margin-bottom: 40px;
-        }
+        }}
         
         .story-card {
             background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,212,255,0.1));
@@ -18807,14 +18807,14 @@ async def calculatrice_trades():
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 30px;
             margin-top: 30px;
-        }
+        }}
         
         .calc-section {
             background: #1e293b;
             padding: 30px;
             border-radius: 12px;
             border: 1px solid #334155;
-        }
+        }}
         
         .calc-section h3 {
             color: #60a5fa;
@@ -19523,7 +19523,7 @@ async def prediction_ia():
             width: 100%;
             height: calc(100vh - 200px);
             min-height: 800px;
-        }
+        }}
         
         .prediction-frame {
             width: 100%;
@@ -19531,7 +19531,7 @@ async def prediction_ia():
             border: none;
             border-radius: 12px;
             background: #1e293b;
-        }
+        }}
         
         .info-banner {
             background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
@@ -23353,7 +23353,91 @@ async def ai_signals():
             .confidence-bar {{width:100%;height:6px;background:rgba(30,41,59,0.6);border-radius:10px;overflow:hidden;margin-top:8px}}
             .confidence-fill {{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:10px;transition:width 1s}}
             @keyframes pulse {{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -23367,7 +23451,43 @@ async def ai_signals():
         <script>
             setTimeout(function() {{ window.location.reload(); }}, 60000);
         </script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 Comment utiliser les Signaux AI?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Analysez le signal global</h3>
+                        <p>Regardez la tendance générale: BUY (achat), SELL (vente) ou HOLD (conserver). Chaque signal est calculé en temps réel avec plusieurs indicateurs.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Vérifiez la force du signal</h3>
+                        <p>Plus le pourcentage est élevé, plus le signal est fort. Signal >70% = action recommandée. Signal <60% = prudence.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Confirmez avec d'autres indicateurs</h3>
+                        <p>Ne tradez JAMAIS sur un seul signal! Utilisez aussi les patterns, sentiment et whale tracker pour confirmer.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Attendez plusieurs signaux consécutifs dans la même direction</li>
+                    <li>Utilisez toujours un stop-loss pour limiter les pertes</li>
+                    <li>Les signaux se mettent à jour toutes les 5 minutes</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -23442,7 +23562,91 @@ async def ai_news():
             .value{{font-weight:700;font-size:1.1em}}
             .change-info.positive .value{{color:#10b981}}
             .change-info.negative .value{{color:#ef4444}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -23450,7 +23654,43 @@ async def ai_news():
             <div class="news-grid">{news_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Suivez l'impact des news sur le marché</h3>
+                        <p>Chaque news importante est analysée en temps réel pour évaluer son impact potentiel sur les prix crypto (positif, négatif ou neutre).</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Identifiez les opportunités</h3>
+                        <p>Les news positives peuvent créer des opportunités d'achat, les négatives des signaux de vente. Utilisez l'indicateur d'impact pour prioriser.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Agissez rapidement</h3>
+                        <p>Le marché crypto réagit vite aux news! Configurez des alertes pour être notifié des événements majeurs avant tout le monde.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>News = catalyseur de mouvement, pas signal d'achat direct</li>
+                    <li>Vérifiez toujours la source et la fiabilité</li>
+                    <li>Combinez avec analyse technique pour confirmer</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -23545,7 +23785,91 @@ async def ai_predictor():
             .timeline-change.positive{{color:#00ff88}}
             .timeline-change.negative{{color:#ff4757}}
             .confidence{{font-size:0.85em;color:#94a3b8;margin-top:5px}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -23554,7 +23878,43 @@ async def ai_predictor():
             <div class="preds-grid">{predictions_html}</div>
         </div>
         <script>setTimeout(function() {{ window.location.reload(); }}, 120000);</script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Analysez les prédictions de prix</h3>
+                        <p>Notre IA prédit les mouvements de prix à court terme (24h-7j) basés sur 50+ indicateurs techniques et l'historique des patterns.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Vérifiez la confiance du modèle</h3>
+                        <p>Confiance >70% = prédiction fiable. Confiance <50% = marché incertain, prudence recommandée.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Planifiez vos positions</h3>
+                        <p>Utilisez les zones de prix prédites (support/résistance) pour placer vos ordres d'achat/vente et stop-loss.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Les prédictions ne sont pas des garanties!</li>
+                    <li>Utilisez-les pour identifier des zones probables</li>
+                    <li>Combinez avec votre propre analyse</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -23632,7 +23992,91 @@ async def ai_whale():
             .whale-activity.strong{{background:rgba(249,115,22,0.3);border:2px solid #f97316}}
             .whale-activity.moderate{{background:rgba(251,191,36,0.3);border:2px solid #fbbf24}}
             .whale-activity.low{{background:rgba(100,116,139,0.3);border:2px solid #64748b}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -23640,7 +24084,43 @@ async def ai_whale():
             <div class="whale-grid">{whale_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Surveillez les mouvements des baleines</h3>
+                        <p>Les "whales" (gros détenteurs) peuvent influencer le marché. Cette page suit leurs transactions en temps réel.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Interprétez les signaux</h3>
+                        <p>Gros achats whale = possible accumulation/bullish. Gros ventes = distribution/bearish. Regardez le volume et la fréquence.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Suivez la tendance</h3>
+                        <p>Ne tradez pas contre les whales! Si elles accumulent, envisagez d'acheter. Si elles vendent, soyez prudent.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Une transaction whale ne fait pas une tendance</li>
+                    <li>Cherchez des patterns répétitifs</li>
+                    <li>Whale + news positive = signal fort</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -23726,7 +24206,91 @@ async def ai_patterns():
             .pattern-detected.neutral{{background:rgba(251,191,36,0.2);border:2px solid #fbbf24}}
             .pattern-name{{font-size:1.1em;font-weight:700;margin-bottom:5px}}
             .pattern-force{{font-size:0.9em;color:#94a3b8}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -23734,7 +24298,43 @@ async def ai_patterns():
             <div class="patterns-grid">{patterns_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Identifiez les patterns chartistes</h3>
+                        <p>L'IA détecte automatiquement les figures techniques classiques: triangles, head & shoulders, double top/bottom, etc.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Évaluez la probabilité</h3>
+                        <p>Chaque pattern a un % de réussite historique. >70% = pattern fiable. Regardez aussi le timeframe (4H, 1D, 1W).</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Tradez les confirmations</h3>
+                        <p>Attendez TOUJOURS la cassure/confirmation du pattern avant d'entrer! Pattern détecté ≠ pattern confirmé.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Patterns sur timeframes élevés (1D, 1W) = plus fiables</li>
+                    <li>Volume confirmant la cassure = signal fort</li>
+                    <li>Un pattern peut échouer - utilisez stop-loss!</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -23837,7 +24437,91 @@ async def ai_sentiment():
             .sentiment-badge.neutral{{background:rgba(251,191,36,0.3);border:2px solid #fbbf24}}
             .sentiment-badge.bearish{{background:rgba(249,115,22,0.3);border:2px solid #f97316}}
             .sentiment-badge.very-bearish{{background:rgba(239,68,68,0.3);border:2px solid #ef4444}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -23845,7 +24529,43 @@ async def ai_sentiment():
             <div class="sentiment-grid">{sentiment_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Mesurez l'émotion du marché</h3>
+                        <p>Le sentiment analyse Twitter, Reddit, news pour savoir si les traders sont bullish (optimistes) ou bearish (pessimistes).</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Utilisez le contrarian thinking</h3>
+                        <p>Sentiment extrêmement positif = possible top (vendre). Sentiment très négatif = possible bottom (acheter). Inversez la foule!</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Combinez avec price action</h3>
+                        <p>Sentiment + prix qui monte = tendance saine. Sentiment négatif + prix qui monte = divergence bullish (fort signal).</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Fear & Greed Index est votre ami</li>
+                    <li>Extreme Fear (<25) = opportunité d'achat</li>
+                    <li>Extreme Greed (>75) = prudence, possibles corrections</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -23936,7 +24656,91 @@ async def ai_sizer():
             .risk-badge.medium{{background:rgba(251,191,36,0.3);border:2px solid #fbbf24}}
             .risk-badge.high{{background:rgba(249,115,22,0.3);border:2px solid #f97316}}
             .risk-badge.very-high{{background:rgba(239,68,68,0.3);border:2px solid #ef4444}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -23944,7 +24748,43 @@ async def ai_sizer():
             <div class="sizer-grid">{sizer_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Calculez la taille idéale de position</h3>
+                        <p>Entrez votre capital, risque acceptable (%), et distance stop-loss. L'IA calcule combien investir pour ne pas tout perdre!</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Respectez la règle des 1-2%</h3>
+                        <p>Ne risquez JAMAIS plus de 2% de votre capital sur un trade! Si capital = 10,000$, risque max = 200$ par position.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Ajustez selon volatilité</h3>
+                        <p>Crypto volatile (BTC, ETH) = risque 1%. Altcoin volatile (shitcoin) = risque 0.5%. Protection de capital avant tout!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Position sizing = différence entre profit et liquidation</li>
+                    <li>Trades gagnants: 40-50% suffisent avec bon sizing</li>
+                    <li>Overleveraging = mort assurée en crypto</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -24036,7 +24876,91 @@ async def ai_exit():
             .level.sl{{background:rgba(239,68,68,0.2);border:1px solid #ef4444}}
             .level-label{{font-weight:700}}
             .level-value{{font-size:1.1em}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -24044,7 +24968,43 @@ async def ai_exit():
             <div class="exit-grid">{exit_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Sachez QUAND sortir</h3>
+                        <p>L'IA analyse momentum, volume, RSI pour identifier le meilleur moment de prise de profit ou cut loss.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Utilisez les zones suggérées</h3>
+                        <p>Exit partiel à 50% profit, exit total à 100%, ou cut loss si cassure support. Suivez le plan, pas l'émotion!</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Trailing stop-loss</h3>
+                        <p>En profit? Montez votre stop-loss progressivement pour sécuriser les gains. L'IA vous suggère les niveaux optimaux.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Profits partiels = meilleure stratégie long terme</li>
+                    <li>Ne laissez JAMAIS un profit devenir une perte</li>
+                    <li>Plan d'exit AVANT d'entrer dans le trade</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -24121,7 +25081,91 @@ async def ai_timeframe():
             .tf-item{{padding:15px;background:rgba(0,0,0,0.3);border-radius:10px;text-align:center}}
             .tf-item span{{display:block;color:#94a3b8;font-size:0.9em;margin-bottom:8px}}
             .tf-item strong{{font-size:1.1em}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -24129,7 +25173,43 @@ async def ai_timeframe():
             <div class="tf-grid">{timeframe_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Analysez plusieurs timeframes simultanément</h3>
+                        <p>Un trade gagnant = alignement des timeframes. Ex: tendance haussière sur 1D + 4H + 1H = signal très fort!</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Top-down analysis</h3>
+                        <p>Commencez par timeframe élevé (1W, 1D) pour la tendance globale, puis descendez (4H, 1H) pour le timing d'entrée.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Évitez les conflits</h3>
+                        <p>Signal BUY sur 1H mais SELL sur 1D = DANGER! Attendez l'alignement ou évitez le trade. Patience paye.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Swing trading: Focus sur 1D + 4H</li>
+                    <li>Day trading: Focus sur 4H + 1H + 15m</li>
+                    <li>3 timeframes minimum pour confirmation</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -24217,7 +25297,91 @@ async def ai_liquidity():
             .liq-score.good{{background:rgba(34,197,94,0.3);border:2px solid #22c55e}}
             .liq-score.medium{{background:rgba(251,191,36,0.3);border:2px solid #fbbf24}}
             .liq-score.low{{background:rgba(239,68,68,0.3);border:2px solid #ef4444}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -24225,7 +25389,43 @@ async def ai_liquidity():
             <div class="liq-grid">{liq_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Identifiez les zones de liquidité</h3>
+                        <p>Les "pools de liquidité" = zones où beaucoup de stop-loss/ordres sont placés. Le prix y est attiré comme un aimant!</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Anticipez les manipulations</h3>
+                        <p>Les whales "hunt" la liquidité en cassant des niveaux clés temporairement pour liquider les positions avant de revenir.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Placez vos ordres intelligemment</h3>
+                        <p>Évitez les niveaux évidents (00, 50). Placez stop-loss APRÈS les zones de liquidité pour éviter d'être hunt.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Liquidité = carburant des gros mouvements</li>
+                    <li>Cassure + haute liquidité = mouvement puissant</li>
+                    <li>Zones de liquidité sur timeframes élevés = plus fiables</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -24302,7 +25502,91 @@ async def ai_alerts():
             .alert-badge.warning{{background:rgba(249,115,22,0.3);border:2px solid #f97316}}
             .alert-badge.info{{background:rgba(59,130,246,0.3);border:2px solid #3b82f6}}
             .alert-badge.ok{{background:rgba(34,197,94,0.3);border:2px solid #22c55e}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -24310,7 +25594,43 @@ async def ai_alerts():
             <div class="alert-grid">{alerts_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Configurez vos alertes personnalisées</h3>
+                        <p>Créez des alertes pour: prix, RSI, volume, patterns détectés, signaux IA, etc. Soyez notifié instantanément!</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Choisissez vos canaux de notification</h3>
+                        <p>Recevez les alertes par: Email, Telegram, SMS (selon votre plan). Ne manquez plus jamais une opportunité!</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Gérez intelligemment</h3>
+                        <p>Trop d'alertes = bruit. Focalisez sur 3-5 alertes critiques maximum. Qualité > Quantité.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Alertes multi-conditions = moins de faux signaux</li>
+                    <li>Testez vos alertes avant de les activer 24/7</li>
+                    <li>Revoyez et ajustez vos alertes chaque semaine</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -24756,7 +26076,91 @@ async def ai_opportunity_scanner():
             .disclaimers h3{{color:#dc2626;margin-bottom:15px;font-size:1.4em}}
             .disclaimers ul{{margin-left:25px;line-height:1.8}}
             .disclaimers li{{color:rgba(255,255,255,0.9);margin:8px 0}}
-        </style>
+        
+        .how-to-use {{
+            margin: 60px auto;
+            max-width: 1200px;
+            padding: 40px;
+            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
+            border: 2px solid #06b6d4;
+            border-radius: 20px;
+        }}
+        
+        .how-to-use h2 {{
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #06b6d4;
+            text-align: center;
+        }}
+        
+        .use-steps {{
+            display: grid;
+            gap: 25px;
+        }}
+        
+        .step {{
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            padding: 25px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            border-left: 4px solid #06b6d4;
+        }}
+        
+        .step-number {{
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: #fff;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: 700;
+            flex-shrink: 0;
+        }}
+        
+        .step-content h3 {{
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #fff;
+        }}
+        
+        .step-content p {{
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }}
+        
+        .use-tips {{
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(251,191,36,0.1);
+            border-left: 4px solid #fbbf24;
+            border-radius: 10px;
+        }}
+        
+        .use-tips h3 {{
+            color: #fbbf24;
+            margin-bottom: 15px;
+        }}
+        
+        .use-tips ul {{
+            list-style: none;
+            padding: 0;
+        }}
+        
+        .use-tips li {{
+            padding: 8px 0;
+            color: rgba(255,255,255,0.9);
+        }}
+        
+        .use-tips li:before {{
+            content: "💡 ";
+            margin-right: 10px;
+        }}
+</style>
     </head>
     <body>
         <div class="container">
@@ -24821,7 +26225,46 @@ async def ai_opportunity_scanner():
         <script>
             setTimeout(function() {{ window.location.reload(); }}, 300000);  // Refresh toutes les 5 min
         </script>
-    </body>
+    
+        <div class="how-to-use">
+            <h2>💡 Comment utiliser le Gem Hunter?</h2>
+            <div class="use-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div class="step-content">
+                        <h3>Parcourez les 3 sections</h3>
+                        <p><strong>Hot Opportunities:</strong> Cryptos avec momentum positif fort<br>
+                        <strong>Hidden Gems:</strong> Pépites sous-évaluées avec potentiel<br>
+                        <strong>Danger Zone:</strong> Cryptos à éviter (tendances négatives)</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div class="step-content">
+                        <h3>Analysez les métriques clés</h3>
+                        <p>Regardez: Signal (BUY/SELL), Score IA (0-100), Risk/Reward ratio, Entry/Target/Stop-Loss.</p>
+                    </div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div class="step-content">
+                        <h3>Faites vos recherches (DYOR)</h3>
+                        <p>Les signaux IA sont un POINT DE DÉPART. Vérifiez toujours les fondamentaux, l'équipe, le projet avant d'investir!</p>
+                    </div>
+                </div>
+            </div>
+            <div class="use-tips">
+                <h3>⚡ Conseils Pro</h3>
+                <ul>
+                    <li>Hot Opportunities = Court terme (swing trading)</li>
+                    <li>Hidden Gems = Moyen/Long terme (hold 3-12 mois)</li>
+                    <li>Danger Zone = NE PAS acheter, ou vendre si vous possédez</li>
+                    <li>Données rafraîchies toutes les 5 minutes</li>
+                </ul>
+            </div>
+        </div>
+    
+        </body>
     </html>
     """)
 
@@ -25244,11 +26687,11 @@ async def crypto_pepites():
                 <div class="pepite-metrics">
                     <div class="metric">
                         <div class="metric-label">💰 Prix</div>
-                        <div class="metric-value">$42.03</div>
+                        <div class="metric-value">$30.80</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">📈 MCap</div>
-                        <div class="metric-value">$12.0B</div>
+                        <div class="metric-value">$10.4B</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">🚀 Performance</div>
@@ -25328,11 +26771,11 @@ async def crypto_pepites():
                 <div class="pepite-metrics">
                     <div class="metric">
                         <div class="metric-label">💰 Prix</div>
-                        <div class="metric-value">$2.63</div>
+                        <div class="metric-value">$1.52</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">📈 MCap</div>
-                        <div class="metric-value">$9.55B</div>
+                        <div class="metric-value">$5.7B</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">🚀 Performance</div>
@@ -25412,11 +26855,11 @@ async def crypto_pepites():
                 <div class="pepite-metrics">
                     <div class="metric">
                         <div class="metric-label">💰 Prix</div>
-                        <div class="metric-value">$3.98</div>
+                        <div class="metric-value">$1.60</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">📈 MCap</div>
-                        <div class="metric-value">$2.06B</div>
+                        <div class="metric-value">$830M</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">🚀 Performance</div>
@@ -25496,11 +26939,11 @@ async def crypto_pepites():
                 <div class="pepite-metrics">
                     <div class="metric">
                         <div class="metric-label">💰 Prix</div>
-                        <div class="metric-value">$1.50</div>
+                        <div class="metric-value">$0.47</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">📈 MCap</div>
-                        <div class="metric-value">$2.8B</div>
+                        <div class="metric-value">$1.48B</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">🚀 Performance</div>
@@ -25547,11 +26990,11 @@ async def crypto_pepites():
                     <div class="targets-values">
                         <div class="target-box">
                             <div class="target-year">2025</div>
-                            <div class="target-price">$3-$5</div>
+                            <div class="target-price">$2-$4</div>
                         </div>
                         <div class="target-box">
                             <div class="target-year">2026</div>
-                            <div class="target-price">$8-$12</div>
+                            <div class="target-price">$5-$10</div>
                         </div>
                     </div>
                 </div>
@@ -25584,7 +27027,7 @@ async def crypto_pepites():
                     </div>
                     <div class="metric">
                         <div class="metric-label">📈 MCap</div>
-                        <div class="metric-value">$850M</div>
+                        <div class="metric-value">$5.5B</div>
                     </div>
                     <div class="metric">
                         <div class="metric-label">🚀 Performance</div>
@@ -25631,11 +27074,11 @@ async def crypto_pepites():
                     <div class="targets-values">
                         <div class="target-box">
                             <div class="target-year">2025</div>
-                            <div class="target-price">$100-$150</div>
+                            <div class="target-price">$500-$700</div>
                         </div>
                         <div class="target-box">
                             <div class="target-year">2026</div>
-                            <div class="target-price">$200+</div>
+                            <div class="target-price">$1000-$1500+</div>
                         </div>
                     </div>
                 </div>
@@ -25705,7 +27148,7 @@ async def crypto_pepites():
                 </ul>
             </div>
         </div>
-
+    
         </body>
 </html>
     """)

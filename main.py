@@ -26277,8 +26277,8 @@ async def ai_opportunity_scanner():
 
 @app.get("/crypto-pepites", response_class=HTMLResponse)
 async def crypto_pepites():
-    """Page Crypto Pépites avec menu latéral et 15 cryptos"""
-    html_content = """
+    """Page Crypto Pépites avec le VRAI menu de l'app"""
+    html_content = f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -26297,106 +26297,20 @@ async def crypto_pepites():
                 background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
                 color: white;
                 line-height: 1.6;
-                overflow-x: hidden;
             }}
         </style>
     </head>
     <body>
+{SIDEBAR}
 
-        <!-- MENU LATÉRAL FEATURES IA -->
-        <style>
-        .side-menu {{
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 280px;
-            height: 100vh;
-            background: linear-gradient(180deg, #1a237e 0%, #0d47a1 100%);
-            padding: 20px;
-            overflow-y: auto;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.3);
-            z-index: 999;
-        }}
-        
-        .side-menu h2 {{
-            color: white;
-            font-size: 1.4em;
-            margin-bottom: 30px;
-            text-align: center;
-            border-bottom: 2px solid rgba(255,255,255,0.2);
-            padding-bottom: 15px;
-        }}
-        
-        .side-menu a {{
-            display: block;
-            color: white;
-            text-decoration: none;
-            padding: 12px 15px;
-            margin: 8px 0;
-            border-radius: 8px;
-            transition: all 0.3s;
-            font-size: 0.95em;
-        }}
-        
-        .side-menu a:hover {{
-            background: rgba(255,255,255,0.2);
-            transform: translateX(5px);
-        }}
-        
-        .side-menu a.active {{
-            background: rgba(255,255,255,0.15);
-            border-left: 4px solid #4fc3f7;
-        }}
-        
-        .main-content {{
-            margin-left: 300px;
-            padding: 20px;
-        }}
-        
-        @media (max-width: 1024px) {{
-            .side-menu {{
-                width: 100%;
-                height: auto;
-                position: relative;
-            }}
-            .main-content {{
-                margin-left: 0;
-            }}
-        }}
-        </style>
-        
-        <div class="side-menu">
-            <h2>📊 Features IA</h2>
-            <a href="/ai-signals">🎯 AI Signals</a>
-            <a href="/ai-gem-hunter">💎 AI Gem Hunter</a>
-            <a href="/crypto-pepites" class="active">🎯 Nouvelles Pépites</a>
-            <a href="/ai-news">📰 AI News Scanner</a>
-            <a href="/ai-predictor">🔮 AI Price Predictor</a>
-            <a href="/ai-whale">🐋 AI Whale Tracker</a>
-            <a href="/ai-patterns">📊 AI Pattern Scanner</a>
-            <a href="/ai-sentiment">😊 AI Sentiment</a>
-            <a href="/ai-sizer">💰 AI Position Sizer</a>
-            <a href="/ai-exit">🚪 AI Exit Strategy</a>
-            <a href="/ai-timeframe">⏰ AI Multi-Timeframe</a>
-            <a href="/ai-liquidity">💧 AI Liquidity Heatmap</a>
-            <a href="/ai-alerts">🔔 AI Smart Alerts</a>
-            
-            <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid rgba(255,255,255,0.2);">
-                <a href="/pricing-complete" style="background: rgba(255,215,0,0.2);">💎 Pricing</a>
-                <a href="/mon-compte">👤 Mon Compte</a>
-                <a href="/">🏠 Dashboard</a>
-            </div>
-        </div>
-
-<div class="main-content">
     <h1 style="text-align: center; font-size: 3em; margin: 40px 0 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
         🎯 15 Pépites Crypto 2025
     </h1>
     <p style="text-align: center; color: #bbb; font-size: 1.2em; margin-bottom: 60px; max-width: 900px; margin-left: auto; margin-right: auto;">
-        Analyse IA approfondie des cryptomonnaies à fort potentiel avec prévisions data-driven
+        Analyse IA approfondie des cryptomonnaies à fort potentiel
     </p>
 
-    <div class="crypto-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(550px, 1fr)); gap: 30px; max-width: 1400px; margin: 0 auto;">
+    <div class="crypto-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 30px; max-width: 1400px; margin: 0 auto; padding: 20px;">
     
     <!-- HYPE -->
     <div class="crypto-card" style="background: linear-gradient(135deg, #1e3a5f 0%, #2a5f8f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
@@ -26406,7 +26320,7 @@ async def crypto_pepites():
             <p style="color: #bbb; font-size: 0.85em;">MCap: $10.4B | Rang #12</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> DEX #1 revenus ($896K/jour), 100K ordres/sec
+            <strong>🤖 IA:</strong> DEX #1 revenus ($896K/jour), 100K ordres/sec, L1 optimisée
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(76, 175, 80, 0.1); padding: 12px; border-radius: 8px;">
@@ -26426,7 +26340,7 @@ async def crypto_pepites():
             <p style="color: #bbb; font-size: 0.85em;">MCap: $5.7B | Rang #19</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> TVL $1.65B+, 7.5B transactions 2024, frais $0.011
+            <strong>🤖 IA:</strong> TVL $1.65B+, 7.5B transactions, frais $0.011
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(156, 39, 176, 0.1); padding: 12px; border-radius: 8px;">
@@ -26463,10 +26377,10 @@ async def crypto_pepites():
         <h3 style="color: #e91e63; font-size: 1.6em; margin-bottom: 15px;">🎨 RENDER</h3>
         <div style="background: rgba(233, 30, 99, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #e91e63; font-weight: bold; margin: 5px 0;">💰 $1.60</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $830M | DePIN Leader</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $830M | DePIN</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> GPU rendering, AI trial 80% utilisation
+            <strong>🤖 IA:</strong> GPU rendering, AI 80% utilisation
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(233, 30, 99, 0.1); padding: 12px; border-radius: 8px;">
@@ -26483,10 +26397,10 @@ async def crypto_pepites():
         <h3 style="color: #64b5f6; font-size: 1.6em; margin-bottom: 15px;">🏦 ONDO</h3>
         <div style="background: rgba(100, 181, 246, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #64b5f6; font-weight: bold; margin: 5px 0;">💰 $0.47</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | RWA Leader</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | RWA</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> TVL $1.86B ATH, BlackRock, PayPal
+            <strong>🤖 IA:</strong> TVL $1.86B, BlackRock, PayPal
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(100, 181, 246, 0.1); padding: 12px; border-radius: 8px;">
@@ -26503,10 +26417,10 @@ async def crypto_pepites():
         <h3 style="color: #4caf50; font-size: 1.6em; margin-bottom: 15px;">🐸 PEPE</h3>
         <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #4caf50; font-weight: bold; margin: 5px 0;">💰 $0.0000046</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.9B | Meme King</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.9B | Meme</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Meme leader, 420T supply, community fort
+            <strong>🤖 IA:</strong> Meme king, 420T supply, community
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(76, 175, 80, 0.1); padding: 12px; border-radius: 8px;">
@@ -26520,17 +26434,17 @@ async def crypto_pepites():
 
     <!-- WIF -->
     <div class="crypto-card" style="background: linear-gradient(135deg, #4a2d1f 0%, #7a4a2f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #ff9800; font-size: 1.6em; margin-bottom: 15px;">🐶 WIF (dogwifhat)</h3>
+        <h3 style="color: #ff9800; font-size: 1.6em; margin-bottom: 15px;">🐶 WIF</h3>
         <div style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #ff9800; font-weight: bold; margin: 5px 0;">💰 $0.38</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $377M | Solana Meme</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $377M | Solana</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Solana top meme, 999M supply, viral
+            <strong>🤖 IA:</strong> Solana meme top, viral
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(255, 152, 0, 0.1); padding: 12px; border-radius: 8px;">
-                <p style="color: #ff9800; font-weight: bold; font-size: 0.9em;">2025: $1.00-2.00</p>
+                <p style="color: #ff9800; font-weight: bold; font-size: 0.9em;">2025: $1-2</p>
             </div>
             <div style="background: rgba(255, 152, 0, 0.15); padding: 12px; border-radius: 8px;">
                 <p style="color: #f57c00; font-weight: bold; font-size: 0.9em;">2026: $3-5</p>
@@ -26540,13 +26454,13 @@ async def crypto_pepites():
 
     <!-- JUP -->
     <div class="crypto-card" style="background: linear-gradient(135deg, #1f2d4a 0%, #2f4a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #00bcd4; font-size: 1.6em; margin-bottom: 15px;">🪐 JUP (Jupiter)</h3>
+        <h3 style="color: #00bcd4; font-size: 1.6em; margin-bottom: 15px;">🪐 JUP</h3>
         <div style="background: rgba(0, 188, 212, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #00bcd4; font-weight: bold; margin: 5px 0;">💰 $0.75</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $975M | DEX #1 Solana</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $975M | DEX</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Aggregator top Solana, volume massif
+            <strong>🤖 IA:</strong> Aggregator #1 Solana
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(0, 188, 212, 0.1); padding: 12px; border-radius: 8px;">
@@ -26560,13 +26474,13 @@ async def crypto_pepites():
 
     <!-- ARB -->
     <div class="crypto-card" style="background: linear-gradient(135deg, #1f3d4a 0%, #2f5a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #2196f3; font-size: 1.6em; margin-bottom: 15px;">🔷 ARB (Arbitrum)</h3>
+        <h3 style="color: #2196f3; font-size: 1.6em; margin-bottom: 15px;">🔷 ARB</h3>
         <div style="background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #2196f3; font-weight: bold; margin: 5px 0;">💰 $0.62</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $2.5B | L2 Leader</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $2.5B | L2</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Ethereum L2 top, TVL $2.4B, scaling
+            <strong>🤖 IA:</strong> Ethereum L2, TVL $2.4B
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(33, 150, 243, 0.1); padding: 12px; border-radius: 8px;">
@@ -26580,13 +26494,13 @@ async def crypto_pepites():
 
     <!-- OP -->
     <div class="crypto-card" style="background: linear-gradient(135deg, #4a1f1f 0%, #7a2f2f 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #f44336; font-size: 1.6em; margin-bottom: 15px;">🔴 OP (Optimism)</h3>
+        <h3 style="color: #f44336; font-size: 1.6em; margin-bottom: 15px;">🔴 OP</h3>
         <div style="background: rgba(244, 67, 54, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #f44336; font-weight: bold; margin: 5px 0;">💰 $1.45</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | L2 Superchain</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | L2</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> L2 optimistic rollup, Base, Coinbase
+            <strong>🤖 IA:</strong> L2 optimistic, Base, Superchain
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(244, 67, 54, 0.1); padding: 12px; border-radius: 8px;">
@@ -26600,13 +26514,13 @@ async def crypto_pepites():
 
     <!-- INJ -->
     <div class="crypto-card" style="background: linear-gradient(135deg, #1f4a4a 0%, #2f7a7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #00bfa5; font-size: 1.6em; margin-bottom: 15px;">💉 INJ (Injective)</h3>
+        <h3 style="color: #00bfa5; font-size: 1.6em; margin-bottom: 15px;">💉 INJ</h3>
         <div style="background: rgba(0, 191, 165, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #00bfa5; font-weight: bold; margin: 5px 0;">💰 $18.50</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.8B | DeFi Layer-1</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.8B | DeFi</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Cosmos DEX, derivatives, interchain
+            <strong>🤖 IA:</strong> Cosmos DEX, derivatives
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(0, 191, 165, 0.1); padding: 12px; border-radius: 8px;">
@@ -26623,10 +26537,10 @@ async def crypto_pepites():
         <h3 style="color: #e91e8c; font-size: 1.6em; margin-bottom: 15px;">⚡ SEI</h3>
         <div style="background: rgba(233, 30, 140, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #e91e8c; font-weight: bold; margin: 5px 0;">💰 $0.38</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | Trading Chain</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.5B | L1</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> L1 trading-focused, 380ms finality
+            <strong>🤖 IA:</strong> Trading chain, 380ms finality
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(233, 30, 140, 0.1); padding: 12px; border-radius: 8px;">
@@ -26640,13 +26554,13 @@ async def crypto_pepites():
 
     <!-- TIA -->
     <div class="crypto-card" style="background: linear-gradient(135deg, #1f1f4a 0%, #2f2f7a 100%); padding: 30px; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
-        <h3 style="color: #7c4dff; font-size: 1.6em; margin-bottom: 15px;">🌌 TIA (Celestia)</h3>
+        <h3 style="color: #7c4dff; font-size: 1.6em; margin-bottom: 15px;">🌌 TIA</h3>
         <div style="background: rgba(124, 77, 255, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #7c4dff; font-weight: bold; margin: 5px 0;">💰 $4.80</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.1B | Modular L1</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.1B | Modular</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Data availability, modular blockchain
+            <strong>🤖 IA:</strong> Modular blockchain, data layer
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(124, 77, 255, 0.1); padding: 12px; border-radius: 8px;">
@@ -26663,10 +26577,10 @@ async def crypto_pepites():
         <h3 style="color: #ab47bc; font-size: 1.6em; margin-bottom: 15px;">🔮 PYTH</h3>
         <div style="background: rgba(171, 71, 188, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #ab47bc; font-weight: bold; margin: 5px 0;">💰 $0.35</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.4B | Oracle Leader</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.4B | Oracle</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Prix feed, 400+ price sources
+            <strong>🤖 IA:</strong> Oracle leader, 400+ sources
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(171, 71, 188, 0.1); padding: 12px; border-radius: 8px;">
@@ -26683,10 +26597,10 @@ async def crypto_pepites():
         <h3 style="color: #ff6b35; font-size: 1.6em; margin-bottom: 15px;">🐕 BONK</h3>
         <div style="background: rgba(255, 107, 53, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <p style="font-size: 1.3em; color: #ff6b35; font-weight: bold; margin: 5px 0;">💰 $0.000018</p>
-            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.3B | Solana Meme OG</p>
+            <p style="color: #bbb; font-size: 0.85em;">MCap: $1.3B | Meme</p>
         </div>
         <p style="color: white; line-height: 1.6; font-size: 0.9em;">
-            <strong>🤖 IA:</strong> Premier Solana meme, community fort
+            <strong>🤖 IA:</strong> Solana meme OG, community
         </p>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
             <div style="background: rgba(255, 107, 53, 0.1); padding: 12px; border-radius: 8px;">
@@ -26704,16 +26618,10 @@ async def crypto_pepites():
     <div style="background: rgba(255, 255, 255, 0.05); padding: 40px; border-radius: 15px; margin: 60px auto; max-width: 1200px;">
         <h3 style="color: white; text-align: center; font-size: 2em; margin-bottom: 30px;">📚 Méthodologie IA</h3>
         <p style="color: #bbb; line-height: 1.8; font-size: 1.05em; max-width: 900px; margin: 0 auto;">
-            Ces prévisions sont générées par intelligence artificielle en analysant:<br><br>
-            <strong style="color: white;">• Données Techniques:</strong> RSI, MACD, volumes, support/résistance<br>
-            <strong style="color: white;">• Fondamentaux:</strong> Market cap, TVL, adoption, développement<br>
-            <strong style="color: white;">• Sentiment:</strong> Social media, momentum, activité développeurs<br>
-            <strong style="color: white;">• Macro:</strong> Bitcoin dominance, altseason, Fear & Greed Index<br><br>
-            
-            <em style="color: #ff9800;">⚠️ Disclaimer:</em> Prévisions à titre informatif uniquement. Le marché crypto est extrêmement volatil. Faites vos propres recherches (DYOR) et n'investissez que ce que vous pouvez perdre.
+            Prévisions générées par IA analysant données techniques (RSI, MACD, volumes), fondamentaux (MCap, TVL, adoption), sentiment (social media, développeurs) et macro (Bitcoin dominance, altseason).<br><br>
+            <em style="color: #ff9800;">⚠️ Disclaimer:</em> Informations à titre éducatif uniquement. Marché crypto extrêmement volatil. DYOR et n'investissez que ce que vous pouvez perdre.
         </p>
     </div>
-</div>
 
 <style>
 @media (max-width: 768px) {{

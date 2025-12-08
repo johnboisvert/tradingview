@@ -27764,8 +27764,35 @@ async def defi_yield(request: Request):
         </div>
         
         <div class="actions">
-            <button class="btn btn-primary">Dépôt</button>
-            <button class="btn btn-secondary">Détails</button>
+
+<!-- Guide d'utilisation -->
+<div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%); border: 2px solid rgba(16, 185, 129, 0.3); border-radius: 18px; padding: 30px; margin-top: 40px;">
+    <h2 style="font-size: 1.8em; margin-bottom: 20px; color: #10b981;">🏦 Comment utiliser DeFi Yield Optimizer?</h2>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px;">
+            <h3 style="color: #10b981; margin-bottom: 10px;">🎯 Objectif</h3>
+            <p>DeFi Yield Optimizer vous aide à trouver les meilleurs rendements en DeFi. Comparez les protocoles, analysez les risques, et optimisez vos yields avec des stratégies IA.</p>
+        </div>
+        
+        <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px;">
+            <h3 style="color: #10b981; margin-bottom: 10px;">✨ Fonctionnalités</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li>✓ 6+ protocoles analysés</li>
+                <li>✓ APY en temps réel</li>
+                <li>✓ Évaluation des risques</li>
+                <li>✓ Stratégies d'optimisation</li>
+            </ul>
+        </div>
+        
+        <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px;">
+            <h3 style="color: #10b981; margin-bottom: 10px;">🚀 Comment l'utiliser</h3>
+            <ol style="margin: 0; padding-left: 20px;">
+                <li>Filtrez par blockchain/risque/APY</li>
+                <li>Comparez les protocoles</li>
+                <li>Vérifiez les jauges de risque</li>
+                <li>Depositez dans les meilleurs</li>
+            </ol>
         </div>
     </div>
 </div>
@@ -28816,10 +28843,40 @@ async def launchpad_scanner(request: Request):
             </div>
         </div>
         
-        <div class="actions">
-            <button class="btn btn-primary">Watchlist</button>
-            <button class="btn btn-secondary">Détails</button>
+
+<!-- Guide d'utilisation -->
+<div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%); border: 2px solid rgba(245, 158, 11, 0.3); border-radius: 18px; padding: 30px; margin-top: 40px;">
+    <h2 style="font-size: 1.8em; margin-bottom: 20px; color: #f59e0b;">🚀 Comment utiliser Launchpad Scanner?</h2>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px;">
+            <h3 style="color: #f59e0b; margin-bottom: 10px;">🎯 Objectif</h3>
+            <p>Launchpad Scanner IA vous aide à découvrir les prochains 100x. Analysez les nouveaux projets crypto, évaluez les risques, et identifiez les meilleures opportunités avec des AI Scores.</p>
         </div>
+        
+        <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px;">
+            <h3 style="color: #f59e0b; margin-bottom: 10px;">✨ AI Score Signification</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li style="color: #22c55e;">🟢 90+: Excellent (très sûr)</li>
+                <li style="color: #3b82f6;">🔵 70-90: Bon (modéré)</li>
+                <li style="color: #ef4444;">🔴 <70: À surveiller (risqué)</li>
+            </ul>
+        </div>
+        
+        <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px;">
+            <h3 style="color: #f59e0b; margin-bottom: 10px;">🚀 Comment l'utiliser</h3>
+            <ol style="margin: 0; padding-left: 20px;">
+                <li>Filtrez par statut/score/blockchain</li>
+                <li>Lisez les descriptions complètes</li>
+                <li>Vérifiez les badges (audit, VC)</li>
+                <li>Investissez avec prudence</li>
+            </ol>
+        </div>
+    </div>
+    
+    <div style="background: rgba(245, 158, 11, 0.15); padding: 20px; border-radius: 12px; margin-top: 20px;">
+        <h3 style="color: #f59e0b; margin-bottom: 10px;">⚠️ Avertissement Important</h3>
+        <p>Les analyses IA donnent une indication, pas une garantie. Faites vos propres recherches (DYOR) avant d'investir. Crypto = risque élevé!</p>
     </div>
 </div>
 

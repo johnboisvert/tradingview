@@ -1057,6 +1057,8 @@ UPCOMING_GEMS_COMPLETE = [
 
 app = FastAPI()
 
+# Initialiser Portfolio Tracker DB
+init_portfolio_db()
 
 # ========== SIDEBAR MENU ==========
 SIDEBAR = """<style>
@@ -28679,24 +28681,10 @@ async def launchpad_scanner(request: Request):
 </html>
 """
     return HTMLResponse(content=html_content)
-# ================================================================================
-# 🚀 PORTFOLIO TRACKER COMPLET - CODE À COLLER DANS main.py
-# ================================================================================
-#
-# INSTRUCTIONS:
-# 1. Copier TOUT ce code
-# 2. L'ajouter à la FIN de ton main.py (avant la dernière ligne)
-# 3. Installer: pip install ccxt requests cryptography
-# 4. Git push
-#
-# ================================================================================
 
-# À AJOUTER EN TOP des IMPORTS si pas déjà présent:
-# from cryptography.fernet import Fernet
 
-# À AJOUTER après "app = FastAPI()" (juste avant les routes):
-# init_portfolio_db()
-
+# ================================================================================
+# 🚀 PORTFOLIO TRACKER - INTÉGRATION COMPLÈTE
 # ================================================================================
 
 def init_portfolio_db():
@@ -28936,10 +28924,6 @@ def get_all_holdings(user_id: int):
     finally:
         conn.close()
 
-# ================================================================================
-# ENDPOINTS PORTFOLIO TRACKER
-# ================================================================================
-
 @app.post("/api/portfolio/connect")
 async def connect_exchange_endpoint(request: Request):
     """Connecter un exchange"""
@@ -29083,16 +29067,8 @@ async def disconnect_exchange_endpoint(request: Request):
     except Exception as e:
         return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
 
-# ================================================================================
-# ROUTE PORTFOLIO TRACKER - À REMPLACER DANS main.py
-# ================================================================================
-
 @app.get("/portfolio-tracker", response_class=HTMLResponse)
 async def portfolio_tracker(request: Request):
     """Portfolio Tracker avec support multi-exchange"""
     with open('PORTFOLIO_TRACKER_FRONTEND.html', 'r', encoding='utf-8') as f:
         return HTMLResponse(content=f.read())
-
-# ================================================================================
-# FIN PORTFOLIO TRACKER
-# ================================================================================

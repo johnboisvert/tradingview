@@ -27065,15 +27065,33 @@ async def portfolio_tracker(request: Request):
             min-height: 100vh;
         }}
         
+        .guide-box {{
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(14, 165, 233, 0.15) 100%);
+            border: 2px solid rgba(6, 182, 212, 0.5);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 40px;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }}
+        
+        .guide-title {{ color: #06b6d4; font-size: 1.4em; font-weight: 700; margin-bottom: 15px; }}
+        .guide-content {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }}
+        .guide-item {{ padding: 12px; background: rgba(6, 182, 212, 0.1); border-radius: 10px; }}
+        .guide-label {{ color: #06b6d4; font-weight: 600; font-size: 0.95em; margin-bottom: 8px; }}
+        .guide-text {{ font-size: 0.9em; line-height: 1.5; }}
+        
         .header {{
             background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
             padding: 40px;
             border-radius: 20px;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             box-shadow: 0 20px 60px rgba(6, 182, 212, 0.4);
         }}
         
         .header h1 {{ font-size: 3em; margin-bottom: 10px; font-weight: 700; }}
+        .header p {{ font-size: 1.1em; opacity: 0.95; }}
         
         .portfolio-stats {{
             display: grid;
@@ -27082,7 +27100,7 @@ async def portfolio_tracker(request: Request):
             margin-bottom: 40px;
         }}
         
-        .portfolio-card {{
+        .stat-card {{
             background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(14, 165, 233, 0.1) 100%);
             border: 2px solid rgba(6, 182, 212, 0.3);
             padding: 30px;
@@ -27091,20 +27109,32 @@ async def portfolio_tracker(request: Request):
             transition: all 0.3s ease;
         }}
         
-        .portfolio-card:hover {{
+        .stat-card:hover {{
             transform: translateY(-5px);
             border-color: #06b6d4;
             box-shadow: 0 15px 40px rgba(6, 182, 212, 0.3);
         }}
         
-        .portfolio-label {{ font-size: 0.95em; opacity: 0.8; margin-bottom: 10px; }}
-        .portfolio-value {{ font-size: 2.8em; font-weight: 700; color: #06b6d4; }}
-        .portfolio-change {{ font-size: 1.1em; margin-top: 10px; color: #10b981; }}
+        .stat-label {{ font-size: 0.95em; opacity: 0.8; margin-bottom: 10px; }}
+        .stat-value {{ font-size: 2.8em; font-weight: 700; color: #06b6d4; }}
+        .stat-change {{ font-size: 1.1em; margin-top: 10px; color: #10b981; }}
+        
+        .explanation-section {{
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(6, 182, 212, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }}
+        
+        .explanation-section h2 {{ color: #06b6d4; margin-bottom: 20px; font-size: 1.6em; }}
+        .explanation-section p {{ line-height: 1.8; margin-bottom: 15px; opacity: 0.95; }}
         
         .holdings-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
             gap: 25px;
+            margin-bottom: 40px;
         }}
         
         .holding-card {{
@@ -27172,47 +27202,83 @@ async def portfolio_tracker(request: Request):
             .portfolio-stats {{ grid-template-columns: 1fr; }}
             .holdings-grid {{ grid-template-columns: 1fr; }}
             .header h1 {{ font-size: 2em; }}
+            .guide-content {{ grid-template-columns: 1fr; }}
         }}
     </style>
 </head>
 <body>
 
+<!-- GUIDE D'UTILISATION - EN HAUT ET STICKY -->
+<div class="guide-box">
+    <div class="guide-title">💡 Comment utiliser Portfolio Tracker?</div>
+    <div class="guide-content">
+        <div class="guide-item">
+            <div class="guide-label">🎯 OBJECTIF</div>
+            <div class="guide-text">Centraliser vos portefeuilles crypto de tous les exchanges en UN seul endroit. Suivez votre valeur totale et vos gains en temps réel.</div>
+        </div>
+        <div class="guide-item">
+            <div class="guide-label">📊 FONCTIONNALITÉS</div>
+            <div class="guide-text">✓ Sync multi-exchanges<br>✓ Calcul auto des gains<br>✓ Alertes volatilité<br>✓ Historique détaillé</div>
+        </div>
+        <div class="guide-item">
+            <div class="guide-label">🚀 HOW-TO</div>
+            <div class="guide-text">1. Connectez API<br>2. Sync automatique<br>3. Suivez gains<br>4. Analysez performance</div>
+        </div>
+    </div>
+</div>
+
 <div class="header">
     <h1>💼 Portfolio Tracker IA</h1>
-    <p>Suivez tous vos portefeuilles sur tous les exchanges avec analyse IA</p>
+    <p>Suivi complet de tous vos portefeuilles crypto avec analyse IA</p>
+</div>
+
+<!-- EXPLICATION SECTION -->
+<div class="explanation-section">
+    <h2>📚 Qu'est-ce que Portfolio Tracker?</h2>
+    <p>Portfolio Tracker IA est un outil puissant pour gérer votre portefeuille crypto. Il se connecte à vos exchanges favoris (Binance, Coinbase, Kraken, etc.) via des clés API et synchronise automatiquement toutes vos positions.</p>
+    <p><strong>Avantages principaux:</strong></p>
+    <ul style="margin-left: 20px; line-height: 2;">
+        <li>✓ Vue d'ensemble complète de tous vos holdings</li>
+        <li>✓ Calcul automatique des gains et pertes</li>
+        <li>✓ Historique détaillé des transactions</li>
+        <li>✓ Alertes en temps réel sur la volatilité</li>
+        <li>✓ Analyse des performances par crypto</li>
+        <li>✓ Recommendations IA pour optimiser votre portefeuille</li>
+    </ul>
 </div>
 
 <div class="portfolio-stats">
-    <div class="portfolio-card">
-        <div class="portfolio-label">💰 Valeur Totale</div>
-        <div class="portfolio-value">$24,587</div>
-        <div class="portfolio-change">+$2,145 (+9.6%)</div>
+    <div class="stat-card">
+        <div class="stat-label">💰 Valeur Totale</div>
+        <div class="stat-value">$24,587</div>
+        <div class="stat-change">+$2,145 (+9.6% ce mois)</div>
     </div>
-    <div class="portfolio-card">
-        <div class="portfolio-label">📈 Plus-Value</div>
-        <div class="portfolio-value">+15.3%</div>
-        <div class="portfolio-change">+$3,215 cette année</div>
+    <div class="stat-card">
+        <div class="stat-label">📈 Plus-Value</div>
+        <div class="stat-value">+15.3%</div>
+        <div class="stat-change">+$3,215 cette année</div>
     </div>
-    <div class="portfolio-card">
-        <div class="portfolio-label">🎯 Diversification</div>
-        <div class="portfolio-value">8 Assets</div>
-        <div class="portfolio-change">Risque: Modéré</div>
+    <div class="stat-card">
+        <div class="stat-label">🎯 Diversification</div>
+        <div class="stat-value">8 Assets</div>
+        <div class="stat-change">Risque: Modéré</div>
     </div>
-    <div class="portfolio-card">
-        <div class="portfolio-label">📊 24h Change</div>
-        <div class="portfolio-value">+2.8%</div>
-        <div class="portfolio-change">Tendance: Haussière</div>
+    <div class="stat-card">
+        <div class="stat-label">📊 24h Change</div>
+        <div class="stat-value">+2.8%</div>
+        <div class="stat-change">Tendance: Haussière ↗️</div>
     </div>
 </div>
 
-<h2 style="margin: 40px 0 25px; font-size: 1.8em;">Vos Holdings</h2>
+<h2 style="margin: 40px 0 25px; font-size: 1.8em; color: #06b6d4;">Vos Holdings Actuels</h2>
 
 <div class="holdings-grid">
     <div class="holding-card">
         <div class="holding-header">
             <div class="holding-name">Bitcoin 🟠</div>
-            <div class="holding-percentage">42.5%</div>
+            <div class="holding-percentage">42.5% du portefeuille</div>
         </div>
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">L'or numérique - la crypto la plus sécurisée avec la plus grande capitalisation</p>
         <div class="holding-details">
             <div class="detail">
                 <div class="detail-label">Quantité</div>
@@ -27223,7 +27289,7 @@ async def portfolio_tracker(request: Request):
                 <div class="detail-value">$64,200</div>
             </div>
             <div class="detail">
-                <div class="detail-label">Valeur</div>
+                <div class="detail-label">Valeur Totale</div>
                 <div class="detail-value">$54,570</div>
             </div>
             <div class="detail">
@@ -27236,8 +27302,9 @@ async def portfolio_tracker(request: Request):
     <div class="holding-card">
         <div class="holding-header">
             <div class="holding-name">Ethereum 🔵</div>
-            <div class="holding-percentage">35.2%</div>
+            <div class="holding-percentage">35.2% du portefeuille</div>
         </div>
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">La plateforme des smart contracts - base de la DeFi et des tokens</p>
         <div class="holding-details">
             <div class="detail">
                 <div class="detail-label">Quantité</div>
@@ -27248,7 +27315,7 @@ async def portfolio_tracker(request: Request):
                 <div class="detail-value">$3,450</div>
             </div>
             <div class="detail">
-                <div class="detail-label">Valeur</div>
+                <div class="detail-label">Valeur Totale</div>
                 <div class="detail-value">$29,325</div>
             </div>
             <div class="detail">
@@ -27261,8 +27328,9 @@ async def portfolio_tracker(request: Request):
     <div class="holding-card">
         <div class="holding-header">
             <div class="holding-name">Solana 💜</div>
-            <div class="holding-percentage">22.3%</div>
+            <div class="holding-percentage">22.3% du portefeuille</div>
         </div>
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Blockchain ultra-rapide - idéale pour les trades et les dApps</p>
         <div class="holding-details">
             <div class="detail">
                 <div class="detail-label">Quantité</div>
@@ -27273,12 +27341,12 @@ async def portfolio_tracker(request: Request):
                 <div class="detail-value">$185</div>
             </div>
             <div class="detail">
-                <div class="detail-label">Valeur</div>
+                <div class="detail-label">Valeur Totale</div>
                 <div class="detail-value">$8,325</div>
             </div>
             <div class="detail">
                 <div class="detail-label">Gain</div>
-                <div class="detail-value" style="color: #ef4444;">-5%</div>
+                <div class="detail-value" style="color: #ef4444;">-5% (actuellement en perte)</div>
             </div>
         </div>
     </div>
@@ -27370,6 +27438,23 @@ async def defi_yield(request: Request):
             padding: 30px;
             min-height: 100vh;
         }}
+        
+        .guide-box {{
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.15) 100%);
+            border: 2px solid rgba(16, 185, 129, 0.5);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 40px;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }}
+        
+        .guide-title {{ color: #10b981; font-size: 1.4em; font-weight: 700; margin-bottom: 15px; }}
+        .guide-content {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }}
+        .guide-item {{ padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; }}
+        .guide-label {{ color: #10b981; font-weight: 600; font-size: 0.95em; margin-bottom: 8px; }}
+        .guide-text {{ font-size: 0.9em; line-height: 1.5; }}
         
         .header {{
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
@@ -27543,14 +27628,34 @@ async def defi_yield(request: Request):
             .protocols-grid {{ grid-template-columns: 1fr; }}
             .filters {{ grid-template-columns: 1fr; }}
             .header h1 {{ font-size: 2em; }}
+            .guide-content {{ grid-template-columns: 1fr; }}
         }}
     </style>
 </head>
 <body>
 
+<!-- GUIDE EN HAUT - STICKY -->
+<div class="guide-box">
+    <div class="guide-title">💡 Comment utiliser DeFi Yield Optimizer?</div>
+    <div class="guide-content">
+        <div class="guide-item">
+            <div class="guide-label">🎯 OBJECTIF</div>
+            <div class="guide-text">Trouver les meilleurs rendements en DeFi. Comparez APY, analysez risques, optimisez vos yields!</div>
+        </div>
+        <div class="guide-item">
+            <div class="guide-label">📊 DONNÉES</div>
+            <div class="guide-text">✓ 6+ protocoles<br>✓ APY temps réel<br>✓ Évaluation risques<br>✓ TVL et stratégies</div>
+        </div>
+        <div class="guide-item">
+            <div class="guide-label">🚀 HOW-TO</div>
+            <div class="guide-text">1. Filtrez par risque<br>2. Comparez APY<br>3. Vérifiez jauges<br>4. Depositez!</div>
+        </div>
+    </div>
+</div>
+
 <div class="header">
     <h1>🏦 DeFi Yield Optimizer</h1>
-    <p>Trouvez les meilleurs rendements DeFi avec analyse IA des risques</p>
+    <p>Trouvez les meilleurs rendements avec analyse IA des risques - 6+ protocoles analysés</p>
 </div>
 
 <div class="filters">
@@ -28135,11 +28240,28 @@ async def academy_ia(request: Request):
             min-height: 100vh;
         }}
         
+        .guide-box {{
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(101, 39, 211, 0.15) 100%);
+            border: 2px solid rgba(139, 92, 246, 0.5);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 40px;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }}
+        
+        .guide-title {{ color: #a78bfa; font-size: 1.4em; font-weight: 700; margin-bottom: 15px; }}
+        .guide-content {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }}
+        .guide-item {{ padding: 12px; background: rgba(139, 92, 246, 0.1); border-radius: 10px; }}
+        .guide-label {{ color: #a78bfa; font-weight: 600; font-size: 0.95em; margin-bottom: 8px; }}
+        .guide-text {{ font-size: 0.9em; line-height: 1.5; }}
+        
         .header {{
             background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
             padding: 40px;
             border-radius: 20px;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
             box-shadow: 0 20px 60px rgba(139, 92, 246, 0.4);
             border: 2px solid rgba(139, 92, 246, 0.5);
         }}
@@ -28171,6 +28293,45 @@ async def academy_ia(request: Request):
         
         .stat-value {{ font-size: 2.5em; font-weight: 700; color: #a78bfa; margin: 10px 0; }}
         .stat-label {{ font-size: 0.95em; opacity: 0.8; }}
+        
+        .ai-coach {{
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(101, 39, 211, 0.1) 100%);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 18px;
+            padding: 30px;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .ai-coach h3 {{ font-size: 1.5em; margin-bottom: 15px; color: #a78bfa; }}
+        .ai-coach p {{ line-height: 1.8; opacity: 0.95; }}
+        
+        .coach-input-area {{
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }}
+        
+        .coach-input-area input {{
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.8);
+            color: #e0e6ed;
+            font-size: 0.95em;
+        }}
+        
+        .coach-input-area button {{
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }}
         
         .courses-grid {{
             display: grid;
@@ -28280,79 +28441,47 @@ async def academy_ia(request: Request):
             box-shadow: 0 10px 25px rgba(139, 92, 246, 0.4);
         }}
         
-        .ai-coach {{
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(101, 39, 211, 0.1) 100%);
-            border: 2px solid rgba(139, 92, 246, 0.3);
-            border-radius: 18px;
-            padding: 30px;
-            margin-bottom: 40px;
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        .ai-coach::before {{
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, transparent 70%);
-            border-radius: 50%;
-        }}
-        
-        .ai-coach-content {{ position: relative; z-index: 1; }}
-        .ai-coach h3 {{ font-size: 1.5em; margin-bottom: 15px; color: #a78bfa; }}
-        .ai-coach p {{ line-height: 1.8; opacity: 0.95; }}
-        
-        .coach-input-area {{
-            margin-top: 20px;
-            display: flex;
-            gap: 10px;
-        }}
-        
-        .coach-input-area input {{
-            flex: 1;
-            padding: 12px 15px;
-            border: 2px solid rgba(139, 92, 246, 0.3);
-            border-radius: 10px;
-            background: rgba(15, 23, 42, 0.8);
-            color: #e0e6ed;
-            font-size: 0.95em;
-        }}
-        
-        .coach-input-area button {{
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-        }}
-        
         @media (max-width: 768px) {{
             body {{ margin-left: 0; padding: 15px; }}
             .courses-grid {{ grid-template-columns: 1fr; }}
-            .header {{ padding: 25px; }}
             .header h1 {{ font-size: 2em; }}
+            .guide-content {{ grid-template-columns: 1fr; }}
         }}
     </style>
 </head>
 <body>
 
+<!-- GUIDE D'UTILISATION - EN HAUT ET STICKY -->
+<div class="guide-box">
+    <div class="guide-title">💡 Comment utiliser Academy IA?</div>
+    <div class="guide-content">
+        <div class="guide-item">
+            <div class="guide-label">🎯 OBJECTIF</div>
+            <div class="guide-text">Apprendre le trading crypto from ZERO to HERO. 8+ formations progressives avec un Coach IA personnel.</div>
+        </div>
+        <div class="guide-item">
+            <div class="guide-label">📚 FORMATIONS</div>
+            <div class="guide-text">✓ 8+ cours complets<br>✓ Coach IA 24/7<br>✓ Système de progression<br>✓ Certificats à la fin</div>
+        </div>
+        <div class="guide-item">
+            <div class="guide-label">🚀 HOW-TO</div>
+            <div class="guide-text">1. Choisissez un cours<br>2. Progressez dedans<br>3. Questionnez le Coach<br>4. Débloquez Premium</div>
+        </div>
+    </div>
+</div>
+
 <div class="header">
     <h1>🎓 Academy IA</h1>
-    <p>Apprenez le trading crypto avec des cours générés par intelligence artificielle</p>
+    <p>8+ formations crypto générées par IA - Devenez un trading expert!</p>
 </div>
 
 <div class="stats-grid">
     <div class="stat-card">
-        <div class="stat-label">📚 Cours Disponibles</div>
-        <div class="stat-value">12</div>
+        <div class="stat-label">📚 Formations Totales</div>
+        <div class="stat-value">8+</div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">✅ Complétés</div>
+        <div class="stat-label">✅ Complétées</div>
         <div class="stat-value">3</div>
     </div>
     <div class="stat-card">
@@ -28360,42 +28489,41 @@ async def academy_ia(request: Request):
         <div class="stat-value">1,250</div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">🏆 Niveau</div>
+        <div class="stat-label">🏆 Niveau Actuel</div>
         <div class="stat-value">5</div>
     </div>
 </div>
 
 <div class="ai-coach">
-    <div class="ai-coach-content">
-        <h3>🤖 Coach IA Personnel</h3>
-        <p>Posez n'importe quelle question sur le trading, l'IA, et la cryptomonnaie. Je vais vous répondre personnalisé!</p>
-        <div class="coach-input-area">
-            <input type="text" placeholder="Posez votre question...">
-            <button>Envoyer</button>
-        </div>
+    <h3>🤖 Coach IA Personnel</h3>
+    <p>Posez n'importe quelle question sur le trading, la blockchain, ou la cryptomonnaie. Le Coach IA répond 24/7 avec des explications personnalisées.</p>
+    <div class="coach-input-area">
+        <input type="text" placeholder="Ex: Comment analyser un chart? Qu'est-ce qu'un smart contract?">
+        <button>Envoyer</button>
     </div>
 </div>
+
+<h2 style="margin: 40px 0 25px; font-size: 1.8em; color: #a78bfa;">📚 Nos Formations</h2>
 
 <div class="courses-grid">
     <div class="course-card">
         <div class="course-header">
-            <span class="course-level">Débutant</span>
+            <span class="course-level">🟢 Débutant</span>
             <div class="course-title">Les Bases du Trading</div>
             <div class="course-duration">⏱️ 2 heures • 5 modules</div>
         </div>
         <div class="course-body">
-            <p class="course-description">Apprenez les fondamentaux du trading crypto.</p>
+            <p class="course-description">Apprenez les fondamentaux du trading crypto depuis zéro.</p>
             <ul class="modules">
                 <li>Qu'est-ce que la blockchain?</li>
-                <li>Types de cryptomonnaies</li>
+                <li>Types de cryptomonnaies (BTC, ETH, etc.)</li>
                 <li>Comment configurer un wallet</li>
                 <li>Premiers pas en trading</li>
+                <li>Gestion basique du risque</li>
             </ul>
             <div class="progress-section">
                 <strong>Progression: 50%</strong>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: 50%;"></div>
-                </div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 50%;"></div></div>
             </div>
             <button class="btn btn-primary">Continuer →</button>
         </div>
@@ -28403,23 +28531,69 @@ async def academy_ia(request: Request):
     
     <div class="course-card">
         <div class="course-header">
-            <span class="course-level">Intermédiaire</span>
+            <span class="course-level">🟡 Intermédiaire</span>
             <div class="course-title">Analyse Technique</div>
             <div class="course-duration">⏱️ 4 heures • 8 modules</div>
         </div>
         <div class="course-body">
-            <p class="course-description">Maîtrisez l'analyse technique avancée.</p>
+            <p class="course-description">Maîtrisez l'analyse technique avancée pour prendre de bonnes décisions.</p>
             <ul class="modules">
-                <li>Supports et résistances</li>
+                <li>Support et résistance</li>
                 <li>Moyennes mobiles (EMA/SMA)</li>
-                <li>RSI et MACD</li>
+                <li>RSI et MACD explicités</li>
                 <li>Chandeliers japonais</li>
+                <li>Patterns de reversal</li>
+                <li>Divergences et confirmations</li>
             </ul>
             <div class="progress-section">
                 <strong>Progression: 25%</strong>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: 25%;"></div>
-                </div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 25%;"></div></div>
+            </div>
+            <button class="btn btn-primary">Reprendre →</button>
+        </div>
+    </div>
+    
+    <div class="course-card">
+        <div class="course-header">
+            <span class="course-level">🔴 Avancé</span>
+            <div class="course-title">Trading Algorithmique</div>
+            <div class="course-duration">⏱️ 6 heures • 10 modules</div>
+        </div>
+        <div class="course-body">
+            <p class="course-description">Créez vos propres stratégies automatisées et gagnez à la machine!</p>
+            <ul class="modules">
+                <li>Pine Script TradingView</li>
+                <li>Backtesting de stratégies</li>
+                <li>Gestion avancée du risque</li>
+                <li>Déploiement en production</li>
+                <li>APIs des exchanges</li>
+            </ul>
+            <div class="progress-section">
+                <strong>Progression: 0%</strong>
+                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
+            </div>
+            <button class="btn btn-primary">Débloquer (Premium) →</button>
+        </div>
+    </div>
+    
+    <div class="course-card">
+        <div class="course-header">
+            <span class="course-level">🔵 Spécialisé</span>
+            <div class="course-title">DeFi et Smart Contracts</div>
+            <div class="course-duration">⏱️ 3 heures • 6 modules</div>
+        </div>
+        <div class="course-body">
+            <p class="course-description">Comprendre et trader la DeFi - le future de la finance!</p>
+            <ul class="modules">
+                <li>Qu'est-ce que la DeFi?</li>
+                <li>AMM et Liquidity Pools</li>
+                <li>Farming et Yield</li>
+                <li>Risques des smart contracts</li>
+                <li>Stratégies de DeFi</li>
+            </ul>
+            <div class="progress-section">
+                <strong>Progression: 0%</strong>
+                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
             </div>
             <button class="btn btn-primary">Commencer →</button>
         </div>
@@ -28427,25 +28601,92 @@ async def academy_ia(request: Request):
     
     <div class="course-card">
         <div class="course-header">
-            <span class="course-level">Avancé</span>
-            <div class="course-title">Trading Algorithmique</div>
-            <div class="course-duration">⏱️ 6 heures • 10 modules</div>
+            <span class="course-level">🟣 Spécialisé</span>
+            <div class="course-title">Altcoins & Tokenomics</div>
+            <div class="course-duration">⏱️ 2.5 heures • 5 modules</div>
         </div>
         <div class="course-body">
-            <p class="course-description">Créez vos propres stratégies automatisées.</p>
+            <p class="course-description">Comment identifier les altcoins winners et comprendre la tokenomics.</p>
             <ul class="modules">
-                <li>Pine Script TradingView</li>
-                <li>Backtesting de stratégies</li>
-                <li>Gestion du risque</li>
-                <li>Déploiement en production</li>
+                <li>Whitepaper analysis</li>
+                <li>Tokenomics explained</li>
+                <li>Supply & circulation</li>
+                <li>Red flags à éviter</li>
+                <li>Due diligence complète</li>
             </ul>
             <div class="progress-section">
                 <strong>Progression: 0%</strong>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: 0%;"></div>
-                </div>
+                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
+            </div>
+            <button class="btn btn-primary">Commencer →</button>
+        </div>
+    </div>
+    
+    <div class="course-card">
+        <div class="course-header">
+            <span class="course-level">💎 Premium</span>
+            <div class="course-title">Trading Psychology</div>
+            <div class="course-duration">⏱️ 2 heures • 4 modules</div>
+        </div>
+        <div class="course-body">
+            <p class="course-description">Maîtrisez votre psychologie - la clé du succès en trading!</p>
+            <ul class="modules">
+                <li>Émotions en trading</li>
+                <li>Gestion du stress</li>
+                <li>Discipline et patience</li>
+                <li>Récupération après perte</li>
+            </ul>
+            <div class="progress-section">
+                <strong>Progression: 0%</strong>
+                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
             </div>
             <button class="btn btn-primary">Débloquer (Premium) →</button>
+        </div>
+    </div>
+    
+    <div class="course-card">
+        <div class="course-header">
+            <span class="course-level">💎 Premium</span>
+            <div class="course-title">Stratégies Avancées</div>
+            <div class="course-duration">⏱️ 5 heures • 9 modules</div>
+        </div>
+        <div class="course-body">
+            <p class="course-description">Les stratégies utilisées par les pros - grid trading, scalping, etc.</p>
+            <ul class="modules">
+                <li>Grid trading explained</li>
+                <li>Scalping techniques</li>
+                <li>Swing trading pro</li>
+                <li>Arbitrage crypto</li>
+                <li>Multi-timeframe strategy</li>
+            </ul>
+            <div class="progress-section">
+                <strong>Progression: 0%</strong>
+                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
+            </div>
+            <button class="btn btn-primary">Débloquer (Premium) →</button>
+        </div>
+    </div>
+    
+    <div class="course-card">
+        <div class="course-header">
+            <span class="course-level">🌟 Elite</span>
+            <div class="course-title">Build Your IA Trading Bot</div>
+            <div class="course-duration">⏱️ 8 heures • 12 modules</div>
+        </div>
+        <div class="course-body">
+            <p class="course-description">Construisez votre propre bot de trading alimenté par l'IA!</p>
+            <ul class="modules">
+                <li>APIs des exchanges</li>
+                <li>Machine Learning basics</li>
+                <li>Code un bot Python</li>
+                <li>Backtesting large scale</li>
+                <li>Déploiement Cloud</li>
+            </ul>
+            <div class="progress-section">
+                <strong>Progression: 0%</strong>
+                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
+            </div>
+            <button class="btn btn-primary">Débloquer (Elite) →</button>
         </div>
     </div>
 </div>
@@ -28478,6 +28719,23 @@ async def launchpad_scanner(request: Request):
             padding: 30px;
             min-height: 100vh;
         }}
+        
+        .guide-box {{
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%);
+            border: 2px solid rgba(245, 158, 11, 0.5);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 40px;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }}
+        
+        .guide-title {{ color: #f59e0b; font-size: 1.4em; font-weight: 700; margin-bottom: 15px; }}
+        .guide-content {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }}
+        .guide-item {{ padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 10px; }}
+        .guide-label {{ color: #f59e0b; font-weight: 600; font-size: 0.95em; margin-bottom: 8px; }}
+        .guide-text {{ font-size: 0.9em; line-height: 1.5; }}
         
         .header {{
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
@@ -28666,14 +28924,34 @@ async def launchpad_scanner(request: Request):
             .projects-grid {{ grid-template-columns: 1fr; }}
             .filters {{ grid-template-columns: 1fr; }}
             .header h1 {{ font-size: 2em; }}
+            .guide-content {{ grid-template-columns: 1fr; }}
         }}
     </style>
 </head>
 <body>
 
+<!-- GUIDE EN HAUT - STICKY -->
+<div class="guide-box">
+    <div class="guide-title">💡 Comment utiliser Launchpad Scanner?</div>
+    <div class="guide-content">
+        <div class="guide-item">
+            <div class="guide-label">🎯 OBJECTIF</div>
+            <div class="guide-text">Trouver prochains 100x! Analysez nouveaux projets, évaluez risques avec AI Score.</div>
+        </div>
+        <div class="guide-item">
+            <div class="guide-label">📊 AI SCORES</div>
+            <div class="guide-text">🟢 90+: Excellent<br>🔵 70-90: Bon<br>🔴 <70: À risque</div>
+        </div>
+        <div class="guide-item">
+            <div class="guide-label">🚀 HOW-TO</div>
+            <div class="guide-text">1. Filtrez by score<br>2. Lisez descriptions<br>3. Vérifiez badges<br>4. DYOR avant!</div>
+        </div>
+    </div>
+</div>
+
 <div class="header">
     <h1>🚀 Launchpad Scanner IA</h1>
-    <p>Trouvez les prochains 100x avec analyse IA des nouveaux projets</p>
+    <p>Découvrez les meilleurs nouveaux projets crypto avec analyse IA</p>
 </div>
 
 <div class="filters">

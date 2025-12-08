@@ -27254,6 +27254,57 @@ async def portfolio_tracker(request: Request):
     <p>Les données affichées ci-dessous sont des exemples (mock data). Pour synchroniser vos vrais portefeuilles, connectez vos exchanges via les clés API (voir section "Comment ça marche?" en bas de page).</p>
 </div>
 
+<!-- CONNECTER UN EXCHANGE -->
+<div style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%); border: 2px solid rgba(34, 197, 94, 0.3); border-radius: 15px; padding: 30px; margin-bottom: 40px;">
+    <h3 style="color: #10b981; margin-bottom: 20px; font-size: 1.5em;">🔗 Connecter votre Exchange</h3>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+        <div>
+            <label style="display: block; color: #10b981; font-weight: 600; margin-bottom: 8px;">Exchange</label>
+            <select style="width: 100%; padding: 12px; border: 2px solid rgba(34, 197, 94, 0.3); border-radius: 10px; background: rgba(15, 23, 42, 0.8); color: #e0e6ed; font-size: 0.95em;">
+                <option>-- Sélectionnez votre exchange --</option>
+                <option>Binance</option>
+                <option>Coinbase</option>
+                <option>MEXC</option>
+                <option>Kraken</option>
+                <option>FTX</option>
+                <option>Bybit</option>
+                <option>OKX</option>
+            </select>
+        </div>
+        <div>
+            <label style="display: block; color: #10b981; font-weight: 600; margin-bottom: 8px;">API Key</label>
+            <input type="text" placeholder="Collez votre API Key..." style="width: 100%; padding: 12px; border: 2px solid rgba(34, 197, 94, 0.3); border-radius: 10px; background: rgba(15, 23, 42, 0.8); color: #e0e6ed; font-size: 0.95em;">
+        </div>
+        <div>
+            <label style="display: block; color: #10b981; font-weight: 600; margin-bottom: 8px;">API Secret</label>
+            <input type="password" placeholder="Collez votre API Secret..." style="width: 100%; padding: 12px; border: 2px solid rgba(34, 197, 94, 0.3); border-radius: 10px; background: rgba(15, 23, 42, 0.8); color: #e0e6ed; font-size: 0.95em;">
+        </div>
+    </div>
+    
+    <div style="display: flex; gap: 10px;">
+        <button style="flex: 1; padding: 14px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 1em; transition: all 0.3s ease;">
+            ✅ Connecter
+        </button>
+        <button style="padding: 14px 20px; background: rgba(255, 255, 255, 0.1); color: #e0e6ed; border: none; border-radius: 10px; cursor: pointer; font-size: 1em;">
+            ❌ Réinitialiser
+        </button>
+    </div>
+    
+    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(34, 197, 94, 0.2);">
+        <p style="color: #10b981; font-weight: 600; margin-bottom: 10px;">📖 Guide par exchange:</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+            <a href="https://www.binance.com/en/support/faq/360002502072" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">Binance API →</a>
+            <a href="https://help.coinbase.com/en/coinbase/using-coinbase/api-key-management" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">Coinbase API →</a>
+            <a href="https://mexcdocs.gitbook.io/mexc-api/getting-started" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">MEXC API →</a>
+            <a href="https://support.kraken.com/hc/en-us/articles/360000919966" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">Kraken API →</a>
+            <a href="https://docs.ftx.com/#authentication" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">FTX API →</a>
+            <a href="https://bybit-exchange.github.io/docs/inverse/#t-apikey" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">Bybit API →</a>
+        </div>
+    </div>
+</div>
+
+
 <div class="portfolio-stats">
     <div class="stat-card">
         <div class="stat-label">💰 Valeur Totale</div>

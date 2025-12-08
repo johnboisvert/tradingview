@@ -1181,7 +1181,7 @@ body{margin-left:280px!important;margin-top:0!important;margin-right:0!important
         <span class="label">Telegram</span>
     </a>
     
-    <!-- 🆕 Nouvelles Features intégrées ici -->
+    <!-- 🆕 Nouvelles Features -->
     <a href="/portfolio-tracker" class="menu-item ai-feature">
         <span class="icon">📊</span>
         <span class="label">Portfolio Tracker</span>
@@ -2554,7 +2554,7 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
     return redirect
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_panel(username: str = Depends(require_admin)):
+async def admin_panel():
     """Panel d'administration pour gérer les utilisateurs"""
     
     # Récupérer tous les utilisateurs
@@ -2752,7 +2752,7 @@ async def admin_panel(username: str = Depends(require_admin)):
 </html>""")
 
 @app.post("/admin/add-user")
-async def add_user(request: Request, username: str = Depends(require_admin)):
+async def add_user(request: Request):
     """Ajouter un nouvel utilisateur"""
     data = await request.json()
     new_username = data.get("username")
@@ -2765,7 +2765,7 @@ async def add_user(request: Request, username: str = Depends(require_admin)):
         raise HTTPException(status_code=400, detail="Utilisateur déjà existant")
 
 @app.post("/admin/delete-user")
-async def delete_user(request: Request, username: str = Depends(require_admin)):
+async def delete_user(request: Request):
     """Supprimer un utilisateur"""
     data = await request.json()
     user_to_delete = data.get("username")
@@ -2777,7 +2777,7 @@ async def delete_user(request: Request, username: str = Depends(require_admin)):
     return {"status": "success", "message": "Utilisateur supprimé"}
 
 @app.post("/admin/change-password")
-async def change_password(request: Request, username: str = Depends(require_auth)):
+async def change_password(request: Request):
     """Changer son propre mot de passe"""
     data = await request.json()
     new_password = data.get("newPassword")
@@ -27047,10 +27047,6 @@ async def portfolio_tracker(request: Request):
     """
     
     # Vérifier authentification
-    user = request.cookies.get("user")
-    if not user:
-        return RedirectResponse(url="/login")
-    
     html_content = """
 <!DOCTYPE html>
 <html lang="fr">
@@ -28057,11 +28053,6 @@ async def defi_yield_optimizer(request: Request):
     =======================
     Scanner de rendements DeFi avec analyse IA
     """
-    
-    user = request.cookies.get("user")
-    if not user:
-        return RedirectResponse(url="/login")
-    
     html_content = """
 <!DOCTYPE html>
 <html lang="fr">
@@ -29124,11 +29115,6 @@ async def academy_ia(request: Request):
     =============
     Plateforme d'apprentissage avec contenu généré par IA
     """
-    
-    user = request.cookies.get("user")
-    if not user:
-        return RedirectResponse(url="/login")
-    
     html_content = """
 <!DOCTYPE html>
 <html lang="fr">
@@ -29876,11 +29862,6 @@ async def launchpad_scanner(request: Request):
     =======================
     Trouvez les prochains 100x avec analyse IA
     """
-    
-    user = request.cookies.get("user")
-    if not user:
-        return RedirectResponse(url="/login")
-    
     html_content = """
 <!DOCTYPE html>
 <html lang="fr">

@@ -1105,97 +1105,99 @@ body{margin-left:280px!important;margin-top:0!important;margin-right:0!important
     </a>
 </div>
 
-<!-- 🤖 Features IA -->
+<!-- 🤖 IA Features Avancées -->
 <div class="menu-section">
-    <div class="section-title">🤖 Features IA</div>
-    <a href="/crypto-pepites" class="menu-item ai-feature">
-        <span class="icon">💎</span>
-        <span class="label">Crypto Pépites</span>
-    </a>
+    <div class="section-title">🤖 IA Features</div>
     <a href="/ai-opportunity-scanner" class="menu-item ai-feature">
         <span class="icon">🔍</span>
         <span class="label">AI Scanner</span>
     </a>
+    <a href="/ai-market-regime" class="menu-item ai-feature">
+        <span class="icon">📊</span>
+        <span class="label">Market Regime</span>
+    </a>
+    <a href="/ai-whale-watcher" class="menu-item ai-feature">
+        <span class="icon">🐋</span>
+        <span class="label">Whale Watcher</span>
+    </a>
 </div>
 
-<!-- 💰 Trading -->
+<!-- 💰 Trading & Portefeuille -->
 <div class="menu-section">
     <div class="section-title">💰 Trading</div>
     <a href="/trades" class="menu-item">
         <span class="icon">📈</span>
         <span class="label">Mes Trades</span>
     </a>
-    <a href="/historique" class="menu-item">
-        <span class="icon">📜</span>
-        <span class="label">Historique</span>
+    <a href="/watchlist" class="menu-item">
+        <span class="icon">⭐</span>
+        <span class="label">Watchlist</span>
+    </a>
+    <a href="/portfolio-tracker" class="menu-item ai-feature">
+        <span class="icon">💼</span>
+        <span class="label">Portfolio</span>
     </a>
 </div>
 
-<!-- 🔍 Analyse -->
+<!-- 📊 Analyse & Marché -->
 <div class="menu-section">
-    <div class="section-title">🔍 Analyse</div>
-    <a href="/market-regime" class="menu-item">
-        <span class="icon">📊</span>
-        <span class="label">Market Regime</span>
+    <div class="section-title">📊 Analyse</div>
+    <a href="/fear-greed" class="menu-item">
+        <span class="icon">😨</span>
+        <span class="label">Fear & Greed</span>
+    </a>
+    <a href="/dominance" class="menu-item">
+        <span class="icon">👑</span>
+        <span class="label">BTC Dominance</span>
+    </a>
+    <a href="/altcoin-season" class="menu-item">
+        <span class="icon">🎯</span>
+        <span class="label">Altcoin Season</span>
     </a>
     <a href="/heatmap" class="menu-item">
         <span class="icon">🔥</span>
         <span class="label">Heatmap</span>
     </a>
-</div>
-
-<!-- 🛠️ Outils -->
-<div class="menu-section">
-    <div class="section-title">🛠️ Outils</div>
-    <a href="/calculateur-rendement" class="menu-item">
-        <span class="icon">🧮</span>
-        <span class="label">Calculateur</span>
-    </a>
-</div>
-
-<!-- ⚙️ Système -->
-<div class="menu-section">
-    <div class="section-title">⚙️ Système</div>
-    <a href="/bullrun" class="menu-item">
+    <a href="/bullrun-phase" class="menu-item">
         <span class="icon">🚀</span>
-        <span class="label">Bull Run</span>
+        <span class="label">Bull Run Phase</span>
     </a>
-    <a href="/success-stories" class="menu-item">
-        <span class="icon">⭐</span>
-        <span class="label">Success</span>
+    <a href="/graphiques" class="menu-item">
+        <span class="icon">📈</span>
+        <span class="label">Graphiques</span>
     </a>
-    <a href="/temoignages" class="menu-item">
-        <span class="icon">💬</span>
-        <span class="label">Témoignages</span>
+</div>
+
+<!-- 📰 Contenu & Actualités -->
+<div class="menu-section">
+    <div class="section-title">📰 Contenu</div>
+    <a href="/nouvelles" class="menu-item">
+        <span class="icon">📰</span>
+        <span class="label">Nouvelles</span>
     </a>
-    <a href="/pdf" class="menu-item">
-        <span class="icon">📄</span>
-        <span class="label">PDF</span>
+    <a href="/convertisseur" class="menu-item">
+        <span class="icon">💱</span>
+        <span class="label">Convertisseur</span>
     </a>
-    <a href="/api-keys" class="menu-item">
-        <span class="icon">🔑</span>
-        <span class="label">API Keys</span>
+    <a href="/calendrier" class="menu-item">
+        <span class="icon">📅</span>
+        <span class="label">Calendrier</span>
     </a>
-    <a href="/telegram" class="menu-item">
-        <span class="icon">📱</span>
-        <span class="label">Telegram</span>
-    </a>
-    
-    <!-- 🆕 Nouvelles Features -->
-    <a href="/portfolio-tracker" class="menu-item ai-feature">
-        <span class="icon">📊</span>
-        <span class="label">Portfolio Tracker</span>
+</div>
+
+<!-- 🎓 Apprentissage & DeFi -->
+<div class="menu-section">
+    <div class="section-title">🎓 Apprentissage</div>
+    <a href="/academy" class="menu-item ai-feature">
+        <span class="icon">🎓</span>
+        <span class="label">Academy</span>
     </a>
     <a href="/defi-yield" class="menu-item ai-feature">
         <span class="icon">🏦</span>
         <span class="label">DeFi Yield</span>
     </a>
-    <a href="/academy" class="menu-item ai-feature">
-        <span class="icon">🎓</span>
-        <span class="label">Academy</span>
-    </a>
     <a href="/launchpad-scanner" class="menu-item ai-feature">
-        <span class="icon">🚀</span>
+        <span class="icon">🎯</span>
         <span class="label">Launchpad</span>
     </a>
 </div>
@@ -1203,7 +1205,7 @@ body{margin-left:280px!important;margin-top:0!important;margin-right:0!important
 <!-- 👤 Mon Compte -->
 <div class="menu-section">
     <div class="section-title">👤 Mon Compte</div>
-    <a href="/abonnements" class="menu-item premium">
+    <a href="/pricing-complete" class="menu-item premium">
         <span class="icon">💎</span>
         <span class="label">Abonnements</span>
     </a>
@@ -1215,7 +1217,7 @@ body{margin-left:280px!important;margin-top:0!important;margin-right:0!important
         <span class="icon">👤</span>
         <span class="label">Mon Compte</span>
     </a>
-    <a href="/deconnexion" class="menu-item logout">
+    <a href="/logout" class="menu-item logout">
         <span class="icon">🚪</span>
         <span class="label">Déconnexion</span>
     </a>

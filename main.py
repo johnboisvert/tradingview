@@ -28679,3 +28679,420 @@ async def launchpad_scanner(request: Request):
 </html>
 """
     return HTMLResponse(content=html_content)
+# ================================================================================
+# 🚀 PORTFOLIO TRACKER COMPLET - CODE À COLLER DANS main.py
+# ================================================================================
+#
+# INSTRUCTIONS:
+# 1. Copier TOUT ce code
+# 2. L'ajouter à la FIN de ton main.py (avant la dernière ligne)
+# 3. Installer: pip install ccxt requests cryptography
+# 4. Git push
+#
+# ================================================================================
+
+# À AJOUTER EN TOP des IMPORTS si pas déjà présent:
+# from cryptography.fernet import Fernet
+
+# À AJOUTER après "app = FastAPI()" (juste avant les routes):
+# init_portfolio_db()
+
+# ================================================================================
+
+def init_portfolio_db():
+    """Initialiser la base de données Portfolio Tracker"""
+    import os
+    db_path = '/data/portfolio.db'
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS portfolio_api_keys (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            exchange TEXT NOT NULL,
+            api_key TEXT NOT NULL,
+            api_secret TEXT NOT NULL,
+            passphrase TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_used TIMESTAMP,
+            is_active BOOLEAN DEFAULT 1,
+            UNIQUE(user_id, exchange)
+        )
+    ''')
+    
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS portfolio_holdings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            exchange TEXT NOT NULL,
+            holdings TEXT NOT NULL,
+            total_value REAL DEFAULT 0,
+            last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("✅ Base de données Portfolio initialisée")
+
+def get_exchange_instance(exchange_name: str, api_key: str, api_secret: str, passphrase: str = None):
+    """Créer une instance d'exchange avec ccxt"""
+    try:
+        import ccxt
+        exchange_class = getattr(ccxt, exchange_name.lower())
+        params = {
+            'apiKey': api_key,
+            'secret': api_secret,
+            'enableRateLimit': True,
+            'options': {'defaultType': 'spot'}
+        }
+        if passphrase:
+            params['password'] = passphrase
+        exchange = exchange_class(params)
+        return exchange
+    except:
+        return None
+
+def fetch_holdings(exchange_name: str, api_key: str, api_secret: str, passphrase: str = None):
+    """Récupérer les holdings d'un exchange"""
+    try:
+        import ccxt
+        exchange = get_exchange_instance(exchange_name, api_key, api_secret, passphrase)
+        if not exchange:
+            return {'success': False, 'message': f'❌ Exchange {exchange_name} non supporté', 'holdings': []}
+        
+        balance = exchange.fetch_balance()
+        holdings = []
+        
+        for currency, amounts in balance.items():
+            if currency.upper() in ['FREE', 'USED', 'TOTAL', 'INFO']:
+                continue
+            if isinstance(amounts, dict):
+                total = amounts.get('total', 0)
+                if total > 0:
+                    holdings.append({
+                        'symbol': currency.upper(),
+                        'total': float(total),
+                        'free': float(amounts.get('free', 0)),
+                        'used': float(amounts.get('used', 0))
+                    })
+        
+        return {
+            'success': True,
+            'holdings': holdings,
+            'count': len(holdings),
+            'message': f'✅ {len(holdings)} assets trouvés'
+        }
+    except Exception as e:
+        return {'success': False, 'message': f'❌ Erreur: {str(e)}', 'holdings': []}
+
+def get_crypto_prices(symbols):
+    """Récupérer les prix depuis CoinGecko"""
+    try:
+        prices = {}
+        coin_mapping = {
+            'BTC': 'bitcoin', 'ETH': 'ethereum', 'USDT': 'tether',
+            'USDC': 'usd-coin', 'BNB': 'binancecoin', 'XRP': 'ripple',
+            'SOL': 'solana', 'ADA': 'cardano', 'DOGE': 'dogecoin',
+            'MATIC': 'matic-network'
+        }
+        
+        for symbol in symbols[:50]:
+            try:
+                coin_id = coin_mapping.get(symbol, symbol.lower())
+                response = requests.get(
+                    f'https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd',
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    if coin_id in data and 'usd' in data[coin_id]:
+                        prices[symbol] = data[coin_id]['usd']
+                    else:
+                        prices[symbol] = 0
+            except:
+                prices[symbol] = 0
+        return prices
+    except:
+        return {}
+
+def calculate_portfolio_value(holdings, prices):
+    """Calculer la valeur totale du portefeuille"""
+    total_value = 0
+    detailed_holdings = []
+    
+    for asset in holdings:
+        symbol = asset['symbol']
+        amount = asset['total']
+        price = prices.get(symbol, 0)
+        value = amount * price if price else 0
+        total_value += value
+        detailed_holdings.append({
+            'symbol': symbol,
+            'amount': amount,
+            'price': price,
+            'value': value
+        })
+    
+    return {'total_value': total_value, 'detailed_holdings': detailed_holdings}
+
+def save_api_keys(user_id: int, exchange: str, api_key: str, api_secret: str, passphrase: str = None):
+    """Sauvegarder les clés API"""
+    conn = sqlite3.connect('/data/portfolio.db')
+    c = conn.cursor()
+    try:
+        c.execute('''
+            INSERT OR REPLACE INTO portfolio_api_keys 
+            (user_id, exchange, api_key, api_secret, passphrase, last_used, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, 1)
+        ''', (user_id, exchange.upper(), api_key, api_secret, passphrase or '', datetime.now()))
+        conn.commit()
+        return True
+    except:
+        return False
+    finally:
+        conn.close()
+
+def get_api_keys(user_id: int, exchange: str = None):
+    """Récupérer les clés API sauvegardées"""
+    conn = sqlite3.connect('/data/portfolio.db')
+    c = conn.cursor()
+    try:
+        if exchange:
+            c.execute(
+                'SELECT exchange, api_key, api_secret, passphrase FROM portfolio_api_keys WHERE user_id = ? AND exchange = ? AND is_active = 1',
+                (user_id, exchange.upper())
+            )
+        else:
+            c.execute(
+                'SELECT exchange, api_key, api_secret, passphrase FROM portfolio_api_keys WHERE user_id = ? AND is_active = 1',
+                (user_id,)
+            )
+        rows = c.fetchall()
+        result = []
+        for row in rows:
+            result.append({
+                'exchange': row[0],
+                'api_key': row[1],
+                'api_secret': row[2],
+                'passphrase': row[3]
+            })
+        return result
+    finally:
+        conn.close()
+
+def save_holdings(user_id: int, exchange: str, holdings, total_value: float):
+    """Sauvegarder les holdings"""
+    conn = sqlite3.connect('/data/portfolio.db')
+    c = conn.cursor()
+    try:
+        holdings_json = json.dumps(holdings)
+        c.execute('''
+            INSERT OR REPLACE INTO portfolio_holdings 
+            (user_id, exchange, holdings, total_value, last_update)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (user_id, exchange.upper(), holdings_json, total_value, datetime.now()))
+        conn.commit()
+        return True
+    except:
+        return False
+    finally:
+        conn.close()
+
+def get_all_holdings(user_id: int):
+    """Récupérer tous les holdings"""
+    conn = sqlite3.connect('/data/portfolio.db')
+    c = conn.cursor()
+    try:
+        c.execute('''
+            SELECT exchange, holdings, total_value, last_update 
+            FROM portfolio_holdings 
+            WHERE user_id = ?
+            ORDER BY last_update DESC
+        ''', (user_id,))
+        rows = c.fetchall()
+        result = {}
+        total_portfolio_value = 0
+        
+        for row in rows:
+            exchange, holdings_json, total_value, last_update = row
+            holdings = json.loads(holdings_json)
+            result[exchange] = {
+                'holdings': holdings,
+                'value': total_value,
+                'last_update': last_update,
+                'count': len(holdings)
+            }
+            total_portfolio_value += total_value
+        
+        return {
+            'exchanges': result,
+            'total_portfolio_value': total_portfolio_value,
+            'number_of_exchanges': len(result)
+        }
+    finally:
+        conn.close()
+
+# ================================================================================
+# ENDPOINTS PORTFOLIO TRACKER
+# ================================================================================
+
+@app.post("/api/portfolio/connect")
+async def connect_exchange_endpoint(request: Request):
+    """Connecter un exchange"""
+    try:
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
+        
+        data = await request.json()
+        exchange = data.get('exchange', '').lower()
+        api_key = data.get('api_key', '').strip()
+        api_secret = data.get('api_secret', '').strip()
+        passphrase = data.get('passphrase', '').strip()
+        
+        if not exchange or not api_key or not api_secret:
+            return JSONResponse({'success': False, 'message': 'Données manquantes'})
+        
+        result = fetch_holdings(exchange, api_key, api_secret, passphrase if passphrase else None)
+        
+        if not result['success']:
+            return JSONResponse({'success': False, 'message': result['message']})
+        
+        symbols = [h['symbol'] for h in result['holdings']]
+        prices = get_crypto_prices(symbols) if symbols else {}
+        
+        value_calc = calculate_portfolio_value(result['holdings'], prices)
+        total_value = value_calc['total_value']
+        
+        save_api_keys(user_id, exchange, api_key, api_secret, passphrase if passphrase else None)
+        save_holdings(user_id, exchange.upper(), value_calc['detailed_holdings'], total_value)
+        
+        return JSONResponse({
+            'success': True,
+            'message': f"✅ {exchange.upper()} connecté!",
+            'exchange': exchange.upper(),
+            'holdings_count': len(result['holdings']),
+            'total_value': round(total_value, 2),
+            'holdings': value_calc['detailed_holdings'][:5]
+        })
+        
+    except Exception as e:
+        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
+
+@app.get("/api/portfolio/data")
+async def get_portfolio_endpoint(request: Request):
+    """Récupérer les données du portefeuille"""
+    try:
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
+        
+        all_holdings = get_all_holdings(user_id)
+        
+        return JSONResponse({
+            'success': True,
+            'total_portfolio_value': round(all_holdings['total_portfolio_value'], 2),
+            'number_of_exchanges': all_holdings['number_of_exchanges'],
+            'exchanges': all_holdings['exchanges']
+        })
+        
+    except Exception as e:
+        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
+
+@app.post("/api/portfolio/refresh")
+async def refresh_portfolio_endpoint(request: Request):
+    """Rafraîchir les données"""
+    try:
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
+        
+        api_keys_list = get_api_keys(user_id)
+        
+        if not api_keys_list:
+            return JSONResponse({'success': False, 'message': 'Aucun exchange connecté'})
+        
+        updated_exchanges = []
+        total_portfolio = 0
+        
+        for keys in api_keys_list:
+            exchange = keys['exchange'].lower()
+            api_key = keys['api_key']
+            api_secret = keys['api_secret']
+            passphrase = keys['passphrase']
+            
+            result = fetch_holdings(exchange, api_key, api_secret, passphrase if passphrase else None)
+            
+            if result['success']:
+                symbols = [h['symbol'] for h in result['holdings']]
+                prices = get_crypto_prices(symbols) if symbols else {}
+                value_calc = calculate_portfolio_value(result['holdings'], prices)
+                total_value = value_calc['total_value']
+                
+                save_holdings(user_id, exchange.upper(), value_calc['detailed_holdings'], total_value)
+                
+                updated_exchanges.append({
+                    'exchange': exchange.upper(),
+                    'value': round(total_value, 2),
+                    'assets': len(result['holdings'])
+                })
+                
+                total_portfolio += total_value
+        
+        return JSONResponse({
+            'success': True,
+            'message': f"✅ {len(updated_exchanges)} exchange(s) rafraîchi(s)!",
+            'total_portfolio_value': round(total_portfolio, 2),
+            'exchanges': updated_exchanges
+        })
+        
+    except Exception as e:
+        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
+
+@app.delete("/api/portfolio/disconnect")
+async def disconnect_exchange_endpoint(request: Request):
+    """Déconnecter un exchange"""
+    try:
+        user_id = request.session.get('user_id')
+        if not user_id:
+            return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
+        
+        exchange = request.query_params.get('exchange', '').upper()
+        
+        if not exchange:
+            return JSONResponse({'success': False, 'message': 'Exchange manquant'})
+        
+        conn = sqlite3.connect('/data/portfolio.db')
+        c = conn.cursor()
+        
+        c.execute('UPDATE portfolio_api_keys SET is_active = 0 WHERE user_id = ? AND exchange = ?', 
+                  (user_id, exchange))
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse({
+            'success': True,
+            'message': f"✅ {exchange} déconnecté!"
+        })
+        
+    except Exception as e:
+        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
+
+# ================================================================================
+# ROUTE PORTFOLIO TRACKER - À REMPLACER DANS main.py
+# ================================================================================
+
+@app.get("/portfolio-tracker", response_class=HTMLResponse)
+async def portfolio_tracker(request: Request):
+    """Portfolio Tracker avec support multi-exchange"""
+    with open('PORTFOLIO_TRACKER_FRONTEND.html', 'r', encoding='utf-8') as f:
+        return HTMLResponse(content=f.read())
+
+# ================================================================================
+# FIN PORTFOLIO TRACKER
+# ================================================================================

@@ -1057,9 +1057,6 @@ UPCOMING_GEMS_COMPLETE = [
 
 app = FastAPI()
 
-# Initialiser Portfolio Tracker DB
-init_portfolio_db()
-
 # ========== SIDEBAR MENU ==========
 SIDEBAR = """<style>
 /* Sidebar */
@@ -28681,6 +28678,20 @@ async def launchpad_scanner(request: Request):
 </html>
 """
     return HTMLResponse(content=html_content)
+
+
+
+# ================================================================================
+# EVENT STARTUP - Initialiser Portfolio DB au démarrage
+# ================================================================================
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialiser la base de données au démarrage de l'application"""
+    try:
+        init_portfolio_db()
+    except Exception as e:
+        print(f"⚠️  Erreur init Portfolio: {e}")
 
 
 # ================================================================================

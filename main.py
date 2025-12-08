@@ -28209,3 +28209,56 @@ async def launchpad_scanner(request: Request):
 </html>
 """
     return HTMLResponse(content=html_content)
+
+
+# ================================================================================
+# 🔗 PORTFOLIO TRACKER - ENDPOINTS API
+# ================================================================================
+
+@app.post("/api/portfolio/connect")
+async def connect_exchange(request: Request):
+    """Connecter un exchange et récupérer les holdings"""
+    try:
+        data = await request.json()
+        exchange = data.get('exchange', '').lower()
+        api_key = data.get('api_key', '').strip()
+        api_secret = data.get('api_secret', '').strip()
+        
+        if not exchange or not api_key or not api_secret:
+            return JSONResponse({'success': False, 'message': 'Données manquantes'})
+        
+        # Pour l'instant, retourner un succès de démo
+        # TODO: Implémenter ccxt pour les vraies connexions
+        return JSONResponse({
+            'success': True,
+            'message': f'✅ {exchange.upper()} connecté avec succès!',
+            'holdings_count': 3,
+            'total_value': 24587.50
+        })
+    except Exception as e:
+        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
+
+@app.get("/api/portfolio/data")
+async def get_portfolio_data(request: Request):
+    """Récupérer les données du portfolio"""
+    try:
+        # Données de démo
+        data = {
+            'success': True,
+            'total_portfolio_value': 24587.50,
+            'number_of_exchanges': 1,
+            'exchanges': {
+                'BINANCE': {
+                    'value': 24587.50,
+                    'count': 3,
+                    'holdings': [
+                        {'symbol': 'BTC', 'amount': 0.5, 'price': 42000, 'value': 21000},
+                        {'symbol': 'ETH', 'amount': 5, 'price': 2300, 'value': 11500},
+                        {'symbol': 'USDT', 'amount': 1087.50, 'price': 1, 'value': 1087.50}
+                    ]
+                }
+            }
+        }
+        return JSONResponse(data)
+    except Exception as e:
+        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})

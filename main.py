@@ -27254,9 +27254,8 @@ async def portfolio_tracker(request: Request):
 </html>
 """
     
-    # JavaScript pour Portfolio Tracker - en dehors de la f-string!
-    js_code = """
-<script>
+    # Script JavaScript - complètement séparé
+    script = """<script>
 document.addEventListener('DOMContentLoaded', function() {
     var connectBtn = document.getElementById('connectBtn');
     var resetBtn = document.getElementById('resetBtn');
@@ -27305,10 +27304,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-</script>
-"""
+</script>"""
     
-    return HTMLResponse(content=html_content + js_code)
+    # Corriger le HTML pour insérer le script avant </body>
+    corrected_html = html_content.replace('</body>\n</html>', '') + script + '\n</body>\n</html>'
+    return HTMLResponse(content=corrected_html)
 
 
 # API ENDPOINT POUR RÉCUPÉRER LES HOLDINGS VIA API EXCHANGE

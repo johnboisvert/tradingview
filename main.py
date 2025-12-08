@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie, PlainTextResponse
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
+from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import Optional, Any

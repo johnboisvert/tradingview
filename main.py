@@ -28701,7 +28701,7 @@ async def startup_event():
 def init_portfolio_db():
     """Initialiser la base de données Portfolio Tracker"""
     import os
-    db_path = '/data/portfolio.db'
+    db_path = '/tmp/portfolio.db'  # Chemin accessible en lecture/écriture
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     
     conn = sqlite3.connect(db_path)
@@ -28840,7 +28840,7 @@ def calculate_portfolio_value(holdings, prices):
 
 def save_api_keys(user_id: int, exchange: str, api_key: str, api_secret: str, passphrase: str = None):
     """Sauvegarder les clés API"""
-    conn = sqlite3.connect('/data/portfolio.db')
+    conn = sqlite3.connect('/tmp/portfolio.db')
     c = conn.cursor()
     try:
         c.execute('''
@@ -28857,7 +28857,7 @@ def save_api_keys(user_id: int, exchange: str, api_key: str, api_secret: str, pa
 
 def get_api_keys(user_id: int, exchange: str = None):
     """Récupérer les clés API sauvegardées"""
-    conn = sqlite3.connect('/data/portfolio.db')
+    conn = sqlite3.connect('/tmp/portfolio.db')
     c = conn.cursor()
     try:
         if exchange:
@@ -28885,7 +28885,7 @@ def get_api_keys(user_id: int, exchange: str = None):
 
 def save_holdings(user_id: int, exchange: str, holdings, total_value: float):
     """Sauvegarder les holdings"""
-    conn = sqlite3.connect('/data/portfolio.db')
+    conn = sqlite3.connect('/tmp/portfolio.db')
     c = conn.cursor()
     try:
         holdings_json = json.dumps(holdings)
@@ -28903,7 +28903,7 @@ def save_holdings(user_id: int, exchange: str, holdings, total_value: float):
 
 def get_all_holdings(user_id: int):
     """Récupérer tous les holdings"""
-    conn = sqlite3.connect('/data/portfolio.db')
+    conn = sqlite3.connect('/tmp/portfolio.db')
     c = conn.cursor()
     try:
         c.execute('''
@@ -29061,7 +29061,7 @@ async def disconnect_exchange_endpoint(request: Request):
         if not exchange:
             return JSONResponse({'success': False, 'message': 'Exchange manquant'})
         
-        conn = sqlite3.connect('/data/portfolio.db')
+        conn = sqlite3.connect('/tmp/portfolio.db')
         c = conn.cursor()
         
         c.execute('UPDATE portfolio_api_keys SET is_active = 0 WHERE user_id = ? AND exchange = ?', 
@@ -29081,5 +29081,5 @@ async def disconnect_exchange_endpoint(request: Request):
 @app.get("/portfolio-tracker", response_class=HTMLResponse)
 async def portfolio_tracker(request: Request):
     """Portfolio Tracker avec support multi-exchange"""
-    with open('PORTFOLIO_TRACKER_FRONTEND.html', 'r', encoding='utf-8') as f:
+    with open('PORTFOLIO_TRACKER_FRONTEND_FIXED.html', 'r', encoding='utf-8') as f:
         return HTMLResponse(content=f.read())

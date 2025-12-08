@@ -1057,6 +1057,7 @@ UPCOMING_GEMS_COMPLETE = [
 
 app = FastAPI()
 
+
 # ========== SIDEBAR MENU ==========
 SIDEBAR = """<style>
 /* Sidebar */
@@ -26984,565 +26985,95 @@ document.addEventListener('DOMContentLoaded', init);
 
 @app.get("/portfolio-tracker", response_class=HTMLResponse)
 async def portfolio_tracker(request: Request):
-    html_content = f"""\{SIDEBAR}
-<!DOCTYPE html>
+    """Portfolio Tracker - affiche l'interface"""
+    html = """<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💼 Portfolio Tracker IA</title>
+    <title>🔗 Portfolio Tracker</title>
     <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-            color: #e0e6ed;
-            margin-left: 280px;
-            padding: 30px;
-            min-height: 100vh;
-        }}
-        .header {{ background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; }}
-        .header h1 {{ font-size: 3em; margin-bottom: 10px; }}
-        .api-form {{ background: rgba(34,197,94,0.15); border: 2px solid rgba(34,197,94,0.3); border-radius: 15px; padding: 30px; margin-bottom: 40px; }}
-        .api-form h3 {{ color: #10b981; margin-bottom: 20px; }}
-        .form-row {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }}
-        .form-group {{ display: flex; flex-direction: column; }}
-        .form-group label {{ color: #10b981; font-weight: 600; margin-bottom: 8px; }}
-        .form-group input, .form-group select {{ padding: 12px; border: 2px solid rgba(34,197,94,0.3); border-radius: 10px; background: rgba(15,23,42,0.8); color: #e0e6ed; }}
-        .btn {{ padding: 14px; background: #10b981; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin-top: 10px; }}
-        .msg {{ margin-top: 15px; padding: 15px; border-radius: 10px; display: none; border-left: 4px solid; }}
-        .msg.ok {{ background: rgba(34,197,94,0.15); color: #10b981; border-color: #10b981; }}
-        .msg.bad {{ background: rgba(239,68,68,0.15); color: #ef4444; border-color: #ef4444; }}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%); min-height: 100vh; padding: 20px; color: #e2e8f0; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); padding: 30px; border-radius: 12px; margin-bottom: 30px; }
+        .header h1 { font-size: 2em; color: white; margin-bottom: 10px; }
+        .header p { color: rgba(255, 255, 255, 0.9); }
+        .form-section { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 12px; padding: 30px; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        input, select { width: 100%; padding: 12px; margin-bottom: 15px; background: rgba(15, 23, 42, 0.8); border: 1px solid #06b6d4; border-radius: 8px; color: #e2e8f0; }
+        button { padding: 12px 30px; background: #06b6d4; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0891b2; }
+        .message { padding: 15px; margin-bottom: 20px; border-radius: 8px; display: none; }
+        .message.success { background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; color: #86efac; }
+        .message.error { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #fca5a5; }
     </style>
 </head>
 <body>
-<div class="header">
-    <h1>💼 Portfolio Tracker IA</h1>
-    <p>Suivi complet de vos portefeuilles crypto</p>
-</div>
-<div class="api-form">
-    <h3>🔗 Connecter votre Exchange</h3>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Exchange</label>
-            <select id="exch"><option>-- Sélectionnez --</option><option>Binance</option><option>MEXC</option><option>Coinbase</option><option>Kraken</option></select>
+    <div class="container">
+        <div class="header">
+            <h1>🔗 Portfolio Tracker</h1>
+            <p>Connectez vos exchanges pour suivre vos holdings</p>
         </div>
-        <div class="form-group">
-            <label>API Key</label>
-            <input type="text" id="key" placeholder="Clé...">
-        </div>
-        <div class="form-group">
-            <label>API Secret</label>
-            <input type="password" id="secret" placeholder="Secret...">
+        <div class="form-section">
+            <h2 style="color: #06b6d4; margin-bottom: 20px;">Connecter un Exchange</h2>
+            <div id="message" class="message"></div>
+            <form id="portfolioForm" onsubmit="return handleConnect(event)">
+                <div class="form-group">
+                    <label>Exchange:</label>
+                    <select id="exchange" required>
+                        <option value="">-- Choisir --</option>
+                        <option value="binance">Binance</option>
+                        <option value="mexc">MEXC</option>
+                        <option value="coinbase">Coinbase</option>
+                        <option value="kraken">Kraken</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Clé API:</label>
+                    <input type="text" id="apiKey" placeholder="Clé API" required>
+                </div>
+                <div class="form-group">
+                    <label>Secret API:</label>
+                    <input type="password" id="apiSecret" placeholder="Secret API" required>
+                </div>
+                <button type="submit">🔗 Connecter</button>
+            </form>
         </div>
     </div>
-    <button class="btn" onclick="connecterExchange()">✅ Connecter</button>
-    <button class="btn" style="background:rgba(255,255,255,0.1)" onclick="reinitialiser()">🔄 Reset</button>
-    <div id="msgDiv" class="msg"></div>
-</div>
+    <script>
+        async function handleConnect(e) {
+            e.preventDefault();
+            const msg = document.getElementById('message');
+            msg.textContent = '⏳ Connexion...';
+            msg.className = 'message success';
+            msg.style.display = 'block';
+            try {
+                const res = await fetch('/api/portfolio/connect', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        exchange: document.getElementById('exchange').value,
+                        api_key: document.getElementById('apiKey').value,
+                        api_secret: document.getElementById('apiSecret').value
+                    })
+                });
+                const data = await res.json();
+                msg.textContent = data.message;
+                msg.className = 'message ' + (data.success ? 'success' : 'error');
+                msg.style.display = 'block';
+            } catch (err) {
+                msg.textContent = '❌ Erreur: ' + err.message;
+                msg.className = 'message error';
+                msg.style.display = 'block';
+            }
+            return false;
+        }
+    </script>
 </body>
-</html>
-"""
-    
-    # Script SIMPLE et CORRECT
-    script = """<script>
-function connecterExchange() {
-    var exch = document.getElementById('exch').value;
-    var key = document.getElementById('key').value;
-    var secret = document.getElementById('secret').value;
-    var msg = document.getElementById('msgDiv');
-    
-    if (exch === '-- Sélectionnez --') {
-        msg.className = 'msg bad';
-        msg.textContent = 'Sélectionnez un exchange';
-        msg.style.display = 'block';
-        return;
-    }
-    
-    if (!key || !secret) {
-        msg.className = 'msg bad';
-        msg.textContent = 'Remplissez API Key et Secret';
-        msg.style.display = 'block';
-        return;
-    }
-    
-    msg.className = 'msg ok';
-    msg.textContent = 'OK ' + exch + ' connecté! Sync en cours...';
-    msg.style.display = 'block';
-    
-    document.getElementById('key').value = '';
-    document.getElementById('secret').value = '';
-    document.getElementById('exch').value = '-- Sélectionnez --';
-    
-    setTimeout(function() {
-        msg.style.display = 'none';
-    }, 4000);
-}
-
-function reinitialiser() {
-    document.getElementById('exch').value = '-- Sélectionnez --';
-    document.getElementById('key').value = '';
-    document.getElementById('secret').value = '';
-    document.getElementById('msgDiv').style.display = 'none';
-}
-</script>"""
-    
-    return HTMLResponse(content=html_content + script)
-
-
-# API ENDPOINT POUR RÉCUPÉRER LES HOLDINGS VIA API EXCHANGE
-@app.post("/api/portfolio/sync-exchange")
-async def sync_exchange(request: Request):
-    """
-    Synchroniser les holdings depuis un exchange via API
-    """
-    try:
-        data = await request.json()
-        exchange_id = data.get('exchange')
-        api_key = data.get('apiKey')
-        api_secret = data.get('apiSecret')
-        
-        # TODO: Implémenter l'intégration avec ccxt pour chaque exchange
-        # import ccxt
-        # exchange = getattr(ccxt, exchange_id)({{
-        #     'apiKey': api_key,
-        #     'secret': api_secret
-        # }})
-        # balance = exchange.fetch_balance()
-        
-        # Pour l'instant, retourner données de démo
-        return {{
-            "success": True,
-            "holdings": [
-                {{"crypto": "BTC", "amount": 0.5, "avgPrice": 42000}},
-                {{"crypto": "ETH", "amount": 5, "avgPrice": 2200}}
-            ]
-        }}
-        
-    except Exception as e:
-        return {{"success": False, "error": str(e)}}
-
-
-# API ENDPOINT POUR METTRE À JOUR LES PRIX
-@app.get("/api/portfolio/prices")
-async def get_portfolio_prices(cryptos: str):
-    """
-    Récupérer les prix actuels des cryptos
-    Format: ?cryptos=BTC,ETH,SOL
-    """
-    try:
-        crypto_list = cryptos.split(',')
-        
-        # TODO: Appeler CoinGecko API pour prix réels
-        prices = {{}}
-        for crypto in crypto_list:
-            # Prix de démo
-            prices[crypto] = {{
-                "usd": 42000 if crypto == "BTC" else 2200,
-                "usd_24h_change": (Math.random() * 10) - 5
-            }}
-        
-        return {{"success": True, "prices": prices}}
-        
-    except Exception as e:
-        return {{"success": False, "error": str(e)}}
-
-
-
-# ========== FEATURE 2 ==========
-
-@app.get("/defi-yield", response_class=HTMLResponse)
-async def defi_yield(request: Request):
-    html_content = f"""\{SIDEBAR}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏦 DeFi Yield Optimizer | Trading Dashboard Pro</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-            color: #e0e6ed;
-            margin-left: 280px;
-            padding: 30px;
-            min-height: 100vh;
-        }}
-        
-        .header {{
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            padding: 40px;
-            border-radius: 20px;
-            margin-bottom: 40px;
-            box-shadow: 0 20px 60px rgba(16, 185, 129, 0.4);
-        }}
-        
-        .header h1 {{ font-size: 3em; margin-bottom: 10px; font-weight: 700; }}
-        .header p {{ font-size: 1.1em; opacity: 0.95; }}
-        
-        .filters {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-            background: rgba(30, 41, 59, 0.6);
-            padding: 20px;
-            border-radius: 15px;
-            border: 2px solid rgba(16, 185, 129, 0.2);
-        }}
-        
-        .filter-group label {{
-            display: block;
-            margin-bottom: 8px;
-            color: #10b981;
-            font-weight: 600;
-            font-size: 0.9em;
-        }}
-        
-        .filter-group select {{
-            width: 100%;
-            padding: 10px;
-            border: 2px solid rgba(16, 185, 129, 0.3);
-            border-radius: 10px;
-            background: rgba(15, 23, 42, 0.8);
-            color: #e0e6ed;
-            cursor: pointer;
-        }}
-        
-        .protocols-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }}
-        
-        .protocol-card {{
-            background: rgba(30, 41, 59, 0.7);
-            border: 2px solid rgba(16, 185, 129, 0.3);
-            border-radius: 18px;
-            padding: 30px;
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        .protocol-card::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, #10b981, #34d399);
-        }}
-        
-        .protocol-card:hover {{
-            transform: translateY(-8px);
-            border-color: #10b981;
-            box-shadow: 0 20px 50px rgba(16, 185, 129, 0.35);
-        }}
-        
-        .protocol-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid rgba(16, 185, 129, 0.2);
-        }}
-        
-        .protocol-name {{ font-size: 1.6em; font-weight: 700; }}
-        
-        .apy-badge {{
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            padding: 10px 20px;
-            border-radius: 15px;
-            font-weight: 700;
-            font-size: 1.3em;
-        }}
-        
-        .protocol-info {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }}
-        
-        .info-item {{
-            background: rgba(16, 185, 129, 0.1);
-            padding: 15px;
-            border-radius: 12px;
-        }}
-        
-        .info-label {{ font-size: 0.85em; opacity: 0.7; margin-bottom: 5px; }}
-        .info-value {{ font-size: 1.3em; font-weight: 700; color: #10b981; }}
-        
-        .protocol-desc {{ 
-            margin: 15px 0;
-            line-height: 1.6;
-            opacity: 0.9;
-        }}
-        
-        .risk-gauge {{
-            margin: 15px 0;
-            padding: 15px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }}
-        
-        .risk-label {{ font-size: 0.9em; margin-bottom: 10px; }}
-        .risk-bar {{
-            height: 8px;
-            background: rgba(16, 185, 129, 0.2);
-            border-radius: 10px;
-            overflow: hidden;
-        }}
-        
-        .risk-bar.low {{ background: linear-gradient(90deg, #10b981, #34d399); }}
-        .risk-bar.medium {{ background: linear-gradient(90deg, #eab308, #ca8a04); }}
-        .risk-bar.high {{ background: linear-gradient(90deg, #ef4444, #dc2626); }}
-        
-        .actions {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-top: 15px;
-        }}
-        
-        .btn {{
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }}
-        
-        .btn-primary {{
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }}
-        
-        .btn-primary:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
-        }}
-        
-        .btn-secondary {{
-            background: rgba(255, 255, 255, 0.1);
-            color: #e0e6ed;
-        }}
-        
-        .btn-secondary:hover {{
-            background: rgba(255, 255, 255, 0.15);
-        }}
-        
-        @media (max-width: 768px) {{
-            body {{ margin-left: 0; padding: 15px; }}
-            .protocols-grid {{ grid-template-columns: 1fr; }}
-            .filters {{ grid-template-columns: 1fr; }}
-            .header h1 {{ font-size: 2em; }}
-        }}
-    </style>
-</head>
-<body>
-
-<div class="header">
-    <h1>🏦 DeFi Yield Optimizer</h1>
-    <p>Trouvez les meilleurs rendements avec analyse IA des risques - 6+ protocoles analysés</p>
-</div>
-
-<div class="filters">
-    <div class="filter-group">
-        <label>Blockchain</label>
-        <select>
-            <option>Tous</option>
-            <option>Ethereum</option>
-            <option>BSC</option>
-            <option>Polygon</option>
-            <option>Arbitrum</option>
-        </select>
-    </div>
-    <div class="filter-group">
-        <label>Type de Protocole</label>
-        <select>
-            <option>Tous</option>
-            <option>DEX</option>
-            <option>Lending</option>
-            <option>Yield Farm</option>
-            <option>Staking</option>
-        </select>
-    </div>
-    <div class="filter-group">
-        <label>Risque Maximum</label>
-        <select>
-            <option>Tous</option>
-            <option>Bas</option>
-            <option>Modéré</option>
-            <option>Élevé</option>
-        </select>
-    </div>
-    <div class="filter-group">
-        <label>APY Minimum</label>
-        <select>
-            <option>0%</option>
-            <option>5%</option>
-            <option>10%</option>
-            <option>20%</option>
-        </select>
-    </div>
-</div>
-
-<div class="protocols-grid">
-    <div class="protocol-card">
-        <div class="protocol-header">
-            <div class="protocol-name">Convex Finance</div>
-            <div class="apy-badge">18.7% APY</div>
-        </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Optimiseur de rendement Curve</p>
-        <div class="protocol-info">
-            <div class="info-item">
-                <div class="info-label">TVL</div>
-                <div class="info-value">$3.1B</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Mode</div>
-                <div class="info-value">LP Boosted</div>
-            </div>
-        </div>
-        <div class="risk-gauge">
-            <div class="risk-label">Risque: Bas</div>
-            <div class="risk-bar low" style="width: 30%;"></div>
-        </div>
-        <div class="actions">
-            <button class="btn btn-primary">Dépôt</button>
-            <button class="btn btn-secondary">Détails</button>
-        </div>
-    </div>
-    
-    <div class="protocol-card">
-        <div class="protocol-header">
-            <div class="protocol-name">Yearn Finance</div>
-            <div class="apy-badge">22.4% APY</div>
-        </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Agrégateur de stratégies DeFi</p>
-        <div class="protocol-info">
-            <div class="info-item">
-                <div class="info-label">TVL</div>
-                <div class="info-value">$4.8B</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Stratégies</div>
-                <div class="info-value">240+</div>
-            </div>
-        </div>
-        <div class="risk-gauge">
-            <div class="risk-label">Risque: Modéré</div>
-            <div class="risk-bar medium" style="width: 50%;"></div>
-        </div>
-        <div class="actions">
-            <button class="btn btn-primary">Dépôt</button>
-            <button class="btn btn-secondary">Détails</button>
-        </div>
-    </div>
-    
-    <div class="protocol-card">
-        <div class="protocol-header">
-            <div class="protocol-name">PancakeSwap</div>
-            <div class="apy-badge">35.2% APY</div>
-        </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">DEX BSC avec tokens natifs</p>
-        <div class="protocol-info">
-            <div class="info-item">
-                <div class="info-label">TVL</div>
-                <div class="info-value">$1.9B</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Volume 24h</div>
-                <div class="info-value">$562M</div>
-            </div>
-        </div>
-        <div class="risk-gauge">
-            <div class="risk-label">Risque: Modéré-Élevé</div>
-            <div class="risk-bar high" style="width: 70%;"></div>
-        </div>
-        <div class="actions">
-            <button class="btn btn-primary">Dépôt</button>
-            <button class="btn btn-secondary">Détails</button>
-        </div>
-    </div>
-</div>
-
-<!-- GUIDE EN BAS - PAS STICKY! -->
-<div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.15) 100%); border: 2px solid rgba(16, 185, 129, 0.5); border-radius: 15px; padding: 30px; margin-top: 40px;">
-    <h2 style="color: #10b981; margin-bottom: 20px; font-size: 1.6em;">💡 Comment utiliser DeFi Yield Optimizer?</h2>
-    
-    <div style="background: rgba(16, 185, 129, 0.1); border: 2px solid rgba(16, 185, 129, 0.2); border-radius: 15px; padding: 25px; margin-bottom: 25px;">
-        <h3 style="color: #10b981; margin-bottom: 15px; font-size: 1.3em;">❓ Qu'est-ce que c'est?</h3>
-        <p style="line-height: 1.8; opacity: 0.95;">
-            DeFi Yield Optimizer aide à trouver les meilleurs rendements disponibles en DeFi. L'outil analyse automatiquement 6+ protocoles majeurs (Yearn, Convex, PancakeSwap, etc.) et vous montre les APY actuels avec une évaluation automatique des risques. Vous pouvez filtrer par blockchain, type de protocole, niveau de risque et APY minimum.
-        </p>
-        <p style="line-height: 1.8; opacity: 0.95; margin-top: 15px;">
-            <strong>Le problème résolu:</strong> Avant, il fallait vérifier 10 sites différents pour comparer les yields. Maintenant, c'est en un seul endroit!
-        </p>
-    </div>
-    
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-        <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #10b981; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🎯 COMMENT L'UTILISER</div>
-            <ol style="line-height: 1.8; margin-left: 20px;">
-                <li>Filtrez par blockchain (Ethereum, BSC, etc.)</li>
-                <li>Sélectionnez le type de protocole</li>
-                <li>Choisissez votre risque toléré (Bas/Modéré/Élevé)</li>
-                <li>Regardez l'APY et la jauge de risque</li>
-                <li>Cliquez sur "Dépôt" pour investir</li>
-                <li>Revenez vérifier régulièrement</li>
-            </ol>
-        </div>
-        
-        <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #10b981; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">📊 CE QUE VOUS VOYEZ</div>
-            <ul style="line-height: 1.8; margin-left: 20px;">
-                <li><strong>APY:</strong> Rendement annuel (%)</li>
-                <li><strong>TVL:</strong> Total Value Locked (confiance)</li>
-                <li><strong>Risque:</strong> 🟢 Bas • 🟡 Modéré • 🔴 Élevé</li>
-                <li><strong>Protocole:</strong> Yearn, Convex, PancakeSwap, etc.</li>
-                <li><strong>Blockchain:</strong> Ethereum, BSC, Polygon, Arbitrum</li>
-            </ul>
-        </div>
-        
-        <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #10b981; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">⚠️ POINTS IMPORTANTS</div>
-            <ul style="line-height: 1.8; margin-left: 20px;">
-                <li>APY élevé = Risque plus élevé</li>
-                <li>Vérifiez l'audit du protocole</li>
-                <li>Commencez petit pour tester</li>
-                <li>Diversifiez (ne mettez pas tout dans 1)</li>
-                <li>Revenez régulièrement (APY change)</li>
-                <li>Les rendements ne sont PAS garantis!</li>
-            </ul>
-        </div>
-    </div>
-    
-    <div style="background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; padding: 20px; margin-top: 25px; border-radius: 8px;">
-        <strong style="color: #10b981;">💡 EXEMPLE PRATIQUE:</strong>
-        <p style="line-height: 1.8; margin-top: 10px;">
-            1. Vous avez 10,000 USDC à investir<br>
-            2. Vous filtrez par risque "Bas" + "Ethereum"<br>
-            3. Vous trouvez Convex à 18.7% APY<br>
-            4. Vous cliquez "Dépôt" et mettez 10,000 USDC<br>
-            5. Après 1 an, vous avez gagné ~$1,870! (avant frais)<br>
-            6. Vous pouvez retirer quand vous voulez
-        </p>
-    </div>
-</div>
-
-</body>
-</html>
-"""
-    return HTMLResponse(content=html_content)
+</html>"""
+    return HTMLResponse(content=html)
 
 
 
@@ -28678,408 +28209,3 @@ async def launchpad_scanner(request: Request):
 </html>
 """
     return HTMLResponse(content=html_content)
-
-
-
-# ================================================================================
-# EVENT STARTUP - Initialiser Portfolio DB au démarrage
-# ================================================================================
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialiser la base de données au démarrage de l'application"""
-    try:
-        init_portfolio_db()
-    except Exception as e:
-        print(f"⚠️  Erreur init Portfolio: {e}")
-
-
-# ================================================================================
-# 🚀 PORTFOLIO TRACKER - INTÉGRATION COMPLÈTE
-# ================================================================================
-
-def init_portfolio_db():
-    """Initialiser la base de données Portfolio Tracker"""
-    import os
-    db_path = '/tmp/portfolio.db'  # Chemin accessible en lecture/écriture
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    
-    conn = sqlite3.connect(db_path)
-    c = conn.cursor()
-    
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS portfolio_api_keys (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            exchange TEXT NOT NULL,
-            api_key TEXT NOT NULL,
-            api_secret TEXT NOT NULL,
-            passphrase TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            last_used TIMESTAMP,
-            is_active BOOLEAN DEFAULT 1,
-            UNIQUE(user_id, exchange)
-        )
-    ''')
-    
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS portfolio_holdings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            exchange TEXT NOT NULL,
-            holdings TEXT NOT NULL,
-            total_value REAL DEFAULT 0,
-            last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    
-    conn.commit()
-    conn.close()
-    print("✅ Base de données Portfolio initialisée")
-
-def get_exchange_instance(exchange_name: str, api_key: str, api_secret: str, passphrase: str = None):
-    """Créer une instance d'exchange avec ccxt"""
-    try:
-        import ccxt
-        exchange_class = getattr(ccxt, exchange_name.lower())
-        params = {
-            'apiKey': api_key,
-            'secret': api_secret,
-            'enableRateLimit': True,
-            'options': {'defaultType': 'spot'}
-        }
-        if passphrase:
-            params['password'] = passphrase
-        exchange = exchange_class(params)
-        return exchange
-    except:
-        return None
-
-def fetch_holdings(exchange_name: str, api_key: str, api_secret: str, passphrase: str = None):
-    """Récupérer les holdings d'un exchange"""
-    try:
-        import ccxt
-        exchange = get_exchange_instance(exchange_name, api_key, api_secret, passphrase)
-        if not exchange:
-            return {'success': False, 'message': f'❌ Exchange {exchange_name} non supporté', 'holdings': []}
-        
-        balance = exchange.fetch_balance()
-        holdings = []
-        
-        for currency, amounts in balance.items():
-            if currency.upper() in ['FREE', 'USED', 'TOTAL', 'INFO']:
-                continue
-            if isinstance(amounts, dict):
-                total = amounts.get('total', 0)
-                if total > 0:
-                    holdings.append({
-                        'symbol': currency.upper(),
-                        'total': float(total),
-                        'free': float(amounts.get('free', 0)),
-                        'used': float(amounts.get('used', 0))
-                    })
-        
-        return {
-            'success': True,
-            'holdings': holdings,
-            'count': len(holdings),
-            'message': f'✅ {len(holdings)} assets trouvés'
-        }
-    except Exception as e:
-        return {'success': False, 'message': f'❌ Erreur: {str(e)}', 'holdings': []}
-
-def get_crypto_prices(symbols):
-    """Récupérer les prix depuis CoinGecko"""
-    try:
-        prices = {}
-        coin_mapping = {
-            'BTC': 'bitcoin', 'ETH': 'ethereum', 'USDT': 'tether',
-            'USDC': 'usd-coin', 'BNB': 'binancecoin', 'XRP': 'ripple',
-            'SOL': 'solana', 'ADA': 'cardano', 'DOGE': 'dogecoin',
-            'MATIC': 'matic-network'
-        }
-        
-        for symbol in symbols[:50]:
-            try:
-                coin_id = coin_mapping.get(symbol, symbol.lower())
-                response = requests.get(
-                    f'https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd',
-                    timeout=5
-                )
-                if response.status_code == 200:
-                    data = response.json()
-                    if coin_id in data and 'usd' in data[coin_id]:
-                        prices[symbol] = data[coin_id]['usd']
-                    else:
-                        prices[symbol] = 0
-            except:
-                prices[symbol] = 0
-        return prices
-    except:
-        return {}
-
-def calculate_portfolio_value(holdings, prices):
-    """Calculer la valeur totale du portefeuille"""
-    total_value = 0
-    detailed_holdings = []
-    
-    for asset in holdings:
-        symbol = asset['symbol']
-        amount = asset['total']
-        price = prices.get(symbol, 0)
-        value = amount * price if price else 0
-        total_value += value
-        detailed_holdings.append({
-            'symbol': symbol,
-            'amount': amount,
-            'price': price,
-            'value': value
-        })
-    
-    return {'total_value': total_value, 'detailed_holdings': detailed_holdings}
-
-def save_api_keys(user_id: int, exchange: str, api_key: str, api_secret: str, passphrase: str = None):
-    """Sauvegarder les clés API"""
-    conn = sqlite3.connect('/tmp/portfolio.db')
-    c = conn.cursor()
-    try:
-        c.execute('''
-            INSERT OR REPLACE INTO portfolio_api_keys 
-            (user_id, exchange, api_key, api_secret, passphrase, last_used, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, 1)
-        ''', (user_id, exchange.upper(), api_key, api_secret, passphrase or '', datetime.now()))
-        conn.commit()
-        return True
-    except:
-        return False
-    finally:
-        conn.close()
-
-def get_api_keys(user_id: int, exchange: str = None):
-    """Récupérer les clés API sauvegardées"""
-    conn = sqlite3.connect('/tmp/portfolio.db')
-    c = conn.cursor()
-    try:
-        if exchange:
-            c.execute(
-                'SELECT exchange, api_key, api_secret, passphrase FROM portfolio_api_keys WHERE user_id = ? AND exchange = ? AND is_active = 1',
-                (user_id, exchange.upper())
-            )
-        else:
-            c.execute(
-                'SELECT exchange, api_key, api_secret, passphrase FROM portfolio_api_keys WHERE user_id = ? AND is_active = 1',
-                (user_id,)
-            )
-        rows = c.fetchall()
-        result = []
-        for row in rows:
-            result.append({
-                'exchange': row[0],
-                'api_key': row[1],
-                'api_secret': row[2],
-                'passphrase': row[3]
-            })
-        return result
-    finally:
-        conn.close()
-
-def save_holdings(user_id: int, exchange: str, holdings, total_value: float):
-    """Sauvegarder les holdings"""
-    conn = sqlite3.connect('/tmp/portfolio.db')
-    c = conn.cursor()
-    try:
-        holdings_json = json.dumps(holdings)
-        c.execute('''
-            INSERT OR REPLACE INTO portfolio_holdings 
-            (user_id, exchange, holdings, total_value, last_update)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (user_id, exchange.upper(), holdings_json, total_value, datetime.now()))
-        conn.commit()
-        return True
-    except:
-        return False
-    finally:
-        conn.close()
-
-def get_all_holdings(user_id: int):
-    """Récupérer tous les holdings"""
-    conn = sqlite3.connect('/tmp/portfolio.db')
-    c = conn.cursor()
-    try:
-        c.execute('''
-            SELECT exchange, holdings, total_value, last_update 
-            FROM portfolio_holdings 
-            WHERE user_id = ?
-            ORDER BY last_update DESC
-        ''', (user_id,))
-        rows = c.fetchall()
-        result = {}
-        total_portfolio_value = 0
-        
-        for row in rows:
-            exchange, holdings_json, total_value, last_update = row
-            holdings = json.loads(holdings_json)
-            result[exchange] = {
-                'holdings': holdings,
-                'value': total_value,
-                'last_update': last_update,
-                'count': len(holdings)
-            }
-            total_portfolio_value += total_value
-        
-        return {
-            'exchanges': result,
-            'total_portfolio_value': total_portfolio_value,
-            'number_of_exchanges': len(result)
-        }
-    finally:
-        conn.close()
-
-@app.post("/api/portfolio/connect")
-async def connect_exchange_endpoint(request: Request):
-    """Connecter un exchange"""
-    try:
-        user_id = request.session.get('user_id')
-        if not user_id:
-            return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
-        
-        data = await request.json()
-        exchange = data.get('exchange', '').lower()
-        api_key = data.get('api_key', '').strip()
-        api_secret = data.get('api_secret', '').strip()
-        passphrase = data.get('passphrase', '').strip()
-        
-        if not exchange or not api_key or not api_secret:
-            return JSONResponse({'success': False, 'message': 'Données manquantes'})
-        
-        result = fetch_holdings(exchange, api_key, api_secret, passphrase if passphrase else None)
-        
-        if not result['success']:
-            return JSONResponse({'success': False, 'message': result['message']})
-        
-        symbols = [h['symbol'] for h in result['holdings']]
-        prices = get_crypto_prices(symbols) if symbols else {}
-        
-        value_calc = calculate_portfolio_value(result['holdings'], prices)
-        total_value = value_calc['total_value']
-        
-        save_api_keys(user_id, exchange, api_key, api_secret, passphrase if passphrase else None)
-        save_holdings(user_id, exchange.upper(), value_calc['detailed_holdings'], total_value)
-        
-        return JSONResponse({
-            'success': True,
-            'message': f"✅ {exchange.upper()} connecté!",
-            'exchange': exchange.upper(),
-            'holdings_count': len(result['holdings']),
-            'total_value': round(total_value, 2),
-            'holdings': value_calc['detailed_holdings'][:5]
-        })
-        
-    except Exception as e:
-        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
-
-@app.get("/api/portfolio/data")
-async def get_portfolio_endpoint(request: Request):
-    """Récupérer les données du portefeuille"""
-    try:
-        user_id = request.session.get('user_id')
-        if not user_id:
-            return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
-        
-        all_holdings = get_all_holdings(user_id)
-        
-        return JSONResponse({
-            'success': True,
-            'total_portfolio_value': round(all_holdings['total_portfolio_value'], 2),
-            'number_of_exchanges': all_holdings['number_of_exchanges'],
-            'exchanges': all_holdings['exchanges']
-        })
-        
-    except Exception as e:
-        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
-
-@app.post("/api/portfolio/refresh")
-async def refresh_portfolio_endpoint(request: Request):
-    """Rafraîchir les données"""
-    try:
-        user_id = request.session.get('user_id')
-        if not user_id:
-            return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
-        
-        api_keys_list = get_api_keys(user_id)
-        
-        if not api_keys_list:
-            return JSONResponse({'success': False, 'message': 'Aucun exchange connecté'})
-        
-        updated_exchanges = []
-        total_portfolio = 0
-        
-        for keys in api_keys_list:
-            exchange = keys['exchange'].lower()
-            api_key = keys['api_key']
-            api_secret = keys['api_secret']
-            passphrase = keys['passphrase']
-            
-            result = fetch_holdings(exchange, api_key, api_secret, passphrase if passphrase else None)
-            
-            if result['success']:
-                symbols = [h['symbol'] for h in result['holdings']]
-                prices = get_crypto_prices(symbols) if symbols else {}
-                value_calc = calculate_portfolio_value(result['holdings'], prices)
-                total_value = value_calc['total_value']
-                
-                save_holdings(user_id, exchange.upper(), value_calc['detailed_holdings'], total_value)
-                
-                updated_exchanges.append({
-                    'exchange': exchange.upper(),
-                    'value': round(total_value, 2),
-                    'assets': len(result['holdings'])
-                })
-                
-                total_portfolio += total_value
-        
-        return JSONResponse({
-            'success': True,
-            'message': f"✅ {len(updated_exchanges)} exchange(s) rafraîchi(s)!",
-            'total_portfolio_value': round(total_portfolio, 2),
-            'exchanges': updated_exchanges
-        })
-        
-    except Exception as e:
-        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
-
-@app.delete("/api/portfolio/disconnect")
-async def disconnect_exchange_endpoint(request: Request):
-    """Déconnecter un exchange"""
-    try:
-        user_id = request.session.get('user_id')
-        if not user_id:
-            return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
-        
-        exchange = request.query_params.get('exchange', '').upper()
-        
-        if not exchange:
-            return JSONResponse({'success': False, 'message': 'Exchange manquant'})
-        
-        conn = sqlite3.connect('/tmp/portfolio.db')
-        c = conn.cursor()
-        
-        c.execute('UPDATE portfolio_api_keys SET is_active = 0 WHERE user_id = ? AND exchange = ?', 
-                  (user_id, exchange))
-        
-        conn.commit()
-        conn.close()
-        
-        return JSONResponse({
-            'success': True,
-            'message': f"✅ {exchange} déconnecté!"
-        })
-        
-    except Exception as e:
-        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
-
-@app.get("/portfolio-tracker", response_class=HTMLResponse)
-async def portfolio_tracker(request: Request):
-    """Portfolio Tracker avec support multi-exchange"""
-    with open('PORTFOLIO_TRACKER_FRONTEND.html', 'r', encoding='utf-8') as f:
-        return HTMLResponse(content=f.read())

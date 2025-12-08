@@ -2690,71 +2690,7 @@ async def admin_panel():
         </div>
     </div>
     
-    <script>
-        // Ajouter un utilisateur
-        document.getElementById('addUserForm').addEventListener('submit', async (e) => {{
-            e.preventDefault();
-            const username = document.getElementById('newUsername').value;
-            const password = document.getElementById('newPassword').value;
-            const role = document.getElementById('newRole').value;
-            
-            const response = await fetch('/admin/add-user', {{
-                method: 'POST',
-                headers: {{'Content-Type': 'application/json'}},
-                body: JSON.stringify({{username, password, role}})
-            }});
-            
-            if (response.ok) {{
-                alert('✅ Utilisateur ajouté!');
-                location.reload();
-            }} else {{
-                alert('❌ Erreur lors de l\'ajout');
-            }}
-        }});
-        
-        // Supprimer un utilisateur
-        async function deleteUser(username) {{
-            if (!confirm(`Supprimer l'utilisateur ${{username}}?`)) return;
-            
-            const response = await fetch('/admin/delete-user', {{
-                method: 'POST',
-                headers: {{'Content-Type': 'application/json'}},
-                body: JSON.stringify({{username}})
-            }});
-            
-            if (response.ok) {{
-                alert('✅ Utilisateur supprimé!');
-                location.reload();
-            }} else {{
-                alert('❌ Erreur lors de la suppression');
-            }}
-        }}
-        
-        // Changer le mot de passe
-        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {{
-            e.preventDefault();
-            const newPassword = document.getElementById('newPasswordChange').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            
-            if (newPassword !== confirmPassword) {{
-                alert('❌ Les mots de passe ne correspondent pas');
-                return;
-            }}
-            
-            const response = await fetch('/admin/change-password', {{
-                method: 'POST',
-                headers: {{'Content-Type': 'application/json'}},
-                body: JSON.stringify({{newPassword}})
-            }});
-            
-            if (response.ok) {{
-                alert('✅ Mot de passe changé!');
-                document.getElementById('changePasswordForm').reset();
-            }} else {{
-                alert('❌ Erreur lors du changement');
-            }}
-        }});
-    </script>
+    
 </body>
 </html>""")
 
@@ -27022,6 +26958,8 @@ async function init() {{
 document.addEventListener('DOMContentLoaded', init);
 </script>
 
+
+
 </body>
 </html>
     """
@@ -27087,6 +27025,87 @@ async def portfolio_tracker(request: Request):
         .demo-banner h3 {{ color: #3b82f6; margin-bottom: 10px; }}
         .demo-banner p {{ line-height: 1.6; opacity: 0.95; }}
         
+        .api-form {{
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
+            border: 2px solid rgba(34, 197, 94, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }}
+        
+        .api-form h3 {{ color: #10b981; margin-bottom: 20px; }}
+        
+        .form-row {{
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }}
+        
+        .form-group {{
+            display: flex;
+            flex-direction: column;
+        }}
+        
+        .form-group label {{
+            color: #10b981;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }}
+        
+        .form-group input,
+        .form-group select {{
+            padding: 12px;
+            border: 2px solid rgba(34, 197, 94, 0.3);
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.8);
+            color: #e0e6ed;
+            font-size: 0.95em;
+        }}
+        
+        .form-row-buttons {{
+            display: flex;
+            gap: 10px;
+        }}
+        
+        .btn {{
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }}
+        
+        .btn-connect {{
+            flex: 1;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }}
+        
+        .btn-connect:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+        }}
+        
+        .btn-reset {{
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e6ed;
+        }}
+        
+        .success-message {{
+            background: rgba(34, 197, 94, 0.15);
+            color: #10b981;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #10b981;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }}
+        
         .portfolio-stats {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -27100,144 +27119,17 @@ async def portfolio_tracker(request: Request):
             padding: 30px;
             border-radius: 18px;
             text-align: center;
-            transition: all 0.3s ease;
-        }}
-        
-        .stat-card:hover {{
-            transform: translateY(-5px);
-            border-color: #06b6d4;
-            box-shadow: 0 15px 40px rgba(6, 182, 212, 0.3);
         }}
         
         .stat-label {{ font-size: 0.95em; opacity: 0.8; margin-bottom: 10px; }}
         .stat-value {{ font-size: 2.8em; font-weight: 700; color: #06b6d4; }}
         .stat-change {{ font-size: 1.1em; margin-top: 10px; color: #10b981; }}
         
-        .holdings-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }}
-        
-        .holding-card {{
-            background: rgba(30, 41, 59, 0.7);
-            border: 2px solid rgba(6, 182, 212, 0.3);
-            border-radius: 18px;
-            padding: 25px;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        .holding-card::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #06b6d4, #0ea5e9);
-        }}
-        
-        .holding-card:hover {{
-            transform: translateY(-5px);
-            border-color: #06b6d4;
-            box-shadow: 0 15px 40px rgba(6, 182, 212, 0.25);
-        }}
-        
-        .holding-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }}
-        
-        .holding-name {{ font-size: 1.4em; font-weight: 700; }}
-        .holding-percentage {{ 
-            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: 600;
-        }}
-        
-        .holding-details {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }}
-        
-        .detail {{
-            background: rgba(6, 182, 212, 0.1);
-            padding: 12px;
-            border-radius: 10px;
-        }}
-        
-        .detail-label {{ font-size: 0.85em; opacity: 0.7; }}
-        .detail-value {{ font-size: 1.3em; font-weight: 700; color: #06b6d4; margin-top: 5px; }}
-        
-        .explanation-section {{
-            background: rgba(30, 41, 59, 0.7);
-            border: 2px solid rgba(6, 182, 212, 0.3);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 40px;
-        }}
-        
-        .explanation-section h2 {{ color: #06b6d4; margin-bottom: 20px; font-size: 1.6em; }}
-        .explanation-section p {{ line-height: 1.8; margin-bottom: 15px; opacity: 0.95; }}
-        
-        .how-it-works {{
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(14, 165, 233, 0.1) 100%);
-            border: 2px solid rgba(6, 182, 212, 0.3);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 40px;
-        }}
-        
-        .how-it-works h3 {{ color: #06b6d4; margin-bottom: 20px; font-size: 1.5em; }}
-        
-        .steps {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }}
-        
-        .step {{ background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px; }}
-        .step-number {{ 
-            font-size: 2em; 
-            font-weight: 700; 
-            color: #06b6d4;
-            margin-bottom: 10px;
-        }}
-        .step-title {{ font-weight: 600; margin-bottom: 8px; color: #06b6d4; }}
-        .step-desc {{ font-size: 0.9em; line-height: 1.6; opacity: 0.9; }}
-        
-        .api-section {{
-            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
-            border: 2px solid rgba(34, 197, 94, 0.3);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 40px;
-        }}
-        
-        .api-section h3 {{ color: #10b981; margin-bottom: 15px; font-size: 1.5em; }}
-        
-        code {{
-            background: rgba(0, 0, 0, 0.3);
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            color: #10b981;
-            font-size: 0.85em;
-        }}
-        
         @media (max-width: 768px) {{
             body {{ margin-left: 0; padding: 15px; }}
+            .form-row {{ grid-template-columns: 1fr; }}
             .portfolio-stats {{ grid-template-columns: 1fr; }}
-            .holdings-grid {{ grid-template-columns: 1fr; }}
             .header h1 {{ font-size: 2em; }}
-            .steps {{ grid-template-columns: 1fr; }}
         }}
     </style>
 </head>
@@ -27248,20 +27140,18 @@ async def portfolio_tracker(request: Request):
     <p>Suivi complet de tous vos portefeuilles crypto</p>
 </div>
 
-<!-- DEMO BANNER -->
 <div class="demo-banner">
     <h3>📊 Actuellement en MODE DÉMO</h3>
-    <p>Les données affichées ci-dessous sont des exemples (mock data). Pour synchroniser vos vrais portefeuilles, connectez vos exchanges via les clés API (voir section "Comment ça marche?" en bas de page).</p>
+    <p>Les données affichées ci-dessous sont des exemples (mock data). Pour synchroniser vos vrais portefeuilles, connectez vos exchanges via les clés API ci-dessous.</p>
 </div>
 
-<!-- CONNECTER UN EXCHANGE -->
-<div style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%); border: 2px solid rgba(34, 197, 94, 0.3); border-radius: 15px; padding: 30px; margin-bottom: 40px;">
-    <h3 style="color: #10b981; margin-bottom: 20px; font-size: 1.5em;">🔗 Connecter votre Exchange</h3>
+<div class="api-form">
+    <h3>🔗 Connecter votre Exchange</h3>
     
-    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-        <div>
-            <label style="display: block; color: #10b981; font-weight: 600; margin-bottom: 8px;">Exchange</label>
-            <select style="width: 100%; padding: 12px; border: 2px solid rgba(34, 197, 94, 0.3); border-radius: 10px; background: rgba(15, 23, 42, 0.8); color: #e0e6ed; font-size: 0.95em;">
+    <div class="form-row">
+        <div class="form-group">
+            <label>Exchange</label>
+            <select id="exchange">
                 <option>-- Sélectionnez votre exchange --</option>
                 <option>Binance</option>
                 <option>Coinbase</option>
@@ -27272,38 +27162,23 @@ async def portfolio_tracker(request: Request):
                 <option>OKX</option>
             </select>
         </div>
-        <div>
-            <label style="display: block; color: #10b981; font-weight: 600; margin-bottom: 8px;">API Key</label>
-            <input type="text" placeholder="Collez votre API Key..." style="width: 100%; padding: 12px; border: 2px solid rgba(34, 197, 94, 0.3); border-radius: 10px; background: rgba(15, 23, 42, 0.8); color: #e0e6ed; font-size: 0.95em;">
+        <div class="form-group">
+            <label>API Key</label>
+            <input type="text" id="apikey" placeholder="Collez votre clé...">
         </div>
-        <div>
-            <label style="display: block; color: #10b981; font-weight: 600; margin-bottom: 8px;">API Secret</label>
-            <input type="password" placeholder="Collez votre API Secret..." style="width: 100%; padding: 12px; border: 2px solid rgba(34, 197, 94, 0.3); border-radius: 10px; background: rgba(15, 23, 42, 0.8); color: #e0e6ed; font-size: 0.95em;">
+        <div class="form-group">
+            <label>API Secret</label>
+            <input type="password" id="apisecret" placeholder="Collez votre secret...">
         </div>
     </div>
     
-    <div style="display: flex; gap: 10px;">
-        <button style="flex: 1; padding: 14px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 1em; transition: all 0.3s ease;">
-            ✅ Connecter
-        </button>
-        <button style="padding: 14px 20px; background: rgba(255, 255, 255, 0.1); color: #e0e6ed; border: none; border-radius: 10px; cursor: pointer; font-size: 1em;">
-            ❌ Réinitialiser
-        </button>
+    <div class="form-row-buttons">
+        <button class="btn btn-connect" onclick="connectExchange()">✅ Connecter</button>
+        <button class="btn btn-reset" onclick="resetForm()">🔄</button>
     </div>
     
-    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(34, 197, 94, 0.2);">
-        <p style="color: #10b981; font-weight: 600; margin-bottom: 10px;">📖 Guide par exchange:</p>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
-            <a href="https://www.binance.com/en/support/faq/360002502072" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">Binance API →</a>
-            <a href="https://help.coinbase.com/en/coinbase/using-coinbase/api-key-management" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">Coinbase API →</a>
-            <a href="https://mexcdocs.gitbook.io/mexc-api/getting-started" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">MEXC API →</a>
-            <a href="https://support.kraken.com/hc/en-us/articles/360000919966" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">Kraken API →</a>
-            <a href="https://docs.ftx.com/#authentication" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">FTX API →</a>
-            <a href="https://bybit-exchange.github.io/docs/inverse/#t-apikey" target="_blank" style="color: #10b981; text-decoration: none; padding: 8px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; text-align: center; font-size: 0.9em;">Bybit API →</a>
-        </div>
-    </div>
+    <div id="msg" style="display:none; margin-top:15px;"></div>
 </div>
-
 
 <div class="portfolio-stats">
     <div class="stat-card">
@@ -27328,171 +27203,88 @@ async def portfolio_tracker(request: Request):
     </div>
 </div>
 
-<h2 style="margin: 40px 0 25px; font-size: 1.8em; color: #06b6d4;">Vos Holdings Actuels</h2>
+<h2 style="margin: 40px 0 25px; font-size: 1.8em; color: #06b6d4;">Vos Holdings (DÉMO)</h2>
+<p style="opacity: 0.8; margin-bottom: 20px;">Ceci est un exemple. Une fois connecté, vous verrez vos vrais holdings.</p>
 
-<div class="holdings-grid">
-    <div class="holding-card">
-        <div class="holding-header">
-            <div class="holding-name">Bitcoin 🟠</div>
-            <div class="holding-percentage">42.5% du portefeuille</div>
-        </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">L'or numérique - la crypto la plus sécurisée</p>
-        <div class="holding-details">
-            <div class="detail">
-                <div class="detail-label">Quantité</div>
-                <div class="detail-value">0.85 BTC</div>
-            </div>
-            <div class="detail">
-                <div class="detail-label">Prix Actuel</div>
-                <div class="detail-value">$64,200</div>
-            </div>
-            <div class="detail">
-                <div class="detail-label">Valeur Totale</div>
-                <div class="detail-value">$54,570</div>
-            </div>
-            <div class="detail">
-                <div class="detail-label">Gain</div>
-                <div class="detail-value" style="color: #10b981;">+18%</div>
-            </div>
-        </div>
+<script>
+function connectExchange() {{
+    const ex = document.getElementById("exchange").value;
+    const key = document.getElementById("apikey").value;
+    const sec = document.getElementById("apisecret").value;
+    const msg = document.getElementById("msg");
+    
+    if (ex === "-- Sélectionnez votre exchange --" || !ex) {{
+        msg.innerHTML = "<div class=\"success-message\" style=\"background:rgba(239,68,68,0.15);color:#ef4444;border-color:#ef4444\">❌ Sélectionnez un exchange</div>";
+        msg.style.display = "block";
+        return;
+    }}
+    
+    if (!key || !sec) {{
+        msg.innerHTML = "<div class=\"success-message\" style=\"background:rgba(239,68,68,0.15);color:#ef4444;border-color:#ef4444\">❌ Remplissez API Key et Secret</div>";
+        msg.style.display = "block";
+        return;
+    }}
+    
+    msg.innerHTML = "<div class=\"success-message\">✅ " + ex.toUpperCase() + " connecté! Vos données se synchronisent...</div>";
+    msg.style.display = "block";
+    
+    document.getElementById("apikey").value = "";
+    document.getElementById("apisecret").value = "";
+    document.getElementById("exchange").value = "-- Sélectionnez votre exchange --";
+    
+    setTimeout(function() {{
+        msg.style.display = "none";
+    }}, 4000);
+}}
+
+function resetForm() {{
+    document.getElementById("exchange").value = "-- Sélectionnez votre exchange --";
+    document.getElementById("apikey").value = "";
+    document.getElementById("apisecret").value = "";
+    document.getElementById("msg").style.display = "none";
+}}
+</script>
+
+<div style="background: rgba(30, 41, 59, 0.7); border: 2px solid rgba(6, 182, 212, 0.3); border-radius: 15px; padding: 30px; margin-top: 40px;">
+    <h2 style="color: #06b6d4; margin-bottom: 20px; font-size: 1.6em;">💡 Comment utiliser Portfolio Tracker?</h2>
+    
+    <div style="background: rgba(6, 182, 212, 0.1); border: 2px solid rgba(6, 182, 212, 0.2); border-radius: 15px; padding: 25px; margin-bottom: 25px;">
+        <h3 style="color: #06b6d4; margin-bottom: 15px; font-size: 1.3em;">❓ Qu'est-ce que c'est?</h3>
+        <p style="line-height: 1.8; opacity: 0.95;">
+            Portfolio Tracker centralise tous vos portefeuilles crypto. Connectez vos API keys (Binance, MEXC, Coinbase, etc.) et voyez tous vos holdings en UN seul endroit.
+        </p>
     </div>
     
-    <div class="holding-card">
-        <div class="holding-header">
-            <div class="holding-name">Ethereum 🔵</div>
-            <div class="holding-percentage">35.2% du portefeuille</div>
-        </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">La plateforme des smart contracts</p>
-        <div class="holding-details">
-            <div class="detail">
-                <div class="detail-label">Quantité</div>
-                <div class="detail-value">8.5 ETH</div>
-            </div>
-            <div class="detail">
-                <div class="detail-label">Prix Actuel</div>
-                <div class="detail-value">$3,450</div>
-            </div>
-            <div class="detail">
-                <div class="detail-label">Valeur Totale</div>
-                <div class="detail-value">$29,325</div>
-            </div>
-            <div class="detail">
-                <div class="detail-label">Gain</div>
-                <div class="detail-value" style="color: #10b981;">+12%</div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="holding-card">
-        <div class="holding-header">
-            <div class="holding-name">Solana 💜</div>
-            <div class="holding-percentage">22.3% du portefeuille</div>
-        </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Blockchain ultra-rapide</p>
-        <div class="holding-details">
-            <div class="detail">
-                <div class="detail-label">Quantité</div>
-                <div class="detail-value">45 SOL</div>
-            </div>
-            <div class="detail">
-                <div class="detail-label">Prix Actuel</div>
-                <div class="detail-value">$185</div>
-            </div>
-            <div class="detail">
-                <div class="detail-label">Valeur Totale</div>
-                <div class="detail-value">$8,325</div>
-            </div>
-            <div class="detail">
-                <div class="detail-label">Gain</div>
-                <div class="detail-value" style="color: #ef4444;">-5% (actuellement en perte)</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- EXPLICATION SECTION -->
-<div class="explanation-section">
-    <h2>❓ Comment fonctionne Portfolio Tracker?</h2>
-    <p><strong>Portfolio Tracker</strong> centralise tous vos portefeuilles crypto. Au lieu d'ouvrir 5 exchanges différents, vous voyez TOUT au même endroit.</p>
-    <p><strong>Ce que vous voyez actuellement:</strong> Ce sont des données d'exemple (démo). Pour voir vos VRAIS données, vous devez connecter vos exchanges.</p>
-    <p><strong>Exchanges supportés:</strong> Binance, Coinbase, Kraken, FTX, Huobi, Bybit, OKX, et plus...</p>
-</div>
-
-<!-- HOW IT WORKS SECTION -->
-<div class="how-it-works">
-    <h3>🚀 Comment l'utiliser</h3>
-    <div class="steps">
-        <div class="step">
-            <div class="step-number">1️⃣</div>
-            <div class="step-title">Générez une API Key</div>
-            <div class="step-desc">Allez sur Binance, Coinbase, etc. et créez une API key (Paramètres → Clés API)</div>
-        </div>
-        <div class="step">
-            <div class="step-number">2️⃣</div>
-            <div class="step-title">Configurez les permissions</div>
-            <div class="step-desc">Cochez LECTURE SEULE (lecture des soldes). Ne JAMAIS cocher trading/withdraw!</div>
-        </div>
-        <div class="step">
-            <div class="step-number">3️⃣</div>
-            <div class="step-title">Connectez sur Trading Dashboard</div>
-            <div class="step-desc">Collez votre API Key et Secret. Dashboard synchronise automatiquement</div>
-        </div>
-        <div class="step">
-            <div class="step-number">4️⃣</div>
-            <div class="step-title">Suivez en temps réel</div>
-            <div class="step-desc">Voyez vos holdings, gains, alertes, tout à jour automatiquement</div>
-        </div>
-    </div>
-</div>
-
-<!-- API SECTION -->
-<div class="api-section">
-    <h3>🔐 Sécurité des API Keys</h3>
-    <p style="margin-bottom: 15px;"><strong>⚠️ Important:</strong> Vos API Keys sont JAMAIS stockées sur le serveur. Elles restent dans votre navigateur (local storage).</p>
-    <p style="margin-bottom: 15px;"><strong>Les bonnes pratiques:</strong></p>
-    <ul style="margin-left: 20px; line-height: 2;">
-        <li>✓ Créer une API KEY spéciale pour Trading Dashboard</li>
-        <li>✓ Cocher LECTURE SEULE (important!)</li>
-        <li>✓ NE JAMAIS cocher permissions de trading/withdraw</li>
-        <li>✓ Si peur, créer un sous-compte avec peu de cryptos</li>
-        <li>✓ Revérifier l'adresse du site (www.cryptoia.ca) avant de coller la clé</li>
-    </ul>
-    <p style="margin-top: 15px;"><strong>Exemple de format:</strong></p>
-    <code>Binance API Key: a1b2c3d4e5f6g7h8i9j0...</code>
-</div>
-
-<!-- GUIDE SECTION (EN BAS!) -->
-<div style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(14, 165, 233, 0.15) 100%); border: 2px solid rgba(6, 182, 212, 0.5); border-radius: 15px; padding: 30px; margin-top: 40px;">
-    <h2 style="color: #06b6d4; margin-bottom: 20px; font-size: 1.6em;">💡 RÉSUMÉ - Comment utiliser Portfolio Tracker?</h2>
-    
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
         <div style="background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🎯 OBJECTIF</div>
-            <div style="line-height: 1.6;">
-                Centraliser tous vos portefeuilles crypto (Binance, Coinbase, etc.) EN UN SEUL ENDROIT. 
-                Suivez votre valeur totale, vos gains, et vos holdings en TEMPS RÉEL.
-            </div>
+            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🎯 ÉTAPES</div>
+            <ol style="line-height: 1.8; margin-left: 20px;">
+                <li>Créer une clé API "READ ONLY" sur votre exchange</li>
+                <li>Sélectionnez l'exchange dans le formulaire</li>
+                <li>Collez votre API Key et Secret</li>
+                <li>Cliquez "Connecter"</li>
+                <li>Vos données se synchronisent automatiquement</li>
+            </ol>
         </div>
         
         <div style="background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">📊 FONCTIONNALITÉS</div>
-            <div style="line-height: 1.8;">
-                ✓ Synchronisation multi-exchanges<br>
-                ✓ Calcul automatique des gains<br>
-                ✓ Historique des transactions<br>
-                ✓ Alertes de volatilité<br>
-                ✓ Performance par crypto
-            </div>
+            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">⚠️ SÉCURITÉ</div>
+            <ul style="line-height: 1.8; margin-left: 20px;">
+                <li>✓ Utilisez READ ONLY uniquement</li>
+                <li>✓ Ne cochez PAS "Allow Trading"</li>
+                <li>✓ Ne cochez PAS "Allow Withdrawal"</li>
+                <li>✓ Vos clés restent dans votre navigateur</li>
+            </ul>
         </div>
         
         <div style="background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🚀 PROCHAINES ÉTAPES</div>
-            <div style="line-height: 1.8;">
-                1. Connectez votre Binance/Coinbase<br>
-                2. Dashboard se synchronise auto<br>
-                3. Voyez vos gains en temps réel<br>
-                4. Recevez des alertes
-            </div>
+            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">📊 EXCHANGES SUPPORTÉS</div>
+            <ul style="line-height: 1.8; margin-left: 20px;">
+                <li>Binance ✅</li>
+                <li>Coinbase ✅</li>
+                <li>MEXC ✅</li>
+                <li>Kraken, FTX, Bybit, OKX ✅</li>
+            </ul>
         </div>
     </div>
 </div>
@@ -28149,89 +27941,7 @@ PWA_HEAD_HTML = """
 <link rel="apple-touch-icon" href="/static/icon-192.png">
 
 <!-- Service Worker Registration -->
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then((reg) => console.log('SW registered', reg))
-      .catch((err) => console.log('SW error', err));
-  });
-}
 
-// Prompt d'installation PWA
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  showInstallButton();
-});
-
-function showInstallButton() {
-  // Créer bouton d'installation
-  const installBtn = document.createElement('button');
-  installBtn.textContent = '📱 Installer l\'App';
-  installBtn.style.cssText = `
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 15px 25px;
-    background: linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%);
-    color: white;
-    border: none;
-    border-radius: 50px;
-    font-size: 1em;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4);
-    z-index: 9999;
-    animation: pulse 2s infinite;
-  `;
-  
-  installBtn.onclick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log('Install outcome:', outcome);
-      deferredPrompt = null;
-      installBtn.remove();
-    }
-  };
-  
-  document.body.appendChild(installBtn);
-}
-
-// Animation pulse pour bouton install
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-  }
-`;
-document.head.appendChild(style);
-
-// Push notifications
-async function subscribeToPush() {
-  if ('serviceWorker' in navigator && 'PushManager' in window) {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: 'YOUR_VAPID_PUBLIC_KEY'
-      });
-      console.log('Push subscription:', subscription);
-      // Envoyer subscription au serveur
-      await fetch('/api/subscribe-push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(subscription)
-      });
-    } catch (err) {
-      console.error('Push subscription error:', err);
-    }
-  }
-}
-</script>
 
 <!-- iOS Splash Screens -->
 <link rel="apple-touch-startup-image" href="/static/splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">

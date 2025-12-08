@@ -27173,8 +27173,8 @@ async def portfolio_tracker(request: Request):
     </div>
     
     <div class="form-row-buttons">
-        <button class="btn btn-connect" onclick="connectExchange()">✅ Connecter</button>
-        <button class="btn btn-reset" onclick="resetForm()">🔄</button>
+        <button class="btn btn-connect" id="connectBtn">✅ Connecter</button>
+        <button class="btn btn-reset" id="resetBtn">🔄</button>
     </div>
     
     <div id="msg" style="display:none; margin-top:15px;"></div>
@@ -27205,45 +27205,6 @@ async def portfolio_tracker(request: Request):
 
 <h2 style="margin: 40px 0 25px; font-size: 1.8em; color: #06b6d4;">Vos Holdings (DÉMO)</h2>
 <p style="opacity: 0.8; margin-bottom: 20px;">Ceci est un exemple. Une fois connecté, vous verrez vos vrais holdings.</p>
-
-<script>
-function connectExchange() {{
-    const ex = document.getElementById("exchange").value;
-    const key = document.getElementById("apikey").value;
-    const sec = document.getElementById("apisecret").value;
-    const msg = document.getElementById("msg");
-    
-    if (ex === "-- Sélectionnez votre exchange --" || !ex) {{
-        msg.innerHTML = "<div class=\"success-message\" style=\"background:rgba(239,68,68,0.15);color:#ef4444;border-color:#ef4444\">❌ Sélectionnez un exchange</div>";
-        msg.style.display = "block";
-        return;
-    }}
-    
-    if (!key || !sec) {{
-        msg.innerHTML = "<div class=\"success-message\" style=\"background:rgba(239,68,68,0.15);color:#ef4444;border-color:#ef4444\">❌ Remplissez API Key et Secret</div>";
-        msg.style.display = "block";
-        return;
-    }}
-    
-    msg.innerHTML = "<div class=\"success-message\">✅ " + ex.toUpperCase() + " connecté! Vos données se synchronisent...</div>";
-    msg.style.display = "block";
-    
-    document.getElementById("apikey").value = "";
-    document.getElementById("apisecret").value = "";
-    document.getElementById("exchange").value = "-- Sélectionnez votre exchange --";
-    
-    setTimeout(function() {{
-        msg.style.display = "none";
-    }}, 4000);
-}}
-
-function resetForm() {{
-    document.getElementById("exchange").value = "-- Sélectionnez votre exchange --";
-    document.getElementById("apikey").value = "";
-    document.getElementById("apisecret").value = "";
-    document.getElementById("msg").style.display = "none";
-}}
-</script>
 
 <div style="background: rgba(30, 41, 59, 0.7); border: 2px solid rgba(6, 182, 212, 0.3); border-radius: 15px; padding: 30px; margin-top: 40px;">
     <h2 style="color: #06b6d4; margin-bottom: 20px; font-size: 1.6em;">💡 Comment utiliser Portfolio Tracker?</h2>
@@ -27292,7 +27253,62 @@ function resetForm() {{
 </body>
 </html>
 """
-    return HTMLResponse(content=html_content)
+    
+    # JavaScript pour Portfolio Tracker - en dehors de la f-string!
+    js_code = """
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var connectBtn = document.getElementById('connectBtn');
+    var resetBtn = document.getElementById('resetBtn');
+    var exInput = document.getElementById('exchange');
+    var keyInput = document.getElementById('apikey');
+    var secInput = document.getElementById('apisecret');
+    var msgDiv = document.getElementById('msg');
+    
+    if (connectBtn) {
+        connectBtn.addEventListener('click', function() {
+            var ex = exInput.value;
+            var key = keyInput.value;
+            var sec = secInput.value;
+            
+            if (ex === '-- Sélectionnez votre exchange --' || !ex) {
+                msgDiv.innerHTML = '<div style="background:rgba(239,68,68,0.15);color:#ef4444;padding:15px;border-radius:10px;border-left:4px solid #ef4444">Sélectionnez un exchange</div>';
+                msgDiv.style.display = 'block';
+                return;
+            }
+            
+            if (!key || !sec) {
+                msgDiv.innerHTML = '<div style="background:rgba(239,68,68,0.15);color:#ef4444;padding:15px;border-radius:10px;border-left:4px solid #ef4444">Remplissez API Key et Secret</div>';
+                msgDiv.style.display = 'block';
+                return;
+            }
+            
+            msgDiv.innerHTML = '<div style="background:rgba(34,197,94,0.15);color:#10b981;padding:15px;border-radius:10px;border-left:4px solid #10b981;font-weight:600">OK ' + ex + ' connecté! Sync en cours...</div>';
+            msgDiv.style.display = 'block';
+            
+            keyInput.value = '';
+            secInput.value = '';
+            exInput.value = '-- Sélectionnez votre exchange --';
+            
+            setTimeout(function() {
+                msgDiv.style.display = 'none';
+            }, 4000);
+        });
+    }
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            exInput.value = '-- Sélectionnez votre exchange --';
+            keyInput.value = '';
+            secInput.value = '';
+            msgDiv.style.display = 'none';
+        });
+    }
+});
+</script>
+"""
+    
+    return HTMLResponse(content=html_content + js_code)
 
 
 # API ENDPOINT POUR RÉCUPÉRER LES HOLDINGS VIA API EXCHANGE

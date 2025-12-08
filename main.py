@@ -26986,41 +26986,44 @@ document.addEventListener('DOMContentLoaded', init);
 @app.get("/portfolio-tracker", response_class=HTMLResponse)
 async def portfolio_tracker(request: Request):
     """Portfolio Tracker - affiche l'interface"""
-    html = """<!DOCTYPE html>
+    html = f"""{SIDEBAR}<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🔗 Portfolio Tracker</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%); min-height: 100vh; padding: 20px; color: #e2e8f0; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); padding: 30px; border-radius: 12px; margin-bottom: 30px; }
-        .header h1 { font-size: 2em; color: white; margin-bottom: 10px; }
-        .header p { color: rgba(255, 255, 255, 0.9); }
-        .form-section { background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 12px; padding: 30px; margin-bottom: 30px; }
-        .form-group { margin-bottom: 20px; }
-        input, select { width: 100%; padding: 12px; margin-bottom: 15px; background: rgba(15, 23, 42, 0.8); border: 1px solid #06b6d4; border-radius: 8px; color: #e2e8f0; }
-        button { padding: 12px 30px; background: #06b6d4; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #0891b2; }
-        .message { padding: 15px; margin-bottom: 20px; border-radius: 8px; display: none; }
-        .message.success { background: rgba(34, 197, 94, 0.1); border: 1px solid #22c55e; color: #86efac; }
-        .message.error { background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #fca5a5; }
+        .portfolio-section {{ margin-left: 280px; padding: 40px; }}
+        .header {{ background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); padding: 30px; border-radius: 12px; margin-bottom: 30px; }}
+        .header h1 {{ font-size: 2em; color: white; margin-bottom: 10px; }}
+        .form-section {{ background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 12px; padding: 30px; margin-bottom: 30px; }}
+        .form-group {{ margin-bottom: 20px; }}
+        .form-group label {{ display: block; margin-bottom: 8px; color: #06b6d4; font-weight: 600; }}
+        input, select {{ width: 100%; padding: 12px; margin-bottom: 15px; background: rgba(15, 23, 42, 0.8); border: 1px solid #06b6d4; border-radius: 8px; color: #e2e8f0; }}
+        button {{ padding: 12px 30px; background: #06b6d4; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }}
+        button:hover {{ background: #0891b2; }}
+        .message {{ padding: 15px; margin-bottom: 20px; border-radius: 8px; display: none; border-left: 4px solid; }}
+        .message.success {{ background: rgba(34, 197, 94, 0.1); border-color: #22c55e; color: #86efac; }}
+        .message.error {{ background: rgba(239, 68, 68, 0.1); border-color: #ef4444; color: #fca5a5; }}
+        .portfolio-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }}
+        .portfolio-card {{ background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 12px; padding: 20px; }}
+        .portfolio-card h3 {{ color: #06b6d4; margin-bottom: 10px; }}
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="portfolio-section">
         <div class="header">
             <h1>🔗 Portfolio Tracker</h1>
-            <p>Connectez vos exchanges pour suivre vos holdings</p>
+            <p>Connectez vos exchanges pour suivre vos holdings en temps réel</p>
         </div>
+        
         <div class="form-section">
             <h2 style="color: #06b6d4; margin-bottom: 20px;">Connecter un Exchange</h2>
             <div id="message" class="message"></div>
-            <form id="portfolioForm" onsubmit="return handleConnect(event)">
+            
+            <form id="portfolioForm" onsubmit="handleConnect(event); return false;">
                 <div class="form-group">
-                    <label>Exchange:</label>
+                    <label for="exchange">Exchange:</label>
                     <select id="exchange" required>
                         <option value="">-- Choisir --</option>
                         <option value="binance">Binance</option>
@@ -27029,50 +27032,108 @@ async def portfolio_tracker(request: Request):
                         <option value="kraken">Kraken</option>
                     </select>
                 </div>
+                
                 <div class="form-group">
-                    <label>Clé API:</label>
+                    <label for="apiKey">Clé API:</label>
                     <input type="text" id="apiKey" placeholder="Clé API" required>
                 </div>
+                
                 <div class="form-group">
-                    <label>Secret API:</label>
+                    <label for="apiSecret">Secret API:</label>
                     <input type="password" id="apiSecret" placeholder="Secret API" required>
                 </div>
+                
                 <button type="submit">🔗 Connecter</button>
             </form>
         </div>
+        
+        <div id="portfolioData" class="portfolio-grid" style="display:none;"></div>
     </div>
+    
     <script>
-        async function handleConnect(e) {
+        async function handleConnect(e) {{
             e.preventDefault();
             const msg = document.getElementById('message');
-            msg.textContent = '⏳ Connexion...';
+            const form = document.getElementById('portfolioForm');
+            
+            msg.textContent = '⏳ Connexion en cours...';
             msg.className = 'message success';
             msg.style.display = 'block';
-            try {
-                const res = await fetch('/api/portfolio/connect', {
+            
+            try {{
+                const exchange = document.getElementById('exchange').value;
+                const apiKey = document.getElementById('apiKey').value;
+                const apiSecret = document.getElementById('apiSecret').value;
+                
+                const res = await fetch('/api/portfolio/connect', {{
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {{'Content-Type': 'application/json'}},
                     credentials: 'include',
-                    body: JSON.stringify({
-                        exchange: document.getElementById('exchange').value,
-                        api_key: document.getElementById('apiKey').value,
-                        api_secret: document.getElementById('apiSecret').value
-                    })
-                });
+                    body: JSON.stringify({{
+                        exchange: exchange,
+                        api_key: apiKey,
+                        api_secret: apiSecret
+                    }})
+                }});
+                
                 const data = await res.json();
-                msg.textContent = data.message;
-                msg.className = 'message ' + (data.success ? 'success' : 'error');
-                msg.style.display = 'block';
-            } catch (err) {
+                
+                if (data.success) {{
+                    msg.textContent = '✅ ' + data.message;
+                    msg.className = 'message success';
+                    form.style.display = 'none';
+                    // Charger les données du portfolio
+                    setTimeout(loadPortfolioData, 1500);
+                }} else {{
+                    msg.textContent = '❌ ' + data.message;
+                    msg.className = 'message error';
+                }}
+            }} catch (err) {{
                 msg.textContent = '❌ Erreur: ' + err.message;
                 msg.className = 'message error';
-                msg.style.display = 'block';
-            }
-            return false;
-        }
+            }}
+            msg.style.display = 'block';
+        }}
+        
+        async function loadPortfolioData() {{
+            try {{
+                const res = await fetch('/api/portfolio/data', {{
+                    credentials: 'include'
+                }});
+                const data = await res.json();
+                
+                if (data.success) {{
+                    const container = document.getElementById('portfolioData');
+                    container.innerHTML = '';
+                    
+                    Object.entries(data.exchanges).forEach(([exchange, info]) => {{
+                        const card = document.createElement('div');
+                        card.className = 'portfolio-card';
+                        card.innerHTML = `
+                            <h3>${{exchange}}</h3>
+                            <p>💰 Valeur: $${{{info.value.toFixed(2)}}}</p>
+                            <p>📦 Actifs: ${{{info.count}}}</p>
+                        `;
+                        container.appendChild(card);
+                    }});
+                    
+                    container.style.display = 'grid';
+                    
+                    // Ajouter un bouton "Ajouter un autre"
+                    const btn = document.createElement('button');
+                    btn.textContent = '➕ Ajouter un autre exchange';
+                    btn.style.marginTop = '30px';
+                    btn.onclick = () => location.reload();
+                    container.parentElement.appendChild(btn);
+                }}
+            }} catch (err) {{
+                console.error('Erreur:', err);
+            }}
+        }}
     </script>
 </body>
-</html>"""
+</html>
+"""
     return HTMLResponse(content=html)
 
 

@@ -27254,61 +27254,7 @@ async def portfolio_tracker(request: Request):
 </html>
 """
     
-    # Script JavaScript - complètement séparé
-    script = """<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var connectBtn = document.getElementById('connectBtn');
-    var resetBtn = document.getElementById('resetBtn');
-    var exInput = document.getElementById('exchange');
-    var keyInput = document.getElementById('apikey');
-    var secInput = document.getElementById('apisecret');
-    var msgDiv = document.getElementById('msg');
-    
-    if (connectBtn) {
-        connectBtn.addEventListener('click', function() {
-            var ex = exInput.value;
-            var key = keyInput.value;
-            var sec = secInput.value;
-            
-            if (ex === '-- Sélectionnez votre exchange --' || !ex) {
-                msgDiv.innerHTML = '<div style="background:rgba(239,68,68,0.15);color:#ef4444;padding:15px;border-radius:10px;border-left:4px solid #ef4444">Sélectionnez un exchange</div>';
-                msgDiv.style.display = 'block';
-                return;
-            }
-            
-            if (!key || !sec) {
-                msgDiv.innerHTML = '<div style="background:rgba(239,68,68,0.15);color:#ef4444;padding:15px;border-radius:10px;border-left:4px solid #ef4444">Remplissez API Key et Secret</div>';
-                msgDiv.style.display = 'block';
-                return;
-            }
-            
-            msgDiv.innerHTML = '<div style="background:rgba(34,197,94,0.15);color:#10b981;padding:15px;border-radius:10px;border-left:4px solid #10b981;font-weight:600">OK ' + ex + ' connecté! Sync en cours...</div>';
-            msgDiv.style.display = 'block';
-            
-            keyInput.value = '';
-            secInput.value = '';
-            exInput.value = '-- Sélectionnez votre exchange --';
-            
-            setTimeout(function() {
-                msgDiv.style.display = 'none';
-            }, 4000);
-        });
-    }
-    
-    if (resetBtn) {
-        resetBtn.addEventListener('click', function() {
-            exInput.value = '-- Sélectionnez votre exchange --';
-            keyInput.value = '';
-            secInput.value = '';
-            msgDiv.style.display = 'none';
-        });
-    }
-});
-</script>"""
-    
-    # Corriger le HTML pour insérer le script avant </body>
-    corrected_html = html_content.replace('</body>\n</html>', '') + script + '\n</body>\n</html>'
-    return HTMLResponse(content=corrected_html)
+    return HTMLResponse(content=html_content + '<script>window.addEventListener("DOMContentLoaded", function() { var btn1 = document.getElementById("connectBtn"); var btn2 = document.getElementById("resetBtn"); var sel = document.getElementById("exchange"); var inp1 = document.getElementById("apikey"); var inp2 = document.getElementById("apisecret"); var msg = document.getElementById("msg"); if (btn1) { btn1.onclick = function() { var e = sel.value; var k = inp1.value; var s = inp2.value; if (e === "-- Sélectionnez votre exchange --" || !e) { msg.innerHTML = "<div style=\"background:rgba(239,68,68,0.15);color:#ef4444;padding:15px;border-radius:10px;border-left:4px solid #ef4444\">Sélectionnez un exchange</div>"; msg.style.display = "block"; return; } if (!k || !s) { msg.innerHTML = "<div style=\"background:rgba(239,68,68,0.15);color:#ef4444;padding:15px;border-radius:10px;border-left:4px solid #ef4444\">Remplissez API Key et Secret</div>"; msg.style.display = "block"; return; } msg.innerHTML = "<div style=\"background:rgba(34,197,94,0.15);color:#10b981;padding:15px;border-radius:10px;border-left:4px solid #10b981;font-weight:600\">OK " + e + " connecté! Sync en cours...</div>"; msg.style.display = "block"; inp1.value = ""; inp2.value = ""; sel.value = "-- Sélectionnez votre exchange --"; setTimeout(function() { msg.style.display = "none"; }, 4000); }; } if (btn2) { btn2.onclick = function() { sel.value = "-- Sélectionnez votre exchange --"; inp1.value = ""; inp2.value = ""; msg.style.display = "none"; }; } }); </script>')
 
 
 # API ENDPOINT POUR RÉCUPÉRER LES HOLDINGS VIA API EXCHANGE

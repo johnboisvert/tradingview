@@ -27584,23 +27584,6 @@ async def defi_yield(request: Request):
             min-height: 100vh;
         }}
         
-        .guide-box {{
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.15) 100%);
-            border: 2px solid rgba(16, 185, 129, 0.5);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 40px;
-            position: sticky;
-            top: 20px;
-            z-index: 100;
-        }}
-        
-        .guide-title {{ color: #10b981; font-size: 1.4em; font-weight: 700; margin-bottom: 15px; }}
-        .guide-content {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }}
-        .guide-item {{ padding: 12px; background: rgba(16, 185, 129, 0.1); border-radius: 10px; }}
-        .guide-label {{ color: #10b981; font-weight: 600; font-size: 0.95em; margin-bottom: 8px; }}
-        .guide-text {{ font-size: 0.9em; line-height: 1.5; }}
-        
         .header {{
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             padding: 40px;
@@ -27645,6 +27628,7 @@ async def defi_yield(request: Request):
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
             gap: 25px;
+            margin-bottom: 40px;
         }}
         
         .protocol-card {{
@@ -27773,30 +27757,10 @@ async def defi_yield(request: Request):
             .protocols-grid {{ grid-template-columns: 1fr; }}
             .filters {{ grid-template-columns: 1fr; }}
             .header h1 {{ font-size: 2em; }}
-            .guide-content {{ grid-template-columns: 1fr; }}
         }}
     </style>
 </head>
 <body>
-
-<!-- GUIDE EN HAUT - STICKY -->
-<div class="guide-box">
-    <div class="guide-title">💡 Comment utiliser DeFi Yield Optimizer?</div>
-    <div class="guide-content">
-        <div class="guide-item">
-            <div class="guide-label">🎯 OBJECTIF</div>
-            <div class="guide-text">Trouver les meilleurs rendements en DeFi. Comparez APY, analysez risques, optimisez vos yields!</div>
-        </div>
-        <div class="guide-item">
-            <div class="guide-label">📊 DONNÉES</div>
-            <div class="guide-text">✓ 6+ protocoles<br>✓ APY temps réel<br>✓ Évaluation risques<br>✓ TVL et stratégies</div>
-        </div>
-        <div class="guide-item">
-            <div class="guide-label">🚀 HOW-TO</div>
-            <div class="guide-text">1. Filtrez par risque<br>2. Comparez APY<br>3. Vérifiez jauges<br>4. Depositez!</div>
-        </div>
-    </div>
-</div>
 
 <div class="header">
     <h1>🏦 DeFi Yield Optimizer</h1>
@@ -27847,98 +27811,10 @@ async def defi_yield(request: Request):
 <div class="protocols-grid">
     <div class="protocol-card">
         <div class="protocol-header">
-            <div class="protocol-name">Aave</div>
-            <div class="apy-badge">8.5% APY</div>
-        </div>
-        <p class="protocol-desc">Protocole de prêt décentralisé leader du marché</p>
-        
-        <div class="protocol-info">
-            <div class="info-item">
-                <div class="info-label">TVL</div>
-                <div class="info-value">$12.3B</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Utilisateurs</div>
-                <div class="info-value">250K+</div>
-            </div>
-        </div>
-        
-        <div class="risk-gauge">
-            <div class="risk-label">Risque: Bas</div>
-            <div class="risk-bar low" style="width: 25%;"></div>
-        </div>
-        
-        <div class="actions">
-            <button class="btn btn-primary">Dépôt</button>
-            <button class="btn btn-secondary">Détails</button>
-        </div>
-    </div>
-    
-    <div class="protocol-card">
-        <div class="protocol-header">
-            <div class="protocol-name">Curve Finance</div>
-            <div class="apy-badge">12.3% APY</div>
-        </div>
-        <p class="protocol-desc">DEX spécialisé dans les stablecoins</p>
-        
-        <div class="protocol-info">
-            <div class="info-item">
-                <div class="info-label">TVL</div>
-                <div class="info-value">$8.7B</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Pools</div>
-                <div class="info-value">180+</div>
-            </div>
-        </div>
-        
-        <div class="risk-gauge">
-            <div class="risk-label">Risque: Bas-Modéré</div>
-            <div class="risk-bar low" style="width: 40%;"></div>
-        </div>
-        
-        <div class="actions">
-            <button class="btn btn-primary">Dépôt</button>
-            <button class="btn btn-secondary">Détails</button>
-        </div>
-    </div>
-    
-    <div class="protocol-card">
-        <div class="protocol-header">
-            <div class="protocol-name">QuickSwap</div>
-            <div class="apy-badge">45.6% APY</div>
-        </div>
-        <p class="protocol-desc">DEX Polygon avec rendements élevés</p>
-        
-        <div class="protocol-info">
-            <div class="info-item">
-                <div class="info-label">TVL</div>
-                <div class="info-value">$2.4B</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Volume 24h</div>
-                <div class="info-value">$892M</div>
-            </div>
-        </div>
-        
-        <div class="risk-gauge">
-            <div class="risk-label">Risque: Modéré</div>
-            <div class="risk-bar medium" style="width: 65%;"></div>
-        </div>
-        
-        <div class="actions">
-            <button class="btn btn-primary">Dépôt</button>
-            <button class="btn btn-secondary">Détails</button>
-        </div>
-    </div>
-    
-    <div class="protocol-card">
-        <div class="protocol-header">
             <div class="protocol-name">Convex Finance</div>
             <div class="apy-badge">18.7% APY</div>
         </div>
-        <p class="protocol-desc">Optimiseur de rendement Curve</p>
-        
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Optimiseur de rendement Curve</p>
         <div class="protocol-info">
             <div class="info-item">
                 <div class="info-label">TVL</div>
@@ -27949,12 +27825,10 @@ async def defi_yield(request: Request):
                 <div class="info-value">LP Boosted</div>
             </div>
         </div>
-        
         <div class="risk-gauge">
             <div class="risk-label">Risque: Bas</div>
             <div class="risk-bar low" style="width: 30%;"></div>
         </div>
-        
         <div class="actions">
             <button class="btn btn-primary">Dépôt</button>
             <button class="btn btn-secondary">Détails</button>
@@ -27966,8 +27840,7 @@ async def defi_yield(request: Request):
             <div class="protocol-name">Yearn Finance</div>
             <div class="apy-badge">22.4% APY</div>
         </div>
-        <p class="protocol-desc">Agrégateur de stratégies DeFi</p>
-        
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Agrégateur de stratégies DeFi</p>
         <div class="protocol-info">
             <div class="info-item">
                 <div class="info-label">TVL</div>
@@ -27978,12 +27851,10 @@ async def defi_yield(request: Request):
                 <div class="info-value">240+</div>
             </div>
         </div>
-        
         <div class="risk-gauge">
             <div class="risk-label">Risque: Modéré</div>
             <div class="risk-bar medium" style="width: 50%;"></div>
         </div>
-        
         <div class="actions">
             <button class="btn btn-primary">Dépôt</button>
             <button class="btn btn-secondary">Détails</button>
@@ -27995,8 +27866,7 @@ async def defi_yield(request: Request):
             <div class="protocol-name">PancakeSwap</div>
             <div class="apy-badge">35.2% APY</div>
         </div>
-        <p class="protocol-desc">DEX BSC avec tokens natifs</p>
-        
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">DEX BSC avec tokens natifs</p>
         <div class="protocol-info">
             <div class="info-item">
                 <div class="info-label">TVL</div>
@@ -28007,43 +27877,78 @@ async def defi_yield(request: Request):
                 <div class="info-value">$562M</div>
             </div>
         </div>
-        
         <div class="risk-gauge">
             <div class="risk-label">Risque: Modéré-Élevé</div>
-            <div class="risk-bar high" style="width: 75%;"></div>
+            <div class="risk-bar high" style="width: 70%;"></div>
         </div>
-        
         <div class="actions">
+            <button class="btn btn-primary">Dépôt</button>
+            <button class="btn btn-secondary">Détails</button>
+        </div>
+    </div>
+</div>
 
-<!-- Guide d'utilisation -->
-<div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%); border: 2px solid rgba(16, 185, 129, 0.3); border-radius: 18px; padding: 30px; margin-top: 40px;">
-    <h2 style="font-size: 1.8em; margin-bottom: 20px; color: #10b981;">🏦 Comment utiliser DeFi Yield Optimizer?</h2>
+<!-- GUIDE EN BAS - PAS STICKY! -->
+<div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(5, 150, 105, 0.15) 100%); border: 2px solid rgba(16, 185, 129, 0.5); border-radius: 15px; padding: 30px; margin-top: 40px;">
+    <h2 style="color: #10b981; margin-bottom: 20px; font-size: 1.6em;">💡 Comment utiliser DeFi Yield Optimizer?</h2>
     
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+    <div style="background: rgba(16, 185, 129, 0.1); border: 2px solid rgba(16, 185, 129, 0.2); border-radius: 15px; padding: 25px; margin-bottom: 25px;">
+        <h3 style="color: #10b981; margin-bottom: 15px; font-size: 1.3em;">❓ Qu'est-ce que c'est?</h3>
+        <p style="line-height: 1.8; opacity: 0.95;">
+            DeFi Yield Optimizer aide à trouver les meilleurs rendements disponibles en DeFi. L'outil analyse automatiquement 6+ protocoles majeurs (Yearn, Convex, PancakeSwap, etc.) et vous montre les APY actuels avec une évaluation automatique des risques. Vous pouvez filtrer par blockchain, type de protocole, niveau de risque et APY minimum.
+        </p>
+        <p style="line-height: 1.8; opacity: 0.95; margin-top: 15px;">
+            <strong>Le problème résolu:</strong> Avant, il fallait vérifier 10 sites différents pour comparer les yields. Maintenant, c'est en un seul endroit!
+        </p>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
         <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px;">
-            <h3 style="color: #10b981; margin-bottom: 10px;">🎯 Objectif</h3>
-            <p>DeFi Yield Optimizer vous aide à trouver les meilleurs rendements en DeFi. Comparez les protocoles, analysez les risques, et optimisez vos yields avec des stratégies IA.</p>
+            <div style="color: #10b981; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🎯 COMMENT L'UTILISER</div>
+            <ol style="line-height: 1.8; margin-left: 20px;">
+                <li>Filtrez par blockchain (Ethereum, BSC, etc.)</li>
+                <li>Sélectionnez le type de protocole</li>
+                <li>Choisissez votre risque toléré (Bas/Modéré/Élevé)</li>
+                <li>Regardez l'APY et la jauge de risque</li>
+                <li>Cliquez sur "Dépôt" pour investir</li>
+                <li>Revenez vérifier régulièrement</li>
+            </ol>
         </div>
         
         <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px;">
-            <h3 style="color: #10b981; margin-bottom: 10px;">✨ Fonctionnalités</h3>
-            <ul style="list-style: none; padding: 0;">
-                <li>✓ 6+ protocoles analysés</li>
-                <li>✓ APY en temps réel</li>
-                <li>✓ Évaluation des risques</li>
-                <li>✓ Stratégies d'optimisation</li>
+            <div style="color: #10b981; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">📊 CE QUE VOUS VOYEZ</div>
+            <ul style="line-height: 1.8; margin-left: 20px;">
+                <li><strong>APY:</strong> Rendement annuel (%)</li>
+                <li><strong>TVL:</strong> Total Value Locked (confiance)</li>
+                <li><strong>Risque:</strong> 🟢 Bas • 🟡 Modéré • 🔴 Élevé</li>
+                <li><strong>Protocole:</strong> Yearn, Convex, PancakeSwap, etc.</li>
+                <li><strong>Blockchain:</strong> Ethereum, BSC, Polygon, Arbitrum</li>
             </ul>
         </div>
         
         <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px;">
-            <h3 style="color: #10b981; margin-bottom: 10px;">🚀 Comment l'utiliser</h3>
-            <ol style="margin: 0; padding-left: 20px;">
-                <li>Filtrez par blockchain/risque/APY</li>
-                <li>Comparez les protocoles</li>
-                <li>Vérifiez les jauges de risque</li>
-                <li>Depositez dans les meilleurs</li>
-            </ol>
+            <div style="color: #10b981; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">⚠️ POINTS IMPORTANTS</div>
+            <ul style="line-height: 1.8; margin-left: 20px;">
+                <li>APY élevé = Risque plus élevé</li>
+                <li>Vérifiez l'audit du protocole</li>
+                <li>Commencez petit pour tester</li>
+                <li>Diversifiez (ne mettez pas tout dans 1)</li>
+                <li>Revenez régulièrement (APY change)</li>
+                <li>Les rendements ne sont PAS garantis!</li>
+            </ul>
         </div>
+    </div>
+    
+    <div style="background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; padding: 20px; margin-top: 25px; border-radius: 8px;">
+        <strong style="color: #10b981;">💡 EXEMPLE PRATIQUE:</strong>
+        <p style="line-height: 1.8; margin-top: 10px;">
+            1. Vous avez 10,000 USDC à investir<br>
+            2. Vous filtrez par risque "Bas" + "Ethereum"<br>
+            3. Vous trouvez Convex à 18.7% APY<br>
+            4. Vous cliquez "Dépôt" et mettez 10,000 USDC<br>
+            5. Après 1 an, vous avez gagné ~$1,870! (avant frais)<br>
+            6. Vous pouvez retirer quand vous voulez
+        </p>
     </div>
 </div>
 
@@ -28385,23 +28290,6 @@ async def academy_ia(request: Request):
             min-height: 100vh;
         }}
         
-        .guide-box {{
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(101, 39, 211, 0.15) 100%);
-            border: 2px solid rgba(139, 92, 246, 0.5);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 40px;
-            position: sticky;
-            top: 20px;
-            z-index: 100;
-        }}
-        
-        .guide-title {{ color: #a78bfa; font-size: 1.4em; font-weight: 700; margin-bottom: 15px; }}
-        .guide-content {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }}
-        .guide-item {{ padding: 12px; background: rgba(139, 92, 246, 0.1); border-radius: 10px; }}
-        .guide-label {{ color: #a78bfa; font-weight: 600; font-size: 0.95em; margin-bottom: 8px; }}
-        .guide-text {{ font-size: 0.9em; line-height: 1.5; }}
-        
         .header {{
             background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
             padding: 40px;
@@ -28451,32 +28339,6 @@ async def academy_ia(request: Request):
         
         .ai-coach h3 {{ font-size: 1.5em; margin-bottom: 15px; color: #a78bfa; }}
         .ai-coach p {{ line-height: 1.8; opacity: 0.95; }}
-        
-        .coach-input-area {{
-            margin-top: 20px;
-            display: flex;
-            gap: 10px;
-        }}
-        
-        .coach-input-area input {{
-            flex: 1;
-            padding: 12px 15px;
-            border: 2px solid rgba(139, 92, 246, 0.3);
-            border-radius: 10px;
-            background: rgba(15, 23, 42, 0.8);
-            color: #e0e6ed;
-            font-size: 0.95em;
-        }}
-        
-        .coach-input-area button {{
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-        }}
         
         .courses-grid {{
             display: grid;
@@ -28585,35 +28447,26 @@ async def academy_ia(request: Request):
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(139, 92, 246, 0.4);
         }}
+
+        .explanation-section {{
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }}
+        
+        .explanation-section h2 {{ color: #a78bfa; margin-bottom: 20px; font-size: 1.6em; }}
+        .explanation-section p {{ line-height: 1.8; margin-bottom: 15px; opacity: 0.95; }}
         
         @media (max-width: 768px) {{
             body {{ margin-left: 0; padding: 15px; }}
             .courses-grid {{ grid-template-columns: 1fr; }}
             .header h1 {{ font-size: 2em; }}
-            .guide-content {{ grid-template-columns: 1fr; }}
         }}
     </style>
 </head>
 <body>
-
-<!-- GUIDE D'UTILISATION - EN HAUT ET STICKY -->
-<div class="guide-box">
-    <div class="guide-title">💡 Comment utiliser Academy IA?</div>
-    <div class="guide-content">
-        <div class="guide-item">
-            <div class="guide-label">🎯 OBJECTIF</div>
-            <div class="guide-text">Apprendre le trading crypto from ZERO to HERO. 8+ formations progressives avec un Coach IA personnel.</div>
-        </div>
-        <div class="guide-item">
-            <div class="guide-label">📚 FORMATIONS</div>
-            <div class="guide-text">✓ 8+ cours complets<br>✓ Coach IA 24/7<br>✓ Système de progression<br>✓ Certificats à la fin</div>
-        </div>
-        <div class="guide-item">
-            <div class="guide-label">🚀 HOW-TO</div>
-            <div class="guide-text">1. Choisissez un cours<br>2. Progressez dedans<br>3. Questionnez le Coach<br>4. Débloquez Premium</div>
-        </div>
-    </div>
-</div>
 
 <div class="header">
     <h1>🎓 Academy IA</h1>
@@ -28642,9 +28495,9 @@ async def academy_ia(request: Request):
 <div class="ai-coach">
     <h3>🤖 Coach IA Personnel</h3>
     <p>Posez n'importe quelle question sur le trading, la blockchain, ou la cryptomonnaie. Le Coach IA répond 24/7 avec des explications personnalisées.</p>
-    <div class="coach-input-area">
-        <input type="text" placeholder="Ex: Comment analyser un chart? Qu'est-ce qu'un smart contract?">
-        <button>Envoyer</button>
+    <div style="margin-top: 20px; display: flex; gap: 10px;">
+        <input type="text" placeholder="Ex: Comment analyser un chart? Qu'est-ce qu'un smart contract?" style="flex: 1; padding: 12px 15px; border: 2px solid rgba(139, 92, 246, 0.3); border-radius: 10px; background: rgba(15, 23, 42, 0.8); color: #e0e6ed; font-size: 0.95em;">
+        <button style="padding: 12px 30px; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600;">Envoyer</button>
     </div>
 </div>
 
@@ -28688,7 +28541,6 @@ async def academy_ia(request: Request):
                 <li>RSI et MACD explicités</li>
                 <li>Chandeliers japonais</li>
                 <li>Patterns de reversal</li>
-                <li>Divergences et confirmations</li>
             </ul>
             <div class="progress-section">
                 <strong>Progression: 25%</strong>
@@ -28836,6 +28688,70 @@ async def academy_ia(request: Request):
     </div>
 </div>
 
+<!-- GUIDE EN BAS - PAS STICKY! -->
+<div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(101, 39, 211, 0.15) 100%); border: 2px solid rgba(139, 92, 246, 0.5); border-radius: 15px; padding: 30px; margin-top: 40px;">
+    <h2 style="color: #a78bfa; margin-bottom: 20px; font-size: 1.6em;">💡 Comment utiliser Academy IA?</h2>
+    
+    <div style="background: rgba(139, 92, 246, 0.1); border: 2px solid rgba(139, 92, 246, 0.2); border-radius: 15px; padding: 25px; margin-bottom: 25px;">
+        <h3 style="color: #a78bfa; margin-bottom: 15px; font-size: 1.3em;">❓ Qu'est-ce que c'est?</h3>
+        <p style="line-height: 1.8; opacity: 0.95;">
+            Academy IA est une plateforme d'apprentissage complète pour maîtriser le trading crypto. Vous avez accès à 8+ formations progressives, d'un niveau débutant à expert. Chaque formation contient plusieurs modules avec explications détaillées, exemples, et exercices pratiques.
+        </p>
+        <p style="line-height: 1.8; opacity: 0.95; margin-top: 15px;">
+            <strong>Avantages:</strong> Apprenez à votre rythme • Coach IA personnel 24/7 • Certificats de complétion • Système de progression (XP) • Accès lifetime
+        </p>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+        <div style="background: rgba(139, 92, 246, 0.1); padding: 20px; border-radius: 12px;">
+            <div style="color: #a78bfa; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🎯 ÉTAPES POUR COMMENCER</div>
+            <ol style="line-height: 1.8; margin-left: 20px;">
+                <li>Choisissez une formation (par niveau)</li>
+                <li>Cliquez sur "Commencer" ou "Continuer"</li>
+                <li>Lisez les modules progressivement</li>
+                <li>Posez des questions au Coach IA</li>
+                <li>Complétez pour avoir le certificat</li>
+                <li>Débloquez les formations Premium</li>
+            </ol>
+        </div>
+        
+        <div style="background: rgba(139, 92, 246, 0.1); padding: 20px; border-radius: 12px;">
+            <div style="color: #a78bfa; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">📊 FORMATIONS DISPONIBLES</div>
+            <ul style="line-height: 1.8; margin-left: 20px;">
+                <li>🟢 Débutant: 1 formation</li>
+                <li>🟡 Intermédiaire: 2 formations</li>
+                <li>🔴 Avancé: 2 formations</li>
+                <li>🔵 Spécialisé: 2 formations</li>
+                <li>💎 Premium: 2 formations</li>
+                <li>🌟 Elite: 1 formation</li>
+            </ul>
+        </div>
+        
+        <div style="background: rgba(139, 92, 246, 0.1); padding: 20px; border-radius: 12px;">
+            <div style="color: #a78bfa; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">✨ SYSTÈME DE PROGRESSION</div>
+            <ul style="line-height: 1.8; margin-left: 20px;">
+                <li>⭐ Gagnez des points XP</li>
+                <li>🏆 Montez de niveau</li>
+                <li>🎖️ Débloquez les formations Premium</li>
+                <li>📜 Recevez des certificats</li>
+                <li>🚀 Accédez aux outils Pro</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div style="background: rgba(139, 92, 246, 0.05); border-left: 4px solid #a78bfa; padding: 20px; margin-top: 25px; border-radius: 8px;">
+        <strong style="color: #a78bfa;">💡 CONSEILS:</strong>
+        <ul style="line-height: 1.8; margin-left: 20px; margin-top: 10px;">
+            <li>✓ Commencez par les bases (Débutant) même si vous avez expérience</li>
+            <li>✓ Prenez des notes pendant les formations</li>
+            <li>✓ Utilisez le Coach IA pour clarifier les concepts</li>
+            <li>✓ Pratiquez après chaque formation (backtesting, démo trading)</li>
+            <li>✓ Complétez une formation avant de commencer la prochaine</li>
+            <li>✓ Les formations Premium valent vraiment le coup!</li>
+        </ul>
+    </div>
+</div>
+
 </body>
 </html>
 """
@@ -28864,23 +28780,6 @@ async def launchpad_scanner(request: Request):
             padding: 30px;
             min-height: 100vh;
         }}
-        
-        .guide-box {{
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%);
-            border: 2px solid rgba(245, 158, 11, 0.5);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 40px;
-            position: sticky;
-            top: 20px;
-            z-index: 100;
-        }}
-        
-        .guide-title {{ color: #f59e0b; font-size: 1.4em; font-weight: 700; margin-bottom: 15px; }}
-        .guide-content {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }}
-        .guide-item {{ padding: 12px; background: rgba(245, 158, 11, 0.1); border-radius: 10px; }}
-        .guide-label {{ color: #f59e0b; font-weight: 600; font-size: 0.95em; margin-bottom: 8px; }}
-        .guide-text {{ font-size: 0.9em; line-height: 1.5; }}
         
         .header {{
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
@@ -28926,6 +28825,7 @@ async def launchpad_scanner(request: Request):
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
             gap: 25px;
+            margin-bottom: 40px;
         }}
         
         .project-card {{
@@ -29069,30 +28969,10 @@ async def launchpad_scanner(request: Request):
             .projects-grid {{ grid-template-columns: 1fr; }}
             .filters {{ grid-template-columns: 1fr; }}
             .header h1 {{ font-size: 2em; }}
-            .guide-content {{ grid-template-columns: 1fr; }}
         }}
     </style>
 </head>
 <body>
-
-<!-- GUIDE EN HAUT - STICKY -->
-<div class="guide-box">
-    <div class="guide-title">💡 Comment utiliser Launchpad Scanner?</div>
-    <div class="guide-content">
-        <div class="guide-item">
-            <div class="guide-label">🎯 OBJECTIF</div>
-            <div class="guide-text">Trouver prochains 100x! Analysez nouveaux projets, évaluez risques avec AI Score.</div>
-        </div>
-        <div class="guide-item">
-            <div class="guide-label">📊 AI SCORES</div>
-            <div class="guide-text">🟢 90+: Excellent<br>🔵 70-90: Bon<br>🔴 <70: À risque</div>
-        </div>
-        <div class="guide-item">
-            <div class="guide-label">🚀 HOW-TO</div>
-            <div class="guide-text">1. Filtrez by score<br>2. Lisez descriptions<br>3. Vérifiez badges<br>4. DYOR avant!</div>
-        </div>
-    </div>
-</div>
 
 <div class="header">
     <h1>🚀 Launchpad Scanner IA</h1>
@@ -29142,164 +29022,150 @@ async def launchpad_scanner(request: Request):
     <div class="project-card">
         <div class="project-header">
             <div class="project-info">
-                <div class="project-name">DeFiX Protocol</div>
-                <div class="project-ticker">DFX - IDO sur Ethereum</div>
-            </div>
-            <div class="ai-score-circle score-90plus">88</div>
-        </div>
-        
-        <p class="project-desc">Plateforme DeFi cross-chain avec yield aggregator IA. MVP fonctionnel avec 500+ utilisateurs beta.</p>
-        
-        <div class="badges">
-            <span class="badge badge-audit">✓ Audité</span>
-            <span class="badge badge-vc">VC: a16z</span>
-            <span class="badge badge-upcoming">À venir</span>
-        </div>
-        
-        <div class="project-stats">
-            <div class="stat">
-                <div class="stat-label">Raise</div>
-                <div class="stat-value">$2M</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Market Cap</div>
-                <div class="stat-value">$10M</div>
-            </div>
-        </div>
-        
-        <div class="actions">
-            <button class="btn btn-primary">Investir</button>
-            <button class="btn btn-secondary">Détails</button>
-        </div>
-    </div>
-    
-    <div class="project-card">
-        <div class="project-header">
-            <div class="project-info">
-                <div class="project-name">MetaWorld DAO</div>
-                <div class="project-ticker">META - Presale Polygon</div>
-            </div>
-            <div class="ai-score-circle score-70to90">75</div>
-        </div>
-        
-        <p class="project-desc">DAO pour le métavers avec gouvernance communautaire. Partenariats Decentraland + roadmap claire.</p>
-        
-        <div class="badges">
-            <span class="badge badge-audit">✓ Audité</span>
-            <span class="badge badge-live">EN DIRECT</span>
-        </div>
-        
-        <div class="project-stats">
-            <div class="stat">
-                <div class="stat-label">Raise</div>
-                <div class="stat-value">$500K</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Market Cap</div>
-                <div class="stat-value">$5M</div>
-            </div>
-        </div>
-        
-        <div class="actions">
-            <button class="btn btn-primary">Investir</button>
-            <button class="btn btn-secondary">Détails</button>
-        </div>
-    </div>
-    
-    <div class="project-card">
-        <div class="project-header">
-            <div class="project-info">
-                <div class="project-name">AI Trading Bot</div>
-                <div class="project-ticker">AITB - ICO BSC</div>
+                <div class="project-name">MetaX Protocol</div>
+                <div class="project-ticker">$MTX • IDO</div>
             </div>
             <div class="ai-score-circle score-90plus">92</div>
         </div>
-        
-        <p class="project-desc">Bot trading automatique propulsé par IA. MVP avec 1000+ utilisateurs beta et +45% ROI prouvé.</p>
-        
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Infrastructure pour les applications MetaVerse</p>
         <div class="badges">
             <span class="badge badge-audit">✓ Audité</span>
-            <span class="badge badge-vc">VC: Sequoia</span>
-            <span class="badge badge-upcoming">À venir</span>
+            <span class="badge badge-vc">✓ VC Backing</span>
         </div>
-        
         <div class="project-stats">
             <div class="stat">
-                <div class="stat-label">Raise</div>
-                <div class="stat-value">$1.5M</div>
+                <div class="stat-label">Levée</div>
+                <div class="stat-value">$5M</div>
             </div>
             <div class="stat">
-                <div class="stat-label">Market Cap</div>
-                <div class="stat-value">$15M</div>
+                <div class="stat-label">Allocation</div>
+                <div class="stat-value">$500</div>
             </div>
         </div>
-        
         <div class="actions">
             <button class="btn btn-primary">Investir</button>
-            <button class="btn btn-secondary">Détails</button>
+            <button class="btn btn-secondary">Plus d'info</button>
         </div>
     </div>
     
     <div class="project-card">
         <div class="project-header">
             <div class="project-info">
-                <div class="project-name">GreenChain</div>
-                <div class="project-ticker">GREEN - Fair Launch Solana</div>
+                <div class="project-name">AI Fund Manager</div>
+                <div class="project-ticker">$AIM • IDO</div>
             </div>
-            <div class="ai-score-circle score-below70">68</div>
+            <div class="ai-score-circle score-70to90">78</div>
         </div>
-        
-        <p class="project-desc">Blockchain carbon-neutral avec compensation automatique. Mission environnementale forte avec partenariats ONG.</p>
-        
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Gestion de portefeuille automatisée par IA</p>
         <div class="badges">
-            <span class="badge badge-upcoming">À venir</span>
+            <span class="badge badge-audit">✓ Audité</span>
         </div>
-        
         <div class="project-stats">
             <div class="stat">
-                <div class="stat-label">Type</div>
-                <div class="stat-value">Fair Launch</div>
+                <div class="stat-label">Levée</div>
+                <div class="stat-value">$2M</div>
             </div>
             <div class="stat">
-                <div class="stat-label">Risque</div>
-                <div class="stat-value">Modéré+</div>
+                <div class="stat-label">Allocation</div>
+                <div class="stat-value">$250</div>
             </div>
         </div>
-        
-
-<!-- Guide d'utilisation -->
-<div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(217, 119, 6, 0.1) 100%); border: 2px solid rgba(245, 158, 11, 0.3); border-radius: 18px; padding: 30px; margin-top: 40px;">
-    <h2 style="font-size: 1.8em; margin-bottom: 20px; color: #f59e0b;">🚀 Comment utiliser Launchpad Scanner?</h2>
+        <div class="actions">
+            <button class="btn btn-primary">Investir</button>
+            <button class="btn btn-secondary">Plus d'info</button>
+        </div>
+    </div>
     
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+    <div class="project-card">
+        <div class="project-header">
+            <div class="project-info">
+                <div class="project-name">DeFi Bridge Pro</div>
+                <div class="project-ticker">$DBP • Presale</div>
+            </div>
+            <div class="ai-score-circle score-below70">65</div>
+        </div>
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Pont de liquidité cross-chain pour DeFi</p>
+        <div class="badges">
+            <span class="badge badge-upcoming">⏳ À venir</span>
+        </div>
+        <div class="project-stats">
+            <div class="stat">
+                <div class="stat-label">Levée</div>
+                <div class="stat-value">$1M</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Allocation</div>
+                <div class="stat-value">$100</div>
+            </div>
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary">À venir</button>
+            <button class="btn btn-secondary">Wishlist</button>
+        </div>
+    </div>
+</div>
+
+<!-- GUIDE EN BAS - PAS STICKY! -->
+<div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%); border: 2px solid rgba(245, 158, 11, 0.5); border-radius: 15px; padding: 30px; margin-top: 40px;">
+    <h2 style="color: #f59e0b; margin-bottom: 20px; font-size: 1.6em;">💡 Comment utiliser Launchpad Scanner?</h2>
+    
+    <div style="background: rgba(245, 158, 11, 0.1); border: 2px solid rgba(245, 158, 11, 0.2); border-radius: 15px; padding: 25px; margin-bottom: 25px;">
+        <h3 style="color: #f59e0b; margin-bottom: 15px; font-size: 1.3em;">❓ Qu'est-ce que c'est?</h3>
+        <p style="line-height: 1.8; opacity: 0.95;">
+            Launchpad Scanner IA aide à découvrir les meilleurs nouveaux projets crypto AVANT qu'ils ne deviennent populaires. L'IA analyse automatiquement chaque projet et attribue un score de 0 à 100. Vous voyez ensuite le potentiel, les risques, et les opportunités d'investissement. C'est comme avoir un expert qui évalue les IDO pour vous!
+        </p>
+        <p style="line-height: 1.8; opacity: 0.95; margin-top: 15px;">
+            <strong>Avantages:</strong> Économiser du temps • Trouver des 100x tôt • Éviter les arnaques • Investir intelligemment
+        </p>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
         <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px;">
-            <h3 style="color: #f59e0b; margin-bottom: 10px;">🎯 Objectif</h3>
-            <p>Launchpad Scanner IA vous aide à découvrir les prochains 100x. Analysez les nouveaux projets crypto, évaluez les risques, et identifiez les meilleures opportunités avec des AI Scores.</p>
+            <div style="color: #f59e0b; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🎯 COMMENT L'UTILISER</div>
+            <ol style="line-height: 1.8; margin-left: 20px;">
+                <li>Filtrez par Score IA (90+, 70+, etc.)</li>
+                <li>Lisez la description du projet</li>
+                <li>Vérifiez les badges (Audité, VC, etc.)</li>
+                <li>Consultez les statistiques (Levée, Allocation)</li>
+                <li>Allez faire votre propre recherche (DYOR!)</li>
+                <li>Si vous aimez, cliquez "Investir"</li>
+            </ol>
         </div>
         
         <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px;">
-            <h3 style="color: #f59e0b; margin-bottom: 10px;">✨ AI Score Signification</h3>
-            <ul style="list-style: none; padding: 0;">
-                <li style="color: #22c55e;">🟢 90+: Excellent (très sûr)</li>
-                <li style="color: #3b82f6;">🔵 70-90: Bon (modéré)</li>
-                <li style="color: #ef4444;">🔴 <70: À surveiller (risqué)</li>
+            <div style="color: #f59e0b; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">📊 COMPRENDRE L'AI SCORE</div>
+            <ul style="line-height: 1.8; margin-left: 20px;">
+                <li><strong>🟢 90+:</strong> Excellent (Très sûr, audit + VC)</li>
+                <li><strong>🔵 70-90:</strong> Bon (Équipe solide, audit OK)</li>
+                <li><strong>🔴 <70:</strong> À risque (Nouveau, peu d'infos)</li>
+                <li style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;"><em>⚠️ Le score n'est PAS une garantie!</em></li>
             </ul>
         </div>
         
         <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px;">
-            <h3 style="color: #f59e0b; margin-bottom: 10px;">🚀 Comment l'utiliser</h3>
-            <ol style="margin: 0; padding-left: 20px;">
-                <li>Filtrez par statut/score/blockchain</li>
-                <li>Lisez les descriptions complètes</li>
-                <li>Vérifiez les badges (audit, VC)</li>
-                <li>Investissez avec prudence</li>
-            </ol>
+            <div style="color: #f59e0b; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">⚠️ IMPORTANT - DYOR!</div>
+            <ul style="line-height: 1.8; margin-left: 20px;">
+                <li>✓ Lisez le whitepaper</li>
+                <li>✓ Vérifiez le code sur GitHub</li>
+                <li>✓ Cherchez des critiques indépendantes</li>
+                <li>✓ Commencez petit (test 100$)</li>
+                <li>✓ Ne mettez JAMAIS tout dedans</li>
+                <li>✗ Ne croyez PAS aux promesses "100x"</li>
+            </ul>
         </div>
     </div>
     
-    <div style="background: rgba(245, 158, 11, 0.15); padding: 20px; border-radius: 12px; margin-top: 20px;">
-        <h3 style="color: #f59e0b; margin-bottom: 10px;">⚠️ Avertissement Important</h3>
-        <p>Les analyses IA donnent une indication, pas une garantie. Faites vos propres recherches (DYOR) avant d'investir. Crypto = risque élevé!</p>
+    <div style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #f59e0b; padding: 20px; margin-top: 25px; border-radius: 8px;">
+        <strong style="color: #f59e0b;">💡 STRATÉGIE RECOMMANDÉE:</strong>
+        <p style="line-height: 1.8; margin-top: 10px;">
+            1. Filtrez par Score 85+ seulement<br>
+            2. Vérifiez les badges (Audité + VC = meilleur)<br>
+            3. Lisez le whitepaper (5-10 minutes)<br>
+            4. Investissez 1-2% de votre portefeuille MAX<br>
+            5. Diversifiez entre 5-10 projets prometteurs<br>
+            6. Attendez 6-12 mois pour les résultats<br>
+            7. Préparez-vous à perdre (certains échoueront)
+        </p>
     </div>
 </div>
 

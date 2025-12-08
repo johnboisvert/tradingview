@@ -28260,9 +28260,102 @@ async def launchpad_scanner(request: Request):
 # 🔗 PORTFOLIO TRACKER - ENDPOINTS API
 # ================================================================================
 
+# ================================================================================
+# 🔗 PORTFOLIO TRACKER - FONCTIONS DB
+# ================================================================================
+
+import sqlite3
+from datetime import datetime
+
+def init_portfolio_db():
+    """Initialiser DB Portfolio"""
+    try:
+        db_path = '/tmp/portfolio.db'
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute("""CREATE TABLE IF NOT EXISTS portfolio_holdings (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER,
+            exchange TEXT,
+            symbol TEXT,
+            amount REAL,
+            price REAL,
+            value REAL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )""")
+        conn.commit()
+        conn.close()
+    except:
+        pass
+
+def save_holdings(user_id, exchange, holdings_list):
+    """Sauvegarder les holdings"""
+    try:
+        db_path = '/tmp/portfolio.db'
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        
+        # Effacer les anciens holdings de cet exchange
+        c.execute('DELETE FROM portfolio_holdings WHERE user_id=? AND exchange=?', 
+                 (user_id, exchange))
+        
+        # Ajouter les nouveaux
+        for symbol, amount, price in holdings_list:
+            c.execute("""INSERT INTO portfolio_holdings 
+                        (user_id, exchange, symbol, amount, price, value)
+                        VALUES (?, ?, ?, ?, ?, ?)""",
+                     (user_id, exchange, symbol, amount, price, amount * price))
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error: {e}")
+
+def get_all_holdings(user_id):
+    """Récupérer tous les holdings"""
+    try:
+        db_path = '/tmp/portfolio.db'
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        
+        c.execute("""SELECT DISTINCT exchange FROM portfolio_holdings WHERE user_id=?""", 
+                 (user_id,))
+        exchanges = [row[0] for row in c.fetchall()]
+        
+        result = {}
+        total = 0
+        
+        for exchange in exchanges:
+            c.execute("""SELECT symbol, amount, price, value FROM portfolio_holdings 
+                        WHERE user_id=? AND exchange=?""", 
+                     (user_id, exchange))
+            holdings = c.fetchall()
+            
+            exch_value = sum(h[3] for h in holdings)
+            total += exch_value
+            
+            result[exchange] = {
+                'value': exch_value,
+                'count': len(holdings),
+                'holdings': [{'symbol': h[0], 'amount': h[1], 'price': h[2], 'value': h[3]} 
+                            for h in holdings]
+            }
+        
+        conn.close()
+        
+        return {
+            'success': True,
+            'total_portfolio_value': total,
+            'number_of_exchanges': len(result),
+            'exchanges': result
+        }
+    except Exception as e:
+        return {'success': False, 'exchanges': {}}
+
+
 @app.post("/api/portfolio/connect")
 async def connect_exchange(request: Request):
-    """Connecter un exchange et récupérer les holdings"""
+    """Connecter un exchange"""
     try:
         data = await request.json()
         exchange = data.get('exchange', '').lower()
@@ -28271,6 +28364,32 @@ async def connect_exchange(request: Request):
         
         if not exchange or not api_key or not api_secret:
             return JSONResponse({'success': False, 'message': 'Données manquantes'})
+        
+        user_id = request.session.get('user_id', 1)
+        
+        # Générer des holdings de démo pour cet exchange
+        demo_holdings = {
+            'mexc': [('BTC', 0.5, 42000), ('ETH', 5, 2300), ('USDT', 1087.50, 1)],
+            'binance': [('BTC', 0.3, 42000), ('ETH', 10, 2300), ('BNB', 50, 500)],
+            'coinbase': [('BTC', 1, 42000), ('ETH', 2, 2300)],
+            'kraken': [('BTC', 0.75, 42000), ('ETH', 7, 2300), ('XRP', 1000, 2)],
+        }
+        
+        holdings = demo_holdings.get(exchange, [('BTC', 0.1, 42000)])
+        
+        # Sauvegarder dans la DB
+        save_holdings(user_id, exchange.upper(), holdings)
+        
+        total = sum(a * p for _, a, p in holdings)
+        
+        return JSONResponse({
+            'success': True,
+            'message': f'{exchange.upper()} connecté avec succès!',
+            'holdings_count': len(holdings),
+            'total_value': total
+        })
+    except Exception as e:
+        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
         
         # Pour l'instant, retourner un succès de démo
         # TODO: Implémenter ccxt pour les vraies connexions
@@ -28287,23 +28406,9 @@ async def connect_exchange(request: Request):
 async def get_portfolio_data(request: Request):
     """Récupérer les données du portfolio"""
     try:
-        # Données de démo
-        data = {
-            'success': True,
-            'total_portfolio_value': 24587.50,
-            'number_of_exchanges': 1,
-            'exchanges': {
-                'BINANCE': {
-                    'value': 24587.50,
-                    'count': 3,
-                    'holdings': [
-                        {'symbol': 'BTC', 'amount': 0.5, 'price': 42000, 'value': 21000},
-                        {'symbol': 'ETH', 'amount': 5, 'price': 2300, 'value': 11500},
-                        {'symbol': 'USDT', 'amount': 1087.50, 'price': 1, 'value': 1087.50}
-                    ]
-                }
-            }
-        }
-        return JSONResponse(data)
+        user_id = request.session.get('user_id', 1)
+        return JSONResponse(get_all_holdings(user_id))
+    except Exception as e:
+        return JSONResponse({'success': False, 'message': str(e), 'exchanges': {}})
     except Exception as e:
         return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})

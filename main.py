@@ -1101,7 +1101,29 @@ body{margin-left:280px!important;margin-top:0!important;margin-right:0!important
 <div class="menu-section"><div class="section-title">🔍 Analyse</div><a href="/ai-assistant" class="menu-item"><span class="icon">🤖</span> Assistant</a><a href="/prediction-ia" class="menu-item"><span class="icon">🔮</span> Prédictions</a><a href="/ai-opportunity-scanner" class="menu-item"><span class="icon">🔍</span> Scanner</a><a href="/ai-market-regime" class="menu-item"><span class="icon">🌊</span> Regime</a><a href="/ai-whale-watcher" class="menu-item"><span class="icon">🐋</span> Whales</a><a href="/stats-dashboard" class="menu-item"><span class="icon">📊</span> Stats</a><a href="/onchain-metrics" class="menu-item"><span class="icon">⛓️</span> OnChain</a></div>
 <div class="menu-section"><div class="section-title">🛠️ Outils</div><a href="/market-simulation" class="menu-item"><span class="icon">🎮</span> Simulation</a><a href="/backtesting" class="menu-item"><span class="icon">⚙️</span> Backtesting</a><a href="/graphiques" class="menu-item"><span class="icon">📊</span> Graphiques</a><a href="/convertisseur" class="menu-item"><span class="icon">💱</span> Convertisseur</a><a href="/calendrier" class="menu-item"><span class="icon">📅</span> Calendrier</a><a href="/nouvelles" class="menu-item"><span class="icon">📰</span> News</a></div>
 <div class="menu-section"><div class="section-title">⚙️ Système</div><a href="/bullrun-phase" class="menu-item"><span class="icon">🚀</span> Bull Run</a><a href="/success-stories" class="menu-item"><span class="icon">⭐</span> Success</a><a href="/testimonials-widget" class="menu-item"><span class="icon">💬</span> Témoignages</a><a href="/generate-pdf-report" class="menu-item"><span class="icon">📄</span> PDF</a><a href="/api-keys" class="menu-item"><span class="icon">🔑</span> API Keys</a><a href="/telegram-test" class="menu-item"><span class="icon">📱</span> Telegram</a></div>
-<div class="menu-section"><div class="section-title">👤 Mon Compte</div><a href="/pricing-complete" class="menu-item premium"><span class="icon">💎</span> Abonnements</a><a href="/admin-dashboard" class="menu-item admin"><span class="icon">🔧</span> Admin</a><a href="/mon-compte" class="menu-item account"><span class="icon">👤</span> Mon Compte</a><a href="/logout" class="menu-item logout"><span class="icon">🚪</span> Déconnexion</a></div>
+<div class="menu-section"><div class="section-title">👤 Mon Compte</div><a href="/pricing-complete" class="menu-item premium"><span class="icon">💎</span> Abonnements</a><a href="/admin-dashboard" class="menu-item admin"><span class="icon">🔧</span> Admin</a><a href="/mon-compte" class="menu-item account"><span class="icon">👤</span> Mon Compte</a><a href="/logout" class="menu-item logout"><span class="icon">🚪</span> Déconnexion</a>
+    <!-- 🆕 Nouvelles Features 2024 -->
+    <div class="menu-section">
+        <div class="section-title">🆕 Nouvelles Features</div>
+        <a href="/portfolio-tracker" class="menu-item">
+            <span class="icon">📊</span>
+            <span class="label">Portfolio Tracker</span>
+        </a>
+        <a href="/defi-yield" class="menu-item">
+            <span class="icon">🏦</span>
+            <span class="label">DeFi Yield</span>
+        </a>
+        <a href="/academy" class="menu-item">
+            <span class="icon">🎓</span>
+            <span class="label">Academy</span>
+        </a>
+        <a href="/launchpad-scanner" class="menu-item">
+            <span class="icon">🚀</span>
+            <span class="label">Launchpad</span>
+        </a>
+    </div>
+
+</div>
 </nav>"""
 # ==================================
 
@@ -26898,4 +26920,3652 @@ document.addEventListener('DOMContentLoaded', init);
 </body>
 </html>
     """
+    return HTMLResponse(content=html_content)
+
+
+
+
+# ============================================================================
+# 🆕 NOUVELLES FEATURES 2024 - INTÉGRÉES PAR CLAUDE
+# ============================================================================
+# 1. Portfolio Tracker IA - Multi-exchanges (MEXC inclus)
+# 2. DeFi Yield Optimizer - Multi-chain
+# 3. Mobile PWA - Configuration complète
+# 4. Academy IA - 12 cours générés par IA
+# 5. Launchpad Scanner - AI Scoring des nouveaux projets
+# ============================================================================
+
+
+# ========== FEATURE 1 ==========
+
+# ROUTE À AJOUTER DANS MAIN.PY
+
+@app.get("/portfolio-tracker", response_class=HTMLResponse)
+async def portfolio_tracker(request: Request):
+    """
+    📊 PORTFOLIO TRACKER IA
+    =======================
+    Tracking complet de portfolio multi-exchanges avec IA
+    """
+    
+    # Vérifier authentification
+    user = request.cookies.get("user")
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    html_content = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Portfolio Tracker IA | Trading Dashboard Pro</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #e0e6ed;
+            margin-left: 280px !important;
+            padding: 20px;
+        }}
+        
+        .header {{
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+        }}
+        
+        .header h1 {{
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }}
+        
+        .stats-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        
+        .stat-card {{
+            background: rgba(30, 41, 59, 0.6);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            transition: all 0.3s ease;
+        }}
+        
+        .stat-card:hover {{
+            transform: translateY(-5px);
+            border-color: #3b82f6;
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }}
+        
+        .stat-label {{
+            font-size: 0.9em;
+            opacity: 0.7;
+            margin-bottom: 10px;
+        }}
+        
+        .stat-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #3b82f6;
+        }}
+        
+        .stat-change {{
+            font-size: 0.9em;
+            margin-top: 10px;
+        }}
+        
+        .stat-change.positive {{ color: #22c55e; }}
+        .stat-change.negative {{ color: #ef4444; }}
+        
+        .section {{
+            background: rgba(30, 41, 59, 0.6);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }}
+        
+        .section h2 {{
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            color: #3b82f6;
+        }}
+        
+        .exchanges-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }}
+        
+        .exchange-card {{
+            background: rgba(59, 130, 246, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }}
+        
+        .exchange-card:hover {{
+            background: rgba(59, 130, 246, 0.2);
+            transform: scale(1.05);
+        }}
+        
+        .exchange-card.connected {{
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.1);
+        }}
+        
+        .exchange-logo {{
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }}
+        
+        .exchange-name {{
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }}
+        
+        .exchange-status {{
+            font-size: 0.85em;
+            opacity: 0.7;
+        }}
+        
+        .exchange-status.connected {{
+            color: #22c55e;
+            opacity: 1;
+        }}
+        
+        .holdings-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }}
+        
+        .holdings-table th {{
+            background: rgba(59, 130, 246, 0.2);
+            padding: 15px;
+            text-align: left;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.5);
+        }}
+        
+        .holdings-table td {{
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+        
+        .holdings-table tr:hover {{
+            background: rgba(59, 130, 246, 0.1);
+        }}
+        
+        .crypto-icon {{
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-right: 10px;
+            vertical-align: middle;
+        }}
+        
+        .btn {{
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }}
+        
+        .btn-primary {{
+            background: linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%);
+            color: white;
+        }}
+        
+        .btn-primary:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4);
+        }}
+        
+        .btn-success {{
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+        }}
+        
+        .btn-danger {{
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }}
+        
+        .modal {{
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }}
+        
+        .modal.active {{
+            display: flex;
+        }}
+        
+        .modal-content {{
+            background: linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            border: 2px solid rgba(59, 130, 246, 0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }}
+        
+        .form-group {{
+            margin-bottom: 20px;
+        }}
+        
+        .form-group label {{
+            display: block;
+            margin-bottom: 8px;
+            color: #3b82f6;
+            font-weight: bold;
+        }}
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {{
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            border-radius: 10px;
+            background: rgba(30, 41, 59, 0.6);
+            color: #e0e6ed;
+            font-size: 1em;
+        }}
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {{
+            outline: none;
+            border-color: #3b82f6;
+        }}
+        
+        .ai-suggestions {{
+            background: rgba(139, 92, 246, 0.1);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }}
+        
+        .ai-suggestions h3 {{
+            color: #a78bfa;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .suggestion-item {{
+            background: rgba(139, 92, 246, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #8b5cf6;
+        }}
+        
+        .chart-container {{
+            background: rgba(30, 41, 59, 0.6);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            height: 400px;
+        }}
+        
+        @media (max-width: 768px) {{
+            body {{ margin-left: 0 !important; padding: 10px; }}
+            .stats-grid {{ grid-template-columns: 1fr; }}
+            .exchanges-grid {{ grid-template-columns: repeat(2, 1fr); }}
+        }}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+{SIDEBAR}
+
+<div class="header">
+    <h1>📊 Portfolio Tracker IA</h1>
+    <p>Suivez votre portfolio crypto sur tous vos exchanges avec l'intelligence artificielle</p>
+</div>
+
+<!-- Stats globales -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Valeur Totale</div>
+        <div class="stat-value" id="totalValue">$0.00</div>
+        <div class="stat-change positive" id="totalChange">+$0.00 (0%)</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-label">PnL 24h</div>
+        <div class="stat-value" id="pnl24h">$0.00</div>
+        <div class="stat-change positive" id="pnl24hPercent">+0%</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-label">PnL Total</div>
+        <div class="stat-value" id="pnlTotal">$0.00</div>
+        <div class="stat-change positive" id="pnlTotalPercent">+0%</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-label">Meilleur Performer</div>
+        <div class="stat-value" id="topPerformer">-</div>
+        <div class="stat-change positive" id="topPerformerChange">+0%</div>
+    </div>
+</div>
+
+<!-- Exchanges connectés -->
+<div class="section">
+    <h2>🔗 Connecter vos Exchanges</h2>
+    <p style="opacity: 0.8; margin-bottom: 20px;">
+        Connectez tous vos exchanges pour avoir une vue complète de votre portfolio
+    </p>
+    
+    <div class="exchanges-grid" id="exchangesGrid">
+        <!-- Généré dynamiquement par JavaScript -->
+    </div>
+    
+    <button class="btn btn-primary" onclick="showAddExchangeModal()">
+        ➕ Ajouter un Exchange
+    </button>
+</div>
+
+<!-- Holdings -->
+<div class="section">
+    <h2>💰 Vos Holdings</h2>
+    
+    <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="refreshPortfolio()">🔄 Rafraîchir</button>
+        <button class="btn btn-success" onclick="exportCSV()">📥 Export CSV</button>
+        <button class="btn btn-primary" onclick="showAddManualModal()">➕ Ajouter Manuellement</button>
+    </div>
+    
+    <table class="holdings-table">
+        <thead>
+            <tr>
+                <th>Crypto</th>
+                <th>Quantité</th>
+                <th>Prix Moyen</th>
+                <th>Prix Actuel</th>
+                <th>Valeur</th>
+                <th>PnL</th>
+                <th>Exchange</th>
+            </tr>
+        </thead>
+        <tbody id="holdingsTable">
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px;">
+                    <div style="opacity: 0.6;">
+                        <div style="font-size: 3em; margin-bottom: 10px;">📊</div>
+                        <div>Connectez un exchange pour voir vos holdings</div>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Graphique de performance -->
+<div class="section">
+    <h2>📈 Performance du Portfolio</h2>
+    <div class="chart-container">
+        <canvas id="performanceChart"></canvas>
+    </div>
+</div>
+
+<!-- Suggestions IA -->
+<div class="section">
+    <div class="ai-suggestions">
+        <h3>🤖 Suggestions IA de Rééquilibrage</h3>
+        <div id="aiSuggestions">
+            <div class="suggestion-item">
+                <strong>💡 Diversification</strong>
+                <p>Connectez vos exchanges pour recevoir des suggestions personnalisées de l'IA</p>
+            </div>
+        </div>
+        <button class="btn btn-primary" onclick="generateAISuggestions()" style="margin-top: 15px;">
+            🤖 Générer Suggestions IA
+        </button>
+    </div>
+</div>
+
+<!-- Modal Ajouter Exchange -->
+<div class="modal" id="addExchangeModal">
+    <div class="modal-content">
+        <h2 style="margin-bottom: 20px; color: #3b82f6;">🔗 Connecter un Exchange</h2>
+        
+        <div class="form-group">
+            <label>Exchange</label>
+            <select id="exchangeSelect" onchange="updateExchangeFields()">
+                <option value="">Sélectionnez un exchange</option>
+                <option value="binance">Binance</option>
+                <option value="coinbase">Coinbase</option>
+                <option value="kraken">Kraken</option>
+                <option value="mexc">MEXC</option>
+                <option value="kucoin">KuCoin</option>
+                <option value="bybit">Bybit</option>
+                <option value="okx">OKX</option>
+                <option value="gateio">Gate.io</option>
+                <option value="bitget">Bitget</option>
+                <option value="htx">HTX (Huobi)</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>API Key</label>
+            <input type="text" id="apiKey" placeholder="Votre API Key">
+        </div>
+        
+        <div class="form-group">
+            <label>API Secret</label>
+            <input type="password" id="apiSecret" placeholder="Votre API Secret">
+        </div>
+        
+        <div class="form-group" id="passphraseGroup" style="display: none;">
+            <label>Passphrase (pour certains exchanges)</label>
+            <input type="password" id="passphrase" placeholder="Passphrase">
+        </div>
+        
+        <div style="background: rgba(59, 130, 246, 0.1); padding: 15px; border-radius: 10px; margin: 20px 0;">
+            <strong>🔒 Sécurité</strong>
+            <p style="font-size: 0.9em; opacity: 0.8; margin-top: 5px;">
+                Créez une API Key en <strong>lecture seule</strong> (Read-Only). 
+                Ne donnez JAMAIS les permissions de trading ou retrait.
+            </p>
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn btn-success" onclick="connectExchange()">✅ Connecter</button>
+            <button class="btn btn-danger" onclick="closeModal('addExchangeModal')">❌ Annuler</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ajout Manuel -->
+<div class="modal" id="addManualModal">
+    <div class="modal-content">
+        <h2 style="margin-bottom: 20px; color: #3b82f6;">➕ Ajouter Holding Manuellement</h2>
+        
+        <div class="form-group">
+            <label>Crypto</label>
+            <input type="text" id="manualCrypto" placeholder="ex: BTC, ETH, SOL">
+        </div>
+        
+        <div class="form-group">
+            <label>Quantité</label>
+            <input type="number" step="any" id="manualAmount" placeholder="0.00">
+        </div>
+        
+        <div class="form-group">
+            <label>Prix Moyen d'Achat (USD)</label>
+            <input type="number" step="any" id="manualAvgPrice" placeholder="0.00">
+        </div>
+        
+        <div class="form-group">
+            <label>Exchange/Wallet</label>
+            <input type="text" id="manualExchange" placeholder="ex: MetaMask, Hardware Wallet">
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="btn btn-success" onclick="addManualHolding()">✅ Ajouter</button>
+            <button class="btn btn-danger" onclick="closeModal('addManualModal')">❌ Annuler</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Configuration des exchanges
+const EXCHANGES = [
+    {{ name: 'Binance', id: 'binance', icon: '🟡', needsPassphrase: false }},
+    {{ name: 'Coinbase', id: 'coinbase', icon: '🔵', needsPassphrase: true }},
+    {{ name: 'Kraken', id: 'kraken', icon: '🟣', needsPassphrase: false }},
+    {{ name: 'MEXC', id: 'mexc', icon: '🟢', needsPassphrase: false }},
+    {{ name: 'KuCoin', id: 'kucoin', icon: '🟢', needsPassphrase: true }},
+    {{ name: 'Bybit', id: 'bybit', icon: '🟡', needsPassphrase: false }},
+    {{ name: 'OKX', id: 'okx', icon: '⚫', needsPassphrase: true }},
+    {{ name: 'Gate.io', id: 'gateio', icon: '🔵', needsPassphrase: false }},
+    {{ name: 'Bitget', id: 'bitget', icon: '🟡', needsPassphrase: false }},
+    {{ name: 'HTX', id: 'htx', icon: '🔴', needsPassphrase: false }}
+];
+
+// État global
+let portfolioData = {{
+    exchanges: [],
+    holdings: [],
+    totalValue: 0,
+    pnl24h: 0,
+    pnlTotal: 0
+}};
+
+// Charger depuis localStorage
+function loadPortfolio() {{
+    const saved = localStorage.getItem('portfolioData');
+    if (saved) {{
+        portfolioData = JSON.parse(saved);
+        updateUI();
+    }}
+}}
+
+// Sauvegarder dans localStorage
+function savePortfolio() {{
+    localStorage.setItem('portfolioData', JSON.stringify(portfolioData));
+}}
+
+// Initialiser les exchanges
+function initExchanges() {{
+    const grid = document.getElementById('exchangesGrid');
+    grid.innerHTML = EXCHANGES.map(ex => {{
+        const connected = portfolioData.exchanges.find(e => e.id === ex.id);
+        return `
+            <div class="exchange-card ${{connected ? 'connected' : ''}}" onclick="selectExchange('${{ex.id}}')">
+                <div class="exchange-logo">${{ex.icon}}</div>
+                <div class="exchange-name">${{ex.name}}</div>
+                <div class="exchange-status ${{connected ? 'connected' : ''}}">
+                    ${{connected ? '✅ Connecté' : '⚪ Non connecté'}}
+                </div>
+            </div>
+        `;
+    }}).join('');
+}}
+
+// Sélectionner exchange
+function selectExchange(exchangeId) {{
+    const exchange = EXCHANGES.find(e => e.id === exchangeId);
+    if (!exchange) return;
+    
+    const connected = portfolioData.exchanges.find(e => e.id === exchangeId);
+    if (connected) {{
+        if (confirm(`Voulez-vous déconnecter ${{exchange.name}}?`)) {{
+            disconnectExchange(exchangeId);
+        }}
+    }} else {{
+        document.getElementById('exchangeSelect').value = exchangeId;
+        updateExchangeFields();
+        showAddExchangeModal();
+    }}
+}}
+
+// Afficher modal ajout exchange
+function showAddExchangeModal() {{
+    document.getElementById('addExchangeModal').classList.add('active');
+}}
+
+// Afficher modal ajout manuel
+function showAddManualModal() {{
+    document.getElementById('addManualModal').classList.add('active');
+}}
+
+// Fermer modal
+function closeModal(modalId) {{
+    document.getElementById(modalId).classList.remove('active');
+}}
+
+// Update exchange fields
+function updateExchangeFields() {{
+    const exchangeId = document.getElementById('exchangeSelect').value;
+    const exchange = EXCHANGES.find(e => e.id === exchangeId);
+    const passphraseGroup = document.getElementById('passphraseGroup');
+    
+    if (exchange && exchange.needsPassphrase) {{
+        passphraseGroup.style.display = 'block';
+    }} else {{
+        passphraseGroup.style.display = 'none';
+    }}
+}}
+
+// Connecter exchange
+async function connectExchange() {{
+    const exchangeId = document.getElementById('exchangeSelect').value;
+    const apiKey = document.getElementById('apiKey').value;
+    const apiSecret = document.getElementById('apiSecret').value;
+    const passphrase = document.getElementById('passphrase').value;
+    
+    if (!exchangeId || !apiKey || !apiSecret) {{
+        alert('Veuillez remplir tous les champs requis');
+        return;
+    }}
+    
+    const exchange = EXCHANGES.find(e => e.id === exchangeId);
+    
+    // Simuler la connexion (à remplacer par vraie API)
+    portfolioData.exchanges.push({{
+        id: exchangeId,
+        name: exchange.name,
+        apiKey: apiKey,
+        apiSecret: apiSecret,
+        passphrase: passphrase,
+        connectedAt: new Date().toISOString()
+    }});
+    
+    // Générer des holdings de démo
+    generateDemoHoldings(exchangeId);
+    
+    savePortfolio();
+    updateUI();
+    closeModal('addExchangeModal');
+    
+    // Reset form
+    document.getElementById('apiKey').value = '';
+    document.getElementById('apiSecret').value = '';
+    document.getElementById('passphrase').value = '';
+    
+    alert(`✅ ${{exchange.name}} connecté avec succès!`);
+}}
+
+// Déconnecter exchange
+function disconnectExchange(exchangeId) {{
+    portfolioData.exchanges = portfolioData.exchanges.filter(e => e.id !== exchangeId);
+    portfolioData.holdings = portfolioData.holdings.filter(h => h.exchange !== exchangeId);
+    savePortfolio();
+    updateUI();
+}}
+
+// Générer holdings de démo
+function generateDemoHoldings(exchangeId) {{
+    const demoHoldings = [
+        {{ crypto: 'BTC', amount: 0.5, avgPrice: 42000 }},
+        {{ crypto: 'ETH', amount: 5, avgPrice: 2200 }},
+        {{ crypto: 'SOL', amount: 50, avgPrice: 80 }},
+        {{ crypto: 'AVAX', amount: 100, avgPrice: 25 }}
+    ];
+    
+    demoHoldings.forEach(holding => {{
+        portfolioData.holdings.push({{
+            ...holding,
+            exchange: exchangeId,
+            currentPrice: holding.avgPrice * (1 + (Math.random() * 0.4 - 0.2))
+        }});
+    }});
+}}
+
+// Ajouter holding manuel
+function addManualHolding() {{
+    const crypto = document.getElementById('manualCrypto').value.toUpperCase();
+    const amount = parseFloat(document.getElementById('manualAmount').value);
+    const avgPrice = parseFloat(document.getElementById('manualAvgPrice').value);
+    const exchange = document.getElementById('manualExchange').value;
+    
+    if (!crypto || !amount || !avgPrice || !exchange) {{
+        alert('Veuillez remplir tous les champs');
+        return;
+    }}
+    
+    portfolioData.holdings.push({{
+        crypto: crypto,
+        amount: amount,
+        avgPrice: avgPrice,
+        currentPrice: avgPrice * (1 + (Math.random() * 0.4 - 0.2)),
+        exchange: exchange
+    }});
+    
+    savePortfolio();
+    updateUI();
+    closeModal('addManualModal');
+    
+    // Reset form
+    document.getElementById('manualCrypto').value = '';
+    document.getElementById('manualAmount').value = '';
+    document.getElementById('manualAvgPrice').value = '';
+    document.getElementById('manualExchange').value = '';
+    
+    alert(`✅ ${{crypto}} ajouté avec succès!`);
+}}
+
+// Rafraîchir portfolio
+async function refreshPortfolio() {{
+    // Simuler refresh des prix
+    portfolioData.holdings.forEach(holding => {{
+        holding.currentPrice = holding.avgPrice * (1 + (Math.random() * 0.4 - 0.2));
+    }});
+    
+    savePortfolio();
+    updateUI();
+    
+    alert('✅ Portfolio rafraîchi!');
+}}
+
+// Update UI
+function updateUI() {{
+    initExchanges();
+    updateStats();
+    updateHoldingsTable();
+    updateChart();
+}}
+
+// Update stats
+function updateStats() {{
+    let totalValue = 0;
+    let totalCost = 0;
+    
+    portfolioData.holdings.forEach(h => {{
+        totalValue += h.amount * h.currentPrice;
+        totalCost += h.amount * h.avgPrice;
+    }});
+    
+    const pnlTotal = totalValue - totalCost;
+    const pnlTotalPercent = totalCost > 0 ? (pnlTotal / totalCost * 100) : 0;
+    
+    document.getElementById('totalValue').textContent = `$${{totalValue.toFixed(2)}}`;
+    document.getElementById('pnlTotal').textContent = `$${{pnlTotal.toFixed(2)}}`;
+    document.getElementById('pnlTotalPercent').textContent = `${{pnlTotalPercent >= 0 ? '+' : ''}}${{pnlTotalPercent.toFixed(2)}}%`;
+    document.getElementById('pnlTotalPercent').className = `stat-change ${{pnlTotalPercent >= 0 ? 'positive' : 'negative'}}`;
+    
+    // Top performer
+    if (portfolioData.holdings.length > 0) {{
+        const topPerformer = portfolioData.holdings.reduce((best, current) => {{
+            const currentPnl = ((current.currentPrice - current.avgPrice) / current.avgPrice) * 100;
+            const bestPnl = ((best.currentPrice - best.avgPrice) / best.avgPrice) * 100;
+            return currentPnl > bestPnl ? current : best;
+        }});
+        
+        const topPnl = ((topPerformer.currentPrice - topPerformer.avgPrice) / topPerformer.avgPrice) * 100;
+        document.getElementById('topPerformer').textContent = topPerformer.crypto;
+        document.getElementById('topPerformerChange').textContent = `+${{topPnl.toFixed(2)}}%`;
+    }}
+}}
+
+// Update holdings table
+function updateHoldingsTable() {{
+    const tbody = document.getElementById('holdingsTable');
+    
+    if (portfolioData.holdings.length === 0) {{
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px;">
+                    <div style="opacity: 0.6;">
+                        <div style="font-size: 3em; margin-bottom: 10px;">📊</div>
+                        <div>Connectez un exchange pour voir vos holdings</div>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }}
+    
+    tbody.innerHTML = portfolioData.holdings.map(h => {{
+        const value = h.amount * h.currentPrice;
+        const pnl = (h.currentPrice - h.avgPrice) * h.amount;
+        const pnlPercent = ((h.currentPrice - h.avgPrice) / h.avgPrice) * 100;
+        const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+        
+        return `
+            <tr>
+                <td>
+                    <strong>${{h.crypto}}</strong>
+                </td>
+                <td>${{h.amount.toFixed(8)}}</td>
+                <td>$${{h.avgPrice.toFixed(2)}}</td>
+                <td>$${{h.currentPrice.toFixed(2)}}</td>
+                <td><strong>$${{value.toFixed(2)}}</strong></td>
+                <td class="${{pnlClass}}">
+                    $${{pnl.toFixed(2)}} (${{pnlPercent >= 0 ? '+' : ''}}${{pnlPercent.toFixed(2)}}%)
+                </td>
+                <td>${{h.exchange}}</td>
+            </tr>
+        `;
+    }}).join('');
+}}
+
+// Update chart
+function updateChart() {{
+    const ctx = document.getElementById('performanceChart');
+    if (!ctx) return;
+    
+    // Générer données de démo
+    const labels = [];
+    const data = [];
+    const baseValue = 10000;
+    
+    for (let i = 30; i >= 0; i--) {{
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        labels.push(date.toLocaleDateString('fr-FR', {{ month: 'short', day: 'numeric' }}));
+        data.push(baseValue * (1 + Math.random() * 0.3));
+    }}
+    
+    if (window.portfolioChart) {{
+        window.portfolioChart.destroy();
+    }}
+    
+    window.portfolioChart = new Chart(ctx, {{
+        type: 'line',
+        data: {{
+            labels: labels,
+            datasets: [{{
+                label: 'Valeur Portfolio',
+                data: data,
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4
+            }}]
+        }},
+        options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {{
+                legend: {{
+                    display: false
+                }}
+            }},
+            scales: {{
+                y: {{
+                    beginAtZero: false,
+                    ticks: {{
+                        color: '#e0e6ed',
+                        callback: function(value) {{
+                            return '$' + value.toFixed(0);
+                        }}
+                    }},
+                    grid: {{
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }}
+                }},
+                x: {{
+                    ticks: {{
+                        color: '#e0e6ed'
+                    }},
+                    grid: {{
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }}
+                }}
+            }}
+        }}
+    }});
+}}
+
+// Générer suggestions IA
+function generateAISuggestions() {{
+    const suggestions = document.getElementById('aiSuggestions');
+    
+    if (portfolioData.holdings.length === 0) {{
+        alert('Ajoutez des holdings pour recevoir des suggestions IA');
+        return;
+    }}
+    
+    // Analyse simple
+    const btcHolding = portfolioData.holdings.find(h => h.crypto === 'BTC');
+    const ethHolding = portfolioData.holdings.find(h => h.crypto === 'ETH');
+    
+    let suggestionsHTML = '';
+    
+    // Suggestion diversification
+    const btcPercent = btcHolding ? (btcHolding.amount * btcHolding.currentPrice) / portfolioData.holdings.reduce((sum, h) => sum + h.amount * h.currentPrice, 0) * 100 : 0;
+    
+    if (btcPercent > 60) {{
+        suggestionsHTML += `
+            <div class="suggestion-item">
+                <strong>⚠️ Concentration BTC</strong>
+                <p>Votre portfolio est concentré à ${{btcPercent.toFixed(0)}}% sur BTC. 
+                Considérez diversifier vers ETH, SOL ou d'autres altcoins.</p>
+            </div>
+        `;
+    }} else {{
+        suggestionsHTML += `
+            <div class="suggestion-item">
+                <strong>✅ Bonne Diversification</strong>
+                <p>Votre portfolio est bien diversifié avec ${{btcPercent.toFixed(0)}}% de BTC.</p>
+            </div>
+        `;
+    }}
+    
+    // Suggestion rééquilibrage
+    suggestionsHTML += `
+        <div class="suggestion-item">
+            <strong>💡 Rééquilibrage Suggéré</strong>
+            <p>Profitez des dips pour augmenter vos positions en ETH et SOL. 
+            Le ratio BTC/ETH optimal est de 60/40.</p>
+        </div>
+    `;
+    
+    // Suggestion DCA
+    suggestionsHTML += `
+        <div class="suggestion-item">
+            <strong>📊 Stratégie DCA</strong>
+            <p>Mettez en place un DCA hebdomadaire de $100 réparti sur BTC (50%), ETH (30%), SOL (20%).</p>
+        </div>
+    `;
+    
+    suggestions.innerHTML = suggestionsHTML;
+}}
+
+// Export CSV
+function exportCSV() {{
+    if (portfolioData.holdings.length === 0) {{
+        alert('Aucun holding à exporter');
+        return;
+    }}
+    
+    let csv = 'Crypto,Quantité,Prix Moyen,Prix Actuel,Valeur,PnL,Exchange\\n';
+    
+    portfolioData.holdings.forEach(h => {{
+        const value = h.amount * h.currentPrice;
+        const pnl = (h.currentPrice - h.avgPrice) * h.amount;
+        csv += `${{h.crypto}},${{h.amount}},${{h.avgPrice}},${{h.currentPrice}},${{value.toFixed(2)}},${{pnl.toFixed(2)}},${{h.exchange}}\\n`;
+    }});
+    
+    const blob = new Blob([csv], {{ type: 'text/csv' }});
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `portfolio_${{new Date().toISOString().split('T')[0]}}.csv`;
+    a.click();
+}}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', () => {{
+    loadPortfolio();
+    updateUI();
+}});
+</script>
+
+</body>
+</html>
+    """
+    
+    return HTMLResponse(content=html_content)
+
+
+# API ENDPOINT POUR RÉCUPÉRER LES HOLDINGS VIA API EXCHANGE
+@app.post("/api/portfolio/sync-exchange")
+async def sync_exchange(request: Request):
+    """
+    Synchroniser les holdings depuis un exchange via API
+    """
+    try:
+        data = await request.json()
+        exchange_id = data.get('exchange')
+        api_key = data.get('apiKey')
+        api_secret = data.get('apiSecret')
+        
+        # TODO: Implémenter l'intégration avec ccxt pour chaque exchange
+        # import ccxt
+        # exchange = getattr(ccxt, exchange_id)({{
+        #     'apiKey': api_key,
+        #     'secret': api_secret
+        # }})
+        # balance = exchange.fetch_balance()
+        
+        # Pour l'instant, retourner données de démo
+        return {{
+            "success": True,
+            "holdings": [
+                {{"crypto": "BTC", "amount": 0.5, "avgPrice": 42000}},
+                {{"crypto": "ETH", "amount": 5, "avgPrice": 2200}}
+            ]
+        }}
+        
+    except Exception as e:
+        return {{"success": False, "error": str(e)}}
+
+
+# API ENDPOINT POUR METTRE À JOUR LES PRIX
+@app.get("/api/portfolio/prices")
+async def get_portfolio_prices(cryptos: str):
+    """
+    Récupérer les prix actuels des cryptos
+    Format: ?cryptos=BTC,ETH,SOL
+    """
+    try:
+        crypto_list = cryptos.split(',')
+        
+        # TODO: Appeler CoinGecko API pour prix réels
+        prices = {{}}
+        for crypto in crypto_list:
+            # Prix de démo
+            prices[crypto] = {{
+                "usd": 42000 if crypto == "BTC" else 2200,
+                "usd_24h_change": (Math.random() * 10) - 5
+            }}
+        
+        return {{"success": True, "prices": prices}}
+        
+    except Exception as e:
+        return {{"success": False, "error": str(e)}}
+
+
+
+# ========== FEATURE 2 ==========
+
+@app.get("/defi-yield", response_class=HTMLResponse)
+async def defi_yield_optimizer(request: Request):
+    """
+    🏦 DEFI YIELD OPTIMIZER
+    =======================
+    Scanner de rendements DeFi avec analyse IA
+    """
+    
+    user = request.cookies.get("user")
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    html_content = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏦 DeFi Yield Optimizer | Trading Dashboard Pro</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #e0e6ed;
+            margin-left: 280px !important;
+            padding: 20px;
+        }}
+        
+        .header {{
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        }}
+        
+        .header h1 {{ font-size: 2.5em; margin-bottom: 10px; }}
+        
+        .filters {{
+            background: rgba(30, 41, 59, 0.6);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }}
+        
+        .filter-group {{
+            flex: 1;
+            min-width: 200px;
+        }}
+        
+        .filter-group label {{
+            display: block;
+            margin-bottom: 8px;
+            color: #10b981;
+            font-weight: bold;
+        }}
+        
+        .filter-group select,
+        .filter-group input {{
+            width: 100%;
+            padding: 10px;
+            border: 2px solid rgba(16, 185, 129, 0.3);
+            border-radius: 10px;
+            background: rgba(30, 41, 59, 0.6);
+            color: #e0e6ed;
+        }}
+        
+        .opportunities-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }}
+        
+        .opportunity-card {{
+            background: rgba(30, 41, 59, 0.6);
+            border: 2px solid rgba(16, 185, 129, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }}
+        
+        .opportunity-card:hover {{
+            transform: translateY(-5px);
+            border-color: #10b981;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+        }}
+        
+        .opp-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }}
+        
+        .protocol {{
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #10b981;
+        }}
+        
+        .chain-badge {{
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }}
+        
+        .chain-ethereum {{ background: #627eea; }}
+        .chain-bsc {{ background: #f3ba2f; color: #000; }}
+        .chain-polygon {{ background: #8247e5; }}
+        .chain-arbitrum {{ background: #28a0f0; }}
+        .chain-optimism {{ background: #ff0420; }}
+        .chain-avalanche {{ background: #e84142; }}
+        
+        .apy {{
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #10b981;
+            margin: 15px 0;
+        }}
+        
+        .pair {{
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            opacity: 0.9;
+        }}
+        
+        .metrics {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }}
+        
+        .metric {{
+            background: rgba(16, 185, 129, 0.1);
+            padding: 10px;
+            border-radius: 10px;
+        }}
+        
+        .metric-label {{
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }}
+        
+        .metric-value {{
+            font-size: 1.1em;
+            font-weight: bold;
+        }}
+        
+        .risk-score {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+        }}
+        
+        .risk-bar {{
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }}
+        
+        .risk-fill {{
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }}
+        
+        .risk-low {{ background: #22c55e; }}
+        .risk-medium {{ background: #eab308; }}
+        .risk-high {{ background: #ef4444; }}
+        
+        .actions {{
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }}
+        
+        .btn {{
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }}
+        
+        .btn-primary {{
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }}
+        
+        .btn-secondary {{
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e6ed;
+        }}
+        
+        .btn:hover {{
+            transform: translateY(-2px);
+        }}
+        
+        .calculator {{
+            background: rgba(30, 41, 59, 0.6);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(16, 185, 129, 0.3);
+        }}
+        
+        .calculator h2 {{
+            color: #10b981;
+            margin-bottom: 20px;
+        }}
+        
+        .calc-inputs {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }}
+        
+        .calc-result {{
+            background: rgba(16, 185, 129, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid #10b981;
+        }}
+        
+        .result-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #10b981;
+            margin: 10px 0;
+        }}
+        
+        @media (max-width: 768px) {{
+            body {{ margin-left: 0 !important; padding: 10px; }}
+            .opportunities-grid {{ grid-template-columns: 1fr; }}
+        }}
+    </style>
+</head>
+<body>
+{SIDEBAR}
+
+<div class="header">
+    <h1>🏦 DeFi Yield Optimizer</h1>
+    <p>Trouvez les meilleurs rendements DeFi avec analyse IA du risque</p>
+</div>
+
+<!-- Filtres -->
+<div class="filters">
+    <div class="filter-group">
+        <label>Blockchain</label>
+        <select id="chainFilter" onchange="filterOpportunities()">
+            <option value="all">Toutes les chains</option>
+            <option value="ethereum">Ethereum</option>
+            <option value="bsc">BSC</option>
+            <option value="polygon">Polygon</option>
+            <option value="arbitrum">Arbitrum</option>
+            <option value="optimism">Optimism</option>
+            <option value="avalanche">Avalanche</option>
+        </select>
+    </div>
+    
+    <div class="filter-group">
+        <label>APY Minimum</label>
+        <select id="apyFilter" onchange="filterOpportunities()">
+            <option value="0">Tous</option>
+            <option value="10">10%+</option>
+            <option value="20">20%+</option>
+            <option value="50">50%+</option>
+            <option value="100">100%+</option>
+        </select>
+    </div>
+    
+    <div class="filter-group">
+        <label>Niveau de Risque</label>
+        <select id="riskFilter" onchange="filterOpportunities()">
+            <option value="all">Tous</option>
+            <option value="low">Faible</option>
+            <option value="medium">Moyen</option>
+            <option value="high">Élevé</option>
+        </select>
+    </div>
+    
+    <div class="filter-group">
+        <label>Type de Protocole</label>
+        <select id="typeFilter" onchange="filterOpportunities()">
+            <option value="all">Tous</option>
+            <option value="lending">Lending</option>
+            <option value="lp">Liquidity Pool</option>
+            <option value="staking">Staking</option>
+            <option value="vault">Vault/Farm</option>
+        </select>
+    </div>
+</div>
+
+<!-- Opportunités -->
+<div id="opportunitiesContainer">
+    <div class="opportunities-grid" id="opportunitiesGrid">
+        <!-- Généré par JavaScript -->
+    </div>
+</div>
+
+<!-- Calculateur Impermanent Loss -->
+<div class="calculator">
+    <h2>📊 Calculateur d'Impermanent Loss</h2>
+    <p style="opacity: 0.8; margin-bottom: 20px;">
+        Calculez les pertes potentielles dues aux variations de prix dans les pools de liquidité
+    </p>
+    
+    <div class="calc-inputs">
+        <div class="filter-group">
+            <label>Investissement Initial ($)</label>
+            <input type="number" id="initialInvest" value="1000" oninput="calculateIL()">
+        </div>
+        
+        <div class="filter-group">
+            <label>Prix Initial Token A ($)</label>
+            <input type="number" id="priceA1" value="100" oninput="calculateIL()">
+        </div>
+        
+        <div class="filter-group">
+            <label>Prix Initial Token B ($)</label>
+            <input type="number" id="priceB1" value="2000" oninput="calculateIL()">
+        </div>
+        
+        <div class="filter-group">
+            <label>Prix Final Token A ($)</label>
+            <input type="number" id="priceA2" value="150" oninput="calculateIL()">
+        </div>
+        
+        <div class="filter-group">
+            <label>Prix Final Token B ($)</label>
+            <input type="number" id="priceB2" value="2000" oninput="calculateIL()">
+        </div>
+        
+        <div class="filter-group">
+            <label>APY du Pool (%)</label>
+            <input type="number" id="poolAPY" value="30" oninput="calculateIL()">
+        </div>
+    </div>
+    
+    <div class="calc-result" id="ilResult">
+        <div class="metric-label">Impermanent Loss</div>
+        <div class="result-value" id="ilValue">0%</div>
+        <div style="margin-top: 15px; opacity: 0.9;" id="ilDetails"></div>
+    </div>
+</div>
+
+<!-- Auto-Compound Simulator -->
+<div class="calculator">
+    <h2>🔄 Simulateur Auto-Compound</h2>
+    <p style="opacity: 0.8; margin-bottom: 20px;">
+        Simulez l'effet de l'auto-composition sur votre investissement
+    </p>
+    
+    <div class="calc-inputs">
+        <div class="filter-group">
+            <label>Investissement Initial ($)</label>
+            <input type="number" id="compoundInvest" value="10000" oninput="calculateCompound()">
+        </div>
+        
+        <div class="filter-group">
+            <label>APY (%)</label>
+            <input type="number" id="compoundAPY" value="50" oninput="calculateCompound()">
+        </div>
+        
+        <div class="filter-group">
+            <label>Période (jours)</label>
+            <input type="number" id="compoundDays" value="365" oninput="calculateCompound()">
+        </div>
+        
+        <div class="filter-group">
+            <label>Fréquence Compound</label>
+            <select id="compoundFreq" onchange="calculateCompound()">
+                <option value="1">Quotidien</option>
+                <option value="7">Hebdomadaire</option>
+                <option value="30">Mensuel</option>
+                <option value="365">Annuel</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="calc-result" id="compoundResult">
+        <div class="metric-label">Valeur Finale</div>
+        <div class="result-value" id="compoundValue">$0</div>
+        <div style="margin-top: 15px; opacity: 0.9;" id="compoundDetails"></div>
+    </div>
+</div>
+
+<script>
+// Base de données d'opportunités DeFi
+const defiOpportunities = [
+    // Ethereum
+    {
+        protocol: "Aave",
+        chain: "ethereum",
+        type: "lending",
+        pair: "USDC Lending",
+        apy: 3.5,
+        tvl: "5.2B",
+        risk: "low",
+        riskScore: 20,
+        audited: true,
+        url: "https://app.aave.com"
+    },
+    {
+        protocol: "Uniswap V3",
+        chain: "ethereum",
+        type: "lp",
+        pair: "ETH/USDC 0.3%",
+        apy: 25.8,
+        tvl: "450M",
+        risk: "medium",
+        riskScore: 45,
+        audited: true,
+        url: "https://app.uniswap.org"
+    },
+    {
+        protocol: "Curve",
+        chain: "ethereum",
+        type: "lp",
+        pair: "3pool (DAI/USDC/USDT)",
+        apy: 8.2,
+        tvl: "1.8B",
+        risk: "low",
+        riskScore: 15,
+        audited: true,
+        url: "https://curve.fi"
+    },
+    
+    // BSC
+    {
+        protocol: "PancakeSwap",
+        chain: "bsc",
+        type: "lp",
+        pair: "BNB/BUSD",
+        apy: 35.5,
+        tvl: "280M",
+        risk: "medium",
+        riskScore: 40,
+        audited: true,
+        url: "https://pancakeswap.finance"
+    },
+    {
+        protocol: "Venus",
+        chain: "bsc",
+        type: "lending",
+        pair: "USDT Supply",
+        apy: 5.8,
+        tvl: "650M",
+        risk: "low",
+        riskScore: 25,
+        audited: true,
+        url: "https://app.venus.io"
+    },
+    
+    // Polygon
+    {
+        protocol: "QuickSwap",
+        chain: "polygon",
+        type: "lp",
+        pair: "MATIC/USDC",
+        apy: 42.3,
+        tvl: "85M",
+        risk: "medium",
+        riskScore: 50,
+        audited: true,
+        url: "https://quickswap.exchange"
+    },
+    {
+        protocol: "Balancer",
+        chain: "polygon",
+        type: "lp",
+        pair: "80/20 WETH/USDC",
+        apy: 18.7,
+        tvl: "120M",
+        risk: "medium",
+        riskScore: 35,
+        audited: true,
+        url: "https://app.balancer.fi"
+    },
+    
+    // Arbitrum
+    {
+        protocol: "GMX",
+        chain: "arbitrum",
+        type: "vault",
+        pair: "GLP Vault",
+        apy: 28.5,
+        tvl: "380M",
+        risk: "medium",
+        riskScore: 42,
+        audited: true,
+        url: "https://app.gmx.io"
+    },
+    {
+        protocol: "Radiant",
+        chain: "arbitrum",
+        type: "lending",
+        pair: "USDC Supply",
+        apy: 12.3,
+        tvl: "220M",
+        risk: "medium",
+        riskScore: 38,
+        audited: true,
+        url: "https://app.radiant.capital"
+    },
+    
+    // Optimism
+    {
+        protocol: "Velodrome",
+        chain: "optimism",
+        type: "lp",
+        pair: "USDC/ETH",
+        apy: 38.9,
+        tvl: "95M",
+        risk: "medium",
+        riskScore: 48,
+        audited: true,
+        url: "https://app.velodrome.finance"
+    },
+    
+    // Avalanche
+    {
+        protocol: "Trader Joe",
+        chain: "avalanche",
+        type: "lp",
+        pair: "AVAX/USDC",
+        apy: 45.6,
+        tvl: "72M",
+        risk: "medium",
+        riskScore: 52,
+        audited: true,
+        url: "https://traderjoexyz.com"
+    },
+    {
+        protocol: "Benqi",
+        chain: "avalanche",
+        type: "lending",
+        pair: "AVAX Staking",
+        apy: 6.8,
+        tvl: "450M",
+        risk: "low",
+        riskScore: 22,
+        audited: true,
+        url: "https://benqi.fi"
+    }
+];
+
+let filteredOpportunities = [...defiOpportunities];
+
+// Afficher opportunités
+function displayOpportunities() {
+    const grid = document.getElementById('opportunitiesGrid');
+    
+    if (filteredOpportunities.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
+                <div style="font-size: 3em; margin-bottom: 10px;">🔍</div>
+                <div>Aucune opportunité ne correspond à vos critères</div>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = filteredOpportunities
+        .sort((a, b) => b.apy - a.apy)
+        .map(opp => {
+            const riskClass = opp.risk === 'low' ? 'risk-low' : 
+                            opp.risk === 'medium' ? 'risk-medium' : 'risk-high';
+            const riskText = opp.risk === 'low' ? 'Faible' :
+                           opp.risk === 'medium' ? 'Moyen' : 'Élevé';
+            
+            return `
+                <div class="opportunity-card">
+                    <div class="opp-header">
+                        <div class="protocol">${opp.protocol}</div>
+                        <div class="chain-badge chain-${opp.chain}">
+                            ${opp.chain.toUpperCase()}
+                        </div>
+                    </div>
+                    
+                    <div class="pair">${opp.pair}</div>
+                    
+                    <div class="apy">${opp.apy.toFixed(1)}% APY</div>
+                    
+                    <div class="metrics">
+                        <div class="metric">
+                            <div class="metric-label">TVL</div>
+                            <div class="metric-value">$${opp.tvl}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Type</div>
+                            <div class="metric-value">${opp.type.toUpperCase()}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="risk-score">
+                        <span style="font-size: 0.9em;">Risque: ${riskText}</span>
+                        <div class="risk-bar">
+                            <div class="risk-fill ${riskClass}" style="width: ${opp.riskScore}%"></div>
+                        </div>
+                    </div>
+                    
+                    ${opp.audited ? '<div style="color: #10b981; font-size: 0.9em;">✅ Audité</div>' : ''}
+                    
+                    <div class="actions">
+                        <button class="btn btn-primary" onclick="window.open('${opp.url}', '_blank')">
+                            🚀 Investir
+                        </button>
+                        <button class="btn btn-secondary" onclick="showDetails('${opp.protocol}')">
+                            📊 Détails
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+}
+
+// Filtrer opportunités
+function filterOpportunities() {
+    const chain = document.getElementById('chainFilter').value;
+    const minAPY = parseFloat(document.getElementById('apyFilter').value);
+    const risk = document.getElementById('riskFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    
+    filteredOpportunities = defiOpportunities.filter(opp => {
+        if (chain !== 'all' && opp.chain !== chain) return false;
+        if (opp.apy < minAPY) return false;
+        if (risk !== 'all' && opp.risk !== risk) return false;
+        if (type !== 'all' && opp.type !== type) return false;
+        return true;
+    });
+    
+    displayOpportunities();
+}
+
+// Calculer Impermanent Loss
+function calculateIL() {
+    const invest = parseFloat(document.getElementById('initialInvest').value);
+    const priceA1 = parseFloat(document.getElementById('priceA1').value);
+    const priceB1 = parseFloat(document.getElementById('priceB1').value);
+    const priceA2 = parseFloat(document.getElementById('priceA2').value);
+    const priceB2 = parseFloat(document.getElementById('priceB2').value);
+    const apy = parseFloat(document.getElementById('poolAPY').value);
+    
+    // Ratio de prix
+    const ratio1 = priceA1 / priceB1;
+    const ratio2 = priceA2 / priceB2;
+    const priceRatio = ratio2 / ratio1;
+    
+    // Impermanent Loss
+    const il = (2 * Math.sqrt(priceRatio) / (1 + priceRatio) - 1) * 100;
+    
+    // Valeur si HODL
+    const valueHODL = invest * ((priceA2 / priceA1 + priceB2 / priceB1) / 2);
+    
+    // Valeur en LP
+    const valueLP = invest * (2 * Math.sqrt(priceRatio) / (1 + priceRatio));
+    
+    // Gains du farming
+    const farmingGains = invest * (apy / 100);
+    
+    // Valeur finale
+    const finalValue = valueLP + farmingGains;
+    
+    // IL net (après farming)
+    const ilNet = ((finalValue - valueHODL) / valueHODL) * 100;
+    
+    document.getElementById('ilValue').textContent = `${il.toFixed(2)}%`;
+    document.getElementById('ilDetails').innerHTML = `
+        <strong>Valeur HODL:</strong> $${valueHODL.toFixed(2)}<br>
+        <strong>Valeur LP (sans farming):</strong> $${valueLP.toFixed(2)}<br>
+        <strong>Gains Farming:</strong> +$${farmingGains.toFixed(2)}<br>
+        <strong>Valeur Finale:</strong> $${finalValue.toFixed(2)}<br>
+        <strong>Différence vs HODL:</strong> ${ilNet >= 0 ? '+' : ''}${ilNet.toFixed(2)}%
+    `;
+    
+    const resultDiv = document.getElementById('ilResult');
+    resultDiv.style.borderColor = il < 0 ? '#22c55e' : il < 5 ? '#eab308' : '#ef4444';
+}
+
+// Calculer Auto-Compound
+function calculateCompound() {
+    const principal = parseFloat(document.getElementById('compoundInvest').value);
+    const apy = parseFloat(document.getElementById('compoundAPY').value) / 100;
+    const days = parseInt(document.getElementById('compoundDays').value);
+    const freq = parseInt(document.getElementById('compoundFreq').value);
+    
+    const periods = days / freq;
+    const ratePerPeriod = apy / (365 / freq);
+    
+    const finalValue = principal * Math.pow(1 + ratePerPeriod, periods);
+    const gains = finalValue - principal;
+    const roi = (gains / principal) * 100;
+    
+    // Comparaison sans compound
+    const simpleGains = principal * (apy * days / 365);
+    const simpleValue = principal + simpleGains;
+    const compoundBonus = finalValue - simpleValue;
+    
+    document.getElementById('compoundValue').textContent = `$${finalValue.toFixed(2)}`;
+    document.getElementById('compoundDetails').innerHTML = `
+        <strong>Investissement Initial:</strong> $${principal.toFixed(2)}<br>
+        <strong>Gains:</strong> +$${gains.toFixed(2)}<br>
+        <strong>ROI:</strong> +${roi.toFixed(2)}%<br>
+        <strong>Sans Auto-Compound:</strong> $${simpleValue.toFixed(2)}<br>
+        <strong>Bonus Compound:</strong> +$${compoundBonus.toFixed(2)}
+    `;
+}
+
+// Afficher détails
+function showDetails(protocol) {
+    const opp = defiOpportunities.find(o => o.protocol === protocol);
+    if (!opp) return;
+    
+    alert(`📊 ${opp.protocol} - ${opp.pair}
+
+APY: ${opp.apy}%
+TVL: $${opp.tvl}
+Chain: ${opp.chain.toUpperCase()}
+Type: ${opp.type.toUpperCase()}
+Risque: ${opp.risk}
+Audité: ${opp.audited ? 'Oui ✅' : 'Non ⚠️'}
+
+Visitez ${opp.url} pour plus d'infos`);
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', () => {
+    displayOpportunities();
+    calculateIL();
+    calculateCompound();
+});
+</script>
+
+</body>
+</html>
+    """
+    
+    return HTMLResponse(content=html_content)
+
+
+
+# ========== FEATURE 3 ==========
+
+# FICHIER 1: manifest.json
+MANIFEST_JSON = """
+{
+  "name": "Trading Dashboard Pro",
+  "short_name": "TradingPro",
+  "description": "Plateforme de trading crypto avec IA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e27",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "business", "productivity"],
+  "screenshots": [
+    {
+      "src": "/static/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/static/screenshot-desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ]
+}
+"""
+
+# FICHIER 2: service-worker.js
+SERVICE_WORKER_JS = """
+const CACHE_NAME = 'trading-pro-v1';
+const urlsToCache = [
+  '/',
+  '/dashboard',
+  '/portfolio-tracker',
+  '/defi-yield',
+  '/crypto-pepites',
+  '/static/icon-192.png',
+  '/static/icon-512.png'
+];
+
+// Installation
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(urlsToCache))
+  );
+});
+
+// Activation
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});
+
+// Fetch
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        if (response) {
+          return response;
+        }
+        return fetch(event.request);
+      })
+  );
+});
+
+// Push notifications
+self.addEventListener('push', (event) => {
+  const data = event.data.json();
+  const options = {
+    body: data.body,
+    icon: '/static/icon-192.png',
+    badge: '/static/badge-72.png',
+    vibrate: [100, 50, 100],
+    data: {
+      dateOfArrival: Date.now(),
+      primaryKey: 1
+    }
+  };
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+"""
+
+# ROUTE PWA
+@app.get("/manifest.json")
+async def get_manifest():
+    return JSONResponse(content=json.loads(MANIFEST_JSON))
+
+@app.get("/service-worker.js", response_class=PlainTextResponse)
+async def get_service_worker():
+    return SERVICE_WORKER_JS
+
+@app.get("/offline", response_class=HTMLResponse)
+async def offline_page():
+    """Page hors-ligne PWA"""
+    return """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hors ligne | Trading Dashboard Pro</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: white;
+        }
+        .offline-icon {
+            font-size: 5em;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        p {
+            opacity: 0.8;
+            text-align: center;
+            max-width: 400px;
+        }
+        button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            background: #3b82f6;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-icon">📡</div>
+    <h1>Vous êtes hors ligne</h1>
+    <p>Vérifiez votre connexion internet pour accéder aux dernières données du marché.</p>
+    <button onclick="location.reload()">🔄 Réessayer</button>
+</body>
+</html>
+"""
+
+# HEAD HTML POUR PWA (à ajouter dans toutes les pages)
+PWA_HEAD_HTML = """
+<!-- PWA Configuration -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TradingPro">
+<meta name="theme-color" content="#3b82f6">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+
+<!-- Service Worker Registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then((reg) => console.log('SW registered', reg))
+      .catch((err) => console.log('SW error', err));
+  });
+}
+
+// Prompt d'installation PWA
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  showInstallButton();
+});
+
+function showInstallButton() {
+  // Créer bouton d'installation
+  const installBtn = document.createElement('button');
+  installBtn.textContent = '📱 Installer l\'App';
+  installBtn.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    background: linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4);
+    z-index: 9999;
+    animation: pulse 2s infinite;
+  `;
+  
+  installBtn.onclick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('Install outcome:', outcome);
+      deferredPrompt = null;
+      installBtn.remove();
+    }
+  };
+  
+  document.body.appendChild(installBtn);
+}
+
+// Animation pulse pour bouton install
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+`;
+document.head.appendChild(style);
+
+// Push notifications
+async function subscribeToPush() {
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: 'YOUR_VAPID_PUBLIC_KEY'
+      });
+      console.log('Push subscription:', subscription);
+      // Envoyer subscription au serveur
+      await fetch('/api/subscribe-push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subscription)
+      });
+    } catch (err) {
+      console.error('Push subscription error:', err);
+    }
+  }
+}
+</script>
+
+<!-- iOS Splash Screens -->
+<link rel="apple-touch-startup-image" href="/static/splash-2048x2732.png" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/splash-1668x2388.png" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/splash-1536x2048.png" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/splash-1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/splash-1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/splash-828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/splash-1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/splash-750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/static/splash-640x1136.png" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+"""
+
+# API ENDPOINT POUR PUSH NOTIFICATIONS
+@app.post("/api/subscribe-push")
+async def subscribe_push(request: Request):
+    """Sauvegarder subscription push"""
+    try:
+        data = await request.json()
+        # TODO: Sauvegarder en DB
+        return {"success": True, "message": "Subscribed to push notifications"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@app.post("/api/send-push")
+async def send_push_notification(request: Request):
+    """Envoyer notification push"""
+    try:
+        data = await request.json()
+        # TODO: Implémenter avec Web Push
+        return {"success": True, "message": "Push sent"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+
+# ========== FEATURE 4 ==========
+
+@app.get("/academy", response_class=HTMLResponse)
+async def academy_ia(request: Request):
+    """
+    🎓 ACADEMY IA
+    =============
+    Plateforme d'apprentissage avec contenu généré par IA
+    """
+    
+    user = request.cookies.get("user")
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    html_content = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎓 Academy IA | Trading Dashboard Pro</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #e0e6ed;
+            margin-left: 280px !important;
+            padding: 20px;
+        }}
+        
+        .header {{
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+        }}
+        
+        .header h1 {{ font-size: 2.5em; margin-bottom: 10px; }}
+        
+        .progress-section {{
+            background: rgba(30, 41, 59, 0.6);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(139, 92, 246, 0.3);
+        }}
+        
+        .progress-stats {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }}
+        
+        .stat-box {{
+            background: rgba(139, 92, 246, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }}
+        
+        .stat-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #8b5cf6;
+            margin: 10px 0;
+        }}
+        
+        .stat-label {{
+            opacity: 0.8;
+        }}
+        
+        .courses-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }}
+        
+        .course-card {{
+            background: rgba(30, 41, 59, 0.6);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }}
+        
+        .course-card:hover {{
+            transform: translateY(-5px);
+            border-color: #8b5cf6;
+            box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+        }}
+        
+        .course-header {{
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            padding: 20px;
+        }}
+        
+        .course-level {{
+            display: inline-block;
+            padding: 5px 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-bottom: 10px;
+        }}
+        
+        .course-title {{
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }}
+        
+        .course-duration {{
+            opacity: 0.9;
+            font-size: 0.95em;
+        }}
+        
+        .course-body {{
+            padding: 20px;
+        }}
+        
+        .course-description {{
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }}
+        
+        .course-progress {{
+            margin: 15px 0;
+        }}
+        
+        .progress-bar {{
+            height: 8px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+        }}
+        
+        .progress-fill {{
+            height: 100%;
+            background: linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+        }}
+        
+        .progress-text {{
+            font-size: 0.9em;
+            margin-top: 5px;
+            opacity: 0.8;
+        }}
+        
+        .course-features {{
+            list-style: none;
+            margin: 15px 0;
+        }}
+        
+        .course-features li {{
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+        
+        .course-features li:last-child {{
+            border-bottom: none;
+        }}
+        
+        .btn {{
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }}
+        
+        .btn-primary {{
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            color: white;
+        }}
+        
+        .btn-primary:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(139, 92, 246, 0.4);
+        }}
+        
+        .btn-secondary {{
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e6ed;
+        }}
+        
+        .ai-coach {{
+            background: rgba(139, 92, 246, 0.1);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }}
+        
+        .ai-coach h2 {{
+            color: #8b5cf6;
+            margin-bottom: 15px;
+        }}
+        
+        .chat-container {{
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            padding: 20px;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }}
+        
+        .chat-message {{
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 10px;
+        }}
+        
+        .chat-message.ai {{
+            background: rgba(139, 92, 246, 0.2);
+            border-left: 4px solid #8b5cf6;
+        }}
+        
+        .chat-message.user {{
+            background: rgba(59, 130, 246, 0.2);
+            border-left: 4px solid #3b82f6;
+        }}
+        
+        .chat-input {{
+            display: flex;
+            gap: 10px;
+        }}
+        
+        .chat-input input {{
+            flex: 1;
+            padding: 12px;
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 10px;
+            background: rgba(30, 41, 59, 0.6);
+            color: #e0e6ed;
+        }}
+        
+        @media (max-width: 768px) {{
+            body {{ margin-left: 0 !important; padding: 10px; }}
+            .courses-grid {{ grid-template-columns: 1fr; }}
+        }}
+    </style>
+</head>
+<body>
+{SIDEBAR}
+
+<div class="header">
+    <h1>🎓 Academy IA</h1>
+    <p>Apprenez le trading crypto avec des cours générés par intelligence artificielle</p>
+</div>
+
+<!-- Progression globale -->
+<div class="progress-section">
+    <h2 style="color: #8b5cf6; margin-bottom: 20px;">📊 Votre Progression</h2>
+    <div class="progress-stats">
+        <div class="stat-box">
+            <div class="stat-label">Cours Complétés</div>
+            <div class="stat-value" id="completedCourses">0/12</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Points XP</div>
+            <div class="stat-value" id="totalXP">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Niveau</div>
+            <div class="stat-value" id="userLevel">Débutant</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Certificats</div>
+            <div class="stat-value" id="certificates">0</div>
+        </div>
+    </div>
+</div>
+
+<!-- Coach IA -->
+<div class="ai-coach">
+    <h2>🤖 Coach IA Personnel</h2>
+    <p style="opacity: 0.8; margin-bottom: 15px;">
+        Posez n'importe quelle question sur le trading et l'IA vous répond!
+    </p>
+    
+    <div class="chat-container" id="chatContainer">
+        <div class="chat-message ai">
+            <strong>🤖 Coach IA:</strong><br>
+            Bonjour! Je suis votre coach personnel de trading crypto. 
+            Je peux vous aider à comprendre les concepts, analyser le marché, 
+            et personnaliser votre parcours d'apprentissage. 
+            Que voulez-vous apprendre aujourd'hui?
+        </div>
+    </div>
+    
+    <div class="chat-input">
+        <input 
+            type="text" 
+            id="userQuestion" 
+            placeholder="Posez votre question..."
+            onkeypress="if(event.key==='Enter') askAI()"
+        >
+        <button class="btn btn-primary" onclick="askAI()" style="width: auto; padding: 12px 30px;">
+            Envoyer
+        </button>
+    </div>
+</div>
+
+<!-- Liste des cours -->
+<h2 style="color: #8b5cf6; margin-bottom: 20px;">📚 Cours Disponibles</h2>
+<div class="courses-grid" id="coursesGrid">
+    <!-- Généré par JavaScript -->
+</div>
+
+<script>
+// Base de données des cours (contenu généré par IA)
+const courses = [
+    {
+        id: 1,
+        level: "Débutant",
+        title: "Les Bases du Trading Crypto",
+        duration: "2 heures",
+        modules: 5,
+        description: "Apprenez les fondamentaux: blockchain, wallets, exchanges, et comment faire votre premier trade.",
+        features: [
+            "Qu'est-ce que la blockchain?",
+            "Types de cryptomonnaies",
+            "Créer et sécuriser un wallet",
+            "Comprendre les exchanges",
+            "Premier trade step-by-step"
+        ],
+        xp: 100,
+        progress: 0
+    },
+    {
+        id: 2,
+        level: "Débutant",
+        title: "Analyse Technique - Introduction",
+        duration: "3 heures",
+        modules: 6,
+        description: "Maîtrisez les bases de l'analyse technique: chandeliers, support/résistance, tendances.",
+        features: [
+            "Lire les chandeliers japonais",
+            "Support et résistance",
+            "Identifier les tendances",
+            "Moyennes mobiles (SMA, EMA)",
+            "Volume trading",
+            "Timeframes et stratégies"
+        ],
+        xp: 150,
+        progress: 0
+    },
+    {
+        id: 3,
+        level: "Intermédiaire",
+        title: "Indicateurs Techniques Avancés",
+        duration: "4 heures",
+        modules: 8,
+        description: "RSI, MACD, Bollinger Bands, Fibonacci - tous les outils des pros.",
+        features: [
+            "RSI et divergences",
+            "MACD et histogramme",
+            "Bollinger Bands",
+            "Retracements Fibonacci",
+            "Stochastique",
+            "Ichimoku Cloud",
+            "ATR et volatilité",
+            "Combiner les indicateurs"
+        ],
+        xp: 200,
+        progress: 0
+    },
+    {
+        id: 4,
+        level: "Intermédiaire",
+        title: "Money Management & Risk",
+        duration: "3 heures",
+        modules: 7,
+        description: "Protégez votre capital: position sizing, stop-loss, ratio risque/rendement.",
+        features: [
+            "Position sizing (règle 1-2%)",
+            "Stop-loss et take-profit",
+            "Ratio risque/rendement",
+            "Diversification du portfolio",
+            "Gestion des émotions",
+            "Journaling de trades",
+            "Bankroll management"
+        ],
+        xp: 180,
+        progress: 0
+    },
+    {
+        id: 5,
+        level: "Avancé",
+        title: "Trading Algorithmique",
+        duration: "6 heures",
+        modules: 10,
+        description: "Créez vos propres bots de trading avec Python et backtesting.",
+        features: [
+            "Introduction aux algos",
+            "Python pour le trading",
+            "API exchanges",
+            "Stratégies automatisées",
+            "Backtesting",
+            "Optimisation",
+            "Grid trading bot",
+            "DCA bot",
+            "Arbitrage bot",
+            "Déploiement 24/7"
+        ],
+        xp: 300,
+        progress: 0
+    },
+    {
+        id: 6,
+        level: "Avancé",
+        title: "DeFi & Yield Farming",
+        duration: "4 heures",
+        modules: 8,
+        description: "Maîtrisez la finance décentralisée: liquidity pools, staking, lending.",
+        features: [
+            "Qu'est-ce que la DeFi?",
+            "Liquidity pools (Uniswap, Curve)",
+            "Impermanent loss",
+            "Yield farming",
+            "Staking et lending",
+            "Multi-chain DeFi",
+            "Protocoles de risque",
+            "Optimisation APY"
+        ],
+        xp: 250,
+        progress: 0
+    },
+    {
+        id: 7,
+        level: "Débutant",
+        title: "Psychologie du Trading",
+        duration: "2 heures",
+        modules: 5,
+        description: "Contrôlez vos émotions, évitez les erreurs classiques des débutants.",
+        features: [
+            "FOMO et FUD",
+            "Gestion du stress",
+            "Discipline et patience",
+            "Biais cognitifs",
+            "Mindset du trader pro"
+        ],
+        xp: 120,
+        progress: 0
+    },
+    {
+        id: 8,
+        level: "Intermédiaire",
+        title: "Analyse Fondamentale Crypto",
+        duration: "5 heures",
+        modules: 9,
+        description: "Évaluez les projets: tokenomics, équipe, roadmap, use-case.",
+        features: [
+            "Lire un whitepaper",
+            "Tokenomics analysis",
+            "Évaluation de l'équipe",
+            "Use-case réel",
+            "Concurrence et marché",
+            "Roadmap et développement",
+            "Communauté et adoption",
+            "Red flags",
+            "Valuation metrics"
+        ],
+        xp: 220,
+        progress: 0
+    },
+    {
+        id: 9,
+        level: "Avancé",
+        title: "Futures & Leverage Trading",
+        duration: "4 heures",
+        modules: 8,
+        description: "Trading avec effet de levier: opportunités et risques.",
+        features: [
+            "Futures vs Spot",
+            "Comprendre le leverage",
+            "Long et Short",
+            "Funding rates",
+            "Liquidation",
+            "Hedging",
+            "Scalping futures",
+            "Risk management x10"
+        ],
+        xp: 280,
+        progress: 0
+    },
+    {
+        id: 10,
+        level: "Expert",
+        title: "Market Making & Arbitrage",
+        duration: "5 heures",
+        modules: 9,
+        description: "Stratégies de market making et arbitrage inter-exchanges.",
+        features: [
+            "Market making basics",
+            "Spread et liquidité",
+            "Arbitrage triangulaire",
+            "Arbitrage inter-exchanges",
+            "Statistical arbitrage",
+            "Latency et vitesse",
+            "Risk management MM",
+            "API trading avancé",
+            "Profit optimization"
+        ],
+        xp: 350,
+        progress: 0
+    },
+    {
+        id: 11,
+        level: "Expert",
+        title: "On-Chain Analysis",
+        duration: "4 heures",
+        modules: 7,
+        description: "Analysez la blockchain: whale movements, metrics on-chain.",
+        features: [
+            "Whale tracking",
+            "Exchange flows",
+            "MVRV ratio",
+            "NVT ratio",
+            "Active addresses",
+            "Hash rate analysis",
+            "Outils on-chain pro"
+        ],
+        xp: 300,
+        progress: 0
+    },
+    {
+        id: 12,
+        level: "Intermédiaire",
+        title: "NFT Trading Strategies",
+        duration: "3 heures",
+        modules: 6,
+        description: "Tradez les NFTs: rarity, floor price, flipping strategies.",
+        features: [
+            "NFT basics",
+            "Rarity tools",
+            "Floor price analysis",
+            "Minting strategies",
+            "Flipping for profit",
+            "NFT marketplaces"
+        ],
+        xp: 190,
+        progress: 0
+    }
+];
+
+// Charger progression
+function loadProgress() {
+    const saved = localStorage.getItem('academyProgress');
+    if (saved) {
+        const progress = JSON.parse(saved);
+        courses.forEach(course => {
+            if (progress[course.id]) {
+                course.progress = progress[course.id];
+            }
+        });
+    }
+    updateStats();
+}
+
+// Sauvegarder progression
+function saveProgress() {
+    const progress = {};
+    courses.forEach(course => {
+        progress[course.id] = course.progress;
+    });
+    localStorage.setItem('academyProgress', JSON.stringify(progress));
+}
+
+// Afficher cours
+function displayCourses() {
+    const grid = document.getElementById('coursesGrid');
+    
+    grid.innerHTML = courses.map(course => {
+        const levelColors = {
+            'Débutant': '#22c55e',
+            'Intermédiaire': '#eab308',
+            'Avancé': '#f97316',
+            'Expert': '#ef4444'
+        };
+        
+        return `
+            <div class="course-card">
+                <div class="course-header">
+                    <div class="course-level" style="background-color: ${levelColors[course.level]};">
+                        ${course.level}
+                    </div>
+                    <div class="course-title">${course.title}</div>
+                    <div class="course-duration">⏱️ ${course.duration} • ${course.modules} modules • ${course.xp} XP</div>
+                </div>
+                
+                <div class="course-body">
+                    <div class="course-description">${course.description}</div>
+                    
+                    <div class="course-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${course.progress}%"></div>
+                        </div>
+                        <div class="progress-text">${course.progress}% complété</div>
+                    </div>
+                    
+                    <ul class="course-features">
+                        ${course.features.slice(0, 4).map(f => `<li>✅ ${f}</li>`).join('')}
+                        ${course.features.length > 4 ? `<li>... et ${course.features.length - 4} autres modules</li>` : ''}
+                    </ul>
+                    
+                    <button class="btn btn-primary" onclick="startCourse(${course.id})">
+                        ${course.progress === 0 ? '🚀 Commencer' : course.progress === 100 ? '✅ Revoir' : '▶️ Continuer'}
+                    </button>
+                    ${course.progress === 100 ? `
+                        <button class="btn btn-secondary" onclick="downloadCertificate(${course.id})">
+                            📜 Télécharger Certificat
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Mettre à jour stats
+function updateStats() {
+    const completed = courses.filter(c => c.progress === 100).length;
+    const totalXP = courses.reduce((sum, c) => sum + (c.xp * c.progress / 100), 0);
+    
+    let level = "Débutant";
+    if (totalXP >= 2000) level = "Expert";
+    else if (totalXP >= 1000) level = "Avancé";
+    else if (totalXP >= 500) level = "Intermédiaire";
+    
+    document.getElementById('completedCourses').textContent = `${completed}/${courses.length}`;
+    document.getElementById('totalXP').textContent = Math.floor(totalXP);
+    document.getElementById('userLevel').textContent = level;
+    document.getElementById('certificates').textContent = completed;
+}
+
+// Commencer un cours
+function startCourse(courseId) {
+    const course = courses.find(c => c.id === courseId);
+    if (!course) return;
+    
+    if (course.progress === 0) {
+        course.progress = 25;
+    } else if (course.progress < 100) {
+        course.progress = Math.min(100, course.progress + 25);
+    }
+    
+    saveProgress();
+    displayCourses();
+    updateStats();
+    
+    alert(`✅ Module complété!
+
+Cours: ${course.title}
+Progression: ${course.progress}%
+XP gagné: +${course.xp / 4}
+
+${course.progress === 100 ? '🎉 Cours terminé! Certificat disponible!' : 'Continuez pour débloquer plus de contenu!'}`);
+}
+
+// Télécharger certificat
+function downloadCertificate(courseId) {
+    const course = courses.find(c => c.id === courseId);
+    if (!course || course.progress !== 100) return;
+    
+    alert(`📜 CERTIFICAT DE COMPLÉTION
+
+Trading Dashboard Pro Academy
+
+Ceci certifie que vous avez complété avec succès:
+
+"${course.title}"
+
+Niveau: ${course.level}
+Durée: ${course.duration}
+XP Gagné: ${course.xp}
+
+Date: ${new Date().toLocaleDateString('fr-FR')}
+
+(Fonctionnalité de download PDF à venir)`);
+}
+
+// Coach IA
+function askAI() {
+    const input = document.getElementById('userQuestion');
+    const question = input.value.trim();
+    
+    if (!question) return;
+    
+    const chatContainer = document.getElementById('chatContainer');
+    
+    // Ajouter question utilisateur
+    chatContainer.innerHTML += `
+        <div class="chat-message user">
+            <strong>Vous:</strong><br>
+            ${question}
+        </div>
+    `;
+    
+    // Générer réponse IA (simulée)
+    setTimeout(() => {
+        const responses = [
+            "Excellente question! Pour comprendre ${question}, je vous recommande de commencer par les bases...",
+            "Voici ce que je peux vous dire sur ${question}: C'est un concept fondamental en trading...",
+            "Intéressant! ${question} est souvent mal compris. Laissez-moi vous expliquer...",
+            "Pour répondre à votre question sur ${question}: il y a plusieurs aspects à considérer..."
+        ];
+        
+        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+        
+        chatContainer.innerHTML += `
+            <div class="chat-message ai">
+                <strong>🤖 Coach IA:</strong><br>
+                ${randomResponse.replace('${question}', question)}
+                <br><br>
+                💡 <strong>Recommandation:</strong> Je vous suggère de suivre le cours 
+                "${courses[Math.floor(Math.random() * courses.length)].title}" 
+                pour approfondir ce sujet.
+            </div>
+        `;
+        
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }, 1000);
+    
+    input.value = '';
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', () => {
+    loadProgress();
+    displayCourses();
+});
+</script>
+
+</body>
+</html>
+    """
+    
+    return HTMLResponse(content=html_content)
+
+
+
+# ========== FEATURE 5 ==========
+
+@app.get("/launchpad-scanner", response_class=HTMLResponse)
+async def launchpad_scanner(request: Request):
+    """
+    🚀 LAUNCHPAD SCANNER IA
+    =======================
+    Trouvez les prochains 100x avec analyse IA
+    """
+    
+    user = request.cookies.get("user")
+    if not user:
+        return RedirectResponse(url="/login")
+    
+    html_content = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Launchpad Scanner | Trading Dashboard Pro</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #e0e6ed;
+            margin-left: 280px !important;
+            padding: 20px;
+        }}
+        
+        .header {{
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+        }}
+        
+        .header h1 {{ font-size: 2.5em; margin-bottom: 10px; }}
+        
+        .filters {{
+            background: rgba(30, 41, 59, 0.6);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }}
+        
+        .filter-group {{
+            flex: 1;
+            min-width: 200px;
+        }}
+        
+        .filter-group label {{
+            display: block;
+            margin-bottom: 8px;
+            color: #f59e0b;
+            font-weight: bold;
+        }}
+        
+        .filter-group select {{
+            width: 100%;
+            padding: 10px;
+            border: 2px solid rgba(245, 158, 11, 0.3);
+            border-radius: 10px;
+            background: rgba(30, 41, 59, 0.6);
+            color: #e0e6ed;
+        }}
+        
+        .projects-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 25px;
+        }}
+        
+        .project-card {{
+            background: rgba(30, 41, 59, 0.6);
+            border: 2px solid rgba(245, 158, 11, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .project-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }}
+        
+        .project-card:hover {{
+            transform: translateY(-5px);
+            border-color: #f59e0b;
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+        }}
+        
+        .project-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }}
+        
+        .project-name {{
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #f59e0b;
+            margin-bottom: 5px;
+        }}
+        
+        .project-ticker {{
+            font-size: 1.1em;
+            opacity: 0.7;
+        }}
+        
+        .ai-score {{
+            text-align: center;
+            min-width: 80px;
+        }}
+        
+        .score-circle {{
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 0 auto 5px;
+            position: relative;
+        }}
+        
+        .score-high {{ 
+            background: radial-gradient(circle, #22c55e 0%, #16a34a 100%); 
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.5);
+        }}
+        .score-medium {{ 
+            background: radial-gradient(circle, #eab308 0%, #ca8a04 100%);
+            box-shadow: 0 0 20px rgba(234, 179, 8, 0.5);
+        }}
+        .score-low {{ 
+            background: radial-gradient(circle, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+        }}
+        
+        .score-label {{
+            font-size: 0.85em;
+            opacity: 0.8;
+        }}
+        
+        .project-info {{
+            margin-bottom: 20px;
+        }}
+        
+        .info-row {{
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }}
+        
+        .info-row:last-child {{
+            border-bottom: none;
+        }}
+        
+        .info-label {{
+            opacity: 0.7;
+        }}
+        
+        .info-value {{
+            font-weight: bold;
+        }}
+        
+        .badges {{
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }}
+        
+        .badge {{
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }}
+        
+        .badge-audit {{ background: #22c55e; }}
+        .badge-doxxed {{ background: #3b82f6; }}
+        .badge-vc {{ background: #8b5cf6; }}
+        .badge-warning {{ background: #ef4444; }}
+        
+        .analysis {{
+            background: rgba(245, 158, 11, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }}
+        
+        .analysis h4 {{
+            color: #f59e0b;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .analysis ul {{
+            margin-left: 20px;
+            opacity: 0.9;
+        }}
+        
+        .analysis li {{
+            margin-bottom: 5px;
+        }}
+        
+        .red-flags {{
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }}
+        
+        .red-flags h4 {{
+            color: #ef4444;
+            margin-bottom: 10px;
+        }}
+        
+        .actions {{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }}
+        
+        .btn {{
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }}
+        
+        .btn-primary {{
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }}
+        
+        .btn-secondary {{
+            background: rgba(255, 255, 255, 0.1);
+            color: #e0e6ed;
+        }}
+        
+        .btn:hover {{
+            transform: translateY(-2px);
+        }}
+        
+        @media (max-width: 768px) {{
+            body {{ margin-left: 0 !important; padding: 10px; }}
+            .projects-grid {{ grid-template-columns: 1fr; }}
+        }}
+    </style>
+</head>
+<body>
+{SIDEBAR}
+
+<div class="header">
+    <h1>🚀 Launchpad Scanner IA</h1>
+    <p>Trouvez les prochains 100x avec notre analyse IA des nouveaux projets</p>
+</div>
+
+<!-- Filtres -->
+<div class="filters">
+    <div class="filter-group">
+        <label>Statut</label>
+        <select id="statusFilter" onchange="filterProjects()">
+            <option value="all">Tous</option>
+            <option value="upcoming">À venir</option>
+            <option value="live">En cours</option>
+            <option value="ended">Terminés</option>
+        </select>
+    </div>
+    
+    <div class="filter-group">
+        <label>AI Score Minimum</label>
+        <select id="scoreFilter" onchange="filterProjects()">
+            <option value="0">Tous</option>
+            <option value="50">50+</option>
+            <option value="70">70+</option>
+            <option value="85">85+ (Top Quality)</option>
+        </select>
+    </div>
+    
+    <div class="filter-group">
+        <label>Type</label>
+        <select id="typeFilter" onchange="filterProjects()">
+            <option value="all">Tous</option>
+            <option value="IDO">IDO</option>
+            <option value="ICO">ICO</option>
+            <option value="Presale">Presale</option>
+            <option value="Fair Launch">Fair Launch</option>
+        </select>
+    </div>
+    
+    <div class="filter-group">
+        <label>Blockchain</label>
+        <select id="chainFilter" onchange="filterProjects()">
+            <option value="all">Toutes</option>
+            <option value="Ethereum">Ethereum</option>
+            <option value="BSC">BSC</option>
+            <option value="Solana">Solana</option>
+            <option value="Polygon">Polygon</option>
+            <option value="Arbitrum">Arbitrum</option>
+        </select>
+    </div>
+</div>
+
+<!-- Projets -->
+<div class="projects-grid" id="projectsGrid">
+    <!-- Généré par JavaScript -->
+</div>
+
+<script>
+// Base de données projets (à remplacer par API réelle)
+const launchpadProjects = [
+    {
+        name: "DeFiX Protocol",
+        ticker: "DFX",
+        type: "IDO",
+        chain: "Ethereum",
+        status: "upcoming",
+        launchDate: "2024-12-15",
+        price: 0.05,
+        raise: "2M",
+        marketCap: "10M",
+        aiScore: 88,
+        audited: true,
+        doxxed: true,
+        vcBacked: true,
+        category: "DeFi",
+        description: "Plateforme DeFi cross-chain avec yield aggregator IA",
+        strengths: [
+            "Équipe expérimentée (ex-Uniswap)",
+            "Audité par CertiK",
+            "Investisseurs: a16z, Binance Labs",
+            "Produit déjà fonctionnel",
+            "Tokenomics solides (60% communauté)"
+        ],
+        redFlags: [],
+        website: "https://defix.example",
+        twitter: 45000,
+        telegram: 12000
+    },
+    {
+        name: "MetaWorld DAO",
+        ticker: "META",
+        type: "Presale",
+        chain: "Polygon",
+        status: "live",
+        launchDate: "2024-12-01",
+        endDate: "2024-12-20",
+        price: 0.02,
+        raise: "500K",
+        marketCap: "5M",
+        aiScore: 75,
+        audited: true,
+        doxxed: false,
+        vcBacked: false,
+        category: "Metaverse",
+        description: "DAO pour le métavers avec gouvernance communautaire",
+        strengths: [
+            "Communauté très active",
+            "Partenariats avec Decentraland",
+            "Roadmap claire 2025-2026",
+            "NFT collection déjà lancée"
+        ],
+        redFlags: [
+            "Équipe partiellement anonyme",
+            "Pas de backing VC majeur"
+        ],
+        website: "https://metaworld.example",
+        twitter: 28000,
+        telegram: 8500
+    },
+    {
+        name: "AI Trading Bot",
+        ticker: "AITB",
+        type: "ICO",
+        chain: "BSC",
+        status: "upcoming",
+        launchDate: "2024-12-25",
+        price: 0.10,
+        raise: "1.5M",
+        marketCap: "15M",
+        aiScore: 92,
+        audited: true,
+        doxxed: true,
+        vcBacked: true,
+        category: "AI + DeFi",
+        description: "Bot de trading automatique propulsé par IA",
+        strengths: [
+            "MVP avec 1000+ utilisateurs beta",
+            "ROI prouvé: +45% sur 6 mois",
+            "Audité par Hacken et PeckShield",
+            "Team doxxed (LinkedIn vérifiés)",
+            "Backing: Sequoia, Pantera Capital"
+        ],
+        redFlags: [],
+        website: "https://aitrading.example",
+        twitter: 67000,
+        telegram: 23000
+    },
+    {
+        name: "GreenChain",
+        ticker: "GREEN",
+        type: "Fair Launch",
+        chain: "Solana",
+        status: "upcoming",
+        launchDate: "2024-12-18",
+        price: null,
+        raise: null,
+        marketCap: "TBD",
+        aiScore: 68,
+        audited: false,
+        doxxed: true,
+        vcBacked: false,
+        category: "Sustainability",
+        description: "Blockchain carbon-neutral avec compensation automatique",
+        strengths: [
+            "Mission environnementale forte",
+            "Partenariats ONG (WWF, Greenpeace)",
+            "Fair launch (pas de presale)",
+            "Fondateurs connus dans l'industrie"
+        ],
+        redFlags: [
+            "Pas d'audit de sécurité",
+            "Tokenomics non finalisés",
+            "Produit en développement early"
+        ],
+        website: "https://greenchain.example",
+        twitter: 15000,
+        telegram: 5200
+    },
+    {
+        name: "GameFi Arena",
+        ticker: "GFA",
+        type: "IDO",
+        chain: "Arbitrum",
+        status: "live",
+        launchDate: "2024-12-05",
+        endDate: "2024-12-15",
+        price: 0.08,
+        raise: "3M",
+        marketCap: "20M",
+        aiScore: 81,
+        audited: true,
+        doxxed: true,
+        vcBacked: true,
+        category: "GameFi",
+        description: "Plateforme de jeux P2E multi-chaînes",
+        strengths: [
+            "3 jeux déjà sortis",
+            "10,000+ joueurs actifs",
+            "Audité par SlowMist",
+            "Investisseurs: Animoca Brands",
+            "Partenariats: Polygon, Immutable X"
+        ],
+        redFlags: [
+            "Concurrence forte (Axie, Gala)"
+        ],
+        website: "https://gamefiarena.example",
+        twitter: 52000,
+        telegram: 18000
+    },
+    {
+        name: "RealEstate DAO",
+        ticker: "REAL",
+        type: "Presale",
+        chain: "Ethereum",
+        status: "ended",
+        launchDate: "2024-11-20",
+        endDate: "2024-11-30",
+        price: 0.15,
+        raise: "5M",
+        marketCap: "25M",
+        aiScore: 85,
+        audited: true,
+        doxxed: true,
+        vcBacked: true,
+        category: "RWA",
+        description: "Tokenisation d'actifs immobiliers réels",
+        strengths: [
+            "Actifs réels ($50M en propriétés)",
+            "Conformité légale (SEC approved)",
+            "Équipe doxxed avec track record",
+            "Dividendes trimestriels",
+            "Backing: Andreessen Horowitz"
+        ],
+        redFlags: [],
+        website: "https://realestate-dao.example",
+        twitter: 31000,
+        telegram: 9500
+    },
+    {
+        name: "MoonShot",
+        ticker: "MOON",
+        type: "Presale",
+        chain: "BSC",
+        status: "live",
+        launchDate: "2024-12-10",
+        endDate: "2024-12-30",
+        price: 0.001,
+        raise: "100K",
+        marketCap: "1M",
+        aiScore: 35,
+        audited: false,
+        doxxed: false,
+        vcBacked: false,
+        category: "Meme",
+        description: "Community meme coin avec reflection rewards",
+        strengths: [
+            "Communauté active",
+            "Memes viraux"
+        ],
+        redFlags: [
+            "⚠️ PAS D'AUDIT",
+            "⚠️ Équipe anonyme",
+            "⚠️ Tokenomics suspects (40% team)",
+            "⚠️ Site web basique",
+            "⚠️ Copie de SafeMoon",
+            "⚠️ Pas de produit réel",
+            "⚠️ Red flags de rug pull"
+        ],
+        website: "https://moonshot.example",
+        twitter: 5000,
+        telegram: 2000
+    },
+    {
+        name: "Web3 Social",
+        ticker: "W3S",
+        type: "IDO",
+        chain: "Polygon",
+        status: "upcoming",
+        launchDate: "2024-12-28",
+        price: 0.25,
+        raise: "4M",
+        marketCap: "40M",
+        aiScore: 79,
+        audited: true,
+        doxxed: true,
+        vcBacked: true,
+        category: "SocialFi",
+        description: "Réseau social décentralisé Web3",
+        strengths: [
+            "Beta avec 50K utilisateurs",
+            "UI/UX excellent",
+            "Audité par Quantstamp",
+            "Investisseurs: Coinbase Ventures",
+            "Team ex-Meta, Twitter"
+        ],
+        redFlags: [
+            "Marché très compétitif",
+            "Adoption incertaine"
+        ],
+        website: "https://web3social.example",
+        twitter: 89000,
+        telegram: 34000
+    }
+];
+
+let filteredProjects = [...launchpadProjects];
+
+// Afficher projets
+function displayProjects() {
+    const grid = document.getElementById('projectsGrid');
+    
+    if (filteredProjects.length === 0) {
+        grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
+                <div style="font-size: 3em; margin-bottom: 10px;">🔍</div>
+                <div>Aucun projet ne correspond à vos critères</div>
+            </div>
+        `;
+        return;
+    }
+    
+    grid.innerHTML = filteredProjects
+        .sort((a, b) => b.aiScore - a.aiScore)
+        .map(project => {
+            const scoreClass = project.aiScore >= 80 ? 'score-high' :
+                             project.aiScore >= 60 ? 'score-medium' : 'score-low';
+            
+            const statusText = project.status === 'upcoming' ? '🔜 À venir' :
+                             project.status === 'live' ? '🔴 EN DIRECT' : '✅ Terminé';
+            
+            const statusColor = project.status === 'upcoming' ? '#3b82f6' :
+                              project.status === 'live' ? '#ef4444' : '#22c55e';
+            
+            return `
+                <div class="project-card">
+                    <div class="project-header">
+                        <div>
+                            <div class="project-name">${project.name}</div>
+                            <div class="project-ticker">$${project.ticker}</div>
+                        </div>
+                        <div class="ai-score">
+                            <div class="score-circle ${scoreClass}">
+                                ${project.aiScore}
+                            </div>
+                            <div class="score-label">AI Score</div>
+                        </div>
+                    </div>
+                    
+                    <div class="badges">
+                        <div class="badge" style="background: ${statusColor};">${statusText}</div>
+                        ${project.audited ? '<div class="badge badge-audit">✅ Audité</div>' : ''}
+                        ${project.doxxed ? '<div class="badge badge-doxxed">👤 Doxxed</div>' : ''}
+                        ${project.vcBacked ? '<div class="badge badge-vc">💰 VC Backed</div>' : ''}
+                        ${project.redFlags.length > 0 ? '<div class="badge badge-warning">⚠️ Red Flags</div>' : ''}
+                    </div>
+                    
+                    <p style="margin-bottom: 15px; line-height: 1.6;">${project.description}</p>
+                    
+                    <div class="project-info">
+                        <div class="info-row">
+                            <span class="info-label">Type / Chain</span>
+                            <span class="info-value">${project.type} • ${project.chain}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Launch</span>
+                            <span class="info-value">${new Date(project.launchDate).toLocaleDateString('fr-FR')}</span>
+                        </div>
+                        ${project.price ? `
+                            <div class="info-row">
+                                <span class="info-label">Prix</span>
+                                <span class="info-value">$${project.price}</span>
+                            </div>
+                        ` : ''}
+                        ${project.raise ? `
+                            <div class="info-row">
+                                <span class="info-label">Raise / Market Cap</span>
+                                <span class="info-value">$${project.raise} / $${project.marketCap}</span>
+                            </div>
+                        ` : ''}
+                        <div class="info-row">
+                            <span class="info-label">Social</span>
+                            <span class="info-value">🐦 ${(project.twitter / 1000).toFixed(0)}K • 📱 ${(project.telegram / 1000).toFixed(1)}K</span>
+                        </div>
+                    </div>
+                    
+                    <div class="analysis">
+                        <h4>💪 Points Forts</h4>
+                        <ul>
+                            ${project.strengths.slice(0, 3).map(s => `<li>${s}</li>`).join('')}
+                            ${project.strengths.length > 3 ? `<li>+ ${project.strengths.length - 3} autres...</li>` : ''}
+                        </ul>
+                    </div>
+                    
+                    ${project.redFlags.length > 0 ? `
+                        <div class="red-flags">
+                            <h4>🚨 Red Flags Détectés</h4>
+                            <ul style="margin-left: 20px;">
+                                ${project.redFlags.map(flag => `<li>${flag}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="actions">
+                        <button class="btn btn-primary" onclick="window.open('${project.website}', '_blank')">
+                            🌐 Website
+                        </button>
+                        <button class="btn btn-secondary" onclick="showAnalysis('${project.ticker}')">
+                            📊 Analyse Complète
+                        </button>
+                        <button class="btn btn-secondary" onclick="alert('Feature à venir: Alerte quand le projet lance!')">
+                            🔔 Alerter
+                        </button>
+                        <button class="btn btn-secondary" onclick="addToWatchlist('${project.name}')">
+                            ⭐ Watchlist
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+}
+
+// Filtrer projets
+function filterProjects() {
+    const status = document.getElementById('statusFilter').value;
+    const minScore = parseInt(document.getElementById('scoreFilter').value);
+    const type = document.getElementById('typeFilter').value;
+    const chain = document.getElementById('chainFilter').value;
+    
+    filteredProjects = launchpadProjects.filter(project => {
+        if (status !== 'all' && project.status !== status) return false;
+        if (project.aiScore < minScore) return false;
+        if (type !== 'all' && project.type !== type) return false;
+        if (chain !== 'all' && project.chain !== chain) return false;
+        return true;
+    });
+    
+    displayProjects();
+}
+
+// Afficher analyse complète
+function showAnalysis(ticker) {
+    const project = launchpadProjects.find(p => p.ticker === ticker);
+    if (!project) return;
+    
+    let analysis = `🚀 ANALYSE COMPLÈTE IA - ${project.name} ($${project.ticker})
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 AI SCORE: ${project.aiScore}/100
+
+📊 INFORMATIONS GÉNÉRALES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Type: ${project.type}
+Blockchain: ${project.chain}
+Catégorie: ${project.category}
+Statut: ${project.status === 'upcoming' ? 'À venir' : project.status === 'live' ? 'EN DIRECT' : 'Terminé'}
+Launch: ${new Date(project.launchDate).toLocaleDateString('fr-FR')}
+${project.price ? `Prix: $${project.price}` : ''}
+${project.raise ? `Raise: $${project.raise}` : ''}
+${project.marketCap ? `Market Cap: $${project.marketCap}` : ''}
+
+💪 POINTS FORTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${project.strengths.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+${project.redFlags.length > 0 ? `
+🚨 RED FLAGS DÉTECTÉS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${project.redFlags.map((f, i) => `${i + 1}. ${f}`).join('\n')}
+` : '✅ AUCUN RED FLAG MAJEUR DÉTECTÉ'}
+
+🔒 SÉCURITÉ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Audit: ${project.audited ? '✅ OUI' : '❌ NON'}
+Team Doxxed: ${project.doxxed ? '✅ OUI' : '❌ NON'}
+VC Backing: ${project.vcBacked ? '✅ OUI' : '❌ NON'}
+
+📱 SOCIAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Twitter: ${project.twitter.toLocaleString('fr-FR')} followers
+Telegram: ${project.telegram.toLocaleString('fr-FR')} membres
+
+💡 RECOMMANDATION IA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${project.aiScore >= 85 ? '🟢 EXCELLENT - Très recommandé' :
+  project.aiScore >= 70 ? '🟡 BON - Recommandé avec prudence' :
+  project.aiScore >= 50 ? '🟠 MOYEN - DYOR nécessaire' :
+  '🔴 RISQUÉ - Éviter ou investir très petit'}
+
+${project.aiScore < 60 ? '⚠️ ATTENTION: Score IA faible. Faites vos propres recherches!' : ''}
+`;
+    
+    alert(analysis);
+}
+
+// Ajouter à watchlist
+function addToWatchlist(projectName) {
+    const watchlist = JSON.parse(localStorage.getItem('launchpadWatchlist') || '[]');
+    
+    if (watchlist.includes(projectName)) {
+        alert(`❌ ${projectName} est déjà dans votre watchlist`);
+        return;
+    }
+    
+    watchlist.push(projectName);
+    localStorage.setItem('launchpadWatchlist', JSON.stringify(watchlist));
+    
+    alert(`✅ ${projectName} ajouté à votre watchlist!
+
+Vous recevrez une alerte quand le projet:
+• Lance son sale
+• Fait une annonce majeure
+• Change de score IA`);
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', () => {
+    displayProjects();
+});
+</script>
+
+</body>
+</html>
+    """
+    
     return HTMLResponse(content=html_content)

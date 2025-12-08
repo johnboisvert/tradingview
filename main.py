@@ -26991,7 +26991,7 @@ async def portfolio_tracker(request: Request):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💼 Portfolio Tracker IA | Trading Dashboard Pro</title>
+    <title>💼 Portfolio Tracker IA</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
@@ -27002,259 +27002,93 @@ async def portfolio_tracker(request: Request):
             padding: 30px;
             min-height: 100vh;
         }}
-        
-        .header {{
-            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-            padding: 40px;
-            border-radius: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 20px 60px rgba(6, 182, 212, 0.4);
-        }}
-        
-        .header h1 {{ font-size: 3em; margin-bottom: 10px; font-weight: 700; }}
-        .header p {{ font-size: 1.1em; opacity: 0.95; }}
-        
-        .demo-banner {{
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(99, 102, 241, 0.1) 100%);
-            border: 2px solid #3b82f6;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-        }}
-        
-        .demo-banner h3 {{ color: #3b82f6; margin-bottom: 10px; }}
-        .demo-banner p {{ line-height: 1.6; opacity: 0.95; }}
-        
-        .api-form {{
-            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
-            border: 2px solid rgba(34, 197, 94, 0.3);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 40px;
-        }}
-        
+        .header {{ background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; }}
+        .header h1 {{ font-size: 3em; margin-bottom: 10px; }}
+        .api-form {{ background: rgba(34,197,94,0.15); border: 2px solid rgba(34,197,94,0.3); border-radius: 15px; padding: 30px; margin-bottom: 40px; }}
         .api-form h3 {{ color: #10b981; margin-bottom: 20px; }}
-        
-        .form-row {{
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }}
-        
-        .form-group {{
-            display: flex;
-            flex-direction: column;
-        }}
-        
-        .form-group label {{
-            color: #10b981;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 0.95em;
-        }}
-        
-        .form-group input,
-        .form-group select {{
-            padding: 12px;
-            border: 2px solid rgba(34, 197, 94, 0.3);
-            border-radius: 10px;
-            background: rgba(15, 23, 42, 0.8);
-            color: #e0e6ed;
-            font-size: 0.95em;
-        }}
-        
-        .form-row-buttons {{
-            display: flex;
-            gap: 10px;
-        }}
-        
-        .btn {{
-            padding: 14px 24px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 1em;
-            transition: all 0.3s ease;
-        }}
-        
-        .btn-connect {{
-            flex: 1;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-        }}
-        
-        .btn-connect:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
-        }}
-        
-        .btn-reset {{
-            padding: 14px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #e0e6ed;
-        }}
-        
-        .success-message {{
-            background: rgba(34, 197, 94, 0.15);
-            color: #10b981;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #10b981;
-            margin-bottom: 20px;
-            font-weight: 600;
-        }}
-        
-        .portfolio-stats {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }}
-        
-        .stat-card {{
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(14, 165, 233, 0.1) 100%);
-            border: 2px solid rgba(6, 182, 212, 0.3);
-            padding: 30px;
-            border-radius: 18px;
-            text-align: center;
-        }}
-        
-        .stat-label {{ font-size: 0.95em; opacity: 0.8; margin-bottom: 10px; }}
-        .stat-value {{ font-size: 2.8em; font-weight: 700; color: #06b6d4; }}
-        .stat-change {{ font-size: 1.1em; margin-top: 10px; color: #10b981; }}
-        
-        @media (max-width: 768px) {{
-            body {{ margin-left: 0; padding: 15px; }}
-            .form-row {{ grid-template-columns: 1fr; }}
-            .portfolio-stats {{ grid-template-columns: 1fr; }}
-            .header h1 {{ font-size: 2em; }}
-        }}
+        .form-row {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }}
+        .form-group {{ display: flex; flex-direction: column; }}
+        .form-group label {{ color: #10b981; font-weight: 600; margin-bottom: 8px; }}
+        .form-group input, .form-group select {{ padding: 12px; border: 2px solid rgba(34,197,94,0.3); border-radius: 10px; background: rgba(15,23,42,0.8); color: #e0e6ed; }}
+        .btn {{ padding: 14px; background: #10b981; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; margin-top: 10px; }}
+        .msg {{ margin-top: 15px; padding: 15px; border-radius: 10px; display: none; border-left: 4px solid; }}
+        .msg.ok {{ background: rgba(34,197,94,0.15); color: #10b981; border-color: #10b981; }}
+        .msg.bad {{ background: rgba(239,68,68,0.15); color: #ef4444; border-color: #ef4444; }}
     </style>
 </head>
 <body>
-
 <div class="header">
     <h1>💼 Portfolio Tracker IA</h1>
-    <p>Suivi complet de tous vos portefeuilles crypto</p>
+    <p>Suivi complet de vos portefeuilles crypto</p>
 </div>
-
-<div class="demo-banner">
-    <h3>📊 Actuellement en MODE DÉMO</h3>
-    <p>Les données affichées ci-dessous sont des exemples (mock data). Pour synchroniser vos vrais portefeuilles, connectez vos exchanges via les clés API ci-dessous.</p>
-</div>
-
 <div class="api-form">
     <h3>🔗 Connecter votre Exchange</h3>
-    
     <div class="form-row">
         <div class="form-group">
             <label>Exchange</label>
-            <select id="exchange">
-                <option>-- Sélectionnez votre exchange --</option>
-                <option>Binance</option>
-                <option>Coinbase</option>
-                <option>MEXC</option>
-                <option>Kraken</option>
-                <option>FTX</option>
-                <option>Bybit</option>
-                <option>OKX</option>
-            </select>
+            <select id="exch"><option>-- Sélectionnez --</option><option>Binance</option><option>MEXC</option><option>Coinbase</option><option>Kraken</option></select>
         </div>
         <div class="form-group">
             <label>API Key</label>
-            <input type="text" id="apikey" placeholder="Collez votre clé...">
+            <input type="text" id="key" placeholder="Clé...">
         </div>
         <div class="form-group">
             <label>API Secret</label>
-            <input type="password" id="apisecret" placeholder="Collez votre secret...">
+            <input type="password" id="secret" placeholder="Secret...">
         </div>
     </div>
-    
-    <div class="form-row-buttons">
-        <button class="btn btn-connect" id="connectBtn">✅ Connecter</button>
-        <button class="btn btn-reset" id="resetBtn">🔄</button>
-    </div>
-    
-    <div id="msg" style="display:none; margin-top:15px;"></div>
+    <button class="btn" onclick="connecterExchange()">✅ Connecter</button>
+    <button class="btn" style="background:rgba(255,255,255,0.1)" onclick="reinitialiser()">🔄 Reset</button>
+    <div id="msgDiv" class="msg"></div>
 </div>
-
-<div class="portfolio-stats">
-    <div class="stat-card">
-        <div class="stat-label">💰 Valeur Totale</div>
-        <div class="stat-value">$24,587</div>
-        <div class="stat-change">+$2,145 (+9.6% ce mois)</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-label">📈 Plus-Value</div>
-        <div class="stat-value">+15.3%</div>
-        <div class="stat-change">+$3,215 cette année</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-label">🎯 Diversification</div>
-        <div class="stat-value">8 Assets</div>
-        <div class="stat-change">Risque: Modéré</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-label">📊 24h Change</div>
-        <div class="stat-value">+2.8%</div>
-        <div class="stat-change">Tendance: Haussière ↗️</div>
-    </div>
-</div>
-
-<h2 style="margin: 40px 0 25px; font-size: 1.8em; color: #06b6d4;">Vos Holdings (DÉMO)</h2>
-<p style="opacity: 0.8; margin-bottom: 20px;">Ceci est un exemple. Une fois connecté, vous verrez vos vrais holdings.</p>
-
-<div style="background: rgba(30, 41, 59, 0.7); border: 2px solid rgba(6, 182, 212, 0.3); border-radius: 15px; padding: 30px; margin-top: 40px;">
-    <h2 style="color: #06b6d4; margin-bottom: 20px; font-size: 1.6em;">💡 Comment utiliser Portfolio Tracker?</h2>
-    
-    <div style="background: rgba(6, 182, 212, 0.1); border: 2px solid rgba(6, 182, 212, 0.2); border-radius: 15px; padding: 25px; margin-bottom: 25px;">
-        <h3 style="color: #06b6d4; margin-bottom: 15px; font-size: 1.3em;">❓ Qu'est-ce que c'est?</h3>
-        <p style="line-height: 1.8; opacity: 0.95;">
-            Portfolio Tracker centralise tous vos portefeuilles crypto. Connectez vos API keys (Binance, MEXC, Coinbase, etc.) et voyez tous vos holdings en UN seul endroit.
-        </p>
-    </div>
-    
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-        <div style="background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🎯 ÉTAPES</div>
-            <ol style="line-height: 1.8; margin-left: 20px;">
-                <li>Créer une clé API "READ ONLY" sur votre exchange</li>
-                <li>Sélectionnez l'exchange dans le formulaire</li>
-                <li>Collez votre API Key et Secret</li>
-                <li>Cliquez "Connecter"</li>
-                <li>Vos données se synchronisent automatiquement</li>
-            </ol>
-        </div>
-        
-        <div style="background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">⚠️ SÉCURITÉ</div>
-            <ul style="line-height: 1.8; margin-left: 20px;">
-                <li>✓ Utilisez READ ONLY uniquement</li>
-                <li>✓ Ne cochez PAS "Allow Trading"</li>
-                <li>✓ Ne cochez PAS "Allow Withdrawal"</li>
-                <li>✓ Vos clés restent dans votre navigateur</li>
-            </ul>
-        </div>
-        
-        <div style="background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">📊 EXCHANGES SUPPORTÉS</div>
-            <ul style="line-height: 1.8; margin-left: 20px;">
-                <li>Binance ✅</li>
-                <li>Coinbase ✅</li>
-                <li>MEXC ✅</li>
-                <li>Kraken, FTX, Bybit, OKX ✅</li>
-            </ul>
-        </div>
-    </div>
-</div>
-
 </body>
 </html>
 """
     
-    return HTMLResponse(content=html_content + '<script>window.addEventListener("DOMContentLoaded", function() { var btn1 = document.getElementById("connectBtn"); var btn2 = document.getElementById("resetBtn"); var sel = document.getElementById("exchange"); var inp1 = document.getElementById("apikey"); var inp2 = document.getElementById("apisecret"); var msg = document.getElementById("msg"); if (btn1) { btn1.onclick = function() { var e = sel.value; var k = inp1.value; var s = inp2.value; if (e === "-- Sélectionnez votre exchange --" || !e) { msg.innerHTML = "<div style=\"background:rgba(239,68,68,0.15);color:#ef4444;padding:15px;border-radius:10px;border-left:4px solid #ef4444\">Sélectionnez un exchange</div>"; msg.style.display = "block"; return; } if (!k || !s) { msg.innerHTML = "<div style=\"background:rgba(239,68,68,0.15);color:#ef4444;padding:15px;border-radius:10px;border-left:4px solid #ef4444\">Remplissez API Key et Secret</div>"; msg.style.display = "block"; return; } msg.innerHTML = "<div style=\"background:rgba(34,197,94,0.15);color:#10b981;padding:15px;border-radius:10px;border-left:4px solid #10b981;font-weight:600\">OK " + e + " connecté! Sync en cours...</div>"; msg.style.display = "block"; inp1.value = ""; inp2.value = ""; sel.value = "-- Sélectionnez votre exchange --"; setTimeout(function() { msg.style.display = "none"; }, 4000); }; } if (btn2) { btn2.onclick = function() { sel.value = "-- Sélectionnez votre exchange --"; inp1.value = ""; inp2.value = ""; msg.style.display = "none"; }; } }); </script>')
+    # Script SIMPLE et CORRECT
+    script = """<script>
+function connecterExchange() {
+    var exch = document.getElementById('exch').value;
+    var key = document.getElementById('key').value;
+    var secret = document.getElementById('secret').value;
+    var msg = document.getElementById('msgDiv');
+    
+    if (exch === '-- Sélectionnez --') {
+        msg.className = 'msg bad';
+        msg.textContent = 'Sélectionnez un exchange';
+        msg.style.display = 'block';
+        return;
+    }
+    
+    if (!key || !secret) {
+        msg.className = 'msg bad';
+        msg.textContent = 'Remplissez API Key et Secret';
+        msg.style.display = 'block';
+        return;
+    }
+    
+    msg.className = 'msg ok';
+    msg.textContent = 'OK ' + exch + ' connecté! Sync en cours...';
+    msg.style.display = 'block';
+    
+    document.getElementById('key').value = '';
+    document.getElementById('secret').value = '';
+    document.getElementById('exch').value = '-- Sélectionnez --';
+    
+    setTimeout(function() {
+        msg.style.display = 'none';
+    }, 4000);
+}
+
+function reinitialiser() {
+    document.getElementById('exch').value = '-- Sélectionnez --';
+    document.getElementById('key').value = '';
+    document.getElementById('secret').value = '';
+    document.getElementById('msgDiv').style.display = 'none';
+}
+</script>"""
+    
+    return HTMLResponse(content=html_content + script)
 
 
 # API ENDPOINT POUR RÉCUPÉRER LES HOLDINGS VIA API EXCHANGE

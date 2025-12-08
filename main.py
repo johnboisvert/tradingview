@@ -27065,23 +27065,6 @@ async def portfolio_tracker(request: Request):
             min-height: 100vh;
         }}
         
-        .guide-box {{
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(14, 165, 233, 0.15) 100%);
-            border: 2px solid rgba(6, 182, 212, 0.5);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 40px;
-            position: sticky;
-            top: 20px;
-            z-index: 100;
-        }}
-        
-        .guide-title {{ color: #06b6d4; font-size: 1.4em; font-weight: 700; margin-bottom: 15px; }}
-        .guide-content {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }}
-        .guide-item {{ padding: 12px; background: rgba(6, 182, 212, 0.1); border-radius: 10px; }}
-        .guide-label {{ color: #06b6d4; font-weight: 600; font-size: 0.95em; margin-bottom: 8px; }}
-        .guide-text {{ font-size: 0.9em; line-height: 1.5; }}
-        
         .header {{
             background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
             padding: 40px;
@@ -27092,6 +27075,17 @@ async def portfolio_tracker(request: Request):
         
         .header h1 {{ font-size: 3em; margin-bottom: 10px; font-weight: 700; }}
         .header p {{ font-size: 1.1em; opacity: 0.95; }}
+        
+        .demo-banner {{
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(99, 102, 241, 0.1) 100%);
+            border: 2px solid #3b82f6;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }}
+        
+        .demo-banner h3 {{ color: #3b82f6; margin-bottom: 10px; }}
+        .demo-banner p {{ line-height: 1.6; opacity: 0.95; }}
         
         .portfolio-stats {{
             display: grid;
@@ -27118,17 +27112,6 @@ async def portfolio_tracker(request: Request):
         .stat-label {{ font-size: 0.95em; opacity: 0.8; margin-bottom: 10px; }}
         .stat-value {{ font-size: 2.8em; font-weight: 700; color: #06b6d4; }}
         .stat-change {{ font-size: 1.1em; margin-top: 10px; color: #10b981; }}
-        
-        .explanation-section {{
-            background: rgba(30, 41, 59, 0.7);
-            border: 2px solid rgba(6, 182, 212, 0.3);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 40px;
-        }}
-        
-        .explanation-section h2 {{ color: #06b6d4; margin-bottom: 20px; font-size: 1.6em; }}
-        .explanation-section p {{ line-height: 1.8; margin-bottom: 15px; opacity: 0.95; }}
         
         .holdings-grid {{
             display: grid;
@@ -27197,54 +27180,78 @@ async def portfolio_tracker(request: Request):
         .detail-label {{ font-size: 0.85em; opacity: 0.7; }}
         .detail-value {{ font-size: 1.3em; font-weight: 700; color: #06b6d4; margin-top: 5px; }}
         
+        .explanation-section {{
+            background: rgba(30, 41, 59, 0.7);
+            border: 2px solid rgba(6, 182, 212, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }}
+        
+        .explanation-section h2 {{ color: #06b6d4; margin-bottom: 20px; font-size: 1.6em; }}
+        .explanation-section p {{ line-height: 1.8; margin-bottom: 15px; opacity: 0.95; }}
+        
+        .how-it-works {{
+            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(14, 165, 233, 0.1) 100%);
+            border: 2px solid rgba(6, 182, 212, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }}
+        
+        .how-it-works h3 {{ color: #06b6d4; margin-bottom: 20px; font-size: 1.5em; }}
+        
+        .steps {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }}
+        
+        .step {{ background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px; }}
+        .step-number {{ 
+            font-size: 2em; 
+            font-weight: 700; 
+            color: #06b6d4;
+            margin-bottom: 10px;
+        }}
+        .step-title {{ font-weight: 600; margin-bottom: 8px; color: #06b6d4; }}
+        .step-desc {{ font-size: 0.9em; line-height: 1.6; opacity: 0.9; }}
+        
+        .api-section {{
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
+            border: 2px solid rgba(34, 197, 94, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+        }}
+        
+        .api-section h3 {{ color: #10b981; margin-bottom: 15px; font-size: 1.5em; }}
+        
+        code {{
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            color: #10b981;
+            font-size: 0.85em;
+        }}
+        
         @media (max-width: 768px) {{
             body {{ margin-left: 0; padding: 15px; }}
             .portfolio-stats {{ grid-template-columns: 1fr; }}
             .holdings-grid {{ grid-template-columns: 1fr; }}
             .header h1 {{ font-size: 2em; }}
-            .guide-content {{ grid-template-columns: 1fr; }}
+            .steps {{ grid-template-columns: 1fr; }}
         }}
     </style>
 </head>
 <body>
 
-<!-- GUIDE D'UTILISATION - EN HAUT ET STICKY -->
-<div class="guide-box">
-    <div class="guide-title">💡 Comment utiliser Portfolio Tracker?</div>
-    <div class="guide-content">
-        <div class="guide-item">
-            <div class="guide-label">🎯 OBJECTIF</div>
-            <div class="guide-text">Centraliser vos portefeuilles crypto de tous les exchanges en UN seul endroit. Suivez votre valeur totale et vos gains en temps réel.</div>
-        </div>
-        <div class="guide-item">
-            <div class="guide-label">📊 FONCTIONNALITÉS</div>
-            <div class="guide-text">✓ Sync multi-exchanges<br>✓ Calcul auto des gains<br>✓ Alertes volatilité<br>✓ Historique détaillé</div>
-        </div>
-        <div class="guide-item">
-            <div class="guide-label">🚀 HOW-TO</div>
-            <div class="guide-text">1. Connectez API<br>2. Sync automatique<br>3. Suivez gains<br>4. Analysez performance</div>
-        </div>
-    </div>
-</div>
-
 <div class="header">
     <h1>💼 Portfolio Tracker IA</h1>
-    <p>Suivi complet de tous vos portefeuilles crypto avec analyse IA</p>
+    <p>Suivi complet de tous vos portefeuilles crypto</p>
 </div>
 
-<!-- EXPLICATION SECTION -->
-<div class="explanation-section">
-    <h2>📚 Qu'est-ce que Portfolio Tracker?</h2>
-    <p>Portfolio Tracker IA est un outil puissant pour gérer votre portefeuille crypto. Il se connecte à vos exchanges favoris (Binance, Coinbase, Kraken, etc.) via des clés API et synchronise automatiquement toutes vos positions.</p>
-    <p><strong>Avantages principaux:</strong></p>
-    <ul style="margin-left: 20px; line-height: 2;">
-        <li>✓ Vue d'ensemble complète de tous vos holdings</li>
-        <li>✓ Calcul automatique des gains et pertes</li>
-        <li>✓ Historique détaillé des transactions</li>
-        <li>✓ Alertes en temps réel sur la volatilité</li>
-        <li>✓ Analyse des performances par crypto</li>
-        <li>✓ Recommendations IA pour optimiser votre portefeuille</li>
-    </ul>
+<!-- DEMO BANNER -->
+<div class="demo-banner">
+    <h3>📊 Actuellement en MODE DÉMO</h3>
+    <p>Les données affichées ci-dessous sont des exemples (mock data). Pour synchroniser vos vrais portefeuilles, connectez vos exchanges via les clés API (voir section "Comment ça marche?" en bas de page).</p>
 </div>
 
 <div class="portfolio-stats">
@@ -27278,7 +27285,7 @@ async def portfolio_tracker(request: Request):
             <div class="holding-name">Bitcoin 🟠</div>
             <div class="holding-percentage">42.5% du portefeuille</div>
         </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">L'or numérique - la crypto la plus sécurisée avec la plus grande capitalisation</p>
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">L'or numérique - la crypto la plus sécurisée</p>
         <div class="holding-details">
             <div class="detail">
                 <div class="detail-label">Quantité</div>
@@ -27304,7 +27311,7 @@ async def portfolio_tracker(request: Request):
             <div class="holding-name">Ethereum 🔵</div>
             <div class="holding-percentage">35.2% du portefeuille</div>
         </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">La plateforme des smart contracts - base de la DeFi et des tokens</p>
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">La plateforme des smart contracts</p>
         <div class="holding-details">
             <div class="detail">
                 <div class="detail-label">Quantité</div>
@@ -27330,7 +27337,7 @@ async def portfolio_tracker(request: Request):
             <div class="holding-name">Solana 💜</div>
             <div class="holding-percentage">22.3% du portefeuille</div>
         </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Blockchain ultra-rapide - idéale pour les trades et les dApps</p>
+        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Blockchain ultra-rapide</p>
         <div class="holding-details">
             <div class="detail">
                 <div class="detail-label">Quantité</div>
@@ -27347,6 +27354,93 @@ async def portfolio_tracker(request: Request):
             <div class="detail">
                 <div class="detail-label">Gain</div>
                 <div class="detail-value" style="color: #ef4444;">-5% (actuellement en perte)</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EXPLICATION SECTION -->
+<div class="explanation-section">
+    <h2>❓ Comment fonctionne Portfolio Tracker?</h2>
+    <p><strong>Portfolio Tracker</strong> centralise tous vos portefeuilles crypto. Au lieu d'ouvrir 5 exchanges différents, vous voyez TOUT au même endroit.</p>
+    <p><strong>Ce que vous voyez actuellement:</strong> Ce sont des données d'exemple (démo). Pour voir vos VRAIS données, vous devez connecter vos exchanges.</p>
+    <p><strong>Exchanges supportés:</strong> Binance, Coinbase, Kraken, FTX, Huobi, Bybit, OKX, et plus...</p>
+</div>
+
+<!-- HOW IT WORKS SECTION -->
+<div class="how-it-works">
+    <h3>🚀 Comment l'utiliser</h3>
+    <div class="steps">
+        <div class="step">
+            <div class="step-number">1️⃣</div>
+            <div class="step-title">Générez une API Key</div>
+            <div class="step-desc">Allez sur Binance, Coinbase, etc. et créez une API key (Paramètres → Clés API)</div>
+        </div>
+        <div class="step">
+            <div class="step-number">2️⃣</div>
+            <div class="step-title">Configurez les permissions</div>
+            <div class="step-desc">Cochez LECTURE SEULE (lecture des soldes). Ne JAMAIS cocher trading/withdraw!</div>
+        </div>
+        <div class="step">
+            <div class="step-number">3️⃣</div>
+            <div class="step-title">Connectez sur Trading Dashboard</div>
+            <div class="step-desc">Collez votre API Key et Secret. Dashboard synchronise automatiquement</div>
+        </div>
+        <div class="step">
+            <div class="step-number">4️⃣</div>
+            <div class="step-title">Suivez en temps réel</div>
+            <div class="step-desc">Voyez vos holdings, gains, alertes, tout à jour automatiquement</div>
+        </div>
+    </div>
+</div>
+
+<!-- API SECTION -->
+<div class="api-section">
+    <h3>🔐 Sécurité des API Keys</h3>
+    <p style="margin-bottom: 15px;"><strong>⚠️ Important:</strong> Vos API Keys sont JAMAIS stockées sur le serveur. Elles restent dans votre navigateur (local storage).</p>
+    <p style="margin-bottom: 15px;"><strong>Les bonnes pratiques:</strong></p>
+    <ul style="margin-left: 20px; line-height: 2;">
+        <li>✓ Créer une API KEY spéciale pour Trading Dashboard</li>
+        <li>✓ Cocher LECTURE SEULE (important!)</li>
+        <li>✓ NE JAMAIS cocher permissions de trading/withdraw</li>
+        <li>✓ Si peur, créer un sous-compte avec peu de cryptos</li>
+        <li>✓ Revérifier l'adresse du site (www.cryptoia.ca) avant de coller la clé</li>
+    </ul>
+    <p style="margin-top: 15px;"><strong>Exemple de format:</strong></p>
+    <code>Binance API Key: a1b2c3d4e5f6g7h8i9j0...</code>
+</div>
+
+<!-- GUIDE SECTION (EN BAS!) -->
+<div style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.25) 0%, rgba(14, 165, 233, 0.15) 100%); border: 2px solid rgba(6, 182, 212, 0.5); border-radius: 15px; padding: 30px; margin-top: 40px;">
+    <h2 style="color: #06b6d4; margin-bottom: 20px; font-size: 1.6em;">💡 RÉSUMÉ - Comment utiliser Portfolio Tracker?</h2>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+        <div style="background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px;">
+            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🎯 OBJECTIF</div>
+            <div style="line-height: 1.6;">
+                Centraliser tous vos portefeuilles crypto (Binance, Coinbase, etc.) EN UN SEUL ENDROIT. 
+                Suivez votre valeur totale, vos gains, et vos holdings en TEMPS RÉEL.
+            </div>
+        </div>
+        
+        <div style="background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px;">
+            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">📊 FONCTIONNALITÉS</div>
+            <div style="line-height: 1.8;">
+                ✓ Synchronisation multi-exchanges<br>
+                ✓ Calcul automatique des gains<br>
+                ✓ Historique des transactions<br>
+                ✓ Alertes de volatilité<br>
+                ✓ Performance par crypto
+            </div>
+        </div>
+        
+        <div style="background: rgba(6, 182, 212, 0.1); padding: 20px; border-radius: 12px;">
+            <div style="color: #06b6d4; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🚀 PROCHAINES ÉTAPES</div>
+            <div style="line-height: 1.8;">
+                1. Connectez votre Binance/Coinbase<br>
+                2. Dashboard se synchronise auto<br>
+                3. Voyez vos gains en temps réel<br>
+                4. Recevez des alertes
             </div>
         </div>
     </div>

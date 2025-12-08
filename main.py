@@ -1095,36 +1095,134 @@ body{margin-left:280px!important;margin-top:0!important;margin-right:0!important
 <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active');document.body.classList.toggle('sidebar-open')">☰</button>
 <nav class="sidebar">
 <div class="sidebar-header"><div class="sidebar-title">🚀 Trading Pro</div></div>
-<div class="menu-section"><div class="section-title">📊 Tableau de Bord</div><a href="/dashboard" class="menu-item"><span class="icon">🏠</span> Accueil</a><a href="/fear-greed" class="menu-item"><span class="icon">😨</span> Fear & Greed</a><a href="/dominance" class="menu-item"><span class="icon">👑</span> Dominance BTC</a><a href="/altcoin-season" class="menu-item"><span class="icon">⭐</span> Altcoin Season</a><a href="/heatmap" class="menu-item"><span class="icon">🔥</span> Heatmap</a></div>
-<div class="menu-section"><div class="section-title">🤖 Features IA</div><a href="/ai-signals" class="menu-item ai-feature"><span class="icon">🎯</span> Signaux AI</a><a href="/ai-news" class="menu-item ai-feature"><span class="icon">📰</span> News Impact</a><a href="/ai-predictor" class="menu-item ai-feature"><span class="icon">🔮</span> Prédictions</a><a href="/ai-whale" class="menu-item ai-feature"><span class="icon">🐋</span> Whale Tracker</a><a href="/ai-patterns" class="menu-item ai-feature"><span class="icon">📊</span> Patterns</a><a href="/ai-sentiment" class="menu-item ai-feature"><span class="icon">🎭</span> Sentiment</a><a href="/ai-sizer" class="menu-item ai-feature"><span class="icon">📏</span> Position Size</a><a href="/ai-exit" class="menu-item ai-feature"><span class="icon">🚪</span> Exit Strategy</a><a href="/ai-timeframe" class="menu-item ai-feature"><span class="icon">📈</span> Multi-TF</a><a href="/ai-liquidity" class="menu-item ai-feature"><span class="icon">🌊</span> Liquidité</a><a href="/ai-alerts" class="menu-item ai-feature"><span class="icon">🎯</span> Alertes</a><a href="/ai-gem-hunter" class="menu-item ai-feature"><span class="icon">💎</span> Gem Hunter</a><a href="/crypto-pepites" class="menu-item ai-feature"><span class="icon">💎</span> Nouvelles Pépites</a></div>
-<div class="menu-section"><div class="section-title">💰 Trading</div><a href="/strategie" class="menu-item"><span class="icon">📚</span> Stratégies</a><a href="/spot-trading" class="menu-item"><span class="icon">💎</span> Spot</a><a href="/trades" class="menu-item"><span class="icon">📈</span> Trades</a><a href="/risk-management" class="menu-item"><span class="icon">⚠️</span> Risk</a><a href="/watchlist" class="menu-item"><span class="icon">👁️</span> Watchlist</a><a href="/calculatrice" class="menu-item"><span class="icon">🧮</span> Calc</a></div>
-<div class="menu-section"><div class="section-title">🔍 Analyse</div><a href="/ai-assistant" class="menu-item"><span class="icon">🤖</span> Assistant</a><a href="/prediction-ia" class="menu-item"><span class="icon">🔮</span> Prédictions</a><a href="/ai-opportunity-scanner" class="menu-item"><span class="icon">🔍</span> Scanner</a><a href="/ai-market-regime" class="menu-item"><span class="icon">🌊</span> Regime</a><a href="/ai-whale-watcher" class="menu-item"><span class="icon">🐋</span> Whales</a><a href="/stats-dashboard" class="menu-item"><span class="icon">📊</span> Stats</a><a href="/onchain-metrics" class="menu-item"><span class="icon">⛓️</span> OnChain</a></div>
-<div class="menu-section"><div class="section-title">🛠️ Outils</div><a href="/market-simulation" class="menu-item"><span class="icon">🎮</span> Simulation</a><a href="/backtesting" class="menu-item"><span class="icon">⚙️</span> Backtesting</a><a href="/graphiques" class="menu-item"><span class="icon">📊</span> Graphiques</a><a href="/convertisseur" class="menu-item"><span class="icon">💱</span> Convertisseur</a><a href="/calendrier" class="menu-item"><span class="icon">📅</span> Calendrier</a><a href="/nouvelles" class="menu-item"><span class="icon">📰</span> News</a></div>
-<div class="menu-section"><div class="section-title">⚙️ Système</div><a href="/bullrun-phase" class="menu-item"><span class="icon">🚀</span> Bull Run</a><a href="/success-stories" class="menu-item"><span class="icon">⭐</span> Success</a><a href="/testimonials-widget" class="menu-item"><span class="icon">💬</span> Témoignages</a><a href="/generate-pdf-report" class="menu-item"><span class="icon">📄</span> PDF</a><a href="/api-keys" class="menu-item"><span class="icon">🔑</span> API Keys</a><a href="/telegram-test" class="menu-item"><span class="icon">📱</span> Telegram</a></div>
-<div class="menu-section"><div class="section-title">👤 Mon Compte</div><a href="/pricing-complete" class="menu-item premium"><span class="icon">💎</span> Abonnements</a><a href="/admin-dashboard" class="menu-item admin"><span class="icon">🔧</span> Admin</a><a href="/mon-compte" class="menu-item account"><span class="icon">👤</span> Mon Compte</a><a href="/logout" class="menu-item logout"><span class="icon">🚪</span> Déconnexion</a>
-    <!-- 🆕 Nouvelles Features 2024 -->
-    <div class="menu-section">
-        <div class="section-title">🆕 Nouvelles Features</div>
-        <a href="/portfolio-tracker" class="menu-item">
-            <span class="icon">📊</span>
-            <span class="label">Portfolio Tracker</span>
-        </a>
-        <a href="/defi-yield" class="menu-item">
-            <span class="icon">🏦</span>
-            <span class="label">DeFi Yield</span>
-        </a>
-        <a href="/academy" class="menu-item">
-            <span class="icon">🎓</span>
-            <span class="label">Academy</span>
-        </a>
-        <a href="/launchpad-scanner" class="menu-item">
-            <span class="icon">🚀</span>
-            <span class="label">Launchpad</span>
-        </a>
-    </div>
 
+<!-- 📊 Tableau de Bord -->
+<div class="menu-section">
+    <div class="section-title">📊 Tableau de Bord</div>
+    <a href="/dashboard" class="menu-item">
+        <span class="icon">🏠</span>
+        <span class="label">Dashboard</span>
+    </a>
 </div>
-</nav>"""
+
+<!-- 🤖 Features IA -->
+<div class="menu-section">
+    <div class="section-title">🤖 Features IA</div>
+    <a href="/crypto-pepites" class="menu-item ai-feature">
+        <span class="icon">💎</span>
+        <span class="label">Crypto Pépites</span>
+    </a>
+    <a href="/ai-opportunity-scanner" class="menu-item ai-feature">
+        <span class="icon">🔍</span>
+        <span class="label">AI Scanner</span>
+    </a>
+</div>
+
+<!-- 💰 Trading -->
+<div class="menu-section">
+    <div class="section-title">💰 Trading</div>
+    <a href="/trades" class="menu-item">
+        <span class="icon">📈</span>
+        <span class="label">Mes Trades</span>
+    </a>
+    <a href="/historique" class="menu-item">
+        <span class="icon">📜</span>
+        <span class="label">Historique</span>
+    </a>
+</div>
+
+<!-- 🔍 Analyse -->
+<div class="menu-section">
+    <div class="section-title">🔍 Analyse</div>
+    <a href="/market-regime" class="menu-item">
+        <span class="icon">📊</span>
+        <span class="label">Market Regime</span>
+    </a>
+    <a href="/heatmap" class="menu-item">
+        <span class="icon">🔥</span>
+        <span class="label">Heatmap</span>
+    </a>
+</div>
+
+<!-- 🛠️ Outils -->
+<div class="menu-section">
+    <div class="section-title">🛠️ Outils</div>
+    <a href="/calculateur-rendement" class="menu-item">
+        <span class="icon">🧮</span>
+        <span class="label">Calculateur</span>
+    </a>
+</div>
+
+<!-- ⚙️ Système -->
+<div class="menu-section">
+    <div class="section-title">⚙️ Système</div>
+    <a href="/bullrun" class="menu-item">
+        <span class="icon">🚀</span>
+        <span class="label">Bull Run</span>
+    </a>
+    <a href="/success-stories" class="menu-item">
+        <span class="icon">⭐</span>
+        <span class="label">Success</span>
+    </a>
+    <a href="/temoignages" class="menu-item">
+        <span class="icon">💬</span>
+        <span class="label">Témoignages</span>
+    </a>
+    <a href="/pdf" class="menu-item">
+        <span class="icon">📄</span>
+        <span class="label">PDF</span>
+    </a>
+    <a href="/api-keys" class="menu-item">
+        <span class="icon">🔑</span>
+        <span class="label">API Keys</span>
+    </a>
+    <a href="/telegram" class="menu-item">
+        <span class="icon">📱</span>
+        <span class="label">Telegram</span>
+    </a>
+    
+    <!-- 🆕 Nouvelles Features intégrées ici -->
+    <a href="/portfolio-tracker" class="menu-item ai-feature">
+        <span class="icon">📊</span>
+        <span class="label">Portfolio Tracker</span>
+    </a>
+    <a href="/defi-yield" class="menu-item ai-feature">
+        <span class="icon">🏦</span>
+        <span class="label">DeFi Yield</span>
+    </a>
+    <a href="/academy" class="menu-item ai-feature">
+        <span class="icon">🎓</span>
+        <span class="label">Academy</span>
+    </a>
+    <a href="/launchpad-scanner" class="menu-item ai-feature">
+        <span class="icon">🚀</span>
+        <span class="label">Launchpad</span>
+    </a>
+</div>
+
+<!-- 👤 Mon Compte -->
+<div class="menu-section">
+    <div class="section-title">👤 Mon Compte</div>
+    <a href="/abonnements" class="menu-item premium">
+        <span class="icon">💎</span>
+        <span class="label">Abonnements</span>
+    </a>
+    <a href="/admin-dashboard" class="menu-item admin">
+        <span class="icon">🔧</span>
+        <span class="label">Admin</span>
+    </a>
+    <a href="/mon-compte" class="menu-item account">
+        <span class="icon">👤</span>
+        <span class="label">Mon Compte</span>
+    </a>
+    <a href="/deconnexion" class="menu-item logout">
+        <span class="icon">🚪</span>
+        <span class="label">Déconnexion</span>
+    </a>
+</div>
+
+</nav>
+"""
 # ==================================
 
 # ============================================================================

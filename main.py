@@ -1096,6 +1096,27 @@ body{margin-left:280px!important;margin-top:0!important;margin-right:0!important
 <nav class="sidebar">
 <div class="sidebar-header"><div class="sidebar-title">🚀 Trading Pro</div></div>
 
+<!-- 🆕 NEW FEATURES -->
+<div class="menu-section">
+    <div class="section-title">🆕 NEW FEATURES</div>
+    <a href="/portfolio-tracker" class="menu-item ai-feature">
+        <span class="icon">💼</span>
+        <span class="label">Portfolio Tracker</span>
+    </a>
+    <a href="/defi-yield" class="menu-item ai-feature">
+        <span class="icon">🏦</span>
+        <span class="label">DeFi Yield</span>
+    </a>
+    <a href="/academy" class="menu-item ai-feature">
+        <span class="icon">🎓</span>
+        <span class="label">Academy IA</span>
+    </a>
+    <a href="/launchpad-scanner" class="menu-item ai-feature">
+        <span class="icon">🎯</span>
+        <span class="label">Launchpad Scanner</span>
+    </a>
+</div>
+
 <!-- 📊 Tableau de Bord -->
 <div class="menu-section">
     <div class="section-title">📊 Tableau de Bord</div>
@@ -1133,10 +1154,6 @@ body{margin-left:280px!important;margin-top:0!important;margin-right:0!important
         <span class="icon">⭐</span>
         <span class="label">Watchlist</span>
     </a>
-    <a href="/portfolio-tracker" class="menu-item ai-feature">
-        <span class="icon">💼</span>
-        <span class="label">Portfolio</span>
-    </a>
 </div>
 
 <!-- 📊 Analyse & Marché -->
@@ -1170,35 +1187,23 @@ body{margin-left:280px!important;margin-top:0!important;margin-right:0!important
 
 <!-- 📰 Contenu & Actualités -->
 <div class="menu-section">
-    <div class="section-title">📰 Contenu</div>
+    <div class="section-title">📰 Actualités</div>
     <a href="/nouvelles" class="menu-item">
         <span class="icon">📰</span>
-        <span class="label">Nouvelles</span>
+        <span class="label">Nouvelles Crypto</span>
     </a>
+</div>
+
+<!-- 🎓 Apprentissage & DeFi -->
+<div class="menu-section">
+    <div class="section-title">🎓 Ressources</div>
     <a href="/convertisseur" class="menu-item">
         <span class="icon">💱</span>
         <span class="label">Convertisseur</span>
     </a>
     <a href="/calendrier" class="menu-item">
         <span class="icon">📅</span>
-        <span class="label">Calendrier</span>
-    </a>
-</div>
-
-<!-- 🎓 Apprentissage & DeFi -->
-<div class="menu-section">
-    <div class="section-title">🎓 Apprentissage</div>
-    <a href="/academy" class="menu-item ai-feature">
-        <span class="icon">🎓</span>
-        <span class="label">Academy</span>
-    </a>
-    <a href="/defi-yield" class="menu-item ai-feature">
-        <span class="icon">🏦</span>
-        <span class="label">DeFi Yield</span>
-    </a>
-    <a href="/launchpad-scanner" class="menu-item ai-feature">
-        <span class="icon">🎯</span>
-        <span class="label">Launchpad</span>
+        <span class="label">Calendrier Éco</span>
     </a>
 </div>
 

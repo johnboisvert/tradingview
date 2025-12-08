@@ -29081,5 +29081,5 @@ async def disconnect_exchange_endpoint(request: Request):
 @app.get("/portfolio-tracker", response_class=HTMLResponse)
 async def portfolio_tracker(request: Request):
     """Portfolio Tracker avec support multi-exchange"""
-    with open('PORTFOLIO_TRACKER_FRONTEND_FIXED.html', 'r', encoding='utf-8') as f:
+    with open('PORTFOLIO_TRACKER_FRONTEND.html', 'r', encoding='utf-8') as f:
         return HTMLResponse(content=f.read())

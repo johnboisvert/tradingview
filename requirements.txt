@@ -12,7 +12,6 @@ pytz==2023.3
 sendgrid==6.10.0
 reportlab==4.0.7
 pydantic==2.5.0
-
 aiohttp==3.9.1
 # HTTP Client (httpx/httpcore pin pour éviter les soucis de proxies args)
 httpcore==1.0.5
@@ -21,23 +20,12 @@ slowapi==0.1.9
 psycopg2-binary
 jinja2
 apscheduler
-
 # Utilities
 python-dotenv==1.0.1
-
-
 # OpenAI
 openai==1.51.0
-
 # Ajouts pour Altseason (fetch + parsing)
-
 beautifulsoup4==4.12.3
-
-
-
-
-
-
-
-
-
+# CCXT - Portfolio tracking avec exchanges réels
+ccxt==4.0.96
+cryptography==41.0.7

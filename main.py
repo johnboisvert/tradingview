@@ -28410,9 +28410,10 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
         holdings = []
         stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD']
         
+        # Afficher TOUS les assets avec balance > 0
         for symbol in balance.get('free', {}):
             amount = balance['free'].get(symbol, 0)
-            if amount > 0.0001:  # Seulement assets > 0.0001
+            if amount > 0:
                 price = 0
                 
                 # D'abord essayer CCXT
@@ -28438,17 +28439,20 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
                 if price == 0:
                     price = await fetch_price_coingecko(symbol)
                 
-                # Si toujours pas de prix, skip
+                # Valeur par défaut minimal si toujours pas de prix
                 if price == 0:
-                    price = 0.01  # Minimal pour affichage
+                    price = 0.00001
                 
                 value = amount * price
-                holdings.append({
-                    'symbol': symbol,
-                    'amount': float(amount),
-                    'price': float(price),
-                    'value': float(value)
-                })
+                
+                # FILTRER: Seulement les actifs >= $5.00
+                if value >= 5.0:
+                    holdings.append({
+                        'symbol': symbol,
+                        'amount': float(amount),
+                        'price': float(price),
+                        'value': float(value)
+                    })
         
         # Trier par valeur décroissante
         holdings = sorted(holdings, key=lambda x: x['value'], reverse=True)

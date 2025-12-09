@@ -28462,8 +28462,8 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
                 
                 value = amount * price
                 
-                # FILTRER: Seulement les actifs >= $5.00
-                if value >= 5.0:
+                # Afficher TOUS les assets (pas de filtre)
+                if value > 0:
                     holdings.append({
                         'symbol': symbol,
                         'amount': float(amount),

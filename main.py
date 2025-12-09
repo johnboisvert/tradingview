@@ -27561,25 +27561,20 @@ async def send_push_notification(request: Request):
 # ========== FEATURE 4 ==========
 
 # ============================================================================
-# 🏆 TRADING ACADEMY - VERSION FINALE COMPLÈTE (BUG CORRIGÉ!)
+# 🏆 TRADING ACADEMY - VERSION FINALE (Stats + Sidebar Corrigées)
 # ============================================================================
-# ✅ Formation 1: 6 modules complets (Bug Module 6 corrigé: } manquant ajouté)
-#    1. Qu'est-ce que le Trading?
-#    2. Comment Gagner de l'Argent
-#    3. Les Risques du Trading
-#    4. Capital de Départ Nécessaire
-#    5. Outils Essentiels du Trader
-#    6. Premiers Pas Pratiques - Plan 7 Jours
-# ✅ Formation 2: 3 modules (Bitcoin, Ethereum, Altcoins)
-# ✅ Formation 3: 5 modules (Sécurité complète)
-# ✅ Formation 4: 6 modules (Psychologie)
-# ✅ Formation 5: 2 modules (Chandelles + Support/Résistance)
-# 
-# TOTAL: 22 MODULES PROFESSIONNELS!
+# ✅ Stats en haut: "5 Formations" + "22 Modules" (corrigé!)
+# ✅ Sidebar complète avec toutes les sections
+# ✅ Formation 1: 6 modules complets
+# ✅ Formation 2: 3 modules
+# ✅ Formation 3: 5 modules
+# ✅ Formation 4: 6 modules
+# ✅ Formation 5: 2 modules
+# TOTAL: 22 MODULES!
 # ============================================================================
 @app.get("/academy", response_class=HTMLResponse)
-async def academy_22_modules_complete(request: Request):
-    """🏆 Trading Academy - 22 Modules Complets (Bug Corrigé)"""
+async def academy_corrected(request: Request):
+    """🏆 Trading Academy - 22 Modules (Stats + Sidebar Corrigées)"""
     html_content = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -28163,6 +28158,18 @@ async def academy_22_modules_complete(request: Request):
         </div>
         
         <div class="menu-section">
+            <div class="section-title">👤 COMPTE</div>
+            <a href="/mon-compte" class="menu-item">
+                <span class="icon">⚙️</span>
+                <span class="label">Mon Compte</span>
+            </a>
+            <a href="/pricing-complete" class="menu-item">
+                <span class="icon">💎</span>
+                <span class="label">Pricing</span>
+            </a>
+        </div>
+        
+        <div class="menu-section">
             <div class="section-title">📊 ANALYSE</div>
             <a href="/fear-greed" class="menu-item">
                 <span class="icon">😨</span>
@@ -28181,6 +28188,26 @@ async def academy_22_modules_complete(request: Request):
                 <span class="label">Heatmap</span>
             </a>
         </div>
+        <div class="menu-section">
+            <div class="section-title">📚 GUIDES</div>
+            <a href="/guides/wallet" class="menu-item">
+                <span class="icon">👛</span>
+                <span class="label">Setup Wallet</span>
+            </a>
+            <a href="/guides/exchange" class="menu-item">
+                <span class="icon">🔄</span>
+                <span class="label">Premiers Achats</span>
+            </a>
+            <a href="/guides/trading" class="menu-item">
+                <span class="icon">📊</span>
+                <span class="label">Premier Trade</span>
+            </a>
+            <a href="/guides/defi" class="menu-item">
+                <span class="icon">🏦</span>
+                <span class="label">DeFi Débutant</span>
+            </a>
+        </div>
+        
     </nav>
     
     <!-- MAIN CONTENT -->
@@ -28192,8 +28219,12 @@ async def academy_22_modules_complete(request: Request):
                 
                 <div class="stats">
                     <div class="stat">
-                        <div class="stat-num">22</div>
+                        <div class="stat-num">5</div>
                         <div class="stat-label">Formations</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">22</div>
+                        <div class="stat-label">Modules</div>
                     </div>
                     <div class="stat">
                         <div class="stat-num">114h</div>

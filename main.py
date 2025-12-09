@@ -27560,20 +27560,13 @@ async def send_push_notification(request: Request):
 
 # ========== FEATURE 4 ==========
 
-
 # ============================================================================
-# 🏆 TRADING ACADEMY - VERSION ULTRA-PROPRE (JavaScript Nettoyé)
-# ============================================================================
-# ✅ 60 lignes vides problématiques supprimées
-# ✅ JavaScript 100% valide (pas d'erreur syntaxe)
-# ✅ 5 formations - 18 modules professionnels
-# ✅ Formation 5: Analyse Technique + Chandelles avec diagrammes ASCII
+# 🏆 TRADING ACADEMY - VERSION ÉCHAPPÉE CORRECTEMENT
 # ============================================================================
 @app.get("/academy", response_class=HTMLResponse)
-async def academy_cleaned(request: Request):
-    """🏆 Trading Academy - Version Ultra-Propre"""
-    html_content = """
-<!DOCTYPE html>
+async def academy_escaped(request: Request):
+    """🏆 Trading Academy - Version Échappée"""
+    html_content = """<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -28283,17 +28276,17 @@ formations[1] = {
         {
             title: "Module 1: Qu'est-ce que le Trading?",
             content: '<h4>📌 Introduction</h4>' +
-                '<p><strong>Le trading</strong> est l\'acte d\'acheter et de vendre des actifs financiers (actions, cryptos, devises, matières premières) dans le but de réaliser un profit. C\'est différent de l\'investissement traditionnel par sa fréquence et sa durée.</p>' +
-                '<div class="important"><strong>⚠️ Règle d\'Or du Trading:</strong><br>' +
+                '<p><strong>Le trading</strong> est l\\'acte d\\'acheter et de vendre des actifs financiers (actions, cryptos, devises, matières premières) dans le but de réaliser un profit. C\\'est différent de l\\'investissement traditionnel par sa fréquence et sa durée.</p>' +
+                '<div class="important"><strong>⚠️ Règle d\\'Or du Trading:</strong><br>' +
                 'Acheter BAS + Vendre HAUT = PROFIT<br><br>' +
                 'Simple en théorie, difficile en pratique!</div>' +
                 '<h4>🎯 Les 4 Types de Marchés</h4>' +
                 '<table>' +
                 '<tr><th>Type</th><th>Description</th><th>Niveau de Risque</th></tr>' +
-                '<tr><td><strong>Spot</strong></td><td>Achat/vente immédiat, vous possédez l\'actif</td><td>★★☆☆☆ Modéré</td></tr>' +
+                '<tr><td><strong>Spot</strong></td><td>Achat/vente immédiat, vous possédez l\\'actif</td><td>★★☆☆☆ Modéré</td></tr>' +
                 '<tr><td><strong>Futures</strong></td><td>Contrat à terme avec effet de levier possible</td><td>★★★★☆ Élevé</td></tr>' +
-                '<tr><td><strong>Options</strong></td><td>Droit (pas obligation) d\'acheter/vendre à un prix fixé</td><td>★★★★★ Très élevé</td></tr>' +
-                '<tr><td><strong>Margin</strong></td><td>Trading avec de l\'argent emprunté (levier)</td><td>★★★★★ Extrême</td></tr>' +
+                '<tr><td><strong>Options</strong></td><td>Droit (pas obligation) d\\'acheter/vendre à un prix fixé</td><td>★★★★★ Très élevé</td></tr>' +
+                '<tr><td><strong>Margin</strong></td><td>Trading avec de l\\'argent emprunté (levier)</td><td>★★★★★ Extrême</td></tr>' +
                 '</table>' +
                 '<div class="pro-tip"><strong>💡 Pro Tip:</strong><br>' +
                 'Débutants: TOUJOURS commencer avec le Spot Trading! Les autres marchés sont pour les traders expérimentés.</div>' +
@@ -28314,7 +28307,7 @@ formations[1] = {
                 '<li>Objectif: 0.5% à 2% de profit</li>' +
                 '<li>Fréquence: 10-50 trades/jour</li>' +
                 '<li>Difficulté: ★★★★★ Expert</li>' +
-                '<li>Temps: 6-12h/jour devant l\'écran</li>' +
+                '<li>Temps: 6-12h/jour devant l\\'écran</li>' +
                 '</ul>' +
                 '<p><strong>2. Day Trading</strong> (Heures):</p>' +
                 '<ul>' +
@@ -28354,7 +28347,7 @@ formations[1] = {
                 '<tr><td>2024</td><td>Cryptos = $2.5 trillions market cap</td></tr>' +
                 '</table>' +
                 '<h4>🔑 Concepts Clés à Maîtriser</h4>' +
-                '<p><strong>Liquidité:</strong> Facilité d\'acheter/vendre sans impact sur le prix. BTC/ETH = haute liquidité. Shitcoins = basse liquidité.</p>' +
+                '<p><strong>Liquidité:</strong> Facilité d\\'acheter/vendre sans impact sur le prix. BTC/ETH = haute liquidité. Shitcoins = basse liquidité.</p>' +
                 '<p><strong>Volatilité:</strong> Amplitude des mouvements de prix. Crypto = haute volatilité (±20%/jour possible). Actions = basse volatilité (±5%/jour max).</p>' +
                 '<p><strong>Volume:</strong> Quantité tradée sur 24h. Volume élevé = marché sain et liquide.</p>' +
                 '<p><strong>Bid/Ask:</strong> Prix achat (bid) vs prix vente (ask). Spread = différence entre les deux.</p>' +
@@ -28367,16 +28360,16 @@ formations[1] = {
                 '</ul>' +
                 '<div class="danger"><strong>⚠️ RÉALITÉ CHECK:</strong><br>' +
                 'Statistiques brutales:<br>' +
-                '• 90% des traders perdent de l\'argent la première année<br>' +
+                '• 90% des traders perdent de l\\'argent la première année<br>' +
                 '• 5-10% deviennent profitables sur le long terme<br>' +
                 '• Il faut 1-3 ans pour maîtriser le trading<br><br>' +
-                'Le trading n\'est PAS un "get rich quick". C\'est un métier qui demande apprentissage et discipline!</div>'
+                'Le trading n\\'est PAS un "get rich quick". C\\'est un métier qui demande apprentissage et discipline!</div>'
         },
         
         {
             title: "Module 2: Comment Gagner de l'Argent",
             content: '<h4>💰 Méthode #1: Trading Actif</h4>' +
-                '<p>Acheter bas, vendre haut sur des mouvements courts/moyens. C\'est la méthode la plus active mais aussi la plus lucrative si bien exécutée.</p>' +
+                '<p>Acheter bas, vendre haut sur des mouvements courts/moyens. C\\'est la méthode la plus active mais aussi la plus lucrative si bien exécutée.</p>' +
                 '<p><strong>Stratégie A: Breakout Trading</strong></p>' +
                 '<ul>' +
                 '<li>Principe: Acheter quand le prix "casse" une résistance</li>' +
@@ -28418,7 +28411,7 @@ formations[1] = {
                 '<tr><td>BNB</td><td>$15</td><td>$690</td><td>+4,500%</td></tr>' +
                 '</table>' +
                 '<p><strong>Dollar Cost Averaging (DCA):</strong></p>' +
-                '<p>Investir un montant fixe régulièrement (ex: $100/semaine) peu importe le prix. Réduit l\'impact de la volatilité.</p>' +
+                '<p>Investir un montant fixe régulièrement (ex: $100/semaine) peu importe le prix. Réduit l\\'impact de la volatilité.</p>' +
                 '<div class="example-box"><strong>📊 Exemple DCA:</strong><br>' +
                 'Plan: $500/mois dans Bitcoin pendant 12 mois<br>' +
                 'Total investi: $6,000<br>' +
@@ -28478,7 +28471,7 @@ formations[1] = {
                 '<h4>💵 Profits Réalistes par Niveau</h4>' +
                 '<p><strong>Débutant (0-6 mois):</strong></p>' +
                 '<ul>' +
-                '<li>Objectif: Ne pas perdre d\'argent (breakeven)</li>' +
+                '<li>Objectif: Ne pas perdre d\\'argent (breakeven)</li>' +
                 '<li>Profits: 0% à -20%</li>' +
                 '<li>Focus: Apprentissage, pas profits</li>' +
                 '</ul>' +
@@ -28531,7 +28524,7 @@ formations[2] = {
                 '<ul><li><strong>Supply Fixe:</strong> 21 millions maximum (actuellement ~19.5M en circulation)</li>' +
                 '<li><strong>Décentralisé:</strong> Pas de banque centrale, pas de gouvernement</li>' +
                 '<li><strong>Transparent:</strong> Toutes les transactions publiques sur la blockchain</li>' +
-                '<li><strong>Immuable:</strong> Impossible de modifier l\'historique</li></ul>' +
+                '<li><strong>Immuable:</strong> Impossible de modifier l\\'historique</li></ul>' +
                 '<h4>Bitcoin vs Or vs Dollar</h4><table>' +
                 '<tr><th>Critère</th><th>Bitcoin</th><th>Or</th><th>Dollar</th></tr>' +
                 '<tr><td>Supply</td><td>21M max</td><td>~200k tonnes</td><td>Illimité</td></tr>' +
@@ -28542,9 +28535,9 @@ formations[2] = {
                 '<ul><li>2012: 50 → 25 BTC</li><li>2016: 25 → 12.5 BTC</li>' +
                 '<li>2020: 12.5 → 6.25 BTC</li><li>2024: 6.25 → 3.125 BTC</li></ul>' +
                 '<div class="important"><strong>Impact du Halving:</strong><br>' +
-                '2012 Halving: +8,000% l\'année suivante<br>' +
-                '2016 Halving: +2,800% l\'année suivante<br>' +
-                '2020 Halving: +600% l\'année suivante</div>' +
+                '2012 Halving: +8,000% l\\'année suivante<br>' +
+                '2016 Halving: +2,800% l\\'année suivante<br>' +
+                '2020 Halving: +600% l\\'année suivante</div>' +
                 '<h4>Performance Historique</h4><table>' +
                 '<tr><th>Année</th><th>Prix BTC</th><th>Gain depuis 2009</th></tr>' +
                 '<tr><td>2009</td><td>$0.01</td><td>-</td></tr>' +
@@ -28558,9 +28551,9 @@ formations[2] = {
         {
             title: "Module 2: Ethereum - Smart Contract King",
             content: '<p><strong>Ethereum (ETH)</strong> est la 2ème plus grosse crypto. Lancé en 2015 par Vitalik Buterin.</p>' +
-                '<h4>Innovation: Smart Contracts</h4><p>Programmes auto-exécutables sur la blockchain. Pas besoin d\'intermédiaire!</p>' +
+                '<h4>Innovation: Smart Contracts</h4><p>Programmes auto-exécutables sur la blockchain. Pas besoin d\\'intermédiaire!</p>' +
                 '<div class="example-box"><strong>Exemple Concret:</strong><br>' +
-                'Achat d\'une maison traditionnel: Banque + Notaire + Avocat = 30 jours + frais<br>' +
+                'Achat d\\'une maison traditionnel: Banque + Notaire + Avocat = 30 jours + frais<br>' +
                 'Achat avec smart contract: Automatique + instantané + frais minimaux</div>' +
                 '<h4>Applications Ethereum</h4><table>' +
                 '<tr><th>Secteur</th><th>Exemples</th><th>Valeur</th></tr>' +
@@ -28570,12 +28563,12 @@ formations[2] = {
                 '<tr><td><strong>DAOs</strong></td><td>MakerDAO, Uniswap</td><td>$15B</td></tr></table>' +
                 '<h4>Ethereum 2.0 (The Merge)</h4><p>En 2022, Ethereum est passé de Proof of Work (PoW) à Proof of Stake (PoS).</p>' +
                 '<p><strong>Avantages:</strong></p><ul>' +
-                '<li>99.95% moins d\'énergie consommée</li>' +
+                '<li>99.95% moins d\\'énergie consommée</li>' +
                 '<li>Déflationnaire (supply diminue!)</li>' +
                 '<li>Staking 4-6% APY</li>' +
                 '<li>Plus sécurisé</li></ul>' +
                 '<div class="success"><strong>Pourquoi investir ETH:</strong><br>' +
-                'Ethereum = L\'App Store de la crypto. Toutes les applications construites dessus!</div>'
+                'Ethereum = L\\'App Store de la crypto. Toutes les applications construites dessus!</div>'
         },
         {
             title: "Module 3: Altcoins - L'Écosystème",
@@ -28638,7 +28631,7 @@ formations[3] = {
                 '<li>MetaMask (browser)</li><li>Trust Wallet (mobile)</li><li>Phantom (Solana)</li></ul>' +
                 '<p><strong>Cold Wallets:</strong></p><ul>' +
                 '<li>Ledger Nano X ($150)</li><li>Trezor Model T ($200)</li></ul>' +
-                '<div class="important"><strong>Règle d\'Or:</strong><br>' +
+                '<div class="important"><strong>Règle d\\'Or:</strong><br>' +
                 '10-30% en hot wallet (trading)<br>70-90% en cold wallet (sécurité)</div>'
         },
         {
@@ -28675,8 +28668,8 @@ formations[3] = {
                 '<li><strong>Promesses garanties:</strong> "100% profit garanti!"</li>' +
                 '<li><strong>Urgence artificielle:</strong> "Seulement 24h!"</li>' +
                 '<li><strong>Pas de HTTPS:</strong> Site web non sécurisé</li>' +
-                '<li><strong>Whitepaper copié:</strong> Plagiat d\'autres projets</li>' +
-                '<li><strong>Pas d\'audit:</strong> Smart contract non audité</li>' +
+                '<li><strong>Whitepaper copié:</strong> Plagiat d\\'autres projets</li>' +
+                '<li><strong>Pas d\\'audit:</strong> Smart contract non audité</li>' +
                 '<li><strong>Liquidity unlocked:</strong> Team peut rug pull</li>' +
                 '<li><strong>APY irréaliste:</strong> 10,000% APY = scam</li>' +
                 '<li><strong>Pump groups:</strong> Telegram "signals"</li>' +
@@ -28775,7 +28768,7 @@ formations[4] = {
                 '<h4>7 Règles de Discipline</h4><ol>' +
                 '<li>Plan écrit AVANT de trader</li>' +
                 '<li>Position sizing: 2-5% max</li>' +
-                '<li>Stop loss AVANT d\'entrer</li>' +
+                '<li>Stop loss AVANT d\\'entrer</li>' +
                 '<li>Max 3-5 trades/jour</li>' +
                 '<li>Pas de revenge trading</li>' +
                 '<li>Journal tous les trades</li>' +
@@ -28812,7 +28805,7 @@ formations[4] = {
                 '<li><strong>Process > Results:</strong> Focus sur bon process, pas juste P&L</li>' +
                 '<li><strong>Accepter les pertes:</strong> Pertes = coût du business</li>' +
                 '<li><strong>Penser long terme:</strong> 100+ trades, pas 1 trade</li>' +
-                '<li><strong>Apprentissage constant:</strong> Toujours s\'améliorer</li>' +
+                '<li><strong>Apprentissage constant:</strong> Toujours s\\'améliorer</li>' +
                 '<li><strong>Humilité:</strong> Marché peut te ruiner</li>' +
                 '<li><strong>Patience:</strong> Attendre LE setup parfait</li>' +
                 '<li><strong>Discipline > Intelligence:</strong> Suivre le plan</li>' +
@@ -28821,7 +28814,7 @@ formations[4] = {
                 '<li><strong>Santé:</strong> Corps sain = esprit sain</li></ol>' +
                 '<div class="success"><strong>Affirmations Quotidiennes:</strong><br>' +
                 '"Je trade mon plan, pas mes émotions"<br>' +
-                '"Pertes = opportunités d\'apprentissage"<br>' +
+                '"Pertes = opportunités d\\'apprentissage"<br>' +
                 '"Je suis un trader discipliné"<br>' +
                 '"Patience = profit"<br>' +
                 '"Je respecte le marché"</div>'
@@ -28949,7 +28942,7 @@ function checkQuiz(formationId) {
             '<p style="font-size:1.4em;font-weight:bold;margin:20px 0;">' + formation.title + '</p>' +
             '<p>Score: ' + Math.round(percentage) + '%</p>' +
             '<p>Date: ' + new Date().toLocaleDateString('fr-FR') + '</p>' +
-            '<p style="margin-top:30px;opacity:0.8;">Continuez votre apprentissage vers l\'excellence!</p>' +
+            '<p style="margin-top:30px;opacity:0.8;">Continuez votre apprentissage vers l\\'excellence!</p>' +
             '</div>';
         
         saveCompletion(formationId);
@@ -29029,96 +29022,96 @@ formations[5] = {
             title: "Module 1: Chandelles Japonaises - Guide Complet",
             content: '<h4>🕯️ Introduction aux Chandelles Japonaises</h4>' +
                 '<p>Les <strong>chandelles japonaises</strong> (Japanese Candlesticks) sont LA méthode de visualisation des prix la plus utilisée en trading. Créées au Japon au 18ème siècle pour le trading du riz, elles sont maintenant universelles.</p>' +
-                '<h4>📐 Anatomie d\'une Chandelle</h4>' +
+                '<h4>📐 Anatomie d\\'une Chandelle</h4>' +
                 '<div class="diagram"><pre>' +
-'           ┃  ← Mèche Haute (High Wick/Shadow)\n' +
-'           ┃     Représente le prix le PLUS HAUT atteint\n' +
-'           ┃\n' +
-'        ┌──┸──┐\n' +
-'        │     │  ← Corps (Body)\n' +
-'        │     │     Zone entre OPEN et CLOSE\n' +
-'        │     │     VERT/BLANC = Prix monte (Haussier)\n' +
-'        │     │     ROUGE/NOIR = Prix baisse (Baissier)\n' +
-'        └──┰──┘\n' +
-'           ┃\n' +
-'           ┃  ← Mèche Basse (Low Wick/Shadow)\n' +
-'           ┃     Représente le prix le PLUS BAS atteint\n' +
+'           ┃  ← Mèche Haute (High Wick/Shadow)\\n' +
+'           ┃     Représente le prix le PLUS HAUT atteint\\n' +
+'           ┃\\n' +
+'        ┌──┸──┐\\n' +
+'        │     │  ← Corps (Body)\\n' +
+'        │     │     Zone entre OPEN et CLOSE\\n' +
+'        │     │     VERT/BLANC = Prix monte (Haussier)\\n' +
+'        │     │     ROUGE/NOIR = Prix baisse (Baissier)\\n' +
+'        └──┰──┘\\n' +
+'           ┃\\n' +
+'           ┃  ← Mèche Basse (Low Wick/Shadow)\\n' +
+'           ┃     Représente le prix le PLUS BAS atteint\\n' +
 '</pre></div>' +
                 '<p><strong>4 Prix Essentiels par Chandelle:</strong></p>' +
                 '<ul>' +
-                '<li><strong>OPEN:</strong> Prix d\'ouverture de la période</li>' +
+                '<li><strong>OPEN:</strong> Prix d\\'ouverture de la période</li>' +
                 '<li><strong>CLOSE:</strong> Prix de fermeture de la période</li>' +
                 '<li><strong>HIGH:</strong> Prix maximum atteint</li>' +
                 '<li><strong>LOW:</strong> Prix minimum atteint</li>' +
                 '</ul>' +
                 '<h4>🟢 Chandelle Haussière (Bullish)</h4>' +
                 '<div class="diagram"><pre>' +
-'    HIGH: $52,000\n' +
-'           ┃\n' +
-'        ┌──┸──┐  ← CLOSE: $51,500 (plus haut que OPEN)\n' +
-'        │ 🟢  │\n' +
-'        │VERT │     Corps VERT = Prix a MONTÉ\n' +
-'        │     │     Acheteurs contrôlent\n' +
-'        └──┰──┘  ← OPEN: $50,000 (plus bas que CLOSE)\n' +
-'           ┃\n' +
-'    LOW: $49,500\n' +
+'    HIGH: $52,000\\n' +
+'           ┃\\n' +
+'        ┌──┸──┐  ← CLOSE: $51,500 (plus haut que OPEN)\\n' +
+'        │ 🟢  │\\n' +
+'        │VERT │     Corps VERT = Prix a MONTÉ\\n' +
+'        │     │     Acheteurs contrôlent\\n' +
+'        └──┰──┘  ← OPEN: $50,000 (plus bas que CLOSE)\\n' +
+'           ┃\\n' +
+'    LOW: $49,500\\n' +
 '</pre></div>' +
                 '<p>💡 <strong>Interprétation:</strong> Pression acheteuse forte. Tendance haussière probable.</p>' +
                 '<h4>🔴 Chandelle Baissière (Bearish)</h4>' +
                 '<div class="diagram"><pre>' +
-'    HIGH: $52,000\n' +
-'           ┃\n' +
-'        ┌──┸──┐  ← OPEN: $51,500 (plus haut que CLOSE)\n' +
-'        │ 🔴  │\n' +
-'        │ROUGE│     Corps ROUGE = Prix a BAISSÉ\n' +
-'        │     │     Vendeurs contrôlent\n' +
-'        └──┰──┘  ← CLOSE: $50,000 (plus bas que OPEN)\n' +
-'           ┃\n' +
-'    LOW: $49,500\n' +
+'    HIGH: $52,000\\n' +
+'           ┃\\n' +
+'        ┌──┸──┐  ← OPEN: $51,500 (plus haut que CLOSE)\\n' +
+'        │ 🔴  │\\n' +
+'        │ROUGE│     Corps ROUGE = Prix a BAISSÉ\\n' +
+'        │     │     Vendeurs contrôlent\\n' +
+'        └──┰──┘  ← CLOSE: $50,000 (plus bas que OPEN)\\n' +
+'           ┃\\n' +
+'    LOW: $49,500\\n' +
 '</pre></div>' +
                 '<p>💡 <strong>Interprétation:</strong> Pression vendeuse forte. Tendance baissière probable.</p>' +
                 '<h4>🕯️ Types de Chandelles - Guide Visuel</h4>' +
                 '<p><strong>1. MARUBOZU (Corps Plein - Très Fort Signal)</strong></p>' +
                 '<div class="diagram"><pre>' +
-'Marubozu Haussier:        Marubozu Baissier:\n' +
-'                          \n' +
-'     AUCUNE mèche              AUCUNE mèche\n' +
-'        ┌─────┐                   ┌─────┐\n' +
-'        │ 🟢  │                   │ 🔴  │\n' +
-'        │VERT │                   │ROUGE│\n' +
-'        │     │                   │     │\n' +
-'        │     │                   │     │\n' +
-'        └─────┘                   └─────┘\n' +
-'\n' +
-'Signal: TRÈS HAUSSIER      Signal: TRÈS BAISSIER\n' +
-'Acheteurs dominent         Vendeurs dominent\n' +
-'totalement                 totalement\n' +
+'Marubozu Haussier:        Marubozu Baissier:\\n' +
+'                          \\n' +
+'     AUCUNE mèche              AUCUNE mèche\\n' +
+'        ┌─────┐                   ┌─────┐\\n' +
+'        │ 🟢  │                   │ 🔴  │\\n' +
+'        │VERT │                   │ROUGE│\\n' +
+'        │     │                   │     │\\n' +
+'        │     │                   │     │\\n' +
+'        └─────┘                   └─────┘\\n' +
+'\\n' +
+'Signal: TRÈS HAUSSIER      Signal: TRÈS BAISSIER\\n' +
+'Acheteurs dominent         Vendeurs dominent\\n' +
+'totalement                 totalement\\n' +
 '</pre></div>' +
                 '<p><strong>2. DOJI (Indécision - Prix OPEN = CLOSE)</strong></p>' +
                 '<div class="diagram"><pre>' +
-'Doji Standard:      Doji Libellule:    Doji Pierre Tombale:\n' +
-'                    \n' +
-'      ┃                   ┌─┐                 ┃\n' +
-'   ───┼───                │ │              ───┼───\n' +
-'      ┃                   └─┘                 \n' +
-'                            ┃\n' +
-'\n' +
-'Indécision          Support fort       Résistance forte\n' +
-'totale              Rejet baisse       Rejet hausse\n' +
+'Doji Standard:      Doji Libellule:    Doji Pierre Tombale:\\n' +
+'                    \\n' +
+'      ┃                   ┌─┐                 ┃\\n' +
+'   ───┼───                │ │              ───┼───\\n' +
+'      ┃                   └─┘                 \\n' +
+'                            ┃\\n' +
+'\\n' +
+'Indécision          Support fort       Résistance forte\\n' +
+'totale              Rejet baisse       Rejet hausse\\n' +
 '</pre></div>' +
                 '<p>💡 <strong>Importance DOJI:</strong> Après tendance forte, signale souvent retournement imminent!</p>' +
                 '<p><strong>3. HAMMER (Marteau - Retournement Haussier)</strong></p>' +
                 '<div class="diagram"><pre>' +
-'        ┌─┐  ← Petit corps (vert ou rouge)\n' +
-'        └─┘\n' +
-'         ┃\n' +
-'         ┃   ← Longue mèche basse\n' +
-'         ┃      (2-3x taille corps)\n' +
-'\n' +
-'Signal: ACHAT!\n' +
-'Vendeurs ont poussé bas,\n' +
-'mais acheteurs ont repris contrôle\n' +
-'Prix remonte fort = Rejet support\n' +
+'        ┌─┐  ← Petit corps (vert ou rouge)\\n' +
+'        └─┘\\n' +
+'         ┃\\n' +
+'         ┃   ← Longue mèche basse\\n' +
+'         ┃      (2-3x taille corps)\\n' +
+'\\n' +
+'Signal: ACHAT!\\n' +
+'Vendeurs ont poussé bas,\\n' +
+'mais acheteurs ont repris contrôle\\n' +
+'Prix remonte fort = Rejet support\\n' +
 '</pre></div>' +
                 '<div class="success"><strong>✅ Trading Hammer:</strong><br>' +
                 'ATTENDRE hammer en BAS de tendance baissière<br>' +
@@ -29127,16 +29120,16 @@ formations[5] = {
                 'STOP LOSS: Sous low du hammer</div>' +
                 '<p><strong>4. SHOOTING STAR (Étoile Filante - Retournement Baissier)</strong></p>' +
                 '<div class="diagram"><pre>' +
-'         ┃\n' +
-'         ┃   ← Longue mèche haute\n' +
-'         ┃      (2-3x taille corps)\n' +
-'        ┌─┐\n' +
-'        └─┘  ← Petit corps (vert ou rouge)\n' +
-'\n' +
-'Signal: VENTE!\n' +
-'Acheteurs ont poussé haut,\n' +
-'mais vendeurs ont repris contrôle\n' +
-'Prix retombe fort = Rejet résistance\n' +
+'         ┃\\n' +
+'         ┃   ← Longue mèche haute\\n' +
+'         ┃      (2-3x taille corps)\\n' +
+'        ┌─┐\\n' +
+'        └─┘  ← Petit corps (vert ou rouge)\\n' +
+'\\n' +
+'Signal: VENTE!\\n' +
+'Acheteurs ont poussé haut,\\n' +
+'mais vendeurs ont repris contrôle\\n' +
+'Prix retombe fort = Rejet résistance\\n' +
 '</pre></div>' +
                 '<div class="danger"><strong>⚠️ Trading Shooting Star:</strong><br>' +
                 'ATTENDRE star en HAUT de tendance haussière<br>' +
@@ -29145,19 +29138,19 @@ formations[5] = {
                 'STOP LOSS: Au-dessus high de la star</div>' +
                 '<p><strong>5. ENGULFING (Engloutissant - Signal Fort)</strong></p>' +
                 '<div class="diagram"><pre>' +
-'Engulfing Haussier:        Engulfing Baissier:\n' +
-'\n' +
-'  ┌─┐   ┌─────┐              ┌─────┐   ┌─┐\n' +
-'  │🔴│   │ 🟢  │              │ 🟢  │   │🔴│\n' +
-'  └─┘   │GRAND│              │GRAND│   └─┘\n' +
-'        │VERT │              │ROUGE│\n' +
-'        └─────┘              └─────┘\n' +
-'\n' +
-'Chandelle verte           Chandelle rouge\n' +
-'ENGLOUTIT rouge          ENGLOUTIT verte\n' +
-'précédente               précédente\n' +
-'\n' +
-'Signal: ACHAT FORT       Signal: VENTE FORTE\n' +
+'Engulfing Haussier:        Engulfing Baissier:\\n' +
+'\\n' +
+'  ┌─┐   ┌─────┐              ┌─────┐   ┌─┐\\n' +
+'  │🔴│   │ 🟢  │              │ 🟢  │   │🔴│\\n' +
+'  └─┘   │GRAND│              │GRAND│   └─┘\\n' +
+'        │VERT │              │ROUGE│\\n' +
+'        └─────┘              └─────┘\\n' +
+'\\n' +
+'Chandelle verte           Chandelle rouge\\n' +
+'ENGLOUTIT rouge          ENGLOUTIT verte\\n' +
+'précédente               précédente\\n' +
+'\\n' +
+'Signal: ACHAT FORT       Signal: VENTE FORTE\\n' +
 '</pre></div>' +
                 '<h4>📊 Tableaux de Trading par Chandelle</h4>' +
                 '<table>' +
@@ -29181,9 +29174,9 @@ formations[5] = {
                 '<tr><td>1 jour</td><td>24h</td><td>★★★★★ Très élevé</td><td>Swing/Position</td></tr>' +
                 '<tr><td>1 semaine</td><td>7 jours</td><td>★★★★★ Très élevé</td><td>Position Trading</td></tr>' +
                 '</table>' +
-                '<div class="pro-tip"><strong>💡 Règle d\'Or Timeframes:</strong><br>' +
+                '<div class="pro-tip"><strong>💡 Règle d\\'Or Timeframes:</strong><br>' +
                 'PLUS le timeframe est élevé, PLUS le signal est fiable!<br><br>' +
-                'Un Hammer sur daily (1 jour) est 10x plus puissant qu\'un Hammer sur 1 minute.<br><br>' +
+                'Un Hammer sur daily (1 jour) est 10x plus puissant qu\\'un Hammer sur 1 minute.<br><br>' +
                 'Débutants: Focusez sur 4H et Daily uniquement!</div>' +
                 '<h4>🎯 Exemples Concrets de Trading</h4>' +
                 '<div class="example-box"><strong>📊 Exemple 1: Hammer Bitcoin</strong><br><br>' +
@@ -29251,24 +29244,24 @@ formations[5] = {
             title: "Module 2: Support et Résistance - Comment Tracer",
             content: '<h4>🎯 Support et Résistance: Fondamentaux</h4>' +
                 '<p><strong>Support:</strong> Niveau de prix où la demande (acheteurs) est suffisamment forte pour empêcher le prix de descendre plus bas.</p>' +
-                '<p><strong>Résistance:</strong> Niveau de prix où l\'offre (vendeurs) est suffisamment forte pour empêcher le prix de monter plus haut.</p>' +
+                '<p><strong>Résistance:</strong> Niveau de prix où l\\'offre (vendeurs) est suffisamment forte pour empêcher le prix de monter plus haut.</p>' +
                 '<div class="diagram"><pre>' +
-'                     Résistance $52,000\n' +
-'         ─────────────────────────────────\n' +
-'                /\\        /\\    ← Prix rejette\n' +
-'               /  \\      /  \\\n' +
-'              /    \\    /    \\\n' +
-'             /      \\  /      \\\n' +
-'            /        \\/        \\\n' +
-'           /                    \\\n' +
-'          /                      \\      ← Bounce\n' +
-'         ─────────────────────────────────\n' +
-'                Support $48,000\n' +
+'                     Résistance $52,000\\n' +
+'         ─────────────────────────────────\\n' +
+'                /\\\\        /\\\\    ← Prix rejette\\n' +
+'               /  \\\\      /  \\\\\\n' +
+'              /    \\\\    /    \\\\\\n' +
+'             /      \\\\  /      \\\\\\n' +
+'            /        \\\\/        \\\\\\n' +
+'           /                    \\\\\\n' +
+'          /                      \\\\      ← Bounce\\n' +
+'         ─────────────────────────────────\\n' +
+'                Support $48,000\\n' +
 '</pre></div>' +
                 '<p><strong>Psychologie derrière S/R:</strong></p>' +
                 '<ul>' +
                 '<li><strong>Support:</strong> Acheteurs se souviennent "prix était bon ici avant"</li>' +
-                '<li><strong>Résistance:</strong> Vendeurs se souviennent "j\'ai raté vendre ici avant"</li>' +
+                '<li><strong>Résistance:</strong> Vendeurs se souviennent "j\\'ai raté vendre ici avant"</li>' +
                 '<li>Niveaux deviennent <strong>self-fulfilling prophecy</strong></li>' +
                 '</ul>' +
                 '<h4>📏 Comment Tracer Support/Résistance</h4>' +
@@ -29305,7 +29298,7 @@ formations[5] = {
     ],
     quiz: [
         {question: "Chandelle verte signifie:", options: ["Prix baisse", "Prix monte", "Indécision"], correct: 1},
-        {question: "Hammer apparaît:", options: ["En haut", "En bas", "N\'importe où"], correct: 1},
+        {question: "Hammer apparaît:", options: ["En haut", "En bas", "N\\'importe où"], correct: 1},
         {question: "Doji indique:", options: ["Forte hausse", "Indécision", "Forte baisse"], correct: 1},
         {question: "Meilleur timeframe débutant:", options: ["1 minute", "4H/Daily", "1 semaine"], correct: 1},
         {question: "Support est:", options: ["Prix monte", "Prix rejette baisse", "Prix baisse"], correct: 1},
@@ -29325,418 +29318,6 @@ console.log('✅ JavaScript Academy chargé avec succès!');
 """
     return HTMLResponse(content=html_content)
 # ============================================================================
-@app.get("/launchpad-scanner", response_class=HTMLResponse)
-async def launchpad_scanner(request: Request):
-    html_content = f"""\{SIDEBAR}
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚀 Launchpad Scanner | Trading Dashboard Pro</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-            color: #e0e6ed;
-            margin-left: 280px;
-            padding: 30px;
-            min-height: 100vh;
-        }}
-        
-        .header {{
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            padding: 40px;
-            border-radius: 20px;
-            margin-bottom: 40px;
-            box-shadow: 0 20px 60px rgba(245, 158, 11, 0.4);
-        }}
-        
-        .header h1 {{ font-size: 3em; margin-bottom: 10px; font-weight: 700; }}
-        .header p {{ font-size: 1.1em; opacity: 0.95; }}
-        
-        .filters {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-            background: rgba(30, 41, 59, 0.6);
-            padding: 20px;
-            border-radius: 15px;
-            border: 2px solid rgba(245, 158, 11, 0.2);
-        }}
-        
-        .filter-group label {{
-            display: block;
-            margin-bottom: 8px;
-            color: #f59e0b;
-            font-weight: 600;
-            font-size: 0.9em;
-        }}
-        
-        .filter-group select {{
-            width: 100%;
-            padding: 10px;
-            border: 2px solid rgba(245, 158, 11, 0.3);
-            border-radius: 10px;
-            background: rgba(15, 23, 42, 0.8);
-            color: #e0e6ed;
-            cursor: pointer;
-        }}
-        
-        .projects-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }}
-        
-        .project-card {{
-            background: rgba(30, 41, 59, 0.7);
-            border: 2px solid rgba(245, 158, 11, 0.3);
-            border-radius: 18px;
-            padding: 25px;
-            transition: all 0.4s ease;
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        .project-card::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
-        }}
-        
-        .project-card:hover {{
-            transform: translateY(-8px);
-            border-color: #f59e0b;
-            box-shadow: 0 20px 50px rgba(245, 158, 11, 0.35);
-        }}
-        
-        .project-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 20px;
-        }}
-        
-        .project-info {{
-            flex: 1;
-        }}
-        
-        .project-name {{ font-size: 1.6em; font-weight: 700; margin-bottom: 5px; color: #f59e0b; }}
-        .project-ticker {{ opacity: 0.7; font-size: 0.95em; }}
-        
-        .ai-score-circle {{
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.8em;
-            font-weight: 700;
-            text-align: center;
-            flex-shrink: 0;
-        }}
-        
-        .score-90plus {{ background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; }}
-        .score-70to90 {{ background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; }}
-        .score-below70 {{ background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; }}
-        
-        .project-desc {{
-            margin: 15px 0;
-            line-height: 1.6;
-            opacity: 0.9;
-        }}
-        
-        .badges {{
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin: 15px 0;
-        }}
-        
-        .badge {{
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8em;
-            font-weight: 600;
-        }}
-        
-        .badge-audit {{ background: #22c55e; }}
-        .badge-vc {{ background: #8b5cf6; }}
-        .badge-live {{ background: #f59e0b; }}
-        .badge-upcoming {{ background: #3b82f6; }}
-        
-        .project-stats {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin: 15px 0;
-            padding: 15px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }}
-        
-        .stat {{
-            background: rgba(245, 158, 11, 0.1);
-            padding: 10px;
-            border-radius: 8px;
-        }}
-        
-        .stat-label {{ font-size: 0.8em; opacity: 0.7; }}
-        .stat-value {{ font-size: 1.2em; font-weight: 700; color: #f59e0b; margin-top: 3px; }}
-        
-        .actions {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }}
-        
-        .btn {{
-            padding: 11px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9em;
-        }}
-        
-        .btn-primary {{
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-        }}
-        
-        .btn-primary:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.4);
-        }}
-        
-        .btn-secondary {{
-            background: rgba(255, 255, 255, 0.1);
-            color: #e0e6ed;
-        }}
-        
-        .btn-secondary:hover {{
-            background: rgba(255, 255, 255, 0.15);
-        }}
-        
-        @media (max-width: 768px) {{
-            body {{ margin-left: 0; padding: 15px; }}
-            .projects-grid {{ grid-template-columns: 1fr; }}
-            .filters {{ grid-template-columns: 1fr; }}
-            .header h1 {{ font-size: 2em; }}
-        }}
-    </style>
-</head>
-<body>
-
-<div class="header">
-    <h1>🚀 Launchpad Scanner IA</h1>
-    <p>Découvrez les meilleurs nouveaux projets crypto avec analyse IA</p>
-</div>
-
-<div class="filters">
-    <div class="filter-group">
-        <label>Statut</label>
-        <select>
-            <option>Tous</option>
-            <option>À venir</option>
-            <option>En cours</option>
-            <option>Terminés</option>
-        </select>
-    </div>
-    <div class="filter-group">
-        <label>AI Score Minimum</label>
-        <select>
-            <option>Tous</option>
-            <option>50+</option>
-            <option>70+</option>
-            <option>85+ (Top)</option>
-        </select>
-    </div>
-    <div class="filter-group">
-        <label>Type</label>
-        <select>
-            <option>Tous</option>
-            <option>IDO</option>
-            <option>ICO</option>
-            <option>Presale</option>
-        </select>
-    </div>
-    <div class="filter-group">
-        <label>Blockchain</label>
-        <select>
-            <option>Toutes</option>
-            <option>Ethereum</option>
-            <option>BSC</option>
-            <option>Solana</option>
-        </select>
-    </div>
-</div>
-
-<div class="projects-grid">
-    <div class="project-card">
-        <div class="project-header">
-            <div class="project-info">
-                <div class="project-name">MetaX Protocol</div>
-                <div class="project-ticker">$MTX • IDO</div>
-            </div>
-            <div class="ai-score-circle score-90plus">92</div>
-        </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Infrastructure pour les applications MetaVerse</p>
-        <div class="badges">
-            <span class="badge badge-audit">✓ Audité</span>
-            <span class="badge badge-vc">✓ VC Backing</span>
-        </div>
-        <div class="project-stats">
-            <div class="stat">
-                <div class="stat-label">Levée</div>
-                <div class="stat-value">$5M</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Allocation</div>
-                <div class="stat-value">$500</div>
-            </div>
-        </div>
-        <div class="actions">
-            <button class="btn btn-primary">Investir</button>
-            <button class="btn btn-secondary">Plus d'info</button>
-        </div>
-    </div>
-    
-    <div class="project-card">
-        <div class="project-header">
-            <div class="project-info">
-                <div class="project-name">AI Fund Manager</div>
-                <div class="project-ticker">$AIM • IDO</div>
-            </div>
-            <div class="ai-score-circle score-70to90">78</div>
-        </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Gestion de portefeuille automatisée par IA</p>
-        <div class="badges">
-            <span class="badge badge-audit">✓ Audité</span>
-        </div>
-        <div class="project-stats">
-            <div class="stat">
-                <div class="stat-label">Levée</div>
-                <div class="stat-value">$2M</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Allocation</div>
-                <div class="stat-value">$250</div>
-            </div>
-        </div>
-        <div class="actions">
-            <button class="btn btn-primary">Investir</button>
-            <button class="btn btn-secondary">Plus d'info</button>
-        </div>
-    </div>
-    
-    <div class="project-card">
-        <div class="project-header">
-            <div class="project-info">
-                <div class="project-name">DeFi Bridge Pro</div>
-                <div class="project-ticker">$DBP • Presale</div>
-            </div>
-            <div class="ai-score-circle score-below70">65</div>
-        </div>
-        <p style="font-size: 0.9em; opacity: 0.8; margin-bottom: 15px;">Pont de liquidité cross-chain pour DeFi</p>
-        <div class="badges">
-            <span class="badge badge-upcoming">⏳ À venir</span>
-        </div>
-        <div class="project-stats">
-            <div class="stat">
-                <div class="stat-label">Levée</div>
-                <div class="stat-value">$1M</div>
-            </div>
-            <div class="stat">
-                <div class="stat-label">Allocation</div>
-                <div class="stat-value">$100</div>
-            </div>
-        </div>
-        <div class="actions">
-            <button class="btn btn-primary">À venir</button>
-            <button class="btn btn-secondary">Wishlist</button>
-        </div>
-    </div>
-</div>
-
-<!-- GUIDE EN BAS - PAS STICKY! -->
-<div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.15) 100%); border: 2px solid rgba(245, 158, 11, 0.5); border-radius: 15px; padding: 30px; margin-top: 40px;">
-    <h2 style="color: #f59e0b; margin-bottom: 20px; font-size: 1.6em;">💡 Comment utiliser Launchpad Scanner?</h2>
-    
-    <div style="background: rgba(245, 158, 11, 0.1); border: 2px solid rgba(245, 158, 11, 0.2); border-radius: 15px; padding: 25px; margin-bottom: 25px;">
-        <h3 style="color: #f59e0b; margin-bottom: 15px; font-size: 1.3em;">❓ Qu'est-ce que c'est?</h3>
-        <p style="line-height: 1.8; opacity: 0.95;">
-            Launchpad Scanner IA aide à découvrir les meilleurs nouveaux projets crypto AVANT qu'ils ne deviennent populaires. L'IA analyse automatiquement chaque projet et attribue un score de 0 à 100. Vous voyez ensuite le potentiel, les risques, et les opportunités d'investissement. C'est comme avoir un expert qui évalue les IDO pour vous!
-        </p>
-        <p style="line-height: 1.8; opacity: 0.95; margin-top: 15px;">
-            <strong>Avantages:</strong> Économiser du temps • Trouver des 100x tôt • Éviter les arnaques • Investir intelligemment
-        </p>
-    </div>
-    
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-        <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #f59e0b; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🎯 COMMENT L'UTILISER</div>
-            <ol style="line-height: 1.8; margin-left: 20px;">
-                <li>Filtrez par Score IA (90+, 70+, etc.)</li>
-                <li>Lisez la description du projet</li>
-                <li>Vérifiez les badges (Audité, VC, etc.)</li>
-                <li>Consultez les statistiques (Levée, Allocation)</li>
-                <li>Allez faire votre propre recherche (DYOR!)</li>
-                <li>Si vous aimez, cliquez "Investir"</li>
-            </ol>
-        </div>
-        
-        <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #f59e0b; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">📊 COMPRENDRE L'AI SCORE</div>
-            <ul style="line-height: 1.8; margin-left: 20px;">
-                <li><strong>🟢 90+:</strong> Excellent (Très sûr, audit + VC)</li>
-                <li><strong>🔵 70-90:</strong> Bon (Équipe solide, audit OK)</li>
-                <li><strong>🔴 <70:</strong> À risque (Nouveau, peu d'infos)</li>
-                <li style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;"><em>⚠️ Le score n'est PAS une garantie!</em></li>
-            </ul>
-        </div>
-        
-        <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #f59e0b; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">⚠️ IMPORTANT - DYOR!</div>
-            <ul style="line-height: 1.8; margin-left: 20px;">
-                <li>✓ Lisez le whitepaper</li>
-                <li>✓ Vérifiez le code sur GitHub</li>
-                <li>✓ Cherchez des critiques indépendantes</li>
-                <li>✓ Commencez petit (test 100$)</li>
-                <li>✓ Ne mettez JAMAIS tout dedans</li>
-                <li>✗ Ne croyez PAS aux promesses "100x"</li>
-            </ul>
-        </div>
-    </div>
-    
-    <div style="background: rgba(245, 158, 11, 0.05); border-left: 4px solid #f59e0b; padding: 20px; margin-top: 25px; border-radius: 8px;">
-        <strong style="color: #f59e0b;">💡 STRATÉGIE RECOMMANDÉE:</strong>
-        <p style="line-height: 1.8; margin-top: 10px;">
-            1. Filtrez par Score 85+ seulement<br>
-            2. Vérifiez les badges (Audité + VC = meilleur)<br>
-            3. Lisez le whitepaper (5-10 minutes)<br>
-            4. Investissez 1-2% de votre portefeuille MAX<br>
-            5. Diversifiez entre 5-10 projets prometteurs<br>
-            6. Attendez 6-12 mois pour les résultats<br>
-            7. Préparez-vous à perdre (certains échoueront)
-        </p>
-    </div>
-</div>
-
-</body>
-</html>
-"""
-    return HTMLResponse(content=html_content)
 
 
 # ================================================================================

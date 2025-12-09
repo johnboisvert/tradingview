@@ -27562,10 +27562,7 @@ async def send_push_notification(request: Request):
 
 
 # ============================================================================
-# ⚠️  ANCIENNE ROUTE /academy SUPPRIMÉE (était lignes 27563-27955)
-# L'ancienne 'Académie Trading Pro' (393 lignes de HTML inline) a été
-# remplacée par la nouvelle 'Trading Academy Pro MEGA' qui lit un fichier
-# HTML externe. Voir la nouvelle route /academy à la fin du fichier.
+# Ancienne route /academy supprimée - Nouvelle route MEGA ajoutée ci-dessous
 # ============================================================================
 
 @app.get("/launchpad-scanner", response_class=HTMLResponse)
@@ -28555,38 +28552,125 @@ async def get_portfolio_data(request: Request):
         return JSONResponse({'success': False, 'message': str(e), 'exchanges': {}})
 
 # ============================================================================
-# 🎓 TRADING ACADEMY PRO MEGA - AJOUTÉ LE 9 DÉC 2024
+# 🎓 TRADING ACADEMY PRO MEGA - Route Complete
 # ============================================================================
-
-
-# ============================================================================
-# 🎓 TRADING ACADEMY PRO MEGA - HTML INLINE (ULTRA-COMPLET)
-# ============================================================================
-
 @app.get("/academy", response_class=HTMLResponse)
 async def academy_page(request: Request):
     """
-    🎓 TRADING ACADEMY PRO MEGA
-    22 Formations complètes - 4 formations ultra-détaillées disponibles
-    HTML intégré directement (pas de fichier externe)
-    """
+    Trading Academy Pro MEGA - Formation complète du débutant au professionnel
     
+    Contenu:
+    - 4 formations complètes (Fondamentaux, Crypto, Sécurité, Psychologie)
+    - 20 modules ultra-détaillés
+    - 40 questions de quiz
+    - Système de certificats
+    - Progression avec localStorage
+    - Sidebar intégrée
+    """
     html_content = """
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏆 Trading Academy Pro MEGA - 22 Formations Complètes</title>
+    <title>🏆 Trading Academy Pro MEGA - Formation Complète</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
+        /* SIDEBAR - Style identique à ton app */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            padding: 20px 0;
+            overflow-y: auto;
+            z-index: 99999;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+            border-right: 2px solid rgba(6,182,212,0.3);
+        }
+        
+        .sidebar::-webkit-scrollbar { width: 8px; }
+        .sidebar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(6,182,212,0.5); border-radius: 4px; }
+        
+        .sidebar-header {
+            padding: 0 20px 20px 20px;
+            border-bottom: 2px solid rgba(6,182,212,0.3);
+            margin-bottom: 15px;
+        }
+        
+        .sidebar-title {
+            color: #06b6d4;
+            font-size: 20px;
+            font-weight: 700;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .menu-section { margin-bottom: 10px; }
+        
+        .section-title {
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 10px 20px 8px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: #e2e8f0;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .menu-item:hover {
+            background: rgba(6,182,212,0.15);
+            border-left-color: #06b6d4;
+            color: #fff;
+            padding-left: 25px;
+        }
+        
+        .menu-item.active {
+            background: rgba(6,182,212,0.2);
+            border-left-color: #06b6d4;
+            color: #fff;
+            font-weight: 600;
+        }
+        
+        .menu-item.ai-feature {
+            background: linear-gradient(90deg, rgba(6,182,212,0.15) 0%, transparent 100%);
+            border-left: 3px solid #06b6d4;
+            font-weight: 600;
+        }
+        
+        .icon { font-size: 18px; min-width: 20px; }
+        
+        /* MAIN CONTENT */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             min-height: 100vh;
-            padding: 20px;
             color: #fff;
+            margin-left: 280px;
+            padding: 20px;
+        }
+        
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
         }
         
         .hero {
@@ -28642,8 +28726,6 @@ async def academy_page(request: Request):
             transition: width 0.5s ease;
         }
         
-        .container { max-width: 1600px; margin: 0 auto; }
-        
         .level-section { margin-bottom: 60px; }
         
         .level-header {
@@ -28655,10 +28737,6 @@ async def academy_page(request: Request):
         }
         
         .level-debutant { border-left-color: #22c55e; }
-        .level-intermediaire { border-left-color: #f59e0b; }
-        .level-avance { border-left-color: #ef4444; }
-        .level-expert { border-left-color: #8b5cf6; }
-        .level-master { border-left-color: #ec4899; }
         
         .grid {
             display: grid;
@@ -28683,18 +28761,9 @@ async def academy_page(request: Request):
             border-color: #667eea;
         }
         
-        .card.coming-soon {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        
-        .card.coming-soon:hover {
-            transform: none;
-        }
-        
-        .icon { font-size: 4em; margin-bottom: 20px; }
-        .title { font-size: 1.8em; margin-bottom: 15px; font-weight: bold; }
-        .desc { color: #cbd5e1; line-height: 1.8; margin-bottom: 20px; }
+        .card-icon { font-size: 4em; margin-bottom: 20px; }
+        .card-title { font-size: 1.8em; margin-bottom: 15px; font-weight: bold; }
+        .card-desc { color: #cbd5e1; line-height: 1.8; margin-bottom: 20px; }
         
         .badge {
             background: rgba(102, 126, 234, 0.2);
@@ -28718,6 +28787,7 @@ async def academy_page(request: Request):
             font-weight: bold;
         }
         
+        /* FORMATION DETAIL */
         .formation-detail {
             display: none;
             animation: fadeIn 0.5s ease;
@@ -28747,41 +28817,139 @@ async def academy_page(request: Request):
         
         .module {
             background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
-            padding: 30px;
+            padding: 40px;
             border-radius: 15px;
             margin-bottom: 30px;
             border-left: 4px solid #667eea;
         }
         
-        .module h3 { font-size: 1.8em; margin-bottom: 20px; color: #667eea; }
-        .module p { line-height: 1.8; margin-bottom: 15px; color: #cbd5e1; }
-        .module ul { margin-left: 25px; margin-bottom: 15px; }
-        .module li { margin-bottom: 10px; line-height: 1.6; color: #cbd5e1; }
+        .module h3 {
+            font-size: 2em;
+            margin-bottom: 25px;
+            color: #667eea;
+        }
+        
+        .module h4 {
+            font-size: 1.5em;
+            margin: 30px 0 15px 0;
+            color: #a5b4fc;
+        }
+        
+        .module p {
+            line-height: 1.8;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+            font-size: 1.1em;
+        }
+        
+        .module ul, .module ol {
+            margin: 20px 0 20px 30px;
+        }
+        
+        .module li {
+            margin-bottom: 15px;
+            line-height: 1.7;
+            color: #cbd5e1;
+            font-size: 1.05em;
+        }
+        
+        .module li strong {
+            color: #fff;
+        }
         
         .important {
             background: rgba(251, 191, 36, 0.1);
             border-left: 4px solid #fbbf24;
-            padding: 20px;
+            padding: 25px;
             border-radius: 10px;
-            margin: 20px 0;
+            margin: 25px 0;
+        }
+        
+        .important strong {
+            color: #fbbf24;
+            font-size: 1.2em;
         }
         
         .pro-tip {
             background: rgba(168, 85, 247, 0.1);
             border-left: 4px solid #a855f7;
-            padding: 20px;
+            padding: 25px;
             border-radius: 10px;
-            margin: 20px 0;
+            margin: 25px 0;
+        }
+        
+        .pro-tip strong {
+            color: #a855f7;
+            font-size: 1.2em;
         }
         
         .danger {
             background: rgba(239, 68, 68, 0.1);
             border-left: 4px solid #ef4444;
-            padding: 20px;
+            padding: 25px;
             border-radius: 10px;
-            margin: 20px 0;
+            margin: 25px 0;
         }
         
+        .danger strong {
+            color: #ef4444;
+            font-size: 1.2em;
+        }
+        
+        .success {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid #22c55e;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        
+        .success strong {
+            color: #22c55e;
+            font-size: 1.2em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        th {
+            background: rgba(102, 126, 234, 0.3);
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #cbd5e1;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .example-box {
+            background: rgba(6, 182, 212, 0.1);
+            border: 2px solid rgba(6, 182, 212, 0.3);
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        
+        .example-box strong {
+            color: #06b6d4;
+            font-size: 1.2em;
+        }
+        
+        /* QUIZ */
         .quiz-section {
             background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
             padding: 40px;
@@ -28797,7 +28965,11 @@ async def academy_page(request: Request):
             border: 2px solid rgba(102, 126, 234, 0.3);
         }
         
-        .quiz-question h4 { margin-bottom: 20px; font-size: 1.3em; }
+        .quiz-question h4 {
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            color: #fff;
+        }
         
         .quiz-options label {
             display: block;
@@ -28809,7 +28981,9 @@ async def academy_page(request: Request):
             transition: all 0.3s ease;
         }
         
-        .quiz-options label:hover { background: rgba(102, 126, 234, 0.2); }
+        .quiz-options label:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
         
         .quiz-options input[type="radio"] {
             margin-right: 10px;
@@ -28859,729 +29033,2459 @@ async def academy_page(request: Request):
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
         
-        .certificate h2 { font-size: 2.5em; margin-bottom: 20px; }
-        .certificate p { font-size: 1.2em; margin-bottom: 15px; }
+        .certificate h2 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        
+        .certificate p {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+        
+        /* MOBILE */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 100000;
+            background: #06b6d4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .sidebar-toggle {
+                display: block;
+            }
+            body {
+                margin-left: 0 !important;
+            }
+            body.sidebar-open {
+                margin-left: 280px !important;
+            }
+            .hero h1 {
+                font-size: 2em;
+            }
+            .stat-num {
+                font-size: 2em;
+            }
+        }
     </style>
 </head>
 <body>
-    <div id="list-view">
-        <div class="hero">
-            <h1>🏆 Trading Academy Pro MEGA</h1>
-            <p>Du débutant au trader professionnel - 22 formations complètes</p>
-            
-            <div class="stats">
-                <div class="stat">
-                    <div class="stat-num">22</div>
-                    <div class="stat-label">Formations</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-num">114h</div>
-                    <div class="stat-label">Heures de contenu</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-num">220+</div>
-                    <div class="stat-label">Questions Quiz</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-num" id="progress-percent">0%</div>
-                    <div class="stat-label">Progression</div>
-                </div>
-            </div>
-            
-            <div class="progress-bar">
-                <div class="progress-fill" id="progress-bar" style="width: 0%"></div>
-            </div>
+    <!-- SIDEBAR -->
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">🚀 Trading Pro</div>
         </div>
         
-        <div class="container">
+        <div class="menu-section">
+            <div class="section-title">🆕 NEW FEATURES</div>
+            <a href="/portfolio-tracker" class="menu-item ai-feature">
+                <span class="icon">💼</span>
+                <span class="label">Portfolio Tracker</span>
+            </a>
+            <a href="/defi-yield" class="menu-item ai-feature">
+                <span class="icon">🏦</span>
+                <span class="label">DeFi Yield</span>
+            </a>
+            <a href="/academy" class="menu-item ai-feature active">
+                <span class="icon">🎓</span>
+                <span class="label">Academy Pro</span>
+            </a>
+            <a href="/launchpad-scanner" class="menu-item ai-feature">
+                <span class="icon">🎯</span>
+                <span class="label">Launchpad Scanner</span>
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">📊 Tableau de Bord</div>
+            <a href="/dashboard" class="menu-item">
+                <span class="icon">🏠</span>
+                <span class="label">Dashboard</span>
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">🤖 IA Features</div>
+            <a href="/ai-opportunity-scanner" class="menu-item ai-feature">
+                <span class="icon">🔍</span>
+                <span class="label">AI Scanner</span>
+            </a>
+            <a href="/ai-market-regime" class="menu-item ai-feature">
+                <span class="icon">📊</span>
+                <span class="label">Market Regime</span>
+            </a>
+            <a href="/ai-whale-watcher" class="menu-item ai-feature">
+                <span class="icon">🐋</span>
+                <span class="label">Whale Watcher</span>
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">💰 Trading</div>
+            <a href="/trades" class="menu-item">
+                <span class="icon">📈</span>
+                <span class="label">Mes Trades</span>
+            </a>
+            <a href="/watchlist" class="menu-item">
+                <span class="icon">⭐</span>
+                <span class="label">Watchlist</span>
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">📊 Analyse</div>
+            <a href="/fear-greed" class="menu-item">
+                <span class="icon">😨</span>
+                <span class="label">Fear & Greed</span>
+            </a>
+            <a href="/dominance" class="menu-item">
+                <span class="icon">👑</span>
+                <span class="label">BTC Dominance</span>
+            </a>
+            <a href="/altcoin-season" class="menu-item">
+                <span class="icon">🎯</span>
+                <span class="label">Altcoin Season</span>
+            </a>
+            <a href="/heatmap" class="menu-item">
+                <span class="icon">🔥</span>
+                <span class="label">Heatmap</span>
+            </a>
+        </div>
+    </nav>
+    
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div id="list-view">
+            <div class="hero">
+                <h1>🏆 Trading Academy Pro MEGA</h1>
+                <p>Formation complète du débutant au trader professionnel - 22 formations</p>
+                
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-num">22</div>
+                        <div class="stat-label">Formations</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">114h</div>
+                        <div class="stat-label">Heures de contenu</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">220+</div>
+                        <div class="stat-label">Questions Quiz</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num" id="progress-percent">0%</div>
+                        <div class="stat-label">Progression</div>
+                    </div>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+            
             <div class="level-section">
                 <div class="level-header level-debutant">
                     <h2>● Niveau 1: Débutant (Bases Essentielles)</h2>
-                    <p>Comprendre les bases de la crypto et du trading au comptant</p>
+                    <p>Comprendre les bases de la crypto et du trading au comptant - 16 heures</p>
                 </div>
                 
                 <div class="grid">
                     <div class="card" onclick="showFormation(1)">
-                        <div class="icon">🎯</div>
-                        <div class="title">1. Les Fondamentaux Absolus</div>
-                        <div class="desc">Qu'est-ce que le trading? Comment gagner de l'argent? Les bases pour démarrer.</div>
+                        <div class="card-icon">🎯</div>
+                        <div class="card-title">1. Les Fondamentaux Absolus</div>
+                        <div class="card-desc">Qu'est-ce que le trading? Types de marchés, comment gagner de l'argent, risques, capital nécessaire et outils essentiels.</div>
                         <div class="badge">⏱️ 4 heures</div>
                         <div class="badge">📚 6 modules</div>
-                        <div class="badge">🎯 Facile</div>
+                        <div class="badge">❓ 10 quiz</div>
                     </div>
                     
                     <div class="card" onclick="showFormation(2)">
-                        <div class="icon">₿</div>
-                        <div class="title">2. Comprendre les Crypto-monnaies</div>
-                        <div class="desc">Bitcoin, Ethereum, altcoins, blockchain, mining, consensus, et plus.</div>
+                        <div class="card-icon">₿</div>
+                        <div class="card-title">2. Comprendre les Crypto-monnaies</div>
+                        <div class="card-desc">Bitcoin, Ethereum, altcoins, blockchain, mining vs staking, tokenomics. Tout sur les cryptos en profondeur.</div>
                         <div class="badge">⏱️ 4 heures</div>
                         <div class="badge">📚 6 modules</div>
-                        <div class="badge">🎯 Facile</div>
+                        <div class="badge">❓ 10 quiz</div>
                     </div>
                     
                     <div class="card" onclick="showFormation(3)">
-                        <div class="icon">🔐</div>
-                        <div class="title">3. Sécurité Crypto</div>
-                        <div class="desc">Wallets, hot vs cold, seed phrases, 2FA, éviter les scams.</div>
+                        <div class="card-icon">🔐</div>
+                        <div class="card-title">3. Sécurité Crypto Complète</div>
+                        <div class="card-desc">Wallets, hot vs cold storage, seed phrases, 2FA, éviter les scams. Protégez vos actifs comme un pro.</div>
                         <div class="badge">⏱️ 4 heures</div>
                         <div class="badge">📚 5 modules</div>
-                        <div class="badge">🎯 Facile</div>
+                        <div class="badge">❓ 10 quiz</div>
                     </div>
                     
                     <div class="card" onclick="showFormation(4)">
-                        <div class="icon">🧠</div>
-                        <div class="title">4. Psychologie du Trading</div>
-                        <div class="desc">Émotions, discipline, patience, gestion du stress, mindset gagnant.</div>
+                        <div class="card-icon">🧠</div>
+                        <div class="card-title">4. Psychologie du Trading</div>
+                        <div class="card-desc">Émotions, FOMO, FUD, discipline, gestion du stress, journal de trading, mindset gagnant du trader profitable.</div>
                         <div class="badge">⏱️ 4 heures</div>
-                        <div class="badge">📚 5 modules</div>
-                        <div class="badge">🎯 Facile</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="level-section">
-                <div class="level-header level-intermediaire">
-                    <h2>● Niveau 2: Intermédiaire</h2>
-                    <p>Coming Soon - 6 formations</p>
-                </div>
-                <div class="grid">
-                    <div class="card coming-soon">
-                        <div class="icon">📊</div>
-                        <div class="title">5. Analyse Technique</div>
-                        <div class="desc">Coming Soon...</div>
+                        <div class="badge">📚 6 modules</div>
+                        <div class="badge">❓ 10 quiz</div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <div id="formation-view" class="formation-detail">
-        <div class="container">
+        
+        <div id="formation-view" class="formation-detail">
             <button class="back-btn" onclick="backToList()">← Retour aux formations</button>
             <div id="formation-content"></div>
         </div>
     </div>
     
     <script>
-        const formations = {
-            1: {
-                title: "🎯 Les Fondamentaux Absolus",
-                modules: [
-                    {
-                        title: "Module 1: Qu'est-ce que le Trading?",
-                        content: `
-                            <p>Le trading, c'est l'art d'acheter et de vendre des actifs pour réaliser un profit. C'est comme un marché: vous achetez des tomates à 2$ et les revendez à 3$ → profit de 1$!</p>
-                            
-                            <div class="important">
-                                <strong>💡 Règle d'or:</strong> Acheter BAS + Vendre HAUT = PROFIT
-                            </div>
-                            
-                            <h4>Types de marchés:</h4>
-                            <ul>
-                                <li><strong>Spot:</strong> Achat/vente immédiat (vous possédez réellement l'actif)</li>
-                                <li><strong>Futures:</strong> Contrats pour acheter/vendre à une date future</li>
-                                <li><strong>Options:</strong> Droit (mais pas obligation) d'acheter/vendre</li>
-                            </ul>
-                            
-                            <p>Dans ce cours, nous nous concentrons sur le <strong>trading Spot</strong> qui est le plus simple pour débuter.</p>
-                            
-                            <div class="pro-tip">
-                                <strong>💎 Pro Tip:</strong> 90% des débutants perdent de l'argent parce qu'ils n'apprennent pas les bases. Prenez le temps de bien comprendre chaque concept!
-                            </div>
-                        `
-                    },
-                    {
-                        title: "Module 2: Comment Gagner de l'Argent?",
-                        content: `
-                            <p>Il existe 3 façons principales de gagner de l'argent en crypto:</p>
-                            
-                            <h4>1. Trading (Court terme - Minutes à jours)</h4>
-                            <ul>
-                                <li>Acheter BTC à 40,000$ → Vendre à 42,000$ = +2,000$ profit</li>
-                                <li>Nécessite de l'attention quotidienne</li>
-                                <li>Potentiel: 5-20% par mois (si vous êtes bon)</li>
-                            </ul>
-                            
-                            <h4>2. Investissement (Long terme - Mois à années)</h4>
-                            <ul>
-                                <li>Acheter et HODL (Hold On for Dear Life)</li>
-                                <li>Exemple: BTC acheté à 10k$ en 2020 → 60k$ en 2021 = +500%</li>
-                                <li>Moins stressant, moins de temps requis</li>
-                            </ul>
-                            
-                            <h4>3. Staking/Yield Farming (Revenu passif)</h4>
-                            <ul>
-                                <li>Prêter vos cryptos pour gagner des intérêts (3-20% APY)</li>
-                                <li>Comme un compte épargne, mais en crypto</li>
-                            </ul>
-                            
-                            <div class="important">
-                                <strong>⚠️ Important:</strong> Dans cette Academy, nous nous concentrons sur le TRADING actif. L'objectif est de vous apprendre à générer des profits réguliers en achetant et vendant au bon moment.
-                            </div>
-                        `
-                    },
-                    {
-                        title: "Module 3: Les Risques du Trading",
-                        content: `
-                            <p>Le trading peut être très profitable, mais comporte des risques importants. Voici les principaux:</p>
-                            
-                            <div class="danger">
-                                <strong>⚠️ RISQUE #1: Perte de Capital</strong>
-                                <p>Vous pouvez perdre tout votre argent si vous tradez sans stratégie. C'est le risque le plus évident mais aussi le plus sous-estimé par les débutants.</p>
-                            </div>
-                            
-                            <h4>Autres risques majeurs:</h4>
-                            <ul>
-                                <li><strong>Volatilité:</strong> Les cryptos peuvent chuter de 20-50% en quelques heures</li>
-                                <li><strong>Émotions:</strong> La peur et la cupidité vous font prendre de mauvaises décisions</li>
-                                <li><strong>Scams:</strong> Faux sites, fausses promesses, arnaques sont nombreux</li>
-                                <li><strong>Hacks:</strong> Les exchanges peuvent être hackés (rare mais possible)</li>
-                                <li><strong>Réglementation:</strong> Les lois changent, peuvent impacter vos positions</li>
-                            </ul>
-                            
-                            <div class="pro-tip">
-                                <strong>💎 Comment se protéger:</strong>
-                                <ul>
-                                    <li>Ne jamais investir plus que ce que vous pouvez vous permettre de perdre</li>
-                                    <li>Toujours utiliser un Stop Loss (nous verrons ça plus tard)</li>
-                                    <li>Diversifier vos actifs (ne pas mettre tous ses œufs dans le même panier)</li>
-                                    <li>Apprendre continuellement et suivre une stratégie testée</li>
-                                </ul>
-                            </div>
-                            
-                            <p>La bonne nouvelle? Avec de la discipline, de l'éducation et de la pratique, vous pouvez gérer ces risques et devenir profitable.</p>
-                        `
-                    },
-                    {
-                        title: "Module 4: Capital de Départ",
-                        content: `
-                            <p>Combien faut-il pour commencer? C'est LA question que tout le monde pose!</p>
-                            
-                            <h4>Recommandations par profil:</h4>
-                            
-                            <div class="important">
-                                <strong>💰 Débutant Absolu: 100-500$</strong>
-                                <p>Assez pour apprendre sans risquer gros. Vous allez probablement perdre une partie au début (c'est normal, c'est le prix de l'apprentissage).</p>
-                            </div>
-                            
-                            <div class="pro-tip">
-                                <strong>💰 Trader Sérieux: 1,000-5,000$</strong>
-                                <p>Permet de trader avec des tailles de position raisonnables et de faire des profits significatifs. C'est le sweet spot pour commencer sérieusement.</p>
-                            </div>
-                            
-                            <p><strong>💰 Trader Avancé: 10,000$+</strong><br>
-                            Pour ceux qui veulent en faire une source de revenus principale. Permet de vivre du trading avec des gains réguliers.</p>
-                            
-                            <h4>Règle d'or du capital:</h4>
-                            <ul>
-                                <li>Commencez PETIT - Vous pouvez toujours ajouter plus tard</li>
-                                <li>N'utilisez JAMAIS d'argent dont vous avez besoin (loyer, nourriture, etc.)</li>
-                                <li>Considérez votre capital initial comme une "tuition fee" pour votre éducation</li>
-                                <li>Une fois profitable, réinvestissez vos profits pour grossir votre capital</li>
-                            </ul>
-                            
-                            <div class="danger">
-                                <strong>⚠️ À NE JAMAIS FAIRE:</strong>
-                                <ul>
-                                    <li>Emprunter de l'argent pour trader</li>
-                                    <li>Utiliser l'argent du loyer ou des factures</li>
-                                    <li>S'attendre à devenir riche en 1 mois</li>
-                                    <li>Investir tout son capital en une seule fois</li>
-                                </ul>
-                            </div>
-                        `
-                    },
-                    {
-                        title: "Module 5: Outils Essentiels",
-                        content: `
-                            <p>Pour trader efficacement, vous avez besoin des bons outils. Voici ce qu'il vous faut:</p>
-                            
-                            <h4>1. Exchange (Plateforme de trading)</h4>
-                            <div class="important">
-                                <strong>🏆 Top Recommandations:</strong>
-                                <ul>
-                                    <li><strong>Binance:</strong> Le plus grand, le plus liquide (notre #1 recommendation)</li>
-                                    <li><strong>Coinbase:</strong> Très user-friendly, parfait pour débuter</li>
-                                    <li><strong>Bybit:</strong> Excellent pour le trading avec levier</li>
-                                </ul>
-                            </div>
-                            
-                            <h4>2. Plateforme de Charts</h4>
-                            <p><strong>TradingView</strong> est LA référence mondiale. C'est gratuit pour commencer et contient tout ce dont vous avez besoin:</p>
-                            <ul>
-                                <li>Charts en temps réel</li>
-                                <li>100+ indicateurs techniques</li>
-                                <li>Outils de dessin (lignes de tendance, supports/résistances)</li>
-                                <li>Alertes de prix</li>
-                            </ul>
-                            
-                            <h4>3. Portfolio Tracker</h4>
-                            <p>Pour suivre tous vos holdings en un seul endroit:</p>
-                            <ul>
-                                <li><strong>CoinMarketCap:</strong> Gratuit, simple</li>
-                                <li><strong>Delta:</strong> App mobile excellente</li>
-                                <li><strong>CoinGecko:</strong> Alternative solide</li>
-                            </ul>
-                            
-                            <h4>4. News & Research</h4>
-                            <ul>
-                                <li><strong>Twitter/X:</strong> Suivez les influenceurs crypto (Vitalik, CZ, etc.)</li>
-                                <li><strong>CoinDesk:</strong> News crypto fiables</li>
-                                <li><strong>CoinTelegraph:</strong> Analyses et actualités</li>
-                                <li><strong>Reddit (r/cryptocurrency):</strong> Communauté active</li>
-                            </ul>
-                            
-                            <div class="pro-tip">
-                                <strong>💎 Setup de Pro:</strong>
-                                <p>2 écrans - Un pour TradingView (charts), un pour Binance (exécution des trades). Si vous n'avez qu'un écran, pas de problème, utilisez deux fenêtres côte à côte!</p>
-                            </div>
-                        `
-                    },
-                    {
-                        title: "Module 6: Premiers Pas Pratiques",
-                        content: `
-                            <p>Vous êtes prêt à faire vos premiers pas! Voici le plan d'action exact pour les 7 prochains jours:</p>
-                            
-                            <h4>Jour 1-2: Setup</h4>
-                            <ul>
-                                <li>Créer un compte Binance (vérification KYC prend 1-2 jours)</li>
-                                <li>Activer 2FA (sécurité obligatoire!)</li>
-                                <li>Créer un compte TradingView gratuit</li>
-                            </ul>
-                            
-                            <h4>Jour 3: Premier Dépôt (Petit!)</h4>
-                            <ul>
-                                <li>Déposer 100-200$ maximum pour commencer</li>
-                                <li>Tester un petit achat de BTC ou ETH (10-20$)</li>
-                                <li>Se familiariser avec l'interface</li>
-                            </ul>
-                            
-                            <h4>Jour 4-5: Observation</h4>
-                            <ul>
-                                <li>Regarder les charts pendant 2-3 heures par jour</li>
-                                <li>Observer comment les prix bougent</li>
-                                <li>Identifier les moments où vous auriez pu acheter bas/vendre haut</li>
-                                <li>NE PAS TRADER ENCORE - Juste observer!</li>
-                            </ul>
-                            
-                            <h4>Jour 6-7: Premiers Micro-Trades</h4>
-                            <div class="important">
-                                <strong>🎯 Exercice Pratique:</strong>
-                                <p>Faire 5 trades avec seulement 10$ chacun. L'objectif n'est PAS de faire du profit, mais d'apprendre le processus:</p>
-                                <ul>
-                                    <li>Comment passer un ordre</li>
-                                    <li>La différence entre Market et Limit orders</li>
-                                    <li>Comment lire le carnet d'ordres</li>
-                                    <li>Les frais de trading</li>
-                                </ul>
-                            </div>
-                            
-                            <div class="pro-tip">
-                                <strong>💎 Mindset du Débutant:</strong>
-                                <p>Vos premiers trades vont probablement être perdants. C'EST NORMAL. Vous payez pour votre éducation. L'important est d'apprendre de chaque trade et de ne pas répéter les mêmes erreurs.</p>
-                            </div>
-                            
-                            <div class="danger">
-                                <strong>⚠️ Erreurs à Éviter:</strong>
-                                <ul>
-                                    <li>Trader avec tout votre capital dès le début</li>
-                                    <li>FOMO (Fear Of Missing Out) - Acheter pendant une pump</li>
-                                    <li>Ne pas utiliser de Stop Loss</li>
-                                    <li>Regarder les prix toutes les 5 minutes (stress inutile)</li>
-                                    <li>Suivre aveuglément les "tips" des autres</li>
-                                </ul>
-                            </div>
-                            
-                            <p><strong>Prochaine étape:</strong> Une fois ces 7 jours complétés, passez à la Formation 2 pour comprendre en profondeur les crypto-monnaies que vous allez trader!</p>
-                        `
-                    }
-                ],
-                quiz: [
-                    {
-                        question: "Quelle est la règle d'or du trading?",
-                        options: [
-                            "Acheter haut et vendre bas",
-                            "Acheter bas et vendre haut",
-                            "Toujours utiliser un levier maximum",
-                            "Ne jamais vendre à perte"
-                        ],
-                        correct: 1
-                    },
-                    {
-                        question: "Quel est le capital recommandé pour un débutant absolu?",
-                        options: [
-                            "10,000$ minimum",
-                            "500-1000$",
-                            "100-500$",
-                            "50$ suffit"
-                        ],
-                        correct: 2
-                    },
-                    {
-                        question: "Quelle plateforme est recommandée #1 pour trader?",
-                        options: [
-                            "Robinhood",
-                            "Binance",
-                            "eToro",
-                            "PayPal"
-                        ],
-                        correct: 1
-                    },
-                    {
-                        question: "Combien de trades devriez-vous faire les premiers jours?",
-                        options: [
-                            "100+ pour apprendre vite",
-                            "5-10 micro-trades avec petites sommes",
-                            "Aucun, juste observer",
-                            "Tout dépend du capital"
-                        ],
-                        correct: 1
-                    },
-                    {
-                        question: "Quel est le risque #1 en trading?",
-                        options: [
-                            "Les frais de transaction",
-                            "Le temps passé",
-                            "La perte de capital",
-                            "Les taxes"
-                        ],
-                        correct: 2
-                    }
-                ]
+const formations = {
+    1: {
+        title: "🎯 Les Fondamentaux Absolus",
+        duration: "4 heures",
+        modules: 6,
+        modules_content: [
+            {
+                title: "Module 1: Qu'est-ce que le Trading? - Définition Complète",
+                content: `
+                    <p><strong>Le trading</strong> est l'acte d'acheter et de vendre des actifs financiers dans le but de réaliser un profit. Contrairement à l'investissement à long terme, le trading implique des transactions plus fréquentes et une attention active aux mouvements de prix.</p>
+                    
+                    <h4>🎯 Définition Professionnelle</h4>
+                    <p>Le trading est une activité économique où un trader cherche à profiter des fluctuations de prix d'un actif en l'achetant à un prix inférieur et en le vendant à un prix supérieur (ou vice-versa dans le cas du short selling).</p>
+                    
+                    <div class="important">
+                        <strong>💡 Règle d'Or Universelle:</strong>
+                        <p style="font-size: 1.3em; margin-top: 15px;"><strong>Acheter BAS + Vendre HAUT = PROFIT</strong></p>
+                        <p>Cette règle simple est à la base de TOUT trading profitable. Elle semble évidente, mais 90% des traders débutants font l'inverse: ils achètent haut (par FOMO) et vendent bas (par panique).</p>
+                    </div>
+                    
+                    <h4>📊 Types de Marchés Financiers</h4>
+                    <p>Il existe plusieurs types de marchés où vous pouvez trader:</p>
+                    
+                    <table>
+                        <tr>
+                            <th>Marché</th>
+                            <th>Description</th>
+                            <th>Avantages</th>
+                            <th>Pour Qui?</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Spot (Au Comptant)</strong></td>
+                            <td>Achat/vente immédiat. Vous possédez réellement l'actif.</td>
+                            <td>Simple, pas de liquidation, propriété réelle</td>
+                            <td>Débutants, investisseurs</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Futures (Contrats)</strong></td>
+                            <td>Contrat pour acheter/vendre à une date future avec possibilité de levier.</td>
+                            <td>Levier jusqu'à 125x, possibilité de shorter</td>
+                            <td>Traders expérimentés</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Options</strong></td>
+                            <td>Droit (mais pas obligation) d'acheter/vendre à un prix fixe.</td>
+                            <td>Risque limité, stratégies complexes possibles</td>
+                            <td>Traders avancés</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Margin (Marge)</strong></td>
+                            <td>Emprunter des fonds pour amplifier vos positions (2-10x).</td>
+                            <td>Augmente les profits potentiels</td>
+                            <td>Traders intermédiaires</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="pro-tip">
+                        <strong>💎 Conseil Pro:</strong>
+                        <p>Dans cette Academy, nous nous concentrons sur le <strong>trading Spot</strong> car c'est le plus sûr pour débuter. Une fois que vous serez profitable en Spot pendant 6-12 mois, vous pourrez envisager les Futures avec levier.</p>
+                    </div>
+                    
+                    <h4>🔄 Trading vs Investissement - Quelle différence?</h4>
+                    
+                    <table>
+                        <tr>
+                            <th>Aspect</th>
+                            <th>Trading</th>
+                            <th>Investissement</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Horizon temps</strong></td>
+                            <td>Minutes à semaines</td>
+                            <td>Mois à années</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Objectif</strong></td>
+                            <td>Profiter des fluctuations</td>
+                            <td>Croissance long terme</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Attention requise</strong></td>
+                            <td>Quotidienne (1-4h/jour)</td>
+                            <td>Mensuelle (1h/mois)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Analyse</strong></td>
+                            <td>Technique principalement</td>
+                            <td>Fondamentale principalement</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Profits typiques</strong></td>
+                            <td>5-20% par mois (si bon)</td>
+                            <td>50-500% par an</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Risque</strong></td>
+                            <td>Élevé (pertes rapides)</td>
+                            <td>Moyen (drawdowns longs)</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="example-box">
+                        <strong>📘 Exemple Concret:</strong>
+                        <p><strong>Trader:</strong> Achète Bitcoin à 40,000$ lundi matin, vend à 42,000$ vendredi → Profit: 2,000$ (5%) en 5 jours.</p>
+                        <p><strong>Investisseur:</strong> Achète Bitcoin à 10,000$ en 2020, vend à 60,000$ en 2021 → Profit: 50,000$ (500%) en 1 an.</p>
+                        <p><strong>Lequel est mieux?</strong> Les deux sont valides! Le trading génère des gains réguliers mais nécessite plus de temps. L'investissement est plus passif mais plus stressant pendant les bear markets.</p>
+                    </div>
+                    
+                    <h4>🎮 Les Différents Styles de Trading</h4>
+                    
+                    <p><strong>1. Scalping (Ultra Court Terme)</strong></p>
+                    <ul>
+                        <li>Timeframe: 1 minute à 15 minutes</li>
+                        <li>Durée des trades: Quelques secondes à quelques minutes</li>
+                        <li>Objectif de profit: 0.5-2% par trade</li>
+                        <li>Nombre de trades: 10-100+ par jour</li>
+                        <li>Difficulté: ★★★★★ (Très difficile)</li>
+                        <li>Temps requis: 4-8 heures de screen time</li>
+                    </ul>
+                    
+                    <p><strong>2. Day Trading (Court Terme)</strong></p>
+                    <ul>
+                        <li>Timeframe: 5 minutes à 1 heure</li>
+                        <li>Durée des trades: Quelques heures (fermé avant la fin de journée)</li>
+                        <li>Objectif de profit: 2-5% par trade</li>
+                        <li>Nombre de trades: 2-10 par jour</li>
+                        <li>Difficulté: ★★★★☆ (Difficile)</li>
+                        <li>Temps requis: 2-4 heures de screen time</li>
+                    </ul>
+                    
+                    <p><strong>3. Swing Trading (Moyen Terme)</strong></p>
+                    <ul>
+                        <li>Timeframe: 4 heures à daily</li>
+                        <li>Durée des trades: Quelques jours à quelques semaines</li>
+                        <li>Objectif de profit: 10-30% par trade</li>
+                        <li>Nombre de trades: 5-20 par mois</li>
+                        <li>Difficulté: ★★★☆☆ (Moyen - RECOMMANDÉ POUR DÉBUTER)</li>
+                        <li>Temps requis: 30 minutes à 1 heure par jour</li>
+                    </ul>
+                    
+                    <p><strong>4. Position Trading (Long Terme)</strong></p>
+                    <ul>
+                        <li>Timeframe: Daily à Weekly</li>
+                        <li>Durée des trades: Plusieurs semaines à plusieurs mois</li>
+                        <li>Objectif de profit: 50-200%+ par trade</li>
+                        <li>Nombre de trades: 2-10 par an</li>
+                        <li>Difficulté: ★★☆☆☆ (Facile)</li>
+                        <li>Temps requis: 1-2 heures par semaine</li>
+                    </ul>
+                    
+                    <div class="important">
+                        <strong>🎯 Recommandation pour Débutants:</strong>
+                        <p>Commencez avec le <strong>Swing Trading</strong>. C'est le sweet spot entre:</p>
+                        <ul>
+                            <li>Pas trop de temps requis (1h/jour)</li>
+                            <li>Profits significatifs (10-30% par trade)</li>
+                            <li>Moins stressant que le day trading</li>
+                            <li>Plus de temps pour analyser et prendre des décisions</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>📈 Histoire du Trading</h4>
+                    <p>Le trading existe depuis des siècles, mais voici les étapes clés:</p>
+                    <ul>
+                        <li><strong>1602:</strong> Première bourse (Amsterdam Stock Exchange)</li>
+                        <li><strong>1792:</strong> New York Stock Exchange (NYSE) fondé</li>
+                        <li><strong>1971:</strong> Création du NASDAQ (premier marché électronique)</li>
+                        <li><strong>2009:</strong> Bitcoin lancé - début du trading crypto</li>
+                        <li><strong>2017:</strong> Boom crypto - millions de nouveaux traders</li>
+                        <li><strong>2020-2024:</strong> Trading démocratisé via apps mobiles</li>
+                    </ul>
+                    
+                    <div class="pro-tip">
+                        <strong>💎 Fun Fact:</strong>
+                        <p>Le trading crypto est ouvert 24/7/365, contrairement aux marchés traditionnels qui ferment le weekend. Cela offre plus d'opportunités mais aussi plus de risques (les crashs peuvent arriver n'importe quand).</p>
+                    </div>
+                    
+                    <h4>🔑 Concepts Clés à Retenir</h4>
+                    <ul>
+                        <li><strong>Liquidité:</strong> Facilité d'acheter/vendre sans impacter le prix</li>
+                        <li><strong>Volatilité:</strong> Amplitude des fluctuations de prix</li>
+                        <li><strong>Volume:</strong> Quantité d'actifs échangés (indicateur de force)</li>
+                        <li><strong>Bid/Ask:</strong> Prix d'achat vs prix de vente (le spread est la différence)</li>
+                        <li><strong>Market Order:</strong> Achat/vente immédiat au prix du marché</li>
+                        <li><strong>Limit Order:</strong> Ordre à un prix spécifique (non garanti)</li>
+                    </ul>
+                    
+                    <div class="danger">
+                        <strong>⚠️ Vérité Difficile:</strong>
+                        <p>Selon les statistiques:</p>
+                        <ul>
+                            <li>90% des traders perdent de l'argent la première année</li>
+                            <li>80% abandonnent dans les 2 ans</li>
+                            <li>Seulement 5-10% deviennent profitables à long terme</li>
+                        </ul>
+                        <p><strong>MAIS:</strong> Ceux qui prennent le temps d'apprendre, qui sont disciplinés et qui suivent un plan ont de BIEN meilleures chances. Cette Academy est conçue pour vous mettre dans les 10% gagnants!</p>
+                    </div>
+                `
             },
-            2: {
-                title: "₿ Comprendre les Crypto-monnaies",
-                modules: [
-                    {
-                        title: "Module 1: Bitcoin - L'Or Numérique",
-                        content: `
-                            <p>Bitcoin (BTC) est la première et la plus importante crypto-monnaie. Lancé en 2009 par le mystérieux Satoshi Nakamoto, il a révolutionné la finance.</p>
-                            
-                            <h4>Pourquoi Bitcoin est spécial:</h4>
-                            <ul>
-                                <li><strong>Supply limité:</strong> Seulement 21 millions de BTC existeront jamais (rareté = valeur)</li>
-                                <li><strong>Décentralisé:</strong> Aucun gouvernement ou banque ne le contrôle</li>
-                                <li><strong>Transparent:</strong> Toutes les transactions sont publiques sur la blockchain</li>
-                                <li><strong>Sécurisé:</strong> Impossible à hacker (avec les bonnes pratiques)</li>
-                            </ul>
-                            
-                            <div class="important">
-                                <strong>💡 Bitcoin = Or Numérique</strong>
-                                <p>Comme l'or, Bitcoin est:</p>
-                                <ul>
-                                    <li>Rare (supply limité)</li>
-                                    <li>Divisible (vous pouvez acheter 0.0001 BTC)</li>
-                                    <li>Durable (existe digitalement pour toujours)</li>
-                                    <li>Portable (envoyez 1 million$ en 10 minutes partout dans le monde)</li>
-                                </ul>
-                            </div>
-                            
-                            <h4>Price History de Bitcoin:</h4>
-                            <ul>
-                                <li>2009: 0.01$ (lancement)</li>
-                                <li>2013: 1,000$ (première bull run)</li>
-                                <li>2017: 20,000$ (mainstream adoption commence)</li>
-                                <li>2021: 69,000$ (all-time high)</li>
-                                <li>2024: ~40,000-70,000$ (cycles continuent)</li>
-                            </ul>
-                            
-                            <div class="pro-tip">
-                                <strong>💎 Trading Insight:</strong>
-                                <p>Bitcoin représente ~50% du market cap total crypto. Quand BTC monte, les altcoins suivent généralement. Quand BTC baisse, tout baisse. C'est le "king" du marché.</p>
-                            </div>
-                            
-                            <p>En tant que trader, Bitcoin sera votre actif principal. Il est le plus liquide, le moins volatile (relativement), et le plus prévisible des cryptos.</p>
-                        `
-                    },
-                    {
-                        title: "Module 2: Ethereum - L'Ordinateur Mondial",
-                        content: `
-                            <p>Ethereum (ETH) est bien plus qu'une crypto-monnaie - c'est une plateforme pour applications décentralisées (dApps).</p>
-                            
-                            <h4>Ce qui rend Ethereum unique:</h4>
-                            <div class="important">
-                                <strong>🔧 Smart Contracts</strong>
-                                <p>Ethereum permet de créer des "contrats intelligents" - des programmes qui s'exécutent automatiquement. Exemple:</p>
-                                <p>"SI Alice envoie 1 ETH à Bob, ALORS Bob reçoit automatiquement le NFT"</p>
-                                <p>Pas besoin d'intermédiaire, de notaire ou d'avocat!</p>
-                            </div>
-                            
-                            <h4>Applications construites sur Ethereum:</h4>
-                            <ul>
-                                <li><strong>DeFi:</strong> Uniswap (échange), Aave (prêts), Compound (yield)</li>
-                                <li><strong>NFTs:</strong> OpenSea, Rarible, Art Blocks</li>
-                                <li><strong>Gaming:</strong> Axie Infinity, Decentraland</li>
-                                <li><strong>DAOs:</strong> Organisations décentralisées</li>
-                            </ul>
-                            
-                            <h4>ETH vs BTC:</h4>
-                            <table style="width:100%; margin: 20px 0; border-collapse: collapse;">
-                                <tr style="background: rgba(102, 126, 234, 0.2);">
-                                    <th style="padding: 10px;">Aspect</th>
-                                    <th style="padding: 10px;">Bitcoin</th>
-                                    <th style="padding: 10px;">Ethereum</th>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Usage Principal</strong></td>
-                                    <td style="padding: 10px;">Réserve de valeur (or digital)</td>
-                                    <td style="padding: 10px;">Plateforme d'applications</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Supply</strong></td>
-                                    <td style="padding: 10px;">21M max (déflationniste)</td>
-                                    <td style="padding: 10px;">~120M (légèrement inflationniste)</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Vitesse</strong></td>
-                                    <td style="padding: 10px;">~10 min par transaction</td>
-                                    <td style="padding: 10px;">~15 sec par transaction</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 10px;"><strong>Smart Contracts</strong></td>
-                                    <td style="padding: 10px;">Non</td>
-                                    <td style="padding: 10px;">Oui (c'est son but!)</td>
-                                </tr>
-                            </table>
-                            
-                            <div class="pro-tip">
-                                <strong>💎 Trading Insight:</strong>
-                                <p>ETH est généralement plus volatile que BTC. Quand le marché est bullish, ETH performe souvent MIEUX que BTC (+100% vs +50%). Mais en bear market, ETH chute aussi plus fort.</p>
-                            </div>
-                            
-                            <h4>Ethereum 2.0 (The Merge - 2022):</h4>
-                            <p>Ethereum est passé de Proof of Work (mining) à Proof of Stake (staking). Impact:</p>
-                            <ul>
-                                <li>✅ 99% moins d'énergie consommée</li>
-                                <li>✅ ETH devient déflationniste (supply diminue)</li>
-                                <li>✅ Staking rapporte 4-6% APY</li>
-                            </ul>
-                        `
-                    },
-                    {
-                        title: "Module 3: Altcoins - Au-delà de BTC et ETH",
-                        content: `
-                            <p>Les "altcoins" (alternative coins) sont toutes les crypto-monnaies autres que Bitcoin. Il en existe plus de 20,000!</p>
-                            
-                            <h4>Catégories d'Altcoins:</h4>
-                            
-                            <div class="important">
-                                <strong>1. Layer 1 Blockchains (Concurrents d'Ethereum)</strong>
-                                <ul>
-                                    <li><strong>Solana (SOL):</strong> Ultra-rapide (65,000 TPS), low fees</li>
-                                    <li><strong>Cardano (ADA):</strong> Approche académique, très sécurisé</li>
-                                    <li><strong>Polkadot (DOT):</strong> Interopérabilité entre blockchains</li>
-                                    <li><strong>Avalanche (AVAX):</strong> Compatible Ethereum, très rapide</li>
-                                </ul>
-                            </div>
-                            
-                            <h4>2. DeFi Tokens</h4>
-                            <ul>
-                                <li><strong>Uniswap (UNI):</strong> Plus grand DEX (échange décentralisé)</li>
-                                <li><strong>Aave (AAVE):</strong> Prêts et emprunts crypto</li>
-                                <li><strong>Maker (MKR):</strong> Stablecoin DAI</li>
-                            </ul>
-                            
-                            <h4>3. Meme Coins (Très risqué!)</h4>
-                            <ul>
-                                <li><strong>Dogecoin (DOGE):</strong> Le premier meme coin (Elon Musk le promeut)</li>
-                                <li><strong>Shiba Inu (SHIB):</strong> "Dogecoin killer"</li>
-                            </ul>
-                            
-                            <div class="danger">
-                                <strong>⚠️ ATTENTION avec les Altcoins:</strong>
-                                <ul>
-                                    <li>90% des altcoins meurent ou perdent 99% de leur valeur</li>
-                                    <li>Beaucoup sont des scams ou des "pump and dumps"</li>
-                                    <li>Très volatile - peut +500% en une semaine, puis -80% la suivante</li>
-                                    <li>Moins liquide = plus difficile de vendre rapidement</li>
-                                </ul>
-                            </div>
-                            
-                            <h4>Altcoin Seasons:</h4>
-                            <p>Le marché crypto fonctionne par cycles:</p>
-                            <ol>
-                                <li><strong>Phase 1:</strong> BTC monte (+50%)</li>
-                                <li><strong>Phase 2:</strong> ETH monte encore plus (+100%)</li>
-                                <li><strong>Phase 3:</strong> Altcoins explosent (+200-1000%!) ← "Altcoin Season"</li>
-                                <li><strong>Phase 4:</strong> Tout crash ensemble (-80%)</li>
-                            </ol>
-                            
-                            <div class="pro-tip">
-                                <strong>💎 Stratégie de Portfolio:</strong>
-                                <p>Pour débuter, recommandation:</p>
-                                <ul>
-                                    <li>50% Bitcoin (stabilité relative)</li>
-                                    <li>30% Ethereum (upside potentiel)</li>
-                                    <li>20% Top 10-20 altcoins (high risk/high reward)</li>
-                                </ul>
-                                <p>Une fois plus expérimenté, vous pouvez augmenter l'exposition altcoins, mais JAMAIS 100%!</p>
-                            </div>
-                        `
-                    }
-                ]
+            {
+                title: "Module 2: Comment Gagner de l'Argent en Trading - Guide Complet",
+                content: `
+                    <p>Il existe plusieurs façons de générer des revenus dans le trading crypto. Comprendre toutes les options vous permet de diversifier vos sources de profits.</p>
+                    
+                    <h4>💰 Méthode #1: Trading Actif (Active Trading)</h4>
+                    
+                    <p><strong>Principe:</strong> Acheter bas, vendre haut en profitant des fluctuations de prix.</p>
+                    
+                    <div class="success">
+                        <strong>✅ Exemple Réussi:</strong>
+                        <p><strong>Setup:</strong> Capital de départ: 1,000$</p>
+                        <p><strong>Trade 1:</strong> Achète Ethereum à 1,800$ (0.55 ETH) → Vend à 2,000$ = Profit: 110$ (+11%)</p>
+                        <p><strong>Trade 2:</strong> Achète Solana à 20$ (55 SOL) → Vend à 23$ = Profit: 165$ (+15%)</p>
+                        <p><strong>Trade 3:</strong> Achète Bitcoin à 42,000$ (0.027 BTC) → Vend à 44,000$ = Profit: 54$ (+4.7%)</p>
+                        <p><strong>Résultat après 3 trades:</strong> Capital: 1,329$ → Profit total: 329$ (+32.9%) en 2 semaines</p>
+                    </div>
+                    
+                    <h4>Stratégies de Trading Actif:</h4>
+                    
+                    <p><strong>A) Breakout Trading (Trading de Cassure)</strong></p>
+                    <ul>
+                        <li><strong>Concept:</strong> Acheter quand le prix casse un niveau de résistance important</li>
+                        <li><strong>Signal d'entrée:</strong> Prix casse au-dessus de la résistance avec volume élevé</li>
+                        <li><strong>Objectif:</strong> Continuation du mouvement haussier</li>
+                        <li><strong>Stop Loss:</strong> En dessous du niveau de cassure</li>
+                        <li><strong>Win Rate typique:</strong> 50-60%</li>
+                        <li><strong>Risk/Reward:</strong> 1:2 ou 1:3</li>
+                    </ul>
+                    
+                    <div class="example-box">
+                        <strong>📘 Exemple Breakout:</strong>
+                        <p>Bitcoin consolide entre 40,000$ et 42,000$ pendant 2 semaines. Le prix casse à 42,100$ avec un volume 3x supérieur à la moyenne.</p>
+                        <p><strong>Action:</strong> Achat à 42,100$</p>
+                        <p><strong>Stop Loss:</strong> 41,500$ (risque: 1.4%)</p>
+                        <p><strong>Take Profit:</strong> 44,000$ (profit: 4.5%)</p>
+                        <p><strong>Risk/Reward:</strong> 1:3.2 (excellent!)</p>
+                    </div>
+                    
+                    <p><strong>B) Support/Resistance Trading</strong></p>
+                    <ul>
+                        <li><strong>Concept:</strong> Acheter près des supports, vendre près des résistances</li>
+                        <li><strong>Support:</strong> Niveau de prix où la demande est forte (prix rebondit)</li>
+                        <li><strong>Résistance:</strong> Niveau de prix où l'offre est forte (prix chute)</li>
+                        <li><strong>Signal:</strong> Prix approche support + indicateurs de rebond</li>
+                        <li><strong>Win Rate typique:</strong> 60-70% (stratégie fiable)</li>
+                    </ul>
+                    
+                    <p><strong>C) Trend Following (Suivi de Tendance)</strong></p>
+                    <ul>
+                        <li><strong>Principe:</strong> "The trend is your friend" - Trader dans le sens de la tendance</li>
+                        <li><strong>Uptrend:</strong> Série de higher highs et higher lows → On achète les pullbacks</li>
+                        <li><strong>Downtrend:</strong> Série de lower highs et lower lows → On évite ou on short</li>
+                        <li><strong>Outils:</strong> Moving Averages (EMA 20, 50, 200)</li>
+                        <li><strong>Win Rate typique:</strong> 40-50% (mais gros profits quand ça marche)</li>
+                    </ul>
+                    
+                    <h4>💰 Méthode #2: Investissement Long Terme (HODLing)</h4>
+                    
+                    <p><strong>Principe:</strong> Acheter des crypto-monnaies prometteuses et les garder pendant des mois/années.</p>
+                    
+                    <table>
+                        <tr>
+                            <th>Crypto</th>
+                            <th>Prix en 2020</th>
+                            <th>Prix ATH 2021</th>
+                            <th>Profit si HODLé</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Bitcoin (BTC)</strong></td>
+                            <td>7,000$</td>
+                            <td>69,000$</td>
+                            <td>+885%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Ethereum (ETH)</strong></td>
+                            <td>200$</td>
+                            <td>4,800$</td>
+                            <td>+2,300%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Solana (SOL)</strong></td>
+                            <td>2$</td>
+                            <td>260$</td>
+                            <td>+12,900%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>BNB</strong></td>
+                            <td>15$</td>
+                            <td>690$</td>
+                            <td>+4,500%</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="important">
+                        <strong>💡 Stratégie HODL Intelligente:</strong>
+                        <p><strong>Dollar Cost Averaging (DCA):</strong></p>
+                        <ul>
+                            <li>Investir une somme fixe régulièrement (ex: 100$ par semaine)</li>
+                            <li>Acheter peu importe le prix (élimine le timing stress)</li>
+                            <li>Moyenne le prix d'achat sur le long terme</li>
+                            <li><strong>Exemple:</strong> 100$/semaine pendant 2 ans = 10,400$ investi, valeur finale dépend du marché mais historiquement très profitable</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>💰 Méthode #3: Staking et Yield Farming (Revenus Passifs)</h4>
+                    
+                    <p><strong>Staking:</strong> "Prêter" vos cryptos pour sécuriser un réseau et gagner des intérêts.</p>
+                    
+                    <table>
+                        <tr>
+                            <th>Crypto</th>
+                            <th>APY Typique</th>
+                            <th>Risque</th>
+                            <th>Où Staker?</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Ethereum (ETH)</strong></td>
+                            <td>4-6%</td>
+                            <td>Faible</td>
+                            <td>Lido, Rocket Pool, Binance</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Solana (SOL)</strong></td>
+                            <td>6-8%</td>
+                            <td>Faible</td>
+                            <td>Phantom Wallet, Binance</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Polkadot (DOT)</strong></td>
+                            <td>10-14%</td>
+                            <td>Moyen</td>
+                            <td>Polkadot.js, Kraken</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cosmos (ATOM)</strong></td>
+                            <td>12-18%</td>
+                            <td>Moyen</td>
+                            <td>Keplr Wallet, Binance</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="example-box">
+                        <strong>📘 Calcul de Revenus Passifs:</strong>
+                        <p><strong>Investissement:</strong> 10,000$ en Ethereum</p>
+                        <p><strong>APY Staking:</strong> 5% par an</p>
+                        <p><strong>Gains annuels:</strong> 500$ (sans rien faire!)</p>
+                        <p><strong>Gains en 5 ans:</strong> 2,834$ (avec composé)</p>
+                        <p><strong>Plus:</strong> Si ETH monte de 50% → Valeur totale = 15,000$ + 2,834$ = 17,834$</p>
+                    </div>
+                    
+                    <p><strong>Yield Farming:</strong> Fournir de la liquidité aux exchanges décentralisés (DEX) pour gagner des frais.</p>
+                    <ul>
+                        <li><strong>Concept:</strong> Déposer 2 cryptos dans un pool de liquidité</li>
+                        <li><strong>Gains:</strong> % des frais de trading + tokens de récompense</li>
+                        <li><strong>APY:</strong> 10-100%+ (varie beaucoup)</li>
+                        <li><strong>Risque:</strong> Impermanent Loss (perte si prix divergent trop)</li>
+                        <li><strong>Plateformes:</strong> Uniswap, PancakeSwap, Curve, Aave</li>
+                    </ul>
+                    
+                    <div class="danger">
+                        <strong>⚠️ Attention Yield Farming:</strong>
+                        <p>Des APY de 500-1000% sont souvent des pièges! Ces projets:</p>
+                        <ul>
+                            <li>Ont des tokens qui chutent de 90%+ en quelques semaines</li>
+                            <li>Sont souvent des "rug pulls" (scams)</li>
+                            <li>Le risque est TRÈS élevé</li>
+                        </ul>
+                        <p><strong>Règle:</strong> APY >50% = High Risk. Stick to des protocoles établis (Uniswap, Aave, Curve) avec APY raisonnables (10-30%).</p>
+                    </div>
+                    
+                    <h4>💰 Méthode #4: Arbitrage</h4>
+                    
+                    <p><strong>Principe:</strong> Profiter des différences de prix entre exchanges.</p>
+                    
+                    <div class="example-box">
+                        <strong>📘 Exemple Arbitrage:</strong>
+                        <p><strong>Bitcoin sur Binance:</strong> 41,000$</p>
+                        <p><strong>Bitcoin sur KuCoin:</strong> 41,200$</p>
+                        <p><strong>Opportunité:</strong> Acheter sur Binance, vendre sur KuCoin</p>
+                        <p><strong>Profit:</strong> 200$ par BTC (0.5%)</p>
+                        <p><strong>Note:</strong> Déduire frais de trading (0.1%) + frais de transfer</p>
+                    </div>
+                    
+                    <p><strong>Types d'Arbitrage:</strong></p>
+                    <ul>
+                        <li><strong>Simple Arbitrage:</strong> Acheter sur Exchange A, vendre sur Exchange B</li>
+                        <li><strong>Triangular Arbitrage:</strong> Exploiter différences de taux entre 3 cryptos</li>
+                        <li><strong>Funding Rate Arbitrage:</strong> Profiter des taux de financement des Futures</li>
+                        <li><strong>Difficulté:</strong> Nécessite capital important + exécution rapide</li>
+                        <li><strong>Profit typique:</strong> 0.2-2% par opportunité</li>
+                    </ul>
+                    
+                    <h4>📊 Quelle Méthode Choisir?</h4>
+                    
+                    <table>
+                        <tr>
+                            <th>Méthode</th>
+                            <th>Capital Min</th>
+                            <th>Temps/Jour</th>
+                            <th>Profits/Mois</th>
+                            <th>Difficulté</th>
+                            <th>Pour Qui?</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Trading Actif</strong></td>
+                            <td>500$+</td>
+                            <td>1-4h</td>
+                            <td>5-20%</td>
+                            <td>★★★★☆</td>
+                            <td>Actifs, motivés</td>
+                        </tr>
+                        <tr>
+                            <td><strong>HODL/DCA</strong></td>
+                            <td>100$+</td>
+                            <td>10 min/sem</td>
+                            <td>Variable</td>
+                            <td>★★☆☆☆</td>
+                            <td>Patients, long terme</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Staking</strong></td>
+                            <td>100$+</td>
+                            <td>5 min setup</td>
+                            <td>0.4-1.5%</td>
+                            <td>★☆☆☆☆</td>
+                            <td>Tous (passif)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Yield Farming</strong></td>
+                            <td>1,000$+</td>
+                            <td>30 min/sem</td>
+                            <td>0.8-8%</td>
+                            <td>★★★☆☆</td>
+                            <td>Intermédiaires</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Arbitrage</strong></td>
+                            <td>5,000$+</td>
+                            <td>Variable</td>
+                            <td>2-10%</td>
+                            <td>★★★★★</td>
+                            <td>Avancés</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="important">
+                        <strong>🎯 Stratégie Recommandée pour Débutants:</strong>
+                        <p><strong>Approche Combinée (Hybrid):</strong></p>
+                        <ul>
+                            <li><strong>70% Capital:</strong> HODL (BTC + ETH) avec DCA mensuel</li>
+                            <li><strong>20% Capital:</strong> Trading actif (apprendre, pratiquer)</li>
+                            <li><strong>10% Capital:</strong> Staking (revenus passifs)</li>
+                        </ul>
+                        <p>Cette approche vous permet de:</p>
+                        <ul>
+                            <li>✅ Bénéficier de la croissance long terme</li>
+                            <li>✅ Apprendre le trading sans tout risquer</li>
+                            <li>✅ Générer des revenus passifs</li>
+                            <li>✅ Diversifier vos sources de profit</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>📈 Objectifs Réalistes de Profits</h4>
+                    
+                    <div class="success">
+                        <strong>✅ Profits Réalistes (Trader Compétent):</strong>
+                        <ul>
+                            <li><strong>Mois 1-3:</strong> -10% à +5% (phase d'apprentissage)</li>
+                            <li><strong>Mois 4-6:</strong> +3% à +10% par mois</li>
+                            <li><strong>Mois 7-12:</strong> +8% à +15% par mois</li>
+                            <li><strong>Après 1 an:</strong> +10% à +25% par mois (consistant)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="danger">
+                        <strong>⚠️ Méfiez-vous des Promesses Irréalistes:</strong>
+                        <p>Si quelqu'un vous promet:</p>
+                        <ul>
+                            <li>"Doublez votre capital en 1 semaine!" → SCAM</li>
+                            <li>"100% de win rate garanti!" → IMPOSSIBLE</li>
+                            <li>"Devenez millionnaire en 30 jours!" → ARNAQUE</li>
+                        </ul>
+                        <p>Le trading est un MARATHON, pas un sprint. Les gains viennent avec le temps, l'expérience et la discipline.</p>
+                    </div>
+                `
             }
-        };
-        
-        // Le reste du JavaScript suivra dans le prochain message...
-        
-        function showFormation(id) {
-            if (formations[id]) {
-                document.getElementById('list-view').style.display = 'none';
-                document.getElementById('formation-view').style.display = 'block';
-                
-                const formation = formations[id];
-                let html = `<h1>${formation.title}</h1>`;
-                
-                formation.modules.forEach((module, index) => {
-                    html += `
-                        <div class="module">
-                            <h3>${module.title}</h3>
-                            ${module.content}
-                        </div>
-                    `;
-                });
-                
-                if (formation.quiz) {
-                    html += createQuiz(id, formation.quiz);
-                }
-                
-                document.getElementById('formation-content').innerHTML = html;
-                window.scrollTo(0, 0);
+        ]
+    }
+};
+            ,
+            {
+                title: "Module 3: Les Risques du Trading - Guide de Gestion Complète",
+                content: `
+                    <p>Le trading comporte des risques significatifs. Comprendre ces risques et savoir comment les gérer est LA CLEF pour survivre et prospérer dans ce domaine.</p>
+                    
+                    <h4>⚠️ RISQUE #1: Perte de Capital (Le Plus Évident)</h4>
+                    
+                    <p><strong>Réalité Brutale:</strong> Vous pouvez perdre 100% de votre capital si vous tradez sans stratégie ou discipline.</p>
+                    
+                    <div class="danger">
+                        <strong>💀 Statistiques Réelles:</strong>
+                        <ul>
+                            <li>90% des traders débutants perdent de l'argent la première année</li>
+                            <li>Le trader moyen perd 40-60% de son capital dans les 3 premiers mois</li>
+                            <li>Seulement 5-10% des traders sont profitables à long terme</li>
+                            <li>La perte moyenne d'un compte blown (liquidé) est de 87%</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>Causes Principales de Pertes:</h4>
+                    
+                    <table>
+                        <tr>
+                            <th>Cause</th>
+                            <th>% des Pertes</th>
+                            <th>Comment Éviter</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Pas de Stop Loss</strong></td>
+                            <td>35%</td>
+                            <td>TOUJOURS utiliser un Stop Loss, pas d'exception</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Over-trading</strong></td>
+                            <td>25%</td>
+                            <td>Maximum 3-5 trades par jour, qualité > quantité</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Position sizing trop large</strong></td>
+                            <td>20%</td>
+                            <td>Jamais plus de 2-5% du capital par trade</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Trading émotionnel</strong></td>
+                            <td>15%</td>
+                            <td>Suivre un plan, tenir un journal</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Manque de stratégie</strong></td>
+                            <td>5%</td>
+                            <td>Avoir des règles claires avant de trader</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="example-box">
+                        <strong>📘 Exemple Catastrophe (Real Story):</strong>
+                        <p><strong>Trader A</strong> commence avec 10,000$</p>
+                        <p><strong>Semaine 1:</strong> Gagne 1,500$ (+15%) → Se sent invincible</p>
+                        <p><strong>Semaine 2:</strong> Augmente taille positions à 30% du capital</p>
+                        <p><strong>Semaine 3:</strong> 3 trades perdants de suite, pas de Stop Loss</p>
+                        <p><strong>Résultat:</strong> Capital restant: 2,300$ (-77%)</p>
+                        <p><strong>Problème:</strong> Position sizing trop large + pas de Stop Loss + revenge trading</p>
+                    </div>
+                    
+                    <h4>⚠️ RISQUE #2: Volatilité Extrême</h4>
+                    
+                    <p>Les crypto-monnaies sont <strong>EXTRÊMEMENT volatiles</strong>. Voici des mouvements réels:</p>
+                    
+                    <ul>
+                        <li><strong>Bitcoin:</strong> -50% en 1 semaine (Mai 2021)</li>
+                        <li><strong>Luna (UST):</strong> -99.9% en 3 jours (Mai 2022)</li>
+                        <li><strong>FTX (FTT):</strong> -90% en 24 heures (Nov 2022)</li>
+                        <li><strong>Solana:</strong> +300% en 1 mois, puis -70% le mois suivant</li>
+                    </ul>
+                    
+                    <div class="important">
+                        <strong>💡 Comment Gérer la Volatilité:</strong>
+                        <ul>
+                            <li><strong>Psychologique:</strong> Accepter que des swings de 20-30% sont NORMAUX</li>
+                            <li><strong>Stop Loss:</strong> Placer en fonction de la volatilité (ATR)</li>
+                            <li><strong>Position Sizing:</strong> Réduire taille si volatilité élevée</li>
+                            <li><strong>Diversification:</strong> Ne pas tout mettre sur 1 seul actif</li>
+                            <li><strong>Time Horizon:</strong> Plus c'est volatile, plus votre SL doit être large</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>⚠️ RISQUE #3: Émotions (Fear & Greed)</h4>
+                    
+                    <p>Les émotions sont le <strong>#1 ennemi</strong> du trader. Elles vous font prendre de mauvaises décisions.</p>
+                    
+                    <table>
+                        <tr>
+                            <th>Émotion</th>
+                            <th>Manifestation</th>
+                            <th>Résultat</th>
+                            <th>Solution</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Cupidité (Greed)</strong></td>
+                            <td>"Je veux plus! Montons la mise!"</td>
+                            <td>Over-trading, position sizing trop large</td>
+                            <td>Règles fixes de position sizing</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Peur (Fear)</strong></td>
+                            <td>"Et si je perds tout?"</td>
+                            <td>Exit trop tôt, rate les gros profits</td>
+                            <td>TP basé sur analyse, pas émotion</td>
+                        </tr>
+                        <tr>
+                            <td><strong>FOMO</strong></td>
+                            <td>"Ça pumpe! Je dois acheter NOW!"</td>
+                            <td>Achète au top, perte immédiate</td>
+                            <td>Attendre pullback, confirmation</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Revenge Trading</strong></td>
+                            <td>"Je dois me refaire!"</td>
+                            <td>Trades irrationnels, pertes amplifiées</td>
+                            <td>Pause après 2 pertes consécutives</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hope</strong></td>
+                            <td>"Ça va remonter..."</td>
+                            <td>Ne coupe pas les pertes, perte totale</td>
+                            <td>Stop Loss automatique</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="danger">
+                        <strong>⚠️ Le Cycle Émotionnel du Trader Perdant:</strong>
+                        <p><strong>1. Euphorie:</strong> Gains initiaux → Se sent invincible</p>
+                        <p><strong>2. Confiance Excessive:</strong> Augmente position sizing</p>
+                        <p><strong>3. Première Grosse Perte:</strong> Choc, déni</p>
+                        <p><strong>4. Revenge Trading:</strong> "Je dois me refaire!"</p>
+                        <p><strong>5. Capitulation:</strong> Pertes massives, abandon</p>
+                        <p><strong>Solution:</strong> Briser ce cycle avec discipline et plan de trading rigide</p>
+                    </div>
+                    
+                    <h4>⚠️ RISQUE #4: Scams et Arnaques</h4>
+                    
+                    <p>Le monde crypto est rempli de scams. Voici les plus courants:</p>
+                    
+                    <p><strong>1. Pump & Dump Schemes</strong></p>
+                    <ul>
+                        <li><strong>Méthode:</strong> Groupe pump un shitcoin, novices achètent au top, groupe dump</li>
+                        <li><strong>Red Flag:</strong> Promesses de "10x garanti en 24h"</li>
+                        <li><strong>Perte moyenne:</strong> 70-90% du capital investi</li>
+                    </ul>
+                    
+                    <p><strong>2. Fake Websites (Phishing)</strong></p>
+                    <ul>
+                        <li><strong>Méthode:</strong> Site web identique à Binance mais URL légèrement différent</li>
+                        <li><strong>Red Flag:</strong> URL: binanc<strong>e</strong>.com au lieu de binanc<strong>e</strong>.com</li>
+                        <li><strong>Risque:</strong> Vole tous vos fonds</li>
+                    </ul>
+                    
+                    <p><strong>3. Rug Pulls</strong></p>
+                    <ul>
+                        <li><strong>Méthode:</strong> Nouveau projet DeFi lance token → Équipe retire toute liquidité</li>
+                        <li><strong>Exemple célèbre:</strong> Squid Game Token (-99.9% en minutes)</li>
+                        <li><strong>Red Flag:</strong> Team anonyme, pas d'audit, liquidity unlocked</li>
+                    </ul>
+                    
+                    <p><strong>4. Fake Signals Groups</strong></p>
+                    <ul>
+                        <li><strong>Méthode:</strong> Groupe Telegram "VIP" promet signaux gagnants moyennant abonnement</li>
+                        <li><strong>Réalité:</strong> Signaux aléatoires ou pompent leurs propres bags</li>
+                        <li><strong>Coût:</strong> 50-500$ par mois pour rien</li>
+                    </ul>
+                    
+                    <div class="important">
+                        <strong>💡 Règles d'Or Anti-Scam:</strong>
+                        <ul>
+                            <li>✅ Toujours vérifier URL exacte du site (bookmarker les bons sites)</li>
+                            <li>✅ Never give your seed phrase to ANYONE (Binance ne demandera JAMAIS)</li>
+                            <li>✅ Si c'est trop beau pour être vrai, c'est un scam</li>
+                            <li>✅ Nouveau projet? Check: Team doxxed? Audit? Liquidity locked?</li>
+                            <li>✅ Utiliser 2FA + hardware wallet pour gros montants</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>⚠️ RISQUE #5: Hacks et Sécurité</h4>
+                    
+                    <p><strong>Hacks Majeurs dans l'Histoire Crypto:</strong></p>
+                    <ul>
+                        <li><strong>Mt. Gox (2014):</strong> 850,000 BTC volés ($450M à l'époque)</li>
+                        <li><strong>Bitfinex (2016):</strong> 120,000 BTC volés ($72M)</li>
+                        <li><strong>Coincheck (2018):</strong> 523M NEM tokens volés ($530M)</li>
+                        <li><strong>FTX (2022):</strong> $8 MILLIARDS perdus (fraude interne)</li>
+                    </ul>
+                    
+                    <div class="pro-tip">
+                        <strong>💎 Protection Optimale:</strong>
+                        <p><strong>Niveau 1 (Petit Capital <1,000$):</strong></p>
+                        <ul>
+                            <li>Exchange sécurisé (Binance, Coinbase) avec 2FA</li>
+                            <li>Hot wallet (MetaMask, Trust Wallet) avec seed phrase backupée</li>
+                        </ul>
+                        <p><strong>Niveau 2 (Moyen Capital 1,000-10,000$):</strong></p>
+                        <ul>
+                            <li>Split: 70% cold wallet, 30% exchange pour trading</li>
+                            <li>Hardware wallet (Ledger, Trezor)</li>
+                            <li>Seed phrase: 2 copies physiques, endroits différents</li>
+                        </ul>
+                        <p><strong>Niveau 3 (Gros Capital >10,000$):</strong></p>
+                        <ul>
+                            <li>90% en cold storage (hardware wallet)</li>
+                            <li>10% pour trading (exchange sécurisé)</li>
+                            <li>Multi-sig wallet si >50,000$</li>
+                            <li>Seed phrase: Coffre bancaire + backup sécurisé</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>⚠️ RISQUE #6: Réglementation</h4>
+                    
+                    <p>Les gouvernements peuvent changer les lois crypto rapidement:</p>
+                    <ul>
+                        <li><strong>Chine (2021):</strong> Ban total du Bitcoin mining et trading</li>
+                        <li><strong>Inde:</strong> Menace de ban plusieurs fois (pas encore appliqué)</li>
+                        <li><strong>USA:</strong> Régulations de plus en plus strictes (SEC vs exchanges)</li>
+                        <li><strong>Europe:</strong> MiCA regulations (2024) - KYC obligatoire partout</li>
+                    </ul>
+                    
+                    <h4>📊 Framework de Gestion des Risques</h4>
+                    
+                    <div class="success">
+                        <strong>✅ Les 7 Règles d'Or de la Gestion des Risques:</strong>
+                        <ol>
+                            <li><strong>Règle 2%:</strong> Ne jamais risquer plus de 2% du capital par trade</li>
+                            <li><strong>Stop Loss Obligatoire:</strong> TOUJOURS en place avant d'entrer</li>
+                            <li><strong>Risk/Reward Minimum 1:2:</strong> Si risque 100$, profit cible 200$+</li>
+                            <li><strong>Diversification:</strong> Max 20% du capital sur un seul actif</li>
+                            <li><strong>Cold Storage:</strong> 70%+ du capital en sécurité hors exchange</li>
+                            <li><strong>Pas de Revenge Trading:</strong> Pause après 2 pertes consécutives</li>
+                            <li><strong>Journal de Trading:</strong> Noter TOUS les trades pour apprendre</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="example-box">
+                        <strong>📘 Calcul de Position Sizing (Règle 2%):</strong>
+                        <p><strong>Capital:</strong> 10,000$</p>
+                        <p><strong>Risque max par trade:</strong> 2% = 200$</p>
+                        <p><strong>Trade BTC:</strong> Entry 40,000$ / Stop Loss 38,000$ = 2,000$ de risque par BTC</p>
+                        <p><strong>Position size:</strong> 200$ / 2,000$ = 0.1 BTC maximum</p>
+                        <p><strong>Investissement:</strong> 0.1 BTC × 40,000$ = 4,000$ (40% du capital)</p>
+                        <p><strong>Résultat si SL hit:</strong> -200$ (-2% du capital) ✅ Acceptable</p>
+                    </div>
+                    
+                    <div class="danger">
+                        <strong>⚠️ LA Règle Absolue:</strong>
+                        <p style="font-size: 1.3em;"><strong>N'INVESTISSEZ JAMAIS PLUS QUE CE QUE VOUS POUVEZ VOUS PERMETTRE DE PERDRE</strong></p>
+                        <p>Si perdre cet argent:</p>
+                        <ul>
+                            <li>Vous empêcherait de payer le loyer → NE TRADEZ PAS</li>
+                            <li>Vous stresserait énormément → NE TRADEZ PAS</li>
+                            <li>Viendrait d'un emprunt → NE TRADEZ JAMAIS AVEC ARGENT EMPRUNTÉ</li>
+                        </ul>
+                        <p>Le trading doit se faire avec de l'argent que vous êtes prêt à perdre 100%.</p>
+                    </div>
+                `
             }
+        ]
+    }
+};
+            ,
+            {
+                title: "Module 4: Capital de Départ - Combien Faut-il?",
+                content: `
+                    <p>La question #1 de tous les débutants: "Combien d'argent me faut-il pour commencer?"</p>
+                    
+                    <h4>💰 Recommandations par Niveau</h4>
+                    
+                    <table>
+                        <tr>
+                            <th>Profil</th>
+                            <th>Capital Recommandé</th>
+                            <th>Objectif</th>
+                            <th>Stratégie</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Débutant Absolu</strong></td>
+                            <td>100-500$</td>
+                            <td>Apprendre sans gros risque</td>
+                            <td>Swing trading, petites positions</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Trader Sérieux</strong></td>
+                            <td>1,000-5,000$</td>
+                            <td>Profits significatifs possibles</td>
+                            <td>Mix swing/day trading</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Trader Avancé</strong></td>
+                            <td>10,000-50,000$</td>
+                            <td>Revenu principal potentiel</td>
+                            <td>Toutes stratégies</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Professionnel</strong></td>
+                            <td>100,000$+</td>
+                            <td>Vivre du trading</td>
+                            <td>Diversifiées + risk management strict</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="important">
+                        <strong>💡 La Vérité sur le Capital:</strong>
+                        <p>Plus vous avez de capital, <strong>plus c'est facile</strong> de faire des profits consistants:</p>
+                        <ul>
+                            <li><strong>100$:</strong> +20% = 20$ (une sortie au resto)</li>
+                            <li><strong>1,000$:</strong> +20% = 200$ (paye factures du mois)</li>
+                            <li><strong>10,000$:</strong> +20% = 2,000$ (salaire mensuel)</li>
+                            <li><strong>100,000$:</strong> +20% = 20,000$ (vie confortable)</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>🎯 Stratégie de Scaling du Capital</h4>
+                    
+                    <p><strong>Phase 1: Learning (100-500$)</strong></p>
+                    <ul>
+                        <li>Objectif: Apprendre, pas gagner</li>
+                        <li>Accepter de perdre 50-100% (coût de l'éducation)</li>
+                        <li>Focus: Comprendre les patterns, tester stratégies</li>
+                        <li>Durée: 3-6 mois</li>
+                    </ul>
+                    
+                    <p><strong>Phase 2: Break-even (500-2,000$)</strong></p>
+                    <ul>
+                        <li>Objectif: Ne plus perdre d'argent</li>
+                        <li>Win rate: 45-55%</li>
+                        <li>Ajouter capital progressivement si consistant</li>
+                        <li>Durée: 6-12 mois</li>
+                    </ul>
+                    
+                    <p><strong>Phase 3: Profitable (2,000-10,000$)</strong></p>
+                    <ul>
+                        <li>Objectif: Gains réguliers (+5-15%/mois)</li>
+                        <li>Réinvestir les profits</li>
+                        <li>Ne retirer que 30-50% des gains</li>
+                        <li>Durée: 12-24 mois</li>
+                    </ul>
+                    
+                    <p><strong>Phase 4: Professional (10,000$+)</strong></p>
+                    <ul>
+                        <li>Objectif: Vivre du trading</li>
+                        <li>Retirer 50-70% des profits pour vivre</li>
+                        <li>Garder 30-50% pour croissance capital</li>
+                        <li>Durée: 24+ mois</li>
+                    </ul>
+                    
+                    <div class="danger">
+                        <strong>⚠️ JAMAIS FAIRE:</strong>
+                        <ul>
+                            <li>❌ Emprunter de l'argent pour trader</li>
+                            <li>❌ Utiliser l'argent du loyer/factures</li>
+                            <li>❌ Vendre des actifs importants (voiture, maison)</li>
+                            <li>❌ Promettre des retours à famille/amis</li>
+                            <li>❌ S'attendre à devenir riche en 1 mois</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                title: "Module 5: Outils Essentiels du Trader",
+                content: `
+                    <h4>🏦 1. Exchanges (Plateformes de Trading)</h4>
+                    
+                    <table>
+                        <tr>
+                            <th>Exchange</th>
+                            <th>Avantages</th>
+                            <th>Inconvénients</th>
+                            <th>Pour Qui?</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Binance</strong></td>
+                            <td>Plus grand, plus liquide, fees bas (0.1%), 350+ coins</td>
+                            <td>Interface complexe, KYC strict</td>
+                            <td>Tous les traders ⭐</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Coinbase</strong></td>
+                            <td>Très simple, sécurisé, régulé USA</td>
+                            <td>Fees élevés (0.5%), moins de coins</td>
+                            <td>Débutants</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bybit</strong></td>
+                            <td>Excellent pour futures, levier 100x</td>
+                            <td>Moins de coins spot</td>
+                            <td>Traders avancés</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Kraken</strong></td>
+                            <td>Très sécurisé, bon support client</td>
+                            <td>Interface old-school, fees moyens</td>
+                            <td>HODLers</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="pro-tip">
+                        <strong>💎 Setup Recommandé:</strong>
+                        <ul>
+                            <li><strong>Exchange Principal:</strong> Binance (90% du trading)</li>
+                            <li><strong>Exchange Backup:</strong> Coinbase ou Kraken (10%)</li>
+                            <li><strong>Pourquoi 2?</strong> Si Binance down ou problème, tu peux toujours trader</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>📊 2. TradingView - LA Plateforme de Charts</h4>
+                    
+                    <p><strong>TradingView est l'outil #1</strong> utilisé par 50M+ de traders worldwide.</p>
+                    
+                    <p><strong>Fonctionnalités Clés:</strong></p>
+                    <ul>
+                        <li><strong>Charts en temps réel:</strong> Tous les timeframes (1m à 1M)</li>
+                        <li><strong>100+ Indicateurs:</strong> RSI, MACD, Bollinger, EMA, etc.</li>
+                        <li><strong>Drawing Tools:</strong> Lignes de tendance, fibonacci, patterns</li>
+                        <li><strong>Alertes Prix:</strong> Notifications quand prix atteint niveau</li>
+                        <li><strong>Screener:</strong> Scanner pour trouver opportunités</li>
+                        <li><strong>Social:</strong> Partager idées, voir analyses autres traders</li>
+                    </ul>
+                    
+                    <p><strong>Versions:</strong></p>
+                    <ul>
+                        <li><strong>Free:</strong> 3 indicateurs, 1 alerte, ads (suffit pour débuter)</li>
+                        <li><strong>Pro ($15/mois):</strong> 5 indicateurs, 20 alertes, pas d'ads</li>
+                        <li><strong>Pro+ ($30/mois):</strong> 10 indicateurs, 100 alertes, multi-charts</li>
+                    </ul>
+                    
+                    <h4>💼 3. Portfolio Trackers</h4>
+                    
+                    <ul>
+                        <li><strong>CoinMarketCap:</strong> Gratuit, simple, API sync avec exchanges</li>
+                        <li><strong>CoinGecko:</strong> Alternative solide, même features</li>
+                        <li><strong>Delta:</strong> App mobile excellente, notifications</li>
+                        <li><strong>Blockfolio:</strong> Populaire, user-friendly</li>
+                    </ul>
+                    
+                    <h4>📰 4. Sources d'Information</h4>
+                    
+                    <p><strong>News:</strong></p>
+                    <ul>
+                        <li><strong>CoinDesk:</strong> News crypto #1</li>
+                        <li><strong>CoinTelegraph:</strong> Analyses + news</li>
+                        <li><strong>The Block:</strong> Pro, institutional news</li>
+                        <li><strong>Decrypt:</strong> User-friendly</li>
+                    </ul>
+                    
+                    <p><strong>Social Media:</strong></p>
+                    <ul>
+                        <li><strong>Twitter/X:</strong> Follow: @VitalikButerin, @CZ_Binance, @APompliano</li>
+                        <li><strong>Reddit:</strong> r/cryptocurrency, r/bitcoin, r/ethtrader</li>
+                        <li><strong>YouTube:</strong> Benjamin Cowen, Coin Bureau, DataDash</li>
+                    </ul>
+                    
+                    <h4>💻 5. Setup Physique Recommandé</h4>
+                    
+                    <p><strong>Minimum:</strong></p>
+                    <ul>
+                        <li>1 écran (laptop suffit)</li>
+                        <li>TradingView + Binance en split screen</li>
+                        <li>Internet stable</li>
+                    </ul>
+                    
+                    <p><strong>Idéal:</strong></p>
+                    <ul>
+                        <li>2-3 écrans</li>
+                        <li>Écran 1: TradingView (charts)</li>
+                        <li>Écran 2: Binance (exécution)</li>
+                        <li>Écran 3: News + Discord/Telegram</li>
+                    </ul>
+                    
+                    <p><strong>Pro:</strong></p>
+                    <ul>
+                        <li>3-6 écrans</li>
+                        <li>Setup ergonomique</li>
+                        <li>Multiple workspaces</li>
+                        <li>Backup internet (4G hotspot)</li>
+                    </ul>
+                `
+            },
+            {
+                title: "Module 6: Premiers Pas Pratiques - Plan d'Action 7 Jours",
+                content: `
+                    <p>Vous avez appris la théorie. Maintenant, passons à la PRATIQUE avec un plan d'action précis.</p>
+                    
+                    <h4>📅 JOUR 1-2: Setup Complet</h4>
+                    
+                    <div class="success">
+                        <strong>✅ Checklist Jour 1:</strong>
+                        <ul>
+                            <li>Créer compte Binance (10 min)</li>
+                            <li>Compléter KYC verification (15-30 min)</li>
+                            <li>Activer 2FA (Google Authenticator) (5 min)</li>
+                            <li>Créer compte TradingView gratuit (5 min)</li>
+                            <li>Télécharger app Binance mobile (backup) (5 min)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="success">
+                        <strong>✅ Checklist Jour 2:</strong>
+                        <ul>
+                            <li>Premier dépôt: 100-200$ (commencer PETIT!)</li>
+                            <li>Acheter 20$ de Bitcoin (test transaction)</li>
+                            <li>Explorer interface Binance (30 min)</li>
+                            <li>Se familiariser avec order types (Market, Limit)</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>📅 JOUR 3-4: Observation & Apprentissage</h4>
+                    
+                    <p><strong>Objectif:</strong> Observer sans trader!</p>
+                    
+                    <div class="important">
+                        <strong>💡 Exercice d'Observation (2h/jour):</strong>
+                        <ol>
+                            <li>Ouvrir BTC/USDT sur TradingView (timeframe 1h)</li>
+                            <li>Observer mouvements pendant 1 heure</li>
+                            <li>Noter mentalement: "Là j'aurais acheté" / "Là j'aurais vendu"</li>
+                            <li>Après, vérifier si ton instinct était bon</li>
+                            <li>Répéter avec ETH, SOL</li>
+                        </ol>
+                    </div>
+                    
+                    <p><strong>Ce que vous apprendrez:</strong></p>
+                    <ul>
+                        <li>Comment les prix bougent (patterns)</li>
+                        <li>Volatilité typique (swings de 2-5%)</li>
+                        <li>Volumes et leur signification</li>
+                        <li>Moments de forte activité (news, ouverture marchés)</li>
+                    </ul>
+                    
+                    <h4>📅 JOUR 5-6: Paper Trading</h4>
+                    
+                    <p><strong>Paper Trading =</strong> Trading avec argent fictif (aucun risque)</p>
+                    
+                    <div class="example-box">
+                        <strong>📘 Exercice Paper Trading:</strong>
+                        <p><strong>Capital fictif:</strong> 1,000$</p>
+                        <p><strong>Règles:</strong></p>
+                        <ul>
+                            <li>Maximum 3 trades par jour</li>
+                            <li>Position size: 10-20% du capital</li>
+                            <li>TOUJOURS mettre un Stop Loss (mental)</li>
+                            <li>Noter chaque trade dans un fichier Excel</li>
+                        </ul>
+                        <p><strong>Format Excel:</strong></p>
+                        <p>Date | Coin | Entry | Exit | Profit/Loss | Raison | Leçon</p>
+                    </div>
+                    
+                    <h4>📅 JOUR 7: Premier Vrai Trade</h4>
+                    
+                    <p><strong>Prêt pour le vrai?</strong> Suivez ce protocole EXACT:</p>
+                    
+                    <div class="success">
+                        <strong>✅ Protocole Premier Trade:</strong>
+                        <ol>
+                            <li><strong>Choisir:</strong> Bitcoin ou Ethereum uniquement</li>
+                            <li><strong>Montant:</strong> 20-50$ maximum (micro-position)</li>
+                            <li><strong>Stratégie:</strong> Acheter support, vendre résistance</li>
+                            <li><strong>Stop Loss:</strong> -5% maximum</li>
+                            <li><strong>Take Profit:</strong> +3-5%</li>
+                            <li><strong>Timeframe:</strong> 4h ou daily (pas de stress)</li>
+                        </ol>
+                    </div>
+                    
+                    <h4>🎯 Objectifs Semaine 1</h4>
+                    
+                    <table>
+                        <tr>
+                            <th>Objectif</th>
+                            <th>Pourquoi?</th>
+                            <th>Success Metric</th>
+                        </tr>
+                        <tr>
+                            <td>Faire 1 trade profitable</td>
+                            <td>Boost confiance</td>
+                            <td>Profit >0$ (même 1$)</td>
+                        </tr>
+                        <tr>
+                            <td>NE PAS perdre >10% capital</td>
+                            <td>Risk management</td>
+                            <td>Capital ≥90$</td>
+                        </tr>
+                        <tr>
+                            <td>Comprendre interface</td>
+                            <td>Éviter erreurs bêtes</td>
+                            <td>Confort avec orders</td>
+                        </tr>
+                        <tr>
+                            <td>Tenir journal trading</td>
+                            <td>Apprendre de chaque trade</td>
+                            <td>Notes sur 5+ trades</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="danger">
+                        <strong>⚠️ Erreurs à ABSOLUMENT Éviter:</strong>
+                        <ul>
+                            <li>❌ Trader avec tout le capital d'un coup</li>
+                            <li>❌ FOMO (acheter pendant une pump)</li>
+                            <li>❌ Ne pas mettre de Stop Loss</li>
+                            <li>❌ Regarder les prix toutes les 5 minutes (stress)</li>
+                            <li>❌ Suivre aveuglément les "calls" sur Twitter</li>
+                            <li>❌ Revenge trading après une perte</li>
+                            <li>❌ Comparer vos gains à ceux des autres</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>📈 Semaines 2-4: Consolidation</h4>
+                    
+                    <p><strong>Objectifs:</strong></p>
+                    <ul>
+                        <li>10-20 trades total (pace lent = bien)</li>
+                        <li>Win rate: 40-60% (c'est normal!)</li>
+                        <li>Capital: -20% à +10% (breakeven zone)</li>
+                        <li>Focus: APPRENDRE, pas gagner</li>
+                    </ul>
+                    
+                    <div class="pro-tip">
+                        <strong>💎 Mentalité du Débutant Malin:</strong>
+                        <p>"Les 3 premiers mois sont mon MBA en trading. Si je perds 200$, c'est le prix de mon éducation. Bien moins cher qu'un cours Udemy à 2,000$. Mon objectif n'est PAS de faire de l'argent maintenant, mais d'APPRENDRE pour en faire pendant les 10 prochaines années."</p>
+                    </div>
+                    
+                    <h4>🎓 Prochaine Étape</h4>
+                    
+                    <p>Félicitations! Vous avez terminé la Formation 1: Les Fondamentaux Absolus. 🎉</p>
+                    
+                    <p><strong>Vous savez maintenant:</strong></p>
+                    <ul>
+                        <li>✅ Ce qu'est le trading et comment il fonctionne</li>
+                        <li>✅ Les différentes façons de gagner de l'argent</li>
+                        <li>✅ Les risques et comment les gérer</li>
+                        <li>✅ Combien de capital vous avez besoin</li>
+                        <li>✅ Quels outils utiliser</li>
+                        <li>✅ Comment faire vos premiers pas</li>
+                    </ul>
+                    
+                    <div class="success">
+                        <strong>✅ Prêt pour le Quiz?</strong>
+                        <p>Testez vos connaissances avec 10 questions! Score minimum: 70% pour obtenir votre certificat.</p>
+                    </div>
+                    
+                    <p><strong>Après le quiz, passez à:</strong></p>
+                    <p><strong>Formation 2: Comprendre les Crypto-monnaies</strong> où vous apprendrez Bitcoin, Ethereum, altcoins, blockchain, tokenomics en profondeur!</p>
+                `
+            }
+    ,
+    2: {
+        title: "₿ Comprendre les Crypto-monnaies",
+        duration: "4 heures",
+        modules: 6,
+        modules_content: [
+            {
+                title: "Module 1: Bitcoin - La Révolution Numérique",
+                content: `
+                    <p><strong>Bitcoin (BTC)</strong> est la première crypto-monnaie, lancée en 2009 par Satoshi Nakamoto. C'est l'"or numérique" du 21ème siècle.</p>
+                    
+                    <h4>💎 Pourquoi Bitcoin est Spécial</h4>
+                    
+                    <table>
+                        <tr>
+                            <th>Caractéristique</th>
+                            <th>Bitcoin</th>
+                            <th>Or</th>
+                            <th>Dollar</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Supply</strong></td>
+                            <td>21M max (fixe)</td>
+                            <td>Limité (mines)</td>
+                            <td>Illimité (print)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Divisible</strong></td>
+                            <td>Oui (0.00000001 BTC)</td>
+                            <td>Oui (grammes)</td>
+                            <td>Oui (cents)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Portable</strong></td>
+                            <td>Oui (digital)</td>
+                            <td>Non (lourd)</td>
+                            <td>Oui</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Décentralisé</strong></td>
+                            <td>Oui</td>
+                            <td>Oui</td>
+                            <td>Non (Fed)</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="important">
+                        <strong>🔥 Bitcoin Halvings:</strong>
+                        <p>Tous les 4 ans, la récompense mining est divisée par 2:</p>
+                        <ul>
+                            <li><strong>2012:</strong> 50 → 25 BTC</li>
+                            <li><strong>2016:</strong> 25 → 12.5 BTC</li>
+                            <li><strong>2020:</strong> 12.5 → 6.25 BTC</li>
+                            <li><strong>2024:</strong> 6.25 → 3.125 BTC</li>
+                        </ul>
+                        <p><strong>Résultat:</strong> Supply diminue → Prix monte (historiquement +500% post-halving)</p>
+                    </div>
+                    
+                    <h4>📊 Performance Historique</h4>
+                    <p><strong>Prix de Bitcoin dans le temps:</strong></p>
+                    <ul>
+                        <li><strong>2009:</strong> 0.01$ (lancement)</li>
+                        <li><strong>2013:</strong> 1,000$ (+100,000%)</li>
+                        <li><strong>2017:</strong> 20,000$ (+2,000%)</li>
+                        <li><strong>2021:</strong> 69,000$ (+6,900,000% depuis début)</li>
+                        <li><strong>2024:</strong> ~40,000-70,000$</li>
+                    </ul>
+                    
+                    <p><strong>Si vous aviez investi:</strong></p>
+                    <ul>
+                        <li>100$ en 2013 = 6,900$ en 2021 (+6,800%)</li>
+                        <li>1,000$ en 2017 = 3,450$ en 2021 (+245%)</li>
+                    </ul>
+                `
+            },
+            {
+                title: "Module 2: Ethereum - Le Smart Contract King",
+                content: `
+                    <p><strong>Ethereum (ETH)</strong> n'est pas juste une crypto - c'est un ordinateur mondial décentralisé.</p>
+                    
+                    <h4>🔧 Smart Contracts - La Killer Feature</h4>
+                    
+                    <div class="example-box">
+                        <strong>📘 Exemple Smart Contract:</strong>
+                        <p><strong>Contrat traditionnel (banque):</strong></p>
+                        <p>"Si Alice paie 50,000$, alors Bob reçoit la maison"</p>
+                        <p>→ Nécessite: Notaire, avocat, banque (fees: 5%, délai: semaines)</p>
+                        <p><strong>Smart Contract (Ethereum):</strong></p>
+                        <p>"IF wallet_Alice sends 50 ETH THEN ownership_house → wallet_Bob"</p>
+                        <p>→ Automatique, instantané, fees: 0.1%, pas d'intermédiaire!</p>
+                    </div>
+                    
+                    <h4>🏗️ Applications sur Ethereum</h4>
+                    <table>
+                        <tr>
+                            <th>Catégorie</th>
+                            <th>Exemples</th>
+                            <th>Usage</th>
+                        </tr>
+                        <tr>
+                            <td><strong>DeFi</strong></td>
+                            <td>Uniswap, Aave, Compound</td>
+                            <td>Trading, prêts, yield</td>
+                        </tr>
+                        <tr>
+                            <td><strong>NFTs</strong></td>
+                            <td>OpenSea, Blur</td>
+                            <td>Art digital, collectibles</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gaming</strong></td>
+                            <td>Axie Infinity, Decentraland</td>
+                            <td>Play-to-earn, metaverse</td>
+                        </tr>
+                        <tr>
+                            <td><strong>DAOs</strong></td>
+                            <td>MakerDAO, Compound</td>
+                            <td>Gouvernance décentralisée</td>
+                        </tr>
+                    </table>
+                    
+                    <h4>⚡ Ethereum 2.0 (The Merge)</h4>
+                    <p><strong>Septembre 2022:</strong> Ethereum passe de Proof of Work → Proof of Stake</p>
+                    <ul>
+                        <li>✅ 99.95% moins d'énergie</li>
+                        <li>✅ ETH devient déflationniste (supply diminue)</li>
+                        <li>✅ Staking: 4-6% APY</li>
+                        <li>✅ Plus écologique</li>
+                    </ul>
+                `
+            },
+            {
+                title: "Module 3: Altcoins - L'Écosystème Crypto",
+                content: `
+                    <p><strong>Altcoins</strong> = All coins except Bitcoin. Il y en a 20,000+!</p>
+                    
+                    <h4>📊 Top Altcoins par Catégorie</h4>
+                    
+                    <p><strong>Layer 1 Blockchains (Concurrents ETH):</strong></p>
+                    <ul>
+                        <li><strong>Solana (SOL):</strong> Ultra-rapide (65k TPS), low fees, DeFi + NFTs</li>
+                        <li><strong>Cardano (ADA):</strong> Académique, sécurisé, lent mais stable</li>
+                        <li><strong>Polkadot (DOT):</strong> Interopérabilité, parachains</li>
+                        <li><strong>Avalanche (AVAX):</strong> Compatible ETH, fast, scaling</li>
+                    </ul>
+                    
+                    <p><strong>Layer 2 Solutions (Scalent Ethereum):</strong></p>
+                    <ul>
+                        <li><strong>Polygon (MATIC):</strong> Sidechain ETH, fees ultra-low</li>
+                        <li><strong>Arbitrum (ARB):</strong> Rollup, même sécurité qu'ETH</li>
+                        <li><strong>Optimism (OP):</strong> Optimistic rollup, fast</li>
+                    </ul>
+                    
+                    <p><strong>DeFi Tokens:</strong></p>
+                    <ul>
+                        <li><strong>Uniswap (UNI):</strong> Plus grand DEX</li>
+                        <li><strong>Aave (AAVE):</strong> Lending protocol</li>
+                        <li><strong>Chainlink (LINK):</strong> Oracles (data off-chain)</li>
+                    </ul>
+                    
+                    <div class="danger">
+                        <strong>⚠️ Meme Coins - High Risk!</strong>
+                        <ul>
+                            <li><strong>Dogecoin (DOGE):</strong> Original meme, promu par Elon</li>
+                            <li><strong>Shiba Inu (SHIB):</strong> "Dogecoin killer"</li>
+                            <li><strong>Risque:</strong> 99% meurent, pump&dump, spéculation pure</li>
+                            <li><strong>Règle:</strong> Max 5% portfolio en meme coins</li>
+                        </ul>
+                    </div>
+                    
+                    <h4>🎯 Portfolio Diversification</h4>
+                    <table>
+                        <tr>
+                            <th>Allocation</th>
+                            <th>Type</th>
+                            <th>Risque</th>
+                            <th>Objectif</th>
+                        </tr>
+                        <tr>
+                            <td>50%</td>
+                            <td>Bitcoin</td>
+                            <td>Faible</td>
+                            <td>Stabilité</td>
+                        </tr>
+                        <tr>
+                            <td>30%</td>
+                            <td>Ethereum</td>
+                            <td>Faible</td>
+                            <td>Upside + stabilité</td>
+                        </tr>
+                        <tr>
+                            <td>15%</td>
+                            <td>Top 10-20 altcoins</td>
+                            <td>Moyen</td>
+                            <td>Growth potentiel</td>
+                        </tr>
+                        <tr>
+                            <td>5%</td>
+                            <td>Small caps / memes</td>
+                            <td>Élevé</td>
+                            <td>Moonshot (10-100x)</td>
+                        </tr>
+                    </table>
+                `
+            }
+        ],
+        quiz: [
+            {
+                question: "Combien de Bitcoins existeront au maximum?",
+                options: ["100 millions", "21 millions", "50 millions", "Illimité"],
+                correct: 1
+            },
+            {
+                question: "Qu'est-ce qu'un Smart Contract?",
+                options: [
+                    "Un contrat avec une banque",
+                    "Un programme qui s'exécute automatiquement sur la blockchain",
+                    "Un accord entre traders",
+                    "Un type de wallet"
+                ],
+                correct: 1
+            },
+            {
+                question: "Quelle est la principale innovation d'Ethereum?",
+                options: [
+                    "Être plus rapide que Bitcoin",
+                    "Les Smart Contracts",
+                    "Avoir plus de supply",
+                    "Être moins cher"
+                ],
+                correct: 1
+            },
+            {
+                question: "Que signifie 'Layer 2'?",
+                options: [
+                    "Une deuxième blockchain indépendante",
+                    "Une solution qui scale Ethereum en traitant transactions off-chain",
+                    "Un type de wallet",
+                    "Une catégorie de NFTs"
+                ],
+                correct: 1
+            },
+            {
+                question: "Qu'est-ce que le Halving de Bitcoin?",
+                options: [
+                    "Le prix est divisé par 2",
+                    "La récompense mining est divisée par 2 tous les 4 ans",
+                    "Le supply est divisé par 2",
+                    "Les fees sont divisés par 2"
+                ],
+                correct: 1
+            },
+            {
+                question: "Quelle blockchain est la plus rapide?",
+                options: ["Bitcoin", "Ethereum", "Solana", "Cardano"],
+                correct: 2
+            },
+            {
+                question: "Que permet le staking sur Ethereum?",
+                options: [
+                    "Miner de nouveaux ETH",
+                    "Gagner des rewards en sécurisant le réseau (4-6% APY)",
+                    "Créer des Smart Contracts gratuits",
+                    "Augmenter la vitesse des transactions"
+                ],
+                correct: 1
+            },
+            {
+                question: "Quelle allocation est recommandée pour un débutant?",
+                options: [
+                    "100% meme coins",
+                    "50% BTC + 30% ETH + 20% altcoins",
+                    "100% altcoins",
+                    "100% Bitcoin"
+                ],
+                correct: 1
+            },
+            {
+                question: "Qu'est-ce qu'un meme coin?",
+                options: [
+                    "Une crypto avec technologie révolutionnaire",
+                    "Une crypto créée comme blague, souvent pump&dump",
+                    "Une stablecoin",
+                    "Un NFT"
+                ],
+                correct: 1
+            },
+            {
+                question: "Pourquoi Ethereum 2.0 est important?",
+                options: [
+                    "Prix va 10x",
+                    "Passage PoS: moins d'énergie, ETH déflationniste",
+                    "Nouveau Bitcoin",
+                    "Smart contracts plus rapides"
+                ],
+                correct: 1
+            }
+        ]
+    }
+};
+    ,
+    3: {
+        title: "🔐 Sécurité Crypto Complète",
+        duration: "4 heures",
+        modules: 5,
+        modules_content: [
+            {
+                title: "Module 1: Types de Wallets - Hot vs Cold",
+                content: `
+                    <h4>💼 Qu'est-ce qu'un Wallet?</h4>
+                    <p>Un wallet crypto ne "stocke" PAS vos cryptos. Il stocke vos <strong>clés privées</strong> qui donnent accès à vos fonds sur la blockchain.</p>
+                    
+                    <table>
+                        <tr>
+                            <th>Type</th>
+                            <th>Exemples</th>
+                            <th>Sécurité</th>
+                            <th>Usage</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Hot Wallet (Online)</strong></td>
+                            <td>MetaMask, Trust Wallet, Binance</td>
+                            <td>★★☆☆☆</td>
+                            <td>Trading quotidien</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Cold Wallet (Offline)</strong></td>
+                            <td>Ledger, Trezor, Paper Wallet</td>
+                            <td>★★★★★</td>
+                            <td>HODLing long terme</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="important">
+                        <strong>💡 Règle d'Or:</strong>
+                        <ul>
+                            <li><strong>Hot Wallet:</strong> Max 10-30% du capital (pour trading)</li>
+                            <li><strong>Cold Wallet:</strong> 70-90% du capital (sécurité maximale)</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                title: "Module 2: Seed Phrases - Votre Clé Maître",
+                content: `
+                    <p><strong>Seed Phrase</strong> = 12 ou 24 mots qui contrôlent TOUS vos fonds.</p>
+                    
+                    <div class="danger">
+                        <strong>⚠️ RÈGLES ABSOLUES:</strong>
+                        <ul>
+                            <li>❌ JAMAIS partager avec PERSONNE (même support Binance)</li>
+                            <li>❌ JAMAIS stocker digitalement (photo, email, cloud)</li>
+                            <li>✅ Écrire sur papier (2 copies)</li>
+                            <li>✅ Stocker endroits sécurisés (coffre, chez parents)</li>
+                            <li>✅ Tester restoration avant d'envoyer gros montants</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="example-box">
+                        <strong>📘 Exemple Seed Phrase:</strong>
+                        <p>witch collapse practice feed shame open despair creek road again ice least</p>
+                        <p><strong>Important:</strong> L'ordre des mots est crucial! Mauvais ordre = fonds perdus.</p>
+                    </div>
+                `
+            },
+            {
+                title: "Module 3: 2FA et Sécurité des Comptes",
+                content: `
+                    <h4>🔐 Two-Factor Authentication (2FA)</h4>
+                    <p><strong>2FA</strong> ajoute une couche de sécurité: password + code temporaire</p>
+                    
+                    <table>
+                        <tr>
+                            <th>Type 2FA</th>
+                            <th>Sécurité</th>
+                            <th>Recommandation</th>
+                        </tr>
+                        <tr>
+                            <td><strong>SMS</strong></td>
+                            <td>★★☆☆☆</td>
+                            <td>❌ Éviter (SIM swap attacks)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Email</strong></td>
+                            <td>★★☆☆☆</td>
+                            <td>❌ Éviter (email hackable)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Google Authenticator</strong></td>
+                            <td>★★★★☆</td>
+                            <td>✅ Bon (codes offline)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hardware Key (YubiKey)</strong></td>
+                            <td>★★★★★</td>
+                            <td>✅ Best (device physique)</td>
+                        </tr>
+                    </table>
+                `
+            },
+            {
+                title: "Module 4: Red Flags - Identifier les Scams",
+                content: `
+                    <h4>🚨 Top 10 Red Flags</h4>
+                    <ol>
+                        <li><strong>Team anonyme</strong> (pas de noms/photos LinkedIn)</li>
+                        <li><strong>Promesses garanties</strong> ("10x garanti!")</li>
+                        <li><strong>Urgence artificielle</strong> ("Seulement 24h!")</li>
+                        <li><strong>Site non sécurisé</strong> (pas de HTTPS)</li>
+                        <li><strong>Whitepaper copié</strong> (plagiat d'autres projets)</li>
+                        <li><strong>Pas d'audit</strong> (smart contract non vérifié)</li>
+                        <li><strong>Liquidity unlocked</strong> (team peut rug pull)</li>
+                        <li><strong>Trop beau pour être vrai</strong> (1000% APY)</li>
+                        <li><strong>Pump groups</strong> ("Achetez maintenant!")</li>
+                        <li><strong>Influencers payés</strong> (shilling obvious)</li>
+                    </ol>
+                `
+            },
+            {
+                title: "Module 5: Checklist Sécurité Complète",
+                content: `
+                    <div class="success">
+                        <strong>✅ Sécurité Niveau 1 (Essentiel):</strong>
+                        <ul>
+                            <li>✅ Password fort + unique par site</li>
+                            <li>✅ 2FA activé (Google Authenticator)</li>
+                            <li>✅ Seed phrase écrite sur papier</li>
+                            <li>✅ Ne jamais partager clés privées</li>
+                            <li>✅ Vérifier URL sites (bookmarks)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="success">
+                        <strong>✅ Sécurité Niveau 2 (Recommandé):</strong>
+                        <ul>
+                            <li>✅ Hardware wallet (Ledger/Trezor)</li>
+                            <li>✅ 70%+ fonds en cold storage</li>
+                            <li>✅ 2 copies seed phrase (lieux différents)</li>
+                            <li>✅ Email dédié pour crypto (pas email principal)</li>
+                            <li>✅ VPN quand trading en public</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="success">
+                        <strong>✅ Sécurité Niveau 3 (Paranoid - >50k$):</strong>
+                        <ul>
+                            <li>✅ Multi-sig wallet (2-of-3 ou 3-of-5)</li>
+                            <li>✅ Seed phrase en coffre bancaire</li>
+                            <li>✅ Hardware key (YubiKey) pour 2FA</li>
+                            <li>✅ Computer dédié pour crypto (pas usage quotidien)</li>
+                            <li>✅ Antivirus + malware scan régulier</li>
+                        </ul>
+                    </div>
+                `
+            }
+        ],
+        quiz: [
+            {
+                question: "Qu'est-ce qu'une seed phrase?",
+                options: [
+                    "Un password pour exchange",
+                    "12 ou 24 mots qui contrôlent vos fonds",
+                    "Un code 2FA",
+                    "Une adresse de wallet"
+                ],
+                correct: 1
+            },
+            {
+                question: "Quel type de 2FA est le plus sécurisé?",
+                options: ["SMS", "Email", "Google Authenticator", "Aucun"],
+                correct: 2
+            },
+            {
+                question: "Combien de votre capital devrait être en cold storage?",
+                options: ["0%", "30%", "70-90%", "100%"],
+                correct: 2
+            },
+            {
+                question: "Que faire de votre seed phrase?",
+                options: [
+                    "La stocker sur Google Drive",
+                    "L'écrire sur papier et garder en lieu sûr",
+                    "La mémoriser seulement",
+                    "La partager avec famille"
+                ],
+                correct: 1
+            },
+            {
+                question: "Qu'est-ce qu'un rug pull?",
+                options: [
+                    "Une stratégie de trading",
+                    "Quand l'équipe retire toute la liquidité d'un projet",
+                    "Un type de wallet",
+                    "Une technique d'analyse"
+                ],
+                correct: 1
+            },
+            {
+                question: "Binance vous demande votre seed phrase par email. Que faire?",
+                options: [
+                    "La leur donner",
+                    "C'est un scam! Ignorer et reporter",
+                    "Vérifier d'abord",
+                    "Leur donner par téléphone"
+                ],
+                correct: 1
+            },
+            {
+                question: "Quelle est la différence entre hot et cold wallet?",
+                options: [
+                    "Le prix",
+                    "La température",
+                    "Hot = online, Cold = offline",
+                    "La couleur"
+                ],
+                correct: 2
+            },
+            {
+                question: "Un projet promet 1000% APY. C'est:",
+                options: [
+                    "Une excellente opportunité",
+                    "Un red flag majeur (probable scam)",
+                    "Normal en crypto",
+                    "Garanti sans risque"
+                ],
+                correct: 1
+            },
+            {
+                question: "Quel hardware wallet est populaire?",
+                options: ["MetaMask", "Binance", "Ledger", "TradingView"],
+                correct: 2
+            },
+            {
+                question: "Pourquoi éviter 2FA par SMS?",
+                options: [
+                    "C'est trop compliqué",
+                    "Vulnérable aux SIM swap attacks",
+                    "Ça coûte cher",
+                    "Pas nécessaire"
+                ],
+                correct: 1
+            }
+        ]
+    },
+    4: {
+        title: "🧠 Psychologie du Trading",
+        duration: "4 heures",
+        modules: 6,
+        modules_content: [
+            {
+                title: "Module 1: Les Émotions en Trading",
+                content: `
+                    <p>Le trading est 20% technique, 80% psychologie. Maîtriser vos émotions = maîtriser le trading.</p>
+                    
+                    <h4>😱 Les 4 Émotions Destructrices</h4>
+                    
+                    <table>
+                        <tr>
+                            <th>Émotion</th>
+                            <th>Symptômes</th>
+                            <th>Résultat</th>
+                            <th>Antidote</th>
+                        </tr>
+                        <tr>
+                            <td><strong>PEUR</strong></td>
+                            <td>Hésitation, paralysie, exit trop tôt</td>
+                            <td>Rate les gros profits</td>
+                            <td>Plan de trading écrit, TP basé sur analyse</td>
+                        </tr>
+                        <tr>
+                            <td><strong>CUPIDITÉ</strong></td>
+                            <td>"Je veux plus!", over-trading, no exit</td>
+                            <td>Donne back tous les gains</td>
+                            <td>Règles fixes de TP, célébrer les petits wins</td>
+                        </tr>
+                        <tr>
+                            <td><strong>ESPOIR</strong></td>
+                            <td>"Ça va remonter...", ne coupe pas pertes</td>
+                            <td>Small loss → Big loss</td>
+                            <td>Stop Loss automatique, pas d'exception</td>
+                        </tr>
+                        <tr>
+                            <td><strong>VENGEANCE</strong></td>
+                            <td>Trading après perte pour "se refaire"</td>
+                            <td>Pertes amplifiées, blown account</td>
+                            <td>Pause obligatoire après 2 pertes</td>
+                        </tr>
+                    </table>
+                    
+                    <div class="danger">
+                        <strong>⚠️ Le Cycle Émotionnel:</strong>
+                        <p><strong>1.</strong> Gain → Euphorie → Overconfidence</p>
+                        <p><strong>2.</strong> Position trop large → Perte → Choc</p>
+                        <p><strong>3.</strong> Déni → Espoir → Perte s'aggrave</p>
+                        <p><strong>4.</strong> Panique → Vente au pire moment</p>
+                        <p><strong>5.</strong> Revenge trading → Plus de pertes</p>
+                        <p><strong>Solution:</strong> Briser ce cycle avec DISCIPLINE</p>
+                    </div>
+                `
+            },
+            {
+                title: "Module 2: FOMO et FUD - Les Ennemis du Trader",
+                content: `
+                    <h4>😰 FOMO: Fear Of Missing Out</h4>
+                    <p><strong>Symptômes:</strong> "Ça pumpe! Je DOIS acheter NOW ou je rate le train!"</p>
+                    <p><strong>Résultat:</strong> Achète au top → Prix chute → Perte immédiate</p>
+                    
+                    <div class="example-box">
+                        <strong>📘 Exemple FOMO:</strong>
+                        <p>Altcoin X fait +50% en 2h. Tu vois sur Twitter: "X va faire 10x!"</p>
+                        <p><strong>Réaction FOMO:</strong> Achète au top (FOMO) → -30% en 1h → Panic sell</p>
+                        <p><strong>Réaction Disciplinée:</strong> "Trop tard, j'attends pullback" → Achète -20% plus bas</p>
+                    </div>
+                    
+                    <h4>😨 FUD: Fear, Uncertainty, Doubt</h4>
+                    <p><strong>Symptômes:</strong> "Et si tout crash? News négative! Je dois vendre!"</p>
+                    <p><strong>Résultat:</strong> Vend au bottom → Prix remonte → Rate recovery</p>
+                    
+                    <div class="important">
+                        <strong>💡 Anti-FOMO/FUD Checklist:</strong>
+                        <ul>
+                            <li>✅ Pump >20% en <4h? Attendre pullback (pas d'achat FOMO)</li>
+                            <li>✅ News négative? Vérifier sources avant de panic sell</li>
+                            <li>✅ Sentiment extrême? Faire l'inverse de la foule (contrarian)</li>
+                            <li>✅ Pas de plan? Ne pas trader (no emotional decisions)</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                title: "Module 3: Discipline et Routine du Trader Pro",
+                content: `
+                    <h4>📋 Routine Quotidienne du Trader Profitable</h4>
+                    
+                    <p><strong>Matin (30 min):</strong></p>
+                    <ul>
+                        <li>☕ Café + méditation 10 min</li>
+                        <li>📰 Check news crypto (CoinDesk, Twitter)</li>
+                        <li>📊 Review positions ouvertes</li>
+                        <li>🎯 Identifier 2-3 opportunités du jour</li>
+                    </ul>
+                    
+                    <p><strong>Trading Session (1-3h):</strong></p>
+                    <ul>
+                        <li>🔍 Analyse technique des opportunités</li>
+                        <li>✍️ Écrire plan AVANT d'entrer (entry, SL, TP)</li>
+                        <li>💰 Exécuter maximum 3 trades</li>
+                        <li>📝 Logger chaque trade dans journal</li>
+                    </ul>
+                    
+                    <p><strong>Soir (15 min):</strong></p>
+                    <ul>
+                        <li>📊 Review P&L du jour</li>
+                        <li>📝 Qu'ai-je appris? Quelles erreurs?</li>
+                        <li>🎯 Plan pour demain</li>
+                        <li>🧘 Détente (pas de screen avant sommeil)</li>
+                    </ul>
+                    
+                    <div class="success">
+                        <strong>✅ Les 7 Règles de Discipline:</strong>
+                        <ol>
+                            <li><strong>Plan Écrit:</strong> TOUJOURS avant d'entrer</li>
+                            <li><strong>Position Sizing:</strong> Max 2-5% par trade (jamais plus)</li>
+                            <li><strong>Stop Loss:</strong> Placé AVANT d'entrer, jamais déplacé</li>
+                            <li><strong>Limite Trades:</strong> Max 3-5 par jour (qualité > quantité)</li>
+                            <li><strong>No Revenge:</strong> Pause après 2 pertes consécutives</li>
+                            <li><strong>Journal:</strong> Noter TOUS les trades (apprendre)</li>
+                            <li><strong>Weekend Off:</strong> Pas de trading samedi-dimanche (repos mental)</li>
+                        </ol>
+                    </div>
+                `
+            },
+            {
+                title: "Module 4: Journal de Trading - Template Complet",
+                content: `
+                    <h4>📓 Pourquoi Tenir un Journal?</h4>
+                    <p><strong>Les traders qui journalisent sont 3x plus profitables</strong> que ceux qui ne le font pas.</p>
+                    
+                    <div class="example-box">
+                        <strong>📘 Template Journal de Trading (Excel/Sheets):</strong>
+                        <table>
+                            <tr>
+                                <th>Colonne</th>
+                                <th>Exemple</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Date/Heure</strong></td>
+                                <td>2024-12-09 14:30</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pair</strong></td>
+                                <td>BTC/USDT</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Type</strong></td>
+                                <td>Long/Short</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Entry</strong></td>
+                                <td>42,000$</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Stop Loss</strong></td>
+                                <td>41,000$ (-2.4%)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Take Profit</strong></td>
+                                <td>44,000$ (+4.8%)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Position Size</strong></td>
+                                <td>0.1 BTC (400$)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Risk%</strong></td>
+                                <td>2%</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Exit</strong></td>
+                                <td>43,500$ (+3.6%)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>P&L</strong></td>
+                                <td>+150$ (+37.5% of risk)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Setup</strong></td>
+                                <td>Breakout + volume confirmation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Émotions</strong></td>
+                                <td>Calme, confiant</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Leçon</strong></td>
+                                <td>Patience payée, attendre confirmation fonctionne</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <h4>📊 Métriques à Suivre (Monthly):</h4>
+                    <ul>
+                        <li><strong>Win Rate:</strong> % trades gagnants (cible: 50-60%)</li>
+                        <li><strong>Avg Win/Loss Ratio:</strong> Gain moyen / Perte moyenne (cible: >1.5)</li>
+                        <li><strong>Profit Factor:</strong> Total gains / Total pertes (cible: >1.5)</li>
+                        <li><strong>Max Drawdown:</strong> Plus grosse chute (cible: <20%)</li>
+                        <li><strong>Best/Worst Trade:</strong> Pour identifier patterns</li>
+                    </ul>
+                `
+            },
+            {
+                title: "Module 5: Mindset du Trader Profitable",
+                content: `
+                    <h4>🏆 Les 10 Principes du Trader Gagnant</h4>
+                    
+                    <ol>
+                        <li><strong>Process > Results:</strong> Focus sur bien exécuter, pas sur profit court terme</li>
+                        <li><strong>Accepte les Pertes:</strong> Pertes sont normales, font partie du jeu</li>
+                        <li><strong>Long Terme:</strong> Pense en années, pas en jours</li>
+                        <li><strong>Apprendre Constamment:</strong> Chaque trade est une leçon</li>
+                        <li><strong>Humilité:</strong> Le marché est plus fort que toi, respecte-le</li>
+                        <li><strong>Patience:</strong> Les meilleures opportunités sont rares, attends-les</li>
+                        <li><strong>Discipline > Intelligence:</strong> Un trader discipliné médiocre bat un génie impulsif</li>
+                        <li><strong>Confiance Calibrée:</strong> Confiant mais pas arrogant</li>
+                        <li><strong>Adaptabilité:</strong> Change stratégie selon market regime</li>
+                        <li><strong>Self-Care:</strong> Santé mentale/physique = performance trading</li>
+                    </ol>
+                    
+                    <div class="pro-tip">
+                        <strong>💎 Affirmations du Trader Pro (réciter chaque matin):</strong>
+                        <ul>
+                            <li>"Je suis un trader discipliné qui suit mon plan"</li>
+                            <li>"Les pertes sont des frais d'apprentissage, pas des échecs"</li>
+                            <li>"Je trade avec patience et attends les meilleurs setups"</li>
+                            <li>"Mon capital est mon outil #1, je le protège"</li>
+                            <li>"Je suis dans ce game pour 10+ ans, pas pour quick money"</li>
+                        </ul>
+                    </div>
+                `
+            },
+            {
+                title: "Module 6: Gérer le Stress et les Drawdowns",
+                content: `
+                    <h4>😰 Qu'est-ce qu'un Drawdown?</h4>
+                    <p><strong>Drawdown</strong> = Chute du capital depuis le point haut</p>
+                    <p>Exemple: Capital 10k → 8k = -20% drawdown</p>
+                    
+                    <h4>🚨 Actions selon Drawdown:</h4>
+                    <table>
+                        <tr>
+                            <th>Drawdown</th>
+                            <th>Action</th>
+                        </tr>
+                        <tr>
+                            <td>0-10%</td>
+                            <td>Normal, continuer</td>
+                        </tr>
+                        <tr>
+                            <td>10-15%</td>
+                            <td>Réduire position sizing à 1%</td>
+                        </tr>
+                        <tr>
+                            <td>15-20%</td>
+                            <td>Pause 3-7 jours, review strategy</td>
+                        </tr>
+                        <tr>
+                            <td>20-25%</td>
+                            <td>STOP trading, revenir aux bases</td>
+                        </tr>
+                        <tr>
+                            <td>25%+</td>
+                            <td>STOP total, relearn from scratch</td>
+                        </tr>
+                    </table>
+                    
+                    <h4>🧘 Techniques Anti-Stress:</h4>
+                    <ul>
+                        <li><strong>Méditation:</strong> 10 min/jour (Headspace, Calm)</li>
+                        <li><strong>Exercise:</strong> 30 min/jour (gym, course, yoga)</li>
+                        <li><strong>Sleep:</strong> 7-8h/nuit (crucial pour décisions)</li>
+                        <li><strong>Breaks:</strong> Pause 10 min toutes les 2h de trading</li>
+                        <li><strong>Nature:</strong> Sortir, marcher, disconnect des screens</li>
+                        <li><strong>Social:</strong> Amis/famille, pas seulement crypto 24/7</li>
+                    </ul>
+                    
+                    <div class="success">
+                        <strong>✅ Quand Prendre une Pause:</strong>
+                        <ul>
+                            <li>Après 2 pertes consécutives → Pause 1h minimum</li>
+                            <li>Drawdown >15% → Pause 3-7 jours</li>
+                            <li>Sentiment "revenge" → Pause immédiate</li>
+                            <li>Fatigue mentale → Pas de trading fatigué</li>
+                            <li>Weekend → TOUJOURS off (récupération)</li>
+                        </ul>
+                    </div>
+                `
+            }
+        ],
+        quiz: [
+            {
+                question: "Quelle émotion fait acheter au top?",
+                options: ["Peur", "FOMO", "Patience", "Discipline"],
+                correct: 1
+            },
+            {
+                question: "Que faire après 2 pertes consécutives?",
+                options: [
+                    "Augmenter position sizing pour se refaire",
+                    "Prendre une pause d'au moins 1h",
+                    "Continuer à trader normalement",
+                    "Changer de stratégie immédiatement"
+                ],
+                correct: 1
+            },
+            {
+                question: "Quelle est la règle d'or de discipline?",
+                options: [
+                    "Trader le plus possible",
+                    "Toujours avoir un plan écrit AVANT d'entrer",
+                    "Ne jamais utiliser de Stop Loss",
+                    "Faire confiance à son instinct"
+                ],
+                correct: 1
+            },
+            {
+                question: "Pourquoi tenir un journal de trading?",
+                options: [
+                    "C'est obligatoire par la loi",
+                    "Pour apprendre de chaque trade et s'améliorer",
+                    "Pour impressionner les autres",
+                    "Aucune utilité"
+                ],
+                correct: 1
+            },
+            {
+                question: "À partir de quel drawdown faut-il ARRÊTER de trader?",
+                options: ["5%", "10%", "20-25%", "50%"],
+                correct: 2
+            },
+            {
+                question: "Combien de trades maximum par jour pour un débutant?",
+                options: ["1", "3-5", "10-20", "Illimité"],
+                correct: 1
+            },
+            {
+                question: "Qu'est-ce que le revenge trading?",
+                options: [
+                    "Une stratégie profitable",
+                    "Trader après une perte pour se refaire (très dangereux)",
+                    "Un type d'analyse technique",
+                    "Une façon de célébrer un gain"
+                ],
+                correct: 1
+            },
+            {
+                question: "Quelle affirmation est correcte?",
+                options: [
+                    "Trading = 80% technique, 20% psychologie",
+                    "Trading = 20% technique, 80% psychologie",
+                    "Seule la technique compte",
+                    "Seule la psychologie compte"
+                ],
+                correct: 1
+            },
+            {
+                question: "Que faire pendant un fort drawdown?",
+                options: [
+                    "Augmenter le levier",
+                    "Réduire position sizing ou arrêter temporairement",
+                    "Changer de stratégie radicalement",
+                    "Ignorer et continuer"
+                ],
+                correct: 1
+            },
+            {
+                question: "Quel est le mindset du trader profitable?",
+                options: [
+                    "Je veux devenir riche vite",
+                    "Process > Results, long terme, discipline",
+                    "Je trade sur émotions",
+                    "Je copie les autres"
+                ],
+                correct: 1
+            }
+        ]
+    }
+};
+
+// Fermer l'objet
+console.log("Formations loaded!");
+
+        // Toggle Sidebar Mobile
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.body.classList.toggle('sidebar-open');
         }
         
-        function backToList() {
-            document.getElementById('formation-view').style.display = 'none';
-            document.getElementById('list-view').style.display = 'block';
+        // Update Progress
+        function updateProgress() {
+            const completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
+            const total = 4; // 4 formations
+            const percentage = (completed.length / total) * 100;
+            
+            document.getElementById('progress-bar').style.width = percentage + '%';
+            document.getElementById('progress-percent').textContent = Math.round(percentage) + '%';
+            
+            // Add completed badges
+            completed.forEach(id => {
+                const card = document.querySelector(`[onclick="showFormation(${id})"]`);
+                if (card && !card.querySelector('.completed')) {
+                    const badge = document.createElement('div');
+                    badge.className = 'completed';
+                    badge.textContent = '✓ Complété';
+                    card.appendChild(badge);
+                }
+            });
+        }
+        
+        // Show Formation
+        function showFormation(id) {
+            const formation = formations[id];
+            if (!formation) {
+                alert('Formation non disponible');
+                return;
+            }
+            
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('formation-view').style.display = 'block';
+            
+            let html = '<div class="module"><h2>' + formation.title + '</h2><p>⏱️ Durée: ' + formation.duration + ' • 📚 ' + formation.modules + ' modules</p></div>';
+            
+            // Add modules
+            formation.modules_content.forEach((module, idx) => {
+                html += '<div class="module" id="module-' + id + '-' + idx + '">';
+                html += '<h3>' + module.title + '</h3>';
+                html += module.content;
+                html += '</div>';
+            });
+            
+            // Add quiz if exists
+            if (formation.quiz && formation.quiz.length > 0) {
+                html += createQuiz(id, formation.quiz);
+            }
+            
+            document.getElementById('formation-content').innerHTML = html;
             window.scrollTo(0, 0);
         }
         
+        // Create Quiz
         function createQuiz(formationId, questions) {
-            let html = `
-                <div class="quiz-section">
-                    <h2>🎯 Quiz de Validation</h2>
-                    <p>Testez vos connaissances! Score minimum: 70%</p>
-                    <form id="quiz-${formationId}">
-            `;
+            let html = '<div class="quiz-section">';
+            html += '<h2>📝 Quiz de Certification</h2>';
+            html += '<p>Répondez à ces 10 questions pour obtenir votre certificat. Score minimum: 70%</p>';
             
-            questions.forEach((q, index) => {
-                html += `
-                    <div class="quiz-question">
-                        <h4>Question ${index + 1}: ${q.question}</h4>
-                        <div class="quiz-options">
-                `;
+            questions.forEach((q, idx) => {
+                html += '<div class="quiz-question">';
+                html += '<h4>Question ' + (idx + 1) + ': ' + q.question + '</h4>';
+                html += '<div class="quiz-options">';
                 
-                q.options.forEach((option, optIndex) => {
-                    html += `
-                        <label>
-                            <input type="radio" name="q${index}" value="${optIndex}" required>
-                            ${option}
-                        </label>
-                    `;
+                q.options.forEach((option, optIdx) => {
+                    html += '<label>';
+                    html += '<input type="radio" name="q' + idx + '" value="' + optIdx + '">';
+                    html += option;
+                    html += '</label>';
                 });
                 
-                html += `
-                        </div>
-                    </div>
-                `;
+                html += '</div></div>';
             });
             
-            html += `
-                    <button type="submit" class="submit-quiz">Valider le Quiz</button>
-                </form>
-                <div id="quiz-result-${formationId}"></div>
-            </div>
-            `;
-            
-            setTimeout(() => {
-                const form = document.getElementById(`quiz-${formationId}`);
-                if (form) {
-                    form.addEventListener('submit', (e) => {
-                        e.preventDefault();
-                        checkQuiz(formationId, questions);
-                    });
-                }
-            }, 100);
+            html += '<button class="submit-quiz" onclick="checkQuiz(' + formationId + ')">Soumettre le Quiz</button>';
+            html += '<div id="quiz-result-' + formationId + '"></div>';
+            html += '</div>';
             
             return html;
         }
         
-        function checkQuiz(formationId, questions) {
-            let score = 0;
+        // Check Quiz
+        function checkQuiz(formationId) {
+            const formation = formations[formationId];
+            const questions = formation.quiz;
+            let correct = 0;
+            let total = questions.length;
             
-            questions.forEach((q, index) => {
-                const selected = document.querySelector(`input[name="q${index}"]:checked`);
+            questions.forEach((q, idx) => {
+                const selected = document.querySelector('input[name="q' + idx + '"]:checked');
                 if (selected && parseInt(selected.value) === q.correct) {
-                    score++;
+                    correct++;
                 }
             });
             
-            const percentage = (score / questions.length) * 100;
-            const passed = percentage >= 70;
+            const percentage = (correct / total) * 100;
+            const resultDiv = document.getElementById('quiz-result-' + formationId);
             
-            let resultHTML = `
-                <div class="quiz-result ${passed ? 'pass' : 'fail'}">
-                    <h3>${passed ? '🎉 Félicitations!' : '😞 Pas encore...'}</h3>
-                    <p>Score: ${score}/${questions.length} (${percentage.toFixed(0)}%)</p>
-                    <p>${passed ? 'Vous avez réussi! Formation complétée!' : 'Score minimum: 70%. Réessayez!'}</p>
-                </div>
-            `;
-            
-            if (passed) {
-                resultHTML += `
-                    <div class="certificate">
-                        <h2>🏆 Certificat de Réussite</h2>
-                        <p><strong>Formation: ${formations[formationId].title}</strong></p>
-                        <p>Score: ${percentage.toFixed(0)}%</p>
-                        <p>Date: ${new Date().toLocaleDateString('fr-FR')}</p>
-                        <p style="margin-top: 30px;">Ce certificat atteste que vous avez complété cette formation avec succès.</p>
-                    </div>
-                `;
+            if (percentage >= 70) {
+                resultDiv.innerHTML = '<div class="quiz-result pass">' +
+                    '<h3>🎉 Félicitations!</h3>' +
+                    '<p>Score: ' + correct + '/' + total + ' (' + Math.round(percentage) + '%)</p>' +
+                    '<p>Vous avez réussi le quiz!</p>' +
+                    '</div>' +
+                    generateCertificate(formationId, formation.title, percentage);
                 
                 // Save completion
                 saveCompletion(formationId);
-                updateProgress();
+            } else {
+                resultDiv.innerHTML = '<div class="quiz-result fail">' +
+                    '<h3>❌ Score insuffisant</h3>' +
+                    '<p>Score: ' + correct + '/' + total + ' (' + Math.round(percentage) + '%)</p>' +
+                    '<p>Vous avez besoin de 70% pour réussir. Révisez le contenu et réessayez!</p>' +
+                    '</div>';
             }
             
-            document.getElementById(`quiz-result-${formationId}`).innerHTML = resultHTML;
-            document.getElementById(`quiz-result-${formationId}`).scrollIntoView({ behavior: 'smooth' });
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
         
+        // Generate Certificate
+        function generateCertificate(formationId, title, score) {
+            const date = new Date().toLocaleDateString('fr-FR');
+            return '<div class="certificate">' +
+                '<h2>🏆 Certificat de Réussite</h2>' +
+                '<p style="font-size: 1.5em; margin: 20px 0;">Trading Academy Pro MEGA</p>' +
+                '<p>Certifie que vous avez complété avec succès:</p>' +
+                '<p style="font-size: 1.4em; font-weight: bold; margin: 20px 0;">' + title + '</p>' +
+                '<p>Score: ' + Math.round(score) + '%</p>' +
+                '<p>Date: ' + date + '</p>' +
+                '<p style="margin-top: 30px; opacity: 0.8;">Continuez votre apprentissage vers l\'excellence!</p>' +
+                '</div>';
+        }
+        
+        // Save Completion
         function saveCompletion(formationId) {
             let completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
             if (!completed.includes(formationId)) {
                 completed.push(formationId);
                 localStorage.setItem('completed_mega', JSON.stringify(completed));
+                updateProgress();
             }
         }
         
-        function updateProgress() {
-            const completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
-            const total = 22; // Total formations
-            const percentage = (completed.length / total) * 100;
-            
-            document.getElementById('progress-percent').textContent = percentage.toFixed(0) + '%';
-            document.getElementById('progress-bar').style.width = percentage + '%';
-            
-            // Add completed badges
-            completed.forEach(id => {
-                const card = document.querySelector(`.card[onclick="showFormation(${id})"]`);
-                if (card && !card.querySelector('.completed')) {
-                    card.innerHTML += '<div class="completed">✅ Complété</div>';
-                }
-            });
+        // Back to List
+        function backToList() {
+            document.getElementById('list-view').style.display = 'block';
+            document.getElementById('formation-view').style.display = 'none';
+            window.scrollTo(0, 0);
         }
         
         // Initialize on load
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
             updateProgress();
         });
     </script>
 </body>
-</html>"""
-    
+</html>
+"""
     return HTMLResponse(content=html_content)
-
-# ============================================================================
-# FIN DE LA ROUTE ACADEMY
 # ============================================================================

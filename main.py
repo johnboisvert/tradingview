@@ -28370,16 +28370,36 @@ def get_api_keys(user_id, exchange):
         return None
 
 async def fetch_price_coingecko(symbol):
-    """Récupérer le prix via CoinGecko API"""
+    """Récupérer le prix via CoinGecko API avec mapping intelligent"""
     try:
+        # Mapping des symboles vers les IDs CoinGecko
+        mapping = {
+            'ZEC': 'zcash',
+            'PLUME': 'plume-network',
+            'ALCH': 'alchemix',
+            'PEPE': 'pepe',
+            'HOME': 'home',
+            'NODL': 'nodl',
+            'HBAR': 'hedera-hashgraph',
+            'SOL': 'solana',
+            'MX': 'mexc',
+            'NIGHT': 'night',
+            'OG': 'ogn-v2'
+        }
+        
+        # Chercher l'ID CoinGecko
+        coin_id = mapping.get(symbol, symbol.lower())
+        
         async with httpx.AsyncClient() as client:
-            url = f'https://api.coingecko.com/api/v3/simple/price?ids={symbol.lower()}&vs_currencies=usd'
+            url = f'https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd'
             resp = await client.get(url, timeout=5)
             data = resp.json()
-            if symbol.lower() in data:
-                return data[symbol.lower()].get('usd', 0)
-    except:
-        pass
+            
+            if coin_id in data and 'usd' in data[coin_id]:
+                return float(data[coin_id]['usd'])
+    except Exception as e:
+        print(f"CoinGecko error for {symbol}: {e}")
+    
     return 0
 
 async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=''):
@@ -28411,23 +28431,20 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
         stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD']
         
         # Afficher TOUS les assets avec balance > 0
-        for symbol in balance.get('free', {}):
+            for symbol in balance.get('free', {}):
             amount = balance['free'].get(symbol, 0)
             if amount > 0:
                 price = 0
                 
-                # D'abord essayer CCXT
-                try:
-                    ticker = exchange.fetch_ticker(f'{symbol}/USDT')
-                    price = ticker.get('last', 0)
-                except:
-                    pass
-                
-                # Si pas de prix via CCXT, essayer alternative pairs
-                if price == 0:
+                # D'abord essayer CCXT - plusieurs paires
+                for pair_base in ['USDT', 'USDC', 'BUSD', 'USDT.P']:
+                    if price > 0:
+                        break
                     try:
-                        ticker = exchange.fetch_ticker(f'{symbol}/USDC')
+                        ticker = exchange.fetch_ticker(f'{symbol}/{pair_base}')
                         price = ticker.get('last', 0)
+                        if price > 0:
+                            break
                     except:
                         pass
                 
@@ -28435,7 +28452,7 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
                 if price == 0 and symbol in stablecoins:
                     price = 1.0
                 
-                # Fallback CoinGecko pour les cryptos exotiques
+                # Fallback CoinGecko pour les cryptos exotiques (avec mapping intelligent)
                 if price == 0:
                     price = await fetch_price_coingecko(symbol)
                 

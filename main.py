@@ -27271,17 +27271,18 @@ async def defi_yield(request: Request):
     yields_data = await fetch_defi_yields()
     
     yields_html = ""
-    if yields_data['success']:
+    if yields_data.get('success', False):
         for i, y in enumerate(yields_data.get('yields', []), 1):
             tvl_millions = y['tvl'] / 1_000_000
+            pool_display = (y['pool'][:50] + '...') if len(y['pool']) > 50 else y['pool']
             yields_html += f"""
-            <div style="background: rgba(30, 41, 59, 0.95); border-left: 4px solid #22c55e; border-radius: 8px; padding: 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; hover: { 'transform': 'scale(1.01)', 'box-shadow': '0 8px 16px rgba(34, 197, 94, 0.2)' }">
+            <div class="yield-card">
                 <div style="flex: 1;">
                     <div style="display: flex; align-items: center; gap: 15px;">
-                        <div style="background: linear-gradient(135deg, #22c55e, #16a34a); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: bold; color: white;">#{i}</div>
+                        <div class="yield-number">#{i}</div>
                         <div>
-                            <strong style="color: #e2e8f0; font-size: 1.1em; display: block;">{y['protocol'].upper()}</strong>
-                            <div style="color: #94a3b8; font-size: 0.85em; margin-top: 4px;">{y['pool'][:50]}{'...' if len(y['pool']) > 50 else ''}</div>
+                            <strong style="color: #e2e8f0; font-size: 1.1em; display: block;">{y['protocol']}</strong>
+                            <div style="color: #94a3b8; font-size: 0.85em; margin-top: 4px;">{pool_display}</div>
                         </div>
                     </div>
                 </div>
@@ -27307,10 +27308,11 @@ async def defi_yield(request: Request):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌾 DeFi Yield</title>
+    <title>🌾 DeFi Yield Finder</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        html { lang: fr; }
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; min-height: 100vh; }
         
         .defi-wrapper { margin-left: 280px; display: flex; flex-direction: column; min-height: 100vh; }
         .defi-container { flex: 1; padding: 40px 60px; max-width: 1200px; width: 100%; margin: 0 auto; }
@@ -27321,14 +27323,20 @@ async def defi_yield(request: Request):
         
         .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .controls h2 { color: #22c55e; font-size: 1.6em; }
-        .refresh-btn { padding: 12px 28px; background: #22c55e; color: #0f172a; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 1em; transition: all 0.3s; }
+        .refresh-btn { padding: 12px 28px; background: #22c55e; color: #0f172a; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 1em; transition: all 0.3s ease; }
         .refresh-btn:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(34, 197, 94, 0.3); }
         
         .yields-list { display: flex; flex-direction: column; gap: 0; }
         
+        .yield-card { background: rgba(30, 41, 59, 0.95); border-left: 4px solid #22c55e; border-radius: 8px; padding: 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease; }
+        .yield-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(34, 197, 94, 0.2); }
+        
+        .yield-number { background: linear-gradient(135deg, #22c55e, #16a34a); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: bold; color: white; flex-shrink: 0; }
+        
         @media (max-width: 1024px) {
             .defi-wrapper { margin-left: 0; }
             .defi-container { padding: 30px 20px; }
+            .yield-card { flex-wrap: wrap; }
         }
     </style>
 </head>

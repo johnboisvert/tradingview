@@ -1087,6 +1087,13 @@ SIDEBAR = """<style>
 .sidebar.active{transform:translateX(0)}
 .sidebar-toggle{display:block}
 }
+/* Décalage du contenu pour éviter superposition avec sidebar */
+body{margin-left:280px;transition:margin-left 0.3s}
+.container,.main-content,body>div:not(.sidebar){margin-left:0!important}
+@media (max-width: 768px){
+body{margin-left:0}
+body.sidebar-open{margin-left:280px}
+}
 </style>
     <!-- SIDEBAR TOGGLE MOBILE -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>

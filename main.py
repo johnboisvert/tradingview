@@ -28577,7 +28577,10 @@ async def academy_page(request: Request):
     
     # Lire le fichier HTML de l'Academy
     try:
-        academy_path = "academy_complete.html"
+        # Chemin absolu basé sur l'emplacement de main.py
+        import os
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        academy_path = os.path.join(base_dir, "academy_complete.html")
         with open(academy_path, "r", encoding="utf-8") as f:
             html_content = f.read()
         return HTMLResponse(content=html_content)

@@ -27031,10 +27031,14 @@ async def portfolio_tracker(request: Request):
                     <label for="exchange">Exchange:</label>
                     <select id="exchange" required>
                         <option value="">-- Choisir --</option>
-                        <option value="binance">Binance</option>
                         <option value="mexc">MEXC</option>
+                        <option value="binance">Binance</option>
                         <option value="coinbase">Coinbase</option>
                         <option value="kraken">Kraken</option>
+                        <option value="bitget">Bitget</option>
+                        <option value="bybit">Bybit</option>
+                        <option value="okx">OKX</option>
+                        <option value="ftx">FTX</option>
                     </select>
                 </div>
                 
@@ -28376,7 +28380,10 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
             'apiKey': api_key,
             'secret': api_secret,
             'enableRateLimit': True,
-            'timeout': 10000
+            'timeout': 10000,
+            'options': {
+                'defaultType': 'spot'
+            }
         })
         
         # Pour les exchanges qui nécessitent une passphrase
@@ -28390,27 +28397,26 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
         holdings = []
         for symbol in balance.get('free', {}):
             amount = balance['free'].get(symbol, 0)
-            if amount > 0:  # Seulement les assets avec balance > 0
-                # Chercher le prix
+            if amount > 0.0001:  # Seulement assets > 0.0001
                 try:
                     ticker = exchange.fetch_ticker(f'{symbol}/USDT')
-                    price = ticker['last']
+                    price = ticker.get('last', 1.0)
                 except:
                     price = 1.0  # Fallback pour stablecoins
                 
                 value = amount * price
                 holdings.append({
                     'symbol': symbol,
-                    'amount': amount,
-                    'price': price,
-                    'value': value
+                    'amount': float(amount),
+                    'price': float(price),
+                    'value': float(value)
                 })
         
-        exchange.close()
         return {'success': True, 'holdings': holdings, 'exchange': exchange_name.upper()}
         
     except Exception as e:
         error_msg = str(e)
+        print(f"Error connecting {exchange_name}: {error_msg}")
         return {'success': False, 'error': error_msg, 'exchange': exchange_name.upper()}
 
 def save_holdings_db(user_id, exchange, holdings):

@@ -28369,6 +28369,19 @@ def get_api_keys(user_id, exchange):
         print(f"Get API keys error: {e}")
         return None
 
+async def fetch_price_coingecko(symbol):
+    """Récupérer le prix via CoinGecko API"""
+    try:
+        async with httpx.AsyncClient() as client:
+            url = f'https://api.coingecko.com/api/v3/simple/price?ids={symbol.lower()}&vs_currencies=usd'
+            resp = await client.get(url, timeout=5)
+            data = resp.json()
+            if symbol.lower() in data:
+                return data[symbol.lower()].get('usd', 0)
+    except:
+        pass
+    return 0
+
 async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=''):
     """Récupérer le balance d'un exchange via CCXT"""
     try:
@@ -28395,14 +28408,39 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
         
         # Transformer en liste de holdings
         holdings = []
+        stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD']
+        
         for symbol in balance.get('free', {}):
             amount = balance['free'].get(symbol, 0)
             if amount > 0.0001:  # Seulement assets > 0.0001
+                price = 0
+                
+                # D'abord essayer CCXT
                 try:
                     ticker = exchange.fetch_ticker(f'{symbol}/USDT')
-                    price = ticker.get('last', 1.0)
+                    price = ticker.get('last', 0)
                 except:
-                    price = 1.0  # Fallback pour stablecoins
+                    pass
+                
+                # Si pas de prix via CCXT, essayer alternative pairs
+                if price == 0:
+                    try:
+                        ticker = exchange.fetch_ticker(f'{symbol}/USDC')
+                        price = ticker.get('last', 0)
+                    except:
+                        pass
+                
+                # Si stablecoin, prix = 1
+                if price == 0 and symbol in stablecoins:
+                    price = 1.0
+                
+                # Fallback CoinGecko pour les cryptos exotiques
+                if price == 0:
+                    price = await fetch_price_coingecko(symbol)
+                
+                # Si toujours pas de prix, skip
+                if price == 0:
+                    price = 0.01  # Minimal pour affichage
                 
                 value = amount * price
                 holdings.append({
@@ -28411,6 +28449,9 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
                     'price': float(price),
                     'value': float(value)
                 })
+        
+        # Trier par valeur décroissante
+        holdings = sorted(holdings, key=lambda x: x['value'], reverse=True)
         
         return {'success': True, 'holdings': holdings, 'exchange': exchange_name.upper()}
         

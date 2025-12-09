@@ -28431,7 +28431,7 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
         stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD']
         
         # Afficher TOUS les assets avec balance > 0
-            for symbol in balance.get('free', {}):
+        for symbol in balance.get('free', {}):
             amount = balance['free'].get(symbol, 0)
             if amount > 0:
                 price = 0

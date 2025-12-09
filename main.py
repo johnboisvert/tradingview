@@ -27356,6 +27356,87 @@ async def defi_yield(request: Request):
             <div class="yields-list">
 """ + yields_html + """
             </div>
+            
+            <!-- SECTION GUIDE -->
+            <div style="margin-top: 60px; padding: 40px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 16px;">
+                <h2 style="color: #22c55e; font-size: 1.8em; margin-bottom: 25px;">📚 À Quoi Ça Sert?</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+                    <div>
+                        <h3 style="color: #e2e8f0; font-size: 1.2em; margin-bottom: 10px;">🎯 Objectif Principal</h3>
+                        <p style="color: #cbd5e1; line-height: 1.6;">
+                            Cette page affiche les <strong>meilleurs rendements DeFi du moment</strong>. 
+                            Au lieu de chercher partout où investir, tu vois ici les protocoles avec les meilleures APY (Annual Percentage Yield).
+                        </p>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: #e2e8f0; font-size: 1.2em; margin-bottom: 10px;">💰 Comment Ça Marche?</h3>
+                        <p style="color: #cbd5e1; line-height: 1.6;">
+                            <strong>APY = Rendement annuel</strong> en pourcentage.<br>
+                            Si tu investis <strong>$100 à 10% APY</strong>, tu gagneras <strong>$10 par an</strong>.<br>
+                            Les données viennent de <strong>DefiLlama</strong> (source fiable).
+                        </p>
+                    </div>
+                </div>
+                
+                <h3 style="color: #22c55e; font-size: 1.3em; margin-bottom: 15px;">🚀 Comment Utiliser Cette Page?</h3>
+                
+                <div style="background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
+                    <p style="color: #cbd5e1; margin-bottom: 10px;"><strong>Étape 1: Choisir un Protocole</strong></p>
+                    <p style="color: #94a3b8;">Regarde le tableau et choisis un protocole avec un bon APY. Par exemple, CONVEX offre 12.50% par an.</p>
+                </div>
+                
+                <div style="background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
+                    <p style="color: #cbd5e1; margin-bottom: 10px;"><strong>Étape 2: Vérifier le TVL</strong></p>
+                    <p style="color: #94a3b8;">TVL = Total Value Locked (montant total investi). Plus grand = plus sûr. Évite les petits protocoles (<$10M TVL).</p>
+                </div>
+                
+                <div style="background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
+                    <p style="color: #cbd5e1; margin-bottom: 10px;"><strong>Étape 3: Vérifier la Blockchain</strong></p>
+                    <p style="color: #94a3b8;">Chaque protocole fonctionne sur une chain (Ethereum, Arbitrum, etc.). Assure-toi d'avoir la bonne crypto sur la bonne chain.</p>
+                </div>
+                
+                <div style="background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e;">
+                    <p style="color: #cbd5e1; margin-bottom: 10px;"><strong>Étape 4: Investir</strong></p>
+                    <p style="color: #94a3b8;">Va sur le site du protocole (ex: curve.fi, lido.fi, aave.com) et dépose tes cryptos. Les APY vont dans ton portefeuille automatiquement.</p>
+                </div>
+                
+                <h3 style="color: #22c55e; font-size: 1.3em; margin-top: 30px; margin-bottom: 15px;">⚠️ Points Importants</h3>
+                
+                <ul style="color: #cbd5e1; line-height: 2; margin-left: 20px;">
+                    <li><strong>Les APY changent</strong> - Clique sur "Rafraîchir" pour avoir les derniers taux</li>
+                    <li><strong>Risque vs Rendement</strong> - Plus haut APY = plus de risque généralement</li>
+                    <li><strong>Frais de gas</strong> - Investir/retirer coûte des frais blockchain</li>
+                    <li><strong>Pas de garantie</strong> - DeFi est risqué, investis seulement ce que tu peux perdre</li>
+                    <li><strong>Diversifie</strong> - Mets pas tout au même endroit</li>
+                </ul>
+                
+                <h3 style="color: #22c55e; font-size: 1.3em; margin-top: 30px; margin-bottom: 15px;">📊 Comprendre Les Colonnes</h3>
+                
+                <table style="width: 100%; color: #cbd5e1; margin-top: 15px;">
+                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                        <td style="padding: 12px 0; font-weight: bold; color: #22c55e;">PROTOCOLE</td>
+                        <td style="padding: 12px 0;">Nom du projet DeFi (ex: Lido, Curve, Aave)</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                        <td style="padding: 12px 0; font-weight: bold; color: #22c55e;">POOL</td>
+                        <td style="padding: 12px 0;">Type d'investissement spécifique (ex: Liquid Staking, Trading Pairs)</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                        <td style="padding: 12px 0; font-weight: bold; color: #22c55e;">APY %</td>
+                        <td style="padding: 12px 0;">Rendement annuel (ex: 12.50% = $12.50 par $100 investi)</td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
+                        <td style="padding: 12px 0; font-weight: bold; color: #22c55e;">CHAIN</td>
+                        <td style="padding: 12px 0;">Blockchain où ça fonctionne (Ethereum, Arbitrum, etc.)</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 12px 0; font-weight: bold; color: #22c55e;">TVL</td>
+                        <td style="padding: 12px 0;">Montant total d'argent investi (en millions USD)</td>
+                    </tr>
+                </table>
+            </div>
         </div>
     </div>
 </body>

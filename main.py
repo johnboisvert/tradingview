@@ -28938,3 +28938,158 @@ async def get_portfolio_data(request: Request):
     except Exception as e:
         print(f"Portfolio data error: {e}")
         return JSONResponse({'success': False, 'message': str(e), 'exchanges': {}})
+
+# ============================================================================
+# 🎓 TRADING ACADEMY PRO MEGA - AJOUTÉ LE 9 DÉC 2024
+# ============================================================================
+
+@app.get("/academy", response_class=HTMLResponse)
+async def academy_page(request: Request):
+    """
+    🎓 TRADING ACADEMY PRO MEGA
+    22 Formations complètes - Du débutant au Master Trader
+    114 heures de contenu professionnel
+    
+    Fonctionnalités:
+    - 4 formations ultra-détaillées disponibles
+    - 18 formations "Coming Soon"
+    - Quiz interactifs avec correction automatique
+    - Certificats délivrés automatiquement (score ≥70%)
+    - Progression sauvegardée (localStorage)
+    - Design ultra-professionnel responsive
+    - 5 niveaux: Débutant, Intermédiaire, Avancé, Expert, Master
+    """
+    
+    # Lire le fichier HTML de l'Academy
+    try:
+        academy_path = "academy_complete.html"
+        with open(academy_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    
+    except FileNotFoundError:
+        # Si le fichier n'est pas trouvé, retourner un message d'erreur stylé
+        return HTMLResponse(content="""
+            <!DOCTYPE html>
+            <html lang="fr">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Academy - Configuration</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        color: white;
+                        min-height: 100vh;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 20px;
+                    }
+                    .container {
+                        background: rgba(255,255,255,0.1);
+                        backdrop-filter: blur(10px);
+                        padding: 50px;
+                        border-radius: 20px;
+                        max-width: 700px;
+                        text-align: center;
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    }
+                    h1 {
+                        font-size: 3em;
+                        margin-bottom: 20px;
+                        animation: glow 2s ease-in-out infinite alternate;
+                    }
+                    @keyframes glow {
+                        from { text-shadow: 0 0 20px #fff, 0 0 30px #667eea; }
+                        to { text-shadow: 0 0 30px #fff, 0 0 40px #764ba2; }
+                    }
+                    p {
+                        font-size: 1.2em;
+                        line-height: 1.8;
+                        margin-bottom: 15px;
+                        color: rgba(255,255,255,0.9);
+                    }
+                    code {
+                        background: rgba(0,0,0,0.3);
+                        padding: 5px 10px;
+                        border-radius: 5px;
+                        font-family: 'Courier New', monospace;
+                        color: #fbbf24;
+                    }
+                    .warning {
+                        background: rgba(251, 191, 36, 0.2);
+                        border-left: 4px solid #fbbf24;
+                        padding: 20px;
+                        margin: 30px 0;
+                        border-radius: 10px;
+                        text-align: left;
+                    }
+                    .steps {
+                        background: rgba(255,255,255,0.1);
+                        padding: 25px;
+                        border-radius: 15px;
+                        margin: 30px 0;
+                        text-align: left;
+                    }
+                    .steps ol {
+                        margin-left: 20px;
+                    }
+                    .steps li {
+                        margin-bottom: 15px;
+                        line-height: 1.6;
+                    }
+                    a {
+                        background: white;
+                        color: #667eea;
+                        padding: 15px 35px;
+                        border-radius: 10px;
+                        text-decoration: none;
+                        font-weight: bold;
+                        display: inline-block;
+                        margin-top: 30px;
+                        transition: all 0.3s ease;
+                        font-size: 1.1em;
+                    }
+                    a:hover {
+                        transform: translateY(-3px);
+                        box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🎓 Academy Pro</h1>
+                    <p>Configuration de l'Academy en cours...</p>
+                    
+                    <div class="warning">
+                        <strong>⚠️ Fichier manquant:</strong><br>
+                        Le fichier <code>academy_complete.html</code> n'a pas été trouvé.
+                    </div>
+                    
+                    <div class="steps">
+                        <strong>📋 Pour activer l'Academy:</strong>
+                        <ol>
+                            <li>Télécharge le fichier <code>ACADEMY_COMPLETE_22_FORMATIONS.html</code></li>
+                            <li>Renomme-le en <code>academy_complete.html</code></li>
+                            <li>Place-le dans le même dossier que <code>main.py</code></li>
+                            <li>Redémarre l'application</li>
+                            <li>✅ L'Academy sera accessible!</li>
+                        </ol>
+                    </div>
+                    
+                    <p style="margin-top: 30px;">
+                        <strong>💡 Note:</strong> Les fichiers sont dans <code>/mnt/user-data/outputs/</code>
+                    </p>
+                    
+                    <a href="/dashboard">← Retour au Dashboard</a>
+                </div>
+            </body>
+            </html>
+        """)
+
+# ============================================================================
+# FIN DE LA ROUTE ACADEMY
+# ============================================================================

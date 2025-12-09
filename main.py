@@ -27561,19 +27561,25 @@ async def send_push_notification(request: Request):
 # ========== FEATURE 4 ==========
 
 # ============================================================================
-# 🏆 TRADING ACADEMY - VERSION COMPLÈTE FINALE (MODULES NETTOYÉS)
+# 🏆 TRADING ACADEMY - VERSION FINALE COMPLÈTE (BUG CORRIGÉ!)
 # ============================================================================
-# ✅ 103 lignes vides problématiques supprimées
-# ✅ Formation 1: 6 modules complets
-# ✅ Formation 2: 3 modules
-# ✅ Formation 3: 5 modules
-# ✅ Formation 4: 6 modules
-# ✅ Formation 5: 2 modules
+# ✅ Formation 1: 6 modules complets (Bug Module 6 corrigé: } manquant ajouté)
+#    1. Qu'est-ce que le Trading?
+#    2. Comment Gagner de l'Argent
+#    3. Les Risques du Trading
+#    4. Capital de Départ Nécessaire
+#    5. Outils Essentiels du Trader
+#    6. Premiers Pas Pratiques - Plan 7 Jours
+# ✅ Formation 2: 3 modules (Bitcoin, Ethereum, Altcoins)
+# ✅ Formation 3: 5 modules (Sécurité complète)
+# ✅ Formation 4: 6 modules (Psychologie)
+# ✅ Formation 5: 2 modules (Chandelles + Support/Résistance)
+# 
 # TOTAL: 22 MODULES PROFESSIONNELS!
 # ============================================================================
 @app.get("/academy", response_class=HTMLResponse)
-async def academy_complete_clean(request: Request):
-    """🏆 Trading Academy - 22 Modules (Version Nettoyée)"""
+async def academy_22_modules_complete(request: Request):
+    """🏆 Trading Academy - 22 Modules Complets (Bug Corrigé)"""
     html_content = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -28502,7 +28508,6 @@ formations[1] = {
                 '<li>Gestion de capital avancée</li>' +
                 '</ul>'
         },
-},
         {
             title: "Module 3: Les Risques du Trading",
             content: '<h4>💀 Risque #1: Perte de Capital</h4>' +
@@ -29053,8 +29058,8 @@ formations[1] = {
                 '• Appris de tes erreurs<br><br>' +
                 '→ BRAVO! Tu es dans le top 10% des débutants!<br><br>' +
                 'La majorité abandonne avant 1 mois.</div>'
-        
-    ],
+        }
+        ],
     quiz: [
         {question: "Quelle est la règle d'or du trading?", options: ["Acheter haut vendre bas", "Acheter bas vendre haut", "Acheter au hasard"], correct: 1},
         {question: "Quel % de traders sont profitables long terme?", options: ["90%", "50%", "5-10%"], correct: 2},

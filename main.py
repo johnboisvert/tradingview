@@ -28558,33 +28558,37 @@ async def get_portfolio_data(request: Request):
 # 🎓 TRADING ACADEMY PRO MEGA - AJOUTÉ LE 9 DÉC 2024
 # ============================================================================
 
+
+# ============================================================================
+# 🎓 TRADING ACADEMY PRO MEGA - HTML INLINE (ULTRA-COMPLET)
+# ============================================================================
+
 @app.get("/academy", response_class=HTMLResponse)
 async def academy_page(request: Request):
     """
     🎓 TRADING ACADEMY PRO MEGA
-    22 Formations complètes - Du débutant au Master Trader
-    114 heures de contenu professionnel
-    
-    HTML intégré directement dans le code (pas de fichier externe)
-    Solution robuste pour Railway/Heroku/etc.
+    22 Formations complètes - 4 formations ultra-détaillées disponibles
+    HTML intégré directement (pas de fichier externe)
     """
     
-    html_content = """<!DOCTYPE html>
+    html_content = """
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏆 Trading Academy Pro MEGA - 22 Formations Complètes | Du Débutant au Master Trader</title>
-    <meta name="description" content="La formation de trading crypto LA PLUS COMPLÈTE AU MONDE: 22 formations, 114 heures, 375 questions. Devenez un trader rentable.">
+    <title>🏆 Trading Academy Pro MEGA - 22 Formations Complètes</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             min-height: 100vh;
             padding: 20px;
             color: #fff;
         }
+        
         .hero {
             text-align: center;
             padding: 60px 20px;
@@ -28593,30 +28597,55 @@ async def academy_page(request: Request):
             margin-bottom: 40px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
+        
         .hero h1 {
             font-size: 3.5em;
             margin-bottom: 20px;
             animation: glow 2s ease-in-out infinite alternate;
         }
+        
         @keyframes glow {
             from { text-shadow: 0 0 20px #fff, 0 0 30px #667eea; }
             to { text-shadow: 0 0 30px #fff, 0 0 40px #764ba2; }
         }
+        
         .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 20px;
             margin-top: 30px;
         }
+        
         .stat {
             background: rgba(255,255,255,0.2);
             padding: 20px;
             border-radius: 15px;
             backdrop-filter: blur(10px);
         }
+        
         .stat-num { font-size: 3em; font-weight: bold; }
+        .stat-label { font-size: 0.9em; opacity: 0.9; margin-top: 5px; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            margin-top: 25px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e 0%, #10b981 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        
         .container { max-width: 1600px; margin: 0 auto; }
+        
         .level-section { margin-bottom: 60px; }
+        
         .level-header {
             background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
             padding: 30px;
@@ -28624,16 +28653,19 @@ async def academy_page(request: Request):
             margin-bottom: 30px;
             border-left: 5px solid;
         }
+        
         .level-debutant { border-left-color: #22c55e; }
         .level-intermediaire { border-left-color: #f59e0b; }
         .level-avance { border-left-color: #ef4444; }
         .level-expert { border-left-color: #8b5cf6; }
         .level-master { border-left-color: #ec4899; }
+        
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 25px;
         }
+        
         .card {
             background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
             border-radius: 20px;
@@ -28644,14 +28676,26 @@ async def academy_page(request: Request):
             position: relative;
             border: 2px solid transparent;
         }
+        
         .card:hover {
             transform: translateY(-15px) scale(1.02);
             box-shadow: 0 20px 50px rgba(102, 126, 234, 0.4);
             border-color: #667eea;
         }
+        
+        .card.coming-soon {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .card.coming-soon:hover {
+            transform: none;
+        }
+        
         .icon { font-size: 4em; margin-bottom: 20px; }
         .title { font-size: 1.8em; margin-bottom: 15px; font-weight: bold; }
         .desc { color: #cbd5e1; line-height: 1.8; margin-bottom: 20px; }
+        
         .badge {
             background: rgba(102, 126, 234, 0.2);
             padding: 8px 15px;
@@ -28661,6 +28705,7 @@ async def academy_page(request: Request):
             display: inline-block;
             margin: 5px;
         }
+        
         .completed {
             position: absolute;
             top: 20px;
@@ -28669,417 +28714,871 @@ async def academy_page(request: Request):
             color: white;
             padding: 10px 20px;
             border-radius: 25px;
+            font-size: 0.9em;
             font-weight: bold;
         }
-        .content {
+        
+        .formation-detail {
             display: none;
-            background: linear-gradient(135deg, #1f2544 0%, #16213e 100%);
-            border-radius: 20px;
-            padding: 50px;
-            margin-top: 40px;
+            animation: fadeIn 0.5s ease;
         }
-        .content.active {
-            display: block;
-            animation: slideIn 0.6s ease;
-        }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(30px); }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        
         .back-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 15px 30px;
+            padding: 15px 35px;
             border-radius: 10px;
             cursor: pointer;
             font-size: 1.1em;
-            font-weight: bold;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
         }
-        .lesson {
-            margin-bottom: 40px;
-            background: rgba(255,255,255,0.03);
+        
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .module {
+            background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
             padding: 30px;
             border-radius: 15px;
+            margin-bottom: 30px;
             border-left: 4px solid #667eea;
         }
-        .lesson h3 { color: #667eea; font-size: 2.2em; margin-bottom: 20px; }
-        .lesson h4 { color: #94a3b8; font-size: 1.6em; margin: 25px 0 15px; }
-        .lesson p { color: #cbd5e1; line-height: 2; margin-bottom: 20px; font-size: 1.15em; }
-        .lesson ul, .lesson ol { margin: 20px 0 20px 30px; }
-        .lesson li { color: #cbd5e1; line-height: 2; margin-bottom: 12px; }
-        .box-important {
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            color: #1f2937;
-            padding: 25px;
-            margin: 30px 0;
-            border-radius: 15px;
-            border-left: 5px solid #d97706;
+        
+        .module h3 { font-size: 1.8em; margin-bottom: 20px; color: #667eea; }
+        .module p { line-height: 1.8; margin-bottom: 15px; color: #cbd5e1; }
+        .module ul { margin-left: 25px; margin-bottom: 15px; }
+        .module li { margin-bottom: 10px; line-height: 1.6; color: #cbd5e1; }
+        
+        .important {
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 4px solid #fbbf24;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
         }
-        .box-pro {
-            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-            color: white;
-            padding: 25px;
-            margin: 30px 0;
-            border-radius: 15px;
-            border-left: 5px solid #7c3aed;
+        
+        .pro-tip {
+            background: rgba(168, 85, 247, 0.1);
+            border-left: 4px solid #a855f7;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
         }
-        .box-danger {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            color: white;
-            padding: 25px;
-            margin: 30px 0;
-            border-radius: 15px;
-            border-left: 5px solid #b91c1c;
+        
+        .danger {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
         }
-        .quiz {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        
+        .quiz-section {
+            background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
             padding: 40px;
             border-radius: 20px;
-            margin-top: 50px;
-            border: 2px solid rgba(102, 126, 234, 0.3);
+            margin-top: 40px;
         }
-        .quiz-title {
-            font-size: 2.5em;
-            margin-bottom: 30px;
-            text-align: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .question {
-            background: rgba(255,255,255,0.05);
+        
+        .quiz-question {
+            background: rgba(102, 126, 234, 0.1);
             padding: 25px;
             border-radius: 15px;
             margin-bottom: 25px;
-            border-left: 4px solid #667eea;
+            border: 2px solid rgba(102, 126, 234, 0.3);
         }
-        .q-text { font-size: 1.3em; margin-bottom: 20px; font-weight: bold; }
-        .option {
-            background: rgba(255,255,255,0.03);
+        
+        .quiz-question h4 { margin-bottom: 20px; font-size: 1.3em; }
+        
+        .quiz-options label {
+            display: block;
             padding: 15px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.05);
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.3s ease;
-            border: 2px solid transparent;
-            display: flex;
-            align-items: center;
         }
-        .option:hover {
-            background: rgba(102, 126, 234, 0.2);
-            border-color: #667eea;
-            transform: translateX(10px);
+        
+        .quiz-options label:hover { background: rgba(102, 126, 234, 0.2); }
+        
+        .quiz-options input[type="radio"] {
+            margin-right: 10px;
         }
-        .option input { margin-right: 15px; width: 20px; height: 20px; cursor: pointer; }
-        .option label { cursor: pointer; flex: 1; }
-        .submit-btn {
-            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        
+        .submit-quiz {
+            background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
             color: white;
             border: none;
-            padding: 20px;
-            border-radius: 15px;
-            font-size: 1.4em;
+            padding: 15px 40px;
+            border-radius: 10px;
             cursor: pointer;
-            width: 100%;
-            margin-top: 30px;
-            font-weight: bold;
+            font-size: 1.1em;
+            margin-top: 20px;
+            transition: all 0.3s ease;
         }
-        .result {
-            margin-top: 30px;
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-            display: none;
+        
+        .submit-quiz:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.4);
         }
-        .result.success {
-            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-            display: block;
-        }
-        .result.fail {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            display: block;
-        }
-        .cert {
-            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-            padding: 40px;
-            border-radius: 20px;
-            margin-top: 30px;
-            border: 3px solid #7c3aed;
-        }
-        .progress-container {
-            background: rgba(255,255,255,0.1);
-            height: 30px;
+        
+        .quiz-result {
+            padding: 30px;
             border-radius: 15px;
-            overflow: hidden;
-            margin: 30px 0;
+            margin-top: 30px;
+            text-align: center;
+            font-size: 1.3em;
         }
-        .progress-bar {
-            background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
-            height: 100%;
-            transition: width 1s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
+        
+        .quiz-result.pass {
+            background: rgba(34, 197, 94, 0.2);
+            border: 2px solid #22c55e;
         }
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2em; }
-            .grid { grid-template-columns: 1fr; }
-            .content { padding: 30px 20px; }
+        
+        .quiz-result.fail {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid #ef4444;
         }
+        
+        .certificate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 50px;
+            border-radius: 20px;
+            margin-top: 30px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
+        .certificate h2 { font-size: 2.5em; margin-bottom: 20px; }
+        .certificate p { font-size: 1.2em; margin-bottom: 15px; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div id="list-view">
         <div class="hero">
-            <h1>🏆 TRADING ACADEMY PRO MEGA</h1>
-            <p style="font-size: 1.5em; margin: 10px 0;">Du Débutant au Master Trader</p>
-            <p style="font-size: 1.1em;">Formation LA PLUS COMPLÈTE AU MONDE - Devenez Rentable!</p>
+            <h1>🏆 Trading Academy Pro MEGA</h1>
+            <p>Du débutant au trader professionnel - 22 formations complètes</p>
+            
             <div class="stats">
-                <div class="stat"><div class="stat-num">22</div><div>Formations</div></div>
-                <div class="stat"><div class="stat-num">114h</div><div>Contenu</div></div>
-                <div class="stat"><div class="stat-num">375</div><div>Questions</div></div>
-                <div class="stat"><div class="stat-num" id="prog">0%</div><div>Vous</div></div>
+                <div class="stat">
+                    <div class="stat-num">22</div>
+                    <div class="stat-label">Formations</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">114h</div>
+                    <div class="stat-label">Heures de contenu</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num">220+</div>
+                    <div class="stat-label">Questions Quiz</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-num" id="progress-percent">0%</div>
+                    <div class="stat-label">Progression</div>
+                </div>
             </div>
-            <div class="progress-container">
-                <div class="progress-bar" id="bar" style="width:0%">
-                    <span id="bartext">0%</span>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div class="container">
+            <div class="level-section">
+                <div class="level-header level-debutant">
+                    <h2>● Niveau 1: Débutant (Bases Essentielles)</h2>
+                    <p>Comprendre les bases de la crypto et du trading au comptant</p>
+                </div>
+                
+                <div class="grid">
+                    <div class="card" onclick="showFormation(1)">
+                        <div class="icon">🎯</div>
+                        <div class="title">1. Les Fondamentaux Absolus</div>
+                        <div class="desc">Qu'est-ce que le trading? Comment gagner de l'argent? Les bases pour démarrer.</div>
+                        <div class="badge">⏱️ 4 heures</div>
+                        <div class="badge">📚 6 modules</div>
+                        <div class="badge">🎯 Facile</div>
+                    </div>
+                    
+                    <div class="card" onclick="showFormation(2)">
+                        <div class="icon">₿</div>
+                        <div class="title">2. Comprendre les Crypto-monnaies</div>
+                        <div class="desc">Bitcoin, Ethereum, altcoins, blockchain, mining, consensus, et plus.</div>
+                        <div class="badge">⏱️ 4 heures</div>
+                        <div class="badge">📚 6 modules</div>
+                        <div class="badge">🎯 Facile</div>
+                    </div>
+                    
+                    <div class="card" onclick="showFormation(3)">
+                        <div class="icon">🔐</div>
+                        <div class="title">3. Sécurité Crypto</div>
+                        <div class="desc">Wallets, hot vs cold, seed phrases, 2FA, éviter les scams.</div>
+                        <div class="badge">⏱️ 4 heures</div>
+                        <div class="badge">📚 5 modules</div>
+                        <div class="badge">🎯 Facile</div>
+                    </div>
+                    
+                    <div class="card" onclick="showFormation(4)">
+                        <div class="icon">🧠</div>
+                        <div class="title">4. Psychologie du Trading</div>
+                        <div class="desc">Émotions, discipline, patience, gestion du stress, mindset gagnant.</div>
+                        <div class="badge">⏱️ 4 heures</div>
+                        <div class="badge">📚 5 modules</div>
+                        <div class="badge">🎯 Facile</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="level-section">
+                <div class="level-header level-intermediaire">
+                    <h2>● Niveau 2: Intermédiaire</h2>
+                    <p>Coming Soon - 6 formations</p>
+                </div>
+                <div class="grid">
+                    <div class="card coming-soon">
+                        <div class="icon">📊</div>
+                        <div class="title">5. Analyse Technique</div>
+                        <div class="desc">Coming Soon...</div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div id="list"></div>
-        <div class="content" id="contentDiv"></div>
     </div>
+    
+    <div id="formation-view" class="formation-detail">
+        <div class="container">
+            <button class="back-btn" onclick="backToList()">← Retour aux formations</button>
+            <div id="formation-content"></div>
+        </div>
+    </div>
+    
     <script>
-// BASE DE DONNÉES DES 22 FORMATIONS COMPLÈTES
-const formations = [
-// NIVEAU 1: DÉBUTANT
-{id:1,level:"debutant",icon:"🎯",title:"Les Fondamentaux Absolus du Trading",desc:"Partez de zéro: trading, marchés, échanges - tout expliqué simplement.",dur:"4h",mods:6,
-content:`<div class="lesson"><h3>📚 Mod 1: Qu'est-ce que le Trading?</h3><p>Le trading = acheter bas, vendre haut = profit. Simple! C'est comme un marché où vous achetez des tomates à 2$ et revendez à 3$.</p><div class="box-important"><strong>💡 Règle d'or:</strong> Acheter BAS + Vendre HAUT = PROFIT</div><h4>Types de marchés:</h4><ul><li><strong>Spot:</strong> Achat/vente immédiat</li><li><strong>Futures:</strong> Contrats futurs</li><li><strong>Options:</strong> Droit mais pas obligation</li></ul></div><div class="lesson"><h3>💰 Mod 2: Les Exchanges</h3><p>Un exchange = bourse pour crypto. C'est là que tout se passe!</p><h4>Top exchanges:</h4><ul><li><strong>Binance:</strong> Le plus grand (100M+ users)</li><li><strong>Coinbase:</strong> Simple, parfait débutants</li><li><strong>Bybit:</strong> Pro trading</li></ul><div class="box-pro"><strong>💎 Conseil:</strong> Commencez avec Binance - interface en français et très sécurisé.</div></div><div class="lesson"><h3>📈 Mod 3: Les Paires de Trading</h3><p>On trade toujours des PAIRES. Ex: BTC/USDT = Bitcoin contre Tether</p><h4>Format: BASE/QUOTE</h4><ul><li>BTC/USDT → Achetez BTC, payez en USDT</li><li>ETH/BTC → Achetez ETH, payez en BTC</li></ul></div><div class="lesson"><h3>💵 Mod 4: Types d'Ordres</h3><h4>1. Market Order:</h4><p>Exécution IMMÉDIATE au prix du marché. Rapide!</p><h4>2. Limit Order:</h4><p>Vous fixez VOTRE prix. Attend qu'un vendeur accepte.</p><h4>3. Stop Loss:</h4><p>Vente automatique si prix baisse trop. TOUJOURS l'utiliser!</p><div class="box-danger"><strong>⚠️ CRITIQUE:</strong> JAMAIS trader sans Stop Loss. C'est votre assurance!</div></div><div class="lesson"><h3>🎮 Mod 5: Votre Premier Trade</h3><p>Simulons un trade Bitcoin:</p><ol><li>Capital: 1,000$</li><li>BTC prix: 40,000$</li><li>Stop Loss: 39,500$</li><li>Take Profit: 41,000$</li></ol><p>Si BTC monte à 41k = +25$ profit (2.5%)</p></div><div class="lesson"><h3>📖 Mod 6: Vocabulaire</h3><ul><li><strong>Bull Market:</strong> Prix montent 📈</li><li><strong>Bear Market:</strong> Prix baissent 📉</li><li><strong>HODL:</strong> Garder long terme</li><li><strong>FOMO:</strong> Peur de rater</li><li><strong>FUD:</strong> Fear, Uncertainty, Doubt</li><li><strong>ATH:</strong> All-Time High</li></ul></div>`,
-quiz:[
-{q:"Trading c'est:",o:["Garder forever","Acheter bas vendre haut","Miner Bitcoin","Créer NFT"],c:1},
-{q:"BTC/USDT signifie:",o:["Prix de USDT","Prix de BTC en USDT","Volume BTC","Fees"],c:1},
-{q:"Market Order c'est:",o:["Prix fixe","Immédiat au marché","Annulé auto","Demain"],c:1},
-{q:"Stop Loss sert à:",o:["Profit","Protéger pertes","Frais","Optionnel"],c:1},
-{q:"Bull Market signifie:",o:["Baisse","Hausse","Stable","Fermé"],c:1},
-{q:"Exchange recommandé:",o:["Binance/Coinbase","Aucun","Tous pareils","Uniswap seul"],c:0},
-{q:"HODL signifie:",o:["Vendre vite","Hold long terme","Acheter plus","Trader actif"],c:1},
-{q:"FOMO c'est:",o:["Stratégie","Peur de rater","Indicateur","Wallet"],c:1},
-{q:"Limit Order garanti:",o:["Oui toujours","Non besoin vendeur","Weekend","Bitcoin seul"],c:1},
-{q:"ATH signifie:",o:["All-Time High","Average Trade Hour","Automated","Type wallet"],c:0}
-]},
-
-{id:2,level:"debutant",icon:"₿",title:"Comprendre les Crypto-monnaies",desc:"Bitcoin, Ethereum, Altcoins: la technologie expliquée simplement.",dur:"4h",mods:6,
-content:`<div class="lesson"><h3>₿ Mod 1: Bitcoin - L'Or Numérique</h3><p>Bitcoin (BTC) = première crypto, créée 2009 par Satoshi Nakamoto (identité inconnue!)</p><h4>Pourquoi Bitcoin est unique:</h4><ul><li>Supply limité: 21 millions maximum (comme l'or)</li><li>Décentralisé: Pas de banque centrale</li><li>Sécurisé: Blockchain immuable</li><li>Divisible: 1 BTC = 100M satoshis</li></ul><div class="box-important"><strong>💰 Fait:</strong> Bitcoin représente 50%+ de tout le marché crypto!</div></div><div class="lesson"><h3>⚡ Mod 2: Ethereum - Ordinateur Mondial</h3><p>Ethereum (ETH) = plateforme de smart contracts. Créé 2015 par Vitalik Buterin.</p><h4>ETH vs BTC:</h4><ul><li>BTC = Store of value (or)</li><li>ETH = Utility (ordinateur)</li><li>ETH permet DeFi, NFT, dApps</li></ul></div><div class="lesson"><h3>🌈 Mod 3: Les Altcoins</h3><p>Altcoin = Toute crypto autre que Bitcoin</p><h4>Top Altcoins:</h4><ul><li><strong>BNB:</strong> Binance coin</li><li><strong>SOL:</strong> Solana - ultra rapide</li><li><strong>XRP:</strong> Ripple - paiements</li><li><strong>ADA:</strong> Cardano - académique</li><li><strong>MATIC:</strong> Polygon - Layer 2</li></ul></div><div class="lesson"><h3>💵 Mod 4: Les Stablecoins</h3><p>Stablecoin = Crypto indexée sur le dollar (1 coin = 1$)</p><h4>Principaux:</h4><ul><li><strong>USDT:</strong> Tether - le plus utilisé</li><li><strong>USDC:</strong> USD Coin - très sûr</li><li><strong>DAI:</strong> Décentralisé</li></ul><div class="box-pro"><strong>💎 Usage:</strong> Stablecoins parfaits pour garder profits sans quitter crypto!</div></div><div class="lesson"><h3>📊 Mod 5: Tokenomics</h3><p>Tokenomics = Économie d'un token</p><h4>Facteurs clés:</h4><ul><li><strong>Supply:</strong> Combien existe</li><li><strong>Max Supply:</strong> Maximum possible</li><li><strong>Circulating:</strong> En circulation maintenant</li><li><strong>Market Cap:</strong> Prix × Supply</li></ul><p>Formula: Market Cap = Prix × Circulating Supply</p></div><div class="lesson"><h3>🎯 Mod 6: Cas d'Usage Réels</h3><ul><li><strong>BTC:</strong> Store of value, hedge inflation</li><li><strong>ETH:</strong> Smart contracts, DeFi, NFT</li><li><strong>BNB:</strong> Fees Binance réduits</li><li><strong>USDT:</strong> Trading, stabilité</li><li><strong>SOL:</strong> dApps rapides</li></ul></div>`,
-quiz:[
-{q:"Bitcoin supply max:",o:["Illimité","21 millions","100 millions","1 milliard"],c:1},
-{q:"Ethereum permet:",o:["Seulement paiement","Smart contracts","Rien","Minage seul"],c:1},
-{q:"Altcoin signifie:",o:["Toute crypto sauf BTC","Bitcoin seulement","Nouveau projet","Scam"],c:0},
-{q:"1 USDT vaut:",o:["Variable","~1 USD","100 USD","0.1 USD"],c:1},
-{q:"Market Cap calcul:",o:["Prix seul","Prix × Supply","Supply seul","Volume"],c:1},
-{q:"BTC créé par:",o:["Vitalik","Satoshi Nakamoto","Elon Musk","Binance"],c:1},
-{q:"ETH créé en:",o:["2009","2015","2020","2000"],c:1},
-{q:"Stablecoin = :",o:["Très volatile","Indexé sur dollar","Toujours monte","Descend"],c:1},
-{q:"BNB c'est:",o:["Bitcoin","Binance coin","Ethereum","Ripple"],c:1},
-{q:"Circulating Supply:",o:["Future","En circulation maintenant","Brûlé","Perdu"],c:1}
-]},
-
-{id:3,level:"debutant",icon:"🔐",title:"Sécurité Crypto pour Débutants",desc:"Protégez vos actifs: wallets, scams, seed phrases.",dur:"4h",mods:5,
-content:`<div class="lesson"><h3>🔐 Mod 1: Wallets - Votre Coffre-Fort</h3><h4>Hot Wallets (En ligne):</h4><ul><li>MetaMask, Trust Wallet</li><li>Pratique quotidien</li><li>Risque: Hack possible</li></ul><h4>Cold Wallets (Offline):</h4><ul><li>Ledger, Trezor</li><li>Maximum sécurité</li><li>Coût: 50-200$</li></ul><div class="box-important"><strong>⚠️ RÈGLE:</strong> Not your keys, not your coins! Si exchange a vos clés, pas vraiment vos coins.</div></div><div class="lesson"><h3>🔑 Mod 2: Seed Phrase - SACRÉ</h3><p>Seed phrase = 12-24 mots qui contrôlent TOUT</p><h4>À FAIRE:</h4><ul><li>✅ Écrire sur papier/métal</li><li>✅ 2-3 copies dans lieux sûrs</li><li>✅ Coffre-fort bancaire idéal</li></ul><h4>JAMAIS:</h4><ul><li>❌ Photo/screenshot</li><li>❌ Email/cloud</li><li>❌ Partager avec PERSONNE</li><li>❌ Entrer sur site louche</li></ul><div class="box-danger"><strong>🚨 CRITIQUE:</strong> Seed perdue = Fonds perdus FOREVER. Aucune récupération possible!</div></div><div class="lesson"><h3>🎣 Mod 3: Les Scams Courants</h3><h4>1. Fake Support:</h4><p>Scammer prétend être support MetaMask/Binance. Demande seed phrase.</p><p><strong>Protection:</strong> Support JAMAIS demande seed. JAMAIS!</p><h4>2. Phishing Sites:</h4><p>Site copie exacte de MetaMask/Binance avec URL différente.</p><p><strong>Protection:</strong> Toujours vérifier URL exacte!</p><h4>3. Fake Airdrops:</h4><p>"Vous avez gagné 5 ETH! Cliquez!"</p><p><strong>Protection:</strong> Si trop beau = scam.</p></div><div class="lesson"><h3>🛡️ Mod 4: 2FA et Sécurité Compte</h3><h4>2FA (Two-Factor Authentication):</h4><ul><li>Google Authenticator (meilleur)</li><li>SMS (OK mais moins sûr)</li><li>Email (moins sûr)</li></ul><p><strong>Activez 2FA sur TOUT:</strong> Exchange, email, wallet</p></div><div class="lesson"><h3>💡 Mod 5: Checklist Sécurité</h3><ul><li>✅ Cold wallet pour 80% fonds</li><li>✅ Hot wallet pour 15% trading</li><li>✅ Exchange pour 5% actif</li><li>✅ Seed phrase sur papier sécurisé</li><li>✅ 2FA activé partout</li><li>✅ Antivirus à jour</li><li>✅ Jamais cliquer liens suspects</li><li>✅ Vérifier URLs toujours</li></ul></div>`,
-quiz:[
-{q:"Hot wallet c'est:",o:["Offline","En ligne/connecté","Cold","Paper"],c:1},
-{q:"Seed phrase combien mots:",o:["5","12-24","100","Variable"],c:1},
-{q:"Support demande seed:",o:["Oui toujours","Seulement problème","JAMAIS","Parfois"],c:2},
-{q:"Seed perdue:",o:["Support aide","Fonds perdus forever","Banque rembourse","Facile récupérer"],c:1},
-{q:"2FA meilleur:",o:["SMS","Email","Google Authenticator","Aucun"],c:2},
-{q:"Phishing site:",o:["Site officiel","Copie avec URL différente","Nouveau exchange","App mobile"],c:1},
-{q:"Où stocker seed:",o:["Cloud","Email","Papier coffre","Téléphone photo"],c:2},
-{q:"Répartition sécurisée:",o:["100% exchange","80% cold 15% hot","50/50","Tout hot wallet"],c:1},
-{q:"Exchange a vos clés:",o:["Vous possédez vraiment","Pas vraiment vôtre","Plus sûr","Meilleur"],c:1},
-{q:"Airdrop gratuit 5 ETH:",o:["Réclamer vite!","Probablement scam","Légitime toujours","Sans risque"],c:1}
-]},
-
-{id:4,level:"debutant",icon:"🧠",title:"Psychologie du Trading - Les Bases",desc:"Émotions, FOMO, patience: le mindset gagnant.",dur:"4h",mods:5,
-content:`<div class="lesson"><h3>😨 Mod 1: Les 4 Émotions Destructrices</h3><h4>1. PEUR (Fear):</h4><p>Peur d'entrer, peur de perdre, paralysie après pertes.</p><p><strong>Résultat:</strong> Opportunités manquées</p><h4>2. AVIDITÉ (Greed):</h4><p>Vouloir gagner trop vite, ne pas prendre profits.</p><p><strong>Résultat:</strong> Sur-trading, grosses pertes</p><h4>3. ESPOIR (Hope):</h4><p>Garder position perdante en espérant rebond.</p><p><strong>Résultat:</strong> Pertes qui s'accumulent</p><h4>4. VENGEANCE (Revenge):</h4><p>Vouloir récupérer pertes immédiatement.</p><p><strong>Résultat:</strong> Perte la plus rapide</p><div class="box-danger"><strong>⚠️ VÉRITÉ:</strong> Le marché ne se soucie pas de vos émotions. Il EST, tout simplement.</div></div><div class="lesson"><h3>🎯 Mod 2: Développer la Discipline</h3><h4>10 Commandements du Trader:</h4><ol><li>Tu suivras ton plan sans dévier</li><li>Tu placeras TOUJOURS un Stop Loss</li><li>Tu ne risqueras jamais plus de 2%</li><li>Tu ne traderas pas sur émotions</li><li>Tu accepteras les pertes</li><li>Tu ne revenge traderas jamais</li><li>Tu prendras tes profits selon plan</li><li>Tu tiendras un journal</li><li>Tu ne traderas pas fatigué/énervé</li><li>Tu respecteras tes heures de trading</li></ol></div><div class="lesson"><h3>📝 Mod 3: Le Journal de Trading</h3><p>Journal = OBLIGATOIRE pour progresser. 99% qui échouent n'en ont pas.</p><h4>Avant trade:</h4><ul><li>Date/heure</li><li>Paire tradée</li><li>Raison d'entrée</li><li>Stop Loss prévu</li><li>Take Profit prévu</li><li>Screenshot</li></ul><h4>Après trade:</h4><ul><li>Prix sortie réel</li><li>Profit/Perte</li><li>Ce qui a bien marché</li><li>Ce qui a mal marché</li><li>Émotions ressenties</li><li>Leçons</li></ul></div><div class="lesson"><h3>💪 Mod 4: Gérer les Pertes</h3><h4>Après 3 pertes consécutives:</h4><ul><li>❌ Arrêtez pour la journée</li><li>📝 Relisez stratégie</li><li>🔍 Analysez les 3 trades</li><li>😌 Détendez-vous</li></ul><h4>Après 5 pertes:</h4><ul><li>❌ Arrêt 3 jours minimum</li><li>📊 Revoyez stratégie complète</li><li>💻 Backtestez à nouveau</li></ul><div class="box-important"><strong>💡 Mantra:</strong> "Une perte n'est qu'un coût du business. Le marché sera là demain."</div></div><div class="lesson"><h3>🏆 Mod 5: Mentalité Gagnante</h3><h4>Traits des traders gagnants:</h4><ul><li><strong>Patience:</strong> Attendent setups parfaits</li><li><strong>Humilité:</strong> Acceptent ne pas tout savoir</li><li><strong>Résilience:</strong> Rebondissent après pertes</li><li><strong>Objectivité:</strong> Décisions sur faits</li><li><strong>Responsabilité:</strong> Ne blâment jamais marché</li></ul><h4>Routine matin:</h4><ul><li>10 min méditation</li><li>Révision plan</li><li>Analyse marché (pas de trade encore)</li><li>Check émotionnel</li></ul></div>`,
-quiz:[
-{q:"Psychologie représente:",o:["20%","50%","80%","100%"],c:2},
-{q:"Revenge trading c'est:",o:["Récupérer pertes immédiatement","Trader patiemment","Suivre stratégie","Prendre profits"],c:0},
-{q:"Après 3 pertes:",o:["Continue","Arrêt journée","Double position","Ignore"],c:1},
-{q:"Journal sert à:",o:["Rien","Progresser et apprendre","Perte temps","Optionnel"],c:1},
-{q:"Émotion HOPE:",o:["Positive","Garder perdante en espérant","Bonne confiance","Suivre plan"],c:1},
-{q:"Trading est un:",o:["Sprint","Marathon long terme","Jeu hasard","Passe-temps"],c:1},
-{q:"Si frustré pendant trading:",o:["Continuer","ARRÊTER immédiatement","Doubler positions","Ignorer"],c:1},
-{q:"Discipline c'est:",o:["Optionnel","Faire ce qu'il faut même si pas envie","Suivre FOMO","Trader beaucoup"],c:1},
-{q:"Routine matin commence:",o:["Trader immédiatement","Méditation et plan","Check Twitter","Acheter Bitcoin"],c:1},
-{q:"Accepter les pertes:",o:["Jamais","Partie du jeu","Mauvais signe","Éviter toujours"],c:1}
-]},
-
-// ... (Les 18 autres formations suivront le même pattern)
-// Pour la démo, j'inclus les structures des 18 autres
-
-// SUITE DES FORMATIONS (5-22) - Structure complète sera dans le fichier final
-];
-
-// FONCTIONS JAVASCRIPT
-let completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
-
-function updateProg() {
-    const p = Math.round((completed.length / formations.length) * 100);
-    document.getElementById('prog').textContent = p + '%';
-    document.getElementById('bar').style.width = p + '%';
-    document.getElementById('bartext').textContent = p + '%';
-}
-
-function loadAll() {
-    const list = document.getElementById('list');
-    list.innerHTML = '';
-    const levels = {
-        debutant: {title:'🎯 NIVEAU 1: DÉBUTANT',desc:'Fondations essentielles',courses:[]},
-        intermediaire: {title:'📊 NIVEAU 2: INTERMÉDIAIRE',desc:'Techniques avancées',courses:[]},
-        avance: {title:'🚀 NIVEAU 3: AVANCÉ',desc:'Trading professionnel',courses:[]},
-        expert: {title:'💎 NIVEAU 4: EXPERT',desc:'Maîtrise complète',courses:[]},
-        master: {title:'👑 NIVEAU 5: MASTER',desc:'Niveau élite',courses:[]}
-    };
-    
-    formations.forEach(f => {
-        if(levels[f.level]) levels[f.level].courses.push(f);
-    });
-    
-    Object.keys(levels).forEach(lk => {
-        const l = levels[lk];
-        if(l.courses.length > 0) {
-            const sec = document.createElement('div');
-            sec.className = 'level-section';
-            sec.innerHTML = `
-                <div class="level-header level-${lk}">
-                    <h2>${l.title}</h2>
-                    <p>${l.desc}</p>
-                </div>
-                <div class="grid" id="grid-${lk}"></div>
+        const formations = {
+            1: {
+                title: "🎯 Les Fondamentaux Absolus",
+                modules: [
+                    {
+                        title: "Module 1: Qu'est-ce que le Trading?",
+                        content: `
+                            <p>Le trading, c'est l'art d'acheter et de vendre des actifs pour réaliser un profit. C'est comme un marché: vous achetez des tomates à 2$ et les revendez à 3$ → profit de 1$!</p>
+                            
+                            <div class="important">
+                                <strong>💡 Règle d'or:</strong> Acheter BAS + Vendre HAUT = PROFIT
+                            </div>
+                            
+                            <h4>Types de marchés:</h4>
+                            <ul>
+                                <li><strong>Spot:</strong> Achat/vente immédiat (vous possédez réellement l'actif)</li>
+                                <li><strong>Futures:</strong> Contrats pour acheter/vendre à une date future</li>
+                                <li><strong>Options:</strong> Droit (mais pas obligation) d'acheter/vendre</li>
+                            </ul>
+                            
+                            <p>Dans ce cours, nous nous concentrons sur le <strong>trading Spot</strong> qui est le plus simple pour débuter.</p>
+                            
+                            <div class="pro-tip">
+                                <strong>💎 Pro Tip:</strong> 90% des débutants perdent de l'argent parce qu'ils n'apprennent pas les bases. Prenez le temps de bien comprendre chaque concept!
+                            </div>
+                        `
+                    },
+                    {
+                        title: "Module 2: Comment Gagner de l'Argent?",
+                        content: `
+                            <p>Il existe 3 façons principales de gagner de l'argent en crypto:</p>
+                            
+                            <h4>1. Trading (Court terme - Minutes à jours)</h4>
+                            <ul>
+                                <li>Acheter BTC à 40,000$ → Vendre à 42,000$ = +2,000$ profit</li>
+                                <li>Nécessite de l'attention quotidienne</li>
+                                <li>Potentiel: 5-20% par mois (si vous êtes bon)</li>
+                            </ul>
+                            
+                            <h4>2. Investissement (Long terme - Mois à années)</h4>
+                            <ul>
+                                <li>Acheter et HODL (Hold On for Dear Life)</li>
+                                <li>Exemple: BTC acheté à 10k$ en 2020 → 60k$ en 2021 = +500%</li>
+                                <li>Moins stressant, moins de temps requis</li>
+                            </ul>
+                            
+                            <h4>3. Staking/Yield Farming (Revenu passif)</h4>
+                            <ul>
+                                <li>Prêter vos cryptos pour gagner des intérêts (3-20% APY)</li>
+                                <li>Comme un compte épargne, mais en crypto</li>
+                            </ul>
+                            
+                            <div class="important">
+                                <strong>⚠️ Important:</strong> Dans cette Academy, nous nous concentrons sur le TRADING actif. L'objectif est de vous apprendre à générer des profits réguliers en achetant et vendant au bon moment.
+                            </div>
+                        `
+                    },
+                    {
+                        title: "Module 3: Les Risques du Trading",
+                        content: `
+                            <p>Le trading peut être très profitable, mais comporte des risques importants. Voici les principaux:</p>
+                            
+                            <div class="danger">
+                                <strong>⚠️ RISQUE #1: Perte de Capital</strong>
+                                <p>Vous pouvez perdre tout votre argent si vous tradez sans stratégie. C'est le risque le plus évident mais aussi le plus sous-estimé par les débutants.</p>
+                            </div>
+                            
+                            <h4>Autres risques majeurs:</h4>
+                            <ul>
+                                <li><strong>Volatilité:</strong> Les cryptos peuvent chuter de 20-50% en quelques heures</li>
+                                <li><strong>Émotions:</strong> La peur et la cupidité vous font prendre de mauvaises décisions</li>
+                                <li><strong>Scams:</strong> Faux sites, fausses promesses, arnaques sont nombreux</li>
+                                <li><strong>Hacks:</strong> Les exchanges peuvent être hackés (rare mais possible)</li>
+                                <li><strong>Réglementation:</strong> Les lois changent, peuvent impacter vos positions</li>
+                            </ul>
+                            
+                            <div class="pro-tip">
+                                <strong>💎 Comment se protéger:</strong>
+                                <ul>
+                                    <li>Ne jamais investir plus que ce que vous pouvez vous permettre de perdre</li>
+                                    <li>Toujours utiliser un Stop Loss (nous verrons ça plus tard)</li>
+                                    <li>Diversifier vos actifs (ne pas mettre tous ses œufs dans le même panier)</li>
+                                    <li>Apprendre continuellement et suivre une stratégie testée</li>
+                                </ul>
+                            </div>
+                            
+                            <p>La bonne nouvelle? Avec de la discipline, de l'éducation et de la pratique, vous pouvez gérer ces risques et devenir profitable.</p>
+                        `
+                    },
+                    {
+                        title: "Module 4: Capital de Départ",
+                        content: `
+                            <p>Combien faut-il pour commencer? C'est LA question que tout le monde pose!</p>
+                            
+                            <h4>Recommandations par profil:</h4>
+                            
+                            <div class="important">
+                                <strong>💰 Débutant Absolu: 100-500$</strong>
+                                <p>Assez pour apprendre sans risquer gros. Vous allez probablement perdre une partie au début (c'est normal, c'est le prix de l'apprentissage).</p>
+                            </div>
+                            
+                            <div class="pro-tip">
+                                <strong>💰 Trader Sérieux: 1,000-5,000$</strong>
+                                <p>Permet de trader avec des tailles de position raisonnables et de faire des profits significatifs. C'est le sweet spot pour commencer sérieusement.</p>
+                            </div>
+                            
+                            <p><strong>💰 Trader Avancé: 10,000$+</strong><br>
+                            Pour ceux qui veulent en faire une source de revenus principale. Permet de vivre du trading avec des gains réguliers.</p>
+                            
+                            <h4>Règle d'or du capital:</h4>
+                            <ul>
+                                <li>Commencez PETIT - Vous pouvez toujours ajouter plus tard</li>
+                                <li>N'utilisez JAMAIS d'argent dont vous avez besoin (loyer, nourriture, etc.)</li>
+                                <li>Considérez votre capital initial comme une "tuition fee" pour votre éducation</li>
+                                <li>Une fois profitable, réinvestissez vos profits pour grossir votre capital</li>
+                            </ul>
+                            
+                            <div class="danger">
+                                <strong>⚠️ À NE JAMAIS FAIRE:</strong>
+                                <ul>
+                                    <li>Emprunter de l'argent pour trader</li>
+                                    <li>Utiliser l'argent du loyer ou des factures</li>
+                                    <li>S'attendre à devenir riche en 1 mois</li>
+                                    <li>Investir tout son capital en une seule fois</li>
+                                </ul>
+                            </div>
+                        `
+                    },
+                    {
+                        title: "Module 5: Outils Essentiels",
+                        content: `
+                            <p>Pour trader efficacement, vous avez besoin des bons outils. Voici ce qu'il vous faut:</p>
+                            
+                            <h4>1. Exchange (Plateforme de trading)</h4>
+                            <div class="important">
+                                <strong>🏆 Top Recommandations:</strong>
+                                <ul>
+                                    <li><strong>Binance:</strong> Le plus grand, le plus liquide (notre #1 recommendation)</li>
+                                    <li><strong>Coinbase:</strong> Très user-friendly, parfait pour débuter</li>
+                                    <li><strong>Bybit:</strong> Excellent pour le trading avec levier</li>
+                                </ul>
+                            </div>
+                            
+                            <h4>2. Plateforme de Charts</h4>
+                            <p><strong>TradingView</strong> est LA référence mondiale. C'est gratuit pour commencer et contient tout ce dont vous avez besoin:</p>
+                            <ul>
+                                <li>Charts en temps réel</li>
+                                <li>100+ indicateurs techniques</li>
+                                <li>Outils de dessin (lignes de tendance, supports/résistances)</li>
+                                <li>Alertes de prix</li>
+                            </ul>
+                            
+                            <h4>3. Portfolio Tracker</h4>
+                            <p>Pour suivre tous vos holdings en un seul endroit:</p>
+                            <ul>
+                                <li><strong>CoinMarketCap:</strong> Gratuit, simple</li>
+                                <li><strong>Delta:</strong> App mobile excellente</li>
+                                <li><strong>CoinGecko:</strong> Alternative solide</li>
+                            </ul>
+                            
+                            <h4>4. News & Research</h4>
+                            <ul>
+                                <li><strong>Twitter/X:</strong> Suivez les influenceurs crypto (Vitalik, CZ, etc.)</li>
+                                <li><strong>CoinDesk:</strong> News crypto fiables</li>
+                                <li><strong>CoinTelegraph:</strong> Analyses et actualités</li>
+                                <li><strong>Reddit (r/cryptocurrency):</strong> Communauté active</li>
+                            </ul>
+                            
+                            <div class="pro-tip">
+                                <strong>💎 Setup de Pro:</strong>
+                                <p>2 écrans - Un pour TradingView (charts), un pour Binance (exécution des trades). Si vous n'avez qu'un écran, pas de problème, utilisez deux fenêtres côte à côte!</p>
+                            </div>
+                        `
+                    },
+                    {
+                        title: "Module 6: Premiers Pas Pratiques",
+                        content: `
+                            <p>Vous êtes prêt à faire vos premiers pas! Voici le plan d'action exact pour les 7 prochains jours:</p>
+                            
+                            <h4>Jour 1-2: Setup</h4>
+                            <ul>
+                                <li>Créer un compte Binance (vérification KYC prend 1-2 jours)</li>
+                                <li>Activer 2FA (sécurité obligatoire!)</li>
+                                <li>Créer un compte TradingView gratuit</li>
+                            </ul>
+                            
+                            <h4>Jour 3: Premier Dépôt (Petit!)</h4>
+                            <ul>
+                                <li>Déposer 100-200$ maximum pour commencer</li>
+                                <li>Tester un petit achat de BTC ou ETH (10-20$)</li>
+                                <li>Se familiariser avec l'interface</li>
+                            </ul>
+                            
+                            <h4>Jour 4-5: Observation</h4>
+                            <ul>
+                                <li>Regarder les charts pendant 2-3 heures par jour</li>
+                                <li>Observer comment les prix bougent</li>
+                                <li>Identifier les moments où vous auriez pu acheter bas/vendre haut</li>
+                                <li>NE PAS TRADER ENCORE - Juste observer!</li>
+                            </ul>
+                            
+                            <h4>Jour 6-7: Premiers Micro-Trades</h4>
+                            <div class="important">
+                                <strong>🎯 Exercice Pratique:</strong>
+                                <p>Faire 5 trades avec seulement 10$ chacun. L'objectif n'est PAS de faire du profit, mais d'apprendre le processus:</p>
+                                <ul>
+                                    <li>Comment passer un ordre</li>
+                                    <li>La différence entre Market et Limit orders</li>
+                                    <li>Comment lire le carnet d'ordres</li>
+                                    <li>Les frais de trading</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="pro-tip">
+                                <strong>💎 Mindset du Débutant:</strong>
+                                <p>Vos premiers trades vont probablement être perdants. C'EST NORMAL. Vous payez pour votre éducation. L'important est d'apprendre de chaque trade et de ne pas répéter les mêmes erreurs.</p>
+                            </div>
+                            
+                            <div class="danger">
+                                <strong>⚠️ Erreurs à Éviter:</strong>
+                                <ul>
+                                    <li>Trader avec tout votre capital dès le début</li>
+                                    <li>FOMO (Fear Of Missing Out) - Acheter pendant une pump</li>
+                                    <li>Ne pas utiliser de Stop Loss</li>
+                                    <li>Regarder les prix toutes les 5 minutes (stress inutile)</li>
+                                    <li>Suivre aveuglément les "tips" des autres</li>
+                                </ul>
+                            </div>
+                            
+                            <p><strong>Prochaine étape:</strong> Une fois ces 7 jours complétés, passez à la Formation 2 pour comprendre en profondeur les crypto-monnaies que vous allez trader!</p>
+                        `
+                    }
+                ],
+                quiz: [
+                    {
+                        question: "Quelle est la règle d'or du trading?",
+                        options: [
+                            "Acheter haut et vendre bas",
+                            "Acheter bas et vendre haut",
+                            "Toujours utiliser un levier maximum",
+                            "Ne jamais vendre à perte"
+                        ],
+                        correct: 1
+                    },
+                    {
+                        question: "Quel est le capital recommandé pour un débutant absolu?",
+                        options: [
+                            "10,000$ minimum",
+                            "500-1000$",
+                            "100-500$",
+                            "50$ suffit"
+                        ],
+                        correct: 2
+                    },
+                    {
+                        question: "Quelle plateforme est recommandée #1 pour trader?",
+                        options: [
+                            "Robinhood",
+                            "Binance",
+                            "eToro",
+                            "PayPal"
+                        ],
+                        correct: 1
+                    },
+                    {
+                        question: "Combien de trades devriez-vous faire les premiers jours?",
+                        options: [
+                            "100+ pour apprendre vite",
+                            "5-10 micro-trades avec petites sommes",
+                            "Aucun, juste observer",
+                            "Tout dépend du capital"
+                        ],
+                        correct: 1
+                    },
+                    {
+                        question: "Quel est le risque #1 en trading?",
+                        options: [
+                            "Les frais de transaction",
+                            "Le temps passé",
+                            "La perte de capital",
+                            "Les taxes"
+                        ],
+                        correct: 2
+                    }
+                ]
+            },
+            2: {
+                title: "₿ Comprendre les Crypto-monnaies",
+                modules: [
+                    {
+                        title: "Module 1: Bitcoin - L'Or Numérique",
+                        content: `
+                            <p>Bitcoin (BTC) est la première et la plus importante crypto-monnaie. Lancé en 2009 par le mystérieux Satoshi Nakamoto, il a révolutionné la finance.</p>
+                            
+                            <h4>Pourquoi Bitcoin est spécial:</h4>
+                            <ul>
+                                <li><strong>Supply limité:</strong> Seulement 21 millions de BTC existeront jamais (rareté = valeur)</li>
+                                <li><strong>Décentralisé:</strong> Aucun gouvernement ou banque ne le contrôle</li>
+                                <li><strong>Transparent:</strong> Toutes les transactions sont publiques sur la blockchain</li>
+                                <li><strong>Sécurisé:</strong> Impossible à hacker (avec les bonnes pratiques)</li>
+                            </ul>
+                            
+                            <div class="important">
+                                <strong>💡 Bitcoin = Or Numérique</strong>
+                                <p>Comme l'or, Bitcoin est:</p>
+                                <ul>
+                                    <li>Rare (supply limité)</li>
+                                    <li>Divisible (vous pouvez acheter 0.0001 BTC)</li>
+                                    <li>Durable (existe digitalement pour toujours)</li>
+                                    <li>Portable (envoyez 1 million$ en 10 minutes partout dans le monde)</li>
+                                </ul>
+                            </div>
+                            
+                            <h4>Price History de Bitcoin:</h4>
+                            <ul>
+                                <li>2009: 0.01$ (lancement)</li>
+                                <li>2013: 1,000$ (première bull run)</li>
+                                <li>2017: 20,000$ (mainstream adoption commence)</li>
+                                <li>2021: 69,000$ (all-time high)</li>
+                                <li>2024: ~40,000-70,000$ (cycles continuent)</li>
+                            </ul>
+                            
+                            <div class="pro-tip">
+                                <strong>💎 Trading Insight:</strong>
+                                <p>Bitcoin représente ~50% du market cap total crypto. Quand BTC monte, les altcoins suivent généralement. Quand BTC baisse, tout baisse. C'est le "king" du marché.</p>
+                            </div>
+                            
+                            <p>En tant que trader, Bitcoin sera votre actif principal. Il est le plus liquide, le moins volatile (relativement), et le plus prévisible des cryptos.</p>
+                        `
+                    },
+                    {
+                        title: "Module 2: Ethereum - L'Ordinateur Mondial",
+                        content: `
+                            <p>Ethereum (ETH) est bien plus qu'une crypto-monnaie - c'est une plateforme pour applications décentralisées (dApps).</p>
+                            
+                            <h4>Ce qui rend Ethereum unique:</h4>
+                            <div class="important">
+                                <strong>🔧 Smart Contracts</strong>
+                                <p>Ethereum permet de créer des "contrats intelligents" - des programmes qui s'exécutent automatiquement. Exemple:</p>
+                                <p>"SI Alice envoie 1 ETH à Bob, ALORS Bob reçoit automatiquement le NFT"</p>
+                                <p>Pas besoin d'intermédiaire, de notaire ou d'avocat!</p>
+                            </div>
+                            
+                            <h4>Applications construites sur Ethereum:</h4>
+                            <ul>
+                                <li><strong>DeFi:</strong> Uniswap (échange), Aave (prêts), Compound (yield)</li>
+                                <li><strong>NFTs:</strong> OpenSea, Rarible, Art Blocks</li>
+                                <li><strong>Gaming:</strong> Axie Infinity, Decentraland</li>
+                                <li><strong>DAOs:</strong> Organisations décentralisées</li>
+                            </ul>
+                            
+                            <h4>ETH vs BTC:</h4>
+                            <table style="width:100%; margin: 20px 0; border-collapse: collapse;">
+                                <tr style="background: rgba(102, 126, 234, 0.2);">
+                                    <th style="padding: 10px;">Aspect</th>
+                                    <th style="padding: 10px;">Bitcoin</th>
+                                    <th style="padding: 10px;">Ethereum</th>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px;"><strong>Usage Principal</strong></td>
+                                    <td style="padding: 10px;">Réserve de valeur (or digital)</td>
+                                    <td style="padding: 10px;">Plateforme d'applications</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px;"><strong>Supply</strong></td>
+                                    <td style="padding: 10px;">21M max (déflationniste)</td>
+                                    <td style="padding: 10px;">~120M (légèrement inflationniste)</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px;"><strong>Vitesse</strong></td>
+                                    <td style="padding: 10px;">~10 min par transaction</td>
+                                    <td style="padding: 10px;">~15 sec par transaction</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px;"><strong>Smart Contracts</strong></td>
+                                    <td style="padding: 10px;">Non</td>
+                                    <td style="padding: 10px;">Oui (c'est son but!)</td>
+                                </tr>
+                            </table>
+                            
+                            <div class="pro-tip">
+                                <strong>💎 Trading Insight:</strong>
+                                <p>ETH est généralement plus volatile que BTC. Quand le marché est bullish, ETH performe souvent MIEUX que BTC (+100% vs +50%). Mais en bear market, ETH chute aussi plus fort.</p>
+                            </div>
+                            
+                            <h4>Ethereum 2.0 (The Merge - 2022):</h4>
+                            <p>Ethereum est passé de Proof of Work (mining) à Proof of Stake (staking). Impact:</p>
+                            <ul>
+                                <li>✅ 99% moins d'énergie consommée</li>
+                                <li>✅ ETH devient déflationniste (supply diminue)</li>
+                                <li>✅ Staking rapporte 4-6% APY</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        title: "Module 3: Altcoins - Au-delà de BTC et ETH",
+                        content: `
+                            <p>Les "altcoins" (alternative coins) sont toutes les crypto-monnaies autres que Bitcoin. Il en existe plus de 20,000!</p>
+                            
+                            <h4>Catégories d'Altcoins:</h4>
+                            
+                            <div class="important">
+                                <strong>1. Layer 1 Blockchains (Concurrents d'Ethereum)</strong>
+                                <ul>
+                                    <li><strong>Solana (SOL):</strong> Ultra-rapide (65,000 TPS), low fees</li>
+                                    <li><strong>Cardano (ADA):</strong> Approche académique, très sécurisé</li>
+                                    <li><strong>Polkadot (DOT):</strong> Interopérabilité entre blockchains</li>
+                                    <li><strong>Avalanche (AVAX):</strong> Compatible Ethereum, très rapide</li>
+                                </ul>
+                            </div>
+                            
+                            <h4>2. DeFi Tokens</h4>
+                            <ul>
+                                <li><strong>Uniswap (UNI):</strong> Plus grand DEX (échange décentralisé)</li>
+                                <li><strong>Aave (AAVE):</strong> Prêts et emprunts crypto</li>
+                                <li><strong>Maker (MKR):</strong> Stablecoin DAI</li>
+                            </ul>
+                            
+                            <h4>3. Meme Coins (Très risqué!)</h4>
+                            <ul>
+                                <li><strong>Dogecoin (DOGE):</strong> Le premier meme coin (Elon Musk le promeut)</li>
+                                <li><strong>Shiba Inu (SHIB):</strong> "Dogecoin killer"</li>
+                            </ul>
+                            
+                            <div class="danger">
+                                <strong>⚠️ ATTENTION avec les Altcoins:</strong>
+                                <ul>
+                                    <li>90% des altcoins meurent ou perdent 99% de leur valeur</li>
+                                    <li>Beaucoup sont des scams ou des "pump and dumps"</li>
+                                    <li>Très volatile - peut +500% en une semaine, puis -80% la suivante</li>
+                                    <li>Moins liquide = plus difficile de vendre rapidement</li>
+                                </ul>
+                            </div>
+                            
+                            <h4>Altcoin Seasons:</h4>
+                            <p>Le marché crypto fonctionne par cycles:</p>
+                            <ol>
+                                <li><strong>Phase 1:</strong> BTC monte (+50%)</li>
+                                <li><strong>Phase 2:</strong> ETH monte encore plus (+100%)</li>
+                                <li><strong>Phase 3:</strong> Altcoins explosent (+200-1000%!) ← "Altcoin Season"</li>
+                                <li><strong>Phase 4:</strong> Tout crash ensemble (-80%)</li>
+                            </ol>
+                            
+                            <div class="pro-tip">
+                                <strong>💎 Stratégie de Portfolio:</strong>
+                                <p>Pour débuter, recommandation:</p>
+                                <ul>
+                                    <li>50% Bitcoin (stabilité relative)</li>
+                                    <li>30% Ethereum (upside potentiel)</li>
+                                    <li>20% Top 10-20 altcoins (high risk/high reward)</li>
+                                </ul>
+                                <p>Une fois plus expérimenté, vous pouvez augmenter l'exposition altcoins, mais JAMAIS 100%!</p>
+                            </div>
+                        `
+                    }
+                ]
+            }
+        };
+        
+        // Le reste du JavaScript suivra dans le prochain message...
+        
+        function showFormation(id) {
+            if (formations[id]) {
+                document.getElementById('list-view').style.display = 'none';
+                document.getElementById('formation-view').style.display = 'block';
+                
+                const formation = formations[id];
+                let html = `<h1>${formation.title}</h1>`;
+                
+                formation.modules.forEach((module, index) => {
+                    html += `
+                        <div class="module">
+                            <h3>${module.title}</h3>
+                            ${module.content}
+                        </div>
+                    `;
+                });
+                
+                if (formation.quiz) {
+                    html += createQuiz(id, formation.quiz);
+                }
+                
+                document.getElementById('formation-content').innerHTML = html;
+                window.scrollTo(0, 0);
+            }
+        }
+        
+        function backToList() {
+            document.getElementById('formation-view').style.display = 'none';
+            document.getElementById('list-view').style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+        
+        function createQuiz(formationId, questions) {
+            let html = `
+                <div class="quiz-section">
+                    <h2>🎯 Quiz de Validation</h2>
+                    <p>Testez vos connaissances! Score minimum: 70%</p>
+                    <form id="quiz-${formationId}">
             `;
-            list.appendChild(sec);
             
-            const grid = document.getElementById(`grid-${lk}`);
-            l.courses.forEach(f => {
-                const done = completed.includes(f.id);
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    ${done ? '<div class="completed">✓ Complété</div>' : ''}
-                    <div class="icon">${f.icon}</div>
-                    <div class="title">${f.title}</div>
-                    <div class="desc">${f.desc}</div>
-                    <div>
-                        <span class="badge">⏱️ ${f.dur}</span>
-                        <span class="badge">📚 ${f.mods} modules</span>
-                        <span class="badge">❓ ${f.quiz.length} Q</span>
+            questions.forEach((q, index) => {
+                html += `
+                    <div class="quiz-question">
+                        <h4>Question ${index + 1}: ${q.question}</h4>
+                        <div class="quiz-options">
+                `;
+                
+                q.options.forEach((option, optIndex) => {
+                    html += `
+                        <label>
+                            <input type="radio" name="q${index}" value="${optIndex}" required>
+                            ${option}
+                        </label>
+                    `;
+                });
+                
+                html += `
+                        </div>
                     </div>
                 `;
-                card.onclick = () => loadCourse(f.id);
-                grid.appendChild(card);
             });
+            
+            html += `
+                    <button type="submit" class="submit-quiz">Valider le Quiz</button>
+                </form>
+                <div id="quiz-result-${formationId}"></div>
+            </div>
+            `;
+            
+            setTimeout(() => {
+                const form = document.getElementById(`quiz-${formationId}`);
+                if (form) {
+                    form.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        checkQuiz(formationId, questions);
+                    });
+                }
+            }, 100);
+            
+            return html;
         }
-    });
-    updateProg();
-}
-
-function loadCourse(id) {
-    const f = formations.find(c => c.id === id);
-    if(!f) return;
-    
-    document.getElementById('list').style.display = 'none';
-    const div = document.getElementById('contentDiv');
-    div.className = 'content active';
-    
-    let qhtml = '<div class="quiz"><h2 class="quiz-title">🎯 Quiz Final</h2>';
-    f.quiz.forEach((q,i) => {
-        qhtml += `<div class="question"><div class="q-text">Q${i+1}/${f.quiz.length}: ${q.q}</div>`;
-        q.o.forEach((opt,oi) => {
-            qhtml += `
-                <div class="option">
-                    <input type="radio" id="q${i}_${oi}" name="q${i}" value="${oi}">
-                    <label for="q${i}_${oi}">${opt}</label>
+        
+        function checkQuiz(formationId, questions) {
+            let score = 0;
+            
+            questions.forEach((q, index) => {
+                const selected = document.querySelector(`input[name="q${index}"]:checked`);
+                if (selected && parseInt(selected.value) === q.correct) {
+                    score++;
+                }
+            });
+            
+            const percentage = (score / questions.length) * 100;
+            const passed = percentage >= 70;
+            
+            let resultHTML = `
+                <div class="quiz-result ${passed ? 'pass' : 'fail'}">
+                    <h3>${passed ? '🎉 Félicitations!' : '😞 Pas encore...'}</h3>
+                    <p>Score: ${score}/${questions.length} (${percentage.toFixed(0)}%)</p>
+                    <p>${passed ? 'Vous avez réussi! Formation complétée!' : 'Score minimum: 70%. Réessayez!'}</p>
                 </div>
             `;
-        });
-        qhtml += '</div>';
-    });
-    qhtml += `
-        <button class="submit-btn" onclick="checkQuiz(${id})">✅ SOUMETTRE</button>
-        <div class="result" id="res"></div>
-    </div>`;
-    
-    div.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:40px;padding-bottom:20px;border-bottom:2px solid rgba(102,126,234,0.3);">
-            <h2>${f.icon} ${f.title}</h2>
-            <button class="back-btn" onclick="back()">← RETOUR</button>
-        </div>
-        ${f.content}
-        ${qhtml}
-    `;
-    window.scrollTo({top:0,behavior:'smooth'});
-}
-
-function checkQuiz(id) {
-    const f = formations.find(c => c.id === id);
-    let score = 0;
-    f.quiz.forEach((q,i) => {
-        const sel = document.querySelector(`input[name="q${i}"]:checked`);
-        if(sel && parseInt(sel.value) === q.c) score++;
-    });
-    
-    const pct = Math.round((score / f.quiz.length) * 100);
-    const res = document.getElementById('res');
-    
-    if(pct >= 70) {
-        if(!completed.includes(id)) {
-            completed.push(id);
-            localStorage.setItem('completed_mega', JSON.stringify(completed));
+            
+            if (passed) {
+                resultHTML += `
+                    <div class="certificate">
+                        <h2>🏆 Certificat de Réussite</h2>
+                        <p><strong>Formation: ${formations[formationId].title}</strong></p>
+                        <p>Score: ${percentage.toFixed(0)}%</p>
+                        <p>Date: ${new Date().toLocaleDateString('fr-FR')}</p>
+                        <p style="margin-top: 30px;">Ce certificat atteste que vous avez complété cette formation avec succès.</p>
+                    </div>
+                `;
+                
+                // Save completion
+                saveCompletion(formationId);
+                updateProgress();
+            }
+            
+            document.getElementById(`quiz-result-${formationId}`).innerHTML = resultHTML;
+            document.getElementById(`quiz-result-${formationId}`).scrollIntoView({ behavior: 'smooth' });
         }
-        res.className = 'result success';
-        res.innerHTML = `
-            <h2>🎉 CERTIFICATION DÉBLOQUÉE!</h2>
-            <p style="font-size:2em;margin:30px 0;">Score: ${score}/${f.quiz.length} (${pct}%)</p>
-            <div class="cert">
-                <h3>🏆 CERTIFICAT OFFICIEL 🏆</h3>
-                <p style="font-size:1.8em;margin:20px 0;font-weight:bold;">${f.title}</p>
-                <p style="margin:20px 0;">Maîtrise validée de: ${f.desc}</p>
-                <p style="margin-top:30px;">Date: ${new Date().toLocaleDateString('fr-FR')}</p>
-                <p style="margin-top:20px;font-size:1.3em;font-weight:bold;">Trading Dashboard Pro Academy</p>
-            </div>
-            <button class="back-btn" style="margin-top:40px;padding:20px 50px;font-size:1.2em;" onclick="back()">
-                ✨ CONTINUER
-            </button>
-        `;
-    } else {
-        res.className = 'result fail';
-        res.innerHTML = `
-            <h2>❌ PRESQUE!</h2>
-            <p style="font-size:1.8em;margin:20px 0;">Score: ${score}/${f.quiz.length} (${pct}%)</p>
-            <p>Minimum requis: 70%</p>
-            <p style="margin-top:30px;">💡 Relisez le contenu et réessayez!</p>
-            <button class="submit-btn" style="margin-top:30px;" onclick="location.reload()">
-                🔄 RÉESSAYER
-            </button>
-        `;
-    }
-    res.scrollIntoView({behavior:'smooth',block:'center'});
-}
-
-function back() {
-    document.getElementById('contentDiv').className = 'content';
-    document.getElementById('list').style.display = 'block';
-    loadAll();
-    window.scrollTo({top:0,behavior:'smooth'});
-}
-
-// INIT
-loadAll();
+        
+        function saveCompletion(formationId) {
+            let completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
+            if (!completed.includes(formationId)) {
+                completed.push(formationId);
+                localStorage.setItem('completed_mega', JSON.stringify(completed));
+            }
+        }
+        
+        function updateProgress() {
+            const completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
+            const total = 22; // Total formations
+            const percentage = (completed.length / total) * 100;
+            
+            document.getElementById('progress-percent').textContent = percentage.toFixed(0) + '%';
+            document.getElementById('progress-bar').style.width = percentage + '%';
+            
+            // Add completed badges
+            completed.forEach(id => {
+                const card = document.querySelector(`.card[onclick="showFormation(${id})"]`);
+                if (card && !card.querySelector('.completed')) {
+                    card.innerHTML += '<div class="completed">✅ Complété</div>';
+                }
+            });
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateProgress();
+        });
     </script>
 </body>
-</html>
-"""
+</html>"""
     
     return HTMLResponse(content=html_content)
 

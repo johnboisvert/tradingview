@@ -35,6 +35,8 @@ import secrets
 import hmac
 import hashlib
 import requests  # Pour API externe (Fear & Greed, etc.)
+import time
+from urllib.parse import urlencode
 
 # ============================================================================
 # 🆕 SYSTÈME DE PERMISSIONS - IMPORTS
@@ -28369,6 +28371,89 @@ def get_api_keys(user_id, exchange):
         print(f"Get API keys error: {e}")
         return None
 
+async def fetch_mexc_holdings(api_key, api_secret):
+    """Fetcher les holdings DIRECTEMENT de MEXC API (pas CCXT)"""
+    try:
+        # Endpoint MEXC
+        endpoint = "https://api.mexc.com/api/v3/account"
+        
+        # Timestamp pour signature
+        timestamp = int(time.time() * 1000)
+        params = {'timestamp': timestamp}
+        
+        # Créer la query string et la signer
+        query_string = urlencode(params)
+        signature = hmac.new(
+            api_secret.encode(),
+            query_string.encode(),
+            hashlib.sha256
+        ).hexdigest()
+        
+        params['signature'] = signature
+        
+        # Headers avec API key
+        headers = {'X-MEXC-APIKEY': api_key}
+        
+        # Fetcher les balances
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get(endpoint, params=params, headers=headers)
+            data = response.json()
+            
+            if 'balances' not in data:
+                return {'success': False, 'error': 'No balances data'}
+            
+            balances = data.get('balances', [])
+            holdings = []
+            
+            # Pour chaque crypto avec balance
+            for balance_item in balances:
+                symbol = balance_item['asset']
+                free = float(balance_item.get('free', 0))
+                locked = float(balance_item.get('locked', 0))
+                amount = free + locked
+                
+                if amount > 0.0001:  # Ignorer les amounts trop petits
+                    # Fetcher le prix MEXC pour symbol/USDT
+                    price = 0
+                    try:
+                        ticker_url = f"https://api.mexc.com/api/v3/ticker/price?symbol={symbol}USDT"
+                        ticker_resp = await client.get(ticker_url, timeout=5)
+                        ticker_data = ticker_resp.json()
+                        price = float(ticker_data.get('price', 0))
+                        if price > 0:
+                            print(f"✅ MEXC: {symbol}/USDT = ${price}")
+                    except Exception as e:
+                        print(f"❌ MEXC price fetch failed for {symbol}: {e}")
+                        price = 0
+                    
+                    # Si pas de prix, utiliser 0.00001
+                    if price == 0:
+                        price = 0.00001
+                    
+                    value = amount * price
+                    holdings.append({
+                        'symbol': symbol,
+                        'amount': float(amount),
+                        'price': float(price),
+                        'value': float(value)
+                    })
+            
+            # Trier par valeur décroissante
+            holdings = sorted(holdings, key=lambda x: x['value'], reverse=True)
+            
+            total_value = sum(h['value'] for h in holdings)
+            return {
+                'success': True,
+                'holdings': holdings,
+                'total': total_value,
+                'count': len(holdings),
+                'exchange': 'MEXC'
+            }
+    
+    except Exception as e:
+        print(f"🔴 MEXC API Error: {e}")
+        return {'success': False, 'error': str(e)}
+
 async def fetch_price_coingecko(symbol):
     """Récupérer le prix via CoinGecko API avec mapping intelligent"""
     try:
@@ -28586,7 +28671,12 @@ async def connect_exchange(request: Request):
             return JSONResponse({'success': False, 'message': f'Exchange non supporté. Supportés: {", ".join(supported)}'})
         
         # Tester la connexion et récupérer les holdings
-        result = await fetch_exchange_balance(exchange, api_key, api_secret, passphrase)
+        if exchange == 'mexc':
+            # Utiliser l'API REST MEXC DIRECT (pas CCXT)
+            result = await fetch_mexc_holdings(api_key, api_secret)
+        else:
+            # Utiliser CCXT pour les autres exchanges
+            result = await fetch_exchange_balance(exchange, api_key, api_secret, passphrase)
         
         if not result['success']:
             return JSONResponse({

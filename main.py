@@ -28357,6 +28357,16 @@ def get_all_holdings(user_id):
 async def connect_exchange(request: Request):
     """Connecter un exchange"""
     try:
+        # Récupérer l'utilisateur depuis le token
+        session_token = request.cookies.get("session_token")
+        user = get_user_from_token(session_token)
+        
+        if not user:
+            return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
+        
+        # Récupérer l'ID de l'utilisateur
+        username = user.get('username') or user.get('name') or 'admin'
+        
         data = await request.json()
         exchange = data.get('exchange', '').lower()
         api_key = data.get('api_key', '').strip()
@@ -28364,8 +28374,6 @@ async def connect_exchange(request: Request):
         
         if not exchange or not api_key or not api_secret:
             return JSONResponse({'success': False, 'message': 'Données manquantes'})
-        
-        user_id = request.session.get('user_id', 1)
         
         # Générer des holdings de démo pour cet exchange
         demo_holdings = {
@@ -28378,7 +28386,7 @@ async def connect_exchange(request: Request):
         holdings = demo_holdings.get(exchange, [('BTC', 0.1, 42000)])
         
         # Sauvegarder dans la DB
-        save_holdings(user_id, exchange.upper(), holdings)
+        save_holdings(username, exchange.upper(), holdings)
         
         total = sum(a * p for _, a, p in holdings)
         
@@ -28389,26 +28397,23 @@ async def connect_exchange(request: Request):
             'total_value': total
         })
     except Exception as e:
-        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
-        
-        # Pour l'instant, retourner un succès de démo
-        # TODO: Implémenter ccxt pour les vraies connexions
-        return JSONResponse({
-            'success': True,
-            'message': f'✅ {exchange.upper()} connecté avec succès!',
-            'holdings_count': 3,
-            'total_value': 24587.50
-        })
-    except Exception as e:
+        print(f"Portfolio error: {e}")
         return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
 
 @app.get("/api/portfolio/data")
 async def get_portfolio_data(request: Request):
     """Récupérer les données du portfolio"""
     try:
-        user_id = request.session.get('user_id', 1)
-        return JSONResponse(get_all_holdings(user_id))
+        # Récupérer l'utilisateur depuis le token
+        session_token = request.cookies.get("session_token")
+        user = get_user_from_token(session_token)
+        
+        if not user:
+            return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
+        
+        username = user.get('username') or user.get('name') or 'admin'
+        
+        return JSONResponse(get_all_holdings(username))
     except Exception as e:
+        print(f"Portfolio data error: {e}")
         return JSONResponse({'success': False, 'message': str(e), 'exchanges': {}})
-    except Exception as e:
-        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})

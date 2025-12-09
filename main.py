@@ -28553,36 +28553,62 @@ async def fetch_mexc_holdings(api_key, api_secret):
 async def fetch_defi_yields():
     """Fetcher les yields DeFi via DefiLlama API"""
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             # Récupérer les meilleurs yields actuels
             url = "https://yields.llama.fi/pools"
+            print(f"🔄 Fetching from {url}")
+            
             resp = await client.get(url)
-            data = resp.json()
+            print(f"Response status: {resp.status_code}")
             
-            if not data or 'data' not in data:
-                return {'success': False, 'error': 'No data'}
+            # Vérifier le statut
+            if resp.status_code != 200:
+                print(f"❌ API returned {resp.status_code}")
+                return {'success': False, 'error': f'API error {resp.status_code}'}
             
-            # Trier par APY (rendement)
-            pools = data.get('data', [])
+            # Parser JSON
+            try:
+                data = resp.json()
+            except Exception as json_err:
+                print(f"❌ JSON parse error: {json_err}")
+                return {'success': False, 'error': 'Invalid JSON response'}
+            
+            # DefiLlama retourne directement un array, pas {'data': [...]}
+            if not isinstance(data, list):
+                print(f"❌ Data is not a list: {type(data)}")
+                return {'success': False, 'error': 'Unexpected data format'}
+            
+            pools = data  # C'est déjà l'array
+            print(f"✅ Got {len(pools)} pools from DefiLlama")
             
             # Filtrer les bons yields (> 1%)
             best_yields = []
-            for pool in pools[:100]:  # Top 100
-                if not pool.get('apy') or pool['apy'] < 1:
+            for pool in pools[:150]:  # Top 150
+                try:
+                    apy = float(pool.get('apy', 0))
+                    tvl = float(pool.get('tvlUsd', 0))
+                    
+                    # Filtrer APY > 1%
+                    if apy < 1:
+                        continue
+                    
+                    best_yields.append({
+                        'protocol': str(pool.get('project', 'Unknown')).upper(),
+                        'chain': str(pool.get('chain', 'Unknown')).upper(),
+                        'pool': str(pool.get('pool', 'Pool'))[:80],
+                        'apy': apy,
+                        'tvl': tvl,
+                        'symbol': str(pool.get('symbol', '')),
+                        'rewardTokens': pool.get('rewardTokens', [])
+                    })
+                except Exception as pool_err:
+                    print(f"⚠️  Error processing pool: {pool_err}")
                     continue
-                
-                best_yields.append({
-                    'protocol': pool.get('project', 'Unknown'),
-                    'chain': pool.get('chain', 'Unknown'),
-                    'pool': pool.get('pool', 'Unknown'),
-                    'apy': float(pool.get('apy', 0)),
-                    'tvl': float(pool.get('tvlUsd', 0)),
-                    'symbol': pool.get('symbol', ''),
-                    'rewardTokens': pool.get('rewardTokens', [])
-                })
             
             # Trier par APY décroissant
             best_yields = sorted(best_yields, key=lambda x: x['apy'], reverse=True)[:20]
+            
+            print(f"✅ Returning {len(best_yields)} filtered yields")
             
             return {
                 'success': True,
@@ -28591,7 +28617,9 @@ async def fetch_defi_yields():
             }
     
     except Exception as e:
-        print(f"❌ DefiLlama Error: {e}")
+        print(f"🔴 DefiLlama Error: {e}")
+        import traceback
+        traceback.print_exc()
         return {'success': False, 'error': str(e)}
 
 async def fetch_wallet_defi_positions(wallet_address):

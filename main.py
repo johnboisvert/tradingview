@@ -6,6 +6,8 @@ from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
+import ccxt
+from cryptography.fernet import Fernet
 
 # Imports pour système d'emails et codes promo
 try:
@@ -28284,14 +28286,27 @@ import sqlite3
 from datetime import datetime
 
 def init_portfolio_db():
-    """Initialiser DB Portfolio"""
+    """Initialiser DB Portfolio avec tables API keys et holdings"""
     try:
         db_path = '/tmp/portfolio.db'
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
+        
+        # Table pour stocker les clés API (encrypted)
+        c.execute("""CREATE TABLE IF NOT EXISTS portfolio_api_keys (
+            id INTEGER PRIMARY KEY,
+            user_id TEXT,
+            exchange TEXT,
+            api_key TEXT,
+            api_secret TEXT,
+            passphrase TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )""")
+        
+        # Table pour les holdings
         c.execute("""CREATE TABLE IF NOT EXISTS portfolio_holdings (
             id INTEGER PRIMARY KEY,
-            user_id INTEGER,
+            user_id TEXT,
             exchange TEXT,
             symbol TEXT,
             amount REAL,
@@ -28299,41 +28314,138 @@ def init_portfolio_db():
             value REAL,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )""")
-        conn.commit()
-        conn.close()
-    except:
-        pass
-
-def save_holdings(user_id, exchange, holdings_list):
-    """Sauvegarder les holdings"""
-    try:
-        db_path = '/tmp/portfolio.db'
-        conn = sqlite3.connect(db_path)
-        c = conn.cursor()
-        
-        # Effacer les anciens holdings de cet exchange
-        c.execute('DELETE FROM portfolio_holdings WHERE user_id=? AND exchange=?', 
-                 (user_id, exchange))
-        
-        # Ajouter les nouveaux
-        for symbol, amount, price in holdings_list:
-            c.execute("""INSERT INTO portfolio_holdings 
-                        (user_id, exchange, symbol, amount, price, value)
-                        VALUES (?, ?, ?, ?, ?, ?)""",
-                     (user_id, exchange, symbol, amount, price, amount * price))
         
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"DB init error: {e}")
 
-def get_all_holdings(user_id):
-    """Récupérer tous les holdings"""
+def save_api_keys(user_id, exchange, api_key, api_secret, passphrase=''):
+    """Sauvegarder les clés API"""
     try:
         db_path = '/tmp/portfolio.db'
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
         
+        # Supprimer l'ancienne entrée
+        c.execute('DELETE FROM portfolio_api_keys WHERE user_id=? AND exchange=?', 
+                 (user_id, exchange.upper()))
+        
+        # Ajouter la nouvelle
+        c.execute("""INSERT INTO portfolio_api_keys 
+                    (user_id, exchange, api_key, api_secret, passphrase)
+                    VALUES (?, ?, ?, ?, ?)""",
+                 (user_id, exchange.upper(), api_key, api_secret, passphrase))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Save API keys error: {e}")
+        return False
+
+def get_api_keys(user_id, exchange):
+    """Récupérer les clés API"""
+    try:
+        db_path = '/tmp/portfolio.db'
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        
+        c.execute("""SELECT api_key, api_secret, passphrase FROM portfolio_api_keys 
+                    WHERE user_id=? AND exchange=?""", 
+                 (user_id, exchange.upper()))
+        
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            return {'api_key': result[0], 'api_secret': result[1], 'passphrase': result[2]}
+        return None
+    except Exception as e:
+        print(f"Get API keys error: {e}")
+        return None
+
+async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=''):
+    """Récupérer le balance d'un exchange via CCXT"""
+    try:
+        exchange_name = exchange_name.lower()
+        
+        # Initialiser l'exchange avec CCXT
+        exchange_class = getattr(ccxt, exchange_name)
+        exchange = exchange_class({
+            'apiKey': api_key,
+            'secret': api_secret,
+            'enableRateLimit': True,
+            'timeout': 10000
+        })
+        
+        # Pour les exchanges qui nécessitent une passphrase
+        if passphrase and exchange_name in ['okx', 'bybit']:
+            exchange.password = passphrase
+        
+        # Récupérer le balance
+        balance = exchange.fetch_balance()
+        
+        # Transformer en liste de holdings
+        holdings = []
+        for symbol in balance.get('free', {}):
+            amount = balance['free'].get(symbol, 0)
+            if amount > 0:  # Seulement les assets avec balance > 0
+                # Chercher le prix
+                try:
+                    ticker = exchange.fetch_ticker(f'{symbol}/USDT')
+                    price = ticker['last']
+                except:
+                    price = 1.0  # Fallback pour stablecoins
+                
+                value = amount * price
+                holdings.append({
+                    'symbol': symbol,
+                    'amount': amount,
+                    'price': price,
+                    'value': value
+                })
+        
+        exchange.close()
+        return {'success': True, 'holdings': holdings, 'exchange': exchange_name.upper()}
+        
+    except Exception as e:
+        error_msg = str(e)
+        return {'success': False, 'error': error_msg, 'exchange': exchange_name.upper()}
+
+def save_holdings_db(user_id, exchange, holdings):
+    """Sauvegarder les holdings en DB"""
+    try:
+        db_path = '/tmp/portfolio.db'
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        
+        # Supprimer les anciens holdings
+        c.execute('DELETE FROM portfolio_holdings WHERE user_id=? AND exchange=?', 
+                 (user_id, exchange.upper()))
+        
+        # Ajouter les nouveaux
+        for h in holdings:
+            c.execute("""INSERT INTO portfolio_holdings 
+                        (user_id, exchange, symbol, amount, price, value)
+                        VALUES (?, ?, ?, ?, ?, ?)""",
+                     (user_id, exchange.upper(), h['symbol'], h['amount'], h['price'], h['value']))
+        
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Save holdings error: {e}")
+        return False
+
+def get_all_holdings(user_id):
+    """Récupérer tous les holdings réels de l'utilisateur"""
+    try:
+        db_path = '/tmp/portfolio.db'
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        
+        # Récupérer tous les exchanges de cet utilisateur
         c.execute("""SELECT DISTINCT exchange FROM portfolio_holdings WHERE user_id=?""", 
                  (user_id,))
         exchanges = [row[0] for row in c.fetchall()]
@@ -28342,8 +28454,10 @@ def get_all_holdings(user_id):
         total = 0
         
         for exchange in exchanges:
+            # Récupérer les holdings de cet exchange
             c.execute("""SELECT symbol, amount, price, value FROM portfolio_holdings 
-                        WHERE user_id=? AND exchange=?""", 
+                        WHERE user_id=? AND exchange=?
+                        ORDER BY value DESC""", 
                      (user_id, exchange))
             holdings = c.fetchall()
             
@@ -28363,58 +28477,66 @@ def get_all_holdings(user_id):
             'success': True,
             'total_portfolio_value': total,
             'number_of_exchanges': len(result),
-            'exchanges': result
+            'exchanges': result if result else {}
         }
     except Exception as e:
+        print(f"Get holdings error: {e}")
         return {'success': False, 'exchanges': {}}
 
 
 @app.post("/api/portfolio/connect")
 async def connect_exchange(request: Request):
-    """Connecter un exchange"""
+    """Connecter un exchange avec vraies clés API"""
     try:
-        # Récupérer l'utilisateur depuis le token
         session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
         
         if not user:
             return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
         
-        # Récupérer l'ID de l'utilisateur
         username = user.get('username') or user.get('name') or 'admin'
         
         data = await request.json()
         exchange = data.get('exchange', '').lower()
         api_key = data.get('api_key', '').strip()
         api_secret = data.get('api_secret', '').strip()
+        passphrase = data.get('passphrase', '').strip()
         
         if not exchange or not api_key or not api_secret:
             return JSONResponse({'success': False, 'message': 'Données manquantes'})
         
-        # Générer des holdings de démo pour cet exchange
-        demo_holdings = {
-            'mexc': [('BTC', 0.5, 42000), ('ETH', 5, 2300), ('USDT', 1087.50, 1)],
-            'binance': [('BTC', 0.3, 42000), ('ETH', 10, 2300), ('BNB', 50, 500)],
-            'coinbase': [('BTC', 1, 42000), ('ETH', 2, 2300)],
-            'kraken': [('BTC', 0.75, 42000), ('ETH', 7, 2300), ('XRP', 1000, 2)],
-        }
+        # Vérifier que l'exchange est supporté
+        supported = ['mexc', 'binance', 'coinbase', 'kraken', 'bitget', 'bybit', 'okx', 'ftx']
+        if exchange not in supported:
+            return JSONResponse({'success': False, 'message': f'Exchange non supporté. Supportés: {", ".join(supported)}'})
         
-        holdings = demo_holdings.get(exchange, [('BTC', 0.1, 42000)])
+        # Tester la connexion et récupérer les holdings
+        result = await fetch_exchange_balance(exchange, api_key, api_secret, passphrase)
         
-        # Sauvegarder dans la DB
-        save_holdings(username, exchange.upper(), holdings)
+        if not result['success']:
+            return JSONResponse({
+                'success': False, 
+                'message': f'Erreur API: {result["error"][:100]}'
+            })
         
-        total = sum(a * p for _, a, p in holdings)
+        # Sauvegarder les clés API
+        save_api_keys(username, exchange, api_key, api_secret, passphrase)
+        
+        # Sauvegarder les holdings
+        save_holdings_db(username, exchange, result['holdings'])
+        
+        total = sum(h['value'] for h in result['holdings'])
         
         return JSONResponse({
             'success': True,
-            'message': f'{exchange.upper()} connecté avec succès!',
-            'holdings_count': len(holdings),
-            'total_value': total
+            'message': f'✅ {exchange.upper()} connecté! {len(result["holdings"])} actifs trouvés',
+            'holdings_count': len(result['holdings']),
+            'total_value': total,
+            'details': result['holdings'][:5]  # Premiers 5 pour preview
         })
     except Exception as e:
-        print(f"Portfolio error: {e}")
-        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
+        print(f"Connect error: {e}")
+        return JSONResponse({'success': False, 'message': f'Erreur: {str(e)[:100]}'})
 
 @app.get("/api/portfolio/clear")
 async def clear_portfolio(request: Request):

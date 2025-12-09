@@ -27272,28 +27272,35 @@ async def defi_yield(request: Request):
     
     yields_html = ""
     if yields_data['success']:
-        for y in yields_data.get('yields', []):
+        for i, y in enumerate(yields_data.get('yields', []), 1):
             tvl_millions = y['tvl'] / 1_000_000
             yields_html += f"""
-            <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <div>
-                        <strong style="color: #22c55e; font-size: 1.1em;">{y['protocol'].upper()}</strong>
-                        <div style="color: #cbd5e1; font-size: 0.9em; margin-top: 5px;">{y['pool']}</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="color: #22c55e; font-size: 1.5em; font-weight: bold;">{y['apy']:.2f}%</div>
-                        <div style="color: #94a3b8; font-size: 0.85em;">APY</div>
+            <div style="background: rgba(30, 41, 59, 0.95); border-left: 4px solid #22c55e; border-radius: 8px; padding: 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; hover: { 'transform': 'scale(1.01)', 'box-shadow': '0 8px 16px rgba(34, 197, 94, 0.2)' }">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <div style="background: linear-gradient(135deg, #22c55e, #16a34a); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: bold; color: white;">#{i}</div>
+                        <div>
+                            <strong style="color: #e2e8f0; font-size: 1.1em; display: block;">{y['protocol'].upper()}</strong>
+                            <div style="color: #94a3b8; font-size: 0.85em; margin-top: 4px;">{y['pool'][:50]}{'...' if len(y['pool']) > 50 else ''}</div>
+                        </div>
                     </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #cbd5e1;">
-                    <span>🔗 Chain: {y['chain']}</span>
-                    <span>💰 TVL: ${tvl_millions:.2f}M</span>
+                
+                <div style="text-align: right; margin-left: 20px;">
+                    <div style="color: #22c55e; font-size: 2em; font-weight: bold; line-height: 1;">{y['apy']:.2f}%</div>
+                    <div style="color: #94a3b8; font-size: 0.8em;">APY</div>
+                </div>
+                
+                <div style="text-align: right; margin-left: 30px; border-left: 1px solid rgba(148, 163, 184, 0.2); padding-left: 30px;">
+                    <div style="color: #cbd5e1; font-size: 0.85em;">
+                        <span style="display: block; margin-bottom: 5px;">🔗 {y['chain']}</span>
+                        <span style="display: block; color: #94a3b8;">💰 ${tvl_millions:.1f}M TVL</span>
+                    </div>
                 </div>
             </div>
             """
     else:
-        yields_html = "<div style='color: #ef4444;'>Erreur: Impossible de charger les yields</div>"
+        yields_html = "<div style='color: #ef4444; text-align: center; padding: 40px;'>⚠️ Erreur: Impossible de charger les yields</div>"
     
     html = SIDEBAR + """<!DOCTYPE html>
 <html lang="fr">
@@ -27302,31 +27309,45 @@ async def defi_yield(request: Request):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🌾 DeFi Yield</title>
     <style>
-        .defi-section { margin-left: 280px; padding: 40px; }
-        .defi-header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 30px; border-radius: 12px; margin-bottom: 30px; }
-        .defi-header h1 { font-size: 2em; color: white; margin-bottom: 10px; }
-        .defi-header p { color: rgba(255, 255, 255, 0.9); }
-        .yields-container { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 30px; }
-        .yields-title { color: #22c55e; font-size: 1.5em; margin-bottom: 20px; }
-        .refresh-btn { padding: 10px 20px; background: #22c55e; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; float: right; }
-        .refresh-btn:hover { background: #16a34a; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        
+        .defi-wrapper { margin-left: 280px; display: flex; flex-direction: column; min-height: 100vh; }
+        .defi-container { flex: 1; padding: 40px 60px; max-width: 1200px; width: 100%; margin: 0 auto; }
+        
+        .defi-header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 50px 40px; border-radius: 16px; margin-bottom: 40px; text-align: center; box-shadow: 0 20px 40px rgba(34, 197, 94, 0.15); }
+        .defi-header h1 { font-size: 2.8em; color: white; margin-bottom: 15px; font-weight: 700; }
+        .defi-header p { color: rgba(255, 255, 255, 0.95); font-size: 1.1em; }
+        
+        .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .controls h2 { color: #22c55e; font-size: 1.6em; }
+        .refresh-btn { padding: 12px 28px; background: #22c55e; color: #0f172a; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 1em; transition: all 0.3s; }
+        .refresh-btn:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(34, 197, 94, 0.3); }
+        
+        .yields-list { display: flex; flex-direction: column; gap: 0; }
+        
+        @media (max-width: 1024px) {
+            .defi-wrapper { margin-left: 0; }
+            .defi-container { padding: 30px 20px; }
+        }
     </style>
 </head>
 <body>
-    <div class="defi-section">
-        <div class="defi-header">
-            <h1>🌾 DeFi Yield Finder</h1>
-            <p>Découvrez les meilleurs rendements DeFi en temps réel</p>
-        </div>
-        
-        <div class="yields-container">
-            <div style="margin-bottom: 20px;">
-                <h2 class="yields-title">Top 20 Meilleurs Yields (24h)</h2>
-                <button class="refresh-btn" onclick="location.reload()">🔄 Rafraîchir</button>
-                <div style="clear: both;"></div>
+    <div class="defi-wrapper">
+        <div class="defi-container">
+            <div class="defi-header">
+                <h1>🌾 DeFi Yield Finder</h1>
+                <p>Découvrez les meilleurs rendements DeFi en temps réel via DefiLlama</p>
             </div>
             
+            <div class="controls">
+                <h2>📊 Top 20 Meilleurs Yields</h2>
+                <button class="refresh-btn" onclick="location.reload()">🔄 Rafraîchir</button>
+            </div>
+            
+            <div class="yields-list">
 """ + yields_html + """
+            </div>
         </div>
     </div>
 </body>

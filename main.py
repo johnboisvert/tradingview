@@ -27562,31 +27562,16 @@ async def send_push_notification(request: Request):
 
 
 # ============================================================================
-# 🏆 TRADING ACADEMY ULTRA PRO - Version Complète Professionnelle
+# 🏆 TRADING ACADEMY - Version Fonctionnelle Complète
 # ============================================================================
-# Features:
 # - 5 formations complètes
-# - 20+ modules ultra-détaillés
-# - Module Chandelles Japonaises avec diagrammes ASCII
-# - 50+ quiz questions
-# - Certificats automatiques
-# - Sidebar complète
+# - Formation 5: Analyse Technique + Chandelles avec diagrammes ASCII
+# - 20+ modules
 # - JavaScript 100% fonctionnel
 # ============================================================================
 @app.get("/academy", response_class=HTMLResponse)
-async def academy_ultra_pro(request: Request):
-    """
-    🏆 Trading Academy Ultra Pro - Formation Professionnelle Complète
-    
-    Contenu:
-    - Formation 1: Fondamentaux Absolus (2+ modules)
-    - Formation 2: Comprendre les Cryptos (3 modules)
-    - Formation 3: Sécurité Crypto (5 modules)
-    - Formation 4: Psychologie (6 modules)
-    - Formation 5: Analyse Technique + Chandelles (2 modules) 🆕
-    
-    Total: 18+ modules | 30,000+ mots | Niveau professionnel
-    """
+async def academy_working(request: Request):
+    """Trading Academy - Version Fonctionnelle"""
     html_content = """
 <!DOCTYPE html>
 <html lang="fr">
@@ -28229,6 +28214,12 @@ async def academy_ultra_pro(request: Request):
                 </div>
                 
                 <div class="grid">
+                    <div class="card" onclick="showFormation(5)">
+                        <div class="card-icon">📊</div>
+                        <div class="card-title">5. Analyse Technique PRO</div>
+                        <div class="card-desc">Chandelles japonaises complètes avec diagrammes, patterns de retournement, support/résistance. Module ultra-détaillé!</div>
+                        <div class="badge">⏱️ 8h</div><div class="badge">📚 6 modules</div><div class="badge">❓ 10 quiz</div>
+                    </div>
                     <div class="card" onclick="showFormation(1)">
                         <div class="card-icon">🎯</div>
                         <div class="card-title">1. Les Fondamentaux Absolus</div>
@@ -28913,425 +28904,6 @@ formations[4] = {
     ]
 };
 
-// FORMATION 5: ANALYSE TECHNIQUE PRO
-formations[5] = {
-    title: "📊 Analyse Technique Professionnelle",
-    duration: "8 heures",
-    modules: "6 modules",
-    modules_content: [
-        {
-            title: "Module 1: Chandelles Japonaises - Guide Complet",
-            content: '<h4>🕯️ Introduction aux Chandelles Japonaises</h4>' +
-                '<p>Les <strong>chandelles japonaises</strong> (Japanese Candlesticks) sont LA méthode de visualisation des prix la plus utilisée en trading. Créées au Japon au 18ème siècle pour le trading du riz, elles sont maintenant universelles.</p>' +
-                
-                '<h4>📐 Anatomie d\'une Chandelle</h4>' +
-                '<div class="diagram"><pre>' +
-'           ┃  ← Mèche Haute (High Wick/Shadow)
-' +
-'           ┃     Représente le prix le PLUS HAUT atteint
-' +
-'           ┃
-' +
-'        ┌──┸──┐
-' +
-'        │     │  ← Corps (Body)
-' +
-'        │     │     Zone entre OPEN et CLOSE
-' +
-'        │     │     VERT/BLANC = Prix monte (Haussier)
-' +
-'        │     │     ROUGE/NOIR = Prix baisse (Baissier)
-' +
-'        └──┰──┘
-' +
-'           ┃
-' +
-'           ┃  ← Mèche Basse (Low Wick/Shadow)
-' +
-'           ┃     Représente le prix le PLUS BAS atteint
-' +
-'</pre></div>' +
-                
-                '<p><strong>4 Prix Essentiels par Chandelle:</strong></p>' +
-                '<ul>' +
-                '<li><strong>OPEN:</strong> Prix d\'ouverture de la période</li>' +
-                '<li><strong>CLOSE:</strong> Prix de fermeture de la période</li>' +
-                '<li><strong>HIGH:</strong> Prix maximum atteint</li>' +
-                '<li><strong>LOW:</strong> Prix minimum atteint</li>' +
-                '</ul>' +
-                
-                '<h4>🟢 Chandelle Haussière (Bullish)</h4>' +
-                '<div class="diagram"><pre>' +
-'    HIGH: $52,000
-' +
-'           ┃
-' +
-'        ┌──┸──┐  ← CLOSE: $51,500 (plus haut que OPEN)
-' +
-'        │ 🟢  │
-' +
-'        │VERT │     Corps VERT = Prix a MONTÉ
-' +
-'        │     │     Acheteurs contrôlent
-' +
-'        └──┰──┘  ← OPEN: $50,000 (plus bas que CLOSE)
-' +
-'           ┃
-' +
-'    LOW: $49,500
-' +
-'</pre></div>' +
-                '<p>💡 <strong>Interprétation:</strong> Pression acheteuse forte. Tendance haussière probable.</p>' +
-                
-                '<h4>🔴 Chandelle Baissière (Bearish)</h4>' +
-                '<div class="diagram"><pre>' +
-'    HIGH: $52,000
-' +
-'           ┃
-' +
-'        ┌──┸──┐  ← OPEN: $51,500 (plus haut que CLOSE)
-' +
-'        │ 🔴  │
-' +
-'        │ROUGE│     Corps ROUGE = Prix a BAISSÉ
-' +
-'        │     │     Vendeurs contrôlent
-' +
-'        └──┰──┘  ← CLOSE: $50,000 (plus bas que OPEN)
-' +
-'           ┃
-' +
-'    LOW: $49,500
-' +
-'</pre></div>' +
-                '<p>💡 <strong>Interprétation:</strong> Pression vendeuse forte. Tendance baissière probable.</p>' +
-                
-                '<h4>🕯️ Types de Chandelles - Guide Visuel</h4>' +
-                
-                '<p><strong>1. MARUBOZU (Corps Plein - Très Fort Signal)</strong></p>' +
-                '<div class="diagram"><pre>' +
-'Marubozu Haussier:        Marubozu Baissier:
-' +
-'                          
-' +
-'     AUCUNE mèche              AUCUNE mèche
-' +
-'        ┌─────┐                   ┌─────┐
-' +
-'        │ 🟢  │                   │ 🔴  │
-' +
-'        │VERT │                   │ROUGE│
-' +
-'        │     │                   │     │
-' +
-'        │     │                   │     │
-' +
-'        └─────┘                   └─────┘
-' +
-'
-' +
-'Signal: TRÈS HAUSSIER      Signal: TRÈS BAISSIER
-' +
-'Acheteurs dominent         Vendeurs dominent
-' +
-'totalement                 totalement
-' +
-'</pre></div>' +
-                
-                '<p><strong>2. DOJI (Indécision - Prix OPEN = CLOSE)</strong></p>' +
-                '<div class="diagram"><pre>' +
-'Doji Standard:      Doji Libellule:    Doji Pierre Tombale:
-' +
-'                    
-' +
-'      ┃                   ┌─┐                 ┃
-' +
-'   ───┼───                │ │              ───┼───
-' +
-'      ┃                   └─┘                 
-' +
-'                            ┃
-' +
-'
-' +
-'Indécision          Support fort       Résistance forte
-' +
-'totale              Rejet baisse       Rejet hausse
-' +
-'</pre></div>' +
-                '<p>💡 <strong>Importance DOJI:</strong> Après tendance forte, signale souvent retournement imminent!</p>' +
-                
-                '<p><strong>3. HAMMER (Marteau - Retournement Haussier)</strong></p>' +
-                '<div class="diagram"><pre>' +
-'        ┌─┐  ← Petit corps (vert ou rouge)
-' +
-'        └─┘
-' +
-'         ┃
-' +
-'         ┃   ← Longue mèche basse
-' +
-'         ┃      (2-3x taille corps)
-' +
-'
-' +
-'Signal: ACHAT!
-' +
-'Vendeurs ont poussé bas,
-' +
-'mais acheteurs ont repris contrôle
-' +
-'Prix remonte fort = Rejet support
-' +
-'</pre></div>' +
-                '<div class="success"><strong>✅ Trading Hammer:</strong><br>' +
-                'ATTENDRE hammer en BAS de tendance baissière<br>' +
-                'CONFIRMATION: Prochaine chandelle verte<br>' +
-                'ENTRY: Au-dessus high du hammer<br>' +
-                'STOP LOSS: Sous low du hammer</div>' +
-                
-                '<p><strong>4. SHOOTING STAR (Étoile Filante - Retournement Baissier)</strong></p>' +
-                '<div class="diagram"><pre>' +
-'         ┃
-' +
-'         ┃   ← Longue mèche haute
-' +
-'         ┃      (2-3x taille corps)
-' +
-'        ┌─┐
-' +
-'        └─┘  ← Petit corps (vert ou rouge)
-' +
-'
-' +
-'Signal: VENTE!
-' +
-'Acheteurs ont poussé haut,
-' +
-'mais vendeurs ont repris contrôle
-' +
-'Prix retombe fort = Rejet résistance
-' +
-'</pre></div>' +
-                '<div class="danger"><strong>⚠️ Trading Shooting Star:</strong><br>' +
-                'ATTENDRE star en HAUT de tendance haussière<br>' +
-                'CONFIRMATION: Prochaine chandelle rouge<br>' +
-                'ENTRY SHORT: Sous low de la star<br>' +
-                'STOP LOSS: Au-dessus high de la star</div>' +
-                
-                '<p><strong>5. ENGULFING (Engloutissant - Signal Fort)</strong></p>' +
-                '<div class="diagram"><pre>' +
-'Engulfing Haussier:        Engulfing Baissier:
-' +
-'
-' +
-'  ┌─┐   ┌─────┐              ┌─────┐   ┌─┐
-' +
-'  │🔴│   │ 🟢  │              │ 🟢  │   │🔴│
-' +
-'  └─┘   │GRAND│              │GRAND│   └─┘
-' +
-'        │VERT │              │ROUGE│
-' +
-'        └─────┘              └─────┘
-' +
-'
-' +
-'Chandelle verte           Chandelle rouge
-' +
-'ENGLOUTIT rouge          ENGLOUTIT verte
-' +
-'précédente               précédente
-' +
-'
-' +
-'Signal: ACHAT FORT       Signal: VENTE FORTE
-' +
-'</pre></div>' +
-                
-                '<h4>📊 Tableaux de Trading par Chandelle</h4>' +
-                '<table>' +
-                '<tr><th>Chandelle</th><th>Signal</th><th>Position</th><th>Fiabilité</th><th>Action</th></tr>' +
-                '<tr><td>Marubozu Vert</td><td>Très haussier</td><td>Début tendance</td><td>85%</td><td>ACHAT</td></tr>' +
-                '<tr><td>Marubozu Rouge</td><td>Très baissier</td><td>Début tendance</td><td>85%</td><td>VENTE</td></tr>' +
-                '<tr><td>Doji</td><td>Indécision</td><td>Fin tendance</td><td>70%</td><td>ATTENDRE</td></tr>' +
-                '<tr><td>Hammer</td><td>Retournement UP</td><td>Bas tendance</td><td>75%</td><td>ACHAT</td></tr>' +
-                '<tr><td>Shooting Star</td><td>Retournement DOWN</td><td>Haut tendance</td><td>75%</td><td>VENTE</td></tr>' +
-                '<tr><td>Engulfing Haussier</td><td>Très haussier</td><td>Bas/Support</td><td>80%</td><td>ACHAT</td></tr>' +
-                '<tr><td>Engulfing Baissier</td><td>Très baissier</td><td>Haut/Résistance</td><td>80%</td><td>VENTE</td></tr>' +
-                '</table>' +
-                
-                '<h4>⏰ Timeframes et Importance</h4>' +
-                '<table>' +
-                '<tr><th>Timeframe</th><th>Durée Chandelle</th><th>Fiabilité Signal</th><th>Pour Quel Style</th></tr>' +
-                '<tr><td>1 minute</td><td>1 min</td><td>★☆☆☆☆ Faible</td><td>Scalping</td></tr>' +
-                '<tr><td>5 minutes</td><td>5 min</td><td>★★☆☆☆ Faible</td><td>Scalping</td></tr>' +
-                '<tr><td>15 minutes</td><td>15 min</td><td>★★☆☆☆ Moyen</td><td>Day Trading</td></tr>' +
-                '<tr><td>1 heure</td><td>1h</td><td>★★★☆☆ Moyen</td><td>Day Trading</td></tr>' +
-                '<tr><td>4 heures</td><td>4h</td><td>★★★★☆ Élevé</td><td>Swing Trading</td></tr>' +
-                '<tr><td>1 jour</td><td>24h</td><td>★★★★★ Très élevé</td><td>Swing/Position</td></tr>' +
-                '<tr><td>1 semaine</td><td>7 jours</td><td>★★★★★ Très élevé</td><td>Position Trading</td></tr>' +
-                '</table>' +
-                
-                '<div class="pro-tip"><strong>💡 Règle d\'Or Timeframes:</strong><br>' +
-                'PLUS le timeframe est élevé, PLUS le signal est fiable!<br><br>' +
-                'Un Hammer sur daily (1 jour) est 10x plus puissant qu\'un Hammer sur 1 minute.<br><br>' +
-                'Débutants: Focusez sur 4H et Daily uniquement!</div>' +
-                
-                '<h4>🎯 Exemples Concrets de Trading</h4>' +
-                '<div class="example-box"><strong>📊 Exemple 1: Hammer Bitcoin</strong><br><br>' +
-                'Date: Mars 2020 (Crash COVID)<br>' +
-                'Timeframe: Daily<br>' +
-                'Prix BTC: $3,800 (après crash de $9,000)<br><br>' +
-                '<strong>Chandelle observée:</strong><br>' +
-                'Hammer parfait:<br>' +
-                '• Open: $4,200<br>' +
-                '• Low: $3,800 (longue mèche)<br>' +
-                '• Close: $6,200<br>' +
-                '• High: $6,400<br><br>' +
-                '<strong>Action:</strong> ACHAT à $6,500 (au-dessus high)<br>' +
-                '<strong>Stop Loss:</strong> $3,700 (sous low)<br>' +
-                '<strong>Take Profit:</strong> $13,000 (x2)<br><br>' +
-                '<strong>Résultat:</strong><br>' +
-                'BTC monte à $64,000 en 13 mois (+880% gains!)<br>' +
-                'Risque: $2,800<br>' +
-                'Profit: $57,500<br>' +
-                '<strong>Risk/Reward: 1:20!</strong></div>' +
-                
-                '<div class="example-box"><strong>📊 Exemple 2: Shooting Star Ethereum</strong><br><br>' +
-                'Date: Mai 2021 (Top du bull run)<br>' +
-                'Timeframe: Daily<br>' +
-                'Prix ETH: $4,300<br><br>' +
-                '<strong>Chandelle observée:</strong><br>' +
-                'Shooting Star:<br>' +
-                '• Open: $3,800<br>' +
-                '• High: $4,380 (longue mèche)<br>' +
-                '• Close: $3,900<br>' +
-                '• Low: $3,750<br><br>' +
-                '<strong>Action:</strong> VENTE/SHORT à $3,700 (sous low)<br>' +
-                '<strong>Stop Loss:</strong> $4,400 (au-dessus high)<br>' +
-                '<strong>Take Profit:</strong> $2,000<br><br>' +
-                '<strong>Résultat:</strong><br>' +
-                'ETH chute à $1,700 en 2 mois (-54%)<br>' +
-                'Gain SHORT: +54% ($2,000 profit sur position $3,700)<br>' +
-                '<strong>Risk/Reward: 1:3</strong></div>' +
-                
-                '<h4>⚠️ Erreurs Courantes à Éviter</h4>' +
-                '<div class="danger"><strong>❌ TOP 7 ERREURS:</strong><br><br>' +
-                '1. <strong>Trader chandelles sur petit timeframe (1-5min)</strong><br>' +
-                '→ Bruit de marché, faux signaux<br><br>' +
-                '2. <strong>Ignorer le contexte (tendance générale)</strong><br>' +
-                '→ Hammer en pleine tendance baissière = piège<br><br>' +
-                '3. <strong>Pas attendre confirmation</strong><br>' +
-                '→ Toujours attendre chandelle suivante<br><br>' +
-                '4. <strong>Pas de stop loss</strong><br>' +
-                '→ Un pattern peut échouer, protège-toi!<br><br>' +
-                '5. <strong>Trader TOUTES les chandelles</strong><br>' +
-                '→ Attends les setups parfaits uniquement<br><br>' +
-                '6. <strong>Oublier le volume</strong><br>' +
-                '→ Pattern + Volume élevé = Signal fort<br><br>' +
-                '7. <strong>Sur-analyser</strong><br>' +
-                '→ Keep it simple! 5-6 patterns suffisent</div>' +
-                
-                '<div class="success"><strong>✅ Checklist Trading Chandelles:</strong><br><br>' +
-                '□ Timeframe: 4H ou Daily minimum<br>' +
-                '□ Pattern clair et bien formé<br>' +
-                '□ Position dans tendance: retournement probable<br>' +
-                '□ Volume élevé sur le pattern<br>' +
-                '□ Confirmation chandelle suivante<br>' +
-                '□ Stop loss défini AVANT entry<br>' +
-                '□ Risk/Reward minimum 1:2<br>' +
-                '□ Pas de FOMO si setup raté</div>'
-        },
-        {
-            title: "Module 2: Support et Résistance - Comment Tracer",
-            content: '<h4>🎯 Support et Résistance: Fondamentaux</h4>' +
-                '<p><strong>Support:</strong> Niveau de prix où la demande (acheteurs) est suffisamment forte pour empêcher le prix de descendre plus bas.</p>' +
-                '<p><strong>Résistance:</strong> Niveau de prix où l\'offre (vendeurs) est suffisamment forte pour empêcher le prix de monter plus haut.</p>' +
-                
-                '<div class="diagram"><pre>' +
-'                     Résistance $52,000
-' +
-'         ─────────────────────────────────
-' +
-'                /\        /\    ← Prix rejette
-' +
-'               /  \      /  \
-' +
-'              /    \    /    \
-' +
-'             /      \  /      \
-' +
-'            /        \/        \
-' +
-'           /                    \
-' +
-'          /                      \      ← Bounce
-' +
-'         ─────────────────────────────────
-' +
-'                Support $48,000
-' +
-'</pre></div>' +
-                
-                '<p><strong>Psychologie derrière S/R:</strong></p>' +
-                '<ul>' +
-                '<li><strong>Support:</strong> Acheteurs se souviennent "prix était bon ici avant"</li>' +
-                '<li><strong>Résistance:</strong> Vendeurs se souviennent "j\'ai raté vendre ici avant"</li>' +
-                '<li>Niveaux deviennent <strong>self-fulfilling prophecy</strong></li>' +
-                '</ul>' +
-                
-                '<h4>📏 Comment Tracer Support/Résistance</h4>' +
-                '<p><strong>Méthode #1: Niveaux Horizontaux (Le Plus Simple)</strong></p>' +
-                '<ol>' +
-                '<li>Zoomer sur chart 4H ou Daily</li>' +
-                '<li>Identifier zones où prix a "bounced" plusieurs fois</li>' +
-                '<li>Tracer ligne horizontale à ce niveau</li>' +
-                '<li>Minimum 2-3 touches pour être valide</li>' +
-                '</ol>' +
-                
-                '<div class="pro-tip"><strong>💡 Astuce PRO:</strong><br>' +
-                'Support/Résistance sont des ZONES, pas des lignes exactes!<br>' +
-                'Tolérance: ±1-2% autour du niveau</div>' +
-                
-                '<p><strong>Méthode #2: Swing Highs/Lows</strong></p>' +
-                '<ul>' +
-                '<li><strong>Resistance:</strong> Derniers tops avant correction</li>' +
-                '<li><strong>Support:</strong> Derniers bottoms avant rebond</li>' +
-                '</ul>' +
-                
-                '<h4>🔄 Support Devient Résistance (et Vice-Versa)</h4>' +
-                '<p>Concept CRUCIAL: Quand prix casse un support, ce support devient résistance!</p>' +
-                
-                '<div class="example-box"><strong>Exemple Bitcoin:</strong><br>' +
-                'Support à $50,000 (prix bounce 3 fois)<br>' +
-                '→ Prix casse sous $50,000<br>' +
-                '→ $50,000 devient maintenant RÉSISTANCE<br>' +
-                '→ Prix essaie remonter mais rejette à $50,000</div>' +
-                
-                '<table>' +
-                '<tr><th>Force Support/Résistance</th><th>Critère</th><th>Fiabilité</th></tr>' +
-                '<tr><td><strong>Faible</strong></td><td>2 touches, timeframe bas</td><td>50-60%</td></tr>' +
-                '<tr><td><strong>Moyen</strong></td><td>3-4 touches, 4H timeframe</td><td>65-75%</td></tr>' +
-                '<tr><td><strong>Fort</strong></td><td>5+ touches, Daily timeframe</td><td>75-85%</td></tr>' +
-                '<tr><td><strong>Très Fort</strong></td><td>Level historique, volume élevé</td><td>80-90%</td></tr>' +
-                '</table>'
-        }
-    ],
-    quiz: [
-        {question: "Chandelle verte signifie:", options: ["Prix baisse", "Prix monte", "Indécision"], correct: 1},
-        {question: "Hammer apparaît:", options: ["En haut", "En bas", "N\'importe où"], correct: 1},
-        {question: "Doji indique:", options: ["Forte hausse", "Indécision", "Forte baisse"], correct: 1},
-        {question: "Meilleur timeframe débutant:", options: ["1 minute", "4H/Daily", "1 semaine"], correct: 1},
-        {question: "Support est:", options: ["Prix monte", "Prix rejette baisse", "Prix baisse"], correct: 1},
-        {question: "Engulfing haussier:", options: ["Verte engloutit rouge", "Rouge engloutit verte", "Aucun"], correct: 0},
-        {question: "Confirmation pattern requis:", options: ["Toujours", "Jamais", "Parfois"], correct: 0},
-        {question: "Volume élevé sur pattern:", options: ["Mauvais", "Bon signe", "Neutre"], correct: 1},
-        {question: "S/R sont des:", options: ["Lignes exactes", "Zones", "Points"], correct: 1},
-        {question: "Marubozu a:", options: ["Longues mèches", "Aucune mèche", "Petit corps"], correct: 1}
-    ]
-};
-
 console.log('✅ Toutes les formations chargées!');
 
 // ===== FONCTION: AFFICHER FORMATION =====
@@ -29484,6 +29056,330 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Academy initialisée!');
     updateProgress();
 });
+
+// FORMATION 5: ANALYSE TECHNIQUE PRO
+formations[5] = {
+    title: "📊 Analyse Technique Professionnelle",
+    duration: "8 heures",
+    modules: "6 modules",
+    modules_content: [
+        {
+            title: "Module 1: Chandelles Japonaises - Guide Complet",
+            content: '<h4>🕯️ Introduction aux Chandelles Japonaises</h4>' +
+                '<p>Les <strong>chandelles japonaises</strong> (Japanese Candlesticks) sont LA méthode de visualisation des prix la plus utilisée en trading. Créées au Japon au 18ème siècle pour le trading du riz, elles sont maintenant universelles.</p>' +
+                
+                '<h4>📐 Anatomie d\'une Chandelle</h4>' +
+                '<div class="diagram"><pre>' +
+'           ┃  ← Mèche Haute (High Wick/Shadow)\n' +
+'           ┃     Représente le prix le PLUS HAUT atteint\n' +
+'           ┃\n' +
+'        ┌──┸──┐\n' +
+'        │     │  ← Corps (Body)\n' +
+'        │     │     Zone entre OPEN et CLOSE\n' +
+'        │     │     VERT/BLANC = Prix monte (Haussier)\n' +
+'        │     │     ROUGE/NOIR = Prix baisse (Baissier)\n' +
+'        └──┰──┘\n' +
+'           ┃\n' +
+'           ┃  ← Mèche Basse (Low Wick/Shadow)\n' +
+'           ┃     Représente le prix le PLUS BAS atteint\n' +
+'</pre></div>' +
+                
+                '<p><strong>4 Prix Essentiels par Chandelle:</strong></p>' +
+                '<ul>' +
+                '<li><strong>OPEN:</strong> Prix d\'ouverture de la période</li>' +
+                '<li><strong>CLOSE:</strong> Prix de fermeture de la période</li>' +
+                '<li><strong>HIGH:</strong> Prix maximum atteint</li>' +
+                '<li><strong>LOW:</strong> Prix minimum atteint</li>' +
+                '</ul>' +
+                
+                '<h4>🟢 Chandelle Haussière (Bullish)</h4>' +
+                '<div class="diagram"><pre>' +
+'    HIGH: $52,000\n' +
+'           ┃\n' +
+'        ┌──┸──┐  ← CLOSE: $51,500 (plus haut que OPEN)\n' +
+'        │ 🟢  │\n' +
+'        │VERT │     Corps VERT = Prix a MONTÉ\n' +
+'        │     │     Acheteurs contrôlent\n' +
+'        └──┰──┘  ← OPEN: $50,000 (plus bas que CLOSE)\n' +
+'           ┃\n' +
+'    LOW: $49,500\n' +
+'</pre></div>' +
+                '<p>💡 <strong>Interprétation:</strong> Pression acheteuse forte. Tendance haussière probable.</p>' +
+                
+                '<h4>🔴 Chandelle Baissière (Bearish)</h4>' +
+                '<div class="diagram"><pre>' +
+'    HIGH: $52,000\n' +
+'           ┃\n' +
+'        ┌──┸──┐  ← OPEN: $51,500 (plus haut que CLOSE)\n' +
+'        │ 🔴  │\n' +
+'        │ROUGE│     Corps ROUGE = Prix a BAISSÉ\n' +
+'        │     │     Vendeurs contrôlent\n' +
+'        └──┰──┘  ← CLOSE: $50,000 (plus bas que OPEN)\n' +
+'           ┃\n' +
+'    LOW: $49,500\n' +
+'</pre></div>' +
+                '<p>💡 <strong>Interprétation:</strong> Pression vendeuse forte. Tendance baissière probable.</p>' +
+                
+                '<h4>🕯️ Types de Chandelles - Guide Visuel</h4>' +
+                
+                '<p><strong>1. MARUBOZU (Corps Plein - Très Fort Signal)</strong></p>' +
+                '<div class="diagram"><pre>' +
+'Marubozu Haussier:        Marubozu Baissier:\n' +
+'                          \n' +
+'     AUCUNE mèche              AUCUNE mèche\n' +
+'        ┌─────┐                   ┌─────┐\n' +
+'        │ 🟢  │                   │ 🔴  │\n' +
+'        │VERT │                   │ROUGE│\n' +
+'        │     │                   │     │\n' +
+'        │     │                   │     │\n' +
+'        └─────┘                   └─────┘\n' +
+'\n' +
+'Signal: TRÈS HAUSSIER      Signal: TRÈS BAISSIER\n' +
+'Acheteurs dominent         Vendeurs dominent\n' +
+'totalement                 totalement\n' +
+'</pre></div>' +
+                
+                '<p><strong>2. DOJI (Indécision - Prix OPEN = CLOSE)</strong></p>' +
+                '<div class="diagram"><pre>' +
+'Doji Standard:      Doji Libellule:    Doji Pierre Tombale:\n' +
+'                    \n' +
+'      ┃                   ┌─┐                 ┃\n' +
+'   ───┼───                │ │              ───┼───\n' +
+'      ┃                   └─┘                 \n' +
+'                            ┃\n' +
+'\n' +
+'Indécision          Support fort       Résistance forte\n' +
+'totale              Rejet baisse       Rejet hausse\n' +
+'</pre></div>' +
+                '<p>💡 <strong>Importance DOJI:</strong> Après tendance forte, signale souvent retournement imminent!</p>' +
+                
+                '<p><strong>3. HAMMER (Marteau - Retournement Haussier)</strong></p>' +
+                '<div class="diagram"><pre>' +
+'        ┌─┐  ← Petit corps (vert ou rouge)\n' +
+'        └─┘\n' +
+'         ┃\n' +
+'         ┃   ← Longue mèche basse\n' +
+'         ┃      (2-3x taille corps)\n' +
+'\n' +
+'Signal: ACHAT!\n' +
+'Vendeurs ont poussé bas,\n' +
+'mais acheteurs ont repris contrôle\n' +
+'Prix remonte fort = Rejet support\n' +
+'</pre></div>' +
+                '<div class="success"><strong>✅ Trading Hammer:</strong><br>' +
+                'ATTENDRE hammer en BAS de tendance baissière<br>' +
+                'CONFIRMATION: Prochaine chandelle verte<br>' +
+                'ENTRY: Au-dessus high du hammer<br>' +
+                'STOP LOSS: Sous low du hammer</div>' +
+                
+                '<p><strong>4. SHOOTING STAR (Étoile Filante - Retournement Baissier)</strong></p>' +
+                '<div class="diagram"><pre>' +
+'         ┃\n' +
+'         ┃   ← Longue mèche haute\n' +
+'         ┃      (2-3x taille corps)\n' +
+'        ┌─┐\n' +
+'        └─┘  ← Petit corps (vert ou rouge)\n' +
+'\n' +
+'Signal: VENTE!\n' +
+'Acheteurs ont poussé haut,\n' +
+'mais vendeurs ont repris contrôle\n' +
+'Prix retombe fort = Rejet résistance\n' +
+'</pre></div>' +
+                '<div class="danger"><strong>⚠️ Trading Shooting Star:</strong><br>' +
+                'ATTENDRE star en HAUT de tendance haussière<br>' +
+                'CONFIRMATION: Prochaine chandelle rouge<br>' +
+                'ENTRY SHORT: Sous low de la star<br>' +
+                'STOP LOSS: Au-dessus high de la star</div>' +
+                
+                '<p><strong>5. ENGULFING (Engloutissant - Signal Fort)</strong></p>' +
+                '<div class="diagram"><pre>' +
+'Engulfing Haussier:        Engulfing Baissier:\n' +
+'\n' +
+'  ┌─┐   ┌─────┐              ┌─────┐   ┌─┐\n' +
+'  │🔴│   │ 🟢  │              │ 🟢  │   │🔴│\n' +
+'  └─┘   │GRAND│              │GRAND│   └─┘\n' +
+'        │VERT │              │ROUGE│\n' +
+'        └─────┘              └─────┘\n' +
+'\n' +
+'Chandelle verte           Chandelle rouge\n' +
+'ENGLOUTIT rouge          ENGLOUTIT verte\n' +
+'précédente               précédente\n' +
+'\n' +
+'Signal: ACHAT FORT       Signal: VENTE FORTE\n' +
+'</pre></div>' +
+                
+                '<h4>📊 Tableaux de Trading par Chandelle</h4>' +
+                '<table>' +
+                '<tr><th>Chandelle</th><th>Signal</th><th>Position</th><th>Fiabilité</th><th>Action</th></tr>' +
+                '<tr><td>Marubozu Vert</td><td>Très haussier</td><td>Début tendance</td><td>85%</td><td>ACHAT</td></tr>' +
+                '<tr><td>Marubozu Rouge</td><td>Très baissier</td><td>Début tendance</td><td>85%</td><td>VENTE</td></tr>' +
+                '<tr><td>Doji</td><td>Indécision</td><td>Fin tendance</td><td>70%</td><td>ATTENDRE</td></tr>' +
+                '<tr><td>Hammer</td><td>Retournement UP</td><td>Bas tendance</td><td>75%</td><td>ACHAT</td></tr>' +
+                '<tr><td>Shooting Star</td><td>Retournement DOWN</td><td>Haut tendance</td><td>75%</td><td>VENTE</td></tr>' +
+                '<tr><td>Engulfing Haussier</td><td>Très haussier</td><td>Bas/Support</td><td>80%</td><td>ACHAT</td></tr>' +
+                '<tr><td>Engulfing Baissier</td><td>Très baissier</td><td>Haut/Résistance</td><td>80%</td><td>VENTE</td></tr>' +
+                '</table>' +
+                
+                '<h4>⏰ Timeframes et Importance</h4>' +
+                '<table>' +
+                '<tr><th>Timeframe</th><th>Durée Chandelle</th><th>Fiabilité Signal</th><th>Pour Quel Style</th></tr>' +
+                '<tr><td>1 minute</td><td>1 min</td><td>★☆☆☆☆ Faible</td><td>Scalping</td></tr>' +
+                '<tr><td>5 minutes</td><td>5 min</td><td>★★☆☆☆ Faible</td><td>Scalping</td></tr>' +
+                '<tr><td>15 minutes</td><td>15 min</td><td>★★☆☆☆ Moyen</td><td>Day Trading</td></tr>' +
+                '<tr><td>1 heure</td><td>1h</td><td>★★★☆☆ Moyen</td><td>Day Trading</td></tr>' +
+                '<tr><td>4 heures</td><td>4h</td><td>★★★★☆ Élevé</td><td>Swing Trading</td></tr>' +
+                '<tr><td>1 jour</td><td>24h</td><td>★★★★★ Très élevé</td><td>Swing/Position</td></tr>' +
+                '<tr><td>1 semaine</td><td>7 jours</td><td>★★★★★ Très élevé</td><td>Position Trading</td></tr>' +
+                '</table>' +
+                
+                '<div class="pro-tip"><strong>💡 Règle d\'Or Timeframes:</strong><br>' +
+                'PLUS le timeframe est élevé, PLUS le signal est fiable!<br><br>' +
+                'Un Hammer sur daily (1 jour) est 10x plus puissant qu\'un Hammer sur 1 minute.<br><br>' +
+                'Débutants: Focusez sur 4H et Daily uniquement!</div>' +
+                
+                '<h4>🎯 Exemples Concrets de Trading</h4>' +
+                '<div class="example-box"><strong>📊 Exemple 1: Hammer Bitcoin</strong><br><br>' +
+                'Date: Mars 2020 (Crash COVID)<br>' +
+                'Timeframe: Daily<br>' +
+                'Prix BTC: $3,800 (après crash de $9,000)<br><br>' +
+                '<strong>Chandelle observée:</strong><br>' +
+                'Hammer parfait:<br>' +
+                '• Open: $4,200<br>' +
+                '• Low: $3,800 (longue mèche)<br>' +
+                '• Close: $6,200<br>' +
+                '• High: $6,400<br><br>' +
+                '<strong>Action:</strong> ACHAT à $6,500 (au-dessus high)<br>' +
+                '<strong>Stop Loss:</strong> $3,700 (sous low)<br>' +
+                '<strong>Take Profit:</strong> $13,000 (x2)<br><br>' +
+                '<strong>Résultat:</strong><br>' +
+                'BTC monte à $64,000 en 13 mois (+880% gains!)<br>' +
+                'Risque: $2,800<br>' +
+                'Profit: $57,500<br>' +
+                '<strong>Risk/Reward: 1:20!</strong></div>' +
+                
+                '<div class="example-box"><strong>📊 Exemple 2: Shooting Star Ethereum</strong><br><br>' +
+                'Date: Mai 2021 (Top du bull run)<br>' +
+                'Timeframe: Daily<br>' +
+                'Prix ETH: $4,300<br><br>' +
+                '<strong>Chandelle observée:</strong><br>' +
+                'Shooting Star:<br>' +
+                '• Open: $3,800<br>' +
+                '• High: $4,380 (longue mèche)<br>' +
+                '• Close: $3,900<br>' +
+                '• Low: $3,750<br><br>' +
+                '<strong>Action:</strong> VENTE/SHORT à $3,700 (sous low)<br>' +
+                '<strong>Stop Loss:</strong> $4,400 (au-dessus high)<br>' +
+                '<strong>Take Profit:</strong> $2,000<br><br>' +
+                '<strong>Résultat:</strong><br>' +
+                'ETH chute à $1,700 en 2 mois (-54%)<br>' +
+                'Gain SHORT: +54% ($2,000 profit sur position $3,700)<br>' +
+                '<strong>Risk/Reward: 1:3</strong></div>' +
+                
+                '<h4>⚠️ Erreurs Courantes à Éviter</h4>' +
+                '<div class="danger"><strong>❌ TOP 7 ERREURS:</strong><br><br>' +
+                '1. <strong>Trader chandelles sur petit timeframe (1-5min)</strong><br>' +
+                '→ Bruit de marché, faux signaux<br><br>' +
+                '2. <strong>Ignorer le contexte (tendance générale)</strong><br>' +
+                '→ Hammer en pleine tendance baissière = piège<br><br>' +
+                '3. <strong>Pas attendre confirmation</strong><br>' +
+                '→ Toujours attendre chandelle suivante<br><br>' +
+                '4. <strong>Pas de stop loss</strong><br>' +
+                '→ Un pattern peut échouer, protège-toi!<br><br>' +
+                '5. <strong>Trader TOUTES les chandelles</strong><br>' +
+                '→ Attends les setups parfaits uniquement<br><br>' +
+                '6. <strong>Oublier le volume</strong><br>' +
+                '→ Pattern + Volume élevé = Signal fort<br><br>' +
+                '7. <strong>Sur-analyser</strong><br>' +
+                '→ Keep it simple! 5-6 patterns suffisent</div>' +
+                
+                '<div class="success"><strong>✅ Checklist Trading Chandelles:</strong><br><br>' +
+                '□ Timeframe: 4H ou Daily minimum<br>' +
+                '□ Pattern clair et bien formé<br>' +
+                '□ Position dans tendance: retournement probable<br>' +
+                '□ Volume élevé sur le pattern<br>' +
+                '□ Confirmation chandelle suivante<br>' +
+                '□ Stop loss défini AVANT entry<br>' +
+                '□ Risk/Reward minimum 1:2<br>' +
+                '□ Pas de FOMO si setup raté</div>'
+        },
+        {
+            title: "Module 2: Support et Résistance - Comment Tracer",
+            content: '<h4>🎯 Support et Résistance: Fondamentaux</h4>' +
+                '<p><strong>Support:</strong> Niveau de prix où la demande (acheteurs) est suffisamment forte pour empêcher le prix de descendre plus bas.</p>' +
+                '<p><strong>Résistance:</strong> Niveau de prix où l\'offre (vendeurs) est suffisamment forte pour empêcher le prix de monter plus haut.</p>' +
+                
+                '<div class="diagram"><pre>' +
+'                     Résistance $52,000\n' +
+'         ─────────────────────────────────\n' +
+'                /\\        /\\    ← Prix rejette\n' +
+'               /  \\      /  \\\n' +
+'              /    \\    /    \\\n' +
+'             /      \\  /      \\\n' +
+'            /        \\/        \\\n' +
+'           /                    \\\n' +
+'          /                      \\      ← Bounce\n' +
+'         ─────────────────────────────────\n' +
+'                Support $48,000\n' +
+'</pre></div>' +
+                
+                '<p><strong>Psychologie derrière S/R:</strong></p>' +
+                '<ul>' +
+                '<li><strong>Support:</strong> Acheteurs se souviennent "prix était bon ici avant"</li>' +
+                '<li><strong>Résistance:</strong> Vendeurs se souviennent "j\'ai raté vendre ici avant"</li>' +
+                '<li>Niveaux deviennent <strong>self-fulfilling prophecy</strong></li>' +
+                '</ul>' +
+                
+                '<h4>📏 Comment Tracer Support/Résistance</h4>' +
+                '<p><strong>Méthode #1: Niveaux Horizontaux (Le Plus Simple)</strong></p>' +
+                '<ol>' +
+                '<li>Zoomer sur chart 4H ou Daily</li>' +
+                '<li>Identifier zones où prix a "bounced" plusieurs fois</li>' +
+                '<li>Tracer ligne horizontale à ce niveau</li>' +
+                '<li>Minimum 2-3 touches pour être valide</li>' +
+                '</ol>' +
+                
+                '<div class="pro-tip"><strong>💡 Astuce PRO:</strong><br>' +
+                'Support/Résistance sont des ZONES, pas des lignes exactes!<br>' +
+                'Tolérance: ±1-2% autour du niveau</div>' +
+                
+                '<p><strong>Méthode #2: Swing Highs/Lows</strong></p>' +
+                '<ul>' +
+                '<li><strong>Resistance:</strong> Derniers tops avant correction</li>' +
+                '<li><strong>Support:</strong> Derniers bottoms avant rebond</li>' +
+                '</ul>' +
+                
+                '<h4>🔄 Support Devient Résistance (et Vice-Versa)</h4>' +
+                '<p>Concept CRUCIAL: Quand prix casse un support, ce support devient résistance!</p>' +
+                
+                '<div class="example-box"><strong>Exemple Bitcoin:</strong><br>' +
+                'Support à $50,000 (prix bounce 3 fois)<br>' +
+                '→ Prix casse sous $50,000<br>' +
+                '→ $50,000 devient maintenant RÉSISTANCE<br>' +
+                '→ Prix essaie remonter mais rejette à $50,000</div>' +
+                
+                '<table>' +
+                '<tr><th>Force Support/Résistance</th><th>Critère</th><th>Fiabilité</th></tr>' +
+                '<tr><td><strong>Faible</strong></td><td>2 touches, timeframe bas</td><td>50-60%</td></tr>' +
+                '<tr><td><strong>Moyen</strong></td><td>3-4 touches, 4H timeframe</td><td>65-75%</td></tr>' +
+                '<tr><td><strong>Fort</strong></td><td>5+ touches, Daily timeframe</td><td>75-85%</td></tr>' +
+                '<tr><td><strong>Très Fort</strong></td><td>Level historique, volume élevé</td><td>80-90%</td></tr>' +
+                '</table>'
+        }
+    ],
+    quiz: [
+        {question: "Chandelle verte signifie:", options: ["Prix baisse", "Prix monte", "Indécision"], correct: 1},
+        {question: "Hammer apparaît:", options: ["En haut", "En bas", "N\'importe où"], correct: 1},
+        {question: "Doji indique:", options: ["Forte hausse", "Indécision", "Forte baisse"], correct: 1},
+        {question: "Meilleur timeframe débutant:", options: ["1 minute", "4H/Daily", "1 semaine"], correct: 1},
+        {question: "Support est:", options: ["Prix monte", "Prix rejette baisse", "Prix baisse"], correct: 1},
+        {question: "Engulfing haussier:", options: ["Verte engloutit rouge", "Rouge engloutit verte", "Aucun"], correct: 0},
+        {question: "Confirmation pattern requis:", options: ["Toujours", "Jamais", "Parfois"], correct: 0},
+        {question: "Volume élevé sur pattern:", options: ["Mauvais", "Bon signe", "Neutre"], correct: 1},
+        {question: "S/R sont des:", options: ["Lignes exactes", "Zones", "Points"], correct: 1},
+        {question: "Marubozu a:", options: ["Longues mèches", "Aucune mèche", "Petit corps"], correct: 1}
+    ]
+};
+
 
 console.log('✅ JavaScript Academy chargé avec succès!');
     </script>

@@ -27259,6 +27259,81 @@ self.addEventListener('push', (event) => {
 });
 """
 
+# ============================================================================
+# 🌾 ROUTE DEFI YIELD
+# ============================================================================
+
+@app.get("/defi-yield", response_class=HTMLResponse)
+async def defi_yield(request: Request):
+    """DeFi Yield - affiche les meilleurs yields DeFi disponibles"""
+    
+    # Fetcher les yields DeFi
+    yields_data = await fetch_defi_yields()
+    
+    yields_html = ""
+    if yields_data['success']:
+        for y in yields_data.get('yields', []):
+            tvl_millions = y['tvl'] / 1_000_000
+            yields_html += f"""
+            <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <div>
+                        <strong style="color: #22c55e; font-size: 1.1em;">{y['protocol'].upper()}</strong>
+                        <div style="color: #cbd5e1; font-size: 0.9em; margin-top: 5px;">{y['pool']}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="color: #22c55e; font-size: 1.5em; font-weight: bold;">{y['apy']:.2f}%</div>
+                        <div style="color: #94a3b8; font-size: 0.85em;">APY</div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #cbd5e1;">
+                    <span>🔗 Chain: {y['chain']}</span>
+                    <span>💰 TVL: ${tvl_millions:.2f}M</span>
+                </div>
+            </div>
+            """
+    else:
+        yields_html = "<div style='color: #ef4444;'>Erreur: Impossible de charger les yields</div>"
+    
+    html = SIDEBAR + """<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌾 DeFi Yield</title>
+    <style>
+        .defi-section { margin-left: 280px; padding: 40px; }
+        .defi-header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 30px; border-radius: 12px; margin-bottom: 30px; }
+        .defi-header h1 { font-size: 2em; color: white; margin-bottom: 10px; }
+        .defi-header p { color: rgba(255, 255, 255, 0.9); }
+        .yields-container { background: rgba(15, 23, 42, 0.6); border-radius: 12px; padding: 30px; }
+        .yields-title { color: #22c55e; font-size: 1.5em; margin-bottom: 20px; }
+        .refresh-btn { padding: 10px 20px; background: #22c55e; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; float: right; }
+        .refresh-btn:hover { background: #16a34a; }
+    </style>
+</head>
+<body>
+    <div class="defi-section">
+        <div class="defi-header">
+            <h1>🌾 DeFi Yield Finder</h1>
+            <p>Découvrez les meilleurs rendements DeFi en temps réel</p>
+        </div>
+        
+        <div class="yields-container">
+            <div style="margin-bottom: 20px;">
+                <h2 class="yields-title">Top 20 Meilleurs Yields (24h)</h2>
+                <button class="refresh-btn" onclick="location.reload()">🔄 Rafraîchir</button>
+                <div style="clear: both;"></div>
+            </div>
+            
+""" + yields_html + """
+        </div>
+    </div>
+</body>
+</html>"""
+    
+    return html
+
 # ROUTE PWA
 @app.get("/manifest.json")
 async def get_manifest():
@@ -28452,6 +28527,63 @@ async def fetch_mexc_holdings(api_key, api_secret):
     
     except Exception as e:
         print(f"🔴 MEXC API Error: {e}")
+        return {'success': False, 'error': str(e)}
+
+async def fetch_defi_yields():
+    """Fetcher les yields DeFi via DefiLlama API"""
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            # Récupérer les meilleurs yields actuels
+            url = "https://yields.llama.fi/pools"
+            resp = await client.get(url)
+            data = resp.json()
+            
+            if not data or 'data' not in data:
+                return {'success': False, 'error': 'No data'}
+            
+            # Trier par APY (rendement)
+            pools = data.get('data', [])
+            
+            # Filtrer les bons yields (> 1%)
+            best_yields = []
+            for pool in pools[:100]:  # Top 100
+                if not pool.get('apy') or pool['apy'] < 1:
+                    continue
+                
+                best_yields.append({
+                    'protocol': pool.get('project', 'Unknown'),
+                    'chain': pool.get('chain', 'Unknown'),
+                    'pool': pool.get('pool', 'Unknown'),
+                    'apy': float(pool.get('apy', 0)),
+                    'tvl': float(pool.get('tvlUsd', 0)),
+                    'symbol': pool.get('symbol', ''),
+                    'rewardTokens': pool.get('rewardTokens', [])
+                })
+            
+            # Trier par APY décroissant
+            best_yields = sorted(best_yields, key=lambda x: x['apy'], reverse=True)[:20]
+            
+            return {
+                'success': True,
+                'yields': best_yields,
+                'count': len(best_yields)
+            }
+    
+    except Exception as e:
+        print(f"❌ DefiLlama Error: {e}")
+        return {'success': False, 'error': str(e)}
+
+async def fetch_wallet_defi_positions(wallet_address):
+    """Fetcher les positions DeFi d'une adresse wallet"""
+    try:
+        # Note: DefiLlama ne donne pas les positions individuelles
+        # Mais on peut utiliser Zapper ou autre
+        # Pour maintenant, on retourne les yields disponibles
+        yields = await fetch_defi_yields()
+        return yields
+    
+    except Exception as e:
+        print(f"❌ Wallet Analysis Error: {e}")
         return {'success': False, 'error': str(e)}
 
 async def fetch_price_coingecko(symbol):

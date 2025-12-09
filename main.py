@@ -27568,489 +27568,391 @@ async def academy_ia(request: Request):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎓 Academy IA | Trading Dashboard Pro</title>
+    <title>🎓 Académie Trading Pro</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-            color: #e0e6ed;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
             margin-left: 280px;
-            padding: 30px;
+            padding: 40px;
             min-height: 100vh;
         }}
         
         .header {{
-            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-            padding: 40px;
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            padding: 60px 40px;
             border-radius: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 20px 60px rgba(139, 92, 246, 0.4);
-            border: 2px solid rgba(139, 92, 246, 0.5);
-        }}
-        
-        .header h1 {{ font-size: 3em; margin-bottom: 10px; font-weight: 700; }}
-        .header p {{ font-size: 1.1em; opacity: 0.95; }}
-        
-        .stats-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }}
-        
-        .stat-card {{
-            background: rgba(139, 92, 246, 0.1);
-            border: 2px solid rgba(139, 92, 246, 0.3);
-            padding: 25px;
-            border-radius: 15px;
+            margin-bottom: 50px;
             text-align: center;
-            transition: all 0.3s ease;
+            box-shadow: 0 25px 60px rgba(99, 102, 241, 0.3);
         }}
         
-        .stat-card:hover {{
-            transform: translateY(-5px);
-            border-color: #8b5cf6;
-            box-shadow: 0 15px 40px rgba(139, 92, 246, 0.3);
-        }}
-        
-        .stat-value {{ font-size: 2.5em; font-weight: 700; color: #a78bfa; margin: 10px 0; }}
-        .stat-label {{ font-size: 0.95em; opacity: 0.8; }}
-        
-        .ai-coach {{
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(101, 39, 211, 0.1) 100%);
-            border: 2px solid rgba(139, 92, 246, 0.3);
-            border-radius: 18px;
-            padding: 30px;
-            margin-bottom: 40px;
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        .ai-coach h3 {{ font-size: 1.5em; margin-bottom: 15px; color: #a78bfa; }}
-        .ai-coach p {{ line-height: 1.8; opacity: 0.95; }}
-        
-        .courses-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 30px;
-            margin-bottom: 40px;
-        }}
-        
-        .course-card {{
-            background: rgba(30, 41, 59, 0.7);
-            border: 2px solid rgba(139, 92, 246, 0.3);
-            border-radius: 18px;
-            overflow: hidden;
-            transition: all 0.4s ease;
-            position: relative;
-        }}
-        
-        .course-card::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 5px;
-            background: linear-gradient(90deg, #8b5cf6, #a78bfa);
-        }}
-        
-        .course-card:hover {{
-            transform: translateY(-8px);
-            border-color: #8b5cf6;
-            box-shadow: 0 20px 50px rgba(139, 92, 246, 0.35);
-        }}
-        
-        .course-header {{
-            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-            padding: 25px;
-        }}
-        
-        .course-level {{
-            display: inline-block;
-            padding: 6px 16px;
-            background: rgba(255, 255, 255, 0.25);
-            border-radius: 25px;
-            font-size: 0.85em;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }}
-        
-        .course-title {{ font-size: 1.6em; font-weight: 700; margin: 10px 0; }}
-        .course-duration {{ opacity: 0.9; font-size: 0.95em; }}
-        
-        .course-body {{ padding: 25px; }}
-        
-        .course-description {{ margin-bottom: 15px; line-height: 1.7; }}
-        
-        .modules {{ list-style: none; margin: 15px 0; }}
-        .modules li {{
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }}
-        
-        .modules li:before {{ content: '✓'; color: #8b5cf6; font-weight: bold; }}
-        
-        .progress-section {{
-            margin: 20px 0;
-            padding: 15px 0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }}
+        .header h1 {{ font-size: 3.2em; margin-bottom: 15px; font-weight: 800; }}
+        .header p {{ font-size: 1.2em; opacity: 0.95; margin-bottom: 20px; }}
         
         .progress-bar {{
-            height: 10px;
-            background: rgba(139, 92, 246, 0.2);
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
             border-radius: 10px;
+            margin-top: 20px;
             overflow: hidden;
-            margin: 10px 0;
         }}
         
         .progress-fill {{
             height: 100%;
-            background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+            width: 15%;
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
             border-radius: 10px;
         }}
         
-        .btn {{
-            width: 100%;
-            padding: 14px;
-            border: none;
+        .level-sections {{
+            display: flex;
+            flex-direction: column;
+            gap: 50px;
+        }}
+        
+        .level {{
+            border-radius: 16px;
+            padding: 40px;
+            border-left: 8px solid;
+        }}
+        
+        .level-1 {{ background: rgba(34, 197, 94, 0.08); border-color: #22c55e; }}
+        .level-2 {{ background: rgba(59, 130, 246, 0.08); border-color: #3b82f6; }}
+        .level-3 {{ background: rgba(168, 85, 247, 0.08); border-color: #a855f7; }}
+        .level-4 {{ background: rgba(236, 72, 153, 0.08); border-color: #ec4899; }}
+        
+        .level h2 {{ font-size: 2em; margin-bottom: 10px; display: flex; align-items: center; gap: 15px; }}
+        .level-1 h2 {{ color: #22c55e; }}
+        .level-2 h2 {{ color: #3b82f6; }}
+        .level-3 h2 {{ color: #a855f7; }}
+        .level-4 h2 {{ color: #ec4899; }}
+        
+        .level-subtitle {{ color: #cbd5e1; font-size: 1.05em; margin-bottom: 25px; }}
+        
+        .courses-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+        }}
+        
+        .course {{
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(148, 163, 184, 0.2);
             border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
+            padding: 20px;
             transition: all 0.3s ease;
-            margin-top: 10px;
-            font-size: 1em;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
         }}
         
-        .btn-primary {{
-            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
-            color: white;
+        .course:hover {{
+            transform: translateY(-5px);
+            border-color: rgba(148, 163, 184, 0.4);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
         }}
         
-        .btn-primary:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(139, 92, 246, 0.4);
-        }}
-
-        .explanation-section {{
-            background: rgba(30, 41, 59, 0.7);
-            border: 2px solid rgba(139, 92, 246, 0.3);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 40px;
+        .course-title {{
+            font-size: 1.1em;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #e2e8f0;
         }}
         
-        .explanation-section h2 {{ color: #a78bfa; margin-bottom: 20px; font-size: 1.6em; }}
-        .explanation-section p {{ line-height: 1.8; margin-bottom: 15px; opacity: 0.95; }}
+        .course-desc {{
+            font-size: 0.9em;
+            color: #cbd5e1;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }}
         
-        @media (max-width: 768px) {{
-            body {{ margin-left: 0; padding: 15px; }}
-            .courses-grid {{ grid-template-columns: 1fr; }}
-            .header h1 {{ font-size: 2em; }}
+        .course-meta {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85em;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }}
+        
+        .difficulty {{
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            background: rgba(148, 163, 184, 0.2);
+        }}
+        
+        .diff-easy {{ color: #22c55e; }}
+        .diff-medium {{ color: #f59e0b; }}
+        .diff-hard {{ color: #ef4444; }}
+        .diff-expert {{ color: #ec4899; }}
+        
+        .course-checkbox {{
+            accent-color: #6366f1;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }}
+        
+        @media (max-width: 1024px) {{
+            body {{ margin-left: 0; padding: 20px; }}
+            .header {{ padding: 40px 20px; }}
+            .level {{ padding: 25px; }}
         }}
     </style>
 </head>
 <body>
-
-<div class="header">
-    <h1>🎓 Academy IA</h1>
-    <p>8+ formations crypto générées par IA - Devenez un trading expert!</p>
-</div>
-
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-label">📚 Formations Totales</div>
-        <div class="stat-value">8+</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-label">✅ Complétées</div>
-        <div class="stat-value">3</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-label">⭐ Points XP</div>
-        <div class="stat-value">1,250</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-label">🏆 Niveau Actuel</div>
-        <div class="stat-value">5</div>
-    </div>
-</div>
-
-<div class="ai-coach">
-    <h3>🤖 Coach IA Personnel</h3>
-    <p>Posez n'importe quelle question sur le trading, la blockchain, ou la cryptomonnaie. Le Coach IA répond 24/7 avec des explications personnalisées.</p>
-    <div style="margin-top: 20px; display: flex; gap: 10px;">
-        <input type="text" placeholder="Ex: Comment analyser un chart? Qu'est-ce qu'un smart contract?" style="flex: 1; padding: 12px 15px; border: 2px solid rgba(139, 92, 246, 0.3); border-radius: 10px; background: rgba(15, 23, 42, 0.8); color: #e0e6ed; font-size: 0.95em;">
-        <button style="padding: 12px 30px; background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600;">Envoyer</button>
-    </div>
-</div>
-
-<h2 style="margin: 40px 0 25px; font-size: 1.8em; color: #a78bfa;">📚 Nos Formations</h2>
-
-<div class="courses-grid">
-    <div class="course-card">
-        <div class="course-header">
-            <span class="course-level">🟢 Débutant</span>
-            <div class="course-title">Les Bases du Trading</div>
-            <div class="course-duration">⏱️ 2 heures • 5 modules</div>
+    <div class="header">
+        <h1>🎓 Académie Trading Pro</h1>
+        <p>Du débutant au trader professionnel - 20+ formations complètes</p>
+        <div class="progress-bar">
+            <div class="progress-fill"></div>
         </div>
-        <div class="course-body">
-            <p class="course-description">Apprenez les fondamentaux du trading crypto depuis zéro.</p>
-            <ul class="modules">
-                <li>Qu'est-ce que la blockchain?</li>
-                <li>Types de cryptomonnaies (BTC, ETH, etc.)</li>
-                <li>Comment configurer un wallet</li>
-                <li>Premiers pas en trading</li>
-                <li>Gestion basique du risque</li>
-            </ul>
-            <div class="progress-section">
-                <strong>Progression: 50%</strong>
-                <div class="progress-bar"><div class="progress-fill" style="width: 50%;"></div></div>
+        <p style="margin-top: 15px; font-size: 0.95em; opacity: 0.9;">15% - Continuez votre apprentissage!</p>
+    </div>
+    
+    <div class="level-sections">
+        <!-- NIVEAU 1: DÉBUTANT -->
+        <div class="level level-1">
+            <h2>🟢 Niveau 1: Débutant (Bases Essentielles)</h2>
+            <p class="level-subtitle">Comprendre les bases de la crypto et du trading au comptant</p>
+            
+            <div class="courses-grid">
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">1. Les Fondamentaux de la Crypto</div>
+                    <div class="course-desc">Qu'est-ce que Bitcoin, Ethereum, les altcoins? Blockchains, mining, consensus.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 45 min</span>
+                        <span class="difficulty diff-easy">Facile</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">2. Sécurité des Portefeuilles</div>
+                    <div class="course-desc">Portefeuilles chauds vs froids, phrases de récupération, 2FA. Sécuriser tes assets.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 30 min</span>
+                        <span class="difficulty diff-easy">Facile</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">3. Guide des Plateformes d'Échange</div>
+                    <div class="course-desc">MEXC, Binance, Coinbase. Comment créer un compte et acheter/vendre.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 40 min</span>
+                        <span class="difficulty diff-easy">Facile</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">4. Ton Premier Trade au Comptant</div>
+                    <div class="course-desc">Achat/vente de crypto, ordres au marché vs limités, exécution.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 35 min</span>
+                        <span class="difficulty diff-easy">Facile</span>
+                    </div>
+                </div>
             </div>
-            <button class="btn btn-primary">Continuer →</button>
-        </div>
-    </div>
-    
-    <div class="course-card">
-        <div class="course-header">
-            <span class="course-level">🟡 Intermédiaire</span>
-            <div class="course-title">Analyse Technique</div>
-            <div class="course-duration">⏱️ 4 heures • 8 modules</div>
-        </div>
-        <div class="course-body">
-            <p class="course-description">Maîtrisez l'analyse technique avancée pour prendre de bonnes décisions.</p>
-            <ul class="modules">
-                <li>Support et résistance</li>
-                <li>Moyennes mobiles (EMA/SMA)</li>
-                <li>RSI et MACD explicités</li>
-                <li>Chandeliers japonais</li>
-                <li>Patterns de reversal</li>
-            </ul>
-            <div class="progress-section">
-                <strong>Progression: 25%</strong>
-                <div class="progress-bar"><div class="progress-fill" style="width: 25%;"></div></div>
-            </div>
-            <button class="btn btn-primary">Reprendre →</button>
-        </div>
-    </div>
-    
-    <div class="course-card">
-        <div class="course-header">
-            <span class="course-level">🔴 Avancé</span>
-            <div class="course-title">Trading Algorithmique</div>
-            <div class="course-duration">⏱️ 6 heures • 10 modules</div>
-        </div>
-        <div class="course-body">
-            <p class="course-description">Créez vos propres stratégies automatisées et gagnez à la machine!</p>
-            <ul class="modules">
-                <li>Pine Script TradingView</li>
-                <li>Backtesting de stratégies</li>
-                <li>Gestion avancée du risque</li>
-                <li>Déploiement en production</li>
-                <li>APIs des exchanges</li>
-            </ul>
-            <div class="progress-section">
-                <strong>Progression: 0%</strong>
-                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
-            </div>
-            <button class="btn btn-primary">Débloquer (Premium) →</button>
-        </div>
-    </div>
-    
-    <div class="course-card">
-        <div class="course-header">
-            <span class="course-level">🔵 Spécialisé</span>
-            <div class="course-title">DeFi et Smart Contracts</div>
-            <div class="course-duration">⏱️ 3 heures • 6 modules</div>
-        </div>
-        <div class="course-body">
-            <p class="course-description">Comprendre et trader la DeFi - le future de la finance!</p>
-            <ul class="modules">
-                <li>Qu'est-ce que la DeFi?</li>
-                <li>AMM et Liquidity Pools</li>
-                <li>Farming et Yield</li>
-                <li>Risques des smart contracts</li>
-                <li>Stratégies de DeFi</li>
-            </ul>
-            <div class="progress-section">
-                <strong>Progression: 0%</strong>
-                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
-            </div>
-            <button class="btn btn-primary">Commencer →</button>
-        </div>
-    </div>
-    
-    <div class="course-card">
-        <div class="course-header">
-            <span class="course-level">🟣 Spécialisé</span>
-            <div class="course-title">Altcoins & Tokenomics</div>
-            <div class="course-duration">⏱️ 2.5 heures • 5 modules</div>
-        </div>
-        <div class="course-body">
-            <p class="course-description">Comment identifier les altcoins winners et comprendre la tokenomics.</p>
-            <ul class="modules">
-                <li>Whitepaper analysis</li>
-                <li>Tokenomics explained</li>
-                <li>Supply & circulation</li>
-                <li>Red flags à éviter</li>
-                <li>Due diligence complète</li>
-            </ul>
-            <div class="progress-section">
-                <strong>Progression: 0%</strong>
-                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
-            </div>
-            <button class="btn btn-primary">Commencer →</button>
-        </div>
-    </div>
-    
-    <div class="course-card">
-        <div class="course-header">
-            <span class="course-level">💎 Premium</span>
-            <div class="course-title">Trading Psychology</div>
-            <div class="course-duration">⏱️ 2 heures • 4 modules</div>
-        </div>
-        <div class="course-body">
-            <p class="course-description">Maîtrisez votre psychologie - la clé du succès en trading!</p>
-            <ul class="modules">
-                <li>Émotions en trading</li>
-                <li>Gestion du stress</li>
-                <li>Discipline et patience</li>
-                <li>Récupération après perte</li>
-            </ul>
-            <div class="progress-section">
-                <strong>Progression: 0%</strong>
-                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
-            </div>
-            <button class="btn btn-primary">Débloquer (Premium) →</button>
-        </div>
-    </div>
-    
-    <div class="course-card">
-        <div class="course-header">
-            <span class="course-level">💎 Premium</span>
-            <div class="course-title">Stratégies Avancées</div>
-            <div class="course-duration">⏱️ 5 heures • 9 modules</div>
-        </div>
-        <div class="course-body">
-            <p class="course-description">Les stratégies utilisées par les pros - grid trading, scalping, etc.</p>
-            <ul class="modules">
-                <li>Grid trading explained</li>
-                <li>Scalping techniques</li>
-                <li>Swing trading pro</li>
-                <li>Arbitrage crypto</li>
-                <li>Multi-timeframe strategy</li>
-            </ul>
-            <div class="progress-section">
-                <strong>Progression: 0%</strong>
-                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
-            </div>
-            <button class="btn btn-primary">Débloquer (Premium) →</button>
-        </div>
-    </div>
-    
-    <div class="course-card">
-        <div class="course-header">
-            <span class="course-level">🌟 Elite</span>
-            <div class="course-title">Build Your IA Trading Bot</div>
-            <div class="course-duration">⏱️ 8 heures • 12 modules</div>
-        </div>
-        <div class="course-body">
-            <p class="course-description">Construisez votre propre bot de trading alimenté par l'IA!</p>
-            <ul class="modules">
-                <li>APIs des exchanges</li>
-                <li>Machine Learning basics</li>
-                <li>Code un bot Python</li>
-                <li>Backtesting large scale</li>
-                <li>Déploiement Cloud</li>
-            </ul>
-            <div class="progress-section">
-                <strong>Progression: 0%</strong>
-                <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
-            </div>
-            <button class="btn btn-primary">Débloquer (Elite) →</button>
-        </div>
-    </div>
-</div>
-
-<!-- GUIDE EN BAS - PAS STICKY! -->
-<div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(101, 39, 211, 0.15) 100%); border: 2px solid rgba(139, 92, 246, 0.5); border-radius: 15px; padding: 30px; margin-top: 40px;">
-    <h2 style="color: #a78bfa; margin-bottom: 20px; font-size: 1.6em;">💡 Comment utiliser Academy IA?</h2>
-    
-    <div style="background: rgba(139, 92, 246, 0.1); border: 2px solid rgba(139, 92, 246, 0.2); border-radius: 15px; padding: 25px; margin-bottom: 25px;">
-        <h3 style="color: #a78bfa; margin-bottom: 15px; font-size: 1.3em;">❓ Qu'est-ce que c'est?</h3>
-        <p style="line-height: 1.8; opacity: 0.95;">
-            Academy IA est une plateforme d'apprentissage complète pour maîtriser le trading crypto. Vous avez accès à 8+ formations progressives, d'un niveau débutant à expert. Chaque formation contient plusieurs modules avec explications détaillées, exemples, et exercices pratiques.
-        </p>
-        <p style="line-height: 1.8; opacity: 0.95; margin-top: 15px;">
-            <strong>Avantages:</strong> Apprenez à votre rythme • Coach IA personnel 24/7 • Certificats de complétion • Système de progression (XP) • Accès lifetime
-        </p>
-    </div>
-    
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-        <div style="background: rgba(139, 92, 246, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #a78bfa; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">🎯 ÉTAPES POUR COMMENCER</div>
-            <ol style="line-height: 1.8; margin-left: 20px;">
-                <li>Choisissez une formation (par niveau)</li>
-                <li>Cliquez sur "Commencer" ou "Continuer"</li>
-                <li>Lisez les modules progressivement</li>
-                <li>Posez des questions au Coach IA</li>
-                <li>Complétez pour avoir le certificat</li>
-                <li>Débloquez les formations Premium</li>
-            </ol>
         </div>
         
-        <div style="background: rgba(139, 92, 246, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #a78bfa; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">📊 FORMATIONS DISPONIBLES</div>
-            <ul style="line-height: 1.8; margin-left: 20px;">
-                <li>🟢 Débutant: 1 formation</li>
-                <li>🟡 Intermédiaire: 2 formations</li>
-                <li>🔴 Avancé: 2 formations</li>
-                <li>🔵 Spécialisé: 2 formations</li>
-                <li>💎 Premium: 2 formations</li>
-                <li>🌟 Elite: 1 formation</li>
-            </ul>
+        <!-- NIVEAU 2: INTERMÉDIAIRE -->
+        <div class="level level-2">
+            <h2>🔵 Niveau 2: Intermédiaire (Principes du Trading)</h2>
+            <p class="level-subtitle">Apprendre à analyser le marché et gérer tes risques</p>
+            
+            <div class="courses-grid">
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">5. Analyse Technique de Base</div>
+                    <div class="course-desc">Chandeliers, support/résistance, tendances, chartisme simple.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 60 min</span>
+                        <span class="difficulty diff-medium">Moyen</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">6. Gestion du Risque 101</div>
+                    <div class="course-desc">Dimensionnement de position, Stop Loss, Take Profit. La règle du 1-2%.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 50 min</span>
+                        <span class="difficulty diff-medium">Moyen</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">7. Indicateurs et Oscillateurs</div>
+                    <div class="course-desc">RSI, MACD, Bandes de Bollinger, Moyennes Mobiles - Comment les utiliser.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 75 min</span>
+                        <span class="difficulty diff-medium">Moyen</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">8. Spot vs Contrats Perpétuels</div>
+                    <div class="course-desc">Différences fondamentales, avantages/désavantages, quand utiliser quoi.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 45 min</span>
+                        <span class="difficulty diff-medium">Moyen</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">9. Gestion de Portefeuille</div>
+                    <div class="course-desc">Diversification, rééquilibrage, allocation d'actifs. Construire un vrai portefeuille.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 55 min</span>
+                        <span class="difficulty diff-medium">Moyen</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">10. Analyse Fondamentale Crypto</div>
+                    <div class="course-desc">Lecture de whitepaper, tokenomics, équipe, analyse de roadmap.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 70 min</span>
+                        <span class="difficulty diff-medium">Moyen</span>
+                    </div>
+                </div>
+            </div>
         </div>
         
-        <div style="background: rgba(139, 92, 246, 0.1); padding: 20px; border-radius: 12px;">
-            <div style="color: #a78bfa; font-weight: 600; font-size: 1.1em; margin-bottom: 10px;">✨ SYSTÈME DE PROGRESSION</div>
-            <ul style="line-height: 1.8; margin-left: 20px;">
-                <li>⭐ Gagnez des points XP</li>
-                <li>🏆 Montez de niveau</li>
-                <li>🎖️ Débloquez les formations Premium</li>
-                <li>📜 Recevez des certificats</li>
-                <li>🚀 Accédez aux outils Pro</li>
-            </ul>
+        <!-- NIVEAU 3: AVANCÉ -->
+        <div class="level level-3">
+            <h2>🟣 Niveau 3: Avancé (Trading Professionnel)</h2>
+            <p class="level-subtitle">Stratégies avancées et analyse profonde du marché</p>
+            
+            <div class="courses-grid">
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">11. Analyse Technique Avancée</div>
+                    <div class="course-desc">Ondes d'Elliott, méthode Wyckoff, structure de marché, analyse du flux d'ordres.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 90 min</span>
+                        <span class="difficulty diff-hard">Difficile</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">12. Stratégies DeFi</div>
+                    <div class="course-desc">Yield farming, liquidity mining, arbitrage DeFi, protocoles composables.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 80 min</span>
+                        <span class="difficulty diff-hard">Difficile</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">13. Trading sur Marge et Levier</div>
+                    <div class="course-desc">Appels de marge, prix de liquidation, mécaniques du levier, isolation vs cross.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 70 min</span>
+                        <span class="difficulty diff-hard">Difficile</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">14. Backtesting et Développement de Stratégies</div>
+                    <div class="course-desc">TradingView Pine Script, stratégies automatisées, tests forward-walking.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 120 min</span>
+                        <span class="difficulty diff-hard">Difficile</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">15. Sentiment et Analyse On-Chain</div>
+                    <div class="course-desc">Indice Peur & Cupidité, suivi des baleines, métriques on-chain, analyse de volume.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 85 min</span>
+                        <span class="difficulty diff-hard">Difficile</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- NIVEAU 4: PROFESSIONNEL -->
+        <div class="level level-4">
+            <h2>🔴 Niveau 4: Professionnel (Expert Trader)</h2>
+            <p class="level-subtitle">Maîtrise complète du trading professionnel et gestion avancée</p>
+            
+            <div class="courses-grid">
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">16. Trading Algorithmique Pro</div>
+                    <div class="course-desc">Trading par bots, market making, arbitrage statistique, exécution algo.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 150 min</span>
+                        <span class="difficulty diff-expert">Expert</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">17. Microstructure du Marché</div>
+                    <div class="course-desc">Dynamiques du carnet d'ordres, slippage, MEV, flash bots, exécution institutionnelle.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 140 min</span>
+                        <span class="difficulty diff-expert">Expert</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">18. Analytics de Risque et Optimisation</div>
+                    <div class="course-desc">VaR, ratio de Sharpe, critère de Kelly, analyse de corrélation, stratégies de couverture.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 130 min</span>
+                        <span class="difficulty diff-expert">Expert</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">19. Secrets du Trading Institutionnel</div>
+                    <div class="course-desc">VWAP, TWAP, dark pools, block trades, conformité réglementaire.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 120 min</span>
+                        <span class="difficulty diff-expert">Expert</span>
+                    </div>
+                </div>
+                
+                <div class="course">
+                    <input type="checkbox" class="course-checkbox">
+                    <div class="course-title">20. Construire Ton Système de Trading</div>
+                    <div class="course-desc">Framework complet, journal de trading, maîtrise psychologique, planification de carrière.</div>
+                    <div class="course-meta">
+                        <span>⏱️ 110 min</span>
+                        <span class="difficulty diff-expert">Expert</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    
-    <div style="background: rgba(139, 92, 246, 0.05); border-left: 4px solid #a78bfa; padding: 20px; margin-top: 25px; border-radius: 8px;">
-        <strong style="color: #a78bfa;">💡 CONSEILS:</strong>
-        <ul style="line-height: 1.8; margin-left: 20px; margin-top: 10px;">
-            <li>✓ Commencez par les bases (Débutant) même si vous avez expérience</li>
-            <li>✓ Prenez des notes pendant les formations</li>
-            <li>✓ Utilisez le Coach IA pour clarifier les concepts</li>
-            <li>✓ Pratiquez après chaque formation (backtesting, démo trading)</li>
-            <li>✓ Complétez une formation avant de commencer la prochaine</li>
-            <li>✓ Les formations Premium valent vraiment le coup!</li>
-        </ul>
-    </div>
-</div>
-
 </body>
-</html>
-"""
-    return HTMLResponse(content=html_content)
-
-
-
-# ========== FEATURE 5 ==========
-
+</html>"""
+    
+    return html_content
 @app.get("/launchpad-scanner", response_class=HTMLResponse)
 async def launchpad_scanner(request: Request):
     html_content = f"""\{SIDEBAR}

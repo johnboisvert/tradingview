@@ -28444,21 +28444,28 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
                         ticker = exchange.fetch_ticker(f'{symbol}/{pair_base}')
                         price = ticker.get('last', 0)
                         if price > 0:
+                            print(f"✅ {symbol}/{pair_base}: {price}")
                             break
-                    except:
+                    except Exception as e:
                         pass
                 
                 # Si stablecoin, prix = 1
                 if price == 0 and symbol in stablecoins:
                     price = 1.0
+                    print(f"💵 {symbol}: Stablecoin détecté = $1.00")
                 
                 # Fallback CoinGecko pour les cryptos exotiques (avec mapping intelligent)
                 if price == 0:
                     price = await fetch_price_coingecko(symbol)
+                    if price > 0:
+                        print(f"🌍 {symbol}: CoinGecko fetch = ${price}")
+                    else:
+                        print(f"❌ {symbol}: CoinGecko failed")
                 
                 # Valeur par défaut minimal si toujours pas de prix
                 if price == 0:
                     price = 0.00001
+                    print(f"⚠️  {symbol}: Using default price = $0.00001")
                 
                 value = amount * price
                 

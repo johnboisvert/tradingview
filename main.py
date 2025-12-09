@@ -1064,7 +1064,7 @@ app = FastAPI()
 
 # ========== SIDEBAR MENU ==========
 SIDEBAR = """<style>
-/* Sidebar */
+/* Sidebar Ultra Pro - Toutes les pages */
 .sidebar{position:fixed;left:0;top:0;width:280px;height:100vh;background:linear-gradient(180deg,#0f172a 0%,#1e293b 50%,#334155 100%);padding:20px 0;overflow-y:auto;z-index:99999;box-shadow:4px 0 20px rgba(0,0,0,0.5);border-right:2px solid rgba(6,182,212,0.3)}
 .sidebar::-webkit-scrollbar{width:8px}
 .sidebar::-webkit-scrollbar-track{background:rgba(0,0,0,0.2)}
@@ -1075,164 +1075,276 @@ SIDEBAR = """<style>
 .section-title{color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;padding:10px 20px 8px 20px;border-bottom:1px solid rgba(255,255,255,0.1)}
 .menu-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:#e2e8f0;text-decoration:none;font-size:14px;font-weight:500;transition:all 0.3s ease;border-left:3px solid transparent}
 .menu-item:hover{background:rgba(6,182,212,0.15);border-left-color:#06b6d4;color:#fff;padding-left:25px}
+.menu-item .badge{background:rgba(6,182,212,0.2);color:#06b6d4;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:auto;font-weight:600}
 .menu-item.ai-feature{background:linear-gradient(90deg,rgba(6,182,212,0.15) 0%,transparent 100%);border-left:3px solid #06b6d4;font-weight:600}
 .menu-item.premium{background:linear-gradient(90deg,rgba(139,92,246,0.2) 0%,transparent 100%);border-left:3px solid #8b5cf6;font-weight:600}
-.menu-item.admin{background:linear-gradient(90deg,rgba(245,158,11,0.2) 0%,transparent 100%);border-left:3px solid #f59e0b;font-weight:600}
-.menu-item.account{background:linear-gradient(90deg,rgba(16,185,129,0.2) 0%,transparent 100%);border-left:3px solid #10b981;font-weight:600}
-.menu-item.logout{background:linear-gradient(90deg,rgba(239,68,68,0.2) 0%,transparent 100%);border-left:3px solid #ef4444;font-weight:600}
+.menu-item.active{background:rgba(6,182,212,0.25);border-left-color:#06b6d4;color:#fff;font-weight:700}
 .icon{font-size:18px;min-width:20px}
-
-/* FORCE MARGIN SUR TOUT LE CONTENU - SANS JAVASCRIPT */
-body{margin-left:280px!important;margin-top:0!important;margin-right:0!important;min-height:100vh!important}
-.container{max-width:100%!important}
-
-/* Mobile */
-.sidebar-toggle{display:none;position:fixed;top:15px;left:15px;z-index:100000;background:#06b6d4;color:white;border:none;padding:10px 15px;border-radius:8px;cursor:pointer;font-size:20px;box-shadow:0 4px 8px rgba(0,0,0,0.3)}
-@media (max-width:768px){
-  .sidebar{transform:translateX(-100%);transition:transform 0.3s ease}
-  .sidebar.active{transform:translateX(0)}
-  .sidebar-toggle{display:block}
-  body{margin-left:0!important}
-  body.sidebar-open{margin-left:280px!important}
+.label{flex:1}
+.sidebar-toggle{display:none;position:fixed;top:20px;left:20px;z-index:100000;background:#06b6d4;color:#fff;border:none;padding:12px 16px;border-radius:8px;font-size:20px;cursor:pointer;box-shadow:0 4px 12px rgba(6,182,212,0.4)}
+@media (max-width: 768px){
+.sidebar{transform:translateX(-100%);transition:transform 0.3s}
+.sidebar.active{transform:translateX(0)}
+.sidebar-toggle{display:block}
 }
 </style>
-<button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active');document.body.classList.toggle('sidebar-open')">☰</button>
-<nav class="sidebar">
-<div class="sidebar-header"><div class="sidebar-title">🚀 Trading Pro</div></div>
+    <!-- SIDEBAR TOGGLE MOBILE -->
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    
+    <!-- SIDEBAR COMPLÈTE ULTRA PRO -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">🚀 CRYPTO IA</div>
+        </div>
+        
+        <!-- 📊 TABLEAU DE BORD -->
+        <div class="menu-section">
+            <div class="section-title">📊 TABLEAU DE BORD</div>
+            <a href="/dashboard" class="menu-item">
+                <span class="icon">🏠</span>
+                <span class="label">Dashboard Principal</span>
+            </a>
+            <a href="/stats-dashboard" class="menu-item">
+                <span class="icon">📈</span>
+                <span class="label">Stats Dashboard</span>
+            </a>
+        </div>
+        
+        <!-- 🎓 ACADEMY & FORMATION -->
+        <div class="menu-section">
+            <div class="section-title">🎓 ACADEMY & FORMATION</div>
+            <a href="/academy" class="menu-item ai-feature">
+                <span class="icon">🎓</span>
+                <span class="label">Trading Academy Pro</span>
+                <span class="badge">22 modules</span>
+            </a>
+        </div>
+        
+        <!-- 💰 TRADING & STRATÉGIES -->
+        <div class="menu-section">
+            <div class="section-title">💰 TRADING & STRATÉGIES</div>
+            <a href="/trades" class="menu-item">
+                <span class="icon">📊</span>
+                <span class="label">Mes Trades</span>
+            </a>
+            <a href="/strategie" class="menu-item">
+                <span class="icon">🎯</span>
+                <span class="label">Stratégies</span>
+            </a>
+            <a href="/spot-trading" class="menu-item">
+                <span class="icon">💱</span>
+                <span class="label">Spot Trading</span>
+            </a>
+            <a href="/watchlist" class="menu-item">
+                <span class="icon">⭐</span>
+                <span class="label">Watchlist</span>
+            </a>
+            <a href="/risk-management" class="menu-item">
+                <span class="icon">🛡️</span>
+                <span class="label">Gestion Risques</span>
+            </a>
+            <a href="/backtesting" class="menu-item">
+                <span class="icon">⏮️</span>
+                <span class="label">Backtesting</span>
+            </a>
+        </div>
+        
+        <!-- 🤖 FEATURES IA -->
+        <div class="menu-section">
+            <div class="section-title">🤖 FEATURES IA</div>
+            <a href="/ai-opportunity-scanner" class="menu-item ai-feature">
+                <span class="icon">🔍</span>
+                <span class="label">Scanner Opportunités</span>
+            </a>
+            <a href="/ai-market-regime" class="menu-item ai-feature">
+                <span class="icon">📊</span>
+                <span class="label">Régime Marché</span>
+            </a>
+            <a href="/ai-whale-watcher" class="menu-item ai-feature">
+                <span class="icon">🐋</span>
+                <span class="label">Whale Watcher</span>
+            </a>
+            <a href="/ai-assistant" class="menu-item ai-feature">
+                <span class="icon">🤖</span>
+                <span class="label">Assistant IA</span>
+            </a>
+            <a href="/ai-signals" class="menu-item ai-feature">
+                <span class="icon">📡</span>
+                <span class="label">Signaux IA</span>
+            </a>
+            <a href="/ai-news" class="menu-item ai-feature">
+                <span class="icon">📰</span>
+                <span class="label">News IA</span>
+            </a>
+            <a href="/ai-predictor" class="menu-item ai-feature">
+                <span class="icon">🔮</span>
+                <span class="label">Prédicteur IA</span>
+            </a>
+            <a href="/ai-patterns" class="menu-item ai-feature">
+                <span class="icon">🎨</span>
+                <span class="label">Patterns IA</span>
+            </a>
+            <a href="/ai-sentiment" class="menu-item ai-feature">
+                <span class="icon">😊</span>
+                <span class="label">Sentiment IA</span>
+            </a>
+            <a href="/ai-sizer" class="menu-item ai-feature">
+                <span class="icon">💰</span>
+                <span class="label">Position Sizer</span>
+            </a>
+            <a href="/ai-exit" class="menu-item ai-feature">
+                <span class="icon">🚪</span>
+                <span class="label">Exit Strategy</span>
+            </a>
+            <a href="/ai-timeframe" class="menu-item ai-feature">
+                <span class="icon">⏰</span>
+                <span class="label">Timeframe Analysis</span>
+            </a>
+            <a href="/ai-liquidity" class="menu-item ai-feature">
+                <span class="icon">💧</span>
+                <span class="label">Liquidité IA</span>
+            </a>
+            <a href="/ai-alerts" class="menu-item ai-feature">
+                <span class="icon">🔔</span>
+                <span class="label">Alertes IA</span>
+            </a>
+            <a href="/ai-gem-hunter" class="menu-item ai-feature">
+                <span class="icon">💎</span>
+                <span class="label">Gem Hunter</span>
+            </a>
+        </div>
+        
+        <!-- 📈 ANALYSE DE MARCHÉ -->
+        <div class="menu-section">
+            <div class="section-title">📈 ANALYSE DE MARCHÉ</div>
+            <a href="/fear-greed" class="menu-item">
+                <span class="icon">😨</span>
+                <span class="label">Fear & Greed</span>
+            </a>
+            <a href="/fear-greed-chart" class="menu-item">
+                <span class="icon">📊</span>
+                <span class="label">F&G Graphique</span>
+            </a>
+            <a href="/dominance" class="menu-item">
+                <span class="icon">👑</span>
+                <span class="label">BTC Dominance</span>
+            </a>
+            <a href="/altcoin-season" class="menu-item">
+                <span class="icon">🎯</span>
+                <span class="label">Altcoin Season</span>
+            </a>
+            <a href="/heatmap" class="menu-item">
+                <span class="icon">🔥</span>
+                <span class="label">Heatmap</span>
+            </a>
+            <a href="/bullrun-phase" class="menu-item">
+                <span class="icon">🐂</span>
+                <span class="label">Bull Run Phase</span>
+            </a>
+            <a href="/graphiques" class="menu-item">
+                <span class="icon">📉</span>
+                <span class="label">Graphiques Avancés</span>
+            </a>
+            <a href="/onchain-metrics" class="menu-item">
+                <span class="icon">⛓️</span>
+                <span class="label">Métriques On-Chain</span>
+            </a>
+        </div>
+        
+        <!-- 🆕 NOUVELLES FEATURES -->
+        <div class="menu-section">
+            <div class="section-title">🆕 NOUVELLES FEATURES</div>
+            <a href="/portfolio-tracker" class="menu-item ai-feature">
+                <span class="icon">💼</span>
+                <span class="label">Portfolio Tracker</span>
+            </a>
+            <a href="/defi-yield" class="menu-item ai-feature">
+                <span class="icon">🏦</span>
+                <span class="label">DeFi Yield</span>
+            </a>
+            <a href="/launchpad-scanner" class="menu-item ai-feature">
+                <span class="icon">🚀</span>
+                <span class="label">Launchpad Scanner</span>
+            </a>
+            <a href="/crypto-pepites" class="menu-item ai-feature">
+                <span class="icon">💎</span>
+                <span class="label">Pépites Crypto</span>
+            </a>
+        </div>
+        
+        <!-- 🛠️ OUTILS -->
+        <div class="menu-section">
+            <div class="section-title">🛠️ OUTILS</div>
+            <a href="/calculatrice" class="menu-item">
+                <span class="icon">🧮</span>
+                <span class="label">Calculatrice</span>
+            </a>
+            <a href="/convertisseur" class="menu-item">
+                <span class="icon">💱</span>
+                <span class="label">Convertisseur</span>
+            </a>
+            <a href="/prediction-ia" class="menu-item">
+                <span class="icon">🔮</span>
+                <span class="label">Prédictions IA</span>
+            </a>
+            <a href="/market-simulation" class="menu-item">
+                <span class="icon">🎮</span>
+                <span class="label">Simulation Marché</span>
+            </a>
+            <a href="/calendrier" class="menu-item">
+                <span class="icon">📅</span>
+                <span class="label">Calendrier Éco</span>
+            </a>
+        </div>
+        
+        <!-- 📰 NOUVELLES & INFO -->
+        <div class="menu-section">
+            <div class="section-title">📰 NOUVELLES & INFO</div>
+            <a href="/nouvelles" class="menu-item">
+                <span class="icon">📰</span>
+                <span class="label">Actualités Crypto</span>
+            </a>
+            <a href="/success-stories" class="menu-item">
+                <span class="icon">🏆</span>
+                <span class="label">Success Stories</span>
+            </a>
+        </div>
+        
+        <!-- 👤 COMPTE & SETTINGS -->
+        <div class="menu-section">
+            <div class="section-title">👤 COMPTE & SETTINGS</div>
+            <a href="/mon-compte" class="menu-item">
+                <span class="icon">⚙️</span>
+                <span class="label">Mon Compte</span>
+            </a>
+            <a href="/pricing-complete" class="menu-item">
+                <span class="icon">💎</span>
+                <span class="label">Pricing & Plans</span>
+            </a>
+            <a href="/api-keys" class="menu-item">
+                <span class="icon">🔑</span>
+                <span class="label">Clés API</span>
+            </a>
+        </div>
+        
+        <!-- 🔐 ADMIN (si admin) -->
+        <div class="menu-section admin-only" style="display: none;">
+            <div class="section-title">🔐 ADMINISTRATION</div>
+            <a href="/admin-dashboard" class="menu-item">
+                <span class="icon">👨‍💼</span>
+                <span class="label">Admin Dashboard</span>
+            </a>
+            <a href="/admin/pricing" class="menu-item">
+                <span class="icon">💰</span>
+                <span class="label">Admin Pricing</span>
+            </a>
+            <a href="/admin/list-promos" class="menu-item">
+                <span class="icon">🎁</span>
+                <span class="label">Promotions</span>
+            </a>
+        </div>
+    </nav>
 
-<!-- 🆕 NEW FEATURES -->
-<div class="menu-section">
-    <div class="section-title">🆕 NEW FEATURES</div>
-    <a href="/portfolio-tracker" class="menu-item ai-feature">
-        <span class="icon">💼</span>
-        <span class="label">Portfolio Tracker</span>
-    </a>
-    <a href="/defi-yield" class="menu-item ai-feature">
-        <span class="icon">🏦</span>
-        <span class="label">DeFi Yield</span>
-    </a>
-    <a href="/academy" class="menu-item ai-feature">
-        <span class="icon">🎓</span>
-        <span class="label">Academy IA</span>
-    </a>
-    <a href="/launchpad-scanner" class="menu-item ai-feature">
-        <span class="icon">🎯</span>
-        <span class="label">Launchpad Scanner</span>
-    </a>
-</div>
-
-<!-- 📊 Tableau de Bord -->
-<div class="menu-section">
-    <div class="section-title">📊 Tableau de Bord</div>
-    <a href="/dashboard" class="menu-item">
-        <span class="icon">🏠</span>
-        <span class="label">Dashboard</span>
-    </a>
-</div>
-
-<!-- 🤖 IA Features Avancées -->
-<div class="menu-section">
-    <div class="section-title">🤖 IA Features</div>
-    <a href="/ai-opportunity-scanner" class="menu-item ai-feature">
-        <span class="icon">🔍</span>
-        <span class="label">AI Scanner</span>
-    </a>
-    <a href="/ai-market-regime" class="menu-item ai-feature">
-        <span class="icon">📊</span>
-        <span class="label">Market Regime</span>
-    </a>
-    <a href="/ai-whale-watcher" class="menu-item ai-feature">
-        <span class="icon">🐋</span>
-        <span class="label">Whale Watcher</span>
-    </a>
-</div>
-
-<!-- 💰 Trading & Portefeuille -->
-<div class="menu-section">
-    <div class="section-title">💰 Trading</div>
-    <a href="/trades" class="menu-item">
-        <span class="icon">📈</span>
-        <span class="label">Mes Trades</span>
-    </a>
-    <a href="/watchlist" class="menu-item">
-        <span class="icon">⭐</span>
-        <span class="label">Watchlist</span>
-    </a>
-</div>
-
-<!-- 📊 Analyse & Marché -->
-<div class="menu-section">
-    <div class="section-title">📊 Analyse</div>
-    <a href="/fear-greed" class="menu-item">
-        <span class="icon">😨</span>
-        <span class="label">Fear & Greed</span>
-    </a>
-    <a href="/dominance" class="menu-item">
-        <span class="icon">👑</span>
-        <span class="label">BTC Dominance</span>
-    </a>
-    <a href="/altcoin-season" class="menu-item">
-        <span class="icon">🎯</span>
-        <span class="label">Altcoin Season</span>
-    </a>
-    <a href="/heatmap" class="menu-item">
-        <span class="icon">🔥</span>
-        <span class="label">Heatmap</span>
-    </a>
-    <a href="/bullrun-phase" class="menu-item">
-        <span class="icon">🚀</span>
-        <span class="label">Bull Run Phase</span>
-    </a>
-    <a href="/graphiques" class="menu-item">
-        <span class="icon">📈</span>
-        <span class="label">Graphiques</span>
-    </a>
-</div>
-
-<!-- 📰 Contenu & Actualités -->
-<div class="menu-section">
-    <div class="section-title">📰 Actualités</div>
-    <a href="/nouvelles" class="menu-item">
-        <span class="icon">📰</span>
-        <span class="label">Nouvelles Crypto</span>
-    </a>
-</div>
-
-<!-- 🎓 Ressources -->
-<div class="menu-section">
-    <div class="section-title">🎓 Ressources</div>
-    <a href="/convertisseur" class="menu-item">
-        <span class="icon">💱</span>
-        <span class="label">Convertisseur</span>
-    </a>
-    <a href="/calendrier" class="menu-item">
-        <span class="icon">📅</span>
-        <span class="label">Calendrier Éco</span>
-    </a>
-</div>
-
-<!-- 👤 Mon Compte -->
-<div class="menu-section">
-    <div class="section-title">👤 Mon Compte</div>
-    <a href="/pricing-complete" class="menu-item premium">
-        <span class="icon">💎</span>
-        <span class="label">Abonnements</span>
-    </a>
-    <a href="/admin-dashboard" class="menu-item admin">
-        <span class="icon">🔧</span>
-        <span class="label">Admin</span>
-    </a>
-    <a href="/mon-compte" class="menu-item account">
-        <span class="icon">👤</span>
-        <span class="label">Mon Compte</span>
-    </a>
-    <a href="/logout" class="menu-item logout">
-        <span class="icon">🚪</span>
-        <span class="label">Déconnexion</span>
-    </a>
-</div>
-
-</nav>
 """
 # ==================================
 
@@ -27560,25 +27672,9 @@ async def send_push_notification(request: Request):
 
 # ========== FEATURE 4 ==========
 
-# ============================================================================
-# 🏆 TRADING ACADEMY - SIDEBAR ULTRA COMPLÈTE (59 pages!)
-# ============================================================================
-# ✅ Sidebar avec TOUTES les pages organisées:
-#    - 📊 Tableau de Bord (2 pages)
-#    - 🎓 Academy (1 page - 22 modules)
-#    - 💰 Trading & Stratégies (6 pages)
-#    - 🤖 Features IA (15 pages)
-#    - 📈 Analyse de Marché (8 pages)
-#    - 🆕 Nouvelles Features (4 pages)
-#    - 🛠️ Outils (5 pages)
-#    - 📰 Nouvelles & Info (2 pages)
-#    - 👤 Compte & Settings (3 pages)
-#    - 🔐 Admin (3 pages)
-# TOTAL: 49 liens dans sidebar!
-# ============================================================================
 @app.get("/academy", response_class=HTMLResponse)
-async def academy_sidebar_ultra(request: Request):
-    """🏆 Trading Academy - Sidebar Ultra Complète"""
+async def academy_complete_final(request: Request):
+    """🏆 Trading Academy - 22 Modules Complets"""
     html_content = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -28097,142 +28193,75 @@ async def academy_sidebar_ultra(request: Request):
 </head>
 <body>
     <!-- SIDEBAR TOGGLE MOBILE -->
-        <!-- SIDEBAR TOGGLE MOBILE -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
     
-    <!-- SIDEBAR COMPLÈTE ULTRA PRO -->
+    <!-- SIDEBAR COMPLÈTE -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-title">🚀 CRYPTO IA</div>
+            <div class="sidebar-title">🚀 TRADING PRO</div>
         </div>
         
-        <!-- 📊 TABLEAU DE BORD -->
+        <div class="menu-section">
+            <div class="section-title">🆕 NEW FEATURES</div>
+            <a href="/portfolio-tracker" class="menu-item ai-feature">
+                <span class="icon">💼</span>
+                <span class="label">Portfolio Tracker</span>
+            </a>
+            <a href="/defi-yield" class="menu-item ai-feature">
+                <span class="icon">🏦</span>
+                <span class="label">DeFi Yield</span>
+            </a>
+            <a href="/academy" class="menu-item ai-feature active">
+                <span class="icon">🎓</span>
+                <span class="label">Academy Pro</span>
+            </a>
+            <a href="/launchpad-scanner" class="menu-item ai-feature">
+                <span class="icon">🎯</span>
+                <span class="label">Launchpad Scanner</span>
+            </a>
+        </div>
+        
         <div class="menu-section">
             <div class="section-title">📊 TABLEAU DE BORD</div>
             <a href="/dashboard" class="menu-item">
                 <span class="icon">🏠</span>
-                <span class="label">Dashboard Principal</span>
-            </a>
-            <a href="/stats-dashboard" class="menu-item">
-                <span class="icon">📈</span>
-                <span class="label">Stats Dashboard</span>
+                <span class="label">Dashboard</span>
             </a>
         </div>
         
-        <!-- 🎓 ACADEMY & FORMATION -->
         <div class="menu-section">
-            <div class="section-title">🎓 ACADEMY & FORMATION</div>
-            <a href="/academy" class="menu-item ai-feature">
-                <span class="icon">🎓</span>
-                <span class="label">Trading Academy Pro</span>
-                <span class="badge">22 modules</span>
-            </a>
-        </div>
-        
-        <!-- 💰 TRADING & STRATÉGIES -->
-        <div class="menu-section">
-            <div class="section-title">💰 TRADING & STRATÉGIES</div>
-            <a href="/trades" class="menu-item">
-                <span class="icon">📊</span>
-                <span class="label">Mes Trades</span>
-            </a>
-            <a href="/strategie" class="menu-item">
-                <span class="icon">🎯</span>
-                <span class="label">Stratégies</span>
-            </a>
-            <a href="/spot-trading" class="menu-item">
-                <span class="icon">💱</span>
-                <span class="label">Spot Trading</span>
-            </a>
-            <a href="/watchlist" class="menu-item">
-                <span class="icon">⭐</span>
-                <span class="label">Watchlist</span>
-            </a>
-            <a href="/risk-management" class="menu-item">
-                <span class="icon">🛡️</span>
-                <span class="label">Gestion Risques</span>
-            </a>
-            <a href="/backtesting" class="menu-item">
-                <span class="icon">⏮️</span>
-                <span class="label">Backtesting</span>
-            </a>
-        </div>
-        
-        <!-- 🤖 FEATURES IA -->
-        <div class="menu-section">
-            <div class="section-title">🤖 FEATURES IA</div>
+            <div class="section-title">🤖 IA FEATURES</div>
             <a href="/ai-opportunity-scanner" class="menu-item ai-feature">
                 <span class="icon">🔍</span>
-                <span class="label">Scanner Opportunités</span>
+                <span class="label">AI Scanner</span>
             </a>
             <a href="/ai-market-regime" class="menu-item ai-feature">
                 <span class="icon">📊</span>
-                <span class="label">Régime Marché</span>
+                <span class="label">Market Regime</span>
             </a>
             <a href="/ai-whale-watcher" class="menu-item ai-feature">
                 <span class="icon">🐋</span>
                 <span class="label">Whale Watcher</span>
             </a>
-            <a href="/ai-assistant" class="menu-item ai-feature">
-                <span class="icon">🤖</span>
-                <span class="label">Assistant IA</span>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">💰 TRADING</div>
+            <a href="/trades" class="menu-item">
+                <span class="icon">📈</span>
+                <span class="label">Mes Trades</span>
             </a>
-            <a href="/ai-signals" class="menu-item ai-feature">
-                <span class="icon">📡</span>
-                <span class="label">Signaux IA</span>
-            </a>
-            <a href="/ai-news" class="menu-item ai-feature">
-                <span class="icon">📰</span>
-                <span class="label">News IA</span>
-            </a>
-            <a href="/ai-predictor" class="menu-item ai-feature">
-                <span class="icon">🔮</span>
-                <span class="label">Prédicteur IA</span>
-            </a>
-            <a href="/ai-patterns" class="menu-item ai-feature">
-                <span class="icon">🎨</span>
-                <span class="label">Patterns IA</span>
-            </a>
-            <a href="/ai-sentiment" class="menu-item ai-feature">
-                <span class="icon">😊</span>
-                <span class="label">Sentiment IA</span>
-            </a>
-            <a href="/ai-sizer" class="menu-item ai-feature">
-                <span class="icon">💰</span>
-                <span class="label">Position Sizer</span>
-            </a>
-            <a href="/ai-exit" class="menu-item ai-feature">
-                <span class="icon">🚪</span>
-                <span class="label">Exit Strategy</span>
-            </a>
-            <a href="/ai-timeframe" class="menu-item ai-feature">
-                <span class="icon">⏰</span>
-                <span class="label">Timeframe Analysis</span>
-            </a>
-            <a href="/ai-liquidity" class="menu-item ai-feature">
-                <span class="icon">💧</span>
-                <span class="label">Liquidité IA</span>
-            </a>
-            <a href="/ai-alerts" class="menu-item ai-feature">
-                <span class="icon">🔔</span>
-                <span class="label">Alertes IA</span>
-            </a>
-            <a href="/ai-gem-hunter" class="menu-item ai-feature">
-                <span class="icon">💎</span>
-                <span class="label">Gem Hunter</span>
+            <a href="/watchlist" class="menu-item">
+                <span class="icon">⭐</span>
+                <span class="label">Watchlist</span>
             </a>
         </div>
         
-        <!-- 📈 ANALYSE DE MARCHÉ -->
         <div class="menu-section">
-            <div class="section-title">📈 ANALYSE DE MARCHÉ</div>
+            <div class="section-title">📊 ANALYSE</div>
             <a href="/fear-greed" class="menu-item">
                 <span class="icon">😨</span>
                 <span class="label">Fear & Greed</span>
-            </a>
-            <a href="/fear-greed-chart" class="menu-item">
-                <span class="icon">📊</span>
-                <span class="label">F&G Graphique</span>
             </a>
             <a href="/dominance" class="menu-item">
                 <span class="icon">👑</span>
@@ -28246,114 +28275,8 @@ async def academy_sidebar_ultra(request: Request):
                 <span class="icon">🔥</span>
                 <span class="label">Heatmap</span>
             </a>
-            <a href="/bullrun-phase" class="menu-item">
-                <span class="icon">🐂</span>
-                <span class="label">Bull Run Phase</span>
-            </a>
-            <a href="/graphiques" class="menu-item">
-                <span class="icon">📉</span>
-                <span class="label">Graphiques Avancés</span>
-            </a>
-            <a href="/onchain-metrics" class="menu-item">
-                <span class="icon">⛓️</span>
-                <span class="label">Métriques On-Chain</span>
-            </a>
-        </div>
-        
-        <!-- 🆕 NOUVELLES FEATURES -->
-        <div class="menu-section">
-            <div class="section-title">🆕 NOUVELLES FEATURES</div>
-            <a href="/portfolio-tracker" class="menu-item ai-feature">
-                <span class="icon">💼</span>
-                <span class="label">Portfolio Tracker</span>
-            </a>
-            <a href="/defi-yield" class="menu-item ai-feature">
-                <span class="icon">🏦</span>
-                <span class="label">DeFi Yield</span>
-            </a>
-            <a href="/launchpad-scanner" class="menu-item ai-feature">
-                <span class="icon">🚀</span>
-                <span class="label">Launchpad Scanner</span>
-            </a>
-            <a href="/crypto-pepites" class="menu-item ai-feature">
-                <span class="icon">💎</span>
-                <span class="label">Pépites Crypto</span>
-            </a>
-        </div>
-        
-        <!-- 🛠️ OUTILS -->
-        <div class="menu-section">
-            <div class="section-title">🛠️ OUTILS</div>
-            <a href="/calculatrice" class="menu-item">
-                <span class="icon">🧮</span>
-                <span class="label">Calculatrice</span>
-            </a>
-            <a href="/convertisseur" class="menu-item">
-                <span class="icon">💱</span>
-                <span class="label">Convertisseur</span>
-            </a>
-            <a href="/prediction-ia" class="menu-item">
-                <span class="icon">🔮</span>
-                <span class="label">Prédictions IA</span>
-            </a>
-            <a href="/market-simulation" class="menu-item">
-                <span class="icon">🎮</span>
-                <span class="label">Simulation Marché</span>
-            </a>
-            <a href="/calendrier" class="menu-item">
-                <span class="icon">📅</span>
-                <span class="label">Calendrier Éco</span>
-            </a>
-        </div>
-        
-        <!-- 📰 NOUVELLES & INFO -->
-        <div class="menu-section">
-            <div class="section-title">📰 NOUVELLES & INFO</div>
-            <a href="/nouvelles" class="menu-item">
-                <span class="icon">📰</span>
-                <span class="label">Actualités Crypto</span>
-            </a>
-            <a href="/success-stories" class="menu-item">
-                <span class="icon">🏆</span>
-                <span class="label">Success Stories</span>
-            </a>
-        </div>
-        
-        <!-- 👤 COMPTE & SETTINGS -->
-        <div class="menu-section">
-            <div class="section-title">👤 COMPTE & SETTINGS</div>
-            <a href="/mon-compte" class="menu-item">
-                <span class="icon">⚙️</span>
-                <span class="label">Mon Compte</span>
-            </a>
-            <a href="/pricing-complete" class="menu-item">
-                <span class="icon">💎</span>
-                <span class="label">Pricing & Plans</span>
-            </a>
-            <a href="/api-keys" class="menu-item">
-                <span class="icon">🔑</span>
-                <span class="label">Clés API</span>
-            </a>
-        </div>
-        
-        <!-- 🔐 ADMIN (si admin) -->
-        <div class="menu-section admin-only" style="display: none;">
-            <div class="section-title">🔐 ADMINISTRATION</div>
-            <a href="/admin-dashboard" class="menu-item">
-                <span class="icon">👨‍💼</span>
-                <span class="label">Admin Dashboard</span>
-            </a>
-            <a href="/admin/pricing" class="menu-item">
-                <span class="icon">💰</span>
-                <span class="label">Admin Pricing</span>
-            </a>
-            <a href="/admin/list-promos" class="menu-item">
-                <span class="icon">🎁</span>
-                <span class="label">Promotions</span>
-            </a>
         </div>
     </nav>
-
     
     <!-- MAIN CONTENT -->
     <div class="main-content">
@@ -28364,12 +28287,8 @@ async def academy_sidebar_ultra(request: Request):
                 
                 <div class="stats">
                     <div class="stat">
-                        <div class="stat-num">5</div>
-                        <div class="stat-label">Formations</div>
-                    </div>
-                    <div class="stat">
                         <div class="stat-num">22</div>
-                        <div class="stat-label">Modules</div>
+                        <div class="stat-label">Formations</div>
                     </div>
                     <div class="stat">
                         <div class="stat-num">114h</div>
@@ -30058,7 +29977,6 @@ console.log('✅ JavaScript Academy chargé avec succès!');
 </html>
 """
     return HTMLResponse(content=html_content)
-# ============================================================================
 
 
 # ================================================================================

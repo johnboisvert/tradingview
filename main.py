@@ -15229,6 +15229,9 @@ async def monitor_trades_background():
 @app.on_event("startup")
 async def startup_event():
     """Démarre la tâche de fond au lancement de l'application"""
+    # Initialiser la DB Portfolio
+    init_portfolio_db()
+    
     # Utiliser try_lock pour éviter de bloquer si un autre worker a déjà lancé
     if not monitor_running:
         asyncio.create_task(monitor_trades_background())

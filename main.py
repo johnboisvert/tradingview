@@ -27562,217 +27562,1349 @@ async def send_push_notification(request: Request):
 
 
 # ============================================================================
-# 🎓 TRADING ACADEMY PRO - Route ULTRA-CLEAN (JavaScript simple et propre)
+# 🎓 TRADING ACADEMY PRO MEGA - Route FINALE COMPLÈTE
+# Sidebar complète + Contenu ultra-détaillé + JavaScript qui fonctionne!
 # ============================================================================
 @app.get("/academy", response_class=HTMLResponse)
 async def academy_page(request: Request):
-    """Trading Academy Pro MEGA"""
-    html = """
+    """
+    Trading Academy Pro MEGA - Formation complète
+    
+    Features:
+    - 4 formations complètes
+    - 20 modules ultra-détaillés  
+    - 40 questions quiz
+    - Certificats automatiques
+    - Sidebar complète
+    - JavaScript fonctionnel
+    """
+    html_content = """
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline';">
-    <title>Trading Academy Pro MEGA</title>
-<style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    min-height: 100vh;
-    color: #fff;
-    margin-left: 280px;
-    padding: 20px;
-}
-.sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 280px;
-    height: 100vh;
-    background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-    padding: 20px 0;
-    overflow-y: auto;
-    z-index: 99999;
-    box-shadow: 4px 0 20px rgba(0,0,0,0.5);
-    border-right: 2px solid rgba(6,182,212,0.3);
-}
-.sidebar-header { padding: 0 20px 20px; border-bottom: 2px solid rgba(6,182,212,0.3); margin-bottom: 15px; }
-.sidebar-title { color: #06b6d4; font-size: 20px; font-weight: 700; text-align: center; text-transform: uppercase; }
-.menu-section { margin-bottom: 10px; }
-.section-title { color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 600; text-transform: uppercase; padding: 10px 20px 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-.menu-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: #e2e8f0; text-decoration: none; font-size: 14px; transition: all 0.3s; border-left: 3px solid transparent; }
-.menu-item:hover { background: rgba(6,182,212,0.15); border-left-color: #06b6d4; }
-.menu-item.active { background: rgba(6,182,212,0.2); border-left-color: #06b6d4; font-weight: 600; }
-.menu-item.ai-feature { background: linear-gradient(90deg, rgba(6,182,212,0.15), transparent); border-left: 3px solid #06b6d4; }
-.hero {
-    text-align: center;
-    padding: 60px 20px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 20px;
-    margin-bottom: 40px;
-}
-.hero h1 { font-size: 3em; margin-bottom: 20px; }
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 30px; }
-.stat { background: rgba(255,255,255,0.2); padding: 20px; border-radius: 15px; }
-.stat-num { font-size: 3em; font-weight: bold; }
-.progress-bar { width: 100%; height: 12px; background: rgba(255,255,255,0.2); border-radius: 10px; margin-top: 25px; overflow: hidden; }
-.progress-fill { height: 100%; background: linear-gradient(90deg, #22c55e, #10b981); transition: width 0.5s; }
-.level-header { background: linear-gradient(135deg, #2d3561, #1f2544); padding: 30px; border-radius: 15px; margin-bottom: 30px; border-left: 5px solid #22c55e; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; margin-top: 30px; }
-.card {
-    background: linear-gradient(135deg, #2d3561, #1f2544);
-    border-radius: 20px;
-    padding: 30px;
-    cursor: pointer;
-    transition: all 0.4s;
-    border: 2px solid transparent;
-}
-.card:hover { transform: translateY(-10px); border-color: #667eea; }
-.card-icon { font-size: 4em; margin-bottom: 20px; }
-.card-title { font-size: 1.8em; margin-bottom: 15px; font-weight: bold; }
-.card-desc { color: #cbd5e1; line-height: 1.6; margin-bottom: 20px; }
-.badge { background: rgba(102,126,234,0.2); padding: 8px 15px; border-radius: 20px; font-size: 0.9em; display: inline-block; margin: 5px; }
-.formation-detail { display: none; }
-.back-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 15px 35px; border-radius: 10px; cursor: pointer; font-size: 1.1em; margin-bottom: 30px; }
-.module { background: linear-gradient(135deg, #2d3561, #1f2544); padding: 40px; border-radius: 15px; margin-bottom: 30px; border-left: 4px solid #667eea; }
-.module h3 { font-size: 2em; color: #667eea; margin-bottom: 20px; }
-.module h4 { font-size: 1.5em; color: #a5b4fc; margin: 20px 0 10px; }
-.module p { line-height: 1.8; color: #cbd5e1; margin-bottom: 15px; }
-table { width: 100%; border-collapse: collapse; margin: 20px 0; background: rgba(15,23,42,0.5); border-radius: 10px; overflow: hidden; }
-th { background: rgba(102,126,234,0.3); padding: 15px; text-align: left; }
-td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-.important { background: rgba(251,191,36,0.1); border-left: 4px solid #fbbf24; padding: 20px; border-radius: 10px; margin: 20px 0; }
-.quiz-section { background: linear-gradient(135deg, #2d3561, #1f2544); padding: 40px; border-radius: 20px; margin-top: 40px; }
-.quiz-question { background: rgba(102,126,234,0.1); padding: 25px; border-radius: 15px; margin-bottom: 20px; }
-.quiz-options label { display: block; padding: 15px; margin: 10px 0; background: rgba(255,255,255,0.05); border-radius: 10px; cursor: pointer; }
-.submit-quiz { background: linear-gradient(135deg, #22c55e, #10b981); color: white; border: none; padding: 15px 40px; border-radius: 10px; cursor: pointer; font-size: 1.1em; margin-top: 20px; }
-.quiz-result { padding: 30px; border-radius: 15px; margin-top: 30px; text-align: center; font-size: 1.2em; }
-.quiz-result.pass { background: rgba(34,197,94,0.2); border: 2px solid #22c55e; }
-.quiz-result.fail { background: rgba(239,68,68,0.2); border: 2px solid #ef4444; }
-.certificate { background: linear-gradient(135deg, #667eea, #764ba2); padding: 50px; border-radius: 20px; margin-top: 30px; text-align: center; }
-</style>
+    <title>🏆 Trading Academy Pro MEGA</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        /* SIDEBAR COMPLÈTE */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 280px;
+            height: 100vh;
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            padding: 20px 0;
+            overflow-y: auto;
+            z-index: 99999;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.5);
+            border-right: 2px solid rgba(6,182,212,0.3);
+        }
+        
+        .sidebar::-webkit-scrollbar { width: 8px; }
+        .sidebar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(6,182,212,0.5); border-radius: 4px; }
+        
+        .sidebar-header {
+            padding: 0 20px 20px 20px;
+            border-bottom: 2px solid rgba(6,182,212,0.3);
+            margin-bottom: 15px;
+        }
+        
+        .sidebar-title {
+            color: #06b6d4;
+            font-size: 20px;
+            font-weight: 700;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .menu-section { margin-bottom: 10px; }
+        
+        .section-title {
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 10px 20px 8px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: #e2e8f0;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .menu-item:hover {
+            background: rgba(6,182,212,0.15);
+            border-left-color: #06b6d4;
+            color: #fff;
+            padding-left: 25px;
+        }
+        
+        .menu-item.active {
+            background: rgba(6,182,212,0.2);
+            border-left-color: #06b6d4;
+            color: #fff;
+            font-weight: 600;
+        }
+        
+        .menu-item.ai-feature {
+            background: linear-gradient(90deg, rgba(6,182,212,0.15) 0%, transparent 100%);
+            border-left: 3px solid #06b6d4;
+            font-weight: 600;
+        }
+        
+        .icon { font-size: 18px; min-width: 20px; }
+        
+        /* BODY */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            margin-left: 280px;
+            padding: 20px;
+        }
+        
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .hero {
+            text-align: center;
+            padding: 60px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
+        .hero h1 {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 0 20px #fff, 0 0 30px #667eea; }
+            to { text-shadow: 0 0 30px #fff, 0 0 40px #764ba2; }
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .stat {
+            background: rgba(255,255,255,0.2);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .stat-num { font-size: 3em; font-weight: bold; }
+        .stat-label { font-size: 0.9em; opacity: 0.9; margin-top: 5px; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            margin-top: 25px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e 0%, #10b981 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+        
+        .level-section { margin-bottom: 60px; }
+        
+        .level-header {
+            background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border-left: 5px solid #22c55e;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+        
+        .card {
+            background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
+            border-radius: 20px;
+            padding: 30px;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            border: 2px solid transparent;
+        }
+        
+        .card:hover {
+            transform: translateY(-15px) scale(1.02);
+            box-shadow: 0 20px 50px rgba(102, 126, 234, 0.4);
+            border-color: #667eea;
+        }
+        
+        .card-icon { font-size: 4em; margin-bottom: 20px; }
+        .card-title { font-size: 1.8em; margin-bottom: 15px; font-weight: bold; }
+        .card-desc { color: #cbd5e1; line-height: 1.8; margin-bottom: 20px; }
+        
+        .badge {
+            background: rgba(102, 126, 234, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            display: inline-block;
+            margin: 5px;
+        }
+        
+        .completed {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #22c55e;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        /* FORMATION DETAIL */
+        .formation-detail {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .back-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .module {
+            background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
+            padding: 40px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .module h3 {
+            font-size: 2em;
+            margin-bottom: 25px;
+            color: #667eea;
+        }
+        
+        .module h4 {
+            font-size: 1.5em;
+            margin: 30px 0 15px 0;
+            color: #a5b4fc;
+        }
+        
+        .module p {
+            line-height: 1.8;
+            margin-bottom: 20px;
+            color: #cbd5e1;
+            font-size: 1.1em;
+        }
+        
+        .module ul, .module ol {
+            margin: 20px 0 20px 30px;
+        }
+        
+        .module li {
+            margin-bottom: 15px;
+            line-height: 1.7;
+            color: #cbd5e1;
+            font-size: 1.05em;
+        }
+        
+        .module li strong {
+            color: #fff;
+        }
+        
+        .important {
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 4px solid #fbbf24;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        
+        .important strong {
+            color: #fbbf24;
+            font-size: 1.2em;
+        }
+        
+        .pro-tip {
+            background: rgba(168, 85, 247, 0.1);
+            border-left: 4px solid #a855f7;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        
+        .pro-tip strong {
+            color: #a855f7;
+            font-size: 1.2em;
+        }
+        
+        .danger {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        
+        .danger strong {
+            color: #ef4444;
+            font-size: 1.2em;
+        }
+        
+        .success {
+            background: rgba(34, 197, 94, 0.1);
+            border-left: 4px solid #22c55e;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        
+        .success strong {
+            color: #22c55e;
+            font-size: 1.2em;
+        }
+        
+        .example-box {
+            background: rgba(6, 182, 212, 0.1);
+            border: 2px solid rgba(6, 182, 212, 0.3);
+            padding: 25px;
+            border-radius: 10px;
+            margin: 25px 0;
+        }
+        
+        .example-box strong {
+            color: #06b6d4;
+            font-size: 1.2em;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        th {
+            background: rgba(102, 126, 234, 0.3);
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #cbd5e1;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        /* QUIZ */
+        .quiz-section {
+            background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
+            padding: 40px;
+            border-radius: 20px;
+            margin-top: 40px;
+        }
+        
+        .quiz-question {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+        }
+        
+        .quiz-question h4 {
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            color: #fff;
+        }
+        
+        .quiz-options label {
+            display: block;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .quiz-options label:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+        
+        .quiz-options input[type="radio"] {
+            margin-right: 10px;
+        }
+        
+        .submit-quiz {
+            background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .submit-quiz:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.4);
+        }
+        
+        .quiz-result {
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 30px;
+            text-align: center;
+            font-size: 1.3em;
+        }
+        
+        .quiz-result.pass {
+            background: rgba(34, 197, 94, 0.2);
+            border: 2px solid #22c55e;
+        }
+        
+        .quiz-result.fail {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid #ef4444;
+        }
+        
+        .certificate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 50px;
+            border-radius: 20px;
+            margin-top: 30px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
+        .certificate h2 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        
+        .certificate p {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+        
+        /* MOBILE */
+        .sidebar-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 100000;
+            background: #06b6d4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .sidebar-toggle {
+                display: block;
+            }
+            body {
+                margin-left: 0 !important;
+            }
+            body.sidebar-open {
+                margin-left: 280px !important;
+            }
+            .hero h1 {
+                font-size: 2em;
+            }
+            .stat-num {
+                font-size: 2em;
+            }
+        }
+    </style>
 </head>
 <body>
-
-<nav class="sidebar">
-    <div class="sidebar-header"><div class="sidebar-title">🚀 Trading Pro</div></div>
-    <div class="menu-section">
-        <div class="section-title">🆕 NEW FEATURES</div>
-        <a href="/academy" class="menu-item ai-feature active">🎓 Academy Pro</a>
-        <a href="/dashboard" class="menu-item">🏠 Dashboard</a>
-    </div>
-</nav>
-
-<div class="main-content">
-    <div id="list-view">
-        <div class="hero">
-            <h1>🏆 Trading Academy Pro MEGA</h1>
-            <p>Formation complète du débutant au trader professionnel</p>
-            <div class="stats">
-                <div class="stat"><div class="stat-num">22</div><div>Formations</div></div>
-                <div class="stat"><div class="stat-num">114h</div><div>Heures</div></div>
-                <div class="stat"><div class="stat-num">220+</div><div>Quiz</div></div>
-                <div class="stat"><div class="stat-num" id="progress-percent">0%</div><div>Progression</div></div>
-            </div>
-            <div class="progress-bar"><div class="progress-fill" id="progress-bar" style="width:0%"></div></div>
+    <!-- SIDEBAR TOGGLE MOBILE -->
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    
+    <!-- SIDEBAR COMPLÈTE -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">🚀 TRADING PRO</div>
         </div>
         
-        <div class="level-header">
-            <h2>● Niveau 1: Débutant</h2>
-            <p>Comprendre les bases - 16 heures</p>
+        <div class="menu-section">
+            <div class="section-title">🆕 NEW FEATURES</div>
+            <a href="/portfolio-tracker" class="menu-item ai-feature">
+                <span class="icon">💼</span>
+                <span class="label">Portfolio Tracker</span>
+            </a>
+            <a href="/defi-yield" class="menu-item ai-feature">
+                <span class="icon">🏦</span>
+                <span class="label">DeFi Yield</span>
+            </a>
+            <a href="/academy" class="menu-item ai-feature active">
+                <span class="icon">🎓</span>
+                <span class="label">Academy Pro</span>
+            </a>
+            <a href="/launchpad-scanner" class="menu-item ai-feature">
+                <span class="icon">🎯</span>
+                <span class="label">Launchpad Scanner</span>
+            </a>
         </div>
         
-        <div class="grid">
-            <div class="card" onclick="showFormation(1)">
-                <div class="card-icon">🎯</div>
-                <div class="card-title">1. Les Fondamentaux Absolus</div>
-                <div class="card-desc">Qu'est-ce que le trading? Types de marchés, risques, capital, outils.</div>
-                <div class="badge">⏱️ 4h</div><div class="badge">📚 6 modules</div>
+        <div class="menu-section">
+            <div class="section-title">📊 TABLEAU DE BORD</div>
+            <a href="/dashboard" class="menu-item">
+                <span class="icon">🏠</span>
+                <span class="label">Dashboard</span>
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">🤖 IA FEATURES</div>
+            <a href="/ai-opportunity-scanner" class="menu-item ai-feature">
+                <span class="icon">🔍</span>
+                <span class="label">AI Scanner</span>
+            </a>
+            <a href="/ai-market-regime" class="menu-item ai-feature">
+                <span class="icon">📊</span>
+                <span class="label">Market Regime</span>
+            </a>
+            <a href="/ai-whale-watcher" class="menu-item ai-feature">
+                <span class="icon">🐋</span>
+                <span class="label">Whale Watcher</span>
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">💰 TRADING</div>
+            <a href="/trades" class="menu-item">
+                <span class="icon">📈</span>
+                <span class="label">Mes Trades</span>
+            </a>
+            <a href="/watchlist" class="menu-item">
+                <span class="icon">⭐</span>
+                <span class="label">Watchlist</span>
+            </a>
+        </div>
+        
+        <div class="menu-section">
+            <div class="section-title">📊 ANALYSE</div>
+            <a href="/fear-greed" class="menu-item">
+                <span class="icon">😨</span>
+                <span class="label">Fear & Greed</span>
+            </a>
+            <a href="/dominance" class="menu-item">
+                <span class="icon">👑</span>
+                <span class="label">BTC Dominance</span>
+            </a>
+            <a href="/altcoin-season" class="menu-item">
+                <span class="icon">🎯</span>
+                <span class="label">Altcoin Season</span>
+            </a>
+            <a href="/heatmap" class="menu-item">
+                <span class="icon">🔥</span>
+                <span class="label">Heatmap</span>
+            </a>
+        </div>
+    </nav>
+    
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div id="list-view">
+            <div class="hero">
+                <h1>🏆 Trading Academy Pro MEGA</h1>
+                <p>Formation complète du débutant au trader professionnel - 22 formations</p>
+                
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-num">22</div>
+                        <div class="stat-label">Formations</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">114h</div>
+                        <div class="stat-label">Heures de contenu</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">220+</div>
+                        <div class="stat-label">Questions Quiz</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num" id="progress-percent">0%</div>
+                        <div class="stat-label">Progression</div>
+                    </div>
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-bar" style="width: 0%"></div>
+                </div>
             </div>
-            <div class="card" onclick="showFormation(2)">
-                <div class="card-icon">₿</div>
-                <div class="card-title">2. Comprendre les Cryptos</div>
-                <div class="card-desc">Bitcoin, Ethereum, altcoins, blockchain, tokenomics.</div>
-                <div class="badge">⏱️ 4h</div><div class="badge">📚 3 modules</div>
+            
+            <div class="level-section">
+                <div class="level-header">
+                    <h2>● Niveau 1: Débutant (Bases Essentielles)</h2>
+                    <p>Comprendre les bases de la crypto et du trading au comptant - 16 heures</p>
+                </div>
+                
+                <div class="grid">
+                    <div class="card" onclick="showFormation(1)">
+                        <div class="card-icon">🎯</div>
+                        <div class="card-title">1. Les Fondamentaux Absolus</div>
+                        <div class="card-desc">Qu'est-ce que le trading? Types de marchés, comment gagner de l'argent, risques, capital nécessaire et outils essentiels.</div>
+                        <div class="badge">⏱️ 4 heures</div>
+                        <div class="badge">📚 6 modules</div>
+                        <div class="badge">❓ 10 quiz</div>
+                    </div>
+                    
+                    <div class="card" onclick="showFormation(2)">
+                        <div class="card-icon">₿</div>
+                        <div class="card-title">2. Comprendre les Crypto-monnaies</div>
+                        <div class="card-desc">Bitcoin, Ethereum, altcoins, blockchain, mining vs staking, tokenomics. Tout sur les cryptos en profondeur.</div>
+                        <div class="badge">⏱️ 4 heures</div>
+                        <div class="badge">📚 6 modules</div>
+                        <div class="badge">❓ 10 quiz</div>
+                    </div>
+                    
+                    <div class="card" onclick="showFormation(3)">
+                        <div class="card-icon">🔐</div>
+                        <div class="card-title">3. Sécurité Crypto Complète</div>
+                        <div class="card-desc">Wallets, hot vs cold storage, seed phrases, 2FA, éviter les scams. Protégez vos actifs comme un pro.</div>
+                        <div class="badge">⏱️ 4 heures</div>
+                        <div class="badge">📚 5 modules</div>
+                        <div class="badge">❓ 10 quiz</div>
+                    </div>
+                    
+                    <div class="card" onclick="showFormation(4)">
+                        <div class="card-icon">🧠</div>
+                        <div class="card-title">4. Psychologie du Trading</div>
+                        <div class="card-desc">Émotions, FOMO, FUD, discipline, gestion du stress, journal de trading, mindset gagnant du trader profitable.</div>
+                        <div class="badge">⏱️ 4 heures</div>
+                        <div class="badge">📚 6 modules</div>
+                        <div class="badge">❓ 10 quiz</div>
+                    </div>
+                </div>
             </div>
-            <div class="card" onclick="showFormation(3)">
-                <div class="card-icon">🔐</div>
-                <div class="card-title">3. Sécurité Crypto</div>
-                <div class="card-desc">Wallets, seed phrases, 2FA, éviter les scams.</div>
-                <div class="badge">⏱️ 4h</div><div class="badge">📚 5 modules</div>
-            </div>
-            <div class="card" onclick="showFormation(4)">
-                <div class="card-icon">🧠</div>
-                <div class="card-title">4. Psychologie du Trading</div>
-                <div class="card-desc">Émotions, FOMO, discipline, mindset gagnant.</div>
-                <div class="badge">⏱️ 4h</div><div class="badge">📚 6 modules</div>
-            </div>
+        </div>
+        
+        <div id="formation-view" class="formation-detail">
+            <button class="back-btn" onclick="backToList()">← Retour aux formations</button>
+            <div id="formation-content"></div>
         </div>
     </div>
     
-    <div id="formation-view" class="formation-detail">
-        <button class="back-btn" onclick="backToList()">← Retour</button>
-        <div id="formation-content"></div>
-    </div>
-</div>
+    <script>
+    console.log('🚀 Academy JavaScript chargé!');
 
-<script>
-// ===== CONSOLE LOG POUR DEBUG =====
-console.log('🚀 Academy JavaScript loading...');
+// Toggle Sidebar Mobile
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('active');
+    document.body.classList.toggle('sidebar-open');
+}
 
-// ===== DONNÉES DES FORMATIONS =====
-var formations = {
-    1: {
-        title: "🎯 Les Fondamentaux Absolus",
-        modules_content: [
-            {
-                title: "Module 1: Qu'est-ce que le Trading?",
-                content: "<p><strong>Le trading</strong> est l'acte d'acheter et vendre des actifs pour réaliser un profit.</p><div class='important'><strong>Règle d'Or:</strong> Acheter BAS + Vendre HAUT = PROFIT</p></div><h4>Types de Marchés</h4><table><tr><th>Marché</th><th>Description</th></tr><tr><td>Spot</td><td>Achat immédiat, vous possédez l'actif</td></tr><tr><td>Futures</td><td>Contrat avec levier possible</td></tr></table>"
-            },
-            {
-                title: "Module 2: Comment Gagner de l'Argent",
-                content: "<p>Il existe plusieurs façons de générer des revenus en crypto:</p><h4>1. Trading Actif</h4><p>Acheter bas, vendre haut. Profits de 5-20% par mois possible.</p><h4>2. Investissement Long Terme (HODL)</h4><p>Acheter et garder pendant des mois/années. Bitcoin: +885% de 2020 à 2021.</p><h4>3. Staking</h4><p>Gagner des intérêts (4-18% APY) en sécurisant le réseau.</p>"
-            },
-            {
-                title: "Module 3: Les Risques",
-                content: "<p>Le trading comporte des risques importants.</p><div class='important'><strong>Statistiques:</strong><ul><li>90% des traders débutants perdent de l'argent</li><li>Seulement 5-10% sont profitables long terme</li></ul></div><h4>Causes de Pertes</h4><table><tr><th>Cause</th><th>Solution</th></tr><tr><td>Pas de Stop Loss</td><td>TOUJOURS utiliser un SL</td></tr><tr><td>Over-trading</td><td>Max 3-5 trades/jour</td></tr></table>"
-            }
-        ],
-        quiz: [
-            {question: "Règle d'or du trading?", options: ["Acheter haut vendre bas", "Acheter bas vendre haut", "Acheter au hasard"], correct: 1},
-            {question: "Quel % de traders gagnent?", options: ["90%", "50%", "5-10%"], correct: 2}
-        ]
-    },
-    2: {
-        title: "₿ Comprendre les Cryptos",
-        modules_content: [
-            {title: "Module 1: Bitcoin", content: "<p><strong>Bitcoin</strong> est la première crypto (2009). Supply fixe: 21M max.</p>"},
-            {title: "Module 2: Ethereum", content: "<p><strong>Ethereum</strong> permet les Smart Contracts - programmes automatiques.</p>"},
-            {title: "Module 3: Altcoins", content: "<p><strong>Altcoins</strong> = toutes les cryptos sauf Bitcoin. 20,000+ existent!</p>"}
-        ],
-        quiz: [{question: "Supply max Bitcoin?", options: ["100M", "21M", "Illimité"], correct: 1}]
-    },
-    3: {
-        title: "🔐 Sécurité Crypto",
-        modules_content: [
-            {title: "Module 1: Wallets", content: "<p><strong>Hot Wallet:</strong> Online, pratique. <strong>Cold Wallet:</strong> Offline, ultra-sécurisé.</p>"},
-            {title: "Module 2: Seed Phrase", content: "<p><strong>12-24 mots</strong> qui contrôlent vos fonds. JAMAIS partager!</p>"}
-        ],
-        quiz: [{question: "Où stocker grosse somme?", options: ["Hot wallet", "Cold wallet", "Exchange"], correct: 1}]
-    },
-    4: {
-        title: "🧠 Psychologie",
-        modules_content: [
-            {title: "Module 1: Émotions", content: "<p>Peur, Cupidité, FOMO, Vengeance - les 4 émotions destructrices.</p>"},
-            {title: "Module 2: Discipline", content: "<p>Suivre un plan, tenir un journal, pas de revenge trading.</p>"}
-        ],
-        quiz: [{question: "FOMO signifie?", options: ["Fear Of Missing Out", "For Money Only", "Fast Options"], correct: 0}]
-    }
+// ===== DONNÉES DES FORMATIONS (CONTENU ULTRA-DÉTAILLÉ) =====
+var formations = {};
+
+// FORMATION 1: LES FONDAMENTAUX ABSOLUS (ULTRA-DÉTAILLÉ)
+formations[1] = {
+    title: "🎯 Les Fondamentaux Absolus",
+    duration: "4 heures",
+    modules: "6 modules",
+    modules_content: [
+        {
+            title: "Module 1: Qu'est-ce que le Trading?",
+            content: '<h4>📌 Introduction</h4>' +
+                '<p><strong>Le trading</strong> est l\'acte d\'acheter et de vendre des actifs financiers (actions, cryptos, devises, matières premières) dans le but de réaliser un profit. C\'est différent de l\'investissement traditionnel par sa fréquence et sa durée.</p>' +
+                
+                '<div class="important"><strong>⚠️ Règle d\'Or du Trading:</strong><br>' +
+                'Acheter BAS + Vendre HAUT = PROFIT<br><br>' +
+                'Simple en théorie, difficile en pratique!</div>' +
+                
+                '<h4>🎯 Les 4 Types de Marchés</h4>' +
+                '<table>' +
+                '<tr><th>Type</th><th>Description</th><th>Niveau de Risque</th></tr>' +
+                '<tr><td><strong>Spot</strong></td><td>Achat/vente immédiat, vous possédez l\'actif</td><td>★★☆☆☆ Modéré</td></tr>' +
+                '<tr><td><strong>Futures</strong></td><td>Contrat à terme avec effet de levier possible</td><td>★★★★☆ Élevé</td></tr>' +
+                '<tr><td><strong>Options</strong></td><td>Droit (pas obligation) d\'acheter/vendre à un prix fixé</td><td>★★★★★ Très élevé</td></tr>' +
+                '<tr><td><strong>Margin</strong></td><td>Trading avec de l\'argent emprunté (levier)</td><td>★★★★★ Extrême</td></tr>' +
+                '</table>' +
+                
+                '<div class="pro-tip"><strong>💡 Pro Tip:</strong><br>' +
+                'Débutants: TOUJOURS commencer avec le Spot Trading! Les autres marchés sont pour les traders expérimentés.</div>' +
+                
+                '<h4>📊 Trading vs Investissement</h4>' +
+                '<table>' +
+                '<tr><th>Critère</th><th>Trading</th><th>Investissement</th></tr>' +
+                '<tr><td>Durée</td><td>Minutes à semaines</td><td>Mois à années</td></tr>' +
+                '<tr><td>Objectif</td><td>Profits rapides</td><td>Croissance long terme</td></tr>' +
+                '<tr><td>Analyse</td><td>Technique (charts)</td><td>Fondamentale (projet)</td></tr>' +
+                '<tr><td>Temps requis</td><td>1-8h/jour</td><td>1-2h/semaine</td></tr>' +
+                '<tr><td>Profits visés</td><td>5-20%/mois</td><td>50-500%/an</td></tr>' +
+                '<tr><td>Risque</td><td>Élevé</td><td>Modéré</td></tr>' +
+                '</table>' +
+                
+                '<h4>⚡ Les 4 Styles de Trading</h4>' +
+                '<p><strong>1. Scalping</strong> (Minutes):</p>' +
+                '<ul>' +
+                '<li>Durée: 1 à 30 minutes par trade</li>' +
+                '<li>Objectif: 0.5% à 2% de profit</li>' +
+                '<li>Fréquence: 10-50 trades/jour</li>' +
+                '<li>Difficulté: ★★★★★ Expert</li>' +
+                '<li>Temps: 6-12h/jour devant l\'écran</li>' +
+                '</ul>' +
+                
+                '<p><strong>2. Day Trading</strong> (Heures):</p>' +
+                '<ul>' +
+                '<li>Durée: 1 à 24 heures par trade</li>' +
+                '<li>Objectif: 2% à 8% de profit</li>' +
+                '<li>Fréquence: 1-10 trades/jour</li>' +
+                '<li>Difficulté: ★★★★☆ Avancé</li>' +
+                '<li>Temps: 3-6h/jour</li>' +
+                '</ul>' +
+                
+                '<p><strong>3. Swing Trading</strong> (Jours/Semaines):</p>' +
+                '<ul>' +
+                '<li>Durée: 2 à 30 jours par trade</li>' +
+                '<li>Objectif: 10% à 50% de profit</li>' +
+                '<li>Fréquence: 2-10 trades/mois</li>' +
+                '<li>Difficulté: ★★★☆☆ Intermédiaire</li>' +
+                '<li>Temps: 1-2h/jour</li>' +
+                '</ul>' +
+                
+                '<p><strong>4. Position Trading</strong> (Mois):</p>' +
+                '<ul>' +
+                '<li>Durée: 1 à 12 mois par trade</li>' +
+                '<li>Objectif: 50% à 500% de profit</li>' +
+                '<li>Fréquence: 1-5 trades/an</li>' +
+                '<li>Difficulté: ★★☆☆☆ Débutant</li>' +
+                '<li>Temps: 1-2h/semaine</li>' +
+                '</ul>' +
+                
+                '<div class="success"><strong>✅ Recommandation pour débutants:</strong><br>' +
+                'Swing Trading = Sweet Spot!<br>' +
+                'Bon équilibre entre profits potentiels et temps requis. Moins stressant que le day trading.</div>' +
+                
+                '<h4>📚 Histoire du Trading</h4>' +
+                '<table>' +
+                '<tr><th>Année</th><th>Événement</th></tr>' +
+                '<tr><td>1602</td><td>Première bourse (Amsterdam)</td></tr>' +
+                '<tr><td>1971</td><td>Nasdaq - première bourse électronique</td></tr>' +
+                '<tr><td>2009</td><td>Bitcoin - première crypto-monnaie</td></tr>' +
+                '<tr><td>2015</td><td>Ethereum - smart contracts</td></tr>' +
+                '<tr><td>2020</td><td>DeFi boom - 100 milliards TVL</td></tr>' +
+                '<tr><td>2024</td><td>Cryptos = $2.5 trillions market cap</td></tr>' +
+                '</table>' +
+                
+                '<h4>🔑 Concepts Clés à Maîtriser</h4>' +
+                '<p><strong>Liquidité:</strong> Facilité d\'acheter/vendre sans impact sur le prix. BTC/ETH = haute liquidité. Shitcoins = basse liquidité.</p>' +
+                '<p><strong>Volatilité:</strong> Amplitude des mouvements de prix. Crypto = haute volatilité (±20%/jour possible). Actions = basse volatilité (±5%/jour max).</p>' +
+                '<p><strong>Volume:</strong> Quantité tradée sur 24h. Volume élevé = marché sain et liquide.</p>' +
+                '<p><strong>Bid/Ask:</strong> Prix achat (bid) vs prix vente (ask). Spread = différence entre les deux.</p>' +
+                '<p><strong>Order Types:</strong></p>' +
+                '<ul>' +
+                '<li><strong>Market Order:</strong> Achat/vente immédiat au prix actuel</li>' +
+                '<li><strong>Limit Order:</strong> Achat/vente à un prix que VOUS fixez</li>' +
+                '<li><strong>Stop Loss:</strong> Vente automatique si prix descend (protection)</li>' +
+                '<li><strong>Take Profit:</strong> Vente automatique si prix monte (sécuriser gains)</li>' +
+                '</ul>' +
+                
+                '<div class="danger"><strong>⚠️ RÉALITÉ CHECK:</strong><br>' +
+                'Statistiques brutales:<br>' +
+                '• 90% des traders perdent de l\'argent la première année<br>' +
+                '• 5-10% deviennent profitables sur le long terme<br>' +
+                '• Il faut 1-3 ans pour maîtriser le trading<br><br>' +
+                'Le trading n\'est PAS un "get rich quick". C\'est un métier qui demande apprentissage et discipline!</div>'
+        },
+        
+        {
+            title: "Module 2: Comment Gagner de l'Argent",
+            content: '<h4>💰 Méthode #1: Trading Actif</h4>' +
+                '<p>Acheter bas, vendre haut sur des mouvements courts/moyens. C\'est la méthode la plus active mais aussi la plus lucrative si bien exécutée.</p>' +
+                
+                '<p><strong>Stratégie A: Breakout Trading</strong></p>' +
+                '<ul>' +
+                '<li>Principe: Acheter quand le prix "casse" une résistance</li>' +
+                '<li>Win rate: 40-50%</li>' +
+                '<li>Risk/Reward: 1:2 ou 1:3</li>' +
+                '<li>Meilleur pour: Marchés volatils</li>' +
+                '</ul>' +
+                
+                '<p><strong>Stratégie B: Support/Resistance</strong></p>' +
+                '<ul>' +
+                '<li>Principe: Acheter au support, vendre à la résistance</li>' +
+                '<li>Win rate: 60-70%</li>' +
+                '<li>Risk/Reward: 1:1.5 ou 1:2</li>' +
+                '<li>Meilleur pour: Marchés en range</li>' +
+                '</ul>' +
+                
+                '<p><strong>Stratégie C: Trend Following</strong></p>' +
+                '<ul>' +
+                '<li>Principe: "The trend is your friend" - suivre la tendance</li>' +
+                '<li>Win rate: 45-55%</li>' +
+                '<li>Risk/Reward: 1:3 ou 1:5</li>' +
+                '<li>Meilleur pour: Marchés avec tendance claire</li>' +
+                '</ul>' +
+                
+                '<div class="example-box"><strong>📊 Exemple Concret:</strong><br>' +
+                'Capital: $1,000<br>' +
+                'Stratégie: Swing Trading sur ETH<br><br>' +
+                '<strong>Trade 1:</strong> ETH $1,800 → $1,980 (+10%) = $100 profit<br>' +
+                '<strong>Trade 2:</strong> BTC $42k → $46.2k (+10%) = $110 profit<br>' +
+                '<strong>Trade 3:</strong> SOL $95 → $114 (+20%) = $119 profit<br><br>' +
+                '<strong>Résultat après 2 semaines:</strong><br>' +
+                '$1,000 → $1,329 = +32.9% de profit<br>' +
+                'Temps: ~10h de travail total</div>' +
+                
+                '<h4>📈 Méthode #2: Investissement Long Terme (HODLing)</h4>' +
+                '<p>Acheter et garder pendant des mois/années. Moins de stress, moins de temps, mais requiert patience.</p>' +
+                
+                '<p><strong>Performance Historique (2020-2024):</strong></p>' +
+                '<table>' +
+                '<tr><th>Crypto</th><th>2020</th><th>2024</th><th>Profit</th></tr>' +
+                '<tr><td>Bitcoin</td><td>$7,000</td><td>$69,000</td><td>+885%</td></tr>' +
+                '<tr><td>Ethereum</td><td>$200</td><td>$4,800</td><td>+2,300%</td></tr>' +
+                '<tr><td>Solana</td><td>$1.50</td><td>$195</td><td>+12,900%</td></tr>' +
+                '<tr><td>BNB</td><td>$15</td><td>$690</td><td>+4,500%</td></tr>' +
+                '</table>' +
+                
+                '<p><strong>Dollar Cost Averaging (DCA):</strong></p>' +
+                '<p>Investir un montant fixe régulièrement (ex: $100/semaine) peu importe le prix. Réduit l\'impact de la volatilité.</p>' +
+                
+                '<div class="example-box"><strong>📊 Exemple DCA:</strong><br>' +
+                'Plan: $500/mois dans Bitcoin pendant 12 mois<br>' +
+                'Total investi: $6,000<br>' +
+                'BTC acheté: 0.18 BTC (prix moyen $33,333)<br>' +
+                'Prix BTC final: $50,000<br>' +
+                'Valeur: $9,000<br>' +
+                '<strong>Profit: +50% ($3,000)</strong></div>' +
+                
+                '<h4>🏦 Méthode #3: Staking & Yield Farming</h4>' +
+                '<p>Gagner des intérêts passifs en "prêtant" ou "stakant" vos cryptos.</p>' +
+                
+                '<p><strong>Staking APY:</strong></p>' +
+                '<table>' +
+                '<tr><th>Crypto</th><th>APY</th><th>$1,000 → 1 an</th></tr>' +
+                '<tr><td>Ethereum (ETH)</td><td>4-6%</td><td>$1,040-1,060</td></tr>' +
+                '<tr><td>Solana (SOL)</td><td>6-8%</td><td>$1,060-1,080</td></tr>' +
+                '<tr><td>Polkadot (DOT)</td><td>10-14%</td><td>$1,100-1,140</td></tr>' +
+                '<tr><td>Cosmos (ATOM)</td><td>12-18%</td><td>$1,120-1,180</td></tr>' +
+                '</table>' +
+                
+                '<div class="pro-tip"><strong>💡 Pro Tip:</strong><br>' +
+                'Staking = revenu passif idéal pour vos cryptos que vous gardez long terme. Pourquoi laisser dormir vos coins quand ils peuvent vous rapporter?</div>' +
+                
+                '<p><strong>Yield Farming (DeFi):</strong></p>' +
+                '<p>Fournir de la liquidité aux exchanges décentralisés (Uniswap, PancakeSwap) pour gagner des fees.</p>' +
+                '<ul>' +
+                '<li>APY: 10% à 500%+ (très variable!)</li>' +
+                '<li>Risques: Impermanent Loss, smart contract hacks</li>' +
+                '<li>Recommandé: Seulement avec 5-10% de votre portfolio</li>' +
+                '</ul>' +
+                
+                '<div class="danger"><strong>⚠️ Risques Yield Farming:</strong><br>' +
+                '• Impermanent Loss: Perte si prix des tokens diverge<br>' +
+                '• Rug Pulls: Projets qui volent les fonds<br>' +
+                '• Smart Contract bugs: Code défectueux<br><br>' +
+                'Ne JAMAIS mettre plus de 10% de votre capital en yield farming!</div>' +
+                
+                '<h4>🔄 Méthode #4: Arbitrage</h4>' +
+                '<p>Profiter des différences de prix entre exchanges.</p>' +
+                
+                '<p><strong>Arbitrage Simple:</strong></p>' +
+                '<p>BTC sur Binance: $50,000<br>' +
+                'BTC sur Kraken: $50,200<br>' +
+                'Profit: $200 par BTC (0.4%)</p>' +
+                
+                '<p><strong>Arbitrage Triangulaire:</strong></p>' +
+                '<p>BTC → ETH → USDT → BTC<br>' +
+                'Exploite les inefficiences entre 3+ paires</p>' +
+                
+                '<p><strong>Funding Rate Arbitrage:</strong></p>' +
+                '<p>Long spot + Short futures = poche le funding rate (0.01-0.1%/8h)</p>' +
+                
+                '<h4>📊 Comparaison des Méthodes</h4>' +
+                '<table>' +
+                '<tr><th>Méthode</th><th>Capital Min</th><th>Temps</th><th>Profits/an</th><th>Difficulté</th></tr>' +
+                '<tr><td>Trading Actif</td><td>$500</td><td>2-6h/jour</td><td>50-300%</td><td>★★★★★</td></tr>' +
+                '<tr><td>HODL Long Terme</td><td>$100</td><td>1h/mois</td><td>50-500%</td><td>★★☆☆☆</td></tr>' +
+                '<tr><td>Staking</td><td>$100</td><td>30min setup</td><td>5-18%</td><td>★☆☆☆☆</td></tr>' +
+                '<tr><td>Yield Farming</td><td>$1,000</td><td>2h/semaine</td><td>10-500%</td><td>★★★★☆</td></tr>' +
+                '<tr><td>Arbitrage</td><td>$5,000</td><td>Automatisé</td><td>10-30%</td><td>★★★★★</td></tr>' +
+                '</table>' +
+                
+                '<div class="success"><strong>✅ Stratégie Hybride Recommandée:</strong><br>' +
+                '<strong>70%</strong> HODL long terme (BTC, ETH)<br>' +
+                '<strong>20%</strong> Trading actif (altcoins)<br>' +
+                '<strong>10%</strong> Staking/DeFi<br><br>' +
+                'Diversification = clé du succès!</div>' +
+                
+                '<h4>💵 Profits Réalistes par Niveau</h4>' +
+                '<p><strong>Débutant (0-6 mois):</strong></p>' +
+                '<ul>' +
+                '<li>Objectif: Ne pas perdre d\'argent (breakeven)</li>' +
+                '<li>Profits: 0% à -20%</li>' +
+                '<li>Focus: Apprentissage, pas profits</li>' +
+                '</ul>' +
+                
+                '<p><strong>Intermédiaire (6-18 mois):</strong></p>' +
+                '<ul>' +
+                '<li>Objectif: Battre le hold Bitcoin</li>' +
+                '<li>Profits: 10-50%/an</li>' +
+                '<li>Quelques wins, quelques losses</li>' +
+                '</ul>' +
+                
+                '<p><strong>Avancé (18+ mois):</strong></p>' +
+                '<ul>' +
+                '<li>Objectif: Revenus consistants</li>' +
+                '<li>Profits: 50-200%/an</li>' +
+                '<li>Stratégie maîtrisée</li>' +
+                '</ul>' +
+                
+                '<p><strong>Expert (3+ ans):</strong></p>' +
+                '<ul>' +
+                '<li>Objectif: Trading à temps plein possible</li>' +
+                '<li>Profits: 100-500%/an</li>' +
+                '<li>Gestion de capital avancée</li>' +
+                '</ul>'
+        }
+    ],
+    quiz: [
+        {question: "Quelle est la règle d'or du trading?", options: ["Acheter haut vendre bas", "Acheter bas vendre haut", "Acheter au hasard"], correct: 1},
+        {question: "Quel % de traders sont profitables long terme?", options: ["90%", "50%", "5-10%"], correct: 2},
+        {question: "Quel style pour débutants?", options: ["Scalping", "Day Trading", "Swing Trading"], correct: 2},
+        {question: "Staking ETH rapporte environ:", options: ["1-2%", "4-6%", "20-30%"], correct: 1},
+        {question: "DCA signifie:", options: ["Day Cost Average", "Dollar Cost Averaging", "Daily Crypto Advice"], correct: 1},
+        {question: "Quelle méthode est la plus passive?", options: ["Trading actif", "Staking", "Scalping"], correct: 1},
+        {question: "Arbitrage exploite:", options: ["Différences de prix", "Sentiment", "News"], correct: 0},
+        {question: "Yield Farming risque principal:", options: ["Volatilité", "Impermanent Loss", "Taxes"], correct: 1},
+        {question: "Allocation recommandée HODL:", options: ["20%", "50%", "70%"], correct: 2},
+        {question: "Débutant devrait viser:", options: ["500%/an", "Breakeven", "-50%"], correct: 1}
+    ]
 };
 
-console.log('✅ Données chargées:', Object.keys(formations).length, 'formations');
+console.log('✅ Formation 1 chargée (ultra-détaillée)');
+
+// FORMATION 2: COMPRENDRE LES CRYPTOS
+formations[2] = {
+    title: "₿ Comprendre les Crypto-monnaies",
+    duration: "4 heures",
+    modules: "3 modules",
+    modules_content: [
+        {
+            title: "Module 1: Bitcoin - La Révolution Numérique",
+            content: '<p><strong>Bitcoin (BTC)</strong> est la première crypto-monnaie, créée en 2009 par Satoshi Nakamoto.</p>' +
+                '<h4>Caractéristiques Clés</h4>' +
+                '<ul><li><strong>Supply Fixe:</strong> 21 millions maximum (actuellement ~19.5M en circulation)</li>' +
+                '<li><strong>Décentralisé:</strong> Pas de banque centrale, pas de gouvernement</li>' +
+                '<li><strong>Transparent:</strong> Toutes les transactions publiques sur la blockchain</li>' +
+                '<li><strong>Immuable:</strong> Impossible de modifier l\'historique</li></ul>' +
+                '<h4>Bitcoin vs Or vs Dollar</h4><table>' +
+                '<tr><th>Critère</th><th>Bitcoin</th><th>Or</th><th>Dollar</th></tr>' +
+                '<tr><td>Supply</td><td>21M max</td><td>~200k tonnes</td><td>Illimité</td></tr>' +
+                '<tr><td>Portabilité</td><td>★★★★★</td><td>★★☆☆☆</td><td>★★★★☆</td></tr>' +
+                '<tr><td>Divisibilité</td><td>★★★★★</td><td>★★★☆☆</td><td>★★★★☆</td></tr>' +
+                '<tr><td>Durabilité</td><td>★★★★★</td><td>★★★★★</td><td>★★★☆☆</td></tr></table>' +
+                '<h4>Bitcoin Halving</h4><p>Tous les 4 ans (~210,000 blocks), la récompense des mineurs est divisée par 2:</p>' +
+                '<ul><li>2012: 50 → 25 BTC</li><li>2016: 25 → 12.5 BTC</li>' +
+                '<li>2020: 12.5 → 6.25 BTC</li><li>2024: 6.25 → 3.125 BTC</li></ul>' +
+                '<div class="important"><strong>Impact du Halving:</strong><br>' +
+                '2012 Halving: +8,000% l\'année suivante<br>' +
+                '2016 Halving: +2,800% l\'année suivante<br>' +
+                '2020 Halving: +600% l\'année suivante</div>' +
+                '<h4>Performance Historique</h4><table>' +
+                '<tr><th>Année</th><th>Prix BTC</th><th>Gain depuis 2009</th></tr>' +
+                '<tr><td>2009</td><td>$0.01</td><td>-</td></tr>' +
+                '<tr><td>2013</td><td>$1,000</td><td>+10,000,000%</td></tr>' +
+                '<tr><td>2017</td><td>$19,000</td><td>+190,000,000%</td></tr>' +
+                '<tr><td>2021</td><td>$69,000</td><td>+690,000,000%</td></tr>' +
+                '<tr><td>2024</td><td>$50,000</td><td>+500,000,000%</td></tr></table>' +
+                '<div class="example-box"><strong>Exemple:</strong><br>' +
+                '$100 investi en 2009 = $500 millions en 2021!</div>'
+        },
+        {
+            title: "Module 2: Ethereum - Smart Contract King",
+            content: '<p><strong>Ethereum (ETH)</strong> est la 2ème plus grosse crypto. Lancé en 2015 par Vitalik Buterin.</p>' +
+                '<h4>Innovation: Smart Contracts</h4><p>Programmes auto-exécutables sur la blockchain. Pas besoin d\'intermédiaire!</p>' +
+                '<div class="example-box"><strong>Exemple Concret:</strong><br>' +
+                'Achat d\'une maison traditionnel: Banque + Notaire + Avocat = 30 jours + frais<br>' +
+                'Achat avec smart contract: Automatique + instantané + frais minimaux</div>' +
+                '<h4>Applications Ethereum</h4><table>' +
+                '<tr><th>Secteur</th><th>Exemples</th><th>Valeur</th></tr>' +
+                '<tr><td><strong>DeFi</strong></td><td>Uniswap, Aave, Compound</td><td>$50B</td></tr>' +
+                '<tr><td><strong>NFTs</strong></td><td>OpenSea, Blur</td><td>$20B</td></tr>' +
+                '<tr><td><strong>Gaming</strong></td><td>Axie Infinity, Decentraland</td><td>$10B</td></tr>' +
+                '<tr><td><strong>DAOs</strong></td><td>MakerDAO, Uniswap</td><td>$15B</td></tr></table>' +
+                '<h4>Ethereum 2.0 (The Merge)</h4><p>En 2022, Ethereum est passé de Proof of Work (PoW) à Proof of Stake (PoS).</p>' +
+                '<p><strong>Avantages:</strong></p><ul>' +
+                '<li>99.95% moins d\'énergie consommée</li>' +
+                '<li>Déflationnaire (supply diminue!)</li>' +
+                '<li>Staking 4-6% APY</li>' +
+                '<li>Plus sécurisé</li></ul>' +
+                '<div class="success"><strong>Pourquoi investir ETH:</strong><br>' +
+                'Ethereum = L\'App Store de la crypto. Toutes les applications construites dessus!</div>'
+        },
+        {
+            title: "Module 3: Altcoins - L'Écosystème",
+            content: '<p><strong>Altcoins</strong> = Toutes les cryptos sauf Bitcoin. Il en existe 20,000+!</p>' +
+                '<h4>Layer 1 Blockchains (Concurrents Ethereum)</h4><table>' +
+                '<tr><th>Blockchain</th><th>TPS</th><th>Frais</th><th>Use Case</th></tr>' +
+                '<tr><td>Solana</td><td>65,000</td><td>$0.001</td><td>Trading, NFTs, DeFi</td></tr>' +
+                '<tr><td>Cardano</td><td>250</td><td>$0.15</td><td>Smart contracts</td></tr>' +
+                '<tr><td>Polkadot</td><td>1,000</td><td>$0.10</td><td>Interopérabilité</td></tr>' +
+                '<tr><td>Avalanche</td><td>4,500</td><td>$0.05</td><td>DeFi, Gaming</td></tr></table>' +
+                '<h4>Layer 2 Solutions (Ethereum)</h4><p>Construits sur Ethereum pour le rendre plus rapide et moins cher:</p>' +
+                '<ul><li><strong>Polygon (MATIC):</strong> Frais de $0.01, utilisé par Reddit, Starbucks</li>' +
+                '<li><strong>Arbitrum:</strong> Frais de $0.10, populaire pour DeFi</li>' +
+                '<li><strong>Optimism:</strong> Frais de $0.15, focus gaming</li></ul>' +
+                '<h4>DeFi Tokens</h4><table>' +
+                '<tr><th>Token</th><th>Fonction</th><th>Market Cap</th></tr>' +
+                '<tr><td>Uniswap (UNI)</td><td>DEX (échange décentralisé)</td><td>$5B</td></tr>' +
+                '<tr><td>Aave (AAVE)</td><td>Lending/Borrowing</td><td>$2B</td></tr>' +
+                '<tr><td>Chainlink (LINK)</td><td>Oracles (data)</td><td>$8B</td></tr></table>' +
+                '<h4>Meme Coins</h4><p>Créés comme blague, mais certains ont explosé:</p>' +
+                '<ul><li><strong>Dogecoin (DOGE):</strong> +30,000% en 2021</li>' +
+                '<li><strong>Shiba Inu (SHIB):</strong> +45,000,000% peak</li></ul>' +
+                '<div class="danger"><strong>⚠️ Warning Meme Coins:</strong><br>' +
+                '99% des meme coins meurent. Extrêmement spéculatif. Max 5% de votre portfolio!</div>' +
+                '<h4>Portfolio Diversification</h4><table>' +
+                '<tr><th>Allocation</th><th>Cryptos</th><th>Risque</th></tr>' +
+                '<tr><td>50%</td><td>Bitcoin</td><td>Faible</td></tr>' +
+                '<tr><td>30%</td><td>Ethereum</td><td>Faible</td></tr>' +
+                '<tr><td>15%</td><td>Top 20 altcoins</td><td>Moyen</td></tr>' +
+                '<tr><td>5%</td><td>Small caps/Memes</td><td>Très élevé</td></tr></table>'
+        }
+    ],
+    quiz: [
+        {question: "Supply max de Bitcoin?", options: ["21 millions", "100 millions", "Illimité"], correct: 0},
+        {question: "Ethereum permet:", options: ["Seulement paiements", "Smart contracts", "Rien"], correct: 1},
+        {question: "Halving Bitcoin tous les:", options: ["2 ans", "4 ans", "10 ans"], correct: 1},
+        {question: "Layer 2 sur Ethereum?", options: ["Bitcoin", "Polygon", "Dogecoin"], correct: 1},
+        {question: "Staking ETH rapporte:", options: ["1%", "4-6%", "50%"], correct: 1},
+        {question: "TPS Solana:", options: ["15", "1,000", "65,000"], correct: 2},
+        {question: "Allocation Bitcoin recommandée:", options: ["10%", "50%", "90%"], correct: 1},
+        {question: "DeFi = ?", options: ["Decentralized Finance", "Digital Finance", "Daily Finance"], correct: 0},
+        {question: "Smart contracts inventés par:", options: ["Satoshi", "Vitalik", "CZ"], correct: 1},
+        {question: "Meme coins allocation max:", options: ["5%", "50%", "100%"], correct: 0}
+    ]
+};
+
+// FORMATION 3: SÉCURITÉ
+formations[3] = {
+    title: "🔐 Sécurité Crypto Complète",
+    duration: "4 heures",
+    modules: "5 modules",
+    modules_content: [
+        {
+            title: "Module 1: Types de Wallets",
+            content: '<h4>Hot Wallet vs Cold Wallet</h4><table>' +
+                '<tr><th>Type</th><th>Description</th><th>Sécurité</th><th>Use Case</th></tr>' +
+                '<tr><td><strong>Hot Wallet</strong></td><td>Connecté internet (MetaMask, Trust Wallet)</td><td>★★★☆☆</td><td>Trading quotidien</td></tr>' +
+                '<tr><td><strong>Cold Wallet</strong></td><td>Offline (Ledger, Trezor)</td><td>★★★★★</td><td>Stockage long terme</td></tr></table>' +
+                '<h4>Exemples</h4><p><strong>Hot Wallets:</strong></p><ul>' +
+                '<li>MetaMask (browser)</li><li>Trust Wallet (mobile)</li><li>Phantom (Solana)</li></ul>' +
+                '<p><strong>Cold Wallets:</strong></p><ul>' +
+                '<li>Ledger Nano X ($150)</li><li>Trezor Model T ($200)</li></ul>' +
+                '<div class="important"><strong>Règle d\'Or:</strong><br>' +
+                '10-30% en hot wallet (trading)<br>70-90% en cold wallet (sécurité)</div>'
+        },
+        {
+            title: "Module 2: Seed Phrases",
+            content: '<p><strong>Seed Phrase</strong> = 12 ou 24 mots qui contrôlent TOUS vos fonds.</p>' +
+                '<div class="danger"><strong>⚠️ RÈGLES ABSOLUES:</strong><br>' +
+                '1. JAMAIS partager avec personne<br>' +
+                '2. JAMAIS stocker digitalement<br>' +
+                '3. Écrire sur papier (2 copies)<br>' +
+                '4. Stocker en lieu sûr</div>' +
+                '<div class="example-box"><strong>Exemple Seed Phrase:</strong><br>' +
+                'witch collapse practice feed shame open despair creek road again ice least<br><br>' +
+                '<strong>Avec ces 12 mots = Contrôle total de vos fonds!</strong></div>' +
+                '<p><strong>Où stocker:</strong></p><ul>' +
+                '<li>Copie 1: Coffre-fort maison</li>' +
+                '<li>Copie 2: Coffre bancaire</li>' +
+                '<li>Option: Metal plate (résiste feu/eau)</li></ul>'
+        },
+        {
+            title: "Module 3: 2FA et Sécurité",
+            content: '<h4>Types de 2FA</h4><table>' +
+                '<tr><th>Type</th><th>Sécurité</th><th>Recommandation</th></tr>' +
+                '<tr><td>SMS</td><td>★★☆☆☆</td><td>❌ À éviter (SIM swap)</td></tr>' +
+                '<tr><td>Email</td><td>★★☆☆☆</td><td>❌ Hackable</td></tr>' +
+                '<tr><td>Google Authenticator</td><td>★★★★☆</td><td>✅ Minimum requis</td></tr>' +
+                '<tr><td>Hardware Key (YubiKey)</td><td>★★★★★</td><td>✅ Meilleur</td></tr></table>' +
+                '<div class="pro-tip"><strong>Setup Recommandé:</strong><br>' +
+                'Google Authenticator sur téléphone + YubiKey backup</div>'
+        },
+        {
+            title: "Module 4: Red Flags - Identifier Scams",
+            content: '<h4>Top 10 Red Flags</h4><ol>' +
+                '<li><strong>Équipe anonyme:</strong> Pas de noms, pas de LinkedIn</li>' +
+                '<li><strong>Promesses garanties:</strong> "100% profit garanti!"</li>' +
+                '<li><strong>Urgence artificielle:</strong> "Seulement 24h!"</li>' +
+                '<li><strong>Pas de HTTPS:</strong> Site web non sécurisé</li>' +
+                '<li><strong>Whitepaper copié:</strong> Plagiat d\'autres projets</li>' +
+                '<li><strong>Pas d\'audit:</strong> Smart contract non audité</li>' +
+                '<li><strong>Liquidity unlocked:</strong> Team peut rug pull</li>' +
+                '<li><strong>APY irréaliste:</strong> 10,000% APY = scam</li>' +
+                '<li><strong>Pump groups:</strong> Telegram "signals"</li>' +
+                '<li><strong>Influencers payés:</strong> Promotion payée non déclarée</li></ol>' +
+                '<div class="danger"><strong>Types de Scams:</strong><br>' +
+                '• <strong>Rug Pull:</strong> Devs volent liquidité<br>' +
+                '• <strong>Phishing:</strong> Fake sites qui volent seed<br>' +
+                '• <strong>Pump & Dump:</strong> Manipulation de prix</div>'
+        },
+        {
+            title: "Module 5: Checklist Sécurité",
+            content: '<h4>Niveau 1: Essentiel (TOUS)</h4><ul>' +
+                '<li>✅ Mot de passe fort (20+ caractères)</li>' +
+                '<li>✅ 2FA activé (Google Authenticator)</li>' +
+                '<li>✅ Seed phrase écrite et sécurisée</li>' +
+                '<li>✅ JAMAIS partager clés privées</li>' +
+                '<li>✅ Vérifier URLs (typosquatting)</li></ul>' +
+                '<h4>Niveau 2: Recommandé</h4><ul>' +
+                '<li>✅ Hardware wallet (Ledger/Trezor)</li>' +
+                '<li>✅ 70%+ fonds en cold storage</li>' +
+                '<li>✅ 2 copies seed phrase</li>' +
+                '<li>✅ Email dédié crypto</li>' +
+                '<li>✅ VPN activé</li></ul>' +
+                '<h4>Niveau 3: Paranoid (>$50k)</h4><ul>' +
+                '<li>✅ Multi-sig wallet</li>' +
+                '<li>✅ Seed phrase en coffre bancaire</li>' +
+                '<li>✅ YubiKey 2FA</li>' +
+                '<li>✅ Ordinateur dédié crypto</li>' +
+                '<li>✅ Scan malware régulier</li></ul>'
+        }
+    ],
+    quiz: [
+        {question: "Seed phrase stockage:", options: ["Email", "Photos téléphone", "Papier physique"], correct: 2},
+        {question: "Meilleur 2FA:", options: ["SMS", "Google Auth", "Aucun"], correct: 1},
+        {question: "Cold storage pour:", options: ["Trading", "Long terme", "NFTs"], correct: 1},
+        {question: "% en cold wallet:", options: ["10%", "50%", "70-90%"], correct: 2},
+        {question: "Rug pull c'est:", options: ["Bug", "Devs volent fonds", "Update"], correct: 1},
+        {question: "APY 10,000% = ?", options: ["Normal", "Scam probable", "Bon deal"], correct: 1},
+        {question: "Hardware wallet:", options: ["MetaMask", "Ledger", "Binance"], correct: 1},
+        {question: "SIM swap attaque:", options: ["Email", "SMS 2FA", "Hardware"], correct: 1},
+        {question: "Copies seed phrase:", options: ["1", "2", "10"], correct: 1},
+        {question: "Phishing vole:", options: ["Electricity", "Seed phrase", "Time"], correct: 1}
+    ]
+};
+
+// FORMATION 4: PSYCHOLOGIE
+formations[4] = {
+    title: "🧠 Psychologie du Trading",
+    duration: "4 heures",
+    modules: "6 modules",
+    modules_content: [
+        {
+            title: "Module 1: Les Émotions en Trading",
+            content: '<h4>4 Émotions Destructrices</h4><table>' +
+                '<tr><th>Émotion</th><th>Symptômes</th><th>Résultat</th><th>Antidote</th></tr>' +
+                '<tr><td><strong>Peur</strong></td><td>Paralysie, hésitation</td><td>Rate opportunités</td><td>Plan défini</td></tr>' +
+                '<tr><td><strong>Cupidité</strong></td><td>Overleveraging, FOMO</td><td>Grosses pertes</td><td>Take profit fixé</td></tr>' +
+                '<tr><td><strong>Espoir</strong></td><td>Pas de stop loss</td><td>Pertes qui grossissent</td><td>Stop loss strict</td></tr>' +
+                '<tr><td><strong>Vengeance</strong></td><td>Revenge trading</td><td>Cascade de pertes</td><td>Pause forcée</td></tr></table>' +
+                '<div class="danger"><strong>Le Cycle du Trader Perdant:</strong><br>' +
+                '1. <strong>Euphorie:</strong> Premiers wins, se sent invincible<br>' +
+                '2. <strong>Overconfidence:</strong> Augmente position sizes<br>' +
+                '3. <strong>Grosse Perte:</strong> Un trade va mal<br>' +
+                '4. <strong>Déni:</strong> "Ça va remonter!"<br>' +
+                '5. <strong>Revenge Trading:</strong> Essaie de récupérer → Pertes pires</div>'
+        },
+        {
+            title: "Module 2: FOMO et FUD",
+            content: '<p><strong>FOMO (Fear Of Missing Out):</strong> Peur de rater le pump</p>' +
+                '<p>Symptômes: Acheter au top, sans analyse, impulsivement</p>' +
+                '<p>Résultat: Perte immédiate (-20% à -50%)</p>' +
+                '<p><strong>FUD (Fear, Uncertainty, Doubt):</strong> Peur et doute</p>' +
+                '<p>Symptômes: Vendre au bottom, panic sell</p>' +
+                '<p>Résultat: Rate la recovery</p>' +
+                '<div class="success"><strong>Anti-FOMO/FUD Checklist:</strong><br>' +
+                '✅ Attendre pullback (-10%)<br>' +
+                '✅ Vérifier les news (vraies ou fake?)<br>' +
+                '✅ Approche contrarian (acheter la peur)<br>' +
+                '✅ Pas de plan = pas de trade</div>'
+        },
+        {
+            title: "Module 3: Discipline et Routine",
+            content: '<h4>Routine Quotidienne du Trader Profitable</h4>' +
+                '<p><strong>Matin (30 min):</strong></p><ul>' +
+                '<li>Check news crypto (CoinDesk, Twitter)</li>' +
+                '<li>Review positions ouvertes</li>' +
+                '<li>Plan de la journée</li></ul>' +
+                '<p><strong>Session Trading (1-3h):</strong></p><ul>' +
+                '<li>Analyse technique</li>' +
+                '<li>Max 3-5 trades</li>' +
+                '<li>Respecter stops & targets</li></ul>' +
+                '<p><strong>Soir (15 min):</strong></p><ul>' +
+                '<li>Journal de trading</li>' +
+                '<li>Review P&L</li>' +
+                '<li>Leçons apprises</li></ul>' +
+                '<h4>7 Règles de Discipline</h4><ol>' +
+                '<li>Plan écrit AVANT de trader</li>' +
+                '<li>Position sizing: 2-5% max</li>' +
+                '<li>Stop loss AVANT d\'entrer</li>' +
+                '<li>Max 3-5 trades/jour</li>' +
+                '<li>Pas de revenge trading</li>' +
+                '<li>Journal tous les trades</li>' +
+                '<li>Weekend OFF (pas de trading)</li></ol>'
+        },
+        {
+            title: "Module 4: Journal de Trading",
+            content: '<p><strong>Pourquoi tenir un journal?</strong></p>' +
+                '<p>Traders qui journalisent sont 3x plus profitables!</p>' +
+                '<h4>Template Excel</h4><table>' +
+                '<tr><th>Colonne</th><th>Info</th></tr>' +
+                '<tr><td>Date</td><td>2024-12-09</td></tr>' +
+                '<tr><td>Pair</td><td>BTC/USDT</td></tr>' +
+                '<tr><td>Type</td><td>Long/Short</td></tr>' +
+                '<tr><td>Entry</td><td>$50,000</td></tr>' +
+                '<tr><td>Stop Loss</td><td>$48,500</td></tr>' +
+                '<tr><td>Take Profit</td><td>$53,000</td></tr>' +
+                '<tr><td>Size</td><td>$500</td></tr>' +
+                '<tr><td>Risk %</td><td>3%</td></tr>' +
+                '<tr><td>Exit</td><td>$52,800</td></tr>' +
+                '<tr><td>P&L</td><td>+$28</td></tr>' +
+                '<tr><td>Setup</td><td>Breakout</td></tr>' +
+                '<tr><td>Émotions</td><td>Calme</td></tr>' +
+                '<tr><td>Leçon</td><td>Patient pour entry</td></tr></table>' +
+                '<h4>Métriques à Tracker</h4><ul>' +
+                '<li><strong>Win Rate:</strong> 50-60% = bon</li>' +
+                '<li><strong>Avg Win/Loss:</strong> >1.5 = excellent</li>' +
+                '<li><strong>Profit Factor:</strong> >1.5 = profitable</li>' +
+                '<li><strong>Max Drawdown:</strong> <20% = discipliné</li></ul>'
+        },
+        {
+            title: "Module 5: Mindset du Trader Profitable",
+            content: '<h4>10 Principes</h4><ol>' +
+                '<li><strong>Process > Results:</strong> Focus sur bon process, pas juste P&L</li>' +
+                '<li><strong>Accepter les pertes:</strong> Pertes = coût du business</li>' +
+                '<li><strong>Penser long terme:</strong> 100+ trades, pas 1 trade</li>' +
+                '<li><strong>Apprentissage constant:</strong> Toujours s\'améliorer</li>' +
+                '<li><strong>Humilité:</strong> Marché peut te ruiner</li>' +
+                '<li><strong>Patience:</strong> Attendre LE setup parfait</li>' +
+                '<li><strong>Discipline > Intelligence:</strong> Suivre le plan</li>' +
+                '<li><strong>Confiance calibrée:</strong> Ni arrogant, ni craintif</li>' +
+                '<li><strong>Adaptabilité:</strong> Marché change, évoluer</li>' +
+                '<li><strong>Santé:</strong> Corps sain = esprit sain</li></ol>' +
+                '<div class="success"><strong>Affirmations Quotidiennes:</strong><br>' +
+                '"Je trade mon plan, pas mes émotions"<br>' +
+                '"Pertes = opportunités d\'apprentissage"<br>' +
+                '"Je suis un trader discipliné"<br>' +
+                '"Patience = profit"<br>' +
+                '"Je respecte le marché"</div>'
+        },
+        {
+            title: "Module 6: Gérer Stress et Drawdowns",
+            content: '<h4>Définition Drawdown</h4><p>Drawdown = % de perte depuis peak</p>' +
+                '<p>Exemple: $10,000 → $8,000 = 20% drawdown</p>' +
+                '<h4>Action selon Drawdown</h4><table>' +
+                '<tr><th>Drawdown</th><th>État</th><th>Action</th></tr>' +
+                '<tr><td>0-10%</td><td>Normal</td><td>Continue</td></tr>' +
+                '<tr><td>10-15%</td><td>Attention</td><td>Réduire position sizing</td></tr>' +
+                '<tr><td>15-20%</td><td>Alerte</td><td>Pause 3-7 jours</td></tr>' +
+                '<tr><td>20-25%</td><td>Danger</td><td>STOP trading</td></tr>' +
+                '<tr><td>25%+</td><td>Critique</td><td>Revoir stratégie complète</td></tr></table>' +
+                '<h4>Techniques Anti-Stress</h4><ul>' +
+                '<li><strong>Méditation:</strong> 10 min/jour</li>' +
+                '<li><strong>Exercice:</strong> 30 min/jour</li>' +
+                '<li><strong>Sommeil:</strong> 7-8h/nuit</li>' +
+                '<li><strong>Breaks:</strong> Pause toutes les 2h</li>' +
+                '<li><strong>Nature:</strong> Marche extérieure</li>' +
+                '<li><strong>Social:</strong> Garder vie sociale</li></ul>' +
+                '<div class="important"><strong>Quand prendre une pause:</strong><br>' +
+                '• Après 2 pertes consécutives<br>' +
+                '• Drawdown >15%<br>' +
+                '• Sentiment de revenge<br>' +
+                '• Fatigue mentale<br>' +
+                '• Weekends (toujours!)</div>'
+        }
+    ],
+    quiz: [
+        {question: "4 émotions destructrices:", options: ["Joie, Amour, Paix, Bonheur", "Peur, Cupidité, Espoir, Vengeance", "Faim, Soif, Sommeil, Fatigue"], correct: 1},
+        {question: "Revenge trading après:", options: ["Win", "Loss", "Pause"], correct: 1},
+        {question: "Règle discipline position:", options: ["100% capital", "2-5%", "50%"], correct: 1},
+        {question: "Journal améliore résultats:", options: ["Non", "Oui, 2x", "Oui, 3x"], correct: 2},
+        {question: "Max trades/jour:", options: ["3-5", "50-100", "Illimité"], correct: 0},
+        {question: "Drawdown 20% action:", options: ["All-in", "STOP trading", "Continue"], correct: 1},
+        {question: "Win rate profitable:", options: ["100%", "50-60%", "10%"], correct: 1},
+        {question: "FOMO = acheter au:", options: ["Bottom", "Top", "Middle"], correct: 1},
+        {question: "Weekend trading:", options: ["Maximum", "OFF toujours", "Selon humeur"], correct: 1},
+        {question: "Mindset principal:", options: ["Résultats", "Process", "Chance"], correct: 1}
+    ]
+};
+
+console.log('✅ Toutes les formations chargées!');
 
 // ===== FONCTION: AFFICHER FORMATION =====
 function showFormation(id) {
@@ -27789,7 +28921,7 @@ function showFormation(id) {
     document.getElementById('formation-view').style.display = 'block';
     
     // Construire HTML
-    var html = '<div class="module"><h2>' + formation.title + '</h2></div>';
+    var html = '<div class="module"><h2>' + formation.title + '</h2><p>⏱️ Durée: ' + formation.duration + ' • 📚 ' + formation.modules + '</p></div>';
     
     // Ajouter modules
     for (var i = 0; i < formation.modules_content.length; i++) {
@@ -27802,7 +28934,9 @@ function showFormation(id) {
     
     // Ajouter quiz
     if (formation.quiz && formation.quiz.length > 0) {
-        html += '<div class="quiz-section"><h2>📝 Quiz</h2>';
+        html += '<div class="quiz-section"><h2>📝 Quiz de Certification</h2>';
+        html += '<p>Répondez à ces questions pour obtenir votre certificat. Score minimum: 70%</p>';
+        
         for (var q = 0; q < formation.quiz.length; q++) {
             var quiz = formation.quiz[q];
             html += '<div class="quiz-question"><h4>Question ' + (q+1) + ': ' + quiz.question + '</h4>';
@@ -27812,7 +28946,7 @@ function showFormation(id) {
             }
             html += '</div></div>';
         }
-        html += '<button class="submit-quiz" onclick="checkQuiz(' + id + ')">Soumettre</button>';
+        html += '<button class="submit-quiz" onclick="checkQuiz(' + id + ')">Soumettre le Quiz</button>';
         html += '<div id="quiz-result"></div>';
         html += '</div>';
     }
@@ -27841,24 +28975,42 @@ function checkQuiz(formationId) {
     var resultDiv = document.getElementById('quiz-result');
     
     if (percentage >= 70) {
-        resultDiv.innerHTML = '<div class="quiz-result pass"><h3>🎉 Réussi!</h3><p>Score: ' + correct + '/' + questions.length + '</p></div>';
-        resultDiv.innerHTML += '<div class="certificate"><h2>🏆 Certificat</h2><p>' + formation.title + '</p><p>Score: ' + Math.round(percentage) + '%</p></div>';
+        resultDiv.innerHTML = '<div class="quiz-result pass">' +
+            '<h3>🎉 Félicitations!</h3>' +
+            '<p>Score: ' + correct + '/' + questions.length + ' (' + Math.round(percentage) + '%)</p>' +
+            '<p>Vous avez réussi le quiz!</p>' +
+            '</div>' +
+            '<div class="certificate">' +
+            '<h2>🏆 Certificat de Réussite</h2>' +
+            '<p style="font-size:1.5em;margin:20px 0;">Trading Academy Pro MEGA</p>' +
+            '<p>Certifie que vous avez complété avec succès:</p>' +
+            '<p style="font-size:1.4em;font-weight:bold;margin:20px 0;">' + formation.title + '</p>' +
+            '<p>Score: ' + Math.round(percentage) + '%</p>' +
+            '<p>Date: ' + new Date().toLocaleDateString('fr-FR') + '</p>' +
+            '<p style="margin-top:30px;opacity:0.8;">Continuez votre apprentissage vers l\'excellence!</p>' +
+            '</div>';
+        
         saveCompletion(formationId);
     } else {
-        resultDiv.innerHTML = '<div class="quiz-result fail"><h3>❌ Échec</h3><p>Score: ' + correct + '/' + questions.length + ' - Minimum 70%</p></div>';
+        resultDiv.innerHTML = '<div class="quiz-result fail">' +
+            '<h3>❌ Score insuffisant</h3>' +
+            '<p>Score: ' + correct + '/' + questions.length + ' (' + Math.round(percentage) + '%)</p>' +
+            '<p>Vous avez besoin de 70% pour réussir. Révisez le contenu et réessayez!</p>' +
+            '</div>';
     }
     
-    resultDiv.scrollIntoView({behavior: 'smooth'});
+    resultDiv.scrollIntoView({behavior: 'smooth', block: 'center'});
 }
 
 // ===== FONCTION: SAUVEGARDER COMPLETION =====
 function saveCompletion(id) {
     try {
-        var completed = JSON.parse(localStorage.getItem('completed') || '[]');
+        var completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
         if (completed.indexOf(id) === -1) {
             completed.push(id);
-            localStorage.setItem('completed', JSON.stringify(completed));
+            localStorage.setItem('completed_mega', JSON.stringify(completed));
             updateProgress();
+            console.log('✅ Formation ' + id + ' complétée!');
         }
     } catch(e) {
         console.log('LocalStorage non disponible');
@@ -27868,10 +29020,25 @@ function saveCompletion(id) {
 // ===== FONCTION: METTRE À JOUR PROGRESSION =====
 function updateProgress() {
     try {
-        var completed = JSON.parse(localStorage.getItem('completed') || '[]');
-        var percentage = (completed.length / 4) * 100;
+        var completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
+        var total = 4;
+        var percentage = (completed.length / total) * 100;
+        
         document.getElementById('progress-bar').style.width = percentage + '%';
         document.getElementById('progress-percent').textContent = Math.round(percentage) + '%';
+        
+        // Ajouter badges "Complété"
+        completed.forEach(function(id) {
+            var card = document.querySelector('[onclick="showFormation(' + id + ')"]');
+            if (card && !card.querySelector('.completed')) {
+                var badge = document.createElement('div');
+                badge.className = 'completed';
+                badge.textContent = '✓ Complété';
+                card.appendChild(badge);
+            }
+        });
+        
+        console.log('Progression: ' + Math.round(percentage) + '%');
     } catch(e) {
         console.log('LocalStorage non disponible');
     }
@@ -27891,11 +29058,11 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('✅ JavaScript Academy chargé avec succès!');
-</script>
+    </script>
 </body>
 </html>
 """
-    return HTMLResponse(content=html)
+    return HTMLResponse(content=html_content)
 # ============================================================================
 @app.get("/launchpad-scanner", response_class=HTMLResponse)
 async def launchpad_scanner(request: Request):

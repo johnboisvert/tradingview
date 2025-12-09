@@ -27106,9 +27106,22 @@ async def portfolio_tracker(request: Request):
                     const info = data.exchanges[exchange];
                     const card = document.createElement('div');
                     card.className = 'portfolio-card';
-                    card.innerHTML = '<h3>' + exchange + '</h3>' +
-                        '<p>💰 Valeur: $' + info.value.toFixed(2) + '</p>' +
+                    
+                    let holdingsHtml = '<h3>' + exchange + '</h3>' +
+                        '<p><strong>💰 Total: $' + info.value.toFixed(2) + '</strong></p>' +
                         '<p>📦 Actifs: ' + info.count + '</p>';
+                    
+                    if (info.holdings && info.holdings.length > 0) {
+                        holdingsHtml += '<div style="margin-top: 15px; border-top: 1px solid rgba(6,182,212,0.3); padding-top: 10px;">';
+                        for (let h of info.holdings) {
+                            holdingsHtml += '<div style="font-size: 0.9em; margin: 8px 0; padding: 8px; background: rgba(15,23,42,0.5); border-radius: 6px;">' +
+                                '<strong>' + h.symbol + ':</strong> ' + h.amount.toFixed(4) + ' @ $' + h.price.toFixed(2) + 
+                                ' = <strong style="color: #22c55e;">$' + h.value.toFixed(2) + '</strong></div>';
+                        }
+                        holdingsHtml += '</div>';
+                    }
+                    
+                    card.innerHTML = holdingsHtml;
                     container.appendChild(card);
                 }
                 
@@ -28402,6 +28415,27 @@ async def connect_exchange(request: Request):
     except Exception as e:
         print(f"Portfolio error: {e}")
         return JSONResponse({'success': False, 'message': f'Erreur: {str(e)}'})
+
+@app.get("/api/portfolio/clear")
+async def clear_portfolio(request: Request):
+    """Nettoyer la DB portfolio - ADMIN ONLY"""
+    try:
+        session_token = request.cookies.get("session_token")
+        user = get_user_from_token(session_token)
+        
+        if not user or user.get('username') != 'admin':
+            return JSONResponse({'success': False, 'message': 'Admin only'})
+        
+        db_path = '/tmp/portfolio.db'
+        conn = sqlite3.connect(db_path)
+        c = conn.cursor()
+        c.execute('DELETE FROM portfolio_holdings')
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse({'success': True, 'message': 'Portfolio cleared'})
+    except Exception as e:
+        return JSONResponse({'success': False, 'message': str(e)})
 
 @app.get("/api/portfolio/data")
 async def get_portfolio_data(request: Request):

@@ -20552,6 +20552,11 @@ async def admin_dashboard(request: Request):
         role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
         plan_badge = f'<span class="badge badge-premium">{plan}</span>'
         
+        # Construire le bouton delete en dehors du f-string (éviter backslash)
+        delete_button = ""
+        if username != "admin":
+            delete_button = f'<button onclick="deleteUser(\'{username}\')" class="btn btn-danger">🗑️ Supprimer</button>'
+        
         users_html += f"""
         <tr>
             <td><strong>{username}</strong></td>
@@ -20561,7 +20566,7 @@ async def admin_dashboard(request: Request):
             <td class="actions">
                 <button onclick="editUser('{username}')" class="btn btn-edit">✏️ Modifier</button>
                 <button onclick="managePermissions('{username}')" class="btn btn-permissions">🔐 Permissions</button>
-                {"<button onclick=\"deleteUser('"+username+"')\" class=\"btn btn-danger\">🗑️ Supprimer</button>" if username != "admin" else ""}
+                {delete_button}
             </td>
         </tr>
         """

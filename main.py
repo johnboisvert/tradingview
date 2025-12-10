@@ -2,6 +2,13 @@
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+# 🔐 CORRECTION 2: Rate Limiting pour sécurité
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
 from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
@@ -31,9 +38,9 @@ import asyncio
 import json
 import sqlite3
 import hashlib
+import bcrypt  # 🔐 CORRECTION 1: Sécurité mots de passe
 import secrets
 import hmac
-import hashlib
 import requests  # Pour API externe (Fear & Greed, etc.)
 import time
 from urllib.parse import urlencode
@@ -1062,6 +1069,165 @@ UPCOMING_GEMS_COMPLETE = [
 app = FastAPI()
 
 # ═══════════════════════════════════════════════════════════════════════════
+# 🔐 CORRECTION 2: RATE LIMITING - Protection contre brute-force
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Configuration du rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+# Handler personnalisé pour erreurs de rate limit
+async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Page d'erreur personnalisée quand trop de tentatives"""
+    return HTMLResponse(
+        content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>🚫 Trop de Tentatives</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                    color: white;
+                    text-align: center;
+                    padding: 100px 20px;
+                    margin: 0;
+                }
+                .error-box {
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    padding: 50px;
+                    border-radius: 20px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                }
+                h1 {
+                    font-size: 48px;
+                    margin: 0 0 20px 0;
+                }
+                p {
+                    font-size: 18px;
+                    margin: 15px 0;
+                    line-height: 1.6;
+                }
+                a {
+                    display: inline-block;
+                    background: white;
+                    color: #ef4444;
+                    padding: 15px 30px;
+                    border-radius: 50px;
+                    text-decoration: none;
+                    font-weight: 600;
+                    margin-top: 30px;
+                    transition: all 0.3s;
+                }
+                a:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="error-box">
+                <h1>🚫 Trop de Tentatives</h1>
+                <p>Vous avez atteint la limite de tentatives de connexion.</p>
+                <p><strong>Pour votre sécurité, veuillez réessayer dans 15 minutes.</strong></p>
+                <p style="font-size: 14px; opacity: 0.9; margin-top: 30px;">
+                    Si vous avez oublié votre mot de passe, contactez le support.
+                </p>
+                <a href="/login">← Retour à la page de connexion</a>
+            </div>
+        </body>
+        </html>
+        """,
+        status_code=429
+    )
+
+# Enregistrer le handler
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+
+# Activer le middleware
+app.add_middleware(SlowAPIMiddleware)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔐 CORRECTION 3: DISCLAIMERS LÉGAUX - Protection juridique
+# ═══════════════════════════════════════════════════════════════════════════
+
+LEGAL_DISCLAIMER_HTML = """
+<div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); 
+            color: white; 
+            padding: 20px; 
+            margin: 20px auto;
+            max-width: 1200px;
+            border-radius: 12px; 
+            border: 2px solid #fca5a5;
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);">
+    <h3 style="margin: 0 0 15px 0; font-size: 22px; font-weight: 700;">⚠️ AVERTISSEMENT LÉGAL IMPORTANT</h3>
+    <div style="font-size: 15px; line-height: 1.8;">
+        <p style="margin: 10px 0;"><strong>Ce service ne constitue PAS un conseil financier, fiscal ou juridique.</strong></p>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
+            <div>
+                ✋ <strong>Performances passées:</strong><br>
+                Les résultats antérieurs ne garantissent PAS les résultats futurs.
+            </div>
+            <div>
+                💸 <strong>Capital à risque:</strong><br>
+                Ne tradez qu'avec des fonds que vous pouvez perdre sans conséquence.
+            </div>
+            <div>
+                🤖 <strong>Prédictions IA:</strong><br>
+                Les analyses par intelligence artificielle sont probabilistes et peuvent être inexactes.
+            </div>
+            <div>
+                📚 <strong>Responsabilité personnelle:</strong><br>
+                Faites toujours vos propres recherches (DYOR - Do Your Own Research).
+            </div>
+            <div>
+                ⚖️ <strong>Risques importants:</strong><br>
+                Le trading comporte des risques significatifs de perte totale en capital.
+            </div>
+            <div>
+                🔞 <strong>Réservé aux adultes:</strong><br>
+                Ce service est destiné aux personnes majeures et responsables.
+            </div>
+        </div>
+        
+        <p style="margin: 20px 0 0 0; font-size: 13px; opacity: 0.9; text-align: center;">
+            En utilisant ce service, vous reconnaissez avoir lu et compris ces avertissements.
+        </p>
+    </div>
+</div>
+"""
+
+LEGAL_FOOTER_HTML = """
+<footer style="text-align: center; 
+               padding: 30px 20px; 
+               background: #0f172a; 
+               color: #94a3b8; 
+               font-size: 13px;
+               border-top: 1px solid rgba(6,182,212,0.2);
+               margin-top: 60px;">
+    <p style="margin: 10px 0; line-height: 1.6;">
+        <strong style="color: #ef4444;">⚠️ Avertissement de risque:</strong> 
+        Le trading et l'investissement en crypto-monnaies comportent des risques importants de perte en capital. 
+        Ne tradez qu'avec des fonds que vous pouvez vous permettre de perdre. 
+        Ce site ne fournit aucun conseil financier, fiscal ou juridique.
+    </p>
+    <p style="margin: 20px 0 10px 0;">
+        © 2024 Trading Dashboard Pro • Tous droits réservés
+    </p>
+    <p style="margin: 5px 0;">
+        <a href="/terms-of-service" style="color: #06b6d4; text-decoration: none; margin: 0 10px;">Conditions Générales</a> •
+        <a href="/privacy-policy" style="color: #06b6d4; text-decoration: none; margin: 0 10px;">Politique de Confidentialité</a> •
+        <a href="/risk-disclaimer" style="color: #06b6d4; text-decoration: none; margin: 0 10px;">Avertissement des Risques</a>
+    </p>
+</footer>
+"""
+
+# ═══════════════════════════════════════════════════════════════════════════
 # 🛡️ MIDDLEWARE DE PROTECTION AUTOMATIQUE DES ROUTES
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -1857,7 +2023,7 @@ class DatabaseManager:
         c.execute("SELECT * FROM users WHERE username = 'admin'")
         if not c.fetchone():
             default_password = "admin123"
-            password_hash = hashlib.sha256(default_password.encode()).hexdigest()
+            password_hash = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (%s, %s, %s, %s)", 
                       ("admin", password_hash, "admin", datetime.now()))
             print("✅ Compte admin par défaut créé: admin / admin123")
@@ -1928,7 +2094,7 @@ class DatabaseManager:
         c.execute("SELECT * FROM users WHERE username = 'admin'")
         if not c.fetchone():
             default_password = "admin123"
-            password_hash = hashlib.sha256(default_password.encode()).hexdigest()
+            password_hash = bcrypt.hashpw(default_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)", 
                       ("admin", password_hash, "admin", datetime.now().isoformat()))
             print("✅ Compte admin par défaut créé: admin / admin123")
@@ -1950,8 +2116,13 @@ class DatabaseManager:
         conn.close()
         
         if result:
-            password_hash = hashlib.sha256(password.encode()).hexdigest()
-            return result[0] == password_hash
+            stored_hash = result[0]
+            try:
+                # 🔐 CORRECTION 1: Vérification sécurisée avec bcrypt
+                return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+            except Exception as e:
+                print(f"❌ Erreur vérification password: {e}")
+                return False
         return False
     
     def get_user_role(self, username: str) -> str:
@@ -2048,7 +2219,8 @@ class DatabaseManager:
         conn = self.get_connection()
         c = conn.cursor()
         
-        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        # 🔐 CORRECTION 1: Hash sécurisé avec bcrypt
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
         try:
             if self.use_postgresql:
@@ -2095,7 +2267,8 @@ class DatabaseManager:
         conn = self.get_connection()
         c = conn.cursor()
         
-        password_hash = hashlib.sha256(new_password.encode()).hexdigest()
+        # 🔐 CORRECTION 1: Hash sécurisé avec bcrypt
+        password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
         if self.use_postgresql:
             c.execute("UPDATE users SET password_hash = %s WHERE username = %s", 
@@ -2973,7 +3146,9 @@ async def login_page(request: Request, error: str = None):
 </body>
 </html>""")
 
+# 🔐 CORRECTION 2: Rate limiting sur login (max 5 tentatives / 15 minutes)
 @app.post("/login")
+@limiter.limit("5/15minutes")
 async def login(request: Request, response: Response):
     """Traiter la connexion avec gestion des permissions"""
     form_data = await request.form()
@@ -3233,9 +3408,10 @@ async def edit_user(request: Request):
         # Mise à jour du rôle (et username si différent)
         if db_manager.use_postgresql:
             if password:  # Si nouveau mot de passe fourni
-                hashed_password = hashlib.sha256(password.encode()).hexdigest()
+                # 🔐 CORRECTION 1: Hash sécurisé avec bcrypt
+                hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 c.execute(
-                    "UPDATE users SET username = %s, password = %s, role = %s WHERE username = %s",
+                    "UPDATE users SET username = %s, password_hash = %s, role = %s WHERE username = %s",
                     (new_username, hashed_password, role, original_username)
                 )
             else:  # Pas de changement de mot de passe
@@ -3245,9 +3421,10 @@ async def edit_user(request: Request):
                 )
         else:
             if password:
-                hashed_password = hashlib.sha256(password.encode()).hexdigest()
+                # 🔐 CORRECTION 1: Hash sécurisé avec bcrypt
+                hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 c.execute(
-                    "UPDATE users SET username = ?, password = ?, role = ? WHERE username = ?",
+                    "UPDATE users SET username = ?, password_hash = ?, role = ? WHERE username = ?",
                     (new_username, hashed_password, role, original_username)
                 )
             else:

@@ -3,29 +3,48 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 httpx==0.25.1
+jinja2
 psycopg2-binary==2.9.9
+
+# 🔐 SÉCURITÉ - CORRECTIONS CRITIQUES
+bcrypt==4.1.2
+slowapi==0.1.9
+cryptography==41.0.7
+
+# Paiements
 stripe==7.4.0
 coinbase-commerce==1.0.1
+
+# APIs & Communication
 requests==2.31.0
 python-telegram-bot==20.6
-pytz==2023.3
-sendgrid==6.10.0
-reportlab==4.0.7
-pydantic==2.5.0
 aiohttp==3.9.1
-# HTTP Client (httpx/httpcore pin pour éviter les soucis de proxies args)
 httpcore==1.0.5
-# Rate Limiting (OBLIGATOIRE pour v2.3)
-slowapi==0.1.9
-psycopg2-binary
-jinja2
-apscheduler
+
 # Utilities
 python-dotenv==1.0.1
-# OpenAI
+pytz==2023.3
+pydantic==2.5.0
+apscheduler
+
+# Emails & PDF
+sendgrid==6.10.0
+reportlab==4.0.7
+
+# OpenAI (optionnel)
 openai==1.51.0
-# Ajouts pour Altseason (fetch + parsing)
+
+# Data Parsing
 beautifulsoup4==4.12.3
-# CCXT - Portfolio tracking avec exchanges réels
+
+# Trading & Crypto
 ccxt==4.0.96
-cryptography==41.0.7
+```
+
+---
+
+## 💡 POURQUOI bcrypt EST CRITIQUE:
+
+Sans `bcrypt==4.1.2`, tu vas avoir cette erreur:
+```
+ModuleNotFoundError: No module named 'bcrypt'

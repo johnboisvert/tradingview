@@ -19688,94 +19688,132 @@ async def calculatrice_trades():
 
 @app.get("/prediction-ia", response_class=HTMLResponse)
 async def prediction_ia():
-    """Page de prédiction IA avec navigation"""
-    return HTMLResponse(SIDEBAR + """
-<!DOCTYPE html>
+    """🤖 Prédiction Crypto IA Pro - PAGE STANDALONE"""
+    return HTMLResponse("""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🤖 Prédiction Crypto IA Pro</title>
-    """ + CSS + """
     <style>
-        /* Fix pour sidebar */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
-            margin-left: 0 !important;
-            padding-left: 0 !important;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         
-        .container {
-            margin-left: 0 !important;
+        /* SIDEBAR INLINE */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 250px;
+            height: 100vh;
+            background: #1e293b;
+            padding: 20px 10px;
+            overflow-y: auto;
+            z-index: 1000;
+            border-right: 2px solid #334155;
+        }
+        
+        .sidebar-title {
+            color: #06b6d4;
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .sidebar a {
+            display: block;
+            padding: 10px;
+            color: #94a3b8;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 5px;
+        }
+        
+        .sidebar a:hover {
+            background: rgba(6, 182, 212, 0.15);
+            color: #fff;
+        }
+        
+        .sidebar a.active {
+            background: rgba(6, 182, 212, 0.3);
+            color: #fff;
+        }
+        
+        /* CONTENU */
+        .main-content {
+            margin-left: 250px;
             padding: 20px;
         }
         
-        .prediction-container {
-            width: 100%;
-            height: calc(100vh - 200px);
-            min-height: 800px;
-        }}
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
         
-        .prediction-frame {
+        .header h1 {
+            font-size: 42px;
+            color: white;
+        }
+        
+        /* IFRAME */
+        .iframe-wrapper {
+            width: 100%;
+            height: 1500px;
+            border: 4px solid #3b82f6;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+        }
+        
+        .iframe-wrapper iframe {
             width: 100%;
             height: 100%;
             border: none;
-            border-radius: 12px;
-            background: #1e293b;
-        }}
-        
-        .info-banner {
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .info-banner h2 {
-            color: white;
-            font-size: 28px;
-            margin-bottom: 10px;
-        }
-        
-        .info-banner p {
-            color: #e0e7ff;
-            font-size: 16px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="sidebar">
+        <div class="sidebar-title">🚀 CRYPTO IA</div>
+        <a href="/dashboard">🏠 Dashboard</a>
+        <a href="/academy">🎓 Academy</a>
+        <a href="/trades">📊 Trades</a>
+        <a href="/ai-predictor">🔮 AI Predictor</a>
+        <a href="/prediction-ia" class="active">🤖 Prédictions IA</a>
+        <a href="/ai-gem-hunter">💎 Gem Hunter</a>
+        <a href="/fear-greed">😨 Fear & Greed</a>
+        <a href="/mon-compte">👤 Mon Compte</a>
+        <a href="/logout">🚪 Déconnexion</a>
+    </div>
+    
+    <div class="main-content">
         <div class="header">
             <h1>🤖 Prédiction Crypto IA Pro</h1>
-            <p>Intelligence artificielle avancée pour prédire les mouvements de marché</p>
+            <p>Intelligence artificielle avancée pour prédire les mouvements</p>
         </div>
         
-        
-        
-        <div class="info-banner">
-            <h2>🚀 Application IA Avancée</h2>
-            <p>Utilise l'intelligence artificielle pour analyser et prédire les tendances crypto en temps réel</p>
-        </div>
-        
-        <div class="prediction-container">
+        <div class="iframe-wrapper">
             <iframe 
-                class="prediction-frame"
                 src="https://htmlpreview.github.io/?https://github.com/johnboisvert1985-prog/crypto-prediction-api/blob/main/prediction.html?api=https://crypto-prediction-api-5763.onrender.com"
-                title="Prédiction Crypto IA"
-                allowfullscreen>
+                title="Prédiction Crypto IA">
             </iframe>
         </div>
     </div>
-<div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionnent les Prédictions IA ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🎯 Comment ça marche ?</h3><p style="line-height: 1.8; color: #666;">Machine Learning analysant 100+ indicateurs pour prédire mouvements prix.</p><ul style="line-height: 1.8; color: #555;"><li>🧠 Algorithmes ML avancés</li><li>📊 100+ indicateurs analysés</li><li>⏱️ Timeframes: 1h, 4h, 1j, 1sem</li><li>🎯 Précision: 60-70%</li><li>📈 Direction + amplitude + confiance</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Indicateurs</h3><p style="line-height: 1.6; color: #555;"><strong>📈 Technique (40%):</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px;">RSI, MACD, Bollinger, Volume, Patterns</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>⛓️ On-Chain (30%):</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px;">Flux exchange, Whales, Addresses, Mining</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>😨 Sentiment (20%):</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px;">Fear & Greed, Social, Trends, News</p><p style="line-height: 1.6; color: #555; margin-top: 10px;"><strong>📊 Marché (10%):</strong></p><p style="color: #666; font-size: 14px; margin-left: 15px;">Dominance, Altseason, Correlations</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 Interprétation</h3><p style="line-height: 1.6; color: #555;">🟢 <strong>Bullish 80-100%:</strong> Hausse probable</p><p style="line-height: 1.6; color: #555;">🟡 <strong>Bullish 60-80%:</strong> Hausse modérée</p><p style="line-height: 1.6; color: #555;">⚪ <strong>Neutral 40-60%:</strong> Incertain</p><p style="line-height: 1.6; color: #555;">🟠 <strong>Bearish 60-80%:</strong> Baisse modérée</p><p style="line-height: 1.6; color: #555;">🔴 <strong>Bearish 80-100%:</strong> Baisse forte</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Limites</h3><p style="line-height: 1.8; color: #666;"><strong>IA ne prédit PAS:</strong></p><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>⚠️ Événements imprévisibles (hacks, régulations)</li><li>📰 News majeures soudaines</li><li>🐋 Manipulations whales</li><li>🌪️ Black swans, crashes flash</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">🎯 Combiner avec votre analyse + Stop loss obligatoire!</p></div></div></div>
 </body>
 </html>""")
 
-# ============================================================================
-# 🆕 SYSTÈME DE PERMISSIONS - WEBHOOKS ET SCHEDULER
-# ============================================================================
 
-# Webhook Stripe pour activer automatiquement les abonnements
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
 @app.post("/webhook/stripe-permissions")
 async def stripe_permissions_webhook(request: Request):

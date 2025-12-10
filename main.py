@@ -19698,6 +19698,17 @@ async def prediction_ia():
     <title>🤖 Prédiction Crypto IA Pro</title>
     """ + CSS + """
     <style>
+        /* Fix pour sidebar */
+        body {
+            margin-left: 0 !important;
+            padding-left: 0 !important;
+        }
+        
+        .container {
+            margin-left: 0 !important;
+            padding: 20px;
+        }
+        
         .prediction-container {
             width: 100%;
             height: calc(100vh - 200px);

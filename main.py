@@ -32318,7 +32318,25 @@ async def ai_technical_analysis_page(request: Request):
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>🎯 AI Technical Analysis Pro</title>
             <style>
-                body {{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;min-height:100vh;padding:20px;}}
+                <style>
+    /* Fix sidebar */
+    .sidebar {{
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 250px !important;
+        height: 100vh !important;
+        overflow-y: auto !important;
+        z-index: 1000 !important;
+    }}
+    
+    body {{
+        background:linear-gradient(135deg,#667eea,#764ba2);
+        color:#fff;
+        min-height:100vh;
+        padding:20px;
+        padding-left:270px;  /* Espace pour le sidebar */
+    }}
                 .container {{max-width:1600px;margin:0 auto;}}
                 header {{text-align:center;padding:40px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:40px;}}
                 header h1 {{font-size:3em;margin:0;}}

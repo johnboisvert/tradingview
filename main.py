@@ -1078,6 +1078,9 @@ SIDEBAR = """<style>
 .menu-item .badge{background:rgba(6,182,212,0.2);color:#06b6d4;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:auto;font-weight:600}
 .menu-item.ai-feature{background:linear-gradient(90deg,rgba(6,182,212,0.15) 0%,transparent 100%);border-left:3px solid #06b6d4;font-weight:600}
 .menu-item.premium{background:linear-gradient(90deg,rgba(139,92,246,0.2) 0%,transparent 100%);border-left:3px solid #8b5cf6;font-weight:600}
+.menu-item.admin{background:linear-gradient(90deg,rgba(245,158,11,0.2) 0%,transparent 100%);border-left:3px solid #f59e0b;font-weight:600}
+.menu-item.account{background:linear-gradient(90deg,rgba(16,185,129,0.2) 0%,transparent 100%);border-left:3px solid #10b981;font-weight:600}
+.menu-item.logout{background:linear-gradient(90deg,rgba(239,68,68,0.2) 0%,transparent 100%);border-left:3px solid #ef4444;font-weight:600}
 .menu-item.active{background:rgba(6,182,212,0.25);border-left-color:#06b6d4;color:#fff;font-weight:700}
 .icon{font-size:18px;min-width:20px}
 .label{flex:1}
@@ -1317,37 +1320,24 @@ body.sidebar-open{margin-left:280px}
             </a>
         </div>
         
-        <!-- 👤 COMPTE & SETTINGS -->
+        <!-- 👤 MON COMPTE -->
         <div class="menu-section">
-            <div class="section-title">👤 COMPTE & SETTINGS</div>
-            <a href="/mon-compte" class="menu-item">
-                <span class="icon">⚙️</span>
+            <div class="section-title">👤 MON COMPTE</div>
+            <a href="/pricing-complete" class="menu-item premium">
+                <span class="icon">💎</span>
+                <span class="label">Abonnements</span>
+            </a>
+            <a href="/admin-dashboard" class="menu-item admin">
+                <span class="icon">🔧</span>
+                <span class="label">Admin</span>
+            </a>
+            <a href="/mon-compte" class="menu-item account">
+                <span class="icon">👤</span>
                 <span class="label">Mon Compte</span>
             </a>
-            <a href="/pricing-complete" class="menu-item">
-                <span class="icon">💎</span>
-                <span class="label">Pricing & Plans</span>
-            </a>
-            <a href="/api-keys" class="menu-item">
-                <span class="icon">🔑</span>
-                <span class="label">Clés API</span>
-            </a>
-        </div>
-        
-        <!-- 🔐 ADMIN (si admin) -->
-        <div class="menu-section admin-only" style="display: none;">
-            <div class="section-title">🔐 ADMINISTRATION</div>
-            <a href="/admin-dashboard" class="menu-item">
-                <span class="icon">👨‍💼</span>
-                <span class="label">Admin Dashboard</span>
-            </a>
-            <a href="/admin/pricing" class="menu-item">
-                <span class="icon">💰</span>
-                <span class="label">Admin Pricing</span>
-            </a>
-            <a href="/admin/list-promos" class="menu-item">
-                <span class="icon">🎁</span>
-                <span class="label">Promotions</span>
+            <a href="/logout" class="menu-item logout">
+                <span class="icon">🚪</span>
+                <span class="label">Déconnexion</span>
             </a>
         </div>
     </nav>
@@ -26729,6 +26719,7 @@ async def crypto_pepites():
 </head>
 <body>
         <!-- SIDEBAR TOGGLE MOBILE -->
+        <!-- SIDEBAR TOGGLE MOBILE -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
     
     <!-- SIDEBAR COMPLÈTE ULTRA PRO -->
@@ -26950,40 +26941,28 @@ async def crypto_pepites():
             </a>
         </div>
         
-        <!-- 👤 COMPTE & SETTINGS -->
+        <!-- 👤 MON COMPTE -->
         <div class="menu-section">
-            <div class="section-title">👤 COMPTE & SETTINGS</div>
-            <a href="/mon-compte" class="menu-item">
-                <span class="icon">⚙️</span>
+            <div class="section-title">👤 MON COMPTE</div>
+            <a href="/pricing-complete" class="menu-item premium">
+                <span class="icon">💎</span>
+                <span class="label">Abonnements</span>
+            </a>
+            <a href="/admin-dashboard" class="menu-item admin">
+                <span class="icon">🔧</span>
+                <span class="label">Admin</span>
+            </a>
+            <a href="/mon-compte" class="menu-item account">
+                <span class="icon">👤</span>
                 <span class="label">Mon Compte</span>
             </a>
-            <a href="/pricing-complete" class="menu-item">
-                <span class="icon">💎</span>
-                <span class="label">Pricing & Plans</span>
-            </a>
-            <a href="/api-keys" class="menu-item">
-                <span class="icon">🔑</span>
-                <span class="label">Clés API</span>
-            </a>
-        </div>
-        
-        <!-- 🔐 ADMIN (si admin) -->
-        <div class="menu-section admin-only" style="display: none;">
-            <div class="section-title">🔐 ADMINISTRATION</div>
-            <a href="/admin-dashboard" class="menu-item">
-                <span class="icon">👨‍💼</span>
-                <span class="label">Admin Dashboard</span>
-            </a>
-            <a href="/admin/pricing" class="menu-item">
-                <span class="icon">💰</span>
-                <span class="label">Admin Pricing</span>
-            </a>
-            <a href="/admin/list-promos" class="menu-item">
-                <span class="icon">🎁</span>
-                <span class="label">Promotions</span>
+            <a href="/logout" class="menu-item logout">
+                <span class="icon">🚪</span>
+                <span class="label">Déconnexion</span>
             </a>
         </div>
     </nav>
+
 
 
 {SIDEBAR}
@@ -28459,6 +28438,7 @@ async def academy_complete_final(request: Request):
 <body>
     <!-- SIDEBAR TOGGLE MOBILE -->
         <!-- SIDEBAR TOGGLE MOBILE -->
+        <!-- SIDEBAR TOGGLE MOBILE -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
     
     <!-- SIDEBAR COMPLÈTE ULTRA PRO -->
@@ -28680,40 +28660,28 @@ async def academy_complete_final(request: Request):
             </a>
         </div>
         
-        <!-- 👤 COMPTE & SETTINGS -->
+        <!-- 👤 MON COMPTE -->
         <div class="menu-section">
-            <div class="section-title">👤 COMPTE & SETTINGS</div>
-            <a href="/mon-compte" class="menu-item">
-                <span class="icon">⚙️</span>
+            <div class="section-title">👤 MON COMPTE</div>
+            <a href="/pricing-complete" class="menu-item premium">
+                <span class="icon">💎</span>
+                <span class="label">Abonnements</span>
+            </a>
+            <a href="/admin-dashboard" class="menu-item admin">
+                <span class="icon">🔧</span>
+                <span class="label">Admin</span>
+            </a>
+            <a href="/mon-compte" class="menu-item account">
+                <span class="icon">👤</span>
                 <span class="label">Mon Compte</span>
             </a>
-            <a href="/pricing-complete" class="menu-item">
-                <span class="icon">💎</span>
-                <span class="label">Pricing & Plans</span>
-            </a>
-            <a href="/api-keys" class="menu-item">
-                <span class="icon">🔑</span>
-                <span class="label">Clés API</span>
-            </a>
-        </div>
-        
-        <!-- 🔐 ADMIN (si admin) -->
-        <div class="menu-section admin-only" style="display: none;">
-            <div class="section-title">🔐 ADMINISTRATION</div>
-            <a href="/admin-dashboard" class="menu-item">
-                <span class="icon">👨‍💼</span>
-                <span class="label">Admin Dashboard</span>
-            </a>
-            <a href="/admin/pricing" class="menu-item">
-                <span class="icon">💰</span>
-                <span class="label">Admin Pricing</span>
-            </a>
-            <a href="/admin/list-promos" class="menu-item">
-                <span class="icon">🎁</span>
-                <span class="label">Promotions</span>
+            <a href="/logout" class="menu-item logout">
+                <span class="icon">🚪</span>
+                <span class="label">Déconnexion</span>
             </a>
         </div>
     </nav>
+
 
     
     <!-- MAIN CONTENT -->

@@ -45,6 +45,10 @@ import requests  # Pour API externe (Fear & Greed, etc.)
 import time
 from urllib.parse import urlencode
 
+# 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
+from technical_analyzer import analyzer
+
+
 # ============================================================================
 # 🆕 SYSTÈME DE PERMISSIONS - IMPORTS
 # ============================================================================
@@ -32203,3 +32207,683 @@ async def get_portfolio_data(request: Request):
     except Exception as e:
         print(f"Portfolio data error: {e}")
         return JSONResponse({'success': False, 'message': str(e), 'exchanges': {}})
+
+# ============================================================================
+# 🎯 AI TECHNICAL ANALYSIS - ANALYSE TECHNIQUE AVANCÉE
+# ============================================================================
+
+@app.get("/ai-technical-analysis", response_class=HTMLResponse)
+async def ai_technical_analysis_page(request: Request):
+    """
+    🎯 ANALYSE TECHNIQUE AVANCÉE - NIVEAU PROFESSIONNEL
+    
+    Fonctionnalités:
+    - RSI, MACD, Bollinger Bands, Stochastique, ADX en temps réel
+    - Détection patterns chartistes complexes (H&S, Double Top/Bottom, etc.)
+    - Support/Résistance automatiques
+    - Points de retournement avec confiance
+    - Prédictions basées sur analyse multi-indicateurs
+    """
+    
+    # Analyser Bitcoin comme exemple principal
+    symbol = "bitcoin"
+    
+    # Récupérer données historiques (60 jours)
+    df = await analyzer.get_ohlcv_data(symbol, days=60)
+    
+    if df is None:
+        return HTMLResponse(SIDEBAR + """
+        <div style="padding: 50px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; color: white;">
+            <h1 style="font-size: 3em; margin-bottom: 20px;">❌ Erreur de chargement</h1>
+            <p style="font-size: 1.3em;">Impossible de récupérer les données historiques.</p>
+            <p style="margin-top: 20px; opacity: 0.8;">Réessayez dans quelques instants ou contactez le support.</p>
+        </div>
+        """ + FOOTER)
+    
+    # Calculer tous les indicateurs techniques
+    indicators = analyzer.calculate_indicators(df)
+    
+    # Détecter patterns chartistes
+    patterns = analyzer.detect_patterns(df)
+    
+    # Trouver support/résistance
+    sr_levels = analyzer.find_support_resistance(df)
+    
+    # Analyser points de retournement
+    reversal_signals = analyzer.analyze_reversal_points(df, indicators)
+    
+    # Prix actuel et variation
+    current_price = df['close'].iloc[-1]
+    change_24h = ((df['close'].iloc[-1] - df['close'].iloc[-24]) / df['close'].iloc[-24]) * 100 if len(df) >= 24 else 0
+    
+    # Générer HTML pour les indicateurs
+    def get_rsi_class(rsi):
+        if rsi < 30:
+            return "oversold"
+        elif rsi > 70:
+            return "overbought"
+        return "neutral"
+    
+    def get_macd_class(macd_diff):
+        return "bullish" if macd_diff > 0 else "bearish"
+    
+    indicators_html = f"""
+    <div class="indicators-grid">
+        <div class="indicator-card rsi">
+            <div class="indicator-header">
+                <span class="indicator-icon">📊</span>
+                <span class="indicator-name">RSI (14)</span>
+            </div>
+            <div class="indicator-value">{indicators['rsi']:.2f}</div>
+            <div class="indicator-signal {get_rsi_class(indicators['rsi'])}">{indicators['rsi_signal']}</div>
+        </div>
+        
+        <div class="indicator-card macd">
+            <div class="indicator-header">
+                <span class="indicator-icon">📈</span>
+                <span class="indicator-name">MACD</span>
+            </div>
+            <div class="indicator-value">{indicators['macd']:.2f}</div>
+            <div class="indicator-signal {get_macd_class(indicators['macd_diff'])}">{indicators['macd_trend']}</div>
+            <small style="display: block; margin-top: 10px; opacity: 0.7;">Signal: {indicators['macd_signal']:.2f}</small>
+        </div>
+        
+        <div class="indicator-card bollinger">
+            <div class="indicator-header">
+                <span class="indicator-icon">📉</span>
+                <span class="indicator-name">Bollinger Bands</span>
+            </div>
+            <div class="indicator-value">${current_price:,.2f}</div>
+            <div class="indicator-signal">{indicators['bb_position']}</div>
+            <div class="bb-levels" style="margin-top: 10px; font-size: 0.85em;">
+                <div>Haute: ${indicators['bb_upper']:,.2f}</div>
+                <div>Moyenne: ${indicators['bb_middle']:,.2f}</div>
+                <div>Basse: ${indicators['bb_lower']:,.2f}</div>
+            </div>
+        </div>
+        
+        <div class="indicator-card stoch">
+            <div class="indicator-header">
+                <span class="indicator-icon">⚡</span>
+                <span class="indicator-name">Stochastique</span>
+            </div>
+            <div class="indicator-value">%K: {indicators['stoch_k']:.2f}</div>
+            <div class="indicator-value">%D: {indicators['stoch_d']:.2f}</div>
+            <div class="indicator-signal">{indicators['stoch_signal']}</div>
+        </div>
+        
+        <div class="indicator-card adx">
+            <div class="indicator-header">
+                <span class="indicator-icon">💪</span>
+                <span class="indicator-name">ADX (Force)</span>
+            </div>
+            <div class="indicator-value">{indicators['adx']:.2f}</div>
+            <div class="indicator-signal">{indicators['adx_strength']}</div>
+            <small style="display: block; margin-top: 10px; opacity: 0.7;">
+                {indicators['volatility']} Volatilité
+            </small>
+        </div>
+        
+        <div class="indicator-card ema">
+            <div class="indicator-header">
+                <span class="indicator-icon">📐</span>
+                <span class="indicator-name">EMAs</span>
+            </div>
+            <div class="ema-values" style="margin: 15px 0; font-size: 0.9em;">
+                <div>EMA20: ${indicators['ema20']:,.2f}</div>
+                <div>EMA50: ${indicators['ema50']:,.2f}</div>
+                {f"<div>EMA200: ${indicators['ema200']:,.2f}</div>" if indicators['ema200'] else "<div>EMA200: N/A</div>"}
+            </div>
+            <div class="indicator-signal">{indicators['ema_alignment']}</div>
+        </div>
+    </div>
+    """
+    
+    # Générer HTML pour les patterns
+    patterns_html = ""
+    if patterns:
+        for pattern in patterns:
+            pattern_class = "bullish-pattern" if pattern['type'] == 'BULLISH' else "bearish-pattern"
+            patterns_html += f"""
+            <div class="pattern-card {pattern_class}">
+                <div class="pattern-header">
+                    <h3>{pattern['name']}</h3>
+                    <span class="pattern-type">{pattern['type']}</span>
+                </div>
+                <div class="pattern-confidence">
+                    <span class="confidence-label">Confiance:</span>
+                    <span class="confidence-value">{pattern['confidence']}%</span>
+                </div>
+                <p class="pattern-description">{pattern['description']}</p>
+                <div class="pattern-target">
+                    <span>🎯 Target:</span>
+                    <strong>${pattern['target']:,.2f}</strong>
+                </div>
+            </div>
+            """
+    else:
+        patterns_html = "<p class='no-patterns'>✨ Aucun pattern chartiste détecté actuellement. Le marché est en phase d'observation.</p>"
+    
+    # Générer HTML pour support/résistance
+    def generate_sr_level_html(level, current_price, is_resistance=True):
+        distance = abs(level - current_price) / current_price * 100
+        direction = "↑" if level > current_price else "↓"
+        return f"""
+        <div class="sr-level">
+            <span>${level:,.2f}</span>
+            <span style="color: #6b7280; font-size: 0.9em;">{direction} {distance:.1f}%</span>
+        </div>
+        """
+    
+    resistances_html = ""
+    if sr_levels['resistances']:
+        for r in sr_levels['resistances'][:3]:
+            resistances_html += generate_sr_level_html(r, current_price, True)
+    else:
+        resistances_html = "<p style='opacity: 0.6; text-align: center;'>Aucune résistance détectée</p>"
+    
+    supports_html = ""
+    if sr_levels['supports']:
+        for s in sr_levels['supports'][:3]:
+            supports_html += generate_sr_level_html(s, current_price, False)
+    else:
+        supports_html = "<p style='opacity: 0.6; text-align: center;'>Aucun support détecté</p>"
+    
+    change_class = "positive" if change_24h > 0 else "negative"
+    
+    sr_html = f"""
+    <div class="sr-section">
+        <div class="sr-card resistances">
+            <h3>🔴 Résistances</h3>
+            <div class="sr-levels">
+                {resistances_html}
+            </div>
+        </div>
+        <div class="current-price-indicator">
+            <div class="price-label">Prix actuel BTC</div>
+            <div class="price-value">${current_price:,.2f}</div>
+            <div class="price-change {change_class}">{change_24h:+.2f}%</div>
+        </div>
+        <div class="sr-card supports">
+            <h3>🟢 Supports</h3>
+            <div class="sr-levels">
+                {supports_html}
+            </div>
+        </div>
+    </div>
+    """
+    
+    # Générer HTML pour signaux de retournement
+    def calculate_rr(signal):
+        try:
+            risk = abs(signal['entry'] - signal['stop_loss'])
+            reward = abs(signal['target'] - signal['entry'])
+            return reward / risk if risk > 0 else 0
+        except:
+            return 0
+    
+    reversal_html = ""
+    if reversal_signals:
+        for signal in reversal_signals[:5]:  # Top 5 signaux
+            signal_class = "bullish-signal" if 'BULLISH' in signal['type'] else "bearish-signal"
+            rr_ratio = calculate_rr(signal)
+            reversal_html += f"""
+            <div class="reversal-card {signal_class}">
+                <div class="reversal-header">
+                    <span class="reversal-type">{signal['type'].replace('_', ' ')}</span>
+                    <span class="reversal-confidence">{signal['confidence']}%</span>
+                </div>
+                <p class="reversal-reason">📌 {signal['reason']}</p>
+                <div class="reversal-levels">
+                    <div class="level-item">
+                        <span class="level-label">Entry</span>
+                        <span class="level-value">${signal['entry']:,.2f}</span>
+                    </div>
+                    <div class="level-item">
+                        <span class="level-label">Target</span>
+                        <span class="level-value">${signal['target']:,.2f}</span>
+                    </div>
+                    <div class="level-item">
+                        <span class="level-label">Stop Loss</span>
+                        <span class="level-value">${signal['stop_loss']:,.2f}</span>
+                    </div>
+                    <div class="level-item rr">
+                        <span class="level-label">R/R Ratio</span>
+                        <span class="level-value">{rr_ratio:.2f}</span>
+                    </div>
+                </div>
+            </div>
+            """
+    else:
+        reversal_html = "<p class='no-signals'>✨ Aucun signal de retournement majeur actuellement. Marché stable.</p>"
+    
+    # Page HTML complète
+    html = SIDEBAR + f"""
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🎯 AI Technical Analysis - Trading Dashboard Pro</title>
+        """ + CSS + """
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: #fff;
+                min-height: 100vh;
+                padding: 20px;
+            }}
+            
+            .container {{ max-width: 1600px; margin: 0 auto; }}
+            
+            header {{
+                text-align: center;
+                margin-bottom: 40px;
+                background: rgba(0,0,0,0.3);
+                padding: 40px;
+                border-radius: 20px;
+                backdrop-filter: blur(10px);
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }}
+            
+            header h1 {{
+                font-size: 3em;
+                margin-bottom: 15px;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+                background: linear-gradient(45deg, #fbbf24, #f59e0b);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }}
+            
+            header p {{
+                font-size: 1.2em;
+                opacity: 0.9;
+            }}
+            
+            .section-title {{
+                font-size: 2em;
+                margin: 40px 0 20px 0;
+                padding: 20px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 15px;
+                border-left: 5px solid #fbbf24;
+                backdrop-filter: blur(10px);
+            }}
+            
+            /* Indicators Grid */
+            .indicators-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 20px;
+                margin-bottom: 40px;
+            }}
+            
+            .indicator-card {{
+                background: white;
+                color: #333;
+                padding: 25px;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                transition: transform 0.3s, box-shadow 0.3s;
+            }}
+            
+            .indicator-card:hover {{ 
+                transform: translateY(-5px); 
+                box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+            }}
+            
+            .indicator-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+            }}
+            
+            .indicator-icon {{
+                font-size: 2em;
+            }}
+            
+            .indicator-name {{
+                font-weight: bold;
+                font-size: 1.1em;
+            }}
+            
+            .indicator-value {{
+                font-size: 2.5em;
+                font-weight: 900;
+                margin: 15px 0;
+                color: #667eea;
+            }}
+            
+            .indicator-signal {{
+                padding: 10px;
+                border-radius: 8px;
+                font-weight: 600;
+                text-align: center;
+            }}
+            
+            .indicator-signal.oversold {{ background: #dcfce7; color: #166534; }}
+            .indicator-signal.overbought {{ background: #fee2e2; color: #991b1b; }}
+            .indicator-signal.bullish {{ background: #d1fae5; color: #065f46; }}
+            .indicator-signal.bearish {{ background: #fecaca; color: #991b1b; }}
+            .indicator-signal.neutral {{ background: #f3f4f6; color: #4b5563; }}
+            
+            /* Patterns */
+            .patterns-container {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+                gap: 25px;
+                margin-bottom: 40px;
+            }}
+            
+            .pattern-card {{
+                background: white;
+                color: #333;
+                padding: 30px;
+                border-radius: 15px;
+                border-left: 6px solid;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                transition: transform 0.3s;
+            }}
+            
+            .pattern-card:hover {{
+                transform: translateY(-5px);
+            }}
+            
+            .bullish-pattern {{ border-left-color: #10b981; }}
+            .bearish-pattern {{ border-left-color: #ef4444; }}
+            
+            .pattern-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+            }}
+            
+            .pattern-header h3 {{
+                font-size: 1.4em;
+                color: #1f2937;
+            }}
+            
+            .pattern-type {{
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-weight: 700;
+                font-size: 0.9em;
+            }}
+            
+            .bullish-pattern .pattern-type {{
+                background: #d1fae5;
+                color: #065f46;
+            }}
+            
+            .bearish-pattern .pattern-type {{
+                background: #fee2e2;
+                color: #991b1b;
+            }}
+            
+            .pattern-confidence {{
+                margin: 15px 0;
+                font-size: 1.1em;
+            }}
+            
+            .confidence-value {{
+                font-weight: 900;
+                font-size: 1.5em;
+                color: #667eea;
+            }}
+            
+            .pattern-description {{
+                margin: 15px 0;
+                line-height: 1.6;
+                color: #4b5563;
+            }}
+            
+            .pattern-target {{
+                margin-top: 20px;
+                padding: 15px;
+                background: #f9fafb;
+                border-radius: 8px;
+                font-size: 1.1em;
+            }}
+            
+            /* Support/Resistance */
+            .sr-section {{
+                background: white;
+                color: #333;
+                padding: 40px;
+                border-radius: 20px;
+                margin-bottom: 40px;
+                display: grid;
+                grid-template-columns: 1fr auto 1fr;
+                gap: 40px;
+                align-items: center;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            }}
+            
+            .sr-card h3 {{
+                font-size: 1.5em;
+                margin-bottom: 20px;
+            }}
+            
+            .sr-levels {{
+                display: grid;
+                gap: 10px;
+            }}
+            
+            .sr-level {{
+                padding: 12px;
+                background: #f3f4f6;
+                border-radius: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-weight: 600;
+                transition: background 0.3s;
+            }}
+            
+            .sr-level:hover {{
+                background: #e5e7eb;
+            }}
+            
+            .current-price-indicator {{
+                text-align: center;
+                padding: 30px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+            }}
+            
+            .price-label {{
+                font-size: 0.9em;
+                opacity: 0.9;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }}
+            
+            .price-value {{
+                font-size: 2.5em;
+                font-weight: 900;
+                margin: 10px 0;
+            }}
+            
+            .price-change {{
+                font-size: 1.3em;
+                font-weight: 700;
+                padding: 8px 16px;
+                border-radius: 8px;
+                display: inline-block;
+            }}
+            
+            .price-change.positive {{ background: rgba(16, 185, 129, 0.3); }}
+            .price-change.negative {{ background: rgba(239, 68, 68, 0.3); }}
+            
+            /* Reversal Signals */
+            .reversal-container {{
+                display: grid;
+                gap: 20px;
+            }}
+            
+            .reversal-card {{
+                background: white;
+                color: #333;
+                padding: 25px;
+                border-radius: 15px;
+                border-left: 6px solid;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                transition: transform 0.3s;
+            }}
+            
+            .reversal-card:hover {{
+                transform: translateY(-3px);
+            }}
+            
+            .bullish-signal {{ border-left-color: #10b981; }}
+            .bearish-signal {{ border-left-color: #ef4444; }}
+            
+            .reversal-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+            }}
+            
+            .reversal-type {{
+                font-size: 1.2em;
+                font-weight: 700;
+                color: #1f2937;
+            }}
+            
+            .reversal-confidence {{
+                font-size: 1.5em;
+                font-weight: 900;
+                color: #667eea;
+            }}
+            
+            .reversal-reason {{
+                margin: 15px 0;
+                padding: 15px;
+                background: #f9fafb;
+                border-radius: 8px;
+                font-weight: 500;
+            }}
+            
+            .reversal-levels {{
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 15px;
+                margin-top: 20px;
+            }}
+            
+            .level-item {{
+                text-align: center;
+                padding: 15px;
+                background: #f9fafb;
+                border-radius: 10px;
+            }}
+            
+            .level-label {{
+                display: block;
+                font-size: 0.9em;
+                color: #6b7280;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }}
+            
+            .level-value {{
+                display: block;
+                font-size: 1.3em;
+                font-weight: 700;
+                color: #1f2937;
+            }}
+            
+            .level-item.rr {{
+                background: linear-gradient(135deg, #667eea, #764ba2);
+            }}
+            
+            .level-item.rr .level-label {{
+                color: rgba(255,255,255,0.9);
+            }}
+            
+            .level-item.rr .level-value {{
+                color: white;
+                font-size: 1.8em;
+            }}
+            
+            .no-patterns, .no-signals {{
+                text-align: center;
+                padding: 60px 40px;
+                font-size: 1.2em;
+                opacity: 0.7;
+                background: rgba(255,255,255,0.1);
+                border-radius: 15px;
+                backdrop-filter: blur(10px);
+            }}
+            
+            @media (max-width: 768px) {{
+                .sr-section {{
+                    grid-template-columns: 1fr;
+                }}
+                .reversal-levels {{
+                    grid-template-columns: repeat(2, 1fr);
+                }}
+                .indicators-grid {{
+                    grid-template-columns: 1fr;
+                }}
+                header h1 {{
+                    font-size: 2em;
+                }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                <h1>🎯 AI Technical Analysis Pro</h1>
+                <p>Analyse technique professionnelle avec indicateurs temps réel • Patterns chartistes • Support/Résistance</p>
+                <small style="opacity: 0.7; display: block; margin-top: 10px;">
+                    RSI • MACD • Bollinger Bands • Stochastique • ADX • EMAs
+                </small>
+            </header>
+            
+            <div class="section-title">📊 INDICATEURS TECHNIQUES</div>
+            {indicators_html}
+            
+            <div class="section-title">🎯 PATTERNS CHARTISTES DÉTECTÉS</div>
+            <div class="patterns-container">
+                {patterns_html}
+            </div>
+            
+            <div class="section-title">📍 SUPPORT & RÉSISTANCE</div>
+            {sr_html}
+            
+            <div class="section-title">🔄 POINTS DE RETOURNEMENT</div>
+            <div class="reversal-container">
+                {reversal_html}
+            </div>
+        </div>
+        
+        """ + FOOTER + """
+        
+        <script>
+            // Auto-refresh toutes les 5 minutes
+            setTimeout(() => {{
+                console.log('Rafraîchissement des données...');
+                window.location.reload();
+            }}, 300000);
+            
+            // Message de bienvenue en console
+            console.log('%c🎯 AI Technical Analysis Pro', 'color: #667eea; font-size: 20px; font-weight: bold;');
+            console.log('Analyse technique professionnelle avec indicateurs en temps réel');
+        </script>
+    </body>
+    </html>
+    """
+    
+    return HTMLResponse(html)

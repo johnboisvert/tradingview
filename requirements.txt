@@ -1,15 +1,16 @@
+# 🔐 SÉCURITÉ - CRITIQUE
+bcrypt==4.1.2
+slowapi==0.1.9
+
 # Core FastAPI
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 httpx==0.25.1
 jinja2
-psycopg2-binary==2.9.9
 
-# 🔐 SÉCURITÉ - CORRECTIONS CRITIQUES
-bcrypt==4.1.2
-slowapi==0.1.9
-cryptography==41.0.7
+# Database
+psycopg2-binary==2.9.9
 
 # Paiements
 stripe==7.4.0
@@ -39,12 +40,4 @@ beautifulsoup4==4.12.3
 
 # Trading & Crypto
 ccxt==4.0.96
-```
-
----
-
-## 💡 POURQUOI bcrypt EST CRITIQUE:
-
-Sans `bcrypt==4.1.2`, tu vas avoir cette erreur:
-```
-ModuleNotFoundError: No module named 'bcrypt'
+cryptography==41.0.7

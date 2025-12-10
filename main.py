@@ -1581,9 +1581,9 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">Gem Hunter</span>
             
             <a href="/ai-technical-analysis" class="menu-item ai-feature">
-                <span class="icon">🎯</span>
-                <span class="label">Technical Analysis Pro</span>
-            </a>
+    <span class="icon">🎯</span>
+    <span class="label">Technical Analysis Pro</span>
+</a>
             </a>
         </div>
         
@@ -32214,357 +32214,183 @@ async def get_portfolio_data(request: Request):
         return JSONResponse({'success': False, 'message': str(e), 'exchanges': {}})
 
 # ============================================================================
-# 🎯 AI TECHNICAL ANALYSIS PRO - ANALYSE TECHNIQUE AVANCÉE
+# 🎯 TECHNICAL ANALYSIS PRO ROUTE
 # ============================================================================
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
 async def ai_technical_analysis_page(request: Request):
-    """🎯 AI Technical Analysis Pro - Analyse technique professionnelle"""
+    """Technical Analysis Pro with real-time indicators"""
     
-    # Analyser Bitcoin
-    symbol = "bitcoin"
-    df = await analyzer.get_ohlcv_data(symbol, days=60)
-    
-    if df is None:
-        return HTMLResponse(SIDEBAR + """
+    try:
+        # Fetch Bitcoin data
+        symbol = "bitcoin"
+        df = await analyzer.get_ohlcv_data(symbol, days=60)
+        
+        if df is None or len(df) == 0:
+            # Fallback error page
+            return HTMLResponse(SIDEBAR + """
+            <!DOCTYPE html>
+            <html lang="fr">
+            <head><meta charset="UTF-8"><title>Erreur</title></head>
+            <body style="padding:50px;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:white;min-height:100vh;">
+                <h1 style="font-size:3em;">⚠️ Données indisponibles</h1>
+                <p style="font-size:1.3em;">Impossible de charger les données de marché.</p>
+                <a href="/" style="color:white;text-decoration:underline;">Retour au dashboard</a>
+            </body>
+            </html>
+            """)
+        
+        # Calculate all indicators
+        indicators = analyzer.calculate_indicators(df)
+        patterns = analyzer.detect_patterns(df)
+        sr_levels = analyzer.find_support_resistance(df)
+        reversal_signals = analyzer.analyze_reversal_points(df, indicators)
+        
+        current_price = df['close'].iloc[-1]
+        change_24h = ((df['close'].iloc[-1] - df['close'].iloc[-24]) / df['close'].iloc[-24]) * 100 if len(df) >= 24 else 0
+        
+        # Generate HTML sections
+        indicators_html = f"""
+        <div class="indicators-grid">
+            <div class="indicator-card">
+                <div class="indicator-header"><span style="font-size:2em;">📊</span><span style="font-weight:bold;">RSI (14)</span></div>
+                <div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">{indicators['rsi']:.2f}</div>
+                <div class="indicator-signal {'oversold' if indicators['rsi'] < 30 else 'overbought' if indicators['rsi'] > 70 else 'neutral'}">{indicators['rsi_signal']}</div>
+            </div>
+            <div class="indicator-card">
+                <div class="indicator-header"><span style="font-size:2em;">📈</span><span style="font-weight:bold;">MACD</span></div>
+                <div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">{indicators['macd']:.2f}</div>
+                <div class="indicator-signal {'bullish' if indicators['macd_diff'] > 0 else 'bearish'}">{indicators['macd_trend']}</div>
+            </div>
+            <div class="indicator-card">
+                <div class="indicator-header"><span style="font-size:2em;">📉</span><span style="font-weight:bold;">Bollinger</span></div>
+                <div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">${current_price:,.2f}</div>
+                <div class="indicator-signal">{indicators['bb_position']}</div>
+            </div>
+            <div class="indicator-card">
+                <div class="indicator-header"><span style="font-size:2em;">⚡</span><span style="font-weight:bold;">Stochastique</span></div>
+                <div style="font-size:1.8em;font-weight:700;color:#667eea;">%K: {indicators['stoch_k']:.1f}</div>
+                <div style="font-size:1.8em;font-weight:700;color:#667eea;">%D: {indicators['stoch_d']:.1f}</div>
+                <div class="indicator-signal">{indicators['stoch_signal']}</div>
+            </div>
+            <div class="indicator-card">
+                <div class="indicator-header"><span style="font-size:2em;">💪</span><span style="font-weight:bold;">ADX</span></div>
+                <div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">{indicators['adx']:.2f}</div>
+                <div class="indicator-signal">{indicators['adx_strength']}</div>
+            </div>
+            <div class="indicator-card">
+                <div class="indicator-header"><span style="font-size:2em;">📐</span><span style="font-weight:bold;">EMAs</span></div>
+                <div style="margin:15px 0;">
+                    <div>EMA20: ${indicators['ema20']:,.0f}</div>
+                    <div>EMA50: ${indicators['ema50']:,.0f}</div>
+                    {'<div>EMA200: $' + f"{indicators['ema200']:,.0f}" + '</div>' if indicators['ema200'] else ''}
+                </div>
+                <div class="indicator-signal">{indicators['ema_alignment']}</div>
+            </div>
+        </div>
+        """
+        
+        patterns_html = ""
+        if patterns:
+            for p in patterns:
+                pclass = "bullish-pattern" if p['type']=='BULLISH' else "bearish-pattern"
+                patterns_html += f'<div class="pattern-card {pclass}"><h3>{p["name"]}</h3><div><strong>Confiance: {p["confidence"]}%</strong></div><p>{p["description"]}</p><div><strong>🎯 Target: ${p["target"]:,.2f}</strong></div></div>'
+        else:
+            patterns_html = "<p style='text-align:center;opacity:0.7;'>Aucun pattern détecté actuellement</p>"
+        
+        resistances_html = "".join([f"<div style='padding:10px;background:#f3f4f6;border-radius:8px;margin:8px 0;'>${r:,.2f}</div>" for r in sr_levels['resistances'][:3]]) if sr_levels['resistances'] else "<p style='opacity:0.6;'>Aucune</p>"
+        supports_html = "".join([f"<div style='padding:10px;background:#f3f4f6;border-radius:8px;margin:8px 0;'>${s:,.2f}</div>" for s in sr_levels['supports'][:3]]) if sr_levels['supports'] else "<p style='opacity:0.6;'>Aucun</p>"
+        
+        reversal_html = ""
+        if reversal_signals:
+            for sig in reversal_signals[:5]:
+                sclass = "bullish-signal" if 'BULLISH' in sig['type'] else "bearish-signal"
+                rr = abs(sig['target']-sig['entry'])/abs(sig['entry']-sig['stop_loss']) if sig['entry']!=sig['stop_loss'] else 0
+                reversal_html += f'<div class="reversal-card {sclass}"><div><strong>{sig["type"]}</strong> - {sig["confidence"]}%</div><p>{sig["reason"]}</p><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;"><div><div>Entry</div><strong>${sig["entry"]:,.2f}</strong></div><div><div>Target</div><strong>${sig["target"]:,.2f}</strong></div><div><div>Stop</div><strong>${sig["stop_loss"]:,.2f}</strong></div><div><div>R/R</div><strong>{rr:.1f}</strong></div></div></div>'
+        else:
+            reversal_html = "<p style='text-align:center;opacity:0.7;'>Aucun signal de retournement détecté</p>"
+        
+        # Complete page with properly escaped CSS
+        return HTMLResponse(SIDEBAR + f"""
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>🎯 AI Technical Analysis Pro</title>
+            <style>
+                body {{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;min-height:100vh;padding:20px;}}
+                .container {{max-width:1600px;margin:0 auto;}}
+                header {{text-align:center;padding:40px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:40px;}}
+                header h1 {{font-size:3em;margin:0;}}
+                .section-title {{font-size:2em;padding:20px;background:rgba(255,255,255,0.1);border-radius:15px;border-left:5px solid #fbbf24;margin:40px 0 20px;}}
+                .indicators-grid {{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-bottom:40px;}}
+                .indicator-card {{background:white;color:#333;padding:25px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);}}
+                .indicator-header {{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}}
+                .indicator-signal {{padding:10px;border-radius:8px;font-weight:600;text-align:center;margin-top:10px;}}
+                .indicator-signal.oversold {{background:#dcfce7;color:#166534;}}
+                .indicator-signal.overbought {{background:#fee2e2;color:#991b1b;}}
+                .indicator-signal.bullish {{background:#d1fae5;color:#065f46;}}
+                .indicator-signal.bearish {{background:#fecaca;color:#991b1b;}}
+                .indicator-signal.neutral {{background:#f3f4f6;color:#4b5563;}}
+                .pattern-card {{background:white;color:#333;padding:30px;border-radius:15px;border-left:6px solid;margin-bottom:20px;}}
+                .bullish-pattern {{border-left-color:#10b981;}}
+                .bearish-pattern {{border-left-color:#ef4444;}}
+                .reversal-card {{background:white;color:#333;padding:25px;border-radius:15px;border-left:6px solid;margin-bottom:20px;}}
+                .bullish-signal {{border-left-color:#10b981;}}
+                .bearish-signal {{border-left-color:#ef4444;}}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <header>
+                    <h1>🎯 AI Technical Analysis Pro</h1>
+                    <p style="font-size:1.3em;opacity:0.9;">Analyse technique professionnelle en temps réel</p>
+                </header>
+                
+                <div class="section-title">📊 INDICATEURS TECHNIQUES</div>
+                {indicators_html}
+                
+                <div class="section-title">🎯 PATTERNS CHARTISTES DÉTECTÉS</div>
+                {patterns_html}
+                
+                <div class="section-title">📍 SUPPORT & RÉSISTANCE</div>
+                <div style="background:white;color:#333;padding:40px;border-radius:20px;display:grid;grid-template-columns:1fr auto 1fr;gap:40px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                    <div>
+                        <h3 style="color:#ef4444;">🔴 Résistances</h3>
+                        {resistances_html}
+                    </div>
+                    <div style="text-align:center;padding:30px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:15px;">
+                        <div style="font-size:1.1em;opacity:0.9;">Prix BTC</div>
+                        <div style="font-size:2.5em;font-weight:900;margin:10px 0;">${current_price:,.2f}</div>
+                        <div style="font-size:1.3em;font-weight:600;">{change_24h:+.2f}%</div>
+                    </div>
+                    <div>
+                        <h3 style="color:#10b981;">🟢 Supports</h3>
+                        {supports_html}
+                    </div>
+                </div>
+                
+                <div class="section-title">🔄 POINTS DE RETOURNEMENT POTENTIELS</div>
+                {reversal_html}
+            </div>
+            
+            <script>
+                setTimeout(() => window.location.reload(), 300000);
+            </script>
+        </body>
+        </html>
+        """)
+        
+    except Exception as e:
+        # Error handling
+        return HTMLResponse(SIDEBAR + f"""
         <!DOCTYPE html>
         <html lang="fr">
         <head><meta charset="UTF-8"><title>Erreur</title></head>
         <body style="padding:50px;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:white;min-height:100vh;">
-            <h1 style="font-size:3em;margin-bottom:20px;">❌ Erreur de chargement</h1>
-            <p style="font-size:1.3em;">Impossible de récupérer les données historiques.</p>
-            <p style="margin-top:20px;opacity:0.8;">Réessayez dans quelques instants.</p>
+            <h1 style="font-size:3em;">❌ Erreur technique</h1>
+            <p style="font-size:1.3em;">Une erreur est survenue: {str(e)}</p>
+            <a href="/" style="color:white;text-decoration:underline;">Retour au dashboard</a>
         </body>
         </html>
         """)
-    
-    # Calculer tous les indicateurs
-    indicators = analyzer.calculate_indicators(df)
-    patterns = analyzer.detect_patterns(df)
-    sr_levels = analyzer.find_support_resistance(df)
-    reversal_signals = analyzer.analyze_reversal_points(df, indicators)
-    
-    # Prix actuel et variation
-    current_price = df['close'].iloc[-1]
-    change_24h = ((df['close'].iloc[-1] - df['close'].iloc[-24]) / df['close'].iloc[-24]) * 100 if len(df) >= 24 else 0
-    
-    # Helper functions
-    def get_rsi_class(rsi):
-        if rsi < 30: return "oversold"
-        elif rsi > 70: return "overbought"
-        return "neutral"
-    
-    def get_macd_class(macd_diff):
-        return "bullish" if macd_diff > 0 else "bearish"
-    
-    # Générer HTML pour les indicateurs
-    indicators_html = f"""
-    <div class="indicators-grid">
-        <div class="indicator-card">
-            <div class="indicator-header">
-                <span style="font-size:2em;">📊</span>
-                <span style="font-weight:bold;font-size:1.1em;">RSI (14)</span>
-            </div>
-            <div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">{indicators['rsi']:.2f}</div>
-            <div class="indicator-signal {get_rsi_class(indicators['rsi'])}">{indicators['rsi_signal']}</div>
-        </div>
-        
-        <div class="indicator-card">
-            <div class="indicator-header">
-                <span style="font-size:2em;">📈</span>
-                <span style="font-weight:bold;font-size:1.1em;">MACD</span>
-            </div>
-            <div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">{indicators['macd']:.2f}</div>
-            <div class="indicator-signal {get_macd_class(indicators['macd_diff'])}">{indicators['macd_trend']}</div>
-            <small style="display:block;margin-top:10px;opacity:0.7;">Signal: {indicators['macd_signal']:.2f}</small>
-        </div>
-        
-        <div class="indicator-card">
-            <div class="indicator-header">
-                <span style="font-size:2em;">📉</span>
-                <span style="font-weight:bold;font-size:1.1em;">Bollinger Bands</span>
-            </div>
-            <div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">${current_price:,.2f}</div>
-            <div class="indicator-signal">{indicators['bb_position']}</div>
-            <div style="margin-top:10px;font-size:0.85em;">
-                <div>Haute: ${indicators['bb_upper']:,.2f}</div>
-                <div>Moyenne: ${indicators['bb_middle']:,.2f}</div>
-                <div>Basse: ${indicators['bb_lower']:,.2f}</div>
-            </div>
-        </div>
-        
-        <div class="indicator-card">
-            <div class="indicator-header">
-                <span style="font-size:2em;">⚡</span>
-                <span style="font-weight:bold;font-size:1.1em;">Stochastique</span>
-            </div>
-            <div style="font-size:1.8em;font-weight:700;color:#667eea;margin:10px 0;">%K: {indicators['stoch_k']:.1f}</div>
-            <div style="font-size:1.8em;font-weight:700;color:#667eea;">%D: {indicators['stoch_d']:.1f}</div>
-            <div class="indicator-signal">{indicators['stoch_signal']}</div>
-        </div>
-        
-        <div class="indicator-card">
-            <div class="indicator-header">
-                <span style="font-size:2em;">💪</span>
-                <span style="font-weight:bold;font-size:1.1em;">ADX (Force)</span>
-            </div>
-            <div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">{indicators['adx']:.2f}</div>
-            <div class="indicator-signal">{indicators['adx_strength']}</div>
-            <small style="display:block;margin-top:10px;opacity:0.7;">{indicators['volatility']} Volatilité</small>
-        </div>
-        
-        <div class="indicator-card">
-            <div class="indicator-header">
-                <span style="font-size:2em;">📐</span>
-                <span style="font-weight:bold;font-size:1.1em;">EMAs</span>
-            </div>
-            <div style="margin:15px 0;font-size:0.9em;">
-                <div>EMA20: ${indicators['ema20']:,.0f}</div>
-                <div>EMA50: ${indicators['ema50']:,.0f}</div>
-                {f"<div>EMA200: ${indicators['ema200']:,.0f}</div>" if indicators['ema200'] else "<div>EMA200: N/A</div>"}
-            </div>
-            <div class="indicator-signal">{indicators['ema_alignment']}</div>
-        </div>
-    </div>
-    """
-    
-    # Générer HTML pour les patterns
-    patterns_html = ""
-    if patterns:
-        for p in patterns:
-            pclass = "bullish-pattern" if p['type']=='BULLISH' else "bearish-pattern"
-            patterns_html += f"""
-            <div class="pattern-card {pclass}">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                    <h3 style="margin:0;font-size:1.4em;">{p['name']}</h3>
-                    <span style="padding:8px 16px;border-radius:20px;font-weight:700;font-size:0.9em;background:{'#d1fae5' if p['type']=='BULLISH' else '#fee2e2'};color:{'#065f46' if p['type']=='BULLISH' else '#991b1b'};">{p['type']}</span>
-                </div>
-                <div style="margin:15px 0;">
-                    <span style="font-size:0.9em;color:#6b7280;">Confiance:</span>
-                    <span style="font-weight:900;font-size:1.5em;color:#667eea;margin-left:10px;">{p['confidence']}%</span>
-                </div>
-                <p style="margin:15px 0;line-height:1.6;color:#4b5563;">{p['description']}</p>
-                <div style="margin-top:20px;padding:15px;background:#f9fafb;border-radius:8px;font-size:1.1em;">
-                    <span>🎯 Target:</span>
-                    <strong style="margin-left:10px;">${p['target']:,.2f}</strong>
-                </div>
-            </div>
-            """
-    else:
-        patterns_html = "<p style='text-align:center;padding:40px;opacity:0.7;font-size:1.2em;'>✨ Aucun pattern chartiste détecté actuellement.</p>"
-    
-    # Générer HTML pour support/résistance
-    def generate_sr_level_html(level, current_price):
-        distance = abs(level - current_price) / current_price * 100
-        direction = "↑" if level > current_price else "↓"
-        return f"""
-        <div style="padding:12px;background:#f3f4f6;border-radius:8px;margin:8px 0;display:flex;justify-content:space-between;font-weight:600;">
-            <span>${level:,.2f}</span>
-            <span style="color:#6b7280;font-size:0.9em;">{direction} {distance:.1f}%</span>
-        </div>
-        """
-    
-    resistances_html = ""
-    if sr_levels['resistances']:
-        for r in sr_levels['resistances'][:3]:
-            resistances_html += generate_sr_level_html(r, current_price)
-    else:
-        resistances_html = "<p style='opacity:0.6;text-align:center;'>Aucune résistance détectée</p>"
-    
-    supports_html = ""
-    if sr_levels['supports']:
-        for s in sr_levels['supports'][:3]:
-            supports_html += generate_sr_level_html(s, current_price)
-    else:
-        supports_html = "<p style='opacity:0.6;text-align:center;'>Aucun support détecté</p>"
-    
-    change_class = "positive" if change_24h > 0 else "negative"
-    
-    sr_html = f"""
-    <div style="background:white;color:#333;padding:40px;border-radius:20px;display:grid;grid-template-columns:1fr auto 1fr;gap:40px;align-items:center;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-        <div>
-            <h3 style="font-size:1.5em;margin-bottom:20px;color:#ef4444;">🔴 Résistances</h3>
-            {resistances_html}
-        </div>
-        <div style="text-align:center;padding:30px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:15px;">
-            <div style="font-size:0.9em;opacity:0.9;margin-bottom:10px;text-transform:uppercase;">Prix actuel BTC</div>
-            <div style="font-size:2.5em;font-weight:900;margin:10px 0;">${current_price:,.2f}</div>
-            <div style="font-size:1.3em;font-weight:700;padding:8px 16px;border-radius:8px;display:inline-block;background:rgba({'16,185,129' if change_24h>0 else '239,68,68'},0.3);">{change_24h:+.2f}%</div>
-        </div>
-        <div>
-            <h3 style="font-size:1.5em;margin-bottom:20px;color:#10b981;">🟢 Supports</h3>
-            {supports_html}
-        </div>
-    </div>
-    """
-    
-    # Générer HTML pour signaux de retournement
-    def calculate_rr(signal):
-        try:
-            risk = abs(signal['entry'] - signal['stop_loss'])
-            reward = abs(signal['target'] - signal['entry'])
-            return reward / risk if risk > 0 else 0
-        except:
-            return 0
-    
-    reversal_html = ""
-    if reversal_signals:
-        for sig in reversal_signals[:5]:
-            sclass = "bullish-signal" if 'BULLISH' in sig['type'] else "bearish-signal"
-            rr = calculate_rr(sig)
-            reversal_html += f"""
-            <div class="reversal-card {sclass}">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
-                    <span style="font-size:1.2em;font-weight:700;">{sig['type'].replace('_',' ')}</span>
-                    <span style="font-size:1.5em;font-weight:900;color:#667eea;">{sig['confidence']}%</span>
-                </div>
-                <p style="margin:15px 0;padding:15px;background:#f9fafb;border-radius:8px;font-weight:500;">📌 {sig['reason']}</p>
-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:15px;margin-top:20px;">
-                    <div style="text-align:center;padding:15px;background:#f9fafb;border-radius:10px;">
-                        <div style="font-size:0.9em;color:#6b7280;margin-bottom:8px;text-transform:uppercase;">Entry</div>
-                        <div style="font-size:1.3em;font-weight:700;">${sig['entry']:,.2f}</div>
-                    </div>
-                    <div style="text-align:center;padding:15px;background:#f9fafb;border-radius:10px;">
-                        <div style="font-size:0.9em;color:#6b7280;margin-bottom:8px;text-transform:uppercase;">Target</div>
-                        <div style="font-size:1.3em;font-weight:700;">${sig['target']:,.2f}</div>
-                    </div>
-                    <div style="text-align:center;padding:15px;background:#f9fafb;border-radius:10px;">
-                        <div style="font-size:0.9em;color:#6b7280;margin-bottom:8px;text-transform:uppercase;">Stop Loss</div>
-                        <div style="font-size:1.3em;font-weight:700;">${sig['stop_loss']:,.2f}</div>
-                    </div>
-                    <div style="text-align:center;padding:15px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:10px;">
-                        <div style="font-size:0.9em;opacity:0.9;margin-bottom:8px;text-transform:uppercase;">R/R Ratio</div>
-                        <div style="font-size:1.8em;font-weight:900;">{rr:.1f}</div>
-                    </div>
-                </div>
-            </div>
-            """
-    else:
-        reversal_html = "<p style='text-align:center;padding:40px;opacity:0.7;font-size:1.2em;'>✨ Aucun signal de retournement actuellement.</p>"
-    
-    # ⚠️ ATTENTION: LE "f" EST CRITIQUE ICI! ⚠️
-    # Sans le "f", les variables {indicators_html} s'affichent comme du texte!
-    return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>🎯 AI Technical Analysis Pro</title>
-        """ + CSS + """
-        <style>
-            body {{
-                font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
-                background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-                color:#fff;
-                min-height:100vh;
-                padding:20px;
-            }}
-            .container {{max-width:1600px;margin:0 auto;}}
-            header {{
-                text-align:center;
-                margin-bottom:40px;
-                background:rgba(0,0,0,0.3);
-                padding:40px;
-                border-radius:20px;
-                backdrop-filter:blur(10px);
-                box-shadow:0 20px 60px rgba(0,0,0,0.3);
-            }}
-            header h1 {{font-size:3em;margin-bottom:15px;text-shadow:2px 2px 4px rgba(0,0,0,0.5);}}
-            header p {{font-size:1.2em;opacity:0.9;}}
-            .section-title {{
-                font-size:2em;
-                margin:40px 0 20px 0;
-                padding:20px;
-                background:rgba(255,255,255,0.1);
-                border-radius:15px;
-                border-left:5px solid #fbbf24;
-                backdrop-filter:blur(10px);
-            }}
-            .indicators-grid {{
-                display:grid;
-                grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-                gap:20px;
-                margin-bottom:40px;
-            }}
-            .indicator-card {{
-                background:white;
-                color:#333;
-                padding:25px;
-                border-radius:15px;
-                box-shadow:0 10px 30px rgba(0,0,0,0.3);
-                transition:transform 0.3s,box-shadow 0.3s;
-            }}
-            .indicator-card:hover {{transform:translateY(-5px);box-shadow:0 15px 40px rgba(0,0,0,0.4);}}
-            .indicator-header {{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}}
-            .indicator-signal {{padding:10px;border-radius:8px;font-weight:600;text-align:center;}}
-            .indicator-signal.oversold {{background:#dcfce7;color:#166534;}}
-            .indicator-signal.overbought {{background:#fee2e2;color:#991b1b;}}
-            .indicator-signal.bullish {{background:#d1fae5;color:#065f46;}}
-            .indicator-signal.bearish {{background:#fecaca;color:#991b1b;}}
-            .indicator-signal.neutral {{background:#f3f4f6;color:#4b5563;}}
-            .pattern-card {{
-                background:white;
-                color:#333;
-                padding:30px;
-                border-radius:15px;
-                border-left:6px solid;
-                box-shadow:0 10px 30px rgba(0,0,0,0.3);
-                margin-bottom:20px;
-                transition:transform 0.3s;
-            }}
-            .pattern-card:hover {{transform:translateY(-5px);}}
-            .bullish-pattern {{border-left-color:#10b981;}}
-            .bearish-pattern {{border-left-color:#ef4444;}}
-            .reversal-card {{
-                background:white;
-                color:#333;
-                padding:25px;
-                border-radius:15px;
-                border-left:6px solid;
-                box-shadow:0 10px 30px rgba(0,0,0,0.3);
-                margin-bottom:20px;
-                transition:transform 0.3s;
-            }}
-            .reversal-card:hover {{transform:translateY(-3px);}}
-            .bullish-signal {{border-left-color:#10b981;}}
-            .bearish-signal {{border-left-color:#ef4444;}}
-            @media(max-width:768px) {{
-                .indicators-grid {{grid-template-columns:1fr;}}
-                header h1 {{font-size:2em;}}
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <header>
-                <h1>🎯 AI Technical Analysis Pro</h1>
-                <p>Analyse technique professionnelle avec indicateurs temps réel • Patterns chartistes • Support/Résistance</p>
-                <small style="opacity:0.7;display:block;margin-top:10px;">
-                    RSI • MACD • Bollinger Bands • Stochastique • ADX • EMAs
-                </small>
-            </header>
-            
-            <div class="section-title">📊 INDICATEURS TECHNIQUES</div>
-            {indicators_html}
-            
-            <div class="section-title">🎯 PATTERNS CHARTISTES DÉTECTÉS</div>
-            {patterns_html}
-            
-            <div class="section-title">📍 SUPPORT & RÉSISTANCE</div>
-            {sr_html}
-            
-            <div class="section-title">🔄 POINTS DE RETOURNEMENT</div>
-            {reversal_html}
-        </div>
-        
-        <script>
-            setTimeout(() => {{
-                console.log('Rafraîchissement des données...');
-                window.location.reload();
-            }}, 300000);
-            
-            console.log('%c🎯 AI Technical Analysis Pro', 'color:#667eea;font-size:20px;font-weight:bold;');
-        </script>
-    </body>
-    </html>
-    """)

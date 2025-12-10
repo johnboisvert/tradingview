@@ -1645,6 +1645,15 @@ class DatabaseManager:
             last_payment_date TIMESTAMP,
             total_spent DECIMAL(10,2) DEFAULT 0.00
         )''')
+
+        # Table pour les permissions utilisateurs
+        c.execute('''CREATE TABLE IF NOT EXISTS user_permissions (
+            username TEXT,
+            route TEXT,
+            PRIMARY KEY (username, route),
+            FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+        )''')
+
         
         # Ajouter les colonnes si elles n'existent pas (pour migration)
         try:
@@ -2851,6 +2860,58 @@ async def delete_user(request: Request):
     
     db_manager.delete_user(user_to_delete)
     return {"status": "success", "message": "Utilisateur supprimé"}
+
+
+@app.post("/admin/update-permissions")
+async def update_permissions(request: Request):
+    """Mettre à jour les permissions d'un utilisateur"""
+    try:
+        data = await request.json()
+        username = data.get("username")
+        routes = data.get("routes", [])
+        
+        conn = db_manager.get_connection()
+        c = conn.cursor()
+        
+        # Supprimer les anciennes permissions
+        if db_manager.use_postgresql:
+            c.execute("DELETE FROM user_permissions WHERE username = %s", (username,))
+        else:
+            c.execute("DELETE FROM user_permissions WHERE username = ?", (username,))
+        
+        # Ajouter les nouvelles permissions
+        for route in routes:
+            if db_manager.use_postgresql:
+                c.execute("INSERT INTO user_permissions VALUES (%s, %s)", (username, route))
+            else:
+                c.execute("INSERT INTO user_permissions VALUES (?, ?)", (username, route))
+        
+        conn.commit()
+        conn.close()
+        
+        return {"success": True, "message": f"Permissions mises à jour pour {username}"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.get("/admin/get-permissions/{username}")
+async def get_permissions(username: str):
+    """Récupérer les permissions d'un utilisateur"""
+    try:
+        conn = db_manager.get_connection()
+        c = conn.cursor()
+        
+        if db_manager.use_postgresql:
+            c.execute("SELECT route FROM user_permissions WHERE username = %s", (username,))
+        else:
+            c.execute("SELECT route FROM user_permissions WHERE username = ?", (username,))
+        
+        routes = [row[0] for row in c.fetchall()]
+        conn.close()
+        
+        return {"success": True, "routes": routes}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
 
 @app.post("/admin/change-password")
 async def change_password(request: Request):
@@ -20430,7 +20491,7 @@ async def stripe_webhook_debug(request: Request):
 
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
-    """Page d'administration pour gérer les utilisateurs et abonnements"""
+    """Page d'administration moderne avec gestion des permissions"""
     
     # Vérifier l'authentification
     session_token = request.cookies.get("session_token")
@@ -20439,7 +20500,7 @@ async def admin_dashboard(request: Request):
     
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
-        return HTMLResponse(SIDEBAR + "<h1>403 - Accès refusé</h1><p>Admin seulement</p>", status_code=403)
+        return HTMLResponse(SIDEBAR + "<h1>403 - Accès refusé</h1>", status_code=403)
     
     # Récupérer tous les utilisateurs
     conn = db_manager.get_connection()
@@ -20456,217 +20517,480 @@ async def admin_dashboard(request: Request):
     cursor.close()
     conn.close()
     
-    # Calculer les statistiques
+    # Stats
     total_users = len(users)
     active_subs = sum(1 for u in users if u[2] and u[2] != 'free' and u[3])
     total_revenue = sum(float(u[6] or 0) for u in users)
     
-    # Construire le HTML des utilisateurs
+    # Liste des routes disponibles
+    routes_list = [
+        "/dashboard", "/portfolio", "/defi-yield", "/ai-gem-hunter",
+        "/prediction-ia", "/fear-greed", "/bitcoin-dominance", 
+        "/altcoin-season", "/market-heatmap", "/academy",
+        "/news", "/success-stories", "/pricing"
+    ]
+    
+    # Construire HTML users
     users_html = ""
     for user_data in users:
         username = user_data[0]
         role = user_data[1]
         plan = user_data[2] or 'free'
-        sub_end = user_data[3]
-        payment_method = user_data[4] or 'N/A'
-        created = user_data[5]
-        
-        # Déterminer le statut
-        if sub_end:
-            try:
-                if USE_POSTGRESQL:
-                    exp_date = sub_end
-                else:
-                    exp_date = datetime.fromisoformat(sub_end) if isinstance(sub_end, str) else sub_end
-                
-                is_active = datetime.now() < exp_date
-                status = '<span class="badge badge-active">Actif</span>' if is_active else '<span class="badge badge-expired">Expiré</span>'
-                exp_str = exp_date.strftime("%d/%m/%Y") if hasattr(exp_date, 'strftime') else str(exp_date)[:10]
-            except:
-                status = '<span class="badge badge-expired">Expiré</span>'
-                exp_str = '-'
-        else:
-            status = '<span class="badge badge-free">Free</span>'
-            exp_str = '-'
+        created = str(user_data[5])[:10] if user_data[5] else '-'
         
         role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
-        plan_class = 'badge-premium' if '1_month' in plan or '3_months' in plan else ('badge-pro' if '6_months' in plan or '1_year' in plan else 'badge-free')
+        plan_badge = f'<span class="badge badge-premium">{plan}</span>'
         
         users_html += f"""
         <tr>
             <td><strong>{username}</strong></td>
             <td>{role_badge}</td>
-            <td><span class="badge {plan_class}">{plan}</span> {status}</td>
-            <td>{exp_str}</td>
-            <td>{payment_method}</td>
-            <td>{str(created)[:10] if created else '-'}</td>
+            <td>{plan_badge}</td>
+            <td>{created}</td>
             <td class="actions">
-                <a href="/admin/activate-subscription?username={username}&plan=1_month" class="btn btn-success">Premium</a>
-                <a href="/admin/activate-subscription?username={username}&plan=1_year" class="btn btn-primary">Elite</a>
-                <button onclick="deleteUser('{username}')" class="btn btn-danger">🗑️ Supprimer</button>
+                <button onclick="editUser('{username}')" class="btn btn-edit">✏️ Modifier</button>
+                <button onclick="managePermissions('{username}')" class="btn btn-permissions">🔐 Permissions</button>
+                {"<button onclick=\"deleteUser('"+username+"')\" class=\"btn btn-danger\">🗑️ Supprimer</button>" if username != "admin" else ""}
             </td>
         </tr>
         """
     
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
-    <html lang="fr">
+    <html>
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Admin Dashboard</title>
         <style>
             * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{ font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }}
-            .container {{ max-width: 1400px; margin: 0 auto; }}
-            .header {{ background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; }}
+            body {{ 
+                font-family: 'Segoe UI', sans-serif; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                min-height: 100vh; 
+                padding: 20px; 
+            }}
+            
+            .container {{ max-width: 1600px; margin: 0 auto; }}
+            
+            .header {{
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                margin-bottom: 30px;
+            }}
+            
             h1 {{ color: #333; font-size: 32px; margin-bottom: 10px; }}
             .subtitle {{ color: #666; }}
-            .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }}
-            .stat-card {{ background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }}
-            .stat-value {{ font-size: 36px; font-weight: bold; color: #667eea; margin: 10px 0; }}
+            
+            .action-buttons {{
+                display: flex;
+                gap: 15px;
+                margin-top: 20px;
+            }}
+            
+            .btn-add {{
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                border: none;
+                padding: 15px 30px;
+                border-radius: 10px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s;
+            }}
+            
+            .btn-add:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            }}
+            
+            .stats-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin-bottom: 30px;
+            }}
+            
+            .stat-card {{
+                background: white;
+                padding: 25px;
+                border-radius: 15px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            }}
+            
             .stat-label {{ color: #666; font-size: 14px; text-transform: uppercase; }}
-            .users-section {{ background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }}
-            .section-title {{ font-size: 24px; color: #333; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #667eea; }}
-            table {{ width: 100%; border-collapse: collapse; }}
-            thead {{ background: #f8f9fa; }}
-            th {{ padding: 15px; text-align: left; font-weight: 600; color: #333; border-bottom: 2px solid #dee2e6; }}
-            td {{ padding: 15px; border-bottom: 1px solid #dee2e6; }}
-            tbody tr:hover {{ background: #f8f9fa; }}
-            .badge {{ padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }}
-            .badge-admin {{ background: #ff6b6b; color: white; }}
-            .badge-user {{ background: #4ecdc4; color: white; }}
-            .badge-free {{ background: #95a5a6; color: white; }}
-            .badge-premium {{ background: #667eea; color: white; }}
-            .badge-pro {{ background: #f093fb; color: white; }}
-            .badge-active {{ background: #51cf66; color: white; }}
-            .badge-expired {{ background: #ff6b6b; color: white; }}
-            .actions {{ display: flex; gap: 10px; }}
-            .btn {{ padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-block; transition: all 0.3s; }}
-            .btn-primary {{ background: #667eea; color: white; }}
-            .btn-primary:hover {{ background: #5568d3; }}
-            .btn-success {{ background: #51cf66; color: white; }}
-            .btn-success:hover {{ background: #40c057; }}
-
-            .btn-danger {{ 
-                background: #ef4444; 
-                color: white; 
-                border: none; 
-                padding: 8px 15px; 
-                border-radius: 5px; 
-                cursor: pointer; 
-                font-size: 13px; 
-                transition: all 0.3s; 
-                margin-left: 5px;
+            .stat-value {{ font-size: 36px; font-weight: bold; color: #667eea; margin: 10px 0; }}
+            
+            .users-section {{
+                background: white;
+                padding: 30px;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             }}
-            .btn-danger:hover {{ 
-                background: #dc2626; 
-                transform: translateY(-2px); 
+            
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
             }}
-            .back-link {{ display: inline-block; margin-top: 20px; color: white; text-decoration: none; font-weight: 600; padding: 12px 24px; background: rgba(255,255,255,0.2); border-radius: 8px; }}
-            .back-link:hover {{ background: rgba(255,255,255,0.3); }}
+            
+            th, td {{
+                padding: 15px;
+                text-align: left;
+                border-bottom: 1px solid #eee;
+            }}
+            
+            th {{ background: #f8f9fa; font-weight: 600; color: #333; }}
+            
+            .badge {{
+                padding: 5px 12px;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: 600;
+            }}
+            
+            .badge-admin {{ background: #ffd43b; color: #333; }}
+            .badge-user {{ background: #e0e0e0; color: #666; }}
+            .badge-premium {{ background: #51cf66; color: white; }}
+            
+            .actions {{ display: flex; gap: 8px; flex-wrap: wrap; }}
+            
+            .btn {{
+                padding: 8px 15px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 13px;
+                font-weight: 600;
+                transition: all 0.3s;
+            }}
+            
+            .btn-edit {{ background: #4dabf7; color: white; }}
+            .btn-edit:hover {{ background: #339af0; }}
+            
+            .btn-permissions {{ background: #ffd43b; color: #333; }}
+            .btn-permissions:hover {{ background: #fcc419; }}
+            
+            .btn-danger {{ background: #ff6b6b; color: white; }}
+            .btn-danger:hover {{ background: #f03e3e; }}
+            
+            /* MODAL STYLES */
+            .modal {{
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                z-index: 10000;
+                justify-content: center;
+                align-items: center;
+            }}
+            
+            .modal.active {{ display: flex; }}
+            
+            .modal-content {{
+                background: white;
+                padding: 40px;
+                border-radius: 20px;
+                max-width: 600px;
+                width: 90%;
+                max-height: 90vh;
+                overflow-y: auto;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            }}
+            
+            .modal-header {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 30px;
+            }}
+            
+            .modal-title {{ font-size: 24px; font-weight: 700; color: #333; }}
+            
+            .close-btn {{
+                background: none;
+                border: none;
+                font-size: 30px;
+                cursor: pointer;
+                color: #999;
+            }}
+            
+            .close-btn:hover {{ color: #333; }}
+            
+            .form-group {{
+                margin-bottom: 20px;
+            }}
+            
+            .form-group label {{
+                display: block;
+                font-weight: 600;
+                color: #333;
+                margin-bottom: 8px;
+            }}
+            
+            .form-group input,
+            .form-group select {{
+                width: 100%;
+                padding: 12px;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                font-size: 14px;
+                transition: all 0.3s;
+            }}
+            
+            .form-group input:focus,
+            .form-group select:focus {{
+                outline: none;
+                border-color: #667eea;
+                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            }}
+            
+            .permissions-grid {{
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                max-height: 300px;
+                overflow-y: auto;
+                padding: 15px;
+                background: #f8f9fa;
+                border-radius: 8px;
+            }}
+            
+            .permission-item {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }}
+            
+            .permission-item input[type="checkbox"] {{
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+            }}
+            
+            .permission-item label {{
+                cursor: pointer;
+                font-weight: 500;
+                margin: 0;
+            }}
+            
+            .btn-submit {{
+                width: 100%;
+                padding: 15px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s;
+                margin-top: 20px;
+            }}
+            
+            .btn-submit:hover {{
+                transform: translateY(-2px);
+                box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            }}
+            
+            .message {{
+                padding: 15px;
+                border-radius: 8px;
+                margin-top: 15px;
+                display: none;
+            }}
+            
+            .message.success {{
+                background: #d4edda;
+                color: #155724;
+                border: 1px solid #c3e6cb;
+                display: block;
+            }}
+            
+            .message.error {{
+                background: #f8d7da;
+                color: #721c24;
+                border: 1px solid #f5c6cb;
+                display: block;
+            }}
         </style>
     </head>
     <body>
-        <style>
-.universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
-.universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
-.universal-nav-btn{{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}}
-.universal-nav-btn:hover{{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}}
-.universal-nav-btn.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}}
-.universal-nav-btn.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}}
-.universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
-.universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
-</style>
-
-
         <div class="container">
             <div class="header">
-                <h1>👨‍💼 Admin Dashboard</h1>
-                <p class="subtitle">Gestion des utilisateurs et abonnements</p>
-            </div>
-            <div style="margin-bottom: 20px; text-align: center;">
-                <a href="/admin/list-promos" class="btn btn-primary" 
-                   style="background: #f59e0b; padding: 12px 24px; font-size: 16px; margin: 5px;">
-                    💰 Gérer les Codes Promo
-                </a>
-                <a href="/admin/pricing" class="btn btn-primary" 
-                   style="background: #8b5cf6; padding: 12px 24px; font-size: 16px; margin: 5px;">
-                    💎 Gérer les Plans & Permissions
-                </a>
-            </div>
-            <div class="stats-grid">
-                <div class="stat-card"><div class="stat-label">Total Utilisateurs</div><div class="stat-value">{total_users}</div></div>
-                <div class="stat-card"><div class="stat-label">Abonnements Actifs</div><div class="stat-value">{active_subs}</div></div>
-                <div class="stat-card"><div class="stat-label">Revenus Totaux</div><div class="stat-value">${total_revenue:.2f}</div></div>
+                <h1>👑 Admin Dashboard</h1>
+                <p class="subtitle">Gestion des utilisateurs et permissions</p>
+                <div class="action-buttons">
+                    <button onclick="openAddUserModal()" class="btn-add">➕ Ajouter un Utilisateur</button>
+                </div>
             </div>
             
-            <!-- FORMULAIRE AJOUT UTILISATEUR -->
-            <div class="add-user-section">
-                <h2 class="section-title">➕ Ajouter un Utilisateur</h2>
-                <form id="addUserForm" class="add-user-form">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="new_username">👤 Nom d'utilisateur</label>
-                            <input type="text" id="new_username" name="username" required 
-                                   placeholder="Ex: john_doe" minlength="3">
-                        </div>
-                        <div class="form-group">
-                            <label for="new_password">🔒 Mot de passe</label>
-                            <input type="password" id="new_password" name="password" required 
-                                   placeholder="Min. 6 caractères" minlength="6">
-                        </div>
-                        <div class="form-group">
-                            <label for="new_role">👑 Rôle</label>
-                            <select id="new_role" name="role">
-                                <option value="user">User (Normal)</option>
-                                <option value="admin">Admin (Accès complet)</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>&nbsp;</label>
-                            <button type="submit" class="btn btn-add">
-                                ➕ Créer Utilisateur
-                            </button>
-                        </div>
-                    </div>
-                </form>
-                <div id="addUserMessage" class="message"></div>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Utilisateurs</div>
+                    <div class="stat-value">{total_users}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Abonnements Actifs</div>
+                    <div class="stat-value">{active_subs}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Revenus Totaux</div>
+                    <div class="stat-value">${total_revenue:.2f}</div>
+                </div>
             </div>
-
-
+            
             <div class="users-section">
-                <h2 class="section-title">📋 Liste des Utilisateurs</h2>
+                <h2>📋 Liste des Utilisateurs</h2>
                 <table>
-                    <thead><tr><th>Utilisateur</th><th>Rôle</th><th>Plan</th><th>Expire</th><th>Méthode</th><th>Inscrit</th><th>Actions</th></tr></thead>
-                    <tbody>{users_html}</tbody>
+                    <thead>
+                        <tr>
+                            <th>Utilisateur</th>
+                            <th>Rôle</th>
+                            <th>Plan</th>
+                            <th>Créé</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {users_html}
+                    </tbody>
                 </table>
             </div>
-            <a href="/" class="back-link">← Retour au Dashboard</a>
         </div>
-    
+        
+        <!-- MODAL AJOUTER/MODIFIER UTILISATEUR -->
+        <div id="userModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modalTitle">Ajouter un Utilisateur</h2>
+                    <button class="close-btn" onclick="closeModal('userModal')">&times;</button>
+                </div>
+                <form id="userForm">
+                    <div class="form-group">
+                        <label>👤 Nom d'utilisateur</label>
+                        <input type="text" id="username" required minlength="3" placeholder="Ex: john_doe">
+                    </div>
+                    <div class="form-group">
+                        <label>🔒 Mot de passe</label>
+                        <input type="password" id="password" required minlength="6" placeholder="Min. 6 caractères">
+                    </div>
+                    <div class="form-group">
+                        <label>👑 Rôle</label>
+                        <select id="role">
+                            <option value="user">User (Normal)</option>
+                            <option value="admin">Admin (Accès complet)</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn-submit">✅ Créer Utilisateur</button>
+                </form>
+                <div id="userMessage" class="message"></div>
+            </div>
+        </div>
+        
+        <!-- MODAL PERMISSIONS -->
+        <div id="permissionsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">🔐 Gérer les Permissions</h2>
+                    <button class="close-btn" onclick="closeModal('permissionsModal')">&times;</button>
+                </div>
+                <p style="margin-bottom: 20px; color: #666;">
+                    Sélectionnez les pages accessibles pour <strong id="permUsername"></strong>
+                </p>
+                <div class="permissions-grid" id="permissionsGrid">
+                    {''.join([f"""
+                    <div class="permission-item">
+                        <input type="checkbox" id="perm_{route.replace('/', '_')}" class="perm-checkbox" value="{route}">
+                        <label for="perm_{route.replace('/', '_')}">{route.replace('/', '').replace('-', ' ').title()}</label>
+                    </div>
+                """ for route in routes_list])}
+                </div>
+                <button onclick="savePermissions()" class="btn-submit">💾 Enregistrer Permissions</button>
+                <div id="permMessage" class="message"></div>
+            </div>
+        </div>
+        
         <script>
-        document.getElementById('addUserForm').addEventListener('submit', async (e) => {{
+        let currentPermUser = '';
+        
+        function openAddUserModal() {{
+            document.getElementById('modalTitle').textContent = 'Ajouter un Utilisateur';
+            document.getElementById('userForm').reset();
+            document.getElementById('userModal').classList.add('active');
+        }}
+        
+        function closeModal(modalId) {{
+            document.getElementById(modalId).classList.remove('active');
+        }}
+        
+        async function managePermissions(username) {{
+            currentPermUser = username;
+            document.getElementById('permUsername').textContent = username;
+            
+            // Charger les permissions actuelles
+            try {{
+                const response = await fetch(`/admin/get-permissions/${{username}}`);
+                const data = await response.json();
+                
+                // Décocher toutes
+                document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
+                
+                // Cocher les permissions existantes
+                if (data.success && data.routes) {{
+                    data.routes.forEach(route => {{
+                        const checkbox = document.getElementById('perm_' + route.replace(/\//g, '_'));
+                        if (checkbox) checkbox.checked = true;
+                    }});
+                }}
+                
+                document.getElementById('permissionsModal').classList.add('active');
+            }} catch (error) {{
+                alert('Erreur lors du chargement des permissions');
+            }}
+        }}
+        
+        async function savePermissions() {{
+            const checkboxes = document.querySelectorAll('.perm-checkbox:checked');
+            const routes = Array.from(checkboxes).map(cb => cb.value);
+            
+            try {{
+                const response = await fetch('/admin/update-permissions', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{
+                        username: currentPermUser,
+                        routes: routes
+                    }})
+                }});
+                
+                const data = await response.json();
+                
+                const msg = document.getElementById('permMessage');
+                if (data.success) {{
+                    msg.className = 'message success';
+                    msg.textContent = '✅ ' + data.message;
+                    setTimeout(() => {{ closeModal('permissionsModal'); }}, 1500);
+                }} else {{
+                    msg.className = 'message error';
+                    msg.textContent = '❌ ' + data.message;
+                }}
+            }} catch (error) {{
+                alert('❌ Erreur de connexion');
+            }}
+        }}
+        
+        document.getElementById('userForm').addEventListener('submit', async (e) => {{
             e.preventDefault();
             
-            const username = document.getElementById('new_username').value;
-            console.log('Creating user:', username);
-            const password = document.getElementById('new_password').value;
-            const role = document.getElementById('new_role').value;
-            const messageDiv = document.getElementById('addUserMessage');
-            
-            // Validation
-            if (username.length < 3) {{
-                messageDiv.className = 'message error';
-                messageDiv.textContent = '❌ Le nom d'utilisateur doit contenir au moins 3 caractères';
-                return;
-            }}
-            
-            if (password.length < 6) {{
-                messageDiv.className = 'message error';
-                messageDiv.textContent = '❌ Le mot de passe doit contenir au moins 6 caractères';
-                return;
-            }}
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
             
             try {{
                 const response = await fetch('/admin/add-user', {{
@@ -20676,32 +21000,27 @@ async def admin_dashboard(request: Request):
                 }});
                 
                 const data = await response.json();
+                console.log('Server response:', data);
                 
+                const msg = document.getElementById('userMessage');
                 if (data.success) {{
-                    messageDiv.className = 'message success';
-                    messageDiv.textContent = '✅ Utilisateur créé avec succès! Rechargement...';
-                    
-                    // Reset form
-                    document.getElementById('addUserForm').reset();
-                    
-                    // Recharger après 1.5 secondes
+                    msg.className = 'message success';
+                    msg.textContent = '✅ ' + data.message;
                     setTimeout(() => {{
                         window.location.reload();
                     }}, 1500);
                 }} else {{
-                    messageDiv.className = 'message error';
-                    messageDiv.textContent = '❌ ' + (data.message || 'Erreur lors de la création');
+                    msg.className = 'message error';
+                    msg.textContent = '❌ ' + data.message;
                 }}
             }} catch (error) {{
-                messageDiv.className = 'message error';
-                messageDiv.textContent = '❌ Erreur de connexion au serveur';
+                alert('❌ Erreur de connexion au serveur');
+                console.error(error);
             }}
         }});
         
-        
-        // Fonction de suppression d'utilisateur
         async function deleteUser(username) {{
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${{username}}" ?`)) {{
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer "${{username}}" ?`)) {{
                 return;
             }}
             
@@ -20715,345 +21034,32 @@ async def admin_dashboard(request: Request):
                 const data = await response.json();
                 
                 if (data.status === 'success') {{
-                    alert('✅ Utilisateur supprimé avec succès!');
+                    alert('✅ Utilisateur supprimé!');
                     window.location.reload();
                 }} else {{
-                    alert('❌ Erreur: ' + (data.message || 'Impossible de supprimer'));
+                    alert('❌ Erreur: ' + data.message);
                 }}
             }} catch (error) {{
-                alert('❌ Erreur de connexion au serveur');
-                console.error(error);
+                alert('❌ Erreur de connexion');
             }}
         }}
         </script>
-
     </body>
     </html>
     """)
-
-# ==============================================================================
-# 💰 ROUTES ADMIN CODES PROMO
-# ==============================================================================
-
-
-
-@app.get("/admin/pricing", response_class=HTMLResponse)
-async def admin_pricing_view(request: Request):
-    """Page de gestion des plans - ISOLÉE"""
-    session_token = request.cookies.get("session_token")
-    if not session_token:
-        return RedirectResponse("/login", status_code=303)
     
-    user = get_user_from_token(session_token)
-    if not user or user.get("role") != "admin":
-        return HTMLResponse("<h1>403</h1>", status_code=403)
-    
-    success = request.query_params.get("success")
-    error = request.query_params.get("error")
-    
-    alert = ""
-    if success:
-        alert = '<div class="alert success">✅ Plan mis à jour avec succès!</div>'
-    elif error:
-        alert = '<div class="alert error">❌ Erreur lors de la mise à jour</div>'
-    
-    # TOUTES les 52 routes disponibles (COMPLÈTES!)
-    all_routes_html = ""
-    routes_list = [
-        # 📊 Tableau de bord
-        '/dashboard', '/stats-dashboard',
-        # 🎓 Academy
-        '/academy',
-        # 💰 Trading & Stratégies
-        '/trades', '/strategie', '/spot-trading', '/watchlist', '/risk-management', '/backtesting',
-        # 🤖 Features IA (TOUTES les 16!)
-        '/ai-opportunity-scanner', '/ai-market-regime', '/ai-whale-watcher', '/ai-assistant',
-        '/ai-signals', '/ai-news', '/ai-predictor', '/ai-whale', '/ai-patterns', '/ai-sentiment',
-        '/ai-sizer', '/ai-exit', '/ai-timeframe', '/ai-liquidity', '/ai-alerts', '/ai-gem-hunter',
-        # 📈 Analyse de marché
-        '/fear-greed', '/fear-greed-chart', '/dominance', '/altcoin-season', '/heatmap',
-        '/bullrun-phase', '/graphiques', '/onchain-metrics',
-        # 🆕 Nouvelles Features
-        # 🛠️ Outils
-        '/calculatrice', '/convertisseur', '/prediction-ia', '/market-simulation', '/calendrier',
-        # 📰 Nouvelles & Info
-        '/nouvelles', '/success-stories',
-        # 👤 Compte
-        '/pricing-complete', '/api-keys', '/mon-compte',
-        # 🔐 Admin
-        '/admin-dashboard', '/admin/pricing',
-        # Autres
-        '/testimonials-widget', '/telegram-test', '/generate-pdf-report'
-    ]
-    
-    return HTMLResponse(SIDEBAR + f"""
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Admin Pricing</title>
-    <style>
-        * {{ margin:0; padding:0; box-sizing:border-box; }}
-        body {{ font-family:'Segoe UI',sans-serif; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); min-height:100vh; }}
-        
-        /* MENU ISOLÉ */
-        .top-menu {{
-            background:#1a1a2e;
-            padding:15px 20px;
-            box-shadow:0 4px 20px rgba(0,0,0,0.5);
-            position:sticky;
-            top:0;
-            z-index:999999;
-            border-bottom:3px solid #f59e0b;
-        }}
-        .menu-items {{
-            max-width:1200px;
-            margin:0 auto;
-            display:flex;
-            gap:15px;
-            flex-wrap:wrap;
-            justify-content:center;
-        }}
-        .menu-btn {{
-            background:#2d2d44;
-            color:white;
-            padding:10px 20px;
-            border-radius:8px;
-            text-decoration:none;
-            font-weight:600;
-            transition:all 0.3s;
-        }}
-        .menu-btn:hover {{ background:#3d3d54; }}
-        .menu-btn.active {{ background:#f59e0b; }}
-        
-        .container {{ max-width:1400px; margin:0 auto; padding:30px 20px; }}
-        .header {{ background:white; padding:30px; border-radius:15px; margin-bottom:30px; box-shadow:0 10px 30px rgba(0,0,0,0.2); }}
-        h1 {{ color:#333; font-size:32px; }}
-        
-        .alert {{ padding:15px 20px; border-radius:8px; margin-bottom:20px; font-weight:500; }}
-        .alert.success {{ background:#d1fae5; color:#065f46; border-left:4px solid #10b981; }}
-        .alert.error {{ background:#fee2e2; color:#991b1b; border-left:4px solid #ef4444; }}
-        
-        .plan-editor {{ background:white; padding:25px; border-radius:15px; margin-bottom:25px; box-shadow:0 5px 15px rgba(0,0,0,0.1); }}
-        .plan-header {{ display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:15px; border-bottom:2px solid #f0f0f0; }}
-        .plan-title {{ font-size:24px; font-weight:bold; color:#667eea; }}
-        .plan-id {{ background:#f0f0f0; padding:5px 15px; border-radius:20px; font-size:13px; }}
-        
-        .editor-row {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-bottom:20px; }}
-        .form-group {{ margin-bottom:15px; }}
-        .form-label {{ display:block; font-size:14px; font-weight:600; color:#555; margin-bottom:8px; }}
-        .form-input {{ width:100%; padding:12px; border:2px solid #e0e0e0; border-radius:8px; font-size:16px; }}
-        .form-input:focus {{ outline:none; border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,0.1); }}
-        
-        .routes-section {{ background:#f8f9fa; padding:20px; border-radius:10px; margin-top:20px; }}
-        .routes-section h4 {{ color:#333; margin-bottom:15px; }}
-        .routes-grid {{ display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-top:15px; }}
-        .route-checkbox {{ display:flex; align-items:center; background:white; padding:10px; border-radius:6px; border:2px solid #e0e0e0; }}
-        .route-checkbox input {{ margin-right:10px; width:18px; height:18px; }}
-        .route-checkbox:has(input:checked) {{ background:#e8f0ff; border-color:#667eea; }}
-        
-        .save-btn {{ background:#10b981; color:white; padding:12px 30px; border:none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; margin-top:15px; }}
-        .save-btn:hover {{ background:#059669; }}
-        
-        .info {{ background:#dbeafe; padding:20px; border-radius:10px; margin-top:30px; border-left:4px solid #3b82f6; }}
-        .info h4 {{ color:#1e40af; margin-bottom:10px; }}
-        .info ul {{ color:#1e40af; line-height:2; padding-left:20px; }}
-    </style>
-</head>
-<body>
-    <nav class="top-menu">
-        <div class="menu-items">
-            <a href="/dashboard" class="menu-btn">🏠 Accueil</a>
-            <a href="/admin-dashboard" class="menu-btn">🔧 Admin</a>
-            <a href="/admin/list-promos" class="menu-btn">💰 Promos</a>
-            <a href="/admin/pricing" class="menu-btn active">💎 Pricing</a>
-            <a href="/mon-compte" class="menu-btn">👤 Compte</a>
-            <a href="/logout" class="menu-btn">🚪 Déconnexion</a>
-        </div>
-    </nav>
-    
-    <div class="container">
-        <div class="header">
-            <h1>💎 Gestion des Plans d'Abonnement</h1>
-            <p style="color:#666; margin-top:10px;">Modifiez les prix, noms et permissions (33 routes disponibles)</p>
-        </div>
-        
-        {alert}
-        
-        <form method="POST" action="/admin/pricing/update" class="plan-editor">
-            <input type="hidden" name="plan_id" value="free">
-            <div class="plan-header">
-                <div class="plan-title">🆓 Free</div>
-                <div class="plan-id">ID: free</div>
-            </div>
-            <div class="editor-row">
-                <div class="form-group">
-                    <label class="form-label">Nom</label>
-                    <input type="text" name="name" value="Free" class="form-input" required>
+    def _generate_permissions_checkboxes(self, routes):
+        html = ""
+        for route in routes:
+            route_id = route.replace('/', '_')
+            route_name = route.replace('/', '').replace('-', ' ').title()
+            html += f"""
+                <div class="permission-item">
+                    <input type="checkbox" id="perm_{route_id}" class="perm-checkbox" value="{route}">
+                    <label for="perm_{route_id}">{route_name}</label>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Prix ($)</label>
-                    <input type="number" name="price" value="0" step="0.01" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Durée</label>
-                    <input type="text" name="duration" value="gratuit" class="form-input" required>
-                </div>
-            </div>
-            <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes Disponibles (cochez celles accessibles en Free)</h4>
-                <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/dashboard","/fear-greed","/dominance","/altcoin-season","/heatmap","/nouvelles","/convertisseur","/calendrier"] else ""}> {route}</label>' for route in routes_list])}
-                </div>
-            </div>
-            <button type="submit" class="save-btn">💾 Sauvegarder Free</button>
-        </form>
-        
-        <form method="POST" action="/admin/pricing/update" class="plan-editor">
-            <input type="hidden" name="plan_id" value="1_month">
-            <div class="plan-header">
-                <div class="plan-title">💎 Premium 1 mois</div>
-                <div class="plan-id">ID: 1_month</div>
-            </div>
-            <div class="editor-row">
-                <div class="form-group">
-                    <label class="form-label">Nom</label>
-                    <input type="text" name="name" value="Premium 1 mois" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Prix ($)</label>
-                    <input type="number" name="price" value="29.99" step="0.01" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Durée</label>
-                    <input type="text" name="duration" value="1 mois" class="form-input" required>
-                </div>
-            </div>
-            <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (+ hérite de Free)</h4>
-                <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
-                </div>
-            </div>
-            <button type="submit" class="save-btn">💾 Sauvegarder Premium</button>
-        </form>
-        
-        <form method="POST" action="/admin/pricing/update" class="plan-editor">
-            <input type="hidden" name="plan_id" value="3_months">
-            <div class="plan-header">
-                <div class="plan-title">💎 Advanced 3 mois</div>
-                <div class="plan-id">ID: 3_months</div>
-            </div>
-            <div class="editor-row">
-                <div class="form-group">
-                    <label class="form-label">Nom</label>
-                    <input type="text" name="name" value="Advanced 3 mois" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Prix ($)</label>
-                    <input type="number" name="price" value="74.97" step="0.01" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Durée</label>
-                    <input type="text" name="duration" value="3 mois" class="form-input" required>
-                </div>
-            </div>
-            <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (hérite de Premium)</h4>
-                <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-assistant","/prediction-ia","/ai-opportunity-scanner","/strategie","/spot-trading","/calculatrice","/trades","/risk-management","/watchlist"] else ""}> {route}</label>' for route in routes_list])}
-                </div>
-            </div>
-            <button type="submit" class="save-btn">💾 Sauvegarder Advanced</button>
-        </form>
-        
-        <form method="POST" action="/admin/pricing/update" class="plan-editor">
-            <input type="hidden" name="plan_id" value="6_months">
-            <div class="plan-header">
-                <div class="plan-title">⭐ Pro 6 mois</div>
-                <div class="plan-id">ID: 6_months</div>
-            </div>
-            <div class="editor-row">
-                <div class="form-group">
-                    <label class="form-label">Nom</label>
-                    <input type="text" name="name" value="Pro 6 mois" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Prix ($)</label>
-                    <input type="number" name="price" value="134.94" step="0.01" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Durée</label>
-                    <input type="text" name="duration" value="6 mois" class="form-input" required>
-                </div>
-            </div>
-            <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (+ hérite de Premium)</h4>
-                <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/ai-whale-watcher","/ai-market-regime","/stats-dashboard","/market-simulation","/success-stories"] else ""}> {route}</label>' for route in routes_list])}
-                </div>
-            </div>
-            <button type="submit" class="save-btn">💾 Sauvegarder Pro</button>
-        </form>
-        
-        <form method="POST" action="/admin/pricing/update" class="plan-editor">
-            <input type="hidden" name="plan_id" value="1_year">
-            <div class="plan-header">
-                <div class="plan-title">👑 Elite 1 an</div>
-                <div class="plan-id">ID: 1_year</div>
-            </div>
-            <div class="editor-row">
-                <div class="form-group">
-                    <label class="form-label">Nom</label>
-                    <input type="text" name="name" value="Elite 1 an" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Prix ($)</label>
-                    <input type="number" name="price" value="239.88" step="0.01" class="form-input" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Durée</label>
-                    <input type="text" name="duration" value="1 an" class="form-input" required>
-                </div>
-            </div>
-            <div class="routes-section">
-                <h4>🔐 Toutes les 33 Routes (+ hérite de Pro = TOUT)</h4>
-                <div class="routes-grid">
-                    {''.join([f'<label class="route-checkbox"><input type="checkbox" name="routes" value="{route}" {"checked" if route in ["/graphiques","/bullrun-phase","/telegram-test"] else ""}> {route}</label>' for route in routes_list])}
-                </div>
-            </div>
-            <button type="submit" class="save-btn">💾 Sauvegarder Elite</button>
-        </form>
-        
-        <div class="info">
-            <h4>ℹ️ Informations</h4>
-            <ul>
-                <li><strong>29 routes totales</strong> disponibles dans le système</li>
-                <li>Chaque plan hérite des permissions des plans inférieurs</li>
-                <li>Cochez/décochez les routes pour chaque plan</li>
-                <li>Les modifications sont sauvegardées dans /data/pricing_config.json</li>
-            </ul>
-        </div>
-        
-        <a href="/admin-dashboard" style="display:inline-block; margin-top:30px; padding:12px 24px; background:white; color:#667eea; text-decoration:none; border-radius:8px; font-weight:600;">← Retour</a>
-    </div>
-    
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {{
-        const existing = document.querySelector('.universal-nav-injected');
-        if (existing) existing.remove();
-        
-        const menuHTML = '<style>.universal-nav-injected{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%)!important;padding:15px 20px!important;min-height:80px!important;box-shadow:0 2px 15px rgba(0,0,0,0.5)!important;position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:999999999!important;border-bottom:1px solid rgba(255,255,255,0.05)!important;display:block!important;visibility:visible!important}}.universal-nav-container-injected{{max-width:1600px!important;margin:0 auto!important;display:flex!important;gap:10px!important;align-items:center!important;flex-wrap:wrap!important;justify-content:center!important}}.universal-nav-btn-injected{{background:rgba(255,255,255,0.05)!important;color:#e2e8f0!important;padding:10px 16px!important;border-radius:6px!important;text-decoration:none!important;font-size:13px!important;font-weight:500!important;transition:all 0.2s!important;border:1px solid rgba(255,255,255,0.08)!important;white-space:nowrap!important}}.universal-nav-btn-injected:hover{{background:rgba(255,255,255,0.12)!important;border-color:rgba(96,165,250,0.4)!important;color:white!important}}.universal-nav-btn-injected.premium{{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%)!important;border:none!important}}.universal-nav-btn-injected.admin{{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)!important;border:none!important}}.universal-nav-btn-injected.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%)!important;border:none!important}}.universal-nav-btn-injected.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%)!important;border:none!important}}</style>';
-        
-        document.body.insertAdjacentHTML('afterbegin', menuHTML);
-        document.body.style.paddingTop = '60px';
-        console.log('Menu universel injecté');
-    }});
-    </script>
-</body>
-</html>
-    """)
-
+            """
+        return html
 
 @app.post("/admin/pricing/update")
 async def admin_pricing_update(request: Request):

@@ -32225,7 +32225,7 @@ async def ai_technical_analysis_page(request: Request):
     df = await analyzer.get_ohlcv_data(symbol, days=60)
     
     if df is None:
-        return HTMLResponse(SIDEBAR + """
+        return HTMLResponse(SIDEBAR + f"""
         <!DOCTYPE html>
         <html lang="fr">
         <head><meta charset="UTF-8"><title>Erreur</title></head>

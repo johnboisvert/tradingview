@@ -32207,10 +32207,8 @@ async def get_portfolio_data(request: Request):
     except Exception as e:
         print(f"Portfolio data error: {e}")
         return JSONResponse({'success': False, 'message': str(e), 'exchanges': {}})
-
-# ============================================================================
-# 🎯 AI TECHNICAL ANALYSIS - ANALYSE TECHNIQUE AVANCÉE
-# ============================================================================
+# 🔧 CORRECTION ROUTE AI TECHNICAL ANALYSIS
+# Remplace la route dans ton main.py (lignes 32210 à la fin)
 
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
 async def ai_technical_analysis_page(request: Request):
@@ -32238,7 +32236,8 @@ async def ai_technical_analysis_page(request: Request):
             <p style="font-size: 1.3em;">Impossible de récupérer les données historiques.</p>
             <p style="margin-top: 20px; opacity: 0.8;">Réessayez dans quelques instants ou contactez le support.</p>
         </div>
-        """ + FOOTER)
+        </body></html>
+        """)
     
     # Calculer tous les indicateurs techniques
     indicators = analyzer.calculate_indicators(df)
@@ -32457,8 +32456,8 @@ async def ai_technical_analysis_page(request: Request):
     else:
         reversal_html = "<p class='no-signals'>✨ Aucun signal de retournement majeur actuellement. Marché stable.</p>"
     
-    # Page HTML complète
-    html = SIDEBAR + f"""
+    # Page HTML complète (SANS FOOTER!)
+    return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -32492,10 +32491,6 @@ async def ai_technical_analysis_page(request: Request):
                 font-size: 3em;
                 margin-bottom: 15px;
                 text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-                background: linear-gradient(45deg, #fbbf24, #f59e0b);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
             }}
             
             header p {{
@@ -32513,7 +32508,6 @@ async def ai_technical_analysis_page(request: Request):
                 backdrop-filter: blur(10px);
             }}
             
-            /* Indicators Grid */
             .indicators-grid {{
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -32542,14 +32536,8 @@ async def ai_technical_analysis_page(request: Request):
                 margin-bottom: 15px;
             }}
             
-            .indicator-icon {{
-                font-size: 2em;
-            }}
-            
-            .indicator-name {{
-                font-weight: bold;
-                font-size: 1.1em;
-            }}
+            .indicator-icon {{ font-size: 2em; }}
+            .indicator-name {{ font-weight: bold; font-size: 1.1em; }}
             
             .indicator-value {{
                 font-size: 2.5em;
@@ -32571,7 +32559,6 @@ async def ai_technical_analysis_page(request: Request):
             .indicator-signal.bearish {{ background: #fecaca; color: #991b1b; }}
             .indicator-signal.neutral {{ background: #f3f4f6; color: #4b5563; }}
             
-            /* Patterns */
             .patterns-container {{
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -32589,10 +32576,7 @@ async def ai_technical_analysis_page(request: Request):
                 transition: transform 0.3s;
             }}
             
-            .pattern-card:hover {{
-                transform: translateY(-5px);
-            }}
-            
+            .pattern-card:hover {{ transform: translateY(-5px); }}
             .bullish-pattern {{ border-left-color: #10b981; }}
             .bearish-pattern {{ border-left-color: #ef4444; }}
             
@@ -32603,10 +32587,7 @@ async def ai_technical_analysis_page(request: Request):
                 margin-bottom: 20px;
             }}
             
-            .pattern-header h3 {{
-                font-size: 1.4em;
-                color: #1f2937;
-            }}
+            .pattern-header h3 {{ font-size: 1.4em; color: #1f2937; }}
             
             .pattern-type {{
                 padding: 8px 16px;
@@ -32615,32 +32596,12 @@ async def ai_technical_analysis_page(request: Request):
                 font-size: 0.9em;
             }}
             
-            .bullish-pattern .pattern-type {{
-                background: #d1fae5;
-                color: #065f46;
-            }}
+            .bullish-pattern .pattern-type {{ background: #d1fae5; color: #065f46; }}
+            .bearish-pattern .pattern-type {{ background: #fee2e2; color: #991b1b; }}
             
-            .bearish-pattern .pattern-type {{
-                background: #fee2e2;
-                color: #991b1b;
-            }}
-            
-            .pattern-confidence {{
-                margin: 15px 0;
-                font-size: 1.1em;
-            }}
-            
-            .confidence-value {{
-                font-weight: 900;
-                font-size: 1.5em;
-                color: #667eea;
-            }}
-            
-            .pattern-description {{
-                margin: 15px 0;
-                line-height: 1.6;
-                color: #4b5563;
-            }}
+            .pattern-confidence {{ margin: 15px 0; font-size: 1.1em; }}
+            .confidence-value {{ font-weight: 900; font-size: 1.5em; color: #667eea; }}
+            .pattern-description {{ margin: 15px 0; line-height: 1.6; color: #4b5563; }}
             
             .pattern-target {{
                 margin-top: 20px;
@@ -32650,7 +32611,6 @@ async def ai_technical_analysis_page(request: Request):
                 font-size: 1.1em;
             }}
             
-            /* Support/Resistance */
             .sr-section {{
                 background: white;
                 color: #333;
@@ -32664,15 +32624,8 @@ async def ai_technical_analysis_page(request: Request):
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             }}
             
-            .sr-card h3 {{
-                font-size: 1.5em;
-                margin-bottom: 20px;
-            }}
-            
-            .sr-levels {{
-                display: grid;
-                gap: 10px;
-            }}
+            .sr-card h3 {{ font-size: 1.5em; margin-bottom: 20px; }}
+            .sr-levels {{ display: grid; gap: 10px; }}
             
             .sr-level {{
                 padding: 12px;
@@ -32685,9 +32638,7 @@ async def ai_technical_analysis_page(request: Request):
                 transition: background 0.3s;
             }}
             
-            .sr-level:hover {{
-                background: #e5e7eb;
-            }}
+            .sr-level:hover {{ background: #e5e7eb; }}
             
             .current-price-indicator {{
                 text-align: center;
@@ -32706,11 +32657,7 @@ async def ai_technical_analysis_page(request: Request):
                 letter-spacing: 1px;
             }}
             
-            .price-value {{
-                font-size: 2.5em;
-                font-weight: 900;
-                margin: 10px 0;
-            }}
+            .price-value {{ font-size: 2.5em; font-weight: 900; margin: 10px 0; }}
             
             .price-change {{
                 font-size: 1.3em;
@@ -32723,11 +32670,7 @@ async def ai_technical_analysis_page(request: Request):
             .price-change.positive {{ background: rgba(16, 185, 129, 0.3); }}
             .price-change.negative {{ background: rgba(239, 68, 68, 0.3); }}
             
-            /* Reversal Signals */
-            .reversal-container {{
-                display: grid;
-                gap: 20px;
-            }}
+            .reversal-container {{ display: grid; gap: 20px; }}
             
             .reversal-card {{
                 background: white;
@@ -32739,10 +32682,7 @@ async def ai_technical_analysis_page(request: Request):
                 transition: transform 0.3s;
             }}
             
-            .reversal-card:hover {{
-                transform: translateY(-3px);
-            }}
-            
+            .reversal-card:hover {{ transform: translateY(-3px); }}
             .bullish-signal {{ border-left-color: #10b981; }}
             .bearish-signal {{ border-left-color: #ef4444; }}
             
@@ -32753,17 +32693,8 @@ async def ai_technical_analysis_page(request: Request):
                 margin-bottom: 15px;
             }}
             
-            .reversal-type {{
-                font-size: 1.2em;
-                font-weight: 700;
-                color: #1f2937;
-            }}
-            
-            .reversal-confidence {{
-                font-size: 1.5em;
-                font-weight: 900;
-                color: #667eea;
-            }}
+            .reversal-type {{ font-size: 1.2em; font-weight: 700; color: #1f2937; }}
+            .reversal-confidence {{ font-size: 1.5em; font-weight: 900; color: #667eea; }}
             
             .reversal-reason {{
                 margin: 15px 0;
@@ -32803,18 +32734,9 @@ async def ai_technical_analysis_page(request: Request):
                 color: #1f2937;
             }}
             
-            .level-item.rr {{
-                background: linear-gradient(135deg, #667eea, #764ba2);
-            }}
-            
-            .level-item.rr .level-label {{
-                color: rgba(255,255,255,0.9);
-            }}
-            
-            .level-item.rr .level-value {{
-                color: white;
-                font-size: 1.8em;
-            }}
+            .level-item.rr {{ background: linear-gradient(135deg, #667eea, #764ba2); }}
+            .level-item.rr .level-label {{ color: rgba(255,255,255,0.9); }}
+            .level-item.rr .level-value {{ color: white; font-size: 1.8em; }}
             
             .no-patterns, .no-signals {{
                 text-align: center;
@@ -32827,18 +32749,10 @@ async def ai_technical_analysis_page(request: Request):
             }}
             
             @media (max-width: 768px) {{
-                .sr-section {{
-                    grid-template-columns: 1fr;
-                }}
-                .reversal-levels {{
-                    grid-template-columns: repeat(2, 1fr);
-                }}
-                .indicators-grid {{
-                    grid-template-columns: 1fr;
-                }}
-                header h1 {{
-                    font-size: 2em;
-                }}
+                .sr-section {{ grid-template-columns: 1fr; }}
+                .reversal-levels {{ grid-template-columns: repeat(2, 1fr); }}
+                .indicators-grid {{ grid-template-columns: 1fr; }}
+                header h1 {{ font-size: 2em; }}
             }}
         </style>
     </head>
@@ -32869,21 +32783,15 @@ async def ai_technical_analysis_page(request: Request):
             </div>
         </div>
         
-        """ + FOOTER + """
-        
         <script>
-            // Auto-refresh toutes les 5 minutes
             setTimeout(() => {{
                 console.log('Rafraîchissement des données...');
                 window.location.reload();
             }}, 300000);
             
-            // Message de bienvenue en console
             console.log('%c🎯 AI Technical Analysis Pro', 'color: #667eea; font-size: 20px; font-weight: bold;');
             console.log('Analyse technique professionnelle avec indicateurs en temps réel');
         </script>
     </body>
     </html>
-    """
-    
-    return HTMLResponse(html)
+    """)

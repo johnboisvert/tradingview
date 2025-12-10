@@ -2861,6 +2861,7 @@ async def strategie_page():
             }}
             
             body {
+                margin-left: 0 !important;
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: #333;
@@ -21568,7 +21569,8 @@ async def fear_greed_chart():
         <title>Fear & Greed - Historique 12 mois</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
-            body {{ 
+            body {{
+            margin-left: 0 !important; 
                 font-family: 'Segoe UI', sans-serif; 
                 background: #0f172a; 
                 color: white; 
@@ -30399,6 +30401,37 @@ console.log('✅ JavaScript Academy chargé avec succès!');
 </html>
 """
     return HTMLResponse(content=html_content)
+
+@app.get("/launchpad-scanner", response_class=HTMLResponse)
+async def launchpad_scanner():
+    """🚀 Launchpad Scanner"""
+    return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>🚀 Launchpad Scanner</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:20px;min-height:100vh}
+.container{max-width:1400px;margin:0 auto}
+.header{text-align:center;padding:40px 20px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:30px}
+h1{font-size:48px;margin-bottom:15px}
+.launch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:20px}
+.launch-card{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:15px;padding:25px;border:1px solid rgba(255,255,255,0.2)}
+.launch-card h3{color:#ffd700;margin-bottom:10px}
+.launch-info{margin:10px 0;font-size:14px}
+.status-badge{display:inline-block;padding:5px 15px;border-radius:20px;font-size:12px;font-weight:bold;margin-top:10px}
+.status-upcoming{background:#3b82f6}.status-live{background:#10b981}.status-ended{background:#6b7280}
+</style></head><body>
+<div class="container">
+<div class="header"><h1>🚀 Launchpad Scanner</h1><p>Détection des nouveaux lancements</p></div>
+<div class="launch-grid">
+<div class="launch-card"><h3>🎯 Projet Alpha</h3><div class="launch-info">💰 Hard Cap: $500,000</div>
+<div class="launch-info">📅 Date: 15 Dec 2025</div><span class="status-badge status-upcoming">À venir</span></div>
+<div class="launch-card"><h3>🔥 Beta Token</h3><div class="launch-info">💰 Hard Cap: $1,000,000</div>
+<div class="launch-info">📅 En cours</div><span class="status-badge status-live">En cours</span></div>
+</div>
+<div style="text-align:center;margin-top:40px;padding:30px;background:rgba(0,0,0,0.3);border-radius:15px">
+<h2>🚧 En développement</h2><p style="margin-top:15px">Scan automatique en cours d'implémentation...</p>
+</div></div></body></html>""")
+
+
 
 
 # ================================================================================

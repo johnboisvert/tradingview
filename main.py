@@ -19786,13 +19786,69 @@ async def prediction_ia():
 <body>
     <div class="sidebar">
         <div class="sidebar-title">🚀 CRYPTO IA</div>
-        <a href="/dashboard">🏠 Dashboard</a>
-        <a href="/academy">🎓 Academy</a>
-        <a href="/trades">📊 Trades</a>
+        
+        <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">📊 TABLEAU DE BORD</div>
+        <a href="/dashboard">🏠 Dashboard Principal</a>
+        <a href="/stats-dashboard">📈 Stats Dashboard</a>
+        
+        <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">🎓 ACADEMY</div>
+        <a href="/academy">🎓 Trading Academy Pro</a>
+        
+        <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">💰 TRADING</div>
+        <a href="/trades">📊 Mes Trades</a>
+        <a href="/strategie">🎯 Stratégies</a>
+        <a href="/spot-trading">💱 Spot Trading</a>
+        <a href="/watchlist">⭐ Watchlist</a>
+        <a href="/risk-management">🛡️ Gestion Risques</a>
+        <a href="/backtesting">⏮️ Backtesting</a>
+        
+        <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">🤖 FEATURES IA</div>
+        <a href="/ai-opportunity-scanner">🔍 Scanner Opportunités</a>
+        <a href="/ai-market-regime">📊 Régime Marché</a>
+        <a href="/ai-whale-watcher">🐋 Whale Watcher</a>
+        <a href="/ai-assistant">🤖 Assistant IA</a>
+        <a href="/ai-signals">📡 Signaux IA</a>
+        <a href="/ai-news">📰 News IA</a>
         <a href="/ai-predictor">🔮 AI Predictor</a>
         <a href="/prediction-ia" class="active">🤖 Prédictions IA</a>
+        <a href="/ai-patterns">🎨 Patterns IA</a>
+        <a href="/ai-sentiment">😊 Sentiment IA</a>
+        <a href="/ai-sizer">💰 Position Sizer</a>
+        <a href="/ai-exit">🚪 Exit Strategy</a>
+        <a href="/ai-timeframe">⏰ Timeframe Analysis</a>
+        <a href="/ai-liquidity">💧 Liquidité IA</a>
+        <a href="/ai-alerts">🔔 Alertes IA</a>
         <a href="/ai-gem-hunter">💎 Gem Hunter</a>
+        
+        <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">📈 ANALYSE</div>
         <a href="/fear-greed">😨 Fear & Greed</a>
+        <a href="/fear-greed-chart">📊 F&G Graphique</a>
+        <a href="/dominance">👑 BTC Dominance</a>
+        <a href="/altcoin-season">🎯 Altcoin Season</a>
+        <a href="/heatmap">🔥 Heatmap</a>
+        <a href="/bullrun-phase">🐂 Bull Run Phase</a>
+        <a href="/graphiques">📉 Graphiques Avancés</a>
+        <a href="/onchain-metrics">⛓️ Métriques On-Chain</a>
+        
+        <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">🆕 NOUVELLES FEATURES</div>
+        <a href="/portfolio-tracker">💼 Portfolio Tracker</a>
+        <a href="/defi-yield">🏦 DeFi Yield</a>
+        <a href="/launchpad-scanner">🚀 Launchpad Scanner</a>
+        <a href="/crypto-pepites">💎 Pépites Crypto</a>
+        
+        <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">🛠️ OUTILS</div>
+        <a href="/calculatrice">🧮 Calculatrice</a>
+        <a href="/convertisseur">💱 Convertisseur</a>
+        <a href="/market-simulation">🎮 Simulation Marché</a>
+        <a href="/calendrier">📅 Calendrier Éco</a>
+        
+        <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">📰 NOUVELLES</div>
+        <a href="/nouvelles">📰 Actualités Crypto</a>
+        <a href="/success-stories">🏆 Success Stories</a>
+        
+        <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">👤 MON COMPTE</div>
+        <a href="/pricing-complete">💎 Abonnements</a>
+        <a href="/admin-dashboard">🔧 Admin</a>
         <a href="/mon-compte">👤 Mon Compte</a>
         <a href="/logout">🚪 Déconnexion</a>
     </div>

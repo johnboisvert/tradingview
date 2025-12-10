@@ -32216,12 +32216,11 @@ async def get_portfolio_data(request: Request):
 # ============================================================================
 # 🎯 AI TECHNICAL ANALYSIS PRO - ANALYSE TECHNIQUE AVANCÉE
 # ============================================================================
-
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
 async def ai_technical_analysis_page(request: Request):
     """🎯 AI Technical Analysis Pro - Analyse technique professionnelle"""
     
-    # Analyser Bitcoin comme exemple principal
+    # Analyser Bitcoin
     symbol = "bitcoin"
     df = await analyzer.get_ohlcv_data(symbol, days=60)
     
@@ -32238,7 +32237,7 @@ async def ai_technical_analysis_page(request: Request):
         </html>
         """)
     
-    # Calculer tous les indicateurs techniques
+    # Calculer tous les indicateurs
     indicators = analyzer.calculate_indicators(df)
     patterns = analyzer.detect_patterns(df)
     sr_levels = analyzer.find_support_resistance(df)
@@ -32442,14 +32441,15 @@ async def ai_technical_analysis_page(request: Request):
     else:
         reversal_html = "<p style='text-align:center;padding:40px;opacity:0.7;font-size:1.2em;'>✨ Aucun signal de retournement actuellement.</p>"
     
-    # Page HTML complète avec f-string
+    # ⚠️ ATTENTION: LE "f" EST CRITIQUE ICI! ⚠️
+    # Sans le "f", les variables {indicators_html} s'affichent comme du texte!
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>🎯 AI Technical Analysis Pro - Trading Dashboard</title>
+        <title>🎯 AI Technical Analysis Pro</title>
         """ + CSS + """
         <style>
             body {{
@@ -32558,14 +32558,12 @@ async def ai_technical_analysis_page(request: Request):
         </div>
         
         <script>
-            // Auto-refresh toutes les 5 minutes
             setTimeout(() => {{
                 console.log('Rafraîchissement des données...');
                 window.location.reload();
             }}, 300000);
             
             console.log('%c🎯 AI Technical Analysis Pro', 'color:#667eea;font-size:20px;font-weight:bold;');
-            console.log('Analyse technique professionnelle avec indicateurs en temps réel');
         </script>
     </body>
     </html>

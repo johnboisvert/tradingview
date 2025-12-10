@@ -20600,10 +20600,31 @@ async def admin_dashboard(request: Request):
     
     # Liste des routes disponibles
     routes_list = [
-        "/dashboard", "/portfolio", "/defi-yield", "/ai-gem-hunter",
-        "/prediction-ia", "/fear-greed", "/bitcoin-dominance", 
-        "/altcoin-season", "/market-heatmap", "/academy",
-        "/news", "/success-stories", "/pricing"
+        # Dashboard & Trading
+        "/dashboard", "/stats-dashboard", "/trades", "/strategie", 
+        "/spot-trading", "/watchlist", "/risk-management", "/backtesting",
+        
+        # Intelligence Artificielle (16 outils)
+        "/ai-opportunity-scanner", "/ai-market-regime", "/ai-whale-watcher",
+        "/ai-assistant", "/ai-signals", "/ai-news", "/ai-predictor",
+        "/prediction-ia", "/ai-patterns", "/ai-sentiment", "/ai-sizer",
+        "/ai-exit", "/ai-timeframe", "/ai-liquidity", "/ai-alerts", "/ai-gem-hunter",
+        
+        # Analyse de Marché
+        "/fear-greed", "/fear-greed-chart", "/dominance", "/altcoin-season",
+        "/heatmap", "/bullrun-phase", "/graphiques", "/onchain-metrics",
+        
+        # Portfolio & DeFi
+        "/portfolio-tracker", "/defi-yield", "/crypto-pepites",
+        
+        # Outils
+        "/calculatrice", "/convertisseur", "/market-simulation", "/calendrier",
+        
+        # Contenu & Info
+        "/academy", "/nouvelles", "/success-stories",
+        
+        # Compte & Pricing
+        "/mon-compte", "/pricing-complete"
     ]
     
     # PRÉ-CONSTRUIRE LE HTML DES CHECKBOXES (ÉVITER F-STRING AVEC BACKSLASH)
@@ -20846,7 +20867,7 @@ async def admin_dashboard(request: Request):
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
                 gap: 10px;
-                max-height: 300px;
+                max-height: 450px;
                 overflow-y: auto;
                 padding: 15px;
                 background: #f8f9fa;

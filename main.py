@@ -1276,10 +1276,7 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🏦</span>
                 <span class="label">DeFi Yield</span>
             </a>
-            <a href="/launchpad-scanner" class="menu-item ai-feature">
-                <span class="icon">🚀</span>
-                <span class="label">Launchpad Scanner</span>
-            </a>
+            
             <a href="/crypto-pepites" class="menu-item ai-feature">
                 <span class="icon">💎</span>
                 <span class="label">Pépites Crypto</span>
@@ -2809,15 +2806,26 @@ async def admin_panel():
 @app.post("/admin/add-user")
 async def add_user(request: Request):
     """Ajouter un nouvel utilisateur"""
-    data = await request.json()
-    new_username = data.get("username")
-    password = data.get("password")
-    role = data.get("role", "user")
-    
-    if db_manager.add_user(new_username, password, role):
-        return {"status": "success", "message": "Utilisateur ajouté"}
-    else:
-        raise HTTPException(status_code=400, detail="Utilisateur déjà existant")
+    try:
+        data = await request.json()
+        new_username = data.get("username")
+        password = data.get("password")
+        role = data.get("role", "user")
+        
+        # Validation
+        if not new_username or len(new_username) < 3:
+            return {"success": False, "message": "Nom d'utilisateur trop court (min 3 caractères)"}
+        
+        if not password or len(password) < 6:
+            return {"success": False, "message": "Mot de passe trop court (min 6 caractères)"}
+        
+        # Tenter d'ajouter l'utilisateur
+        if db_manager.add_user(new_username, password, role):
+            return {"success": True, "message": f"Utilisateur '{new_username}' créé avec succès"}
+        else:
+            return {"success": False, "message": "Utilisateur déjà existant ou erreur de création"}
+    except Exception as e:
+        return {"success": False, "message": f"Erreur: {str(e)}"}
 
 @app.post("/admin/delete-user")
 async def delete_user(request: Request):
@@ -19833,7 +19841,7 @@ async def prediction_ia():
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">🆕 NOUVELLES FEATURES</div>
         <a href="/portfolio-tracker">💼 Portfolio Tracker</a>
         <a href="/defi-yield">🏦 DeFi Yield</a>
-        <a href="/launchpad-scanner">🚀 Launchpad Scanner</a>
+        
         <a href="/crypto-pepites">💎 Pépites Crypto</a>
         
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">🛠️ OUTILS</div>
@@ -20561,6 +20569,41 @@ async def admin_dashboard(request: Request):
                 <div class="stat-card"><div class="stat-label">Abonnements Actifs</div><div class="stat-value">{active_subs}</div></div>
                 <div class="stat-card"><div class="stat-label">Revenus Totaux</div><div class="stat-value">${total_revenue:.2f}</div></div>
             </div>
+            
+            <!-- FORMULAIRE AJOUT UTILISATEUR -->
+            <div class="add-user-section">
+                <h2 class="section-title">➕ Ajouter un Utilisateur</h2>
+                <form id="addUserForm" class="add-user-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="new_username">👤 Nom d'utilisateur</label>
+                            <input type="text" id="new_username" name="username" required 
+                                   placeholder="Ex: john_doe" minlength="3">
+                        </div>
+                        <div class="form-group">
+                            <label for="new_password">🔒 Mot de passe</label>
+                            <input type="password" id="new_password" name="password" required 
+                                   placeholder="Min. 6 caractères" minlength="6">
+                        </div>
+                        <div class="form-group">
+                            <label for="new_role">👑 Rôle</label>
+                            <select id="new_role" name="role">
+                                <option value="user">User (Normal)</option>
+                                <option value="admin">Admin (Accès complet)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn btn-add">
+                                ➕ Créer Utilisateur
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div id="addUserMessage" class="message"></div>
+            </div>
+
+
             <div class="users-section">
                 <h2 class="section-title">📋 Liste des Utilisateurs</h2>
                 <table>
@@ -20570,6 +20613,60 @@ async def admin_dashboard(request: Request):
             </div>
             <a href="/" class="back-link">← Retour au Dashboard</a>
         </div>
+    
+        <script>
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('new_username').value;
+            const password = document.getElementById('new_password').value;
+            const role = document.getElementById('new_role').value;
+            const messageDiv = document.getElementById('addUserMessage');
+            
+            // Validation
+            if (username.length < 3) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = '❌ Le nom d'utilisateur doit contenir au moins 3 caractères';
+                return;
+            }
+            
+            if (password.length < 6) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = '❌ Le mot de passe doit contenir au moins 6 caractères';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/add-user', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{username, password, role}})
+                }});
+                
+                const data = await response.json();
+                
+                if (data.success) {{
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = '✅ Utilisateur créé avec succès! Rechargement...';
+                    
+                    // Reset form
+                    document.getElementById('addUserForm').reset();
+                    
+                    // Recharger après 1.5 secondes
+                    setTimeout(() => {{
+                        window.location.reload();
+                    }}, 1500);
+                }} else {{
+                    messageDiv.className = 'message error';
+                    messageDiv.textContent = '❌ ' + (data.message || 'Erreur lors de la création');
+                }}
+            }} catch (error) {{
+                messageDiv.className = 'message error';
+                messageDiv.textContent = '❌ Erreur de connexion au serveur';
+            }}
+        }});
+        </script>
+
     </body>
     </html>
     """)
@@ -20617,7 +20714,6 @@ async def admin_pricing_view(request: Request):
         '/fear-greed', '/fear-greed-chart', '/dominance', '/altcoin-season', '/heatmap',
         '/bullrun-phase', '/graphiques', '/onchain-metrics',
         # 🆕 Nouvelles Features
-        '/portfolio-tracker', '/defi-yield', '/launchpad-scanner', '/crypto-pepites',
         # 🛠️ Outils
         '/calculatrice', '/convertisseur', '/prediction-ia', '/market-simulation', '/calendrier',
         # 📰 Nouvelles & Info
@@ -27198,10 +27294,7 @@ async def crypto_pepites():
                 <span class="icon">🏦</span>
                 <span class="label">DeFi Yield</span>
             </a>
-            <a href="/launchpad-scanner" class="menu-item ai-feature">
-                <span class="icon">🚀</span>
-                <span class="label">Launchpad Scanner</span>
-            </a>
+            
             <a href="/crypto-pepites" class="menu-item ai-feature">
                 <span class="icon">💎</span>
                 <span class="label">Pépites Crypto</span>
@@ -28917,10 +29010,7 @@ async def academy_complete_final(request: Request):
                 <span class="icon">🏦</span>
                 <span class="label">DeFi Yield</span>
             </a>
-            <a href="/launchpad-scanner" class="menu-item ai-feature">
-                <span class="icon">🚀</span>
-                <span class="label">Launchpad Scanner</span>
-            </a>
+            
             <a href="/crypto-pepites" class="menu-item ai-feature">
                 <span class="icon">💎</span>
                 <span class="label">Pépites Crypto</span>
@@ -30689,34 +30779,11 @@ console.log('✅ JavaScript Academy chargé avec succès!');
 """
     return HTMLResponse(content=html_content)
 
-@app.get("/launchpad-scanner", response_class=HTMLResponse)
+@app.get("/launchpad-scanner")
 async def launchpad_scanner():
-    """🚀 Launchpad Scanner"""
-    return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>🚀 Launchpad Scanner</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:20px;min-height:100vh}
-.container{max-width:1400px;margin:0 auto}
-.header{text-align:center;padding:40px 20px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:30px}
-h1{font-size:48px;margin-bottom:15px}
-.launch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:20px}
-.launch-card{background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border-radius:15px;padding:25px;border:1px solid rgba(255,255,255,0.2)}
-.launch-card h3{color:#ffd700;margin-bottom:10px}
-.launch-info{margin:10px 0;font-size:14px}
-.status-badge{display:inline-block;padding:5px 15px;border-radius:20px;font-size:12px;font-weight:bold;margin-top:10px}
-.status-upcoming{background:#3b82f6}.status-live{background:#10b981}.status-ended{background:#6b7280}
-</style></head><body>
-<div class="container">
-<div class="header"><h1>🚀 Launchpad Scanner</h1><p>Détection des nouveaux lancements</p></div>
-<div class="launch-grid">
-<div class="launch-card"><h3>🎯 Projet Alpha</h3><div class="launch-info">💰 Hard Cap: $500,000</div>
-<div class="launch-info">📅 Date: 15 Dec 2025</div><span class="status-badge status-upcoming">À venir</span></div>
-<div class="launch-card"><h3>🔥 Beta Token</h3><div class="launch-info">💰 Hard Cap: $1,000,000</div>
-<div class="launch-info">📅 En cours</div><span class="status-badge status-live">En cours</span></div>
-</div>
-<div style="text-align:center;margin-top:40px;padding:30px;background:rgba(0,0,0,0.3);border-radius:15px">
-<h2>🚧 En développement</h2><p style="margin-top:15px">Scan automatique en cours d'implémentation...</p>
-</div></div></body></html>""")
+    """🚀 Launchpad Scanner - TEMPORAIREMENT DÉSACTIVÉ"""
+    return RedirectResponse(url="/dashboard", status_code=303)
+
 
 
 

@@ -1061,6 +1061,190 @@ UPCOMING_GEMS_COMPLETE = [
 
 app = FastAPI()
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 🛡️ MIDDLEWARE DE PROTECTION AUTOMATIQUE DES ROUTES
+# ═══════════════════════════════════════════════════════════════════════════
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
+
+class PermissionMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware qui vérifie automatiquement les permissions pour TOUTES les routes.
+    
+    Routes PUBLIQUES (accessibles sans authentification):
+    - /, /login, /register, /logout, /health, /api/*, /static/*
+    
+    Routes avec PERMISSIONS PAR DÉFAUT (accès minimum):
+    - /pricing-complete
+    - Section ANALYSE DE MARCHÉ (8 pages)
+    
+    Toutes les AUTRES routes = Vérification permission obligatoire
+    """
+    
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        
+        # ✅ Routes PUBLIQUES (pas d'authentification requise)
+        public_paths = [
+            "/", "/login", "/register", "/logout", "/health",
+            "/manifest.json", "/favicon.ico"
+        ]
+        
+        # Chemins API et static sont toujours publics
+        if (path in public_paths or 
+            path.startswith("/api/") or 
+            path.startswith("/static/") or
+            path.startswith("/admin/")):  # Admin a sa propre protection
+            return await call_next(request)
+        
+        # ✅ Vérifier si l'utilisateur est connecté
+        session_token = request.cookies.get("session_token")
+        if not session_token:
+            # Pas connecté → Rediriger vers login
+            return RedirectResponse("/login", status_code=303)
+        
+        user = get_user_from_token(session_token)
+        if not user:
+            # Token invalide → Rediriger vers login
+            return RedirectResponse("/login", status_code=303)
+        
+        username = user.get('username', '')
+        
+        # ✅ Routes PROTÉGÉES (sauf celles du minimum)
+        # Si la route n'est PAS dans DEFAULT_USER_PERMISSIONS, vérifier permission
+        if path not in DEFAULT_USER_PERMISSIONS and path != "/mon-compte":
+            if not check_route_permission(username, path):
+                # ❌ PAS DE PERMISSION → Page d'upgrade
+                upgrade_page = f"""
+                <!DOCTYPE html>
+                <html><head>
+                    <meta charset="UTF-8">
+                    <title>🔒 Accès Premium Requis</title>
+                    <style>
+                        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                        body {{
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+                            min-height: 100vh;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            padding: 20px;
+                        }}
+                        .upgrade-box {{
+                            max-width: 600px;
+                            width: 100%;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            border-radius: 20px;
+                            padding: 50px;
+                            text-align: center;
+                            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                        }}
+                        .upgrade-icon {{
+                            font-size: 80px;
+                            margin-bottom: 20px;
+                            animation: pulse 2s infinite;
+                        }}
+                        @keyframes pulse {{
+                            0%, 100% {{ transform: scale(1); }}
+                            50% {{ transform: scale(1.1); }}
+                        }}
+                        .upgrade-title {{
+                            color: white;
+                            font-size: 36px;
+                            font-weight: 700;
+                            margin-bottom: 15px;
+                        }}
+                        .upgrade-text {{
+                            color: #e0e7ff;
+                            font-size: 18px;
+                            margin-bottom: 30px;
+                            line-height: 1.6;
+                        }}
+                        .upgrade-btn {{
+                            display: inline-block;
+                            background: white;
+                            color: #667eea;
+                            padding: 18px 40px;
+                            border-radius: 50px;
+                            text-decoration: none;
+                            font-weight: 700;
+                            font-size: 18px;
+                            transition: all 0.3s;
+                            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                        }}
+                        .upgrade-btn:hover {{
+                            transform: translateY(-3px);
+                            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+                        }}
+                        .features-list {{
+                            text-align: left;
+                            margin: 30px auto 0;
+                            max-width: 400px;
+                            color: white;
+                        }}
+                        .feature-item {{
+                            margin: 12px 0;
+                            font-size: 16px;
+                        }}
+                        .feature-item::before {{
+                            content: "✨ ";
+                            margin-right: 10px;
+                        }}
+                        .back-btn {{
+                            display: inline-block;
+                            color: white;
+                            text-decoration: none;
+                            margin-top: 20px;
+                            font-size: 14px;
+                            opacity: 0.8;
+                        }}
+                        .back-btn:hover {{
+                            opacity: 1;
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="upgrade-box">
+                        <div class="upgrade-icon">🔒</div>
+                        <h1 class="upgrade-title">Fonctionnalité Premium</h1>
+                        <p class="upgrade-text">
+                            Cette page fait partie de nos outils avancés réservés aux membres Premium.<br>
+                            Débloquez l'accès complet dès maintenant!
+                        </p>
+                        
+                        <div class="features-list">
+                            <div class="feature-item">16 Outils d'Intelligence Artificielle</div>
+                            <div class="feature-item">Academy complète (22 modules)</div>
+                            <div class="feature-item">Portfolio Tracker avancé</div>
+                            <div class="feature-item">Tous les indicateurs de marché</div>
+                            <div class="feature-item">Support prioritaire</div>
+                        </div>
+                        
+                        <div style="margin-top: 40px;">
+                            <a href="/pricing-complete" class="upgrade-btn">
+                                🚀 Voir les Plans & Prix
+                            </a>
+                        </div>
+                        
+                        <p style="color: #c7d2fe; font-size: 14px; margin-top: 30px;">
+                            À partir de 9.99$/mois • Annulez à tout moment
+                        </p>
+                        
+                        <a href="/mon-compte" class="back-btn">← Retour à mon compte</a>
+                    </div>
+                </body>
+                </html>
+                """
+                return Response(content=upgrade_page, status_code=403, media_type="text/html")
+        
+        # ✅ Permission OK → Continuer normalement
+        return await call_next(request)
+
+# Activer le middleware
+app.add_middleware(PermissionMiddleware)
+
 
 # ========== SIDEBAR MENU ==========
 SIDEBAR = """<style>
@@ -1971,6 +2155,80 @@ def require_auth(session_token: Optional[str] = Cookie(None)):
     if not user:
         raise HTTPException(status_code=401, detail="Non authentifié")
     return user
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🔐 SYSTÈME DE PERMISSIONS - CONFIGURATION
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Routes TOUJOURS accessibles (sans authentification)
+PUBLIC_ROUTES = ["/", "/login", "/register", "/logout", "/health"]
+
+# Routes MINIMUM données à TOUS les utilisateurs par défaut
+DEFAULT_USER_PERMISSIONS = [
+    "/pricing-complete",      # Voir les abonnements
+    # 📈 ANALYSE DE MARCHÉ (section complète)
+    "/fear-greed",           # Fear & Greed Index
+    "/fear-greed-chart",     # Historique Fear & Greed
+    "/dominance",            # Bitcoin Dominance
+    "/altcoin-season",       # Altcoin Season Index
+    "/heatmap",              # Market Heatmap
+    "/bullrun-phase",        # Phase du Bull Run
+    "/graphiques",           # Graphiques Avancés
+    "/onchain-metrics"       # Métriques On-Chain
+]
+
+def give_default_permissions(username: str) -> bool:
+    """
+    🎁 Attribue les permissions par défaut à un nouvel utilisateur
+    
+    Donne automatiquement accès à:
+    - /pricing-complete (pour voir les offres)
+    - Toute la section ANALYSE DE MARCHÉ (8 pages)
+    
+    Args:
+        username: Le nom d'utilisateur qui vient d'être créé
+        
+    Returns:
+        True si succès, False si erreur
+    """
+    try:
+        conn = db_manager.get_connection()
+        c = conn.cursor()
+        
+        # Ajouter chaque permission par défaut
+        for route in DEFAULT_USER_PERMISSIONS:
+            if db_manager.use_postgresql:
+                # Vérifier si existe déjà
+                c.execute(
+                    "SELECT 1 FROM user_permissions WHERE username = %s AND route = %s",
+                    (username, route)
+                )
+                if not c.fetchone():
+                    c.execute(
+                        "INSERT INTO user_permissions (username, route) VALUES (%s, %s)",
+                        (username, route)
+                    )
+            else:
+                # SQLite
+                c.execute(
+                    "SELECT 1 FROM user_permissions WHERE username = ? AND route = ?",
+                    (username, route)
+                )
+                if not c.fetchone():
+                    c.execute(
+                        "INSERT INTO user_permissions (username, route) VALUES (?, ?)",
+                        (username, route)
+                    )
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Permissions par défaut attribuées à {username}: {len(DEFAULT_USER_PERMISSIONS)} pages")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Erreur attribution permissions par défaut pour {username}: {e}")
+        return False
 
 def check_route_permission(username: str, route: str) -> bool:
     """
@@ -2887,7 +3145,7 @@ async def admin_panel():
 
 @app.post("/admin/add-user")
 async def add_user(request: Request):
-    """Ajouter un nouvel utilisateur"""
+    """Ajouter un nouvel utilisateur avec permissions par défaut"""
     try:
         data = await request.json()
         new_username = data.get("username")
@@ -2903,7 +3161,15 @@ async def add_user(request: Request):
         
         # Tenter d'ajouter l'utilisateur
         if db_manager.add_user(new_username, password, role):
-            return {"success": True, "message": f"Utilisateur '{new_username}' créé avec succès"}
+            # ✅ Attribuer les permissions par défaut (sauf pour les admins)
+            if role != "admin":
+                give_default_permissions(new_username)
+                return {
+                    "success": True, 
+                    "message": f"Utilisateur '{new_username}' créé avec {len(DEFAULT_USER_PERMISSIONS)} permissions par défaut"
+                }
+            else:
+                return {"success": True, "message": f"Administrateur '{new_username}' créé avec accès complet"}
         else:
             return {"success": False, "message": "Utilisateur déjà existant ou erreur de création"}
     except Exception as e:
@@ -21795,6 +22061,109 @@ async def mon_compte(request: Request):
         return RedirectResponse("/login", status_code=303)
     
     username = user.get('username', 'User') if isinstance(user, dict) else user
+    
+    # ✅ VÉRIFICATION DES PERMISSIONS
+    if not check_route_permission(username, "/mon-compte"):
+        return HTMLResponse(SIDEBAR + """
+            <!DOCTYPE html>
+            <html><head>
+                <meta charset="UTF-8">
+                <title>🔒 Accès Premium Requis</title>
+            """ + CSS + """
+                <style>
+                    .upgrade-box {
+                        max-width: 600px;
+                        margin: 60px auto;
+                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                        border-radius: 20px;
+                        padding: 50px;
+                        text-align: center;
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                    }
+                    .upgrade-icon {
+                        font-size: 80px;
+                        margin-bottom: 20px;
+                        animation: pulse 2s infinite;
+                    }
+                    @keyframes pulse {
+                        0%, 100% { transform: scale(1); }
+                        50% { transform: scale(1.1); }
+                    }
+                    .upgrade-title {
+                        color: white;
+                        font-size: 36px;
+                        font-weight: 700;
+                        margin-bottom: 15px;
+                    }
+                    .upgrade-text {
+                        color: #e0e7ff;
+                        font-size: 18px;
+                        margin-bottom: 30px;
+                        line-height: 1.6;
+                    }
+                    .upgrade-btn {
+                        display: inline-block;
+                        background: white;
+                        color: #667eea;
+                        padding: 18px 40px;
+                        border-radius: 50px;
+                        text-decoration: none;
+                        font-weight: 700;
+                        font-size: 18px;
+                        transition: all 0.3s;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                    }
+                    .upgrade-btn:hover {
+                        transform: translateY(-3px);
+                        box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+                    }
+                    .features-list {
+                        text-align: left;
+                        margin: 30px auto 0;
+                        max-width: 400px;
+                        color: white;
+                    }
+                    .feature-item {
+                        margin: 12px 0;
+                        font-size: 16px;
+                    }
+                    .feature-item::before {
+                        content: "✨ ";
+                        margin-right: 10px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="upgrade-box">
+                    <div class="upgrade-icon">🔒</div>
+                    <h1 class="upgrade-title">Fonctionnalité Premium</h1>
+                    <p class="upgrade-text">
+                        Cette page fait partie de nos outils avancés réservés aux membres Premium.<br>
+                        Débloquez l'accès complet dès maintenant!
+                    </p>
+                    
+                    <div class="features-list">
+                        <div class="feature-item">16 Outils d'Intelligence Artificielle</div>
+                        <div class="feature-item">Academy complète (22 modules)</div>
+                        <div class="feature-item">Portfolio Tracker avancé</div>
+                        <div class="feature-item">Tous les indicateurs de marché</div>
+                        <div class="feature-item">Support prioritaire</div>
+                    </div>
+                    
+                    <div style="margin-top: 40px;">
+                        <a href="/pricing-complete" class="upgrade-btn">
+                            🚀 Voir les Plans & Prix
+                        </a>
+                    </div>
+                    
+                    <p style="color: #c7d2fe; font-size: 14px; margin-top: 30px;">
+                        À partir de 9.99$/mois • Annulez à tout moment
+                    </p>
+                </div>
+            </body>
+            </html>
+        """, status_code=403)
+
     
     # Récupérer infos abonnement depuis la bonne DB
     conn = db_manager.get_connection()  # ← CORRECTION ICI

@@ -20904,12 +20904,12 @@ async def admin_dashboard(request: Request):
                     Sélectionnez les pages accessibles pour <strong id="permUsername"></strong>
                 </p>
                 <div class="permissions-grid" id="permissionsGrid">
-                    {''.join([f"""
+                    """ + ''.join([f"""
                     <div class="permission-item">
                         <input type="checkbox" id="perm_{route.replace('/', '_')}" class="perm-checkbox" value="{route}">
                         <label for="perm_{route.replace('/', '_')}">{route.replace('/', '').replace('-', ' ').title()}</label>
                     </div>
-                """ for route in routes_list])}
+                """ for route in routes_list]) + """
                 </div>
                 <button onclick="savePermissions()" class="btn-submit">💾 Enregistrer Permissions</button>
                 <div id="permMessage" class="message"></div>

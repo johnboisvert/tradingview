@@ -32214,11 +32214,11 @@ async def get_portfolio_data(request: Request):
         return JSONResponse({'success': False, 'message': str(e), 'exchanges': {}})
 
 # ============================================================================
-# 🎯 TECHNICAL ANALYSIS PRO ROUTE
+# 🎯 TECHNICAL ANALYSIS PRO ROUTE - AVEC SIDEBAR GLOBAL
 # ============================================================================
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
 async def ai_technical_analysis_page(request: Request):
-    """Technical Analysis Pro with real-time indicators"""
+    """Technical Analysis Pro - Compatible avec le SIDEBAR global"""
     
     try:
         # Fetch Bitcoin data
@@ -32226,15 +32226,17 @@ async def ai_technical_analysis_page(request: Request):
         df = await analyzer.get_ohlcv_data(symbol, days=60)
         
         if df is None or len(df) == 0:
-            # Fallback error page
             return HTMLResponse(SIDEBAR + """
             <!DOCTYPE html>
             <html lang="fr">
-            <head><meta charset="UTF-8"><title>Erreur</title></head>
-            <body style="padding:50px;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:white;min-height:100vh;">
-                <h1 style="font-size:3em;">⚠️ Données indisponibles</h1>
-                <p style="font-size:1.3em;">Impossible de charger les données de marché.</p>
-                <a href="/" style="color:white;text-decoration:underline;">Retour au dashboard</a>
+            <head><meta charset="UTF-8"><title>Erreur</title>""" + CSS + """</head>
+            <body>
+                <div class="main-content">
+                    <div style="padding:50px;text-align:center;">
+                        <h1 style="font-size:3em;">⚠️ Données indisponibles</h1>
+                        <p style="font-size:1.3em;">Impossible de charger les données de marché.</p>
+                    </div>
+                </div>
             </body>
             </html>
             """)
@@ -32309,7 +32311,7 @@ async def ai_technical_analysis_page(request: Request):
         else:
             reversal_html = "<p style='text-align:center;opacity:0.7;'>Aucun signal de retournement détecté</p>"
         
-        # Complete page with properly escaped CSS
+        # Page avec le SIDEBAR global + CSS global + contenu dans .main-content
         return HTMLResponse(SIDEBAR + f"""
         <!DOCTYPE html>
         <html lang="fr">
@@ -32317,53 +32319,119 @@ async def ai_technical_analysis_page(request: Request):
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>🎯 AI Technical Analysis Pro</title>
+            """ + CSS + """
             <style>
-                <style>
-    /* Fix sidebar */
-    .sidebar {{
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 250px !important;
-        height: 100vh !important;
-        overflow-y: auto !important;
-        z-index: 1000 !important;
-    }}
-    
-    body {{
-        background:linear-gradient(135deg,#667eea,#764ba2);
-        color:#fff;
-        min-height:100vh;
-        padding:20px;
-        padding-left:270px;  /* Espace pour le sidebar */
-    }}
-                .container {{max-width:1600px;margin:0 auto;}}
-                header {{text-align:center;padding:40px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:40px;}}
-                header h1 {{font-size:3em;margin:0;}}
-                .section-title {{font-size:2em;padding:20px;background:rgba(255,255,255,0.1);border-radius:15px;border-left:5px solid #fbbf24;margin:40px 0 20px;}}
-                .indicators-grid {{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-bottom:40px;}}
-                .indicator-card {{background:white;color:#333;padding:25px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);}}
-                .indicator-header {{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;}}
-                .indicator-signal {{padding:10px;border-radius:8px;font-weight:600;text-align:center;margin-top:10px;}}
+                /* CSS spécifique à Technical Analysis - S'ajoute au CSS global */
+                .tech-header {{
+                    text-align:center;
+                    padding:30px;
+                    background:rgba(0,0,0,0.3);
+                    border-radius:20px;
+                    margin-bottom:30px;
+                    backdrop-filter:blur(10px);
+                }}
+                .tech-header h1 {{
+                    font-size:2.5em;
+                    margin:0 0 10px 0;
+                    color:white;
+                }}
+                .section-title {{
+                    font-size:1.8em;
+                    padding:15px 20px;
+                    background:rgba(255,255,255,0.1);
+                    border-radius:12px;
+                    border-left:5px solid #fbbf24;
+                    margin:30px 0 20px;
+                    backdrop-filter:blur(10px);
+                    color:white;
+                }}
+                .indicators-grid {{
+                    display:grid;
+                    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+                    gap:20px;
+                    margin-bottom:30px;
+                }}
+                .indicator-card {{
+                    background:white;
+                    color:#333;
+                    padding:20px;
+                    border-radius:12px;
+                    box-shadow:0 4px 15px rgba(0,0,0,0.2);
+                    transition:transform 0.2s;
+                }}
+                .indicator-card:hover {{
+                    transform:translateY(-3px);
+                    box-shadow:0 6px 20px rgba(0,0,0,0.3);
+                }}
+                .indicator-header {{
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    margin-bottom:12px;
+                }}
+                .indicator-signal {{
+                    padding:8px;
+                    border-radius:6px;
+                    font-weight:600;
+                    text-align:center;
+                    margin-top:10px;
+                    font-size:0.9em;
+                }}
                 .indicator-signal.oversold {{background:#dcfce7;color:#166534;}}
                 .indicator-signal.overbought {{background:#fee2e2;color:#991b1b;}}
                 .indicator-signal.bullish {{background:#d1fae5;color:#065f46;}}
                 .indicator-signal.bearish {{background:#fecaca;color:#991b1b;}}
                 .indicator-signal.neutral {{background:#f3f4f6;color:#4b5563;}}
-                .pattern-card {{background:white;color:#333;padding:30px;border-radius:15px;border-left:6px solid;margin-bottom:20px;}}
-                .bullish-pattern {{border-left-color:#10b981;}}
-                .bearish-pattern {{border-left-color:#ef4444;}}
-                .reversal-card {{background:white;color:#333;padding:25px;border-radius:15px;border-left:6px solid;margin-bottom:20px;}}
-                .bullish-signal {{border-left-color:#10b981;}}
-                .bearish-signal {{border-left-color:#ef4444;}}
+                .pattern-card, .reversal-card {{
+                    background:white;
+                    color:#333;
+                    padding:20px;
+                    border-radius:12px;
+                    border-left:5px solid;
+                    margin-bottom:15px;
+                    transition:transform 0.2s;
+                }}
+                .pattern-card:hover, .reversal-card:hover {{
+                    transform:translateX(3px);
+                }}
+                .bullish-pattern, .bullish-signal {{border-left-color:#10b981;}}
+                .bearish-pattern, .bearish-signal {{border-left-color:#ef4444;}}
+                .sr-box {{
+                    background:white;
+                    color:#333;
+                    padding:30px;
+                    border-radius:15px;
+                    box-shadow:0 10px 30px rgba(0,0,0,0.3);
+                    display:grid;
+                    grid-template-columns:1fr auto 1fr;
+                    gap:30px;
+                    margin-bottom:30px;
+                }}
+                .price-center {{
+                    text-align:center;
+                    padding:25px;
+                    background:linear-gradient(135deg,#667eea,#764ba2);
+                    color:white;
+                    border-radius:12px;
+                    box-shadow:0 5px 15px rgba(0,0,0,0.2);
+                }}
+                @media (max-width:768px) {{
+                    .sr-box {{
+                        grid-template-columns:1fr;
+                        gap:20px;
+                    }}
+                    .indicators-grid {{
+                        grid-template-columns:1fr;
+                    }}
+                }}
             </style>
         </head>
         <body>
-            <div class="container">
-                <header>
+            <div class="main-content">
+                <div class="tech-header">
                     <h1>🎯 AI Technical Analysis Pro</h1>
-                    <p style="font-size:1.3em;opacity:0.9;">Analyse technique professionnelle en temps réel</p>
-                </header>
+                    <p style="font-size:1.2em;opacity:0.9;margin:0;">Analyse technique professionnelle en temps réel</p>
+                </div>
                 
                 <div class="section-title">📊 INDICATEURS TECHNIQUES</div>
                 {indicators_html}
@@ -32372,18 +32440,18 @@ async def ai_technical_analysis_page(request: Request):
                 {patterns_html}
                 
                 <div class="section-title">📍 SUPPORT & RÉSISTANCE</div>
-                <div style="background:white;color:#333;padding:40px;border-radius:20px;display:grid;grid-template-columns:1fr auto 1fr;gap:40px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+                <div class="sr-box">
                     <div>
-                        <h3 style="color:#ef4444;">🔴 Résistances</h3>
+                        <h3 style="color:#ef4444;margin-bottom:12px;">🔴 Résistances</h3>
                         {resistances_html}
                     </div>
-                    <div style="text-align:center;padding:30px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:15px;">
-                        <div style="font-size:1.1em;opacity:0.9;">Prix BTC</div>
-                        <div style="font-size:2.5em;font-weight:900;margin:10px 0;">${current_price:,.2f}</div>
-                        <div style="font-size:1.3em;font-weight:600;">{change_24h:+.2f}%</div>
+                    <div class="price-center">
+                        <div style="font-size:1em;opacity:0.9;">Prix BTC</div>
+                        <div style="font-size:2.2em;font-weight:900;margin:8px 0;">${current_price:,.2f}</div>
+                        <div style="font-size:1.2em;font-weight:600;">{change_24h:+.2f}%</div>
                     </div>
                     <div>
-                        <h3 style="color:#10b981;">🟢 Supports</h3>
+                        <h3 style="color:#10b981;margin-bottom:12px;">🟢 Supports</h3>
                         {supports_html}
                     </div>
                 </div>
@@ -32400,15 +32468,17 @@ async def ai_technical_analysis_page(request: Request):
         """)
         
     except Exception as e:
-        # Error handling
         return HTMLResponse(SIDEBAR + f"""
         <!DOCTYPE html>
         <html lang="fr">
-        <head><meta charset="UTF-8"><title>Erreur</title></head>
-        <body style="padding:50px;text-align:center;background:linear-gradient(135deg,#667eea,#764ba2);color:white;min-height:100vh;">
-            <h1 style="font-size:3em;">❌ Erreur technique</h1>
-            <p style="font-size:1.3em;">Une erreur est survenue: {str(e)}</p>
-            <a href="/" style="color:white;text-decoration:underline;">Retour au dashboard</a>
+        <head><meta charset="UTF-8"><title>Erreur</title>""" + CSS + """</head>
+        <body>
+            <div class="main-content">
+                <div style="padding:50px;text-align:center;">
+                    <h1 style="font-size:3em;color:white;">❌ Erreur technique</h1>
+                    <p style="font-size:1.3em;color:white;">Une erreur est survenue: {str(e)}</p>
+                </div>
+            </div>
         </body>
         </html>
         """)

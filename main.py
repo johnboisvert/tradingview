@@ -1101,7 +1101,7 @@ body.sidebar-open{margin-left:280px}
     <!-- SIDEBAR TOGGLE MOBILE -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
     
-    <!-- SIDEBAR COMPLÈTE ULTRA PRO -->
+    <!-- SIDEBAR COMPLÈTE -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-title">🚀 CRYPTO IA</div>
@@ -1120,7 +1120,7 @@ body.sidebar-open{margin-left:280px}
             </a>
         </div>
         
-        <!-- 🎓 ACADEMY & FORMATION -->
+        <!-- 🎓 ACADEMY -->
         <div class="menu-section">
             <div class="section-title">🎓 ACADEMY & FORMATION</div>
             <a href="/academy" class="menu-item ai-feature">
@@ -1188,7 +1188,11 @@ body.sidebar-open{margin-left:280px}
             </a>
             <a href="/ai-predictor" class="menu-item ai-feature">
                 <span class="icon">🔮</span>
-                <span class="label">Prédicteur IA</span>
+                <span class="label">AI Predictor</span>
+            </a>
+            <a href="/prediction-ia" class="menu-item ai-feature">
+                <span class="icon">🔮</span>
+                <span class="label">Prédictions IA</span>
             </a>
             <a href="/ai-patterns" class="menu-item ai-feature">
                 <span class="icon">🎨</span>
@@ -1293,10 +1297,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">💱</span>
                 <span class="label">Convertisseur</span>
             </a>
-            <a href="/prediction-ia" class="menu-item">
-                <span class="icon">🔮</span>
-                <span class="label">Prédictions IA</span>
-            </a>
             <a href="/market-simulation" class="menu-item">
                 <span class="icon">🎮</span>
                 <span class="label">Simulation Marché</span>
@@ -1341,7 +1341,6 @@ body.sidebar-open{margin-left:280px}
             </a>
         </div>
     </nav>
-
 """
 # ==================================
 

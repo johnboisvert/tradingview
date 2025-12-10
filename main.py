@@ -1972,6 +1972,66 @@ def require_auth(session_token: Optional[str] = Cookie(None)):
         raise HTTPException(status_code=401, detail="Non authentifié")
     return user
 
+def check_route_permission(username: str, route: str) -> bool:
+    """
+    ✅ SYSTÈME DE PERMISSIONS PAR PAGE
+    
+    Vérifie si un utilisateur a la permission d'accéder à une route spécifique.
+    
+    RÈGLES:
+    - Les ADMINS ont accès à TOUTES les pages (bypass complet)
+    - Les USERS doivent avoir la permission explicite dans la table user_permissions
+    
+    Args:
+        username: Le nom d'utilisateur  
+        route: Le chemin de la route (ex: "/dashboard", "/academy")
+    
+    Returns:
+        True = Accès autorisé | False = Accès refusé
+        
+    Exemple d'utilisation dans une route:
+        if not check_route_permission(username, "/dashboard"):
+            return HTMLResponse("Accès refusé", status_code=403)
+    """
+    try:
+        conn = db_manager.get_connection()
+        c = conn.cursor()
+        
+        # Étape 1: Vérifier le rôle de l'utilisateur
+        if db_manager.use_postgresql:
+            c.execute("SELECT role FROM users WHERE username = %s", (username,))
+        else:
+            c.execute("SELECT role FROM users WHERE username = ?", (username,))
+        
+        result = c.fetchone()
+        
+        # Si ADMIN → Accès complet à tout (pas de restrictions)
+        if result and result[0] == "admin":
+            conn.close()
+            return True
+        
+        # Étape 2: Pour les USER, vérifier les permissions dans user_permissions
+        if db_manager.use_postgresql:
+            c.execute(
+                "SELECT route FROM user_permissions WHERE username = %s AND route = %s",
+                (username, route)
+            )
+        else:
+            c.execute(
+                "SELECT route FROM user_permissions WHERE username = ? AND route = ?",
+                (username, route)
+            )
+        
+        has_permission = c.fetchone() is not None
+        conn.close()
+        
+        return has_permission
+        
+    except Exception as e:
+        print(f"❌ Erreur vérification permission [{username}] sur [{route}]: {e}")
+        # En cas d'erreur, refuser l'accès par sécurité
+        return False
+
 def get_user_role(username: str) -> str:
     """Obtenir le rôle d'un utilisateur"""
     return db_manager.get_user_role(username)
@@ -4449,6 +4509,23 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         return RedirectResponse("/login")
     
     username = user.get('username', 'Utilisateur')
+    
+    # ✅ VÉRIFICATION DES PERMISSIONS
+    if not check_route_permission(username, "/dashboard"):
+        return HTMLResponse(SIDEBAR + """
+            <!DOCTYPE html>
+            <html><head><meta charset="UTF-8"><title>Accès Refusé</title>""" + CSS + """</head>
+            <body>
+                <div style="padding: 40px; text-align: center;">
+                    <h1 style="color:#ef4444; font-size: 48px; margin-bottom: 20px;">🚫 Accès Refusé</h1>
+                    <p style="color: #94a3b8; font-size: 20px;">Vous n'avez pas la permission d'accéder à cette page.</p>
+                    <p style="color: #64748b; font-size: 16px; margin-top: 20px;">Contactez votre administrateur pour obtenir l'accès.</p>
+                    <div style="margin-top: 40px;">
+                        <a href="/mon-compte" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; margin: 10px; font-weight: 600;">👤 Mon Compte</a>
+                    </div>
+                </div>
+            </body></html>
+        """, status_code=403)
     
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>

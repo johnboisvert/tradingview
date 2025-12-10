@@ -2861,6 +2861,82 @@ async def delete_user(request: Request):
     db_manager.delete_user(user_to_delete)
     return {"status": "success", "message": "Utilisateur supprimé"}
 
+@app.get("/admin/get-user/{username}")
+async def get_user_info(username: str):
+    """Récupérer les informations d'un utilisateur"""
+    try:
+        conn = db_manager.get_connection()
+        c = conn.cursor()
+        
+        if db_manager.use_postgresql:
+            c.execute("SELECT username, role, subscription_plan, created_at FROM users WHERE username = %s", (username,))
+        else:
+            c.execute("SELECT username, role, subscription_plan, created_at FROM users WHERE username = ?", (username,))
+        
+        result = c.fetchone()
+        conn.close()
+        
+        if result:
+            return {
+                "success": True,
+                "user": {
+                    "username": result[0],
+                    "role": result[1],
+                    "plan": result[2] if result[2] else "free",
+                    "created_at": result[3]
+                }
+            }
+        else:
+            return {"success": False, "message": "Utilisateur non trouvé"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+@app.post("/admin/edit-user")
+async def edit_user(request: Request):
+    """Modifier un utilisateur existant"""
+    try:
+        data = await request.json()
+        original_username = data.get("originalUsername")
+        new_username = data.get("username")
+        password = data.get("password")  # Optionnel
+        role = data.get("role", "user")
+        
+        conn = db_manager.get_connection()
+        c = conn.cursor()
+        
+        # Mise à jour du rôle (et username si différent)
+        if db_manager.use_postgresql:
+            if password:  # Si nouveau mot de passe fourni
+                hashed_password = hashlib.sha256(password.encode()).hexdigest()
+                c.execute(
+                    "UPDATE users SET username = %s, password = %s, role = %s WHERE username = %s",
+                    (new_username, hashed_password, role, original_username)
+                )
+            else:  # Pas de changement de mot de passe
+                c.execute(
+                    "UPDATE users SET username = %s, role = %s WHERE username = %s",
+                    (new_username, role, original_username)
+                )
+        else:
+            if password:
+                hashed_password = hashlib.sha256(password.encode()).hexdigest()
+                c.execute(
+                    "UPDATE users SET username = ?, password = ?, role = ? WHERE username = ?",
+                    (new_username, hashed_password, role, original_username)
+                )
+            else:
+                c.execute(
+                    "UPDATE users SET username = ?, role = ? WHERE username = ?",
+                    (new_username, role, original_username)
+                )
+        
+        conn.commit()
+        conn.close()
+        
+        return {"success": True, "message": f"Utilisateur modifié avec succès"}
+    except Exception as e:
+        return {"success": False, "message": f"Erreur: {str(e)}"}
+
 
 @app.post("/admin/update-permissions")
 async def update_permissions(request: Request):
@@ -20888,13 +20964,16 @@ async def admin_dashboard(request: Request):
                     <button class="close-btn" onclick="closeModal('userModal')">&times;</button>
                 </div>
                 <form id="userForm">
+                    <input type="hidden" id="editMode" value="false">
+                    <input type="hidden" id="originalUsername" value="">
                     <div class="form-group">
                         <label>👤 Nom d'utilisateur</label>
                         <input type="text" id="username" required minlength="3" placeholder="Ex: john_doe">
                     </div>
                     <div class="form-group">
                         <label>🔒 Mot de passe</label>
-                        <input type="password" id="password" required minlength="6" placeholder="Min. 6 caractères">
+                        <input type="password" id="password" minlength="6" placeholder="Laissez vide pour ne pas changer">
+                        <small style="color: #999; font-size: 12px;">* Requis pour nouvel utilisateur, optionnel pour modification</small>
                     </div>
                     <div class="form-group">
                         <label>👑 Rôle</label>
@@ -20903,7 +20982,7 @@ async def admin_dashboard(request: Request):
                             <option value="admin">Admin (Accès complet)</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn-submit">✅ Créer Utilisateur</button>
+                    <button type="submit" class="btn-submit" id="submitBtn">✅ Créer Utilisateur</button>
                 </form>
                 <div id="userMessage" class="message"></div>
             </div>
@@ -20933,7 +21012,38 @@ async def admin_dashboard(request: Request):
         function openAddUserModal() {{
             document.getElementById('modalTitle').textContent = 'Ajouter un Utilisateur';
             document.getElementById('userForm').reset();
+            document.getElementById('editMode').value = 'false';
+            document.getElementById('username').readOnly = false;
+            document.getElementById('password').required = true;
+            document.getElementById('submitBtn').textContent = '✅ Créer Utilisateur';
             document.getElementById('userModal').classList.add('active');
+        }}
+        
+        async function editUser(username) {{
+            document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
+            document.getElementById('editMode').value = 'true';
+            document.getElementById('originalUsername').value = username;
+            
+            // Charger les infos de l'utilisateur
+            try {{
+                const response = await fetch(`/admin/get-user/${{username}}`);
+                const data = await response.json();
+                
+                if (data.success) {{
+                    document.getElementById('username').value = data.user.username;
+                    document.getElementById('username').readOnly = true; // Pas de changement de username
+                    document.getElementById('role').value = data.user.role;
+                    document.getElementById('password').value = '';
+                    document.getElementById('password').required = false;
+                    document.getElementById('submitBtn').textContent = '💾 Sauvegarder Modifications';
+                    document.getElementById('userModal').classList.add('active');
+                }} else {{
+                    alert('❌ Erreur: ' + data.message);
+                }}
+            }} catch (error) {{
+                alert('❌ Erreur de connexion');
+                console.error(error);
+            }}
         }}
         
         function closeModal(modalId) {{
@@ -20999,15 +21109,28 @@ async def admin_dashboard(request: Request):
         document.getElementById('userForm').addEventListener('submit', async (e) => {{
             e.preventDefault();
             
+            const editMode = document.getElementById('editMode').value === 'true';
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const role = document.getElementById('role').value;
+            const originalUsername = document.getElementById('originalUsername').value;
+            
+            // Validation du mot de passe pour nouvel utilisateur
+            if (!editMode && !password) {{
+                alert('❌ Le mot de passe est requis pour un nouvel utilisateur');
+                return;
+            }}
             
             try {{
-                const response = await fetch('/admin/add-user', {{
+                const endpoint = editMode ? '/admin/edit-user' : '/admin/add-user';
+                const payload = editMode 
+                    ? {{originalUsername, username, password, role}}
+                    : {{username, password, role}};
+                
+                const response = await fetch(endpoint, {{
                     method: 'POST',
                     headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{username, password, role}})
+                    body: JSON.stringify(payload)
                 }});
                 
                 const data = await response.json();

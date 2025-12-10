@@ -20495,18 +20495,34 @@ async def admin_pricing_view(request: Request):
     elif error:
         alert = '<div class="alert error">❌ Erreur lors de la mise à jour</div>'
     
-    # TOUTES les 33 routes disponibles
+    # TOUTES les 52 routes disponibles (COMPLÈTES!)
     all_routes_html = ""
     routes_list = [
-        '/dashboard', '/fear-greed', '/dominance', '/altcoin-season', '/heatmap',
-        '/strategie', '/spot-trading', '/calculatrice', '/nouvelles', '/trades',
-        '/risk-management', '/watchlist', '/ai-assistant', '/prediction-ia',
-        '/ai-opportunity-scanner', '/ai-whale-watcher', '/ai-market-regime',
-        '/stats-dashboard', '/market-simulation', '/success-stories',
-        '/convertisseur', '/calendrier', '/bullrun-phase', '/graphiques',
-        '/generate-pdf-report', '/backtesting', '/onchain-metrics',
-        '/api-keys', '/testimonials-widget',
-        '/telegram-test', '/pricing-complete', '/admin-dashboard', '/mon-compte'
+        # 📊 Tableau de bord
+        '/dashboard', '/stats-dashboard',
+        # 🎓 Academy
+        '/academy',
+        # 💰 Trading & Stratégies
+        '/trades', '/strategie', '/spot-trading', '/watchlist', '/risk-management', '/backtesting',
+        # 🤖 Features IA (TOUTES les 16!)
+        '/ai-opportunity-scanner', '/ai-market-regime', '/ai-whale-watcher', '/ai-assistant',
+        '/ai-signals', '/ai-news', '/ai-predictor', '/ai-whale', '/ai-patterns', '/ai-sentiment',
+        '/ai-sizer', '/ai-exit', '/ai-timeframe', '/ai-liquidity', '/ai-alerts', '/ai-gem-hunter',
+        # 📈 Analyse de marché
+        '/fear-greed', '/fear-greed-chart', '/dominance', '/altcoin-season', '/heatmap',
+        '/bullrun-phase', '/graphiques', '/onchain-metrics',
+        # 🆕 Nouvelles Features
+        '/portfolio-tracker', '/defi-yield', '/launchpad-scanner', '/crypto-pepites',
+        # 🛠️ Outils
+        '/calculatrice', '/convertisseur', '/prediction-ia', '/market-simulation', '/calendrier',
+        # 📰 Nouvelles & Info
+        '/nouvelles', '/success-stories',
+        # 👤 Compte
+        '/pricing-complete', '/api-keys', '/mon-compte',
+        # 🔐 Admin
+        '/admin-dashboard', '/admin/pricing',
+        # Autres
+        '/testimonials-widget', '/telegram-test', '/generate-pdf-report'
     ]
     
     return HTMLResponse(SIDEBAR + f"""

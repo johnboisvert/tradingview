@@ -20530,6 +20530,17 @@ async def admin_dashboard(request: Request):
         "/news", "/success-stories", "/pricing"
     ]
     
+    # PRÉ-CONSTRUIRE LE HTML DES CHECKBOXES (ÉVITER F-STRING AVEC BACKSLASH)
+    checkboxes_html = ""
+    for route in routes_list:
+        route_id = route.replace('/', '_')  # Fait en dehors du f-string!
+        route_label = route.replace('/', '').replace('-', ' ').title()
+        checkboxes_html += f'''
+                    <div class="permission-item">
+                        <input type="checkbox" id="perm_{route_id}" class="perm-checkbox" value="{route}">
+                        <label for="perm_{route_id}">{route_label}</label>
+                    </div>'''
+    
     # Construire HTML users
     users_html = ""
     for user_data in users:
@@ -20904,12 +20915,7 @@ async def admin_dashboard(request: Request):
                     Sélectionnez les pages accessibles pour <strong id="permUsername"></strong>
                 </p>
                 <div class="permissions-grid" id="permissionsGrid">
-                    """ + ''.join([f"""
-                    <div class="permission-item">
-                        <input type="checkbox" id="perm_{route.replace('/', '_')}" class="perm-checkbox" value="{route}">
-                        <label for="perm_{route.replace('/', '_')}">{route.replace('/', '').replace('-', ' ').title()}</label>
-                    </div>
-                """ for route in routes_list]) + """
+{checkboxes_html}
                 </div>
                 <button onclick="savePermissions()" class="btn-submit">💾 Enregistrer Permissions</button>
                 <div id="permMessage" class="message"></div>

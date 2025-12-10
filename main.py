@@ -25834,6 +25834,189 @@ print("✅ TOUTES LES 12 ROUTES AI CRÉÉES!")
 
 
 
+
+# ============================================================================
+# 🎯 FONCTION ANALYSE OPPORTUNITÉS
+# ============================================================================
+
+def analyze_opportunity_signal(crypto):
+    """
+    Analyse une crypto et retourne un signal d'opportunité
+    Retourne un dict avec tous les champs nécessaires
+    """
+    try:
+        symbol = crypto.get('symbol', '').upper()
+        name = crypto.get('name', '')
+        price = float(crypto.get('current_price', 0))
+        change_24h = float(crypto.get('price_change_percentage_24h', 0))
+        volume = float(crypto.get('total_volume', 0))
+        mcap = float(crypto.get('market_cap', 0))
+        
+        if price <= 0:
+            return None
+        
+        # Calculer scores
+        momentum_score = 0
+        volume_score = 0
+        confidence = 50
+        
+        # Score momentum basé sur change 24h
+        if change_24h > 10:
+            momentum_score = 3
+            confidence += 20
+        elif change_24h > 5:
+            momentum_score = 2
+            confidence += 10
+        elif change_24h > 0:
+            momentum_score = 1
+        elif change_24h < -10:
+            momentum_score = -3
+            confidence -= 20
+        elif change_24h < -5:
+            momentum_score = -2
+            confidence -= 10
+        else:
+            momentum_score = -1
+        
+        # Score volume
+        if volume > 1000000000:  # 1B+
+            volume_score = 3
+            confidence += 10
+        elif volume > 100000000:  # 100M+
+            volume_score = 2
+        elif volume > 10000000:  # 10M+
+            volume_score = 1
+        else:
+            volume_score = 0
+        
+        # Score total
+        total_score = (momentum_score * 2 + volume_score * 1.5) / 2
+        total_score = max(0, min(10, total_score + 5))  # Entre 0-10
+        
+        # Signal
+        if total_score >= 7.5:
+            signal = "ACHAT FORT"
+            signal_emoji = "🟢"
+        elif total_score >= 6:
+            signal = "ACHAT"
+            signal_emoji = "🟢"
+        elif total_score >= 4:
+            signal = "NEUTRE"
+            signal_emoji = "⚪"
+        elif total_score >= 2.5:
+            signal = "PRUDENCE"
+            signal_emoji = "🟡"
+        else:
+            signal = "VENDRE"
+            signal_emoji = "🔴"
+        
+        # Calcul targets et stop loss
+        entry_low = price * 0.98
+        entry_high = price * 1.02
+        target_1 = price * 1.05
+        target_2 = price * 1.10
+        target_3 = price * 1.20
+        stop_loss = price * 0.95
+        
+        target_1_pct = 5.0
+        target_2_pct = 10.0
+        target_3_pct = 20.0
+        stop_loss_pct = -5.0
+        
+        # Risk/Reward
+        risk_reward_2 = 2.0
+        rr_quality = "BON"
+        risk_level = "MOYEN"
+        risk_emoji = "🟡"
+        
+        if total_score >= 7:
+            risk_level = "FAIBLE"
+            risk_emoji = "🟢"
+        elif total_score < 4:
+            risk_level = "ÉLEVÉ"
+            risk_emoji = "🔴"
+        
+        # Volume ratio
+        vol_ratio = volume / max(mcap, 1) * 100
+        
+        # Momentum signal
+        if momentum_score >= 2:
+            momentum_signal = "FORT ⬆️"
+        elif momentum_score >= 1:
+            momentum_signal = "POSITIF ↗️"
+        elif momentum_score <= -2:
+            momentum_signal = "FAIBLE ⬇️"
+        else:
+            momentum_signal = "NEUTRE →"
+        
+        # Volume signal
+        if volume_score >= 2:
+            volume_signal = "ÉLEVÉ 📊"
+        elif volume_score >= 1:
+            volume_signal = "NORMAL 📈"
+        else:
+            volume_signal = "FAIBLE 📉"
+        
+        # Timeframe recommandé
+        if momentum_score >= 2:
+            timeframe = "1H-4H"
+        elif momentum_score >= 0:
+            timeframe = "4H-1D"
+        else:
+            timeframe = "1D-1W"
+        
+        # Potential score pour hidden gems
+        if mcap < 500000000:  # <500M
+            potential_score = min(10, total_score + 2)
+        else:
+            potential_score = total_score
+        
+        confidence = max(0, min(100, confidence))
+        
+        return {
+            'symbol': symbol,
+            'name': name,
+            'price': price,
+            'change_24h': change_24h,
+            'volume': volume,
+            'mcap': mcap,
+            'signal': signal,
+            'signal_emoji': signal_emoji,
+            'confidence': confidence,
+            'timeframe': timeframe,
+            'entry_low': entry_low,
+            'entry_high': entry_high,
+            'target_1': target_1,
+            'target_2': target_2,
+            'target_3': target_3,
+            'stop_loss': stop_loss,
+            'target_1_pct': target_1_pct,
+            'target_2_pct': target_2_pct,
+            'target_3_pct': target_3_pct,
+            'stop_loss_pct': stop_loss_pct,
+            'risk_reward_2': risk_reward_2,
+            'rr_quality': rr_quality,
+            'risk_level': risk_level,
+            'risk_emoji': risk_emoji,
+            'total_score': round(total_score, 1),
+            'momentum_score': momentum_score,
+            'volume_score': volume_score,
+            'momentum_signal': momentum_signal,
+            'volume_signal': volume_signal,
+            'vol_ratio': round(vol_ratio, 2),
+            'potential_score': round(potential_score, 1)
+        }
+        
+    except Exception as e:
+        print(f"❌ Erreur analyse {crypto.get('symbol', 'UNKNOWN')}: {e}")
+        return None
+
+
+
+# ============================================================================
+# 🎯 ROUTE AI GEM HUNTER
+# ============================================================================
+
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
 async def ai_opportunity_scanner():
     """🎯 AI OPPORTUNITY SCANNER - Système professionnel de détection d'opportunités crypto"""

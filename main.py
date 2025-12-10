@@ -20615,7 +20615,7 @@ async def admin_dashboard(request: Request):
         </div>
     
         <script>
-        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {{
             e.preventDefault();
             
             const username = document.getElementById('new_username').value;
@@ -20624,19 +20624,19 @@ async def admin_dashboard(request: Request):
             const messageDiv = document.getElementById('addUserMessage');
             
             // Validation
-            if (username.length < 3) {
+            if (username.length < 3) {{
                 messageDiv.className = 'message error';
                 messageDiv.textContent = '❌ Le nom d'utilisateur doit contenir au moins 3 caractères';
                 return;
-            }
+            }}
             
-            if (password.length < 6) {
+            if (password.length < 6) {{
                 messageDiv.className = 'message error';
                 messageDiv.textContent = '❌ Le mot de passe doit contenir au moins 6 caractères';
                 return;
-            }
+            }}
             
-            try {
+            try {{
                 const response = await fetch('/admin/add-user', {{
                     method: 'POST',
                     headers: {{'Content-Type': 'application/json'}},

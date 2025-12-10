@@ -1859,15 +1859,28 @@ class DatabaseManager:
         
         try:
             if self.use_postgresql:
-                c.execute("INSERT INTO users VALUES (%s, %s, %s, %s)",
-                          (username, password_hash, role, datetime.now()))
+                c.execute("""INSERT INTO users 
+                    (username, password_hash, role, created_at, subscription_plan, 
+                     subscription_start, subscription_end, stripe_customer_id, 
+                     stripe_subscription_id, coinbase_customer_id, payment_method, 
+                     last_payment_date, total_spent)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (username, password_hash, role, datetime.now(), 'free', 
+                     None, None, None, None, None, None, None, 0.00))
             else:
-                c.execute("INSERT INTO users VALUES (?, ?, ?, ?)",
-                          (username, password_hash, role, datetime.now().isoformat()))
+                c.execute("""INSERT INTO users 
+                    (username, password_hash, role, created_at, subscription_plan, 
+                     subscription_start, subscription_end, stripe_customer_id, 
+                     stripe_subscription_id, coinbase_customer_id, payment_method, 
+                     last_payment_date, total_spent)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (username, password_hash, role, datetime.now().isoformat(), 'free',
+                     None, None, None, None, None, None, None, 0.00))
             conn.commit()
             conn.close()
             return True
         except Exception as e:
+            print(f"❌ Error adding user: {e}")
             conn.close()
             return False
     
@@ -6807,6 +6820,7 @@ async def ai_opportunity_scanner():
                     // Récupérer les top 50 cryptos avec données actuelles
                     const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h,7d,30d');
                     const data = await response.json();
+                console.log('Server response:', data);
                     return data;
                 } catch (error) {
                     console.error('Erreur lors du chargement des données:', error);
@@ -20489,6 +20503,7 @@ async def admin_dashboard(request: Request):
             <td class="actions">
                 <a href="/admin/activate-subscription?username={username}&plan=1_month" class="btn btn-success">Premium</a>
                 <a href="/admin/activate-subscription?username={username}&plan=1_year" class="btn btn-primary">Elite</a>
+                <button onclick="deleteUser('{username}')" class="btn btn-danger">🗑️ Supprimer</button>
             </td>
         </tr>
         """
@@ -20532,6 +20547,22 @@ async def admin_dashboard(request: Request):
             .btn-primary:hover {{ background: #5568d3; }}
             .btn-success {{ background: #51cf66; color: white; }}
             .btn-success:hover {{ background: #40c057; }}
+
+            .btn-danger {{ 
+                background: #ef4444; 
+                color: white; 
+                border: none; 
+                padding: 8px 15px; 
+                border-radius: 5px; 
+                cursor: pointer; 
+                font-size: 13px; 
+                transition: all 0.3s; 
+                margin-left: 5px;
+            }}
+            .btn-danger:hover {{ 
+                background: #dc2626; 
+                transform: translateY(-2px); 
+            }}
             .back-link {{ display: inline-block; margin-top: 20px; color: white; text-decoration: none; font-weight: 600; padding: 12px 24px; background: rgba(255,255,255,0.2); border-radius: 8px; }}
             .back-link:hover {{ background: rgba(255,255,255,0.3); }}
         </style>
@@ -20619,6 +20650,7 @@ async def admin_dashboard(request: Request):
             e.preventDefault();
             
             const username = document.getElementById('new_username').value;
+            console.log('Creating user:', username);
             const password = document.getElementById('new_password').value;
             const role = document.getElementById('new_role').value;
             const messageDiv = document.getElementById('addUserMessage');
@@ -20665,6 +20697,34 @@ async def admin_dashboard(request: Request):
                 messageDiv.textContent = '❌ Erreur de connexion au serveur';
             }}
         }});
+        
+        
+        // Fonction de suppression d'utilisateur
+        async function deleteUser(username) {{
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${{username}}" ?`)) {{
+                return;
+            }}
+            
+            try {{
+                const response = await fetch('/admin/delete-user', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{username}})
+                }});
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {{
+                    alert('✅ Utilisateur supprimé avec succès!');
+                    window.location.reload();
+                }} else {{
+                    alert('❌ Erreur: ' + (data.message || 'Impossible de supprimer'));
+                }}
+            }} catch (error) {{
+                alert('❌ Erreur de connexion au serveur');
+                console.error(error);
+            }}
+        }}
         </script>
 
     </body>

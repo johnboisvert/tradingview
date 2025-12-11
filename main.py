@@ -32591,48 +32591,82 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
 
 @app.get("/api/narrative-radar/scan")
 async def api_scan_narratives():
-    """API Backend - Scan RÉEL via CryptoPanic"""
+    """API Backend - Scan RÉEL via CryptoPanic avec fallback intelligent"""
     
     CRYPTOPANIC_KEY = "bca5327f4c31e7511b4a7824951ed0ae4d8bb5ac"
     
+    def generate_demo_data():
+        """Génère des données de démonstration réalistes"""
+        import random
+        narratives_count = {
+            "AI": random.randint(10, 20),
+            "DeFi": random.randint(8, 16),
+            "RWA": random.randint(3, 9),
+            "Gaming": random.randint(4, 12),
+            "L2": random.randint(12, 22),
+            "Memes": random.randint(18, 28),
+            "Infrastructure": random.randint(3, 7),
+            "Privacy": random.randint(1, 5)
+        }
+        total_mentions = sum(narratives_count.values())
+        active_narratives = sum(1 for count in narratives_count.values() if count > 0)
+        hot_topics = sum(1 for count in narratives_count.values() if count >= 5)
+        
+        return {
+            "success": True,
+            "totalNews": random.randint(85, 115),
+            "totalMentions": total_mentions,
+            "activeNarratives": active_narratives,
+            "hotTopics": hot_topics,
+            "narratives": narratives_count,
+            "timestamp": datetime.now().isoformat(),
+            "source": "Demo Mode",
+            "mode": "demo"
+        }
+    
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+            
             response = await client.get(
                 "https://cryptopanic.com/api/v1/posts/",
                 params={
                     "auth_token": CRYPTOPANIC_KEY,
                     "public": "true",
-                    "filter": "rising",
-                    "currencies": "BTC,ETH,SOL,DOGE,SHIB,PEPE,FET,AGIX,OCEAN,AAVE,UNI,LINK,ARB,OP,MATIC"
-                }
+                    "filter": "rising"
+                },
+                headers=headers,
+                follow_redirects=True
             )
             
             if response.status_code != 200:
-                return {"error": "API CryptoPanic non disponible", "status": response.status_code, "success": False}
+                print(f"⚠️ [Narrative] API Status {response.status_code} → Fallback démo")
+                return generate_demo_data()
             
             data = response.json()
             posts = data.get("results", [])
             
+            if len(posts) == 0:
+                print(f"⚠️ [Narrative] Aucun post → Fallback démo")
+                return generate_demo_data()
+            
+            # Analyse des posts RÉELS
             narrative_keywords = {
-                "AI": ["ai", "artificial intelligence", "machine learning", "neural", "gpt", "llm", "chatgpt", "agix", "fet", "fetch", "singularitynet", "ocean protocol"],
+                "AI": ["ai", "artificial intelligence", "machine learning", "neural", "gpt", "llm", "chatgpt", "agix", "fet", "fetch", "singularitynet", "ocean protocol", "render"],
                 "DeFi": ["defi", "lending", "yield", "liquidity", "amm", "dex", "swap", "aave", "uniswap", "compound", "curve", "synthetix"],
                 "RWA": ["rwa", "real world asset", "tokenization", "tokenized", "bonds", "treasury", "ondo", "real estate"],
-                "Gaming": ["gaming", "metaverse", "nft", "play to earn", "p2e", "game", "immutable", "gala", "sandbox", "axie", "decentraland"],
+                "Gaming": ["gaming", "metaverse", "nft", "play to earn", "p2e", "game", "immutable", "gala", "sandbox", "axie"],
                 "L2": ["layer 2", "l2", "rollup", "scaling", "zk", "optimistic", "arbitrum", "optimism", "polygon", "starknet"],
                 "Memes": ["meme", "memecoin", "doge", "dogecoin", "shiba", "shib", "pepe", "wif", "bonk", "floki"],
-                "Infrastructure": ["oracle", "bridge", "middleware", "data", "chainlink", "link", "infrastructure", "api3", "band"],
-                "Privacy": ["privacy", "anonymous", "mixer", "confidential", "zero knowledge", "monero", "zcash", "secret"]
+                "Infrastructure": ["oracle", "bridge", "middleware", "data", "chainlink", "link", "infrastructure", "api3"],
+                "Privacy": ["privacy", "anonymous", "mixer", "confidential", "zero knowledge", "monero", "zcash"]
             }
             
             narratives_count = {
-                "AI": 0,
-                "DeFi": 0,
-                "RWA": 0,
-                "Gaming": 0,
-                "L2": 0,
-                "Memes": 0,
-                "Infrastructure": 0,
-                "Privacy": 0
+                "AI": 0, "DeFi": 0, "RWA": 0, "Gaming": 0,
+                "L2": 0, "Memes": 0, "Infrastructure": 0, "Privacy": 0
             }
             
             for post in posts:
@@ -32645,6 +32679,8 @@ async def api_scan_narratives():
             active_narratives = sum(1 for count in narratives_count.values() if count > 0)
             hot_topics = sum(1 for count in narratives_count.values() if count >= 5)
             
+            print(f"✅ [Narrative] {len(posts)} posts analysés - {active_narratives} narratives actives")
+            
             return {
                 "success": True,
                 "totalNews": len(posts),
@@ -32653,13 +32689,13 @@ async def api_scan_narratives():
                 "hotTopics": hot_topics,
                 "narratives": narratives_count,
                 "timestamp": datetime.now().isoformat(),
-                "source": "CryptoPanic API"
+                "source": "CryptoPanic Live",
+                "mode": "live"
             }
             
-    except httpx.TimeoutException:
-        return {"error": "Timeout API CryptoPanic", "success": False}
     except Exception as e:
-        return {"error": str(e), "success": False}
+        print(f"❌ [Narrative] Erreur: {str(e)} → Fallback démo")
+        return generate_demo_data()
 
 
 @app.get("/narrative-radar", response_class=HTMLResponse)
@@ -32829,11 +32865,6 @@ async function scanNow() {
         var response = await fetch('/api/narrative-radar/scan');
         var data = await response.json();
         
-        if (!data.success) {
-            container.innerHTML = '<div class="error-box"><div class="icon">⚠️</div><div class="title">Erreur API</div><div class="message">' + (data.error || 'Erreur inconnue') + '</div></div>';
-            return;
-        }
-        
         var narrativesWithMomentum = {};
         
         for (var name in data.narratives) {
@@ -32861,6 +32892,17 @@ async function scanNow() {
         document.getElementById('lastScan').textContent = getCurrentTime();
         
         dataSource.style.display = 'block';
+        
+        // Afficher la source des données
+        var sourceText = dataSource.querySelector('.status-text');
+        if (data.mode === 'live') {
+            sourceText.textContent = '✅ Données CryptoPanic Live';
+            sourceText.style.color = '#10b981';
+        } else {
+            sourceText.textContent = '🔄 Mode Démo (API temporairement indisponible)';
+            sourceText.style.color = '#f59e0b';
+        }
+        
         displayNarratives(narrativesWithMomentum);
         scanCount++;
         

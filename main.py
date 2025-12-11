@@ -1635,13 +1635,23 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🏦</span>
                 <span class="label">DeFi Yield</span>
             </a>
-            
             <a href="/crypto-pepites" class="menu-item ai-feature">
                 <span class="icon">💎</span>
                 <span class="label">Pépites Crypto</span>
             </a>
+            
+            <!-- 🔥 PAGES AJOUTÉES -->
+            <a href="/narrative-radar" class="menu-item ai-feature">
+                <span class="icon">🎯</span>
+                <span class="label">Narrative Radar</span>
+                <span class="badge">NEW</span>
+            </a>
+            <a href="/ai-technical-analysis" class="menu-item ai-feature">
+                <span class="icon">📊</span>
+                <span class="label">Technical Analysis</span>
+                <span class="badge">PRO</span>
+            </a>
         </div>
-        
         <!-- 🛠️ OUTILS -->
         <div class="menu-section">
             <div class="section-title">🛠️ OUTILS</div>

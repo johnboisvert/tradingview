@@ -32218,11 +32218,11 @@ async def get_portfolio_data(request: Request):
 # ============================================================================
 
 # ============================================================================
-# 🎯 TECHNICAL ANALYSIS PRO ROUTE - VERSION SIMPLE (CONCATÉNATION)
+# 🎯 TECHNICAL ANALYSIS PRO ROUTE - CSS ISOLÉ (ne touche pas au sidebar)
 # ============================================================================
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
 async def ai_technical_analysis_page(request: Request):
-    """Technical Analysis Pro - Version ultra-simple sans format()"""
+    """Technical Analysis Pro - CSS isolé pour ne pas affecter le sidebar"""
     
     try:
         # Fetch Bitcoin data
@@ -32259,69 +32259,86 @@ async def ai_technical_analysis_page(request: Request):
         current_price = df['close'].iloc[-1]
         change_24h = ((df['close'].iloc[-1] - df['close'].iloc[-24]) / df['close'].iloc[-24]) * 100 if len(df) >= 24 else 0
         
-        # Build indicators HTML
+        # Build indicators HTML with INLINE styles only
         rsi_class = 'oversold' if indicators['rsi'] < 30 else ('overbought' if indicators['rsi'] > 70 else 'neutral')
         macd_class = 'bullish' if indicators['macd_diff'] > 0 else 'bearish'
         ema200_line = '<div>EMA200: $' + "{:,.0f}".format(indicators['ema200']) + '</div>' if indicators['ema200'] else ''
         
-        indicators_html = '<div class="indicators-grid">'
-        indicators_html += '<div class="indicator-card">'
-        indicators_html += '<div class="indicator-header"><span style="font-size:2em;">📊</span><span style="font-weight:bold;">RSI (14)</span></div>'
+        # Signal colors
+        signal_colors = {
+            'oversold': 'background:#dcfce7;color:#166534;',
+            'overbought': 'background:#fee2e2;color:#991b1b;',
+            'bullish': 'background:#d1fae5;color:#065f46;',
+            'bearish': 'background:#fecaca;color:#991b1b;',
+            'neutral': 'background:#f3f4f6;color:#4b5563;'
+        }
+        
+        indicators_html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-bottom:30px;">'
+        
+        # RSI Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📊</span><span style="font-weight:bold;">RSI (14)</span></div>'
         indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['rsi']) + '</div>'
-        indicators_html += '<div class="indicator-signal ' + rsi_class + '">' + indicators['rsi_signal'] + '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;' + signal_colors[rsi_class] + '">' + indicators['rsi_signal'] + '</div>'
         indicators_html += '</div>'
         
-        indicators_html += '<div class="indicator-card">'
-        indicators_html += '<div class="indicator-header"><span style="font-size:2em;">📈</span><span style="font-weight:bold;">MACD</span></div>'
+        # MACD Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📈</span><span style="font-weight:bold;">MACD</span></div>'
         indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['macd']) + '</div>'
-        indicators_html += '<div class="indicator-signal ' + macd_class + '">' + indicators['macd_trend'] + '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;' + signal_colors[macd_class] + '">' + indicators['macd_trend'] + '</div>'
         indicators_html += '</div>'
         
-        indicators_html += '<div class="indicator-card">'
-        indicators_html += '<div class="indicator-header"><span style="font-size:2em;">📉</span><span style="font-weight:bold;">Bollinger</span></div>'
+        # Bollinger Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📉</span><span style="font-weight:bold;">Bollinger</span></div>'
         indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">$' + "{:,.2f}".format(current_price) + '</div>'
-        indicators_html += '<div class="indicator-signal">' + indicators['bb_position'] + '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['bb_position'] + '</div>'
         indicators_html += '</div>'
         
-        indicators_html += '<div class="indicator-card">'
-        indicators_html += '<div class="indicator-header"><span style="font-size:2em;">⚡</span><span style="font-weight:bold;">Stochastique</span></div>'
+        # Stochastic Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">⚡</span><span style="font-weight:bold;">Stochastique</span></div>'
         indicators_html += '<div style="font-size:1.8em;font-weight:700;color:#667eea;">%K: ' + "{:.1f}".format(indicators['stoch_k']) + '</div>'
         indicators_html += '<div style="font-size:1.8em;font-weight:700;color:#667eea;">%D: ' + "{:.1f}".format(indicators['stoch_d']) + '</div>'
-        indicators_html += '<div class="indicator-signal">' + indicators['stoch_signal'] + '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['stoch_signal'] + '</div>'
         indicators_html += '</div>'
         
-        indicators_html += '<div class="indicator-card">'
-        indicators_html += '<div class="indicator-header"><span style="font-size:2em;">💪</span><span style="font-weight:bold;">ADX</span></div>'
+        # ADX Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">💪</span><span style="font-weight:bold;">ADX</span></div>'
         indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['adx']) + '</div>'
-        indicators_html += '<div class="indicator-signal">' + indicators['adx_strength'] + '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['adx_strength'] + '</div>'
         indicators_html += '</div>'
         
-        indicators_html += '<div class="indicator-card">'
-        indicators_html += '<div class="indicator-header"><span style="font-size:2em;">📐</span><span style="font-weight:bold;">EMAs</span></div>'
+        # EMAs Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📐</span><span style="font-weight:bold;">EMAs</span></div>'
         indicators_html += '<div style="margin:15px 0;">'
         indicators_html += '<div>EMA20: $' + "{:,.0f}".format(indicators['ema20']) + '</div>'
         indicators_html += '<div>EMA50: $' + "{:,.0f}".format(indicators['ema50']) + '</div>'
         indicators_html += ema200_line
         indicators_html += '</div>'
-        indicators_html += '<div class="indicator-signal">' + indicators['ema_alignment'] + '</div>'
-        indicators_html += '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['ema_alignment'] + '</div>'
         indicators_html += '</div>'
         
-        # Build patterns HTML
+        indicators_html += '</div>'
+        
+        # Build patterns HTML with INLINE styles
         patterns_html = ""
         if patterns:
             for p in patterns:
-                pclass = "bullish-pattern" if p['type']=='BULLISH' else "bearish-pattern"
-                patterns_html += '<div class="pattern-card ' + pclass + '">'
-                patterns_html += '<h3>' + p['name'] + '</h3>'
+                border_color = '#10b981' if p['type']=='BULLISH' else '#ef4444'
+                patterns_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;border-left:5px solid ' + border_color + ';margin-bottom:15px;">'
+                patterns_html += '<h3 style="margin:0 0 10px 0;">' + p['name'] + '</h3>'
                 patterns_html += '<div><strong>Confiance: ' + str(p['confidence']) + '%</strong></div>'
-                patterns_html += '<p>' + p['description'] + '</p>'
+                patterns_html += '<p style="margin:10px 0;">' + p['description'] + '</p>'
                 patterns_html += '<div><strong>🎯 Target: $' + "{:,.2f}".format(p['target']) + '</strong></div>'
                 patterns_html += '</div>'
         else:
             patterns_html = "<p style='text-align:center;opacity:0.7;'>Aucun pattern détecté actuellement</p>"
         
-        # Build S/R HTML
+        # Build S/R HTML with INLINE styles
         resistances_html = ""
         if sr_levels['resistances']:
             for r in sr_levels['resistances'][:3]:
@@ -32336,25 +32353,25 @@ async def ai_technical_analysis_page(request: Request):
         else:
             supports_html = "<p style='opacity:0.6;'>Aucun</p>"
         
-        # Build reversal signals HTML
+        # Build reversal signals HTML with INLINE styles
         reversal_html = ""
         if reversal_signals:
             for sig in reversal_signals[:5]:
-                sclass = "bullish-signal" if 'BULLISH' in sig['type'] else "bearish-signal"
+                border_color = '#10b981' if 'BULLISH' in sig['type'] else '#ef4444'
                 rr = abs(sig['target']-sig['entry'])/abs(sig['entry']-sig['stop_loss']) if sig['entry']!=sig['stop_loss'] else 0
-                reversal_html += '<div class="reversal-card ' + sclass + '">'
+                reversal_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;border-left:5px solid ' + border_color + ';margin-bottom:15px;">'
                 reversal_html += '<div><strong>' + sig['type'] + '</strong> - ' + str(sig['confidence']) + '%</div>'
-                reversal_html += '<p>' + sig['reason'] + '</p>'
+                reversal_html += '<p style="margin:10px 0;">' + sig['reason'] + '</p>'
                 reversal_html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">'
-                reversal_html += '<div><div>Entry</div><strong>$' + "{:,.2f}".format(sig['entry']) + '</strong></div>'
-                reversal_html += '<div><div>Target</div><strong>$' + "{:,.2f}".format(sig['target']) + '</strong></div>'
-                reversal_html += '<div><div>Stop</div><strong>$' + "{:,.2f}".format(sig['stop_loss']) + '</strong></div>'
-                reversal_html += '<div><div>R/R</div><strong>' + "{:.1f}".format(rr) + '</strong></div>'
+                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Entry</div><strong>$' + "{:,.2f}".format(sig['entry']) + '</strong></div>'
+                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Target</div><strong>$' + "{:,.2f}".format(sig['target']) + '</strong></div>'
+                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Stop</div><strong>$' + "{:,.2f}".format(sig['stop_loss']) + '</strong></div>'
+                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">R/R</div><strong>' + "{:.1f}".format(rr) + '</strong></div>'
                 reversal_html += '</div></div>'
         else:
             reversal_html = "<p style='text-align:center;opacity:0.7;'>Aucun signal de retournement détecté</p>"
         
-        # Build complete page
+        # Build complete page with INLINE styles only
         page = SIDEBAR
         page += '<!DOCTYPE html>'
         page += '<html lang="fr">'
@@ -32363,46 +32380,32 @@ async def ai_technical_analysis_page(request: Request):
         page += '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
         page += '<title>🎯 AI Technical Analysis Pro</title>'
         page += CSS
-        page += '<style>'
-        page += '.tech-header{text-align:center;padding:30px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:30px;backdrop-filter:blur(10px);}'
-        page += '.tech-header h1{font-size:2.5em;margin:0 0 10px 0;color:white;}'
-        page += '.section-title{font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;}'
-        page += '.indicators-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-bottom:30px;}'
-        page += '.indicator-card{background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);transition:transform 0.2s;}'
-        page += '.indicator-card:hover{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,0.3);}'
-        page += '.indicator-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}'
-        page += '.indicator-signal{padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;}'
-        page += '.indicator-signal.oversold{background:#dcfce7;color:#166534;}'
-        page += '.indicator-signal.overbought{background:#fee2e2;color:#991b1b;}'
-        page += '.indicator-signal.bullish{background:#d1fae5;color:#065f46;}'
-        page += '.indicator-signal.bearish{background:#fecaca;color:#991b1b;}'
-        page += '.indicator-signal.neutral{background:#f3f4f6;color:#4b5563;}'
-        page += '.pattern-card,.reversal-card{background:white;color:#333;padding:20px;border-radius:12px;border-left:5px solid;margin-bottom:15px;transition:transform 0.2s;}'
-        page += '.pattern-card:hover,.reversal-card:hover{transform:translateX(3px);}'
-        page += '.bullish-pattern,.bullish-signal{border-left-color:#10b981;}'
-        page += '.bearish-pattern,.bearish-signal{border-left-color:#ef4444;}'
-        page += '.sr-box{background:white;color:#333;padding:30px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);display:grid;grid-template-columns:1fr auto 1fr;gap:30px;margin-bottom:30px;}'
-        page += '.price-center{text-align:center;padding:25px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,0.2);}'
-        page += '@media (max-width:768px){.sr-box{grid-template-columns:1fr;gap:20px;}.indicators-grid{grid-template-columns:1fr;}}'
-        page += '</style>'
         page += '</head>'
         page += '<body>'
         page += '<div class="main-content">'
-        page += '<div class="tech-header">'
-        page += '<h1>🎯 AI Technical Analysis Pro</h1>'
-        page += '<p style="font-size:1.2em;opacity:0.9;margin:0;">Analyse technique professionnelle en temps réel</p>'
+        
+        # Header
+        page += '<div style="text-align:center;padding:30px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:30px;backdrop-filter:blur(10px);">'
+        page += '<h1 style="font-size:2.5em;margin:0 0 10px 0;color:white;">🎯 AI Technical Analysis Pro</h1>'
+        page += '<p style="font-size:1.2em;opacity:0.9;margin:0;color:white;">Analyse technique professionnelle en temps réel</p>'
         page += '</div>'
-        page += '<div class="section-title">📊 INDICATEURS TECHNIQUES</div>'
+        
+        # Section 1: Indicators
+        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">📊 INDICATEURS TECHNIQUES</div>'
         page += indicators_html
-        page += '<div class="section-title">🎯 PATTERNS CHARTISTES DÉTECTÉS</div>'
+        
+        # Section 2: Patterns
+        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">🎯 PATTERNS CHARTISTES DÉTECTÉS</div>'
         page += patterns_html
-        page += '<div class="section-title">📍 SUPPORT & RÉSISTANCE</div>'
-        page += '<div class="sr-box">'
+        
+        # Section 3: S/R
+        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">📍 SUPPORT & RÉSISTANCE</div>'
+        page += '<div style="background:white;color:#333;padding:30px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);display:grid;grid-template-columns:1fr auto 1fr;gap:30px;margin-bottom:30px;">'
         page += '<div>'
         page += '<h3 style="color:#ef4444;margin-bottom:12px;">🔴 Résistances</h3>'
         page += resistances_html
         page += '</div>'
-        page += '<div class="price-center">'
+        page += '<div style="text-align:center;padding:25px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,0.2);">'
         page += '<div style="font-size:1em;opacity:0.9;">Prix BTC</div>'
         page += '<div style="font-size:2.2em;font-weight:900;margin:8px 0;">$' + "{:,.2f}".format(current_price) + '</div>'
         page += '<div style="font-size:1.2em;font-weight:600;">' + "{:+.2f}".format(change_24h) + '%</div>'
@@ -32412,8 +32415,11 @@ async def ai_technical_analysis_page(request: Request):
         page += supports_html
         page += '</div>'
         page += '</div>'
-        page += '<div class="section-title">🔄 POINTS DE RETOURNEMENT POTENTIELS</div>'
+        
+        # Section 4: Reversals
+        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">🔄 POINTS DE RETOURNEMENT POTENTIELS</div>'
         page += reversal_html
+        
         page += '</div>'
         page += '<script>setTimeout(function(){window.location.reload();},300000);</script>'
         page += '</body>'

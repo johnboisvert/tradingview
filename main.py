@@ -33495,7 +33495,7 @@ console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 async def ai_crypto_coach():
     """🎓 AI Crypto Coach - Guided Learning Experience avec Claude API"""
     
-    page_html = '''<!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + '''<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -34053,8 +34053,6 @@ async def ai_crypto_coach():
     </style>
 </head>
 <body>
-
-''' + get_sidebar() + '''
 
 <div class="main-content">
     <!-- Header -->
@@ -34731,6 +34729,4 @@ console.log('🎓 AI Crypto Coach chargé - Claude API activée');
 </script>
 </body>
 </html>
-'''
-    
-    return HTMLResponse(page_html)
+''')

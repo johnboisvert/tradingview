@@ -21138,6 +21138,7 @@ async def admin_dashboard(request: Request):
         "/ai-assistant", "/ai-signals", "/ai-news", "/ai-predictor",
         "/prediction-ia", "/ai-patterns", "/ai-sentiment", "/ai-sizer",
         "/ai-exit", "/ai-timeframe", "/ai-liquidity", "/ai-alerts", "/ai-gem-hunter",
+        "/ai-technical-analysis",
         
         # Analyse de Marché
         "/fear-greed", "/fear-greed-chart", "/dominance", "/altcoin-season",
@@ -21551,6 +21552,10 @@ async def admin_dashboard(request: Request):
                 <div class="permissions-grid" id="permissionsGrid">
 {checkboxes_html}
                 </div>
+                <div style="display:flex;gap:10px;margin:20px 0;">
+                    <button onclick="selectAllPermissions()" class="btn-select-all" style="flex:1;padding:12px;background:#4caf50;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">✅ Tout Sélectionner</button>
+                    <button onclick="deselectAllPermissions()" class="btn-deselect-all" style="flex:1;padding:12px;background:#f44336;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">❌ Tout Désélectionner</button>
+                </div>
                 <button onclick="savePermissions()" class="btn-submit">💾 Enregistrer Permissions</button>
                 <div id="permMessage" class="message"></div>
             </div>
@@ -21654,6 +21659,14 @@ async def admin_dashboard(request: Request):
             }} catch (error) {{
                 alert('❌ Erreur de connexion');
             }}
+        }}
+        
+        function selectAllPermissions() {{
+            document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = true);
+        }}
+        
+        function deselectAllPermissions() {{
+            document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
         }}
         
         document.getElementById('userForm').addEventListener('submit', async (e) => {{

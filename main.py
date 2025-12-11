@@ -1579,11 +1579,10 @@ body.sidebar-open{margin-left:280px}
             <a href="/ai-gem-hunter" class="menu-item ai-feature">
                 <span class="icon">💎</span>
                 <span class="label">Gem Hunter</span>
-            
+            </a>
             <a href="/ai-technical-analysis" class="menu-item ai-feature">
-    <span class="icon">🎯</span>
-    <span class="label">Technical Analysis Pro</span>
-</a>
+                <span class="icon">📊</span>
+                <span class="label">Technical Analysis</span>
             </a>
         </div>
         
@@ -1640,18 +1639,34 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">Pépites Crypto</span>
             </a>
             
-            <!-- 🔥 PAGES AJOUTÉES -->
+            <!-- 🔥 5 NOUVELLES PAGES -->
             <a href="/narrative-radar" class="menu-item ai-feature">
                 <span class="icon">🎯</span>
                 <span class="label">Narrative Radar</span>
                 <span class="badge">NEW</span>
             </a>
-            <a href="/ai-technical-analysis" class="menu-item ai-feature">
-                <span class="icon">📊</span>
-                <span class="label">Technical Analysis</span>
+            <a href="/ai-crypto-coach" class="menu-item ai-feature">
+                <span class="icon">🎓</span>
+                <span class="label">AI Crypto Coach</span>
+                <span class="badge">NEW</span>
+            </a>
+            <a href="/ai-swarm-agents" class="menu-item ai-feature">
+                <span class="icon">🐝</span>
+                <span class="label">AI Swarm Agents</span>
+                <span class="badge">NEW</span>
+            </a>
+            <a href="/altseason-copilot-pro" class="menu-item ai-feature">
+                <span class="icon">🚀</span>
+                <span class="label">Altseason Copilot</span>
+                <span class="badge">PRO</span>
+            </a>
+            <a href="/rug-scam-shield" class="menu-item ai-feature">
+                <span class="icon">🛡️</span>
+                <span class="label">Rug & Scam Shield</span>
                 <span class="badge">PRO</span>
             </a>
         </div>
+        
         <!-- 🛠️ OUTILS -->
         <div class="menu-section">
             <div class="section-title">🛠️ OUTILS</div>

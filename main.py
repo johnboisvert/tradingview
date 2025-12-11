@@ -45,6 +45,12 @@ import requests  # Pour API externe (Fear & Greed, etc.)
 import time
 from urllib.parse import urlencode
 
+# ========== IMPORTS POUR NOUVELLES FEATURES ==========
+from collections import defaultdict
+from typing import List, Dict, Optional
+# =====================================================
+
+
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
 from technical_analyzer import analyzer
 
@@ -1771,6 +1777,783 @@ if PERMISSIONS_AVAILABLE and protected_router:
 # ============================================================================
 
 # ===== ROUTE DE DEBUG =====
+
+
+# ============================================================================
+# 🚀 NOUVELLES FEATURES - CODE COMPLET
+# ============================================================================
+# Narrative Radar, AI Crypto Coach, Altseason Copilot, Rug & Scam Shield
+# ============================================================================
+
+# ============================================================================
+# 🚀 NOUVEAU CODE À INTÉGRER DANS MAIN.PY
+# ============================================================================
+# Ce fichier contient TOUT le code des 5 nouvelles features
+# Il sera automatiquement intégré par le script install_features.py
+# ============================================================================
+
+# ============================================================================
+# 📦 IMPORTS NÉCESSAIRES (à ajouter avec tes imports existants)
+# ============================================================================
+"""
+IMPORTS_TO_ADD = '''
+import httpx
+import asyncio
+from collections import defaultdict
+from datetime import datetime, timedelta
+from typing import List, Dict, Optional
+import json
+'''
+"""
+
+# ============================================================================
+# 🎯 NARRATIVE RADAR - SYSTÈME COMPLET
+# ============================================================================
+
+NARRATIVES_CONFIG = {
+    "AI": {
+        "name": "Intelligence Artificielle",
+        "icon": "🤖",
+        "color": "#8b5cf6",
+        "keywords": [
+            "ai", "artificial intelligence", "machine learning", "llm",
+            "chatgpt", "gpt", "neural", "agent", "autonomous",
+            "fetch.ai", "render", "akash", "bittensor", "worldcoin",
+            "ocean protocol"
+        ],
+        "top_coins": ["FET", "RNDR", "AKT", "TAO", "WLD", "OCEAN"],
+        "description": "Tokens liés à l'intelligence artificielle, ML, agents autonomes"
+    },
+    "DeFi": {
+        "name": "Finance Décentralisée",
+        "icon": "💰",
+        "color": "#10b981",
+        "keywords": [
+            "defi", "decentralized finance", "yield", "lending", "borrowing",
+            "dex", "swap", "liquidity", "amm", "farming",
+            "aave", "uniswap", "curve", "compound", "maker"
+        ],
+        "top_coins": ["AAVE", "UNI", "CRV", "COMP", "MKR", "SNX"],
+        "description": "Protocoles de prêt, DEX, yield farming, staking"
+    },
+    "RWA": {
+        "name": "Real World Assets",
+        "icon": "🏦",
+        "color": "#f59e0b",
+        "keywords": [
+            "rwa", "real world asset", "tokenization", "tokenize",
+            "real estate", "property", "bond", "treasury",
+            "centrifuge", "ondo", "maple", "goldfinch"
+        ],
+        "top_coins": ["CFG", "ONDO", "MPL", "GFI", "RIO"],
+        "description": "Tokenisation d'actifs réels (immobilier, obligations, etc.)"
+    },
+    "Gaming": {
+        "name": "Gaming & Metaverse",
+        "icon": "🎮",
+        "color": "#ec4899",
+        "keywords": [
+            "gaming", "game", "metaverse", "play to earn", "p2e",
+            "nft gaming", "virtual world", "sandbox", "decentraland",
+            "axie", "immutable", "gala", "enjin"
+        ],
+        "top_coins": ["IMX", "GALA", "ENJ", "SAND", "MANA", "AXS"],
+        "description": "Jeux blockchain, metaverse, play-to-earn, NFT gaming"
+    },
+    "L2": {
+        "name": "Layer 2 Solutions",
+        "icon": "⚡",
+        "color": "#3b82f6",
+        "keywords": [
+            "layer 2", "l2", "scaling", "rollup", "optimistic",
+            "zk", "zero knowledge", "arbitrum", "optimism",
+            "polygon", "zksync", "starknet"
+        ],
+        "top_coins": ["ARB", "OP", "MATIC", "IMX", "LRC"],
+        "description": "Solutions de scalabilité Ethereum, rollups, sidechains"
+    },
+    "Meme": {
+        "name": "Memecoins",
+        "icon": "🐸",
+        "color": "#ef4444",
+        "keywords": [
+            "meme", "memecoin", "doge", "shib", "pepe", "floki",
+            "bonk", "wojak", "inu", "elon", "moon", "safemoon"
+        ],
+        "top_coins": ["DOGE", "SHIB", "PEPE", "FLOKI", "BONK", "WIF"],
+        "description": "Memecoins viraux, community-driven, high volatility"
+    },
+    "Infrastructure": {
+        "name": "Infrastructure",
+        "icon": "🔧",
+        "color": "#6366f1",
+        "keywords": [
+            "infrastructure", "oracle", "bridge", "indexer",
+            "chainlink", "graph", "api3", "band", "middleware"
+        ],
+        "top_coins": ["LINK", "GRT", "API3", "BAND"],
+        "description": "Oracles, bridges, indexers, middleware blockchain"
+    },
+    "Privacy": {
+        "name": "Privacy & Security",
+        "icon": "🔒",
+        "color": "#64748b",
+        "keywords": [
+            "privacy", "anonymous", "private", "zero knowledge",
+            "monero", "zcash", "secret", "tornado", "aztec"
+        ],
+        "top_coins": ["XMR", "ZEC", "SCRT", "ROSE"],
+        "description": "Cryptos privacy, transactions anonymes, ZK tech"
+    }
+}
+
+async def scan_narrative_from_news():
+    """Scan les news crypto pour détecter les narratives émergentes"""
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            url = "https://cryptopanic.com/api/v1/posts/"
+            params = {
+                "auth_token": "free",
+                "kind": "news",
+                "filter": "hot",
+                "regions": "en"
+            }
+            
+            response = await client.get(url, params=params)
+            
+            if response.status_code != 200:
+                return {}
+            
+            data = response.json()
+            posts = data.get("results", [])
+            
+            narrative_scores = defaultdict(lambda: {
+                "mentions": 0,
+                "news_titles": [],
+                "trending_coins": set(),
+                "last_update": datetime.now().isoformat()
+            })
+            
+            for post in posts[:100]:
+                title = post.get("title", "").lower()
+                currencies = post.get("currencies", [])
+                coin_codes = [c.get("code", "").upper() for c in currencies if c.get("code")]
+                
+                for narrative_id, config in NARRATIVES_CONFIG.items():
+                    keywords = config["keywords"]
+                    
+                    if any(keyword in title for keyword in keywords):
+                        narrative_scores[narrative_id]["mentions"] += 1
+                        
+                        if len(narrative_scores[narrative_id]["news_titles"]) < 5:
+                            narrative_scores[narrative_id]["news_titles"].append({
+                                "title": post.get("title", ""),
+                                "url": post.get("url", ""),
+                                "published_at": post.get("published_at", "")
+                            })
+                        
+                        for coin in coin_codes:
+                            if coin in config["top_coins"]:
+                                narrative_scores[narrative_id]["trending_coins"].add(coin)
+            
+            for narrative_id in narrative_scores:
+                narrative_scores[narrative_id]["trending_coins"] = list(
+                    narrative_scores[narrative_id]["trending_coins"]
+                )
+            
+            return dict(narrative_scores)
+            
+    except Exception as e:
+        print(f"❌ scan_narrative_from_news error: {e}")
+        return {}
+
+async def get_narrative_coins_data(narrative_id: str):
+    """Récupère les données détaillées des coins d'une narrative"""
+    try:
+        config = NARRATIVES_CONFIG.get(narrative_id)
+        if not config:
+            return []
+        
+        top_coins = config["top_coins"]
+        
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            url = "https://api.coingecko.com/api/v3/coins/markets"
+            params = {
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": 250,
+                "page": 1,
+                "sparkline": False,
+                "price_change_percentage": "1h,24h,7d"
+            }
+            
+            response = await client.get(url, params=params)
+            
+            if response.status_code != 200:
+                return []
+            
+            all_coins = response.json()
+            narrative_coins = []
+            
+            for coin in all_coins:
+                symbol = coin.get("symbol", "").upper()
+                
+                if symbol in top_coins:
+                    price_change_1h = coin.get("price_change_percentage_1h_in_currency", 0) or 0
+                    price_change_24h = coin.get("price_change_percentage_24h", 0) or 0
+                    price_change_7d = coin.get("price_change_percentage_7d_in_currency", 0) or 0
+                    
+                    volume = coin.get("total_volume", 0) or 0
+                    mcap = coin.get("market_cap", 0) or 0
+                    
+                    momentum = calculate_momentum_score(
+                        price_change_1h,
+                        price_change_24h,
+                        price_change_7d,
+                        volume,
+                        mcap
+                    )
+                    
+                    narrative_coins.append({
+                        "symbol": symbol,
+                        "name": coin.get("name", ""),
+                        "price": coin.get("current_price", 0),
+                        "price_change_1h": round(price_change_1h, 2),
+                        "price_change_24h": round(price_change_24h, 2),
+                        "price_change_7d": round(price_change_7d, 2),
+                        "volume_24h": volume,
+                        "market_cap": mcap,
+                        "momentum_score": momentum,
+                        "image": coin.get("image", ""),
+                        "rank": coin.get("market_cap_rank", 999)
+                    })
+            
+            narrative_coins.sort(key=lambda x: x["momentum_score"], reverse=True)
+            
+            return narrative_coins[:10]
+            
+    except Exception as e:
+        print(f"❌ get_narrative_coins_data error: {e}")
+        return []
+
+def calculate_momentum_score(change_1h, change_24h, change_7d, volume, mcap):
+    """Calcule un score de momentum (0-100)"""
+    score = 50
+    
+    if change_24h > 20:
+        score += 15
+    elif change_24h > 10:
+        score += 10
+    elif change_24h > 5:
+        score += 5
+    elif change_24h < -10:
+        score -= 10
+    
+    if change_7d > 30:
+        score += 15
+    elif change_7d > 15:
+        score += 10
+    elif change_7d > 5:
+        score += 5
+    
+    if volume > 500_000_000:
+        score += 20
+    elif volume > 100_000_000:
+        score += 15
+    elif volume > 50_000_000:
+        score += 10
+    elif volume > 10_000_000:
+        score += 5
+    
+    if change_1h > 5:
+        score += 10
+    elif change_1h > 2:
+        score += 5
+    
+    return max(0, min(100, round(score)))
+
+async def generate_ai_explanation(narrative_id: str, narrative_data: Dict, mode: str = "beginner"):
+    """Génère une explication IA de la narrative"""
+    
+    config = NARRATIVES_CONFIG.get(narrative_id, {})
+    mentions = narrative_data.get("mentions", 0)
+    trending_coins = narrative_data.get("trending_coins", [])
+    
+    if mode == "beginner":
+        explanation = f"""
+<div class="ai-explanation beginner">
+    <h4>🤖 Explication Simple</h4>
+    <p><strong>C'est quoi {config.get('name', narrative_id)} ?</strong></p>
+    <p>{config.get('description', 'Narrative crypto émergente')}</p>
+    <p><strong>Pourquoi c'est important maintenant ?</strong></p>
+    <p>On voit <strong>{mentions} mentions</strong> dans les news crypto récentes. 
+    {"C'est énorme ! La narrative est très chaude. 🔥" if mentions > 10 else 
+     "C'est en train de monter. 📈" if mentions > 5 else
+     "C'est calme pour l'instant. 😴"}</p>
+    <p><strong>Quels coins regarder ?</strong></p>
+    <p>Les leaders de cette narrative sont : {', '.join(trending_coins[:5]) if trending_coins else 'voir liste ci-dessous'}</p>
+    <p><strong>Conseil débutant :</strong></p>
+    <p>{"Ne FOMO pas ! Attends un pullback pour entrer." if mentions > 10 else
+       "C'est peut-être un bon moment pour te positionner progressivement." if mentions > 5 else
+       "Mets cette narrative en watchlist, attends qu'elle se réveille."}</p>
+</div>
+        """
+    else:
+        explanation = f"""
+<div class="ai-explanation pro">
+    <h4>🎯 Analyse Technique</h4>
+    <div class="metric">
+        <strong>Mentions médias :</strong> {mentions}
+        <span class="badge">{"🔥 HOT" if mentions > 10 else "📈 RISING" if mentions > 5 else "⏸️ QUIET"}</span>
+    </div>
+    <div class="metric">
+        <strong>Leaders secteur :</strong> {', '.join(trending_coins[:5]) if trending_coins else 'N/A'}
+    </div>
+    <p><strong>Stratégie recommandée :</strong></p>
+    <ul>
+        {"<li>Take profit partiel si exposé</li><li>Attendre retracement 20-30%</li>" if mentions > 15 else
+         "<li>Position progressive sur dips</li><li>Target: +30-50%</li>" if mentions > 8 else
+         "<li>Watchlist uniquement</li><li>Attendre signal de réveil</li>"}
+    </ul>
+</div>
+        """
+    
+    return explanation
+
+async def scan_all_narratives():
+    """Scan complet de toutes les narratives"""
+    
+    narrative_scores = await scan_narrative_from_news()
+    results = {}
+    
+    for narrative_id, config in NARRATIVES_CONFIG.items():
+        score_data = narrative_scores.get(narrative_id, {
+            "mentions": 0,
+            "news_titles": [],
+            "trending_coins": [],
+            "last_update": datetime.now().isoformat()
+        })
+        
+        coins_data = await get_narrative_coins_data(narrative_id)
+        
+        avg_change_24h = sum(c["price_change_24h"] for c in coins_data) / len(coins_data) if coins_data else 0
+        avg_momentum = sum(c["momentum_score"] for c in coins_data) / len(coins_data) if coins_data else 0
+        total_volume = sum(c["volume_24h"] for c in coins_data) if coins_data else 0
+        
+        mentions = score_data["mentions"]
+        if mentions > 15 or avg_momentum > 75:
+            status = "🔥 VERY HOT"
+            trend = "up"
+        elif mentions > 8 or avg_momentum > 60:
+            status = "📈 RISING"
+            trend = "up"
+        elif mentions > 3 or avg_momentum > 45:
+            status = "⚡ ACTIVE"
+            trend = "neutral"
+        else:
+            status = "😴 QUIET"
+            trend = "down"
+        
+        explanation_beginner = await generate_ai_explanation(narrative_id, score_data, "beginner")
+        explanation_pro = await generate_ai_explanation(narrative_id, score_data, "pro")
+        
+        results[narrative_id] = {
+            **config,
+            "mentions": mentions,
+            "status": status,
+            "trend": trend,
+            "news_titles": score_data["news_titles"],
+            "coins": coins_data,
+            "avg_change_24h": round(avg_change_24h, 2),
+            "avg_momentum": round(avg_momentum, 1),
+            "total_volume_24h": total_volume,
+            "explanation_beginner": explanation_beginner,
+            "explanation_pro": explanation_pro,
+            "last_update": datetime.now().isoformat()
+        }
+        
+        await asyncio.sleep(0.5)
+    
+    sorted_narratives = sorted(
+        results.items(),
+        key=lambda x: (x[1]["mentions"], x[1]["avg_momentum"]),
+        reverse=True
+    )
+    
+    return {
+        "narratives": dict(sorted_narratives),
+        "scan_time": datetime.now().isoformat(),
+        "top_narrative": sorted_narratives[0][0] if sorted_narratives else None
+    }
+
+def get_narrative_summary():
+    """Retourne un résumé rapide des narratives"""
+    return {
+        narrative_id: {
+            "name": config["name"],
+            "icon": config["icon"],
+            "description": config["description"],
+            "top_coins": config["top_coins"]
+        }
+        for narrative_id, config in NARRATIVES_CONFIG.items()
+    }
+
+
+# ============================================================================
+# 🤖 AI CRYPTO COACH - SYSTÈME COMPLET
+# ============================================================================
+
+def analyze_trader_profile(trades: List[Dict]) -> Dict:
+    """Analyse complète du profil trader"""
+    
+    if not trades or len(trades) < 5:
+        return {
+            "profile_type": "Débutant",
+            "confidence": "low",
+            "message": "Pas assez de trades pour analyse (minimum 5 requis)",
+            "recommendations": []
+        }
+    
+    winning_trades = [t for t in trades if t.get("result") == "win"]
+    losing_trades = [t for t in trades if t.get("result") == "loss"]
+    
+    total_trades = len(trades)
+    win_count = len(winning_trades)
+    loss_count = len(losing_trades)
+    win_rate = (win_count / total_trades * 100) if total_trades > 0 else 0
+    
+    total_profit = sum(t.get("profit_percent", 0) for t in winning_trades)
+    total_loss = sum(abs(t.get("profit_percent", 0)) for t in losing_trades)
+    
+    avg_win = total_profit / win_count if win_count > 0 else 0
+    avg_loss = total_loss / loss_count if loss_count > 0 else 0
+    
+    rr_ratio = avg_win / avg_loss if avg_loss > 0 else 0
+    
+    patterns_detected = []
+    
+    # FOMO Pattern
+    fomo_trades = [t for t in trades if t.get("entry_after_pump", False)]
+    if len(fomo_trades) >= 3:
+        fomo_loss_rate = len([t for t in fomo_trades if t.get("result") == "loss"]) / len(fomo_trades) * 100
+        patterns_detected.append({
+            "type": "FOMO",
+            "severity": "high" if fomo_loss_rate > 70 else "medium",
+            "description": f"Tu as pris {len(fomo_trades)} trades après un pump",
+            "impact": f"{fomo_loss_rate:.1f}% de pertes sur ces trades FOMO",
+            "advice": "⚠️ Attends le retracement avant d'entrer"
+        })
+    
+    # Paper Hands
+    early_exit_trades = [t for t in winning_trades if t.get("profit_percent", 0) < 5]
+    if len(early_exit_trades) > win_count * 0.4:
+        patterns_detected.append({
+            "type": "Paper Hands",
+            "severity": "medium",
+            "description": f"Tu coupes {len(early_exit_trades)} trades gagnants trop tôt",
+            "impact": f"Gains moyens de seulement {avg_win:.1f}%",
+            "advice": "💎 Laisse courir tes gagnants ! Trailing stops."
+        })
+    
+    # Stop Loss Ignoré
+    big_losses = [t for t in losing_trades if abs(t.get("profit_percent", 0)) > 15]
+    if len(big_losses) > loss_count * 0.3:
+        patterns_detected.append({
+            "type": "Stop Loss Ignoré",
+            "severity": "high",
+            "description": f"{len(big_losses)} trades avec grosses pertes (>15%)",
+            "impact": f"Pertes moyennes de {avg_loss:.1f}%",
+            "advice": "🛑 RESPECTE TES STOP LOSS !"
+        })
+    
+    # Profil type
+    if win_rate < 40:
+        profile_type = "Trader Émotionnel"
+        profile_description = "Tu trades sur l'émotion"
+    elif win_rate >= 60 and rr_ratio > 2:
+        profile_type = "Trader Discipliné"
+        profile_description = "Excellent profil !"
+    elif rr_ratio < 1:
+        profile_type = "Paper Hands"
+        profile_description = "Tu coupes gains trop tôt"
+    elif len(fomo_trades) > total_trades * 0.3:
+        profile_type = "FOMO Trader"
+        profile_description = "Tu entres après les pumps"
+    else:
+        profile_type = "Trader en Développement"
+        profile_description = "Bon potentiel"
+    
+    # Score
+    score = 50
+    if win_rate > 50:
+        score += 20
+    if rr_ratio > 2:
+        score += 20
+    if avg_loss < 10:
+        score += 10
+    score = max(0, min(100, score))
+    
+    # Strengths & Weaknesses
+    strengths = []
+    if win_rate > 55:
+        strengths.append("✅ Bon taux de réussite")
+    if rr_ratio > 1.5:
+        strengths.append("✅ Excellent R:R ratio")
+    if not strengths:
+        strengths.append("📊 Continue à pratiquer")
+    
+    weaknesses = []
+    high_severity = [p for p in patterns_detected if p["severity"] == "high"]
+    for pattern in high_severity:
+        weaknesses.append(f"⚠️ {pattern['type']}: {pattern['description']}")
+    if win_rate < 45:
+        weaknesses.append("⚠️ Taux de réussite faible")
+    if not weaknesses:
+        weaknesses.append("✅ Aucune faiblesse majeure")
+    
+    # Recommendations
+    recommendations = []
+    if profile_type == "FOMO Trader":
+        recommendations.append({
+            "priority": "high",
+            "title": "Arrête le FOMO",
+            "description": "Attends le retracement",
+            "action": "Si +15% en 1h, attends pull-back -8%"
+        })
+    if profile_type == "Paper Hands":
+        recommendations.append({
+            "priority": "high",
+            "title": "Laisse courir tes gagnants",
+            "description": "Utilise trailing stops",
+            "action": "Trailing stop -5% une fois +10% atteint"
+        })
+    
+    for pattern in patterns_detected:
+        if pattern["type"] == "Stop Loss Ignoré":
+            recommendations.append({
+                "priority": "critical",
+                "title": "RESPECTE TES STOP LOSS",
+                "description": "C'est LA règle #1",
+                "action": "SL à -8% max"
+            })
+    
+    if not recommendations:
+        recommendations.append({
+            "priority": "low",
+            "title": "Continue !",
+            "description": "Bon profil",
+            "action": "Revue hebdo"
+        })
+    
+    return {
+        "profile_type": profile_type,
+        "profile_description": profile_description,
+        "score": round(score, 1),
+        "stats": {
+            "total_trades": total_trades,
+            "win_rate": round(win_rate, 1),
+            "avg_win": round(avg_win, 2),
+            "avg_loss": round(avg_loss, 2),
+            "rr_ratio": round(rr_ratio, 2),
+            "total_profit_percent": round(total_profit - total_loss, 2)
+        },
+        "patterns": patterns_detected,
+        "strengths": strengths,
+        "weaknesses": weaknesses,
+        "recommendations": recommendations
+    }
+
+
+# ============================================================================
+# 📈 ALTSEASON COPILOT PRO
+# ============================================================================
+
+async def analyze_capital_rotation():
+    """Analyse les rotations de capitaux BTC → ETH → Alts"""
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            url = "https://api.coingecko.com/api/v3/coins/markets"
+            params = {
+                "vs_currency": "usd",
+                "ids": "bitcoin,ethereum,solana,cardano,polkadot,avalanche-2,chainlink,polygon",
+                "order": "market_cap_desc",
+                "sparkline": False,
+                "price_change_percentage": "1h,24h,7d"
+            }
+            
+            response = await client.get(url, params=params)
+            data = response.json() if response.status_code == 200 else []
+            
+            btc = next((c for c in data if c["id"] == "bitcoin"), None)
+            eth = next((c for c in data if c["id"] == "ethereum"), None)
+            alts = [c for c in data if c["id"] not in ["bitcoin", "ethereum"]]
+            
+            if not btc or not eth:
+                return {"error": "Données manquantes"}
+            
+            btc_24h = btc.get("price_change_percentage_24h", 0)
+            eth_24h = eth.get("price_change_percentage_24h", 0)
+            alts_avg_24h = sum(a.get("price_change_percentage_24h", 0) for a in alts) / len(alts) if alts else 0
+            
+            # Phase detection
+            if btc_24h > 2 and eth_24h < btc_24h * 0.5:
+                phase = "BTC Dominance"
+                description = "Bitcoin tire le marché"
+                recommendation = "⏸️ Attendre. Pas pour les alts"
+            elif eth_24h > btc_24h * 1.2 and alts_avg_24h < eth_24h:
+                phase = "ETH Rotation"
+                description = "Capitaux vers ETH"
+                recommendation = "🎯 Focus ETH et L1"
+            elif alts_avg_24h > eth_24h * 1.3:
+                phase = "Altseason Large Caps"
+                description = "Alts large caps surperforment"
+                recommendation = "✅ Bon moment large caps"
+            elif alts_avg_24h > 5 and eth_24h > 3:
+                phase = "Altseason Full"
+                description = "Altseason confirmé"
+                recommendation = "🚀 All-in alts"
+            else:
+                phase = "Consolidation"
+                description = "Marché neutre"
+                recommendation = "⏸️ Cash ou BTC/ETH"
+            
+            # BTC Dominance
+            btc_dom = await get_btc_dominance()
+            
+            # Scenarios
+            scenarios = []
+            if btc_dom and btc_dom < 55:
+                scenarios.append({
+                    "condition": "Si BTC dom < 50%",
+                    "probability": "75%",
+                    "outcome": "Altseason midcaps probable",
+                    "action": "Préparer watchlist midcaps"
+                })
+            
+            eth_btc_ratio = eth["current_price"] / btc["current_price"]
+            if eth_btc_ratio > 0.05:
+                scenarios.append({
+                    "condition": "Si ETH/BTC > 0.055",
+                    "probability": "60%",
+                    "outcome": "Rotation massive L1",
+                    "action": "Position SOL, AVAX, DOT"
+                })
+            
+            return {
+                "phase": phase,
+                "description": description,
+                "recommendation": recommendation,
+                "metrics": {
+                    "btc_24h": round(btc_24h, 2),
+                    "eth_24h": round(eth_24h, 2),
+                    "alts_avg_24h": round(alts_avg_24h, 2),
+                    "btc_dominance": btc_dom
+                },
+                "scenarios": scenarios,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+    except Exception as e:
+        return {"error": str(e)}
+
+async def get_btc_dominance():
+    """BTC dominance"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get("https://api.coingecko.com/api/v3/global")
+            if response.status_code == 200:
+                data = response.json()
+                btc_dom = data.get("data", {}).get("market_cap_percentage", {}).get("btc", 0)
+                return round(btc_dom, 2)
+    except:
+        pass
+    return None
+
+
+# ============================================================================
+# 🛡️ RUG & SCAM SHIELD
+# ============================================================================
+
+async def analyze_contract(contract_address: str, chain: str = "ethereum"):
+    """Analyse complète contrat anti-scam"""
+    
+    results = {
+        "contract": contract_address,
+        "chain": chain,
+        "risk_level": "UNKNOWN",
+        "risk_score": 0,
+        "flags": [],
+        "recommendations": [],
+        "analysis_timestamp": datetime.now().isoformat()
+    }
+    
+    # Honeypot check
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            honeypot_url = f"https://api.honeypot.is/v2/IsHoneypot"
+            params = {"address": contract_address}
+            
+            response = await client.get(honeypot_url, params=params)
+            
+            if response.status_code == 200:
+                honeypot_data = response.json()
+                
+                is_honeypot = honeypot_data.get("isHoneypot", False)
+                
+                if is_honeypot:
+                    results["flags"].append({
+                        "severity": "CRITICAL",
+                        "type": "Honeypot",
+                        "description": "🚨 HONEYPOT DÉTECTÉ",
+                        "detail": "Vente impossible"
+                    })
+                    results["risk_score"] += 50
+                
+                buy_tax = honeypot_data.get("buyTax", 0)
+                sell_tax = honeypot_data.get("sellTax", 0)
+                
+                if sell_tax > 15:
+                    results["flags"].append({
+                        "severity": "HIGH",
+                        "type": "High Sell Tax",
+                        "description": f"⚠️ Taxe vente: {sell_tax}%",
+                        "detail": "Taxes >15% = red flag"
+                    })
+                    results["risk_score"] += 25
+                
+                if buy_tax > 10:
+                    results["flags"].append({
+                        "severity": "MEDIUM",
+                        "type": "High Buy Tax",
+                        "description": f"⚠️ Taxe achat: {buy_tax}%",
+                        "detail": "Tu commences avec perte"
+                    })
+                    results["risk_score"] += 15
+                
+    except Exception as e:
+        print(f"❌ Honeypot check error: {e}")
+    
+    # Risk level
+    if results["risk_score"] >= 80:
+        results["risk_level"] = "CRITICAL"
+        results["recommendations"].append("🚨 NE PAS ACHETER")
+    elif results["risk_score"] >= 60:
+        results["risk_level"] = "VERY HIGH"
+        results["recommendations"].append("⛔ ÉVITER")
+    elif results["risk_score"] >= 40:
+        results["risk_level"] = "HIGH"
+        results["recommendations"].append("⚠️ PRUDENCE")
+    elif results["risk_score"] >= 20:
+        results["risk_level"] = "MEDIUM"
+        results["recommendations"].append("🔍 DYOR")
+    else:
+        results["risk_level"] = "LOW"
+        results["recommendations"].append("✅ Pas de red flags majeurs")
+    
+    return results
+
+
 @app.get("/debug-files")
 async def debug_files():
     import os
@@ -32558,3 +33341,356 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         error_page += '</body>'
         error_page += '</html>'
         return HTMLResponse(error_page)
+
+
+# ============================================================================
+# 🌐 NOUVELLES ROUTES - PAGES COMPLÈTES
+# ============================================================================
+# Routes pour les 5 nouvelles features
+# ============================================================================
+
+# ============================================================================
+# 🌐 ROUTES DES 5 NOUVELLES FEATURES
+# ============================================================================
+# Ce fichier contient toutes les routes avec HTML
+# À ajouter À LA FIN de tes routes existantes dans main.py
+# ============================================================================
+
+@app.get("/narrative-radar", response_class=HTMLResponse)
+async def narrative_radar_page(request: Request):
+    """Page Narrative Radar"""
+    
+    token = request.cookies.get("auth_token")
+    user = get_user_from_token(token) if token else None
+    
+    html_content = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Narrative Radar</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a8a 100%); color: white; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1800px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; padding: 40px; background: rgba(255,255,255,0.05); border-radius: 20px; }
+        .header h1 { font-size: 3.5em; background: linear-gradient(45deg, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn { padding: 15px 35px; border: none; border-radius: 12px; background: linear-gradient(45deg, #10b981, #14b8a6); color: white; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+        .narratives-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 25px; }
+        .narrative-card { background: rgba(255,255,255,0.05); border-radius: 20px; padding: 30px; border: 2px solid rgba(255,255,255,0.1); }
+        .loading { display: none; text-align: center; padding: 60px; }
+        .loading.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Narrative Radar</h1>
+            <p>Dashboard temps réel des narratives crypto</p>
+        </div>
+        <button class="btn" onclick="scanNarratives()">🔄 Scanner Maintenant</button>
+        <div class="loading" id="loading"><h3>🔍 Scan en cours...</h3></div>
+        <div class="narratives-grid" id="narrativesGrid"></div>
+    </div>
+    <script>
+        async function scanNarratives() {
+            document.getElementById('loading').classList.add('active');
+            const response = await fetch('/api/narrative-radar/scan', { method: 'POST' });
+            const data = await response.json();
+            document.getElementById('loading').classList.remove('active');
+            
+            const grid = document.getElementById('narrativesGrid');
+            grid.innerHTML = '';
+            for (const [id, narrative] of Object.entries(data.narratives)) {
+                grid.innerHTML += `<div class="narrative-card">
+                    <h2>${narrative.icon} ${narrative.name}</h2>
+                    <p>Status: ${narrative.status}</p>
+                    <p>Mentions: ${narrative.mentions}</p>
+                    <p>Avg Change 24h: ${narrative.avg_change_24h}%</p>
+                </div>`;
+            }
+        }
+    </script>
+</body>
+</html>
+    """
+    return HTMLResponse(content=html_content)
+
+
+@app.post("/api/narrative-radar/scan")
+async def api_scan_narratives():
+    """API scan narratives"""
+    try:
+        results = await scan_all_narratives()
+        return results
+    except Exception as e:
+        return {"error": str(e), "narratives": {}}
+
+
+@app.get("/ai-crypto-coach", response_class=HTMLResponse)
+async def ai_crypto_coach_page(request: Request):
+    """Page AI Crypto Coach"""
+    
+    html_content = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>🤖 AI Crypto Coach</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0f172a, #1e293b, #334155); color: white; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; padding: 40px; background: rgba(255,255,255,0.05); border-radius: 20px; }
+        .header h1 { font-size: 3.5em; background: linear-gradient(45deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn { padding: 15px 35px; border: none; border-radius: 12px; background: linear-gradient(45deg, #10b981, #14b8a6); color: white; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+        .profile-card { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 40px; border-radius: 20px; margin: 40px 0; }
+        .profile-type { font-size: 2.5em; font-weight: bold; }
+        .profile-score { font-size: 4em; font-weight: bold; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }
+        .stat-box { background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 2.5em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Crypto Coach</h1>
+            <p>Ton coach personnel IA</p>
+        </div>
+        <button class="btn" onclick="analyzeProfile()">🔍 Analyser Mon Profil</button>
+        <div id="results"></div>
+    </div>
+    <script>
+        async function analyzeProfile() {
+            const response = await fetch('/api/ai-coach/analyze', { method: 'POST' });
+            const data = await response.json();
+            
+            if (data.profile_type) {
+                document.getElementById('results').innerHTML = `
+                    <div class="profile-card">
+                        <div class="profile-type">${data.profile_type}</div>
+                        <p>${data.profile_description}</p>
+                        <div class="profile-score">${data.score}/100</div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">${data.stats.total_trades}</div>
+                            <div>Total Trades</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${data.stats.win_rate}%</div>
+                            <div>Win Rate</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${data.stats.rr_ratio}</div>
+                            <div>R:R Ratio</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                alert(data.message || 'Pas assez de trades');
+            }
+        }
+    </script>
+</body>
+</html>
+    """
+    return HTMLResponse(content=html_content)
+
+
+@app.post("/api/ai-coach/analyze")
+async def api_analyze_trader_profile(request: Request):
+    """API analyze trader profile"""
+    try:
+        token = request.cookies.get("auth_token")
+        user = get_user_from_token(token) if token else None
+        
+        if not user:
+            return {"error": "Non authentifié"}
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT symbol, entry_price, exit_price, profit_percent, 
+                   result, timestamp, setup_type, timeframe, notes
+            FROM trades 
+            WHERE username = ?
+            ORDER BY timestamp DESC
+            LIMIT 100
+        """, (user["username"],))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        trades = []
+        for row in rows:
+            trades.append({
+                "symbol": row[0],
+                "entry_price": row[1],
+                "exit_price": row[2],
+                "profit_percent": row[3],
+                "result": row[4],
+                "timestamp": row[5],
+                "setup_type": row[6] or "unknown",
+                "timeframe": row[7] or "1H",
+                "notes": row[8] or ""
+            })
+        
+        profile = analyze_trader_profile(trades)
+        return profile
+        
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/altseason-copilot-pro", response_class=HTMLResponse)
+async def altseason_copilot_page(request: Request):
+    """Page Altseason Copilot"""
+    
+    html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📈 Altseason Copilot Pro</title>
+    <style>
+        body { font-family: sans-serif; background: linear-gradient(135deg, #1e3a8a, #312e81); color: white; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 3em; }
+        .btn { background: linear-gradient(45deg, #10b981, #14b8a6); color: white; padding: 15px 35px; border: none; border-radius: 12px; font-size: 1.1em; cursor: pointer; }
+        .phase-card { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; margin: 30px 0; }
+        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 30px 0; }
+        .metric { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; text-align: center; }
+        .metric-value { font-size: 2.5em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📈 Altseason Copilot Pro</h1>
+            <p>Analyse des flux de capitaux</p>
+        </div>
+        <button class="btn" onclick="analyzeRotation()">🔄 Analyser</button>
+        <div id="results"></div>
+    </div>
+    <script>
+        async function analyzeRotation() {
+            const res = await fetch('/api/altseason-copilot/analyze', {method: 'POST'});
+            const data = await res.json();
+            
+            document.getElementById('results').innerHTML = `
+                <div class="phase-card">
+                    <h2>Phase: ${data.phase}</h2>
+                    <p>${data.description}</p>
+                    <p style="background: rgba(16,185,129,0.2); padding: 20px; border-radius: 12px; margin-top: 20px;">
+                        ${data.recommendation}
+                    </p>
+                </div>
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="metric-value">${data.metrics.btc_24h}%</div>
+                        <div>BTC 24h</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">${data.metrics.eth_24h}%</div>
+                        <div>ETH 24h</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">${data.metrics.alts_avg_24h}%</div>
+                        <div>Alts 24h</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">${data.metrics.btc_dominance}%</div>
+                        <div>BTC Dom</div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
+    """
+    return HTMLResponse(content=html)
+
+
+@app.post("/api/altseason-copilot/analyze")
+async def api_altseason_analyze():
+    """API altseason analyze"""
+    results = await analyze_capital_rotation()
+    return results
+
+
+@app.get("/rug-scam-shield", response_class=HTMLResponse)
+async def rug_scam_shield_page(request: Request):
+    """Page Rug & Scam Shield"""
+    
+    html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🛡️ Rug & Scam Shield</title>
+    <style>
+        body { font-family: sans-serif; background: linear-gradient(135deg, #7c2d12, #991b1b); color: white; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; }
+        input { width: 100%; padding: 15px; font-size: 1.1em; border-radius: 8px; border: none; margin-bottom: 15px; }
+        .btn { background: linear-gradient(45deg, #ef4444, #dc2626); color: white; padding: 15px 35px; border: none; border-radius: 12px; font-size: 1.1em; cursor: pointer; width: 100%; }
+        .risk-card { padding: 30px; border-radius: 15px; margin: 20px 0; }
+        .risk-critical { background: rgba(239,68,68,0.3); border: 3px solid #ef4444; }
+        .risk-low { background: rgba(34,197,94,0.3); border: 3px solid #22c55e; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Rug & Scam Shield</h1>
+            <p>Analyse anti-scam</p>
+        </div>
+        <input type="text" id="contractInput" placeholder="0x..." />
+        <button class="btn" onclick="scanContract()">🔍 Analyser</button>
+        <div id="results"></div>
+    </div>
+    <script>
+        async function scanContract() {
+            const contract = document.getElementById('contractInput').value;
+            if (!contract) { alert('Entre un contrat'); return; }
+            
+            const res = await fetch('/api/scam-shield/analyze', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({contract_address: contract})
+            });
+            const data = await res.json();
+            
+            const riskClass = data.risk_level.includes('CRITICAL') ? 'risk-critical' : 'risk-low';
+            
+            document.getElementById('results').innerHTML = `
+                <div class="risk-card ${riskClass}">
+                    <h2>Niveau: ${data.risk_level}</h2>
+                    <p style="font-size: 2em;">Score: ${data.risk_score}/100</p>
+                    <p>${data.recommendations[0] || 'Analyse terminée'}</p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
+    """
+    return HTMLResponse(content=html)
+
+
+@app.post("/api/scam-shield/analyze")
+async def api_scam_shield_analyze(request: Request):
+    """API scam shield"""
+    try:
+        body = await request.json()
+        contract = body.get("contract_address", "")
+        if not contract:
+            return {"error": "Contract required"}
+        results = await analyze_contract(contract)
+        return results
+    except Exception as e:
+        return {"error": str(e)}

@@ -103,19 +103,6 @@ except ImportError:
     COINBASE_AVAILABLE = False
     print("⚠️  coinbase_commerce non installé - Coinbase désactivé")
     Client = None
-
-# ========== NOUVELLES FEATURES - MODULES SÉPARÉS ==========
-from collections import defaultdict
-from typing import List, Dict, Optional
-
-# Import des 5 nouveaux modules
-from features_narrative_radar import router as narrative_router
-from features_ai_coach import router as coach_router
-from features_altseason import router as altseason_router
-from features_scam_shield import router as shield_router
-from features_ai_swarm import router as swarm_router
-# ===========================================================
-
 # ================================================
 
 # ============================================================================
@@ -1085,15 +1072,6 @@ UPCOMING_GEMS_COMPLETE = [
 
 app = FastAPI()
 
-# ========== ENREGISTREMENT DES ROUTES DES NOUVELLES FEATURES ==========
-app.include_router(narrative_router, tags=["Narrative Radar"])
-app.include_router(coach_router, tags=["AI Coach"])
-app.include_router(altseason_router, tags=["Altseason"])
-app.include_router(shield_router, tags=["Scam Shield"])
-app.include_router(swarm_router, tags=["AI Swarm"])
-# =======================================================================
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # 🔐 CORRECTION 2: RATE LIMITING - Protection contre brute-force
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1601,11 +1579,41 @@ body.sidebar-open{margin-left:280px}
             <a href="/ai-gem-hunter" class="menu-item ai-feature">
                 <span class="icon">💎</span>
                 <span class="label">Gem Hunter</span>
+            </a>
             
             <a href="/ai-technical-analysis" class="menu-item ai-feature">
     <span class="icon">🎯</span>
     <span class="label">Technical Analysis Pro</span>
 </a>
+            </a>
+        </div>
+        
+            
+            <!-- 🆕 5 NOUVELLES FEATURES -->
+            <a href="/narrative-radar" class="menu-item ai-feature">
+                <span class="icon">🎯</span>
+                <span class="label">Narrative Radar</span>
+                <span class="badge">NEW</span>
+            </a>
+            <a href="/ai-crypto-coach" class="menu-item ai-feature">
+                <span class="icon">🤖</span>
+                <span class="label">AI Crypto Coach</span>
+                <span class="badge">NEW</span>
+            </a>
+            <a href="/ai-swarm-agents" class="menu-item ai-feature">
+                <span class="icon">🤖</span>
+                <span class="label">AI Swarm Agents</span>
+                <span class="badge">NEW</span>
+            </a>
+            <a href="/altseason-copilot-pro" class="menu-item ai-feature">
+                <span class="icon">📈</span>
+                <span class="label">Altseason Copilot Pro</span>
+                <span class="badge">NEW</span>
+            </a>
+            <a href="/rug-scam-shield" class="menu-item ai-feature">
+                <span class="icon">🛡️</span>
+                <span class="label">Rug & Scam Shield</span>
+                <span class="badge">NEW</span>
             </a>
         </div>
         
@@ -32579,9 +32587,10 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         error_page += '</div>'
         error_page += '</body>'
         error_page += '</html>'
-        return HTMLResponse(error_page)
+
+
 # ============================================================================
-# 1. 🎯 NARRATIVE RADAR
+# 🆕 NOUVELLES FEATURES - 5 ROUTES AVEC DESIGN INTÉGRÉ
 # ============================================================================
 
 @app.get("/narrative-radar", response_class=HTMLResponse)
@@ -32731,7 +32740,6 @@ async function scanNow() {
     const container = document.getElementById('narratives');
     container.innerHTML = '<div style="text-align: center; padding: 40px; grid-column: 1 / -1; color: #00ff88;">🔄 Scan en cours...</div>';
     
-    // Simuler un scan (remplacer par vraie API plus tard)
     setTimeout(() => {
         let html = '';
         
@@ -32771,46 +32779,41 @@ function getStatus(mentions) {
 """)
 
 
-# ============================================================================
-# 2. 🤖 AI CRYPTO COACH
-# ============================================================================
-
 @app.get("/ai-crypto-coach", response_class=HTMLResponse)
 async def ai_crypto_coach():
     """🤖 AI Crypto Coach - Analyse ton profil de trader"""
     
-    # Compter les trades
     total_trades = len(trades_db)
     
     if total_trades < 5:
-        return HTMLResponse(SIDEBAR + """
+        return HTMLResponse(SIDEBAR + f"""
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <title>🤖 AI Crypto Coach</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ 
             background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); 
             color: #fff; 
             font-family: Arial, sans-serif; 
             min-height: 100vh; 
-        }
-        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }
+        }}
+        .container {{ max-width: 1000px; margin: 0 auto; padding: 20px; }}
+        h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
         
-        .warning-box {
+        .warning-box {{
             background: rgba(255,255,255,0.05);
             border: 2px solid rgba(239,68,68,0.5);
             border-radius: 12px;
             padding: 40px;
             text-align: center;
             margin-top: 50px;
-        }
-        .warning-icon { font-size: 4em; margin-bottom: 20px; }
-        .warning-title { font-size: 1.8em; color: #ef4444; margin-bottom: 20px; }
-        .warning-text { font-size: 1.2em; color: #aaa; line-height: 1.6; }
+        }}
+        .warning-icon {{ font-size: 4em; margin-bottom: 20px; }}
+        .warning-title {{ font-size: 1.8em; color: #ef4444; margin-bottom: 20px; }}
+        .warning-text {{ font-size: 1.2em; color: #aaa; line-height: 1.6; }}
     </style>
 </head>
 <body>
@@ -32823,21 +32826,20 @@ async def ai_crypto_coach():
         <div class="warning-title">Pas assez de trades</div>
         <div class="warning-text">
             Il te faut minimum <strong style="color: #00ff88;">5 trades</strong> dans ton historique pour une analyse complète.<br><br>
-            Trades actuels: <strong style="color: #00d4ff;">""" + str(total_trades) + """</strong><br><br>
+            Trades actuels: <strong style="color: #00d4ff;">{total_trades}</strong><br><br>
             Va faire quelques trades et reviens ! 📊
         </div>
     </div>
 </div>
 <script>
-function toggleSidebar() {
+function toggleSidebar() {{
     document.getElementById('sidebar').classList.toggle('active');
-}
+}}
 </script>
 </body>
 </html>
 """)
     
-    # Si assez de trades, faire l'analyse (à implémenter plus tard)
     return HTMLResponse(SIDEBAR + """
 <!DOCTYPE html>
 <html lang="fr">
@@ -32861,10 +32863,6 @@ function toggleSidebar() {
 </html>
 """)
 
-
-# ============================================================================
-# 3. 🤖 AI SWARM AGENTS
-# ============================================================================
 
 @app.get("/ai-swarm-agents", response_class=HTMLResponse)
 async def ai_swarm_agents():
@@ -32973,7 +32971,7 @@ function selectProfile(profile, element) {
 
 function runAnalysis() {
     if (!selectedProfile) {
-        alert('⚠️ Sélectionne un profil d\\'abord !');
+        alert('⚠️ Sélectionne un profil d\'abord !');
         return;
     }
     
@@ -33002,30 +33000,22 @@ function runAnalysis() {
 """)
 
 
-# ============================================================================
-# 4. 📈 ALTSEASON COPILOT PRO
-# ============================================================================
-
 @app.get("/altseason-copilot-pro", response_class=HTMLResponse)
 async def altseason_copilot():
     """📈 Altseason Copilot Pro - Rotation de capital"""
     
-    # Récupérer les données réelles
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
-            # BTC
             btc_resp = await client.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true")
             btc_data = btc_resp.json().get("bitcoin", {})
             btc_price = btc_data.get("usd", 0)
             btc_change = btc_data.get("usd_24h_change", 0)
             
-            # ETH
             eth_resp = await client.get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true")
             eth_data = eth_resp.json().get("ethereum", {})
             eth_price = eth_data.get("usd", 0)
             eth_change = eth_data.get("usd_24h_change", 0)
             
-            # BTC Dominance
             global_resp = await client.get("https://api.coingecko.com/api/v3/global")
             global_data = global_resp.json().get("data", {})
             btc_dom = global_data.get("market_cap_percentage", {}).get("btc", 0)
@@ -33033,7 +33023,6 @@ async def altseason_copilot():
     except:
         btc_price, btc_change, eth_price, eth_change, btc_dom = 97000, -2.5, 3600, -3.2, 56.5
     
-    # Déterminer la phase
     if btc_dom > 55:
         phase = "BTC Dominance"
         phase_emoji = "🔵"
@@ -33176,10 +33165,6 @@ setInterval(() => {{
 </html>
 """)
 
-
-# ============================================================================
-# 5. 🛡️ RUG & SCAM SHIELD
-# ============================================================================
 
 @app.get("/rug-scam-shield", response_class=HTMLResponse)
 async def rug_scam_shield():
@@ -33379,10 +33364,4 @@ function analyzeContract() {
 </html>
 """)
 
-# ============================================================================
-# FIN DES 5 FEATURES
-# ============================================================================
-
-
-
-
+        return HTMLResponse(error_page)

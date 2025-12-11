@@ -32810,7 +32810,7 @@ async def narrative_radar():
         </div>
         
         <div class="data-source" id="dataSource" style="display: none;">
-            ✅ Données RÉELLES - Source : CryptoPanic API
+            <span class="status-text">✅ Données CryptoPanic Live</span>
         </div>
         
         <div class="footer-info">
@@ -32895,12 +32895,21 @@ async function scanNow() {
         
         // Afficher la source des données
         var sourceText = dataSource.querySelector('.status-text');
-        if (data.mode === 'live') {
-            sourceText.textContent = '✅ Données CryptoPanic Live';
-            sourceText.style.color = '#10b981';
+        if (sourceText) {
+            if (data.mode === 'live') {
+                sourceText.textContent = '✅ Données CryptoPanic Live';
+                sourceText.style.color = '#10b981';
+            } else {
+                sourceText.textContent = '🔄 Mode Démo (API temporairement indisponible)';
+                sourceText.style.color = '#f59e0b';
+            }
         } else {
-            sourceText.textContent = '🔄 Mode Démo (API temporairement indisponible)';
-            sourceText.style.color = '#f59e0b';
+            // Fallback : modifier directement dataSource si .status-text n'existe pas
+            if (data.mode === 'live') {
+                dataSource.innerHTML = '<span style="color: #10b981;">✅ Données CryptoPanic Live</span>';
+            } else {
+                dataSource.innerHTML = '<span style="color: #f59e0b;">🔄 Mode Démo (API temporairement indisponible)</span>';
+            }
         }
         
         displayNarratives(narrativesWithMomentum);

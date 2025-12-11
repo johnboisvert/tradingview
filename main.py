@@ -32960,6 +32960,7 @@ async def narrative_radar():
         
         <div class="scan-section">
             <button class="scan-btn" id="scanBtn" onclick="scanNow()">🔍 Scanner Maintenant</button>
+            <div id="cooldownInfo" style="text-align: center; margin-top: 10px; color: rgba(255,255,255,0.5); font-size: 0.9em;"></div>
         </div>
         
         <div id="narratives" class="narratives-grid">
@@ -32985,9 +32986,12 @@ async def narrative_radar():
             </div>
         </div>
         
-        <div style="text-align: center; margin: 20px 0;">
+        <div style="text-align: center; margin: 20px 0; display: flex; gap: 15px; justify-content: center;">
             <button onclick="toggleDebug()" style="background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.4); color: #06b6d4; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                 🐛 Voir les Titres Réels
+            </button>
+            <button onclick="resetScores()" style="background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: #ef4444; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                🔄 Réinitialiser Momentum
             </button>
         </div>
         
@@ -33023,10 +33027,45 @@ var NARRATIVES = {
     Privacy: {icon: '🔒', coins: ['XMR', 'ZEC', 'SCRT', 'ROSE'], description: 'Privacy'}
 };
 
+// 🔥 CHARGER LES DONNÉES PERSISTANTES
 var previousScores = {};
 var scanCount = 0;
 var lastScanTime = 0;
 var COOLDOWN_MS = 120000; // 🔥 2 MINUTES = 120 secondes
+
+// Charger depuis localStorage
+try {
+    var stored = localStorage.getItem('narrativeRadar_previousScores');
+    if (stored) {
+        previousScores = JSON.parse(stored);
+        console.log('✅ Scores précédents chargés:', previousScores);
+    }
+    
+    var storedTime = localStorage.getItem('narrativeRadar_lastScanTime');
+    if (storedTime) {
+        lastScanTime = parseInt(storedTime);
+        console.log('✅ Dernier scan:', new Date(lastScanTime).toLocaleTimeString());
+    }
+    
+    var storedCount = localStorage.getItem('narrativeRadar_scanCount');
+    if (storedCount) {
+        scanCount = parseInt(storedCount);
+        console.log('✅ Nombre de scans:', scanCount);
+    }
+} catch (e) {
+    console.warn('⚠️ Erreur chargement localStorage:', e);
+}
+
+function saveToLocalStorage() {
+    try {
+        localStorage.setItem('narrativeRadar_previousScores', JSON.stringify(previousScores));
+        localStorage.setItem('narrativeRadar_lastScanTime', lastScanTime.toString());
+        localStorage.setItem('narrativeRadar_scanCount', scanCount.toString());
+        console.log('💾 Données sauvegardées');
+    } catch (e) {
+        console.warn('⚠️ Erreur sauvegarde localStorage:', e);
+    }
+}
 
 function toggleDebug() {
     var panel = document.getElementById('debugPanel');
@@ -33034,6 +33073,17 @@ function toggleDebug() {
         panel.style.display = 'block';
     } else {
         panel.style.display = 'none';
+    }
+}
+
+function resetScores() {
+    if (confirm('Voulez-vous réinitialiser tous les scores précédents ?\n\nLe prochain scan aura un momentum de 0%, puis les scans suivants montreront les changements réels.')) {
+        previousScores = {};
+        scanCount = 0;
+        lastScanTime = 0;
+        saveToLocalStorage();
+        alert('✅ Scores réinitialisés !\n\nLe prochain scan sera considéré comme le premier.');
+        console.log('🔄 Scores réinitialisés');
     }
 }
 
@@ -33119,7 +33169,18 @@ async function scanNow() {
                 sourceText.textContent = '✅ Données CryptoPanic Live';
                 sourceText.style.color = '#10b981';
                 if (postsAnalyzed) {
-                    postsAnalyzed.textContent = '(' + (data.postsAnalyzed || data.totalNews) + ' posts analysés)';
+                    var postsText = '(' + (data.postsAnalyzed || data.totalNews) + ' posts analysés)';
+                    
+                    // 🔥 AJOUTER INFO SUR LE MOMENTUM
+                    if (scanCount === 0) {
+                        postsText += ' • 💡 Momentum à 0% : premier scan, pas de données précédentes';
+                    } else if (scanCount === 1) {
+                        postsText += ' • 💡 Scan 2 : le momentum va maintenant changer !';
+                    } else {
+                        postsText += ' • Scan #' + (scanCount + 1);
+                    }
+                    
+                    postsAnalyzed.textContent = postsText;
                 }
             } else {
                 sourceText.textContent = '🔄 Mode Démo (API temporairement indisponible)';
@@ -33147,7 +33208,11 @@ async function scanNow() {
         displayNarratives(narrativesWithMomentum);
         scanCount++;
         
+        // 💾 SAUVEGARDER DANS LOCALSTORAGE
+        saveToLocalStorage();
+        
         console.log('✅ Scan réel terminé - Source: ' + data.source);
+        console.log('📊 Scores sauvegardés:', previousScores);
         
     } catch (error) {
         console.error('Erreur:', error);
@@ -33214,6 +33279,32 @@ setInterval(function() {
         scanNow();
     }
 }, 300000);
+
+// 🔥 TIMER COOLDOWN EN TEMPS RÉEL
+setInterval(function() {
+    var cooldownInfo = document.getElementById('cooldownInfo');
+    if (!cooldownInfo) return;
+    
+    if (lastScanTime === 0) {
+        cooldownInfo.textContent = '💡 Aucun scan effectué - Prêt à scanner !';
+        cooldownInfo.style.color = '#10b981';
+        return;
+    }
+    
+    var now = Date.now();
+    var timeSinceLastScan = now - lastScanTime;
+    var remainingTime = COOLDOWN_MS - timeSinceLastScan;
+    
+    if (remainingTime > 0) {
+        var minutes = Math.floor(remainingTime / 60000);
+        var seconds = Math.floor((remainingTime % 60000) / 1000);
+        cooldownInfo.textContent = '⏱️ Prochain scan disponible dans ' + minutes + 'm ' + seconds + 's';
+        cooldownInfo.style.color = '#f59e0b';
+    } else {
+        cooldownInfo.textContent = '✅ Prêt à scanner !';
+        cooldownInfo.style.color = '#10b981';
+    }
+}, 1000); // Mise à jour toutes les secondes
 
 console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 </script>

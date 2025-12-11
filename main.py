@@ -34246,6 +34246,224 @@ async def ai_crypto_coach():
             </button>
         </div>
     </div>
+    
+    <!-- ============================================ -->
+    <!-- GUIDE D'UTILISATION -->
+    <!-- ============================================ -->
+    <div style="max-width: 1400px; margin: 60px auto 40px; padding: 40px; background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(0,255,136,0.1)); border-radius: 20px; border: 2px solid rgba(0,212,255,0.3);">
+        
+        <!-- En-tête du Guide -->
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h2 style="font-size: 2.5em; color: #00d4ff; margin-bottom: 15px; text-shadow: 0 0 20px rgba(0,212,255,0.5);">
+                📚 Guide d'Utilisation - AI Crypto Coach
+            </h2>
+            <p style="font-size: 1.2em; color: #aaa; max-width: 800px; margin: 0 auto;">
+                Votre assistant personnel propulsé par Claude AI pour maîtriser le trading crypto, de débutant à expert !
+            </p>
+        </div>
+
+        <!-- Section 1: C'est quoi cette page ? -->
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 1.8em; color: #00ff88; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.3em;">🎯</span>
+                C'est quoi AI Crypto Coach ?
+            </h3>
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; border-left: 4px solid #00d4ff;">
+                <p style="color: #ddd; font-size: 1.1em; line-height: 1.8; margin-bottom: 15px;">
+                    <strong style="color: #00d4ff;">AI Crypto Coach</strong> est votre plateforme d'apprentissage personnalisée pour le trading crypto. 
+                    Propulsée par <strong style="color: #00ff88;">Claude Sonnet 4</strong> (l'IA la plus avancée d'Anthropic), 
+                    cette page vous accompagne dans votre parcours d'apprentissage avec :
+                </p>
+                <ul style="color: #ddd; font-size: 1.05em; line-height: 1.8; margin-left: 20px;">
+                    <li><strong style="color: #00d4ff;">9 parcours d'apprentissage</strong> adaptés à votre niveau (Débutant, Intermédiaire, Expert)</li>
+                    <li><strong style="color: #00d4ff;">30 leçons complètes</strong> couvrant tout le spectre crypto (Bitcoin, DeFi, Trading, Sécurité)</li>
+                    <li><strong style="color: #00d4ff;">Chat intelligent</strong> qui répond à toutes vos questions en temps réel</li>
+                    <li><strong style="color: #00d4ff;">Quiz interactifs</strong> pour valider vos connaissances</li>
+                    <li><strong style="color: #00d4ff;">Système de badges</strong> pour gamifier votre apprentissage</li>
+                    <li><strong style="color: #00d4ff;">Suivi de progression</strong> en temps réel avec statistiques détaillées</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Section 2: Comment l'utiliser ? -->
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 1.8em; color: #00ff88; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.3em;">🚀</span>
+                Comment l'utiliser ?
+            </h3>
+            
+            <!-- Étape 1: Modes -->
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; margin-bottom: 20px; border-left: 4px solid #00d4ff;">
+                <h4 style="color: #00d4ff; font-size: 1.4em; margin-bottom: 15px;">
+                    1️⃣ Choisissez votre Mode d'Apprentissage
+                </h4>
+                <p style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-bottom: 15px;">
+                    En haut de la page, sélectionnez votre niveau actuel :
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div style="background: rgba(0,212,255,0.1); padding: 15px; border-radius: 10px; border: 1px solid rgba(0,212,255,0.3);">
+                        <div style="font-size: 2em; margin-bottom: 8px;">🌱</div>
+                        <strong style="color: #00d4ff; font-size: 1.1em;">Débutant</strong>
+                        <p style="color: #aaa; font-size: 0.95em; margin-top: 8px;">
+                            Découvrez les bases : Bitcoin, blockchain, wallets, premiers trades
+                        </p>
+                    </div>
+                    <div style="background: rgba(0,255,136,0.1); padding: 15px; border-radius: 10px; border: 1px solid rgba(0,255,136,0.3);">
+                        <div style="font-size: 2em; margin-bottom: 8px;">📈</div>
+                        <strong style="color: #00ff88; font-size: 1.1em;">Intermédiaire</strong>
+                        <p style="color: #aaa; font-size: 0.95em; margin-top: 8px;">
+                            Analyse technique, DeFi, stratégies de trading avancées
+                        </p>
+                    </div>
+                    <div style="background: rgba(251,191,36,0.1); padding: 15px; border-radius: 10px; border: 1px solid rgba(251,191,36,0.3);">
+                        <div style="font-size: 2em; margin-bottom: 8px;">🚀</div>
+                        <strong style="color: #fbbf24; font-size: 1.1em;">Expert</strong>
+                        <p style="color: #aaa; font-size: 0.95em; margin-top: 8px;">
+                            Leverage, futures, arbitrage DeFi, MEV, smart contracts
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Étape 2: Chat -->
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; margin-bottom: 20px; border-left: 4px solid #00ff88;">
+                <h4 style="color: #00ff88; font-size: 1.4em; margin-bottom: 15px;">
+                    2️⃣ Chattez avec l'AI Coach
+                </h4>
+                <p style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-bottom: 15px;">
+                    Posez n'importe quelle question crypto dans le chat central :
+                </p>
+                <ul style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-left: 20px;">
+                    <li><strong style="color: #00d4ff;">Tapez votre question</strong> dans la zone de texte en bas</li>
+                    <li><strong style="color: #00d4ff;">Cliquez "Envoyer"</strong> (ou pressez Enter)</li>
+                    <li><strong style="color: #00d4ff;">Utilisez les Quick Prompts</strong> : Les 5 boutons au-dessus du chat suggèrent des questions populaires</li>
+                    <li><strong style="color: #00d4ff;">L'historique est sauvegardé</strong> : Claude se souvient du contexte de la conversation</li>
+                </ul>
+                <div style="background: rgba(0,212,255,0.1); padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px solid rgba(0,212,255,0.2);">
+                    <p style="color: #00d4ff; font-size: 0.95em; margin: 0;">
+                        💡 <strong>Astuce :</strong> Les Quick Prompts changent selon votre mode ! Testez les 3 modes pour voir toutes les questions.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Étape 3: Parcours -->
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; margin-bottom: 20px; border-left: 4px solid #fbbf24;">
+                <h4 style="color: #fbbf24; font-size: 1.4em; margin-bottom: 15px;">
+                    3️⃣ Suivez les Parcours d'Apprentissage
+                </h4>
+                <p style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-bottom: 15px;">
+                    Dans la sidebar gauche, explorez les 9 parcours structurés :
+                </p>
+                <ol style="color: #ddd; font-size: 1.05em; line-height: 1.8; margin-left: 20px;">
+                    <li><strong style="color: #00d4ff;">Cliquez sur un parcours</strong> (ex: "🌱 Les Bases du Crypto")</li>
+                    <li><strong style="color: #00d4ff;">Lisez le contenu de la leçon</strong> qui s'affiche au centre</li>
+                    <li><strong style="color: #00d4ff;">Cliquez "Passer le Quiz"</strong> pour tester vos connaissances</li>
+                    <li><strong style="color: #00d4ff;">Répondez aux questions</strong> (2-5 questions par parcours)</li>
+                    <li><strong style="color: #00d4ff;">Obtenez votre score</strong> : 70%+ = parcours validé ✅</li>
+                </ol>
+                <div style="background: rgba(251,191,36,0.1); padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px solid rgba(251,191,36,0.2);">
+                    <p style="color: #fbbf24; font-size: 0.95em; margin: 0;">
+                        🎯 <strong>Objectif :</strong> Complétez les 9 parcours pour débloquer tous les badges et obtenir votre certificat !
+                    </p>
+                </div>
+            </div>
+
+            <!-- Étape 4: Badges -->
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+                <h4 style="color: #10b981; font-size: 1.4em; margin-bottom: 15px;">
+                    4️⃣ Collectez les Badges
+                </h4>
+                <p style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-bottom: 15px;">
+                    Dans le panel droit "Votre Progression", suivez vos accomplissements :
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 15px;">
+                    <div style="background: rgba(0,212,255,0.05); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">📖</div>
+                        <strong style="color: #00d4ff; font-size: 0.9em;">Première Leçon</strong>
+                        <p style="color: #888; font-size: 0.85em; margin-top: 5px;">Complétez 1 leçon</p>
+                    </div>
+                    <div style="background: rgba(0,255,136,0.05); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">🌱</div>
+                        <strong style="color: #00ff88; font-size: 0.9em;">Débutant</strong>
+                        <p style="color: #888; font-size: 0.85em; margin-top: 5px;">Complétez 5 leçons</p>
+                    </div>
+                    <div style="background: rgba(251,191,36,0.05); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">🎯</div>
+                        <strong style="color: #fbbf24; font-size: 0.9em;">Quiz Master</strong>
+                        <p style="color: #888; font-size: 0.85em; margin-top: 5px;">Réussissez 10 quiz</p>
+                    </div>
+                    <div style="background: rgba(139,92,246,0.05); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">🤔</div>
+                        <strong style="color: #8b5cf6; font-size: 0.9em;">Curieux</strong>
+                        <p style="color: #888; font-size: 0.85em; margin-top: 5px;">Posez 20 questions</p>
+                    </div>
+                </div>
+                <p style="color: #aaa; font-size: 0.95em; margin-top: 15px; text-align: center;">
+                    ... et 5 autres badges à découvrir ! 🏆
+                </p>
+            </div>
+
+            <!-- Étape 5: Certificat -->
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; border-left: 4px solid #ef4444;">
+                <h4 style="color: #ef4444; font-size: 1.4em; margin-bottom: 15px;">
+                    5️⃣ Obtenez votre Certificat
+                </h4>
+                <p style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-bottom: 15px;">
+                    Atteignez <strong style="color: #00d4ff;">100% de progression</strong> pour débloquer le bouton "🎓 Générer Certificat" :
+                </p>
+                <ul style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-left: 20px;">
+                    <li>Complétez <strong style="color: #00d4ff;">tous les 30 parcours</strong></li>
+                    <li>Réussissez <strong style="color: #00d4ff;">tous les 15 quiz</strong> (70%+ chacun)</li>
+                    <li>Débloquez <strong style="color: #00d4ff;">tous les 9 badges</strong></li>
+                </ul>
+                <div style="background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(251,191,36,0.2)); padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px solid rgba(239,68,68,0.3); text-align: center;">
+                    <p style="color: #fbbf24; font-size: 1.1em; font-weight: 600; margin: 0;">
+                        🎓 Certification officielle de maîtrise du trading crypto !
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Conseils Pro -->
+        <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 1.8em; color: #00ff88; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.3em;">💡</span>
+                Conseils Pro
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div style="background: rgba(0,212,255,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0,212,255,0.3);">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">🔄</div>
+                    <h4 style="color: #00d4ff; font-size: 1.2em; margin-bottom: 10px;">Variez les Modes</h4>
+                    <p style="color: #aaa; font-size: 0.95em; line-height: 1.6;">
+                        Alternez entre Débutant, Intermédiaire et Expert pour avoir une vision complète du trading crypto.
+                    </p>
+                </div>
+                <div style="background: rgba(0,255,136,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0,255,136,0.3);">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">📝</div>
+                    <h4 style="color: #00ff88; font-size: 1.2em; margin-bottom: 10px;">Posez de Vraies Questions</h4>
+                    <p style="color: #aaa; font-size: 0.95em; line-height: 1.6;">
+                        Claude est très intelligent : posez vos questions personnelles, demandez des clarifications, creusez les sujets !
+                    </p>
+                </div>
+                <div style="background: rgba(251,191,36,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(251,191,36,0.3);">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">⏰</div>
+                    <h4 style="color: #fbbf24; font-size: 1.2em; margin-bottom: 10px;">Revenez Régulièrement</h4>
+                    <p style="color: #aaa; font-size: 0.95em; line-height: 1.6;">
+                        Votre progression est sauvegardée ! Prenez 15-30 minutes par jour pour apprendre à votre rythme.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <p style="color: #888; font-size: 0.95em;">
+                Propulsé par <strong style="color: #00d4ff;">Claude Sonnet 4</strong> • 
+                Créé avec ❤️ pour les traders crypto • 
+                <strong style="color: #00ff88;">Bon apprentissage ! 🚀</strong>
+            </p>
+        </div>
+    </div>
 </div>
 
 <script>

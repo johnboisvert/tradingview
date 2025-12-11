@@ -32218,15 +32218,26 @@ async def get_portfolio_data(request: Request):
 # ============================================================================
 
 # ============================================================================
-# 🎯 TECHNICAL ANALYSIS PRO ROUTE - CSS ISOLÉ (ne touche pas au sidebar)
+# 🎯 TECHNICAL ANALYSIS PRO ROUTE - AVEC SÉLECTEUR CRYPTO
 # ============================================================================
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
-async def ai_technical_analysis_page(request: Request):
-    """Technical Analysis Pro - CSS isolé pour ne pas affecter le sidebar"""
+async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
+    """Technical Analysis Pro - Multi-crypto avec sélecteur"""
     
     try:
-        # Fetch Bitcoin data
-        symbol = "bitcoin"
+        # Get top 50 cryptos for dropdown
+        all_cryptos = await get_top_50_cryptos()
+        
+        # Build dropdown options
+        dropdown_options = ""
+        for crypto in all_cryptos[:50]:
+            crypto_id = crypto.get('id', '')
+            crypto_name = crypto.get('name', '')
+            crypto_symbol = crypto.get('symbol', '').upper()
+            selected = 'selected' if crypto_id == symbol else ''
+            dropdown_options += '<option value="' + crypto_id + '" ' + selected + '>' + crypto_symbol + ' - ' + crypto_name + '</option>'
+        
+        # Fetch data for selected crypto
         df = await analyzer.get_ohlcv_data(symbol, days=60)
         
         if df is None or len(df) == 0:
@@ -32243,7 +32254,7 @@ async def ai_technical_analysis_page(request: Request):
                 <div class="main-content">
                     <div style="padding:50px;text-align:center;">
                         <h1 style="font-size:3em;">⚠️ Données indisponibles</h1>
-                        <p style="font-size:1.3em;">Impossible de charger les données de marché.</p>
+                        <p style="font-size:1.3em;">Impossible de charger les données pour """ + symbol + """.</p>
                     </div>
                 </div>
             </body>
@@ -32258,6 +32269,11 @@ async def ai_technical_analysis_page(request: Request):
         
         current_price = df['close'].iloc[-1]
         change_24h = ((df['close'].iloc[-1] - df['close'].iloc[-24]) / df['close'].iloc[-24]) * 100 if len(df) >= 24 else 0
+        
+        # Get crypto name for display
+        selected_crypto = next((c for c in all_cryptos if c.get('id') == symbol), None)
+        crypto_display_name = selected_crypto.get('name', symbol.upper()) if selected_crypto else symbol.upper()
+        crypto_symbol_display = selected_crypto.get('symbol', symbol).upper() if selected_crypto else symbol.upper()
         
         # Build indicators HTML with INLINE styles only
         rsi_class = 'oversold' if indicators['rsi'] < 30 else ('overbought' if indicators['rsi'] > 70 else 'neutral')
@@ -32324,7 +32340,7 @@ async def ai_technical_analysis_page(request: Request):
         
         indicators_html += '</div>'
         
-        # Build patterns HTML with INLINE styles
+        # Build patterns HTML
         patterns_html = ""
         if patterns:
             for p in patterns:
@@ -32338,7 +32354,7 @@ async def ai_technical_analysis_page(request: Request):
         else:
             patterns_html = "<p style='text-align:center;opacity:0.7;'>Aucun pattern détecté actuellement</p>"
         
-        # Build S/R HTML with INLINE styles
+        # Build S/R HTML
         resistances_html = ""
         if sr_levels['resistances']:
             for r in sr_levels['resistances'][:3]:
@@ -32353,7 +32369,7 @@ async def ai_technical_analysis_page(request: Request):
         else:
             supports_html = "<p style='opacity:0.6;'>Aucun</p>"
         
-        # Build reversal signals HTML with INLINE styles
+        # Build reversal signals HTML
         reversal_html = ""
         if reversal_signals:
             for sig in reversal_signals[:5]:
@@ -32362,7 +32378,7 @@ async def ai_technical_analysis_page(request: Request):
                 reversal_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;border-left:5px solid ' + border_color + ';margin-bottom:15px;">'
                 reversal_html += '<div><strong>' + sig['type'] + '</strong> - ' + str(sig['confidence']) + '%</div>'
                 reversal_html += '<p style="margin:10px 0;">' + sig['reason'] + '</p>'
-                reversal_html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">'
+                reversal_html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:15px;">'
                 reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Entry</div><strong>$' + "{:,.2f}".format(sig['entry']) + '</strong></div>'
                 reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Target</div><strong>$' + "{:,.2f}".format(sig['target']) + '</strong></div>'
                 reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Stop</div><strong>$' + "{:,.2f}".format(sig['stop_loss']) + '</strong></div>'
@@ -32371,7 +32387,7 @@ async def ai_technical_analysis_page(request: Request):
         else:
             reversal_html = "<p style='text-align:center;opacity:0.7;'>Aucun signal de retournement détecté</p>"
         
-        # Build complete page with INLINE styles only
+        # Build complete page
         page = SIDEBAR
         page += '<!DOCTYPE html>'
         page += '<html lang="fr">'
@@ -32384,10 +32400,23 @@ async def ai_technical_analysis_page(request: Request):
         page += '<body>'
         page += '<div class="main-content">'
         
-        # Header
+        # Header with crypto selector
         page += '<div style="text-align:center;padding:30px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:30px;backdrop-filter:blur(10px);">'
         page += '<h1 style="font-size:2.5em;margin:0 0 10px 0;color:white;">🎯 AI Technical Analysis Pro</h1>'
-        page += '<p style="font-size:1.2em;opacity:0.9;margin:0;color:white;">Analyse technique professionnelle en temps réel</p>'
+        page += '<p style="font-size:1.2em;opacity:0.9;margin:0 0 20px 0;color:white;">Analyse technique professionnelle en temps réel</p>'
+        
+        # Crypto selector
+        page += '<div style="margin-top:20px;">'
+        page += '<label style="font-size:1.1em;color:white;margin-right:15px;font-weight:600;">Sélectionner une crypto:</label>'
+        page += '<select id="cryptoSelector" style="padding:12px 20px;font-size:1.1em;border-radius:10px;border:2px solid #06b6d4;background:white;color:#333;cursor:pointer;min-width:250px;font-weight:600;" onchange="changeCrypto()">'
+        page += dropdown_options
+        page += '</select>'
+        page += '</div>'
+        page += '</div>'
+        
+        # Current crypto display
+        page += '<div style="text-align:center;padding:15px;background:linear-gradient(135deg,#06b6d4,#3b82f6);border-radius:12px;margin-bottom:30px;">'
+        page += '<div style="font-size:1.8em;font-weight:700;color:white;">' + crypto_symbol_display + ' - ' + crypto_display_name + '</div>'
         page += '</div>'
         
         # Section 1: Indicators
@@ -32406,7 +32435,7 @@ async def ai_technical_analysis_page(request: Request):
         page += resistances_html
         page += '</div>'
         page += '<div style="text-align:center;padding:25px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,0.2);">'
-        page += '<div style="font-size:1em;opacity:0.9;">Prix BTC</div>'
+        page += '<div style="font-size:1em;opacity:0.9;">Prix Actuel</div>'
         page += '<div style="font-size:2.2em;font-weight:900;margin:8px 0;">$' + "{:,.2f}".format(current_price) + '</div>'
         page += '<div style="font-size:1.2em;font-weight:600;">' + "{:+.2f}".format(change_24h) + '%</div>'
         page += '</div>'
@@ -32420,8 +32449,77 @@ async def ai_technical_analysis_page(request: Request):
         page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">🔄 POINTS DE RETOURNEMENT POTENTIELS</div>'
         page += reversal_html
         
+        # Section 5: How to use (informations)
+        page += '<div style="margin:60px 0 40px;padding:40px;background:linear-gradient(135deg,rgba(6,182,212,0.1),rgba(59,130,246,0.1));border:2px solid #06b6d4;border-radius:20px;">'
+        page += '<h2 style="font-size:2em;margin-bottom:30px;color:#06b6d4;text-align:center;">📚 À QUOI SERT CETTE PAGE ?</h2>'
+        
+        page += '<div style="display:grid;gap:25px;">'
+        
+        # Step 1
+        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
+        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">1</div>'
+        page += '<div>'
+        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Analyse Technique Complète</h3>'
+        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Cette page analyse en temps réel les données de prix sur 60 jours et calcule automatiquement 6 indicateurs techniques professionnels (RSI, MACD, Bollinger, Stochastique, ADX, EMAs). Les mêmes indicateurs utilisés par les traders professionnels sur TradingView!</p>'
         page += '</div>'
-        page += '<script>setTimeout(function(){window.location.reload();},300000);</script>'
+        page += '</div>'
+        
+        # Step 2
+        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
+        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">2</div>'
+        page += '<div>'
+        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Détection de Patterns</h3>'
+        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">L\'IA détecte automatiquement les patterns chartistes classiques (Head & Shoulders, Double Top/Bottom, Triangles, etc.) avec un niveau de confiance et des prix cibles. Ces patterns sont utilisés pour prédire les mouvements futurs du prix.</p>'
+        page += '</div>'
+        page += '</div>'
+        
+        # Step 3
+        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
+        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">3</div>'
+        page += '<div>'
+        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Support & Résistance</h3>'
+        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Identifie automatiquement les niveaux clés de support (où le prix a tendance à rebondir) et de résistance (où le prix a du mal à passer). Ces niveaux sont cruciaux pour prendre des décisions de trading.</p>'
+        page += '</div>'
+        page += '</div>'
+        
+        # Step 4
+        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
+        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">4</div>'
+        page += '<div>'
+        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Signaux de Retournement</h3>'
+        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Génère des signaux d\'achat/vente avec points d\'entrée, objectifs de profit (Target), stop-loss et ratio risque/récompense (R/R). Chaque signal est accompagné d\'un niveau de confiance et d\'une explication.</p>'
+        page += '</div>'
+        page += '</div>'
+        
+        page += '</div>'
+        
+        # Tips section
+        page += '<div style="margin-top:30px;padding:20px;background:rgba(251,191,36,0.1);border-left:4px solid #fbbf24;border-radius:10px;">'
+        page += '<h3 style="font-size:1.3em;color:#fbbf24;margin-bottom:15px;">💡 CONSEILS D\'UTILISATION</h3>'
+        page += '<ul style="color:rgba(255,255,255,0.8);line-height:1.8;padding-left:20px;">'
+        page += '<li><strong>Multi-crypto:</strong> Utilisez le sélecteur en haut pour analyser n\'importe quelle crypto du Top 50</li>'
+        page += '<li><strong>Mise à jour auto:</strong> La page se recharge automatiquement toutes les 5 minutes avec les dernières données</li>'
+        page += '<li><strong>RSI:</strong> &lt;30 = Survendu (opportunité d\'achat), &gt;70 = Suracheté (risque de correction)</li>'
+        page += '<li><strong>MACD:</strong> Crossover positif = Signal haussier, négatif = Signal baissier</li>'
+        page += '<li><strong>Confluence:</strong> Les meilleurs signaux sont ceux confirmés par plusieurs indicateurs</li>'
+        page += '<li><strong>Ratio R/R:</strong> Privilégiez les trades avec un ratio &gt; 2:1 (2x plus de gain potentiel que de perte)</li>'
+        page += '<li><strong>Ne tradez jamais uniquement sur ces signaux:</strong> Utilisez-les comme confirmation de votre propre analyse</li>'
+        page += '</ul>'
+        page += '</div>'
+        
+        page += '</div>'
+        
+        page += '</div>'
+        
+        # JavaScript for crypto selector and auto-refresh
+        page += '<script>'
+        page += 'function changeCrypto() {'
+        page += '  const selector = document.getElementById("cryptoSelector");'
+        page += '  const selectedCrypto = selector.value;'
+        page += '  window.location.href = "/ai-technical-analysis?symbol=" + selectedCrypto;'
+        page += '}'
+        page += 'setTimeout(function(){window.location.reload();},300000);'
+        page += '</script>'
         page += '</body>'
         page += '</html>'
         

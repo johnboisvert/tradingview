@@ -1579,37 +1579,11 @@ body.sidebar-open{margin-left:280px}
             <a href="/ai-gem-hunter" class="menu-item ai-feature">
                 <span class="icon">💎</span>
                 <span class="label">Gem Hunter</span>
-            </a>
-            <a href="/ai-technical-analysis" class="menu-item ai-feature">
-                <span class="icon">🎯</span>
-                <span class="label">Technical Analysis Pro</span>
-            </a>
             
-            <!-- 🆕 5 NOUVELLES FEATURES -->
-            <a href="/narrative-radar" class="menu-item ai-feature">
-                <span class="icon">🎯</span>
-                <span class="label">Narrative Radar</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/ai-crypto-coach" class="menu-item ai-feature">
-                <span class="icon">🤖</span>
-                <span class="label">AI Crypto Coach</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/ai-swarm-agents" class="menu-item ai-feature">
-                <span class="icon">🤖</span>
-                <span class="label">AI Swarm Agents</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/altseason-copilot-pro" class="menu-item ai-feature">
-                <span class="icon">📈</span>
-                <span class="label">Altseason Copilot Pro</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/rug-scam-shield" class="menu-item ai-feature">
-                <span class="icon">🛡️</span>
-                <span class="label">Rug & Scam Shield</span>
-                <span class="badge">NEW</span>
+            <a href="/ai-technical-analysis" class="menu-item ai-feature">
+    <span class="icon">🎯</span>
+    <span class="label">Technical Analysis Pro</span>
+</a>
             </a>
         </div>
         
@@ -32587,14 +32561,86 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
 
 
 # ============================================================================
-# 🆕 NOUVELLES FEATURES - 5 ROUTES AVEC DESIGN INTÉGRÉ
+# 🎯 NARRATIVE RADAR - VRAIES DONNÉES CRYPTOPANIC API
 # ============================================================================
+
+@app.get("/api/narrative-radar/scan")
+async def api_scan_narratives():
+    """API Backend - Scan RÉEL via CryptoPanic"""
+    
+    CRYPTOPANIC_KEY = "bca5327f4c31e7511b4a7824951ed0ae4d8bb5ac"
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(
+                "https://cryptopanic.com/api/v1/posts/",
+                params={
+                    "auth_token": CRYPTOPANIC_KEY,
+                    "public": "true",
+                    "filter": "rising",
+                    "currencies": "BTC,ETH,SOL,DOGE,SHIB,PEPE,FET,AGIX,OCEAN,AAVE,UNI,LINK,ARB,OP,MATIC"
+                }
+            )
+            
+            if response.status_code != 200:
+                return {"error": "API CryptoPanic non disponible", "status": response.status_code, "success": False}
+            
+            data = response.json()
+            posts = data.get("results", [])
+            
+            narrative_keywords = {
+                "AI": ["ai", "artificial intelligence", "machine learning", "neural", "gpt", "llm", "chatgpt", "agix", "fet", "fetch", "singularitynet", "ocean protocol"],
+                "DeFi": ["defi", "lending", "yield", "liquidity", "amm", "dex", "swap", "aave", "uniswap", "compound", "curve", "synthetix"],
+                "RWA": ["rwa", "real world asset", "tokenization", "tokenized", "bonds", "treasury", "ondo", "real estate"],
+                "Gaming": ["gaming", "metaverse", "nft", "play to earn", "p2e", "game", "immutable", "gala", "sandbox", "axie", "decentraland"],
+                "L2": ["layer 2", "l2", "rollup", "scaling", "zk", "optimistic", "arbitrum", "optimism", "polygon", "starknet"],
+                "Memes": ["meme", "memecoin", "doge", "dogecoin", "shiba", "shib", "pepe", "wif", "bonk", "floki"],
+                "Infrastructure": ["oracle", "bridge", "middleware", "data", "chainlink", "link", "infrastructure", "api3", "band"],
+                "Privacy": ["privacy", "anonymous", "mixer", "confidential", "zero knowledge", "monero", "zcash", "secret"]
+            }
+            
+            narratives_count = {
+                "AI": 0,
+                "DeFi": 0,
+                "RWA": 0,
+                "Gaming": 0,
+                "L2": 0,
+                "Memes": 0,
+                "Infrastructure": 0,
+                "Privacy": 0
+            }
+            
+            for post in posts:
+                title = post.get("title", "").lower()
+                for narrative, keywords in narrative_keywords.items():
+                    if any(keyword in title for keyword in keywords):
+                        narratives_count[narrative] += 1
+            
+            total_mentions = sum(narratives_count.values())
+            active_narratives = sum(1 for count in narratives_count.values() if count > 0)
+            hot_topics = sum(1 for count in narratives_count.values() if count >= 5)
+            
+            return {
+                "success": True,
+                "totalNews": len(posts),
+                "totalMentions": total_mentions,
+                "activeNarratives": active_narratives,
+                "hotTopics": hot_topics,
+                "narratives": narratives_count,
+                "timestamp": datetime.now().isoformat(),
+                "source": "CryptoPanic API"
+            }
+            
+    except httpx.TimeoutException:
+        return {"error": "Timeout API CryptoPanic", "success": False}
+    except Exception as e:
+        return {"error": str(e), "success": False}
+
 
 @app.get("/narrative-radar", response_class=HTMLResponse)
 async def narrative_radar():
-    """🎯 Narrative Radar - Dashboard narratives crypto temps réel"""
+    """🎯 Narrative Radar - Dashboard avec VRAIES données CryptoPanic"""
     
-    # Utiliser f-string pour éviter les problèmes de quotes
     page_html = '''<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -32655,20 +32701,22 @@ async def narrative_radar():
         .footer-info li { color: #aaa; line-height: 1.8; padding-left: 20px; position: relative; }
         .footer-info li::before { content: '▸'; position: absolute; left: 0; color: #00ff88; }
         .data-source { text-align: center; margin-top: 30px; padding: 15px; background: rgba(0,212,255,0.1); border-radius: 8px; color: #00d4ff; font-size: 0.95em; }
+        .error-box { background: rgba(239,68,68,0.1); border: 2px solid rgba(239,68,68,0.5); border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0; }
+        .error-box .icon { font-size: 3em; margin-bottom: 15px; }
+        .error-box .title { font-size: 1.5em; color: #ef4444; margin-bottom: 15px; }
+        .error-box .message { color: #aaa; line-height: 1.6; }
     </style>
 </head>
 <body>
 '''
     
-    # Ajouter le SIDEBAR
     page_html += SIDEBAR
     
-    # Ajouter le contenu principal
     page_html += '''
 <div class="main-content">
     <div class="container">
         <h1>🎯 Narrative Radar</h1>
-        <p class="subtitle">Dashboard temps réel des narratives crypto dominantes</p>
+        <p class="subtitle">Dashboard temps réel - Données CryptoPanic API</p>
         
         <div class="stats-header" id="statsHeader" style="display: none;">
             <div class="stat-box">
@@ -32696,21 +32744,21 @@ async def narrative_radar():
         <div id="narratives" class="narratives-grid">
             <div class="initial-message">
                 <div class="icon">🎯</div>
-                <p>Cliquez sur Scanner pour analyser les narratives crypto</p>
+                <p>Cliquez sur Scanner pour analyser les vraies données crypto</p>
             </div>
         </div>
         
         <div class="data-source" id="dataSource" style="display: none;">
-            ℹ️ Données générées par algorithme intelligent basé sur analyse temps réel
+            ✅ Données RÉELLES - Source : CryptoPanic API
         </div>
         
         <div class="footer-info">
-            <h3>📊 Comment ça marche ?</h3>
+            <h3>📊 Données 100% Réelles</h3>
             <ul>
-                <li><strong>Scanner :</strong> Analyse algorithmique des tendances crypto</li>
+                <li><strong>Source :</strong> CryptoPanic API - News crypto en temps réel</li>
                 <li><strong>8 Narratives :</strong> AI, DeFi, RWA, Gaming, L2, Memes, Infrastructure, Privacy</li>
                 <li><strong>Status :</strong> QUIET (0), EMERGING (1-4), HOT (5-14), TRENDING (15+)</li>
-                <li><strong>Momentum 24h :</strong> Variation vs scan précédent</li>
+                <li><strong>Momentum :</strong> Calculé sur derniers scans réels</li>
                 <li><strong>Coins :</strong> Projets majeurs de chaque narrative</li>
                 <li><strong>Auto-Refresh :</strong> Toutes les 5 minutes</li>
             </ul>
@@ -32720,107 +32768,94 @@ async def narrative_radar():
 
 <script>
 function toggleSidebar() {
-    var sidebar = document.getElementById("sidebar");
-    if (sidebar) sidebar.classList.toggle("active");
+    var sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.toggle('active');
 }
 
 var NARRATIVES = {
-    "AI": {icon: "🤖", coins: ["FET", "AGIX", "OCEAN", "NMR", "RNDR"], description: "Intelligence Artificielle & Machine Learning", weight: 0.25},
-    "DeFi": {icon: "💰", coins: ["AAVE", "UNI", "COMP", "CRV", "SNX"], description: "Finance Décentralisée", weight: 0.20},
-    "RWA": {icon: "🏢", coins: ["ONDO", "POLYX", "RIO", "MPL"], description: "Real World Assets Tokenisés", weight: 0.15},
-    "Gaming": {icon: "🎮", coins: ["IMX", "GALA", "SAND", "AXS", "MANA"], description: "Gaming & Metaverse", weight: 0.10},
-    "L2": {icon: "⚡", coins: ["ARB", "OP", "MATIC", "STRK", "ZK"], description: "Solutions Layer 2", weight: 0.12},
-    "Memes": {icon: "🐸", coins: ["DOGE", "SHIB", "PEPE", "WIF", "BONK"], description: "Memecoins", weight: 0.08},
-    "Infrastructure": {icon: "🔗", coins: ["LINK", "API3", "BAND", "DIA"], description: "Infrastructure & Oracles", weight: 0.07},
-    "Privacy": {icon: "🔒", coins: ["XMR", "ZEC", "SCRT", "ROSE"], description: "Privacy", weight: 0.03}
+    AI: {icon: '🤖', coins: ['FET', 'AGIX', 'OCEAN', 'NMR', 'RNDR'], description: 'Intelligence Artificielle & Machine Learning'},
+    DeFi: {icon: '💰', coins: ['AAVE', 'UNI', 'COMP', 'CRV', 'SNX'], description: 'Finance Décentralisée'},
+    RWA: {icon: '🏢', coins: ['ONDO', 'POLYX', 'RIO', 'MPL'], description: 'Real World Assets Tokenisés'},
+    Gaming: {icon: '🎮', coins: ['IMX', 'GALA', 'SAND', 'AXS', 'MANA'], description: 'Gaming & Metaverse'},
+    L2: {icon: '⚡', coins: ['ARB', 'OP', 'MATIC', 'STRK', 'ZK'], description: 'Solutions Layer 2'},
+    Memes: {icon: '🐸', coins: ['DOGE', 'SHIB', 'PEPE', 'WIF', 'BONK'], description: 'Memecoins'},
+    Infrastructure: {icon: '🔗', coins: ['LINK', 'API3', 'BAND', 'DIA'], description: 'Infrastructure & Oracles'},
+    Privacy: {icon: '🔒', coins: ['XMR', 'ZEC', 'SCRT', 'ROSE'], description: 'Privacy'}
 };
 
 var previousScores = {};
 var scanCount = 0;
 
 async function scanNow() {
-    var btn = document.getElementById("scanBtn");
-    var container = document.getElementById("narratives");
-    var statsHeader = document.getElementById("statsHeader");
-    var dataSource = document.getElementById("dataSource");
+    var btn = document.getElementById('scanBtn');
+    var container = document.getElementById('narratives');
+    var statsHeader = document.getElementById('statsHeader');
+    var dataSource = document.getElementById('dataSource');
     
     if (btn.disabled) return;
     
-    btn.classList.add("loading");
+    btn.classList.add('loading');
     btn.innerHTML = '<span class="spinner"></span>';
     btn.disabled = true;
     
-    container.innerHTML = '<div class="initial-message"><div class="spinner"></div><p class="loading-text">🔍 Scan en cours...</p></div>';
+    container.innerHTML = '<div class="initial-message"><div class="spinner"></div><p class="loading-text">🔍 Scan RÉEL en cours via CryptoPanic API...</p></div>';
     
     try {
-        await new Promise(function(resolve) { setTimeout(resolve, 1500); });
+        var response = await fetch('/api/narrative-radar/scan');
+        var data = await response.json();
         
-        var results = generateData();
+        if (!data.success) {
+            container.innerHTML = '<div class="error-box"><div class="icon">⚠️</div><div class="title">Erreur API</div><div class="message">' + (data.error || 'Erreur inconnue') + '</div></div>';
+            return;
+        }
         
-        statsHeader.style.display = "grid";
-        document.getElementById("totalNews").textContent = results.totalNews;
-        document.getElementById("activeNarratives").textContent = results.activeNarratives;
-        document.getElementById("hotTopics").textContent = results.hotTopics;
-        document.getElementById("lastScan").textContent = getCurrentTime();
+        var narrativesWithMomentum = {};
         
-        dataSource.style.display = "block";
-        displayNarratives(results.narratives);
+        for (var name in data.narratives) {
+            var currentMentions = data.narratives[name];
+            var change = 0;
+            
+            if (previousScores[name] !== undefined && previousScores[name] > 0) {
+                change = ((currentMentions - previousScores[name]) / previousScores[name]) * 100;
+            }
+            
+            change = Math.max(-50, Math.min(200, change));
+            
+            narrativesWithMomentum[name] = {
+                mentions: currentMentions,
+                change: Math.round(change * 10) / 10
+            };
+            
+            previousScores[name] = currentMentions;
+        }
+        
+        statsHeader.style.display = 'grid';
+        document.getElementById('totalNews').textContent = data.totalNews;
+        document.getElementById('activeNarratives').textContent = data.activeNarratives;
+        document.getElementById('hotTopics').textContent = data.hotTopics;
+        document.getElementById('lastScan').textContent = getCurrentTime();
+        
+        dataSource.style.display = 'block';
+        displayNarratives(narrativesWithMomentum);
         scanCount++;
         
+        console.log('✅ Scan réel terminé - Source: CryptoPanic');
+        
     } catch (error) {
-        console.error("Erreur:", error);
-        container.innerHTML = '<div class="initial-message"><div class="icon">❌</div><p>Erreur. Réessayez.</p></div>';
+        console.error('Erreur:', error);
+        container.innerHTML = '<div class="error-box"><div class="icon">❌</div><div class="title">Erreur de connexion</div><div class="message">Impossible de contacter l\\'API. Vérifiez votre connexion.</div></div>';
     } finally {
         setTimeout(function() {
-            btn.classList.remove("loading");
-            btn.innerHTML = "🔍 Scanner à Nouveau";
+            btn.classList.remove('loading');
+            btn.innerHTML = '🔍 Scanner à Nouveau';
             btn.disabled = false;
         }, 500);
     }
 }
 
-function generateData() {
-    var narratives = {};
-    var baseNews = 40;
-    var variance = Math.floor(Math.random() * 20) - 10;
-    var totalNews = Math.max(25, baseNews + variance);
-    var activeCount = 0;
-    var hotCount = 0;
-    
-    for (var name in NARRATIVES) {
-        var info = NARRATIVES[name];
-        var baseMentions = Math.floor(totalNews * info.weight);
-        var variancePercent = (Math.random() * 0.8) - 0.3;
-        var finalMentions = Math.max(0, Math.round(baseMentions * (1 + variancePercent)));
-        
-        if (Math.random() < 0.15) {
-            finalMentions = Math.round(finalMentions * (1.5 + Math.random()));
-        }
-        
-        var previousMentions = previousScores[name] || finalMentions;
-        var change = 0;
-        
-        if (previousMentions > 0) {
-            change = ((finalMentions - previousMentions) / previousMentions) * 100;
-        } else if (finalMentions > 0) {
-            change = 100;
-        }
-        
-        change = Math.max(-50, Math.min(200, change));
-        
-        narratives[name] = {mentions: finalMentions, change: Math.round(change * 10) / 10};
-        previousScores[name] = finalMentions;
-        
-        if (finalMentions > 0) activeCount++;
-        if (finalMentions >= 5) hotCount++;
-    }
-    
-    return {totalNews: totalNews, activeNarratives: activeCount, hotTopics: hotCount, narratives: narratives};
-}
-
 function displayNarratives(narrativesData) {
-    var container = document.getElementById("narratives");
-    var html = "";
+    var container = document.getElementById('narratives');
+    var html = '';
     
     var sorted = Object.keys(narrativesData).sort(function(a, b) {
         return narrativesData[b].mentions - narrativesData[a].mentions;
@@ -32831,8 +32866,8 @@ function displayNarratives(narrativesData) {
         var data = narrativesData[name];
         var info = NARRATIVES[name];
         var status = getStatus(data.mentions);
-        var changeClass = data.change > 0 ? "positive" : data.change < 0 ? "negative" : "neutral";
-        var changeSymbol = data.change > 0 ? "+" : "";
+        var changeClass = data.change > 0 ? 'positive' : data.change < 0 ? 'negative' : 'neutral';
+        var changeSymbol = data.change > 0 ? '+' : '';
         
         html += '<div class="narrative-card">';
         html += '<div class="narrative-header">';
@@ -32841,7 +32876,7 @@ function displayNarratives(narrativesData) {
         html += '</div>';
         html += '<div class="narrative-body">';
         html += '<div class="mentions">Mentions: ' + data.mentions + '</div>';
-        html += '<div class="change ' + changeClass + '">Momentum 24h: ' + changeSymbol + data.change.toFixed(1) + '%</div>';
+        html += '<div class="change ' + changeClass + '">Momentum: ' + changeSymbol + data.change.toFixed(1) + '%</div>';
         html += '<div class="description">' + info.description + '</div>';
         html += '<div class="coins"><div class="coins-label">🪙 COINS ASSOCIÉS</div>';
         for (var j = 0; j < info.coins.length; j++) {
@@ -32854,135 +32889,28 @@ function displayNarratives(narrativesData) {
 }
 
 function getStatus(mentions) {
-    if (mentions === 0) return {emoji: "😴", text: "QUIET", class: "quiet"};
-    if (mentions < 5) return {emoji: "🟢", text: "EMERGING", class: "emerging"};
-    if (mentions < 15) return {emoji: "🔥", text: "HOT", class: "hot"};
-    return {emoji: "🚀", text: "TRENDING", class: "trending"};
+    if (mentions === 0) return {emoji: '😴', text: 'QUIET', class: 'quiet'};
+    if (mentions < 5) return {emoji: '🟢', text: 'EMERGING', class: 'emerging'};
+    if (mentions < 15) return {emoji: '🔥', text: 'HOT', class: 'hot'};
+    return {emoji: '🚀', text: 'TRENDING', class: 'trending'};
 }
 
 function getCurrentTime() {
     var now = new Date();
-    return now.toLocaleTimeString("fr-FR", {hour: "2-digit", minute: "2-digit"});
+    return now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
 }
 
 setInterval(function() {
-    var btn = document.getElementById("scanBtn");
+    var btn = document.getElementById('scanBtn');
     if (!btn.disabled && scanCount > 0) {
         scanNow();
     }
 }, 300000);
 
-console.log("🎯 Narrative Radar chargé");
+console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 </script>
 </body>
 </html>
 '''
     
     return HTMLResponse(page_html)
-
-@app.get("/ai-crypto-coach", response_class=HTMLResponse)
-async def ai_crypto_coach():
-    """🤖 AI Crypto Coach"""
-    return HTMLResponse(SIDEBAR + """
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>🤖 AI Crypto Coach</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>🤖 AI Crypto Coach</h1>
-    <p style="text-align: center; color: #00d4ff;">Feature en développement</p>
-</div>
-<script>function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }</script>
-</body>
-</html>
-""")
-
-
-@app.get("/ai-swarm-agents", response_class=HTMLResponse)
-async def ai_swarm_agents():
-    """🤖 AI Swarm Agents"""
-    return HTMLResponse(SIDEBAR + """
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>🤖 AI Swarm Agents</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>🤖 AI Swarm Agents</h1>
-    <p style="text-align: center; color: #00d4ff;">Feature en développement</p>
-</div>
-<script>function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }</script>
-</body>
-</html>
-""")
-
-
-@app.get("/altseason-copilot-pro", response_class=HTMLResponse)
-async def altseason_copilot():
-    """📈 Altseason Copilot Pro"""
-    return HTMLResponse(SIDEBAR + """
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>📈 Altseason Copilot Pro</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>📈 Altseason Copilot Pro</h1>
-    <p style="text-align: center; color: #00d4ff;">Feature en développement</p>
-</div>
-<script>function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }</script>
-</body>
-</html>
-""")
-
-
-@app.get("/rug-scam-shield", response_class=HTMLResponse)
-async def rug_scam_shield():
-    """🛡️ Rug & Scam Shield"""
-    return HTMLResponse(SIDEBAR + """
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>🛡️ Rug & Scam Shield</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }
-        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>🛡️ Rug & Scam Shield</h1>
-    <p style="text-align: center; color: #00d4ff;">Feature en développement</p>
-</div>
-<script>function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }</script>
-</body>
-</html>
-""")

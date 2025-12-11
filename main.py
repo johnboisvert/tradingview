@@ -33489,3 +33489,1248 @@ console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 '''
     
     return HTMLResponse(page_html)
+
+
+@app.get("/ai-crypto-coach", response_class=HTMLResponse)
+async def ai_crypto_coach():
+    """🎓 AI Crypto Coach - Guided Learning Experience avec Claude API"""
+    
+    page_html = '''<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Crypto Coach - CRYPTO IA</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); 
+            color: #fff; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            overflow-x: hidden;
+        }
+        .main-content { margin-left: 250px; transition: margin-left 0.3s; }
+        @media (max-width: 768px) { .main-content { margin-left: 0; } }
+        
+        /* Header */
+        .coach-header {
+            background: rgba(0,212,255,0.1);
+            border-bottom: 2px solid rgba(0,212,255,0.3);
+            padding: 25px;
+            text-align: center;
+        }
+        .coach-header h1 {
+            font-size: 2.5em;
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0,212,255,0.5);
+            margin-bottom: 10px;
+        }
+        .coach-header p {
+            color: #aaa;
+            font-size: 1.1em;
+        }
+        
+        /* Mode Selector */
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .mode-btn {
+            padding: 12px 30px;
+            border: 2px solid rgba(0,255,136,0.3);
+            background: rgba(0,255,136,0.1);
+            color: #00ff88;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .mode-btn:hover {
+            background: rgba(0,255,136,0.2);
+            border-color: #00ff88;
+            transform: translateY(-2px);
+        }
+        .mode-btn.active {
+            background: linear-gradient(45deg, #00ff88, #00d4ff);
+            color: #000;
+            border-color: transparent;
+            box-shadow: 0 0 20px rgba(0,255,136,0.5);
+        }
+        
+        /* Container 3 colonnes */
+        .coach-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 320px;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        
+        @media (max-width: 1400px) {
+            .coach-container {
+                grid-template-columns: 250px 1fr;
+            }
+            .progress-panel { display: none; }
+        }
+        
+        @media (max-width: 768px) {
+            .coach-container {
+                grid-template-columns: 1fr;
+            }
+            .learning-paths { display: none; }
+        }
+        
+        /* Learning Paths Sidebar */
+        .learning-paths {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(0,212,255,0.3);
+            border-radius: 15px;
+            padding: 20px;
+            height: fit-content;
+        }
+        .learning-paths h3 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        .path-item {
+            background: rgba(0,255,136,0.05);
+            border: 1px solid rgba(0,255,136,0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .path-item:hover {
+            background: rgba(0,255,136,0.1);
+            border-color: #00ff88;
+            transform: translateX(5px);
+        }
+        .path-item.active {
+            background: linear-gradient(45deg, rgba(0,255,136,0.2), rgba(0,212,255,0.2));
+            border-color: #00ff88;
+        }
+        .path-item.completed::after {
+            content: '✓';
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            color: #00ff88;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        .path-title {
+            font-weight: 600;
+            color: #00ff88;
+            margin-bottom: 5px;
+        }
+        .path-desc {
+            font-size: 0.85em;
+            color: #aaa;
+        }
+        .path-progress {
+            margin-top: 10px;
+            background: rgba(0,0,0,0.3);
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .path-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00d4ff);
+            transition: width 0.5s;
+        }
+        
+        /* Main Content Area */
+        .main-panel {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(0,212,255,0.3);
+            border-radius: 15px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        /* Chat Interface */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 500px;
+        }
+        .message {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message.user {
+            background: rgba(0,212,255,0.2);
+            border-left: 4px solid #00d4ff;
+            margin-left: 50px;
+        }
+        .message.assistant {
+            background: rgba(0,255,136,0.2);
+            border-left: 4px solid #00ff88;
+            margin-right: 50px;
+        }
+        .message-header {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #00d4ff;
+        }
+        .message.assistant .message-header {
+            color: #00ff88;
+        }
+        .message-content {
+            line-height: 1.6;
+            color: #ddd;
+        }
+        
+        /* Chat Input */
+        .chat-input-area {
+            padding: 20px;
+            background: rgba(0,0,0,0.2);
+            border-top: 1px solid rgba(0,212,255,0.3);
+        }
+        .chat-input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input {
+            flex: 1;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(0,212,255,0.3);
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1em;
+            resize: none;
+        }
+        .chat-input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            background: rgba(255,255,255,0.15);
+        }
+        .send-btn {
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #00ff88, #00d4ff);
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0,255,136,0.5);
+        }
+        .send-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        
+        /* Quick Prompts */
+        .quick-prompts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .quick-prompt {
+            padding: 8px 15px;
+            background: rgba(0,212,255,0.1);
+            border: 1px solid rgba(0,212,255,0.3);
+            border-radius: 20px;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .quick-prompt:hover {
+            background: rgba(0,212,255,0.2);
+            border-color: #00d4ff;
+            transform: translateY(-2px);
+        }
+        
+        /* Lesson Content */
+        .lesson-content {
+            display: none;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+        }
+        .lesson-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        .lesson-content h2 {
+            color: #00ff88;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+        .lesson-content h3 {
+            color: #00d4ff;
+            margin: 25px 0 15px 0;
+            font-size: 1.5em;
+        }
+        .lesson-content p {
+            color: #ddd;
+            line-height: 1.8;
+            margin: 15px 0;
+            font-size: 1.05em;
+        }
+        .lesson-content ul {
+            margin: 15px 0 15px 25px;
+        }
+        .lesson-content li {
+            color: #ccc;
+            line-height: 2;
+            margin: 8px 0;
+        }
+        .lesson-content strong {
+            color: #00ff88;
+        }
+        
+        /* Quiz */
+        .quiz-container {
+            display: none;
+            padding: 25px;
+            background: rgba(0,212,255,0.1);
+            border: 2px solid rgba(0,212,255,0.3);
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        .quiz-container.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        .quiz-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .quiz-header h3 {
+            color: #00d4ff;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        .quiz-question {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .question-text {
+            font-size: 1.2em;
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .quiz-option {
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(0,212,255,0.3);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .quiz-option:hover {
+            background: rgba(0,212,255,0.1);
+            border-color: #00d4ff;
+        }
+        .quiz-option.selected {
+            background: rgba(0,212,255,0.2);
+            border-color: #00d4ff;
+        }
+        .quiz-option.correct {
+            background: rgba(0,255,136,0.2);
+            border-color: #00ff88;
+        }
+        .quiz-option.incorrect {
+            background: rgba(239,68,68,0.2);
+            border-color: #ef4444;
+        }
+        .quiz-btn {
+            padding: 15px 40px;
+            background: linear-gradient(45deg, #00ff88, #00d4ff);
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .quiz-btn:hover {
+            transform: scale(1.05);
+        }
+        .quiz-result {
+            text-align: center;
+            padding: 30px;
+            background: rgba(0,255,136,0.1);
+            border: 2px solid #00ff88;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        .quiz-score {
+            font-size: 3em;
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        /* Progress Panel */
+        .progress-panel {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(0,212,255,0.3);
+            border-radius: 15px;
+            padding: 20px;
+            height: fit-content;
+        }
+        .progress-panel h3 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        .overall-progress {
+            margin-bottom: 25px;
+        }
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #aaa;
+        }
+        .progress-bar-container {
+            background: rgba(0,0,0,0.3);
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff88, #00d4ff);
+            transition: width 0.5s;
+        }
+        
+        /* Badges */
+        .badges-section {
+            margin-top: 25px;
+        }
+        .badges-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .badge {
+            aspect-ratio: 1;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .badge.unlocked {
+            background: linear-gradient(135deg, rgba(0,255,136,0.2), rgba(0,212,255,0.2));
+            border-color: #00ff88;
+            animation: unlockBadge 0.5s;
+        }
+        @keyframes unlockBadge {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2) rotate(10deg); }
+        }
+        .badge-icon {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        .badge-name {
+            font-size: 0.7em;
+            text-align: center;
+            color: #aaa;
+        }
+        .badge.unlocked .badge-name {
+            color: #00ff88;
+            font-weight: 600;
+        }
+        
+        /* Stats */
+        .stats-section {
+            margin-top: 25px;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .stat-label {
+            color: #aaa;
+        }
+        .stat-value {
+            color: #00ff88;
+            font-weight: 600;
+        }
+        
+        /* Lesson Navigation */
+        .lesson-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        .nav-btn {
+            padding: 12px 25px;
+            background: rgba(0,212,255,0.2);
+            border: 2px solid rgba(0,212,255,0.4);
+            border-radius: 10px;
+            color: #00d4ff;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .nav-btn:hover {
+            background: rgba(0,212,255,0.3);
+            border-color: #00d4ff;
+        }
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        /* Certificate Button */
+        .certificate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, #fbbf24, #f59e0b);
+            border: none;
+            border-radius: 10px;
+            color: #000;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        .certificate-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(251,191,36,0.5);
+        }
+        .certificate-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+
+''' + get_sidebar() + '''
+
+<div class="main-content">
+    <!-- Header -->
+    <div class="coach-header">
+        <h1>🎓 AI Crypto Coach</h1>
+        <p>Votre assistant personnel pour maîtriser le trading crypto</p>
+        
+        <!-- Mode Selector -->
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="beginner">🌱 Débutant</button>
+            <button class="mode-btn" data-mode="intermediate">📈 Intermédiaire</button>
+            <button class="mode-btn" data-mode="expert">🚀 Expert</button>
+        </div>
+    </div>
+    
+    <!-- Main Container -->
+    <div class="coach-container">
+        <!-- Learning Paths Sidebar -->
+        <div class="learning-paths">
+            <h3>📚 Parcours d'Apprentissage</h3>
+            <div id="pathsList"></div>
+        </div>
+        
+        <!-- Main Panel -->
+        <div class="main-panel">
+            <div id="mainContent">
+                <!-- Chat Interface (default) -->
+                <div class="chat-container" id="chatInterface">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="message assistant">
+                            <div class="message-header">🤖 AI Coach</div>
+                            <div class="message-content">
+                                Bonjour ! Je suis votre coach crypto personnel propulsé par Claude AI. 
+                                Posez-moi n'importe quelle question sur le trading, la DeFi, les NFTs, 
+                                ou choisissez un parcours d'apprentissage pour une formation guidée ! 🚀
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <div class="quick-prompts" id="quickPrompts"></div>
+                        <div class="chat-input-wrapper">
+                            <textarea 
+                                class="chat-input" 
+                                id="chatInput" 
+                                placeholder="Posez votre question crypto..."
+                                rows="3"
+                            ></textarea>
+                            <button class="send-btn" id="sendBtn">Envoyer</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lesson Content (hidden by default) -->
+                <div class="lesson-content" id="lessonContent"></div>
+                
+                <!-- Quiz Container (hidden by default) -->
+                <div class="quiz-container" id="quizContainer"></div>
+            </div>
+        </div>
+        
+        <!-- Progress Panel -->
+        <div class="progress-panel">
+            <h3>📊 Votre Progression</h3>
+            
+            <div class="overall-progress">
+                <div class="progress-label">
+                    <span>Progression Globale</span>
+                    <span id="overallPercent">0%</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="overallBar" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="badges-section">
+                <h4 style="color: #00d4ff; margin-bottom: 15px;">🏆 Badges</h4>
+                <div class="badges-grid" id="badgesGrid"></div>
+            </div>
+            
+            <div class="stats-section">
+                <h4 style="color: #00d4ff; margin-bottom: 15px;">📈 Statistiques</h4>
+                <div class="stat-item">
+                    <span class="stat-label">Leçons Complétées</span>
+                    <span class="stat-value" id="statLessons">0/30</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Quiz Réussis</span>
+                    <span class="stat-value" id="statQuizzes">0/15</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Questions Posées</span>
+                    <span class="stat-value" id="statQuestions">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Temps Passé</span>
+                    <span class="stat-value" id="statTime">0h</span>
+                </div>
+            </div>
+            
+            <button class="certificate-btn" id="certificateBtn" disabled>
+                🎓 Générer Certificat
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ========================================
+// DATA STRUCTURES
+// ========================================
+
+const LEARNING_PATHS = {
+    beginner: [
+        {
+            id: 'basics',
+            title: '🌱 Les Bases du Crypto',
+            description: 'Comprendre Bitcoin, blockchain et wallets',
+            lessons: 6,
+            quizQuestions: 3
+        },
+        {
+            id: 'trading101',
+            title: '📊 Trading 101',
+            description: 'Ordres, graphiques, et indicateurs de base',
+            lessons: 5,
+            quizQuestions: 3
+        },
+        {
+            id: 'security',
+            title: '🔒 Sécurité Crypto',
+            description: 'Protéger vos assets et éviter les scams',
+            lessons: 4,
+            quizQuestions: 2
+        }
+    ],
+    intermediate: [
+        {
+            id: 'technical',
+            title: '📈 Analyse Technique Avancée',
+            description: 'Patterns, RSI, MACD, Fibonacci',
+            lessons: 7,
+            quizQuestions: 4
+        },
+        {
+            id: 'defi',
+            title: '💰 DeFi Essentials',
+            description: 'Yield farming, staking, liquidity pools',
+            lessons: 6,
+            quizQuestions: 3
+        },
+        {
+            id: 'altcoins',
+            title: '🪙 Altcoin Strategies',
+            description: 'Recherche, analyse fondamentale, timing',
+            lessons: 5,
+            quizQuestions: 3
+        }
+    ],
+    expert: [
+        {
+            id: 'advanced_trading',
+            title: '🚀 Trading Avancé',
+            description: 'Leverage, futures, arbitrage',
+            lessons: 8,
+            quizQuestions: 5
+        },
+        {
+            id: 'defi_pro',
+            title: '⚡ DeFi Pro',
+            description: 'Smart contracts, MEV, advanced strategies',
+            lessons: 7,
+            quizQuestions: 4
+        },
+        {
+            id: 'portfolio',
+            title: '💼 Portfolio Management',
+            description: 'Risk management, diversification, rebalancing',
+            lessons: 6,
+            quizQuestions: 3
+        }
+    ]
+};
+
+const BADGES = [
+    { id: 'first_lesson', icon: '📖', name: 'Première Leçon', condition: 'lessons', value: 1 },
+    { id: 'beginner', icon: '🌱', name: 'Débutant', condition: 'lessons', value: 5 },
+    { id: 'intermediate', icon: '📈', name: 'Intermédiaire', condition: 'lessons', value: 15 },
+    { id: 'expert', icon: '🚀', name: 'Expert', condition: 'lessons', value: 30 },
+    { id: 'quiz_master', icon: '🎯', name: 'Quiz Master', condition: 'quizzes', value: 10 },
+    { id: 'curious', icon: '🤔', name: 'Curieux', condition: 'questions', value: 20 },
+    { id: 'dedicated', icon: '⏱️', name: 'Dédié', condition: 'time', value: 10 },
+    { id: 'security_pro', icon: '🔒', name: 'Sécurité Pro', condition: 'path', value: 'security' },
+    { id: 'defi_expert', icon: '💎', name: 'DeFi Expert', condition: 'path', value: 'defi' }
+];
+
+const QUICK_PROMPTS_BY_MODE = {
+    beginner: [
+        "C'est quoi Bitcoin ?",
+        "Comment acheter ma première crypto ?",
+        "C'est quoi un wallet ?",
+        "Comment lire un graphique ?",
+        "C'est quoi le trading ?"
+    ],
+    intermediate: [
+        "Explique-moi le RSI",
+        "Comment faire du yield farming ?",
+        "C'est quoi un support/résistance ?",
+        "Comment staker mes cryptos ?",
+        "Qu'est-ce qu'un liquidity pool ?"
+    ],
+    expert: [
+        "Stratégies d'arbitrage DeFi",
+        "Comment utiliser le leverage ?",
+        "Expliquez le MEV",
+        "Hedging strategies",
+        "Delta neutral farming"
+    ]
+};
+
+// ========================================
+// STATE MANAGEMENT
+// ========================================
+
+let currentMode = 'beginner';
+let currentPath = null;
+let chatHistory = [];
+let userProgress = {
+    lessonsCompleted: [],
+    quizzesCompleted: [],
+    questionsAsked: 0,
+    timeSpent: 0,
+    unlockedBadges: [],
+    startTime: Date.now()
+};
+
+// Load progress from localStorage
+function loadProgress() {
+    const saved = localStorage.getItem('aiCoachProgress');
+    if (saved) {
+        userProgress = JSON.parse(saved);
+    }
+}
+
+function saveProgress() {
+    localStorage.setItem('aiCoachProgress', JSON.stringify(userProgress));
+}
+
+// ========================================
+// INITIALIZATION
+// ========================================
+
+function init() {
+    loadProgress();
+    renderPaths();
+    renderBadges();
+    renderQuickPrompts();
+    updateStats();
+    setupEventListeners();
+    updateTimeSpent();
+}
+
+function setupEventListeners() {
+    // Mode selector
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentMode = btn.dataset.mode;
+            renderPaths();
+            renderQuickPrompts();
+        });
+    });
+    
+    // Send message
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+    document.getElementById('chatInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    // Certificate
+    document.getElementById('certificateBtn').addEventListener('click', generateCertificate);
+}
+
+// ========================================
+// RENDERING FUNCTIONS
+// ========================================
+
+function renderPaths() {
+    const paths = LEARNING_PATHS[currentMode];
+    const html = paths.map(path => {
+        const progress = calculatePathProgress(path.id);
+        const completed = progress === 100;
+        return `
+            <div class="path-item ${currentPath === path.id ? 'active' : ''} ${completed ? 'completed' : ''}" 
+                 onclick="selectPath('${path.id}')">
+                <div class="path-title">${path.title}</div>
+                <div class="path-desc">${path.description}</div>
+                <div class="path-progress">
+                    <div class="path-progress-bar" style="width: ${progress}%"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    document.getElementById('pathsList').innerHTML = html;
+}
+
+function calculatePathProgress(pathId) {
+    const path = Object.values(LEARNING_PATHS).flat().find(p => p.id === pathId);
+    if (!path) return 0;
+    
+    const totalItems = path.lessons + path.quizQuestions;
+    const completed = userProgress.lessonsCompleted.filter(l => l.startsWith(pathId)).length +
+                     userProgress.quizzesCompleted.filter(q => q.startsWith(pathId)).length;
+    return Math.round((completed / totalItems) * 100);
+}
+
+function renderBadges() {
+    const html = BADGES.map(badge => {
+        const unlocked = userProgress.unlockedBadges.includes(badge.id);
+        return `
+            <div class="badge ${unlocked ? 'unlocked' : ''}" title="${badge.name}">
+                <div class="badge-icon">${unlocked ? badge.icon : '🔒'}</div>
+                <div class="badge-name">${badge.name}</div>
+            </div>
+        `;
+    }).join('');
+    document.getElementById('badgesGrid').innerHTML = html;
+}
+
+function renderQuickPrompts() {
+    const prompts = QUICK_PROMPTS_BY_MODE[currentMode];
+    const html = prompts.map(prompt => 
+        `<div class="quick-prompt" onclick="useQuickPrompt('${prompt}')">${prompt}</div>`
+    ).join('');
+    document.getElementById('quickPrompts').innerHTML = html;
+}
+
+function updateStats() {
+    const totalLessons = Object.values(LEARNING_PATHS).flat().reduce((sum, p) => sum + p.lessons, 0);
+    const totalQuizzes = Object.values(LEARNING_PATHS).flat().reduce((sum, p) => sum + p.quizQuestions, 0);
+    
+    document.getElementById('statLessons').textContent = 
+        `${userProgress.lessonsCompleted.length}/${totalLessons}`;
+    document.getElementById('statQuizzes').textContent = 
+        `${userProgress.quizzesCompleted.length}/${totalQuizzes}`;
+    document.getElementById('statQuestions').textContent = userProgress.questionsAsked;
+    document.getElementById('statTime').textContent = 
+        Math.floor(userProgress.timeSpent / 60) + 'h';
+    
+    const overallProgress = Math.round(
+        ((userProgress.lessonsCompleted.length / totalLessons) + 
+         (userProgress.quizzesCompleted.length / totalQuizzes)) / 2 * 100
+    );
+    document.getElementById('overallPercent').textContent = overallProgress + '%';
+    document.getElementById('overallBar').style.width = overallProgress + '%';
+    
+    // Enable certificate if 100%
+    document.getElementById('certificateBtn').disabled = overallProgress < 100;
+    
+    checkBadges();
+}
+
+function updateTimeSpent() {
+    setInterval(() => {
+        userProgress.timeSpent = Math.floor((Date.now() - userProgress.startTime) / 60000);
+        saveProgress();
+        updateStats();
+    }, 60000);
+}
+
+// ========================================
+// PATH SELECTION
+// ========================================
+
+function selectPath(pathId) {
+    currentPath = pathId;
+    renderPaths();
+    showLesson(pathId);
+}
+
+function showLesson(pathId) {
+    const path = Object.values(LEARNING_PATHS).flat().find(p => p.id === pathId);
+    if (!path) return;
+    
+    // Hide chat, show lesson
+    document.getElementById('chatInterface').style.display = 'none';
+    const lessonContent = document.getElementById('lessonContent');
+    lessonContent.classList.add('active');
+    
+    // Generate lesson content
+    lessonContent.innerHTML = generateLessonContent(path);
+    
+    // Mark lesson as completed
+    if (!userProgress.lessonsCompleted.includes(pathId)) {
+        userProgress.lessonsCompleted.push(pathId);
+        saveProgress();
+        updateStats();
+        renderPaths();
+    }
+}
+
+function generateLessonContent(path) {
+    // Simplified lesson template
+    return `
+        <h2>${path.title}</h2>
+        <p>${path.description}</p>
+        
+        <h3>📚 Contenu de la Formation</h3>
+        <p>Ce parcours couvre ${path.lessons} leçons essentielles pour maîtriser ce domaine.</p>
+        
+        <div class="lesson-nav">
+            <button class="nav-btn" onclick="showChat()">← Retour au Chat</button>
+            <button class="nav-btn" onclick="startQuiz('${path.id}')">Passer le Quiz →</button>
+        </div>
+    `;
+}
+
+function showChat() {
+    document.getElementById('lessonContent').classList.remove('active');
+    document.getElementById('quizContainer').classList.remove('active');
+    document.getElementById('chatInterface').style.display = 'flex';
+}
+
+// ========================================
+// QUIZ SYSTEM
+// ========================================
+
+function startQuiz(pathId) {
+    document.getElementById('lessonContent').classList.remove('active');
+    const quizContainer = document.getElementById('quizContainer');
+    quizContainer.classList.add('active');
+    
+    const questions = generateQuizQuestions(pathId);
+    renderQuiz(questions, pathId);
+}
+
+function generateQuizQuestions(pathId) {
+    // Simplified - would be customized per path
+    return [
+        {
+            question: "Quelle est la première règle du trading crypto ?",
+            options: [
+                "Investir uniquement ce que vous pouvez perdre",
+                "Acheter au plus haut",
+                "Vendre au plus bas",
+                "Suivre tous les conseils sur Twitter"
+            ],
+            correct: 0
+        },
+        {
+            question: "Qu'est-ce qu'un Stop Loss ?",
+            options: [
+                "Un ordre pour gagner de l'argent",
+                "Un ordre pour limiter les pertes",
+                "Un type de crypto",
+                "Une stratégie d'investissement"
+            ],
+            correct: 1
+        }
+    ];
+}
+
+function renderQuiz(questions, pathId) {
+    let currentQuestion = 0;
+    let selectedAnswers = [];
+    
+    function renderQuestion() {
+        const q = questions[currentQuestion];
+        const html = `
+            <div class="quiz-header">
+                <h3>🎯 Quiz - Question ${currentQuestion + 1}/${questions.length}</h3>
+            </div>
+            <div class="quiz-question">
+                <div class="question-text">${q.question}</div>
+                <div class="quiz-options" id="quizOptions">
+                    ${q.options.map((opt, i) => `
+                        <div class="quiz-option" data-index="${i}">${opt}</div>
+                    `).join('')}
+                </div>
+            </div>
+            <button class="quiz-btn" id="nextBtn" disabled>
+                ${currentQuestion < questions.length - 1 ? 'Suivant' : 'Terminer'}
+            </button>
+        `;
+        document.getElementById('quizContainer').innerHTML = html;
+        
+        // Event listeners
+        document.querySelectorAll('.quiz-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('.quiz-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                selectedAnswers[currentQuestion] = parseInt(opt.dataset.index);
+                document.getElementById('nextBtn').disabled = false;
+            });
+        });
+        
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentQuestion < questions.length - 1) {
+                currentQuestion++;
+                renderQuestion();
+            } else {
+                showResults();
+            }
+        });
+    }
+    
+    function showResults() {
+        let score = 0;
+        questions.forEach((q, i) => {
+            if (selectedAnswers[i] === q.correct) score++;
+        });
+        
+        const percent = Math.round((score / questions.length) * 100);
+        const passed = percent >= 70;
+        
+        const html = `
+            <div class="quiz-result">
+                <h2 style="color: ${passed ? '#00ff88' : '#ef4444'};">
+                    ${passed ? '🎉 Félicitations !' : '😅 Presque !'}
+                </h2>
+                <div class="quiz-score">${score}/${questions.length}</div>
+                <p style="color: #ddd; margin: 20px 0;">${percent}% de bonnes réponses</p>
+                <p style="color: #aaa;">
+                    ${passed ? 
+                        'Excellent travail ! Vous avez validé ce module.' : 
+                        'Révisez le contenu et réessayez pour débloquer le badge.'}
+                </p>
+                <button class="quiz-btn" onclick="showChat()">Retour au Chat</button>
+            </div>
+        `;
+        document.getElementById('quizContainer').innerHTML = html;
+        
+        if (passed && !userProgress.quizzesCompleted.includes(pathId)) {
+            userProgress.quizzesCompleted.push(pathId);
+            saveProgress();
+            updateStats();
+            renderPaths();
+        }
+    }
+    
+    renderQuestion();
+}
+
+// ========================================
+// CHAT SYSTEM (Claude API)
+// ========================================
+
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) return;
+    
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Envoi...';
+    
+    // Add user message
+    addMessage('user', message);
+    input.value = '';
+    
+    // Update stats
+    userProgress.questionsAsked++;
+    saveProgress();
+    updateStats();
+    
+    try {
+        // Call Claude API
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 1000,
+                messages: [
+                    ...chatHistory,
+                    { role: 'user', content: message }
+                ],
+                system: `Tu es un expert crypto coach francophone. Tu aides les utilisateurs à comprendre le trading crypto, la DeFi, les NFTs, etc. Réponds de manière claire, concise et pédagogique. Mode actuel: ${currentMode}.`
+            })
+        });
+        
+        const data = await response.json();
+        const assistantMessage = data.content.find(c => c.type === 'text')?.text || 'Désolé, erreur de communication.';
+        
+        // Add assistant message
+        addMessage('assistant', assistantMessage);
+        
+        // Update chat history
+        chatHistory.push({ role: 'user', content: message });
+        chatHistory.push({ role: 'assistant', content: assistantMessage });
+        
+    } catch (error) {
+        addMessage('assistant', '⚠️ Erreur de connexion. Veuillez réessayer.');
+        console.error('Chat error:', error);
+    }
+    
+    sendBtn.disabled = false;
+    sendBtn.textContent = 'Envoyer';
+}
+
+function addMessage(role, content) {
+    const messagesDiv = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role}`;
+    messageDiv.innerHTML = `
+        <div class="message-header">${role === 'user' ? '👤 Vous' : '🤖 AI Coach'}</div>
+        <div class="message-content">${content}</div>
+    `;
+    messagesDiv.appendChild(messageDiv);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+function useQuickPrompt(prompt) {
+    document.getElementById('chatInput').value = prompt;
+    sendMessage();
+}
+
+// ========================================
+// BADGES SYSTEM
+// ========================================
+
+function checkBadges() {
+    BADGES.forEach(badge => {
+        if (userProgress.unlockedBadges.includes(badge.id)) return;
+        
+        let unlock = false;
+        switch (badge.condition) {
+            case 'lessons':
+                unlock = userProgress.lessonsCompleted.length >= badge.value;
+                break;
+            case 'quizzes':
+                unlock = userProgress.quizzesCompleted.length >= badge.value;
+                break;
+            case 'questions':
+                unlock = userProgress.questionsAsked >= badge.value;
+                break;
+            case 'time':
+                unlock = Math.floor(userProgress.timeSpent / 60) >= badge.value;
+                break;
+            case 'path':
+                unlock = userProgress.lessonsCompleted.includes(badge.value) && 
+                         userProgress.quizzesCompleted.includes(badge.value);
+                break;
+        }
+        
+        if (unlock) {
+            userProgress.unlockedBadges.push(badge.id);
+            saveProgress();
+            renderBadges();
+        }
+    });
+}
+
+// ========================================
+// CERTIFICATE
+// ========================================
+
+function generateCertificate() {
+    alert('🎓 Félicitations ! Votre certificat est en cours de génération...\\n\\nVous avez complété tous les parcours avec succès !');
+    // Would generate PDF certificate here
+}
+
+// ========================================
+// START
+// ========================================
+
+init();
+console.log('🎓 AI Crypto Coach chargé - Claude API activée');
+</script>
+</body>
+</html>
+'''
+    
+    return HTMLResponse(page_html)

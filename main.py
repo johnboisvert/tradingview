@@ -32934,6 +32934,22 @@ async def narrative_radar():
         .footer-info ul { list-style: none; padding: 0; }
         .footer-info li { color: #aaa; line-height: 1.8; padding-left: 20px; position: relative; }
         .footer-info li::before { content: '▸'; position: absolute; left: 0; color: #00ff88; }
+        .guide-section { margin-top: 50px; padding: 35px; background: rgba(0,212,255,0.08); border-radius: 15px; border: 2px solid rgba(0,212,255,0.3); }
+        .guide-section h2 { color: #00d4ff; margin-bottom: 25px; font-size: 2em; text-align: center; text-shadow: 0 0 15px rgba(0,212,255,0.5); }
+        .guide-section h3 { color: #00ff88; margin-top: 30px; margin-bottom: 15px; font-size: 1.4em; display: flex; align-items: center; gap: 10px; }
+        .guide-section p { color: #ccc; line-height: 1.8; margin: 15px 0; font-size: 1.05em; }
+        .guide-section ul { margin: 15px 0 15px 25px; }
+        .guide-section li { color: #aaa; line-height: 2; margin: 8px 0; }
+        .guide-section strong { color: #00ff88; font-weight: 600; }
+        .guide-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 25px 0; }
+        .guide-card { background: rgba(0,255,136,0.05); border: 1px solid rgba(0,255,136,0.2); border-radius: 12px; padding: 20px; }
+        .guide-card h4 { color: #00ff88; margin-bottom: 12px; font-size: 1.15em; }
+        .guide-card p { color: #aaa; line-height: 1.6; font-size: 0.95em; }
+        .status-example { display: inline-block; padding: 6px 14px; border-radius: 15px; font-size: 0.85em; font-weight: bold; margin: 0 5px; }
+        .status-example.calme { background: rgba(108, 117, 125, 0.3); color: #888; border: 1px solid rgba(108, 117, 125, 0.5); }
+        .status-example.emergent { background: rgba(0, 255, 136, 0.2); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.5); }
+        .status-example.chaud { background: rgba(251, 191, 36, 0.3); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.6); }
+        .status-example.enfeu { background: rgba(239, 68, 68, 0.3); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.6); }
         .data-source { text-align: center; margin-top: 30px; padding: 15px; background: rgba(0,212,255,0.1); border-radius: 8px; color: #00d4ff; font-size: 0.95em; }
         .error-box { background: rgba(239,68,68,0.1); border: 2px solid rgba(239,68,68,0.5); border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0; }
         .error-box .icon { font-size: 3em; margin-bottom: 15px; }
@@ -33008,13 +33024,160 @@ async def narrative_radar():
             </button>
         </div>
         
+        <!-- 📚 GUIDE D'UTILISATION COMPLET -->
+        <div class="guide-section">
+            <h2>📚 Comment Utiliser le Narrative Radar</h2>
+            
+            <h3>🎯 Qu'est-ce que c'est ?</h3>
+            <p>
+                Le <strong>Narrative Radar</strong> est un outil d'analyse en temps réel qui scanne <strong>~100 posts</strong> de l'API CryptoPanic 
+                pour identifier les <strong>narratives crypto dominantes</strong> du moment. Il utilise <strong>300+ mots-clés</strong> répartis sur 
+                <strong>8 narratives</strong> pour détecter les tendances du marché avec une précision professionnelle.
+            </p>
+            
+            <h3>🚀 Comment Commencer ?</h3>
+            <div class="guide-grid">
+                <div class="guide-card">
+                    <h4>1️⃣ Premier Scan</h4>
+                    <p>Cliquez sur <strong>"🔍 Scanner Maintenant"</strong> pour lancer votre première analyse. Le système va récupérer environ 90-100 posts récents de CryptoPanic et les analyser instantanément.</p>
+                </div>
+                <div class="guide-card">
+                    <h4>2️⃣ Analyser les Résultats</h4>
+                    <p>Observez les <strong>cartes de narratives</strong> qui s'affichent. Chaque carte montre le nombre de mentions, le status, et le momentum (variation depuis le dernier scan).</p>
+                </div>
+                <div class="guide-card">
+                    <h4>3️⃣ Re-scanner</h4>
+                    <p>Attendez <strong>2 minutes</strong> (cooldown) puis re-scannez pour voir comment les narratives évoluent. Le momentum vous montrera les tendances à la hausse ou à la baisse.</p>
+                </div>
+            </div>
+            
+            <h3>📊 Les 8 Narratives Crypto</h3>
+            <div class="guide-grid">
+                <div class="guide-card">
+                    <h4>🤖 AI (Intelligence Artificielle)</h4>
+                    <p>Projets crypto liés à l'IA et au machine learning : FET, AGIX, OCEAN, RENDER, NMR</p>
+                </div>
+                <div class="guide-card">
+                    <h4>💰 DeFi (Finance Décentralisée)</h4>
+                    <p>Protocoles de prêt, DEX, staking, yield farming : AAVE, UNI, COMP, CRV, SNX</p>
+                </div>
+                <div class="guide-card">
+                    <h4>🏢 RWA (Real World Assets)</h4>
+                    <p>Tokenisation d'actifs réels : ONDO, POLYX, RIO, MPL</p>
+                </div>
+                <div class="guide-card">
+                    <h4>🎮 Gaming & Metaverse</h4>
+                    <p>Jeux blockchain et mondes virtuels : IMX, GALA, SAND, AXS, MANA</p>
+                </div>
+                <div class="guide-card">
+                    <h4>⚡ L2 (Layer 2)</h4>
+                    <p>Solutions de scalabilité Ethereum : ARB, OP, MATIC, STRK, ZK</p>
+                </div>
+                <div class="guide-card">
+                    <h4>🐸 Memes</h4>
+                    <p>Memecoins populaires : DOGE, SHIB, PEPE, WIF, BONK</p>
+                </div>
+                <div class="guide-card">
+                    <h4>🔗 Infrastructure</h4>
+                    <p>Oracles et infrastructure blockchain : LINK, API3, BAND, DIA</p>
+                </div>
+                <div class="guide-card">
+                    <h4>🔒 Privacy</h4>
+                    <p>Cryptos axées sur la confidentialité : XMR, ZEC, SCRT, ROSE</p>
+                </div>
+            </div>
+            
+            <h3>🎨 Comprendre les Status</h3>
+            <p>Chaque narrative reçoit un status basé sur le nombre de mentions détectées :</p>
+            <ul>
+                <li><span class="status-example calme">😴 CALME</span> <strong>0 mentions</strong> → Aucune activité détectée</li>
+                <li><span class="status-example emergent">🟢 ÉMERGENT</span> <strong>1-4 mentions</strong> → Début d'activité, à surveiller</li>
+                <li><span class="status-example chaud">🔥 CHAUD</span> <strong>5-14 mentions</strong> → Activité modérée, tendance en formation</li>
+                <li><span class="status-example enfeu">🚀 EN FEU</span> <strong>15+ mentions</strong> → Très haute activité, narrative dominante</li>
+            </ul>
+            
+            <h3>📈 Le Momentum Expliqué</h3>
+            <p>
+                Le <strong>Momentum</strong> mesure la <strong>variation en %</strong> du nombre de mentions entre deux scans :
+            </p>
+            <ul>
+                <li><strong style="color: #00ff88;">+200%</strong> → La narrative a triplé ses mentions (ex: 4 → 12)</li>
+                <li><strong style="color: #00ff88;">+50%</strong> → Augmentation de 50% (ex: 10 → 15)</li>
+                <li><strong style="color: #00d4ff;">0%</strong> → Stable ou premier scan</li>
+                <li><strong style="color: #ef4444;">-25%</strong> → Diminution de 25% (ex: 20 → 15)</li>
+                <li><strong style="color: #ef4444;">-50%</strong> → Forte baisse (ex: 20 → 10)</li>
+            </ul>
+            <p>
+                <strong>⚠️ Important :</strong> Le momentum est calculé uniquement si vous avez scanné au moins 2 fois. 
+                Au premier scan, tous les momentum sont à 0%. Les scans suivants montreront les vraies variations.
+            </p>
+            
+            <h3>🔧 Fonctionnalités Avancées</h3>
+            <div class="guide-grid">
+                <div class="guide-card">
+                    <h4>🐛 Voir les Titres Réels</h4>
+                    <p>Cliquez sur ce bouton pour ouvrir le panneau debug qui affiche les 10-15 derniers titres réels récupérés de CryptoPanic. Parfait pour vérifier l'authenticité des données !</p>
+                </div>
+                <div class="guide-card">
+                    <h4>🔄 Réinitialiser Momentum</h4>
+                    <p>Efface tous les scores précédents sauvegardés. Le prochain scan sera considéré comme un premier scan (momentum 0%). Utile pour repartir à zéro.</p>
+                </div>
+                <div class="guide-card">
+                    <h4>💾 Persistance Automatique</h4>
+                    <p>Vos scores sont automatiquement sauvegardés dans votre navigateur (localStorage). Si vous rafraîchissez la page, vos données persistent !</p>
+                </div>
+                <div class="guide-card">
+                    <h4>⏱️ Cooldown Timer</h4>
+                    <p>Après chaque scan, un cooldown de 2 minutes est activé pour éviter de surcharger l'API. Un timer en temps réel vous montre quand vous pourrez re-scanner.</p>
+                </div>
+                <div class="guide-card">
+                    <h4>🔄 Auto-Refresh</h4>
+                    <p>Le système se rafraîchit automatiquement toutes les 5 minutes pour maintenir vos données à jour sans intervention manuelle.</p>
+                </div>
+                <div class="guide-card">
+                    <h4>🪙 Coins Associés</h4>
+                    <p>Chaque narrative affiche les principaux tokens/coins liés. Cliquez sur les badges pour identifier rapidement les projets concernés.</p>
+                </div>
+            </div>
+            
+            <h3>💡 Conseils d'Utilisation</h3>
+            <ul>
+                <li><strong>Scanner régulièrement :</strong> Scannez toutes les 2-5 minutes pour suivre l'évolution en temps réel</li>
+                <li><strong>Comparer les momentum :</strong> Un momentum élevé (+100% ou plus) indique une narrative en pleine explosion</li>
+                <li><strong>Croiser avec les coins :</strong> Si "AI" est EN FEU, regardez FET, AGIX, RENDER pour des opportunités</li>
+                <li><strong>Status CALME ≠ Mauvais :</strong> Une narrative calme peut être un bon timing d'achat avant l'explosion</li>
+                <li><strong>Vérifier les titres :</strong> Utilisez le panneau debug pour confirmer que les détections sont pertinentes</li>
+                <li><strong>Tendances long-terme :</strong> Scannez plusieurs fois par jour pendant une semaine pour identifier les vraies tendances</li>
+            </ul>
+            
+            <h3>🎯 Cas d'Usage Concrets</h3>
+            <p><strong>Scénario 1 - Détecter une tendance émergente :</strong></p>
+            <p>Vous voyez "Gaming" passer de ÉMERGENT (3) à CHAUD (8) en 2 scans → Momentum +167%. C'est un signal fort ! Vérifiez les titres debug et envisagez d'investir dans IMX, GALA ou SAND.</p>
+            
+            <p><strong>Scénario 2 - Confirmer une tendance établie :</strong></p>
+            <p>"DeFi" est EN FEU (22 mentions) avec un momentum de +30%. La tendance est confirmée et stable. Bon moment pour suivre les protocoles DeFi comme AAVE ou UNI.</p>
+            
+            <p><strong>Scénario 3 - Repérer un retournement :</strong></p>
+            <p>"Memes" était EN FEU (28) mais vient de passer à CHAUD (12) avec un momentum de -57%. Signal de ralentissement, peut-être temps de prendre des profits.</p>
+            
+            <h3>⚠️ Limitations & Notes</h3>
+            <ul>
+                <li>Les données proviennent de <strong>CryptoPanic API</strong> qui agrège les news crypto principales</li>
+                <li>Le système analyse <strong>~90-100 posts</strong> (limité par l'API gratuite)</li>
+                <li>Le <strong>cooldown de 2 minutes</strong> évite de surcharger l'API</li>
+                <li>Les <strong>keywords sont fixes</strong> - certains projets récents peuvent ne pas être détectés</li>
+                <li>Le momentum est <strong>relatif</strong>, pas absolu - +200% sur 2 mentions = 6 mentions (reste faible)</li>
+                <li>Utilisez cet outil comme <strong>complément</strong> à votre analyse, pas comme seule source de décision</li>
+            </ul>
+        </div>
+        
         <div class="footer-info">
             <h3>🔥 Narrative Radar ULTIME</h3>
             <ul>
-                <li><strong>Source :</strong> CryptoPanic API - 100 posts analysés en temps réel</li>
+                <li><strong>Source :</strong> CryptoPanic API - ~100 posts analysés en temps réel</li>
                 <li><strong>300+ Keywords :</strong> Détection ultra-précise avec 40-50 keywords par narrative</li>
                 <li><strong>8 Narratives :</strong> AI, DeFi, RWA, Gaming, L2, Memes, Infrastructure, Privacy</li>
-                <li><strong>Status :</strong> QUIET (0), EMERGING (1-4), HOT (5-14), TRENDING (15+)</li>
+                <li><strong>Status :</strong> CALME (0), ÉMERGENT (1-4), CHAUD (5-14), EN FEU (15+)</li>
                 <li><strong>Momentum :</strong> Calculé entre scans (cooldown 2 minutes)</li>
                 <li><strong>Debug :</strong> Voir les titres réels de CryptoPanic</li>
                 <li><strong>Auto-Refresh :</strong> Toutes les 5 minutes</li>
@@ -33275,10 +33438,10 @@ function displayNarratives(narrativesData) {
 }
 
 function getStatus(mentions) {
-    if (mentions === 0) return {emoji: '😴', text: 'QUIET', class: 'quiet'};
-    if (mentions < 5) return {emoji: '🟢', text: 'EMERGING', class: 'emerging'};
-    if (mentions < 15) return {emoji: '🔥', text: 'HOT', class: 'hot'};
-    return {emoji: '🚀', text: 'TRENDING', class: 'trending'};
+    if (mentions === 0) return {emoji: '😴', text: 'CALME', class: 'quiet'};
+    if (mentions < 5) return {emoji: '🟢', text: 'ÉMERGENT', class: 'emerging'};
+    if (mentions < 15) return {emoji: '🔥', text: 'CHAUD', class: 'hot'};
+    return {emoji: '🚀', text: 'EN FEU', class: 'trending'};
 }
 
 function getCurrentTime() {

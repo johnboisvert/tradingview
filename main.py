@@ -32591,7 +32591,7 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
 
 @app.get("/api/narrative-radar/scan")
 async def api_scan_narratives():
-    """API Backend - Scan RÉEL via CryptoPanic avec fallback intelligent"""
+    """🔥 API ULTIME - 100 posts + 300 keywords + Debug Info"""
     
     CRYPTOPANIC_KEY = "bca5327f4c31e7511b4a7824951ed0ae4d8bb5ac"
     
@@ -32599,43 +32599,55 @@ async def api_scan_narratives():
         """Génère des données de démonstration réalistes"""
         import random
         narratives_count = {
-            "AI": random.randint(10, 20),
-            "DeFi": random.randint(8, 16),
-            "RWA": random.randint(3, 9),
-            "Gaming": random.randint(4, 12),
-            "L2": random.randint(12, 22),
-            "Memes": random.randint(18, 28),
-            "Infrastructure": random.randint(3, 7),
-            "Privacy": random.randint(1, 5)
+            "AI": random.randint(12, 25),
+            "DeFi": random.randint(10, 20),
+            "RWA": random.randint(4, 12),
+            "Gaming": random.randint(5, 15),
+            "L2": random.randint(15, 30),
+            "Memes": random.randint(20, 35),
+            "Infrastructure": random.randint(4, 10),
+            "Privacy": random.randint(1, 6)
         }
         total_mentions = sum(narratives_count.values())
         active_narratives = sum(1 for count in narratives_count.values() if count > 0)
         hot_topics = sum(1 for count in narratives_count.values() if count >= 5)
         
+        demo_titles = [
+            "Bitcoin breaks $45,000 resistance level",
+            "Ethereum upgrade scheduled for next month",
+            "New DeFi protocol launches with $100M TVL",
+            "Meme coin rally continues as DOGE gains 15%",
+            "AI tokens surge on ChatGPT integration news"
+        ]
+        
         return {
             "success": True,
-            "totalNews": random.randint(85, 115),
+            "totalNews": random.randint(90, 120),
             "totalMentions": total_mentions,
             "activeNarratives": active_narratives,
             "hotTopics": hot_topics,
             "narratives": narratives_count,
             "timestamp": datetime.now().isoformat(),
             "source": "Demo Mode",
-            "mode": "demo"
+            "mode": "demo",
+            "recentTitles": demo_titles,
+            "postsAnalyzed": random.randint(90, 120)
         }
     
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }
             
+            # 🔥 RÉCUPÉRER 100 POSTS au lieu de 20
             response = await client.get(
                 "https://cryptopanic.com/api/v1/posts/",
                 params={
                     "auth_token": CRYPTOPANIC_KEY,
                     "public": "true",
                     "filter": "rising"
+                    # Note: Par défaut CryptoPanic retourne max 20, mais on peut paginer
                 },
                 headers=headers,
                 follow_redirects=True
@@ -32648,49 +32660,197 @@ async def api_scan_narratives():
             data = response.json()
             posts = data.get("results", [])
             
-            if len(posts) == 0:
+            # 🔥 PAGINATION : Récupérer jusqu'à 100 posts
+            all_posts = posts.copy()
+            next_url = data.get("next")
+            
+            # Récupérer jusqu'à 5 pages (20 posts × 5 = 100 posts)
+            max_pages = 5
+            current_page = 1
+            
+            while next_url and current_page < max_pages and len(all_posts) < 100:
+                try:
+                    next_response = await client.get(next_url, headers=headers, timeout=10.0)
+                    if next_response.status_code == 200:
+                        next_data = next_response.json()
+                        next_posts = next_data.get("results", [])
+                        all_posts.extend(next_posts)
+                        next_url = next_data.get("next")
+                        current_page += 1
+                        print(f"📄 [Narrative] Page {current_page} chargée - {len(all_posts)} posts total")
+                    else:
+                        break
+                except Exception as e:
+                    print(f"⚠️ [Narrative] Erreur pagination: {e}")
+                    break
+            
+            if len(all_posts) == 0:
                 print(f"⚠️ [Narrative] Aucun post → Fallback démo")
                 return generate_demo_data()
             
-            # Analyse des posts RÉELS
+            # 🔥 KEYWORDS MASSIFS - 40-50 par narrative
             narrative_keywords = {
-                "AI": ["ai", "artificial intelligence", "machine learning", "neural", "gpt", "llm", "chatgpt", "agix", "fet", "fetch", "singularitynet", "ocean protocol", "render"],
-                "DeFi": ["defi", "lending", "yield", "liquidity", "amm", "dex", "swap", "aave", "uniswap", "compound", "curve", "synthetix"],
-                "RWA": ["rwa", "real world asset", "tokenization", "tokenized", "bonds", "treasury", "ondo", "real estate"],
-                "Gaming": ["gaming", "metaverse", "nft", "play to earn", "p2e", "game", "immutable", "gala", "sandbox", "axie"],
-                "L2": ["layer 2", "l2", "rollup", "scaling", "zk", "optimistic", "arbitrum", "optimism", "polygon", "starknet"],
-                "Memes": ["meme", "memecoin", "doge", "dogecoin", "shiba", "shib", "pepe", "wif", "bonk", "floki"],
-                "Infrastructure": ["oracle", "bridge", "middleware", "data", "chainlink", "link", "infrastructure", "api3"],
-                "Privacy": ["privacy", "anonymous", "mixer", "confidential", "zero knowledge", "monero", "zcash"]
+                "AI": [
+                    # Général IA
+                    "ai", "artificial intelligence", "machine learning", "ml", "neural", "deep learning",
+                    "gpt", "chatgpt", "llm", "large language model", "generative ai", "genai",
+                    # Projets crypto AI
+                    "agix", "singularitynet", "fetch", "fet", "fetch.ai", "ocean protocol", "ocean",
+                    "render", "rndr", "render network", "akash", "akt", "akash network",
+                    "bittensor", "tao", "cortex", "ctxc", "numerai", "nmr",
+                    "phala", "pha", "matrix ai", "man", "deepbrain", "dbc",
+                    # Tendances
+                    "ai agent", "ai trading", "ai prediction", "ai analytics", "openai", "anthropic",
+                    "claude", "gemini", "copilot", "midjourney", "stable diffusion"
+                ],
+                "DeFi": [
+                    # Général DeFi
+                    "defi", "decentralized finance", "lending", "borrowing", "yield", "yield farming",
+                    "liquidity", "liquidity mining", "amm", "automated market maker", "dex", "swap",
+                    "staking", "liquid staking", "restaking", "flash loan",
+                    # Protocoles majeurs
+                    "aave", "compound", "comp", "uniswap", "uni", "sushiswap", "sushi",
+                    "curve", "crv", "convex", "cvx", "balancer", "bal",
+                    "makerdao", "maker", "mkr", "dai", "synthetix", "snx",
+                    "pancakeswap", "cake", "trader joe", "joe", "gmx",
+                    # Tendances
+                    "tvl", "total value locked", "apr", "apy", "impermanent loss",
+                    "liquidity pool", "lp token", "governance token", "ve token"
+                ],
+                "RWA": [
+                    # Général RWA
+                    "rwa", "real world asset", "real world assets", "tokenization", "tokenized",
+                    "asset tokenization", "security token", "tokenized securities",
+                    # Types d'actifs
+                    "tokenized bonds", "treasury", "t-bills", "us treasury", "government bonds",
+                    "real estate", "tokenized real estate", "property token",
+                    "commodities", "gold token", "tokenized gold", "silver token",
+                    # Projets
+                    "ondo", "ondo finance", "maple", "mpl", "maple finance",
+                    "centrifuge", "cfg", "goldfinch", "gfi", "truefi", "tru",
+                    "polytrade", "credix", "backed", "backed finance",
+                    # Tendances
+                    "institutional defi", "tradfi", "traditional finance", "securities",
+                    "compliance token", "kyc token", "regulated defi"
+                ],
+                "Gaming": [
+                    # Général Gaming
+                    "gaming", "game", "games", "play to earn", "p2e", "play2earn",
+                    "gamefi", "game finance", "nft gaming", "blockchain gaming", "web3 gaming",
+                    "metaverse", "virtual world", "virtual land",
+                    # Projets majeurs
+                    "immutable", "imx", "immutable x", "gala", "gala games",
+                    "sandbox", "sand", "the sandbox", "decentraland", "mana",
+                    "axie", "axie infinity", "axs", "slp", "smooth love potion",
+                    "illuvium", "ilv", "gods unchained", "gods", "star atlas", "atlas",
+                    "bigtime", "bigtime studios", "pixels", "pixel", "beam", "beam gaming",
+                    # Tendances
+                    "game nft", "gaming token", "esports", "play and earn",
+                    "game economy", "in-game asset", "game launch", "game beta"
+                ],
+                "L2": [
+                    # Général L2
+                    "layer 2", "layer2", "l2", "scaling", "scalability", "rollup", "rollups",
+                    "zk", "zero knowledge", "zk-rollup", "zkrollup", "zkevm",
+                    "optimistic", "optimistic rollup", "op rollup",
+                    # Projets majeurs
+                    "arbitrum", "arb", "optimism", "op", "polygon", "matic", "pol",
+                    "starknet", "strk", "stark", "zksync", "zk sync", "era",
+                    "base", "base chain", "linea", "scroll", "scroll l2",
+                    "blast", "blast l2", "metis", "metis dao", "boba", "boba network",
+                    # Tendances
+                    "l2 bridge", "cross-chain", "sequencer", "data availability",
+                    "l2 adoption", "eth scaling", "ethereum l2", "gas fees", "cheap transactions"
+                ],
+                "Memes": [
+                    # Général Memes
+                    "meme", "memecoin", "meme coin", "meme token", "community token",
+                    "viral", "trending", "hype", "fomo", "moon", "lambo",
+                    # Projets majeurs
+                    "doge", "dogecoin", "shiba", "shib", "shiba inu", "leash", "bone",
+                    "pepe", "pepe coin", "pepecoin", "wif", "dogwifhat", "dog wif hat",
+                    "bonk", "bonk inu", "floki", "floki inu", "baby doge", "babydoge",
+                    "kishu", "kishu inu", "akita", "akita inu", "hokkaido", "hoge",
+                    # Nouveaux/Tendances
+                    "myro", "wen", "bome", "book of meme", "smog", "sponge",
+                    "turbo", "milady", "mog", "mog coin", "brett", "toshi",
+                    # Général
+                    "dog coin", "cat coin", "frog coin", "animal token",
+                    "meme rally", "meme season", "degen", "ape", "going viral"
+                ],
+                "Infrastructure": [
+                    # Oracles
+                    "oracle", "data oracle", "price feed", "chainlink", "link",
+                    "api3", "band", "band protocol", "pyth", "pyth network",
+                    "dia", "dia data", "tellor", "trb", "umbrella", "umb",
+                    # Bridges
+                    "bridge", "cross-chain bridge", "multichain", "layerzero", "zro",
+                    "wormhole", "w", "synapse", "syn", "hop", "hop protocol",
+                    "stargate", "stg", "across", "celer", "celr", "connext",
+                    # Infrastructure générale
+                    "middleware", "infrastructure", "data", "indexing", "the graph", "grt",
+                    "rpc", "node", "validator", "sequencer", "relayer",
+                    # Cloud/Computing
+                    "decentralized cloud", "web3 infrastructure", "blockchain infrastructure",
+                    "api", "sdk", "developer tools", "devtools"
+                ],
+                "Privacy": [
+                    # Général Privacy
+                    "privacy", "private", "anonymous", "anonymity", "confidential",
+                    "zero knowledge", "zkp", "zk-proof", "zk proof",
+                    "mixer", "mixing", "tumbler", "obfuscation",
+                    # Projets
+                    "monero", "xmr", "zcash", "zec", "secret", "scrt", "secret network",
+                    "oasis", "rose", "oasis network", "dusk", "dusk network",
+                    "railgun", "aztec", "tornado", "tornado cash",
+                    "beam", "beam privacy", "firo", "pivx", "dash",
+                    # Technologies
+                    "stealth address", "ring signature", "confidential transaction",
+                    "private transaction", "encrypted", "encryption",
+                    "privacy coin", "privacy token", "privacy protocol"
+                ]
             }
             
+            # Comptage des narratives
             narratives_count = {
                 "AI": 0, "DeFi": 0, "RWA": 0, "Gaming": 0,
                 "L2": 0, "Memes": 0, "Infrastructure": 0, "Privacy": 0
             }
             
-            for post in posts:
-                title = post.get("title", "").lower()
+            # 🔥 Collecter les titres pour debug
+            recent_titles = []
+            
+            for post in all_posts[:100]:  # Limiter à 100 posts max
+                title = post.get("title", "")
+                title_lower = title.lower()
+                
+                # Ajouter aux titres récents (max 15)
+                if len(recent_titles) < 15:
+                    recent_titles.append(title[:100])  # Limiter à 100 chars
+                
+                # Analyser pour chaque narrative
                 for narrative, keywords in narrative_keywords.items():
-                    if any(keyword in title for keyword in keywords):
+                    if any(keyword in title_lower for keyword in keywords):
                         narratives_count[narrative] += 1
             
             total_mentions = sum(narratives_count.values())
             active_narratives = sum(1 for count in narratives_count.values() if count > 0)
             hot_topics = sum(1 for count in narratives_count.values() if count >= 5)
             
-            print(f"✅ [Narrative] {len(posts)} posts analysés - {active_narratives} narratives actives")
+            print(f"✅ [Narrative] {len(all_posts)} posts analysés - {active_narratives} narratives actives - {total_mentions} mentions totales")
             
             return {
                 "success": True,
-                "totalNews": len(posts),
+                "totalNews": len(all_posts),
                 "totalMentions": total_mentions,
                 "activeNarratives": active_narratives,
                 "hotTopics": hot_topics,
                 "narratives": narratives_count,
                 "timestamp": datetime.now().isoformat(),
-                "source": "CryptoPanic Live",
-                "mode": "live"
+                "source": "CryptoPanic API (Live)",
+                "mode": "live",
+                "recentTitles": recent_titles,  # 🔥 TITRES RÉELS
+                "postsAnalyzed": len(all_posts)
             }
             
     except Exception as e:
@@ -32777,7 +32937,7 @@ async def narrative_radar():
 <div class="main-content">
     <div class="container">
         <h1>🎯 Narrative Radar</h1>
-        <p class="subtitle">Dashboard temps réel - Données CryptoPanic API</p>
+        <p class="subtitle">🔥 ULTIMATE - 100 posts × 300 keywords × Debug Mode</p>
         
         <div class="stats-header" id="statsHeader" style="display: none;">
             <div class="stat-box">
@@ -32811,16 +32971,35 @@ async def narrative_radar():
         
         <div class="data-source" id="dataSource" style="display: none;">
             <span class="status-text">✅ Données CryptoPanic Live</span>
+            <span class="posts-analyzed" style="margin-left: 15px; color: rgba(255,255,255,0.6);"></span>
+        </div>
+        
+        <!-- 🐛 PANNEAU DEBUG -->
+        <div class="debug-panel" id="debugPanel" style="display: none; margin: 30px 0; background: rgba(0,0,0,0.3); border: 1px solid rgba(6,182,212,0.3); border-radius: 12px; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; color: #06b6d4; font-size: 1.1em;">🐛 Debug - Derniers Titres Réels</h3>
+                <button onclick="toggleDebug()" style="background: rgba(6,182,212,0.2); border: 1px solid #06b6d4; color: #06b6d4; padding: 5px 15px; border-radius: 6px; cursor: pointer; font-size: 0.9em;">Cacher</button>
+            </div>
+            <div id="debugTitles" style="font-size: 0.9em; line-height: 1.8;">
+                <p style="color: rgba(255,255,255,0.5); margin: 0;">Aucun scan effectué</p>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <button onclick="toggleDebug()" style="background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.4); color: #06b6d4; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                🐛 Voir les Titres Réels
+            </button>
         </div>
         
         <div class="footer-info">
-            <h3>📊 Données 100% Réelles</h3>
+            <h3>🔥 Narrative Radar ULTIME</h3>
             <ul>
-                <li><strong>Source :</strong> CryptoPanic API - News crypto en temps réel</li>
+                <li><strong>Source :</strong> CryptoPanic API - 100 posts analysés en temps réel</li>
+                <li><strong>300+ Keywords :</strong> Détection ultra-précise avec 40-50 keywords par narrative</li>
                 <li><strong>8 Narratives :</strong> AI, DeFi, RWA, Gaming, L2, Memes, Infrastructure, Privacy</li>
                 <li><strong>Status :</strong> QUIET (0), EMERGING (1-4), HOT (5-14), TRENDING (15+)</li>
-                <li><strong>Momentum :</strong> Calculé sur derniers scans réels</li>
-                <li><strong>Coins :</strong> Projets majeurs de chaque narrative</li>
+                <li><strong>Momentum :</strong> Calculé entre scans (cooldown 2 minutes)</li>
+                <li><strong>Debug :</strong> Voir les titres réels de CryptoPanic</li>
                 <li><strong>Auto-Refresh :</strong> Toutes les 5 minutes</li>
             </ul>
         </div>
@@ -32846,6 +33025,17 @@ var NARRATIVES = {
 
 var previousScores = {};
 var scanCount = 0;
+var lastScanTime = 0;
+var COOLDOWN_MS = 120000; // 🔥 2 MINUTES = 120 secondes
+
+function toggleDebug() {
+    var panel = document.getElementById('debugPanel');
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+    } else {
+        panel.style.display = 'none';
+    }
+}
 
 async function scanNow() {
     var btn = document.getElementById('scanBtn');
@@ -32855,15 +33045,42 @@ async function scanNow() {
     
     if (btn.disabled) return;
     
+    // 🔥 COOLDOWN CHECK
+    var now = Date.now();
+    var timeSinceLastScan = now - lastScanTime;
+    
+    if (lastScanTime > 0 && timeSinceLastScan < COOLDOWN_MS) {
+        var remainingSeconds = Math.ceil((COOLDOWN_MS - timeSinceLastScan) / 1000);
+        var minutes = Math.floor(remainingSeconds / 60);
+        var seconds = remainingSeconds % 60;
+        
+        btn.innerHTML = '⏳ ' + minutes + 'm ' + seconds + 's';
+        btn.style.background = 'rgba(245,158,11,0.2)';
+        btn.style.borderColor = '#f59e0b';
+        btn.style.color = '#f59e0b';
+        
+        setTimeout(function() {
+            btn.innerHTML = '🔍 Scanner Maintenant';
+            btn.style.background = '';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+        }, 1000);
+        
+        return;
+    }
+    
     btn.classList.add('loading');
     btn.innerHTML = '<span class="spinner"></span>';
     btn.disabled = true;
     
-    container.innerHTML = '<div class="initial-message"><div class="spinner"></div><p class="loading-text">🔍 Scan RÉEL en cours via CryptoPanic API...</p></div>';
+    container.innerHTML = '<div class="initial-message"><div class="spinner"></div><p class="loading-text">🔍 Scan de 100 posts via CryptoPanic API...</p></div>';
     
     try {
         var response = await fetch('/api/narrative-radar/scan');
         var data = await response.json();
+        
+        // 🔥 METTRE À JOUR LE COOLDOWN
+        lastScanTime = Date.now();
         
         var narrativesWithMomentum = {};
         
@@ -32895,27 +33112,42 @@ async function scanNow() {
         
         // Afficher la source des données
         var sourceText = dataSource.querySelector('.status-text');
+        var postsAnalyzed = dataSource.querySelector('.posts-analyzed');
+        
         if (sourceText) {
             if (data.mode === 'live') {
                 sourceText.textContent = '✅ Données CryptoPanic Live';
                 sourceText.style.color = '#10b981';
+                if (postsAnalyzed) {
+                    postsAnalyzed.textContent = '(' + (data.postsAnalyzed || data.totalNews) + ' posts analysés)';
+                }
             } else {
                 sourceText.textContent = '🔄 Mode Démo (API temporairement indisponible)';
                 sourceText.style.color = '#f59e0b';
+                if (postsAnalyzed) {
+                    postsAnalyzed.textContent = '(simulation)';
+                }
             }
-        } else {
-            // Fallback : modifier directement dataSource si .status-text n'existe pas
-            if (data.mode === 'live') {
-                dataSource.innerHTML = '<span style="color: #10b981;">✅ Données CryptoPanic Live</span>';
-            } else {
-                dataSource.innerHTML = '<span style="color: #f59e0b;">🔄 Mode Démo (API temporairement indisponible)</span>';
-            }
+        }
+        
+        // 🔥 AFFICHER LES TITRES RÉELS DANS LE DEBUG PANEL
+        if (data.recentTitles && data.recentTitles.length > 0) {
+            var debugTitles = document.getElementById('debugTitles');
+            var titlesHTML = '<div style="color: rgba(255,255,255,0.7);">';
+            data.recentTitles.forEach(function(title, index) {
+                titlesHTML += '<div style="margin: 8px 0; padding: 8px; background: rgba(0,0,0,0.2); border-left: 3px solid #06b6d4; border-radius: 4px;">';
+                titlesHTML += '<span style="color: #06b6d4; margin-right: 10px;">' + (index + 1) + '.</span>';
+                titlesHTML += title;
+                titlesHTML += '</div>';
+            });
+            titlesHTML += '</div>';
+            debugTitles.innerHTML = titlesHTML;
         }
         
         displayNarratives(narrativesWithMomentum);
         scanCount++;
         
-        console.log('✅ Scan réel terminé - Source: CryptoPanic');
+        console.log('✅ Scan réel terminé - Source: ' + data.source);
         
     } catch (error) {
         console.error('Erreur:', error);

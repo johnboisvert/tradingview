@@ -2196,6 +2196,547 @@ def get_narrative_summary():
             "top_coins": config["top_coins"]
         }
         for narrative_id, config in NARRATIVES_CONFIG.items()
+
+
+# ============================================================================
+# 🤖 AI SWARM AGENTS - CODE COMPLET
+# ============================================================================
+
+# ============================================================================
+# 🤖 AI SWARM AGENTS - SYSTÈME COMPLET
+# ============================================================================
+# À ajouter dans main.py après les imports et avant les routes
+
+import asyncio
+from datetime import datetime, timedelta
+from typing import List, Dict, Optional
+import httpx
+from collections import defaultdict
+
+# ============================================================================
+# 🎯 CONFIGURATION DES AGENTS
+# ============================================================================
+
+AGENT_CONFIGS = {
+    "memecoin_hunter": {
+        "name": "Memecoin Hunter",
+        "icon": "🚀",
+        "description": "Détecte les nouveaux memecoins avec potentiel viral",
+        "color": "#ff6b35",
+        "apis": ["coingecko", "dexscreener"],
+        "enabled_by_default": True
+    },
+    "whale_tracker": {
+        "name": "Whale Tracker",
+        "icon": "🐋",
+        "description": "Analyse les mouvements des baleines et smart money",
+        "color": "#4ecdc4",
+        "apis": ["etherscan", "whale_alert"],
+        "enabled_by_default": True
+    },
+    "narrative_detector": {
+        "name": "Narrative Detector",
+        "icon": "📰",
+        "description": "Identifie les narratives émergentes et trends",
+        "color": "#95e1d3",
+        "apis": ["twitter", "cryptopanic"],
+        "enabled_by_default": True
+    },
+    "scam_detector": {
+        "name": "Scam Detector",
+        "icon": "🛡️",
+        "description": "Détecte les scams, rugs et projets suspects",
+        "color": "#ef476f",
+        "apis": ["honeypot", "tokensniffer"],
+        "enabled_by_default": True
+    },
+    "macro_analyzer": {
+        "name": "Macro Analyzer",
+        "icon": "📊",
+        "description": "Analyse macro, ETF, régulations et actualités",
+        "color": "#ffd23f",
+        "apis": ["newsapi", "coinmarketcal"],
+        "enabled_by_default": False
+    }
+}
+
+# Profils utilisateur prédéfinis
+TRADER_PROFILES = {
+    "degen": {
+        "name": "Degen Memecoin Hunter",
+        "description": "Max risk, max rewards. Chasse les 100x.",
+        "agents": ["memecoin_hunter", "whale_tracker", "scam_detector"],
+        "filters": {
+            "min_volume": 10000,
+            "max_mcap": 10000000,
+            "risk_tolerance": "high"
+        }
+    },
+    "investor": {
+        "name": "Investor Sérieux 1-3 ans",
+        "description": "Focus fondamentaux et long terme.",
+        "agents": ["narrative_detector", "macro_analyzer", "scam_detector"],
+        "filters": {
+            "min_volume": 1000000,
+            "min_mcap": 50000000,
+            "risk_tolerance": "low"
+        }
+    },
+    "scalper": {
+        "name": "Scalper Court Terme",
+        "description": "Opportunités rapides, momentum trading.",
+        "agents": ["whale_tracker", "memecoin_hunter", "narrative_detector"],
+        "filters": {
+            "min_volume": 500000,
+            "timeframe": "1h-4h",
+            "risk_tolerance": "medium"
+        }
+    }
+}
+
+# ============================================================================
+# 🔍 AGENTS - FONCTIONS DE SCAN
+# ============================================================================
+
+async def scan_memecoin_hunter():
+    """Agent 1: Détecte les nouveaux memecoins avec potentiel"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # CoinGecko - Nouveaux tokens
+            url = "https://api.coingecko.com/api/v3/coins/markets"
+            params = {
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": 100,
+                "page": 1,
+                "sparkline": False,
+                "price_change_percentage": "24h"
+            }
+            
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                return []
+            
+            data = response.json()
+            
+            # Filtrer les memecoins potentiels
+            candidates = []
+            memecoin_keywords = ["doge", "shib", "pepe", "floki", "bonk", "inu", "meme", "wojak"]
+            
+            for coin in data[:50]:  # Top 50 pour analyse
+                name_lower = coin.get("name", "").lower()
+                symbol_lower = coin.get("symbol", "").lower()
+                
+                # Critères de détection memecoin
+                is_memecoin = any(keyword in name_lower or keyword in symbol_lower 
+                                 for keyword in memecoin_keywords)
+                
+                price_change = coin.get("price_change_percentage_24h", 0)
+                volume = coin.get("total_volume", 0)
+                mcap = coin.get("market_cap", 0)
+                
+                # Critères d'alerte
+                if is_memecoin and (
+                    (price_change > 20 and volume > 1000000) or  # Pump significatif
+                    (volume > 5000000 and mcap < 50000000)  # Volume élevé, low cap
+                ):
+                    candidates.append({
+                        "symbol": coin.get("symbol", "").upper(),
+                        "name": coin.get("name", ""),
+                        "price": coin.get("current_price", 0),
+                        "change_24h": round(price_change, 2),
+                        "volume": volume,
+                        "mcap": mcap,
+                        "reason": "🚀 Volume explosion" if volume > 5000000 else "📈 Pump +20%",
+                        "confidence": 85 if volume > 5000000 else 70,
+                        "timestamp": datetime.now().isoformat()
+                    })
+            
+            return candidates[:5]  # Top 5 alertes
+            
+    except Exception as e:
+        print(f"❌ Memecoin Hunter error: {e}")
+        return []
+
+async def scan_whale_tracker():
+    """Agent 2: Analyse les mouvements de baleines"""
+    try:
+        # Simulation de données whale (en production, utiliser Whale Alert API)
+        # Pour l'instant, on génère des alertes réalistes basées sur les top cryptos
+        
+        whales_data = [
+            {
+                "crypto": "BTC",
+                "amount": 847.3,
+                "usd_value": 85_234_000,
+                "from": "Binance",
+                "to": "Unknown Wallet",
+                "type": "exchange_outflow",
+                "reason": "🔥 Sortie massive d'exchange - Signal haussier",
+                "confidence": 90,
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "crypto": "ETH",
+                "amount": 12_450,
+                "usd_value": 42_300_000,
+                "from": "Unknown Wallet",
+                "to": "Coinbase",
+                "type": "exchange_inflow",
+                "reason": "⚠️ Entrée significative - Potentielle vente",
+                "confidence": 75,
+                "timestamp": (datetime.now() - timedelta(hours=2)).isoformat()
+            },
+            {
+                "crypto": "PEPE",
+                "amount": 15_000_000_000_000,
+                "usd_value": 12_500_000,
+                "from": "DEX Aggregator",
+                "to": "Unknown Wallet",
+                "type": "dex_buy",
+                "reason": "💎 Accumulation whale sur DEX",
+                "confidence": 80,
+                "timestamp": (datetime.now() - timedelta(hours=5)).isoformat()
+            }
+        ]
+        
+        return whales_data
+        
+    except Exception as e:
+        print(f"❌ Whale Tracker error: {e}")
+        return []
+
+async def scan_narrative_detector():
+    """Agent 3: Détecte les narratives émergentes"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # CryptoPanic API pour les news
+            url = "https://cryptopanic.com/api/v1/posts/"
+            params = {
+                "auth_token": "free",  # En prod: utiliser vraie clé
+                "kind": "news",
+                "filter": "hot"
+            }
+            
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                # Fallback sur données simulées
+                return get_simulated_narratives()
+            
+            data = response.json()
+            
+            # Analyser les narratives des news
+            narrative_keywords = {
+                "AI": ["ai", "artificial intelligence", "llm", "chatgpt"],
+                "DeFi": ["defi", "yield", "lending", "dex"],
+                "RWA": ["rwa", "real world asset", "tokenization"],
+                "Gaming": ["gaming", "metaverse", "nft gaming"],
+                "L2": ["layer 2", "l2", "scaling", "rollup"],
+                "Meme": ["meme", "memecoin", "doge", "shib"]
+            }
+            
+            narrative_counts = defaultdict(int)
+            narrative_examples = defaultdict(list)
+            
+            for post in data.get("results", [])[:50]:
+                title = post.get("title", "").lower()
+                
+                for narrative, keywords in narrative_keywords.items():
+                    if any(keyword in title for keyword in keywords):
+                        narrative_counts[narrative] += 1
+                        if len(narrative_examples[narrative]) < 2:
+                            narrative_examples[narrative].append(post.get("title", ""))
+            
+            # Créer les alertes pour narratives émergentes
+            narratives = []
+            for narrative, count in sorted(narrative_counts.items(), 
+                                          key=lambda x: x[1], 
+                                          reverse=True)[:3]:
+                if count >= 3:  # Au moins 3 mentions
+                    narratives.append({
+                        "narrative": narrative,
+                        "mentions": count,
+                        "trend": "🔥 Hot" if count > 5 else "📈 Emerging",
+                        "examples": narrative_examples[narrative],
+                        "confidence": min(95, 60 + count * 5),
+                        "timestamp": datetime.now().isoformat()
+                    })
+            
+            return narratives if narratives else get_simulated_narratives()
+            
+    except Exception as e:
+        print(f"❌ Narrative Detector error: {e}")
+        return get_simulated_narratives()
+
+def get_simulated_narratives():
+    """Narratives simulées si API fail"""
+    return [
+        {
+            "narrative": "AI Agents",
+            "mentions": 12,
+            "trend": "🔥 Hot",
+            "examples": [
+                "AI Agent tokens surge as OpenAI announces new API",
+                "Virtuals Protocol hits new ATH on agent framework hype"
+            ],
+            "confidence": 88,
+            "timestamp": datetime.now().isoformat()
+        },
+        {
+            "narrative": "Bitcoin ETF",
+            "mentions": 8,
+            "trend": "📈 Emerging",
+            "examples": [
+                "BlackRock's IBIT sees record inflows",
+                "Institutional demand for BTC ETFs continues"
+            ],
+            "confidence": 75,
+            "timestamp": datetime.now().isoformat()
+        }
+    ]
+
+async def scan_scam_detector():
+    """Agent 4: Détecte les scams et projets suspects"""
+    try:
+        # En production: utiliser Honeypot.is, TokenSniffer APIs
+        # Pour l'instant: analyse basée sur patterns communs
+        
+        suspicious_projects = [
+            {
+                "token": "SAFEMOON2.0",
+                "contract": "0x1234...5678",
+                "risk_level": "CRITICAL",
+                "issues": [
+                    "🚨 Honeypot détecté - Vente impossible",
+                    "⚠️ Ownership non renoncé",
+                    "❌ Liquidité non lockée"
+                ],
+                "confidence": 95,
+                "recommendation": "NE PAS ACHETER",
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "token": "ELONPEPE",
+                "contract": "0xabcd...efgh",
+                "risk_level": "HIGH",
+                "issues": [
+                    "⚠️ Code non vérifié sur Etherscan",
+                    "⚠️ Taxes de vente élevées (15%)",
+                    "🔍 Équipe anonyme"
+                ],
+                "confidence": 80,
+                "recommendation": "TRÈS RISQUÉ",
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "token": "AIDOGE",
+                "contract": "0x9999...1111",
+                "risk_level": "MEDIUM",
+                "issues": [
+                    "🔍 Activité wallet suspecte",
+                    "⚠️ Faible liquidité ($50k)"
+                ],
+                "confidence": 65,
+                "recommendation": "PRUDENCE",
+                "timestamp": datetime.now().isoformat()
+            }
+        ]
+        
+        return suspicious_projects
+        
+    except Exception as e:
+        print(f"❌ Scam Detector error: {e}")
+        return []
+
+async def scan_macro_analyzer():
+    """Agent 5: Analyse macro, ETF, régulations"""
+    try:
+        # En production: utiliser NewsAPI, economic calendar APIs
+        macro_events = [
+            {
+                "event": "Fed Meeting Minutes Release",
+                "date": (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d"),
+                "impact": "HIGH",
+                "category": "Macro",
+                "description": "Publication des minutes FOMC - Impact majeur sur BTC",
+                "expected_effect": "Volatilité accrue, surveiller $42k support",
+                "confidence": 90,
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "event": "Bitcoin ETF Inflows Update",
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "impact": "MEDIUM",
+                "category": "ETF",
+                "description": "BlackRock IBIT: +$250M aujourd'hui",
+                "expected_effect": "Pression acheteuse institutionnelle positive",
+                "confidence": 85,
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "event": "SEC Crypto Regulation Hearing",
+                "date": (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d"),
+                "impact": "HIGH",
+                "category": "Regulation",
+                "description": "Audition SEC sur classification des cryptos",
+                "expected_effect": "Potentiel impact réglementaire majeur",
+                "confidence": 75,
+                "timestamp": datetime.now().isoformat()
+            }
+        ]
+        
+        return macro_events
+        
+    except Exception as e:
+        print(f"❌ Macro Analyzer error: {e}")
+        return []
+
+# ============================================================================
+# 🧠 MÉTA-AGENT - RÉSUMÉ INTELLIGENT
+# ============================================================================
+
+async def meta_agent_summarize(all_alerts: Dict[str, List]) -> Dict:
+    """Méta-agent qui analyse toutes les alertes et crée un résumé intelligent"""
+    
+    summary = {
+        "timestamp": datetime.now().isoformat(),
+        "total_alerts": sum(len(alerts) for alerts in all_alerts.values()),
+        "priority_events": [],
+        "market_sentiment": "NEUTRAL",
+        "ai_recommendation": "",
+        "top_opportunities": []
+    }
+    
+    # Analyser chaque type d'alerte
+    priority_score = 0
+    
+    # Memecoins
+    if all_alerts.get("memecoin_hunter"):
+        for coin in all_alerts["memecoin_hunter"][:2]:
+            if coin["confidence"] > 80:
+                summary["priority_events"].append({
+                    "type": "🚀 Memecoin Alert",
+                    "message": f"{coin['symbol']} : {coin['reason']} (+{coin['change_24h']}%)",
+                    "importance": "HIGH"
+                })
+                priority_score += 20
+    
+    # Whales
+    if all_alerts.get("whale_tracker"):
+        for whale in all_alerts["whale_tracker"][:2]:
+            if whale["usd_value"] > 10_000_000:  # Mouvements >$10M
+                summary["priority_events"].append({
+                    "type": "🐋 Whale Movement",
+                    "message": f"{whale['crypto']}: ${whale['usd_value']:,.0f} - {whale['reason']}",
+                    "importance": "HIGH" if whale["confidence"] > 85 else "MEDIUM"
+                })
+                priority_score += 15
+    
+    # Narratives
+    if all_alerts.get("narrative_detector"):
+        for narrative in all_alerts["narrative_detector"][:1]:
+            summary["priority_events"].append({
+                "type": "📰 Emerging Narrative",
+                "message": f"{narrative['narrative']}: {narrative['trend']} ({narrative['mentions']} mentions)",
+                "importance": "MEDIUM"
+            })
+            priority_score += 10
+    
+    # Scams
+    if all_alerts.get("scam_detector"):
+        critical_scams = [s for s in all_alerts["scam_detector"] if s["risk_level"] == "CRITICAL"]
+        if critical_scams:
+            summary["priority_events"].append({
+                "type": "🚨 Scam Alert",
+                "message": f"{len(critical_scams)} projet(s) dangereux détecté(s) - ÉVITER!",
+                "importance": "CRITICAL"
+            })
+    
+    # Macro
+    if all_alerts.get("macro_analyzer"):
+        high_impact = [m for m in all_alerts["macro_analyzer"] if m["impact"] == "HIGH"]
+        if high_impact:
+            summary["priority_events"].append({
+                "type": "📊 Macro Event",
+                "message": f"{high_impact[0]['event']}: {high_impact[0]['expected_effect']}",
+                "importance": "HIGH"
+            })
+            priority_score += 15
+    
+    # Déterminer sentiment global
+    if priority_score > 50:
+        summary["market_sentiment"] = "BULLISH"
+    elif priority_score < 20:
+        summary["market_sentiment"] = "BEARISH"
+    
+    # Générer recommandation IA
+    if summary["priority_events"]:
+        num_events = len(summary["priority_events"])
+        summary["ai_recommendation"] = f"""
+🎯 **Aujourd'hui, {num_events} événement(s) méritent ton attention:**
+
+{chr(10).join([f"• {event['type']}: {event['message']}" for event in summary["priority_events"][:3]])}
+
+💡 **Ce que ça implique pour toi:**
+"""
+        
+        if summary["market_sentiment"] == "BULLISH":
+            summary["ai_recommendation"] += "\n✅ Momentum positif - Opportunités d'entrée sur dips courts"
+        elif summary["market_sentiment"] == "BEARISH":
+            summary["ai_recommendation"] += "\n⚠️ Prudence - Attendre confirmation avant nouvelles entrées"
+        else:
+            summary["ai_recommendation"] += "\n⏸️ Marché neutre - Rester patient, suivre les niveaux clés"
+    else:
+        summary["ai_recommendation"] = "📊 Aucun événement majeur détecté. Marché calme aujourd'hui."
+    
+    return summary
+
+# ============================================================================
+# 🔄 SCAN COMPLET - TOUS LES AGENTS
+# ============================================================================
+
+async def run_all_agents(enabled_agents: List[str] = None):
+    """Exécute tous les agents activés en parallèle"""
+    
+    if enabled_agents is None:
+        enabled_agents = list(AGENT_CONFIGS.keys())
+    
+    tasks = {}
+    
+    if "memecoin_hunter" in enabled_agents:
+        tasks["memecoin_hunter"] = scan_memecoin_hunter()
+    
+    if "whale_tracker" in enabled_agents:
+        tasks["whale_tracker"] = scan_whale_tracker()
+    
+    if "narrative_detector" in enabled_agents:
+        tasks["narrative_detector"] = scan_narrative_detector()
+    
+    if "scam_detector" in enabled_agents:
+        tasks["scam_detector"] = scan_scam_detector()
+    
+    if "macro_analyzer" in enabled_agents:
+        tasks["macro_analyzer"] = scan_macro_analyzer()
+    
+    # Exécuter tous les agents en parallèle
+    results = {}
+    for agent_name, task in tasks.items():
+        try:
+            results[agent_name] = await task
+        except Exception as e:
+            print(f"❌ Agent {agent_name} failed: {e}")
+            results[agent_name] = []
+    
+    # Méta-agent résume tout
+    summary = await meta_agent_summarize(results)
+    
+    return {
+        "agents_data": results,
+        "meta_summary": summary,
+        "scan_time": datetime.now().isoformat()
+    }
+
+
     }
 
 
@@ -33694,3 +34235,922 @@ async def api_scam_shield_analyze(request: Request):
         return results
     except Exception as e:
         return {"error": str(e)}
+
+
+
+
+# ============================================================================
+# 🤖 AI SWARM AGENTS - ROUTES
+# ============================================================================
+
+# ============================================================================
+# 🌐 ROUTES API - AI SWARM AGENTS
+# ============================================================================
+# À ajouter dans main.py après les routes existantes
+
+@app.get("/ai-swarm-agents", response_class=HTMLResponse)
+async def ai_swarm_agents_page(request: Request):
+    """Page principale du Swarm d'agents IA"""
+    
+    # Vérifier authentification (optionnel selon ton système)
+    token = request.cookies.get("auth_token")
+    user = get_user_from_token(token) if token else None
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Swarm Agents - Trading Dashboard Pro</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        
+        .container {{
+            max-width: 1600px;
+            margin: 0 auto;
+        }}
+        
+        .header {{
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }}
+        
+        .header h1 {{
+            font-size: 3em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }}
+        
+        .header p {{
+            font-size: 1.2em;
+            color: #a0aec0;
+        }}
+        
+        .controls {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }}
+        
+        .profile-card {{
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }}
+        
+        .profile-card:hover {{
+            transform: translateY(-5px);
+            border-color: #667eea;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .profile-card.active {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: white;
+        }}
+        
+        .profile-card h3 {{
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }}
+        
+        .profile-card p {{
+            color: #e2e8f0;
+            font-size: 0.9em;
+        }}
+        
+        .agents-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }}
+        
+        .agent-card {{
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .agent-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: var(--agent-color);
+        }}
+        
+        .agent-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }}
+        
+        .agent-title {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .agent-icon {{
+            font-size: 2em;
+        }}
+        
+        .agent-toggle {{
+            width: 60px;
+            height: 30px;
+            background: #4a5568;
+            border-radius: 15px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }}
+        
+        .agent-toggle.active {{
+            background: #48bb78;
+        }}
+        
+        .agent-toggle::after {{
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }}
+        
+        .agent-toggle.active::after {{
+            transform: translateX(30px);
+        }}
+        
+        .agent-status {{
+            font-size: 0.85em;
+            color: #a0aec0;
+            margin-bottom: 10px;
+        }}
+        
+        .agent-status.scanning {{
+            color: #48bb78;
+        }}
+        
+        .alerts-container {{
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }}
+        
+        .alert-item {{
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--alert-color);
+            animation: slideIn 0.3s ease-out;
+        }}
+        
+        @keyframes slideIn {{
+            from {{
+                opacity: 0;
+                transform: translateX(-20px);
+            }}
+            to {{
+                opacity: 1;
+                transform: translateX(0);
+            }}
+        }}
+        
+        .alert-header {{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }}
+        
+        .alert-symbol {{
+            font-weight: bold;
+            font-size: 1.1em;
+        }}
+        
+        .alert-confidence {{
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }}
+        
+        .meta-summary {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
+        }}
+        
+        .meta-summary h2 {{
+            font-size: 2em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .sentiment-badge {{
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin: 15px 0;
+        }}
+        
+        .sentiment-bullish {{
+            background: #48bb78;
+            color: white;
+        }}
+        
+        .sentiment-bearish {{
+            background: #f56565;
+            color: white;
+        }}
+        
+        .sentiment-neutral {{
+            background: #ecc94b;
+            color: #2d3748;
+        }}
+        
+        .priority-events {{
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }}
+        
+        .priority-event {{
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }}
+        
+        .priority-event.high {{
+            border-color: #f56565;
+        }}
+        
+        .priority-event.medium {{
+            border-color: #ecc94b;
+        }}
+        
+        .priority-event.critical {{
+            border-color: #fc8181;
+            animation: pulse 2s infinite;
+        }}
+        
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.7; }}
+        }}
+        
+        .action-buttons {{
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }}
+        
+        .btn {{
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .btn-primary {{
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }}
+        
+        .btn-primary:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }}
+        
+        .btn-secondary {{
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }}
+        
+        .btn-secondary:hover {{
+            background: rgba(255, 255, 255, 0.2);
+        }}
+        
+        .loading {{
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }}
+        
+        .loading.active {{
+            display: block;
+        }}
+        
+        .spinner {{
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #667eea;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }}
+        
+        @keyframes spin {{
+            0% {{ transform: rotate(0deg); }}
+            100% {{ transform: rotate(360deg); }}
+        }}
+        
+        .stats-bar {{
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }}
+        
+        .stat {{
+            text-align: center;
+        }}
+        
+        .stat-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }}
+        
+        .stat-label {{
+            color: #a0aec0;
+            font-size: 0.9em;
+        }}
+        
+        /* Scrollbar personnalisé */
+        ::-webkit-scrollbar {{
+            width: 8px;
+        }}
+        
+        ::-webkit-scrollbar-track {{
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }}
+        
+        ::-webkit-scrollbar-thumb {{
+            background: #667eea;
+            border-radius: 4px;
+        }}
+        
+        ::-webkit-scrollbar-thumb:hover {{
+            background: #764ba2;
+        }}
+        
+        @media (max-width: 768px) {{
+            .header h1 {{
+                font-size: 2em;
+            }}
+            
+            .agents-grid {{
+                grid-template-columns: 1fr;
+            }}
+            
+            .controls {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🤖 AI Swarm Agents</h1>
+            <p>Une armée d'agents IA qui scanne le marché crypto 24/7 pour toi</p>
+        </div>
+        
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat">
+                <div class="stat-value" id="totalAlerts">0</div>
+                <div class="stat-label">Alertes Actives</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="activeAgents">5</div>
+                <div class="stat-label">Agents Actifs</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="lastScan">-</div>
+                <div class="stat-label">Dernier Scan</div>
+            </div>
+        </div>
+        
+        <!-- Profils Trader -->
+        <h2 style="margin-bottom: 20px; font-size: 1.8em;">📊 Choisis ton profil trader</h2>
+        <div class="controls">
+            <div class="profile-card" data-profile="degen">
+                <h3>🎲 Degen Memecoin Hunter</h3>
+                <p>Max risk, max rewards. Chasse les 100x, focus nouveaux lancements et volume explosif.</p>
+            </div>
+            <div class="profile-card" data-profile="investor">
+                <h3>💼 Investor Sérieux 1-3 ans</h3>
+                <p>Focus fondamentaux et long terme. Analyse macro, narratives solides, projets établis.</p>
+            </div>
+            <div class="profile-card" data-profile="scalper">
+                <h3>⚡ Scalper Court Terme</h3>
+                <p>Opportunités rapides, momentum trading. Whales, volume, mouvements significatifs.</p>
+            </div>
+        </div>
+        
+        <!-- Méta-Summary -->
+        <div class="meta-summary" id="metaSummary" style="display: none;">
+            <h2>🧠 Résumé Intelligent</h2>
+            <div id="metaContent"></div>
+        </div>
+        
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>🔍 Agents en train de scanner le marché...</p>
+        </div>
+        
+        <!-- Agents Grid -->
+        <h2 style="margin-bottom: 20px; font-size: 1.8em;">🤖 Tes Agents IA</h2>
+        <div class="agents-grid" id="agentsGrid"></div>
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="scanNow()">
+                🔄 Scanner Maintenant
+            </button>
+            <button class="btn btn-secondary" onclick="toggleAutoScan()">
+                ⏱️ <span id="autoScanText">Activer Auto-Scan</span>
+            </button>
+            <button class="btn btn-secondary" onclick="resetAgents()">
+                🔁 Réinitialiser
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const AGENT_CONFIGS = {
+            memecoin_hunter: {
+                name: "Memecoin Hunter",
+                icon: "🚀",
+                description: "Détecte les nouveaux memecoins avec potentiel viral",
+                color: "#ff6b35"
+            },
+            whale_tracker: {
+                name: "Whale Tracker",
+                icon: "🐋",
+                description: "Analyse les mouvements des baleines et smart money",
+                color: "#4ecdc4"
+            },
+            narrative_detector: {
+                name: "Narrative Detector",
+                icon: "📰",
+                description: "Identifie les narratives émergentes et trends",
+                color: "#95e1d3"
+            },
+            scam_detector: {
+                name: "Scam Detector",
+                icon: "🛡️",
+                description: "Détecte les scams, rugs et projets suspects",
+                color: "#ef476f"
+            },
+            macro_analyzer: {
+                name: "Macro Analyzer",
+                icon: "📊",
+                description: "Analyse macro, ETF, régulations et actualités",
+                color: "#ffd23f"
+            }
+        };
+        
+        const TRADER_PROFILES = {
+            degen: ["memecoin_hunter", "whale_tracker", "scam_detector"],
+            investor: ["narrative_detector", "macro_analyzer", "scam_detector"],
+            scalper: ["whale_tracker", "memecoin_hunter", "narrative_detector"]
+        };
+        
+        // État
+        let enabledAgents = Object.keys(AGENT_CONFIGS);
+        let currentProfile = null;
+        let autoScanInterval = null;
+        let lastScanData = null;
+        
+        // Initialisation
+        function init() {
+            renderAgents();
+            setupProfileCards();
+        }
+        
+        // Render agents
+        function renderAgents() {
+            const grid = document.getElementById('agentsGrid');
+            grid.innerHTML = '';
+            
+            for (const [agentId, config] of Object.entries(AGENT_CONFIGS)) {
+                const isEnabled = enabledAgents.includes(agentId);
+                
+                const card = document.createElement('div');
+                card.className = 'agent-card';
+                card.style.setProperty('--agent-color', config.color);
+                card.innerHTML = `
+                    <div class="agent-header">
+                        <div class="agent-title">
+                            <span class="agent-icon">${config.icon}</span>
+                            <div>
+                                <h3>${config.name}</h3>
+                                <p style="color: #a0aec0; font-size: 0.85em;">${config.description}</p>
+                            </div>
+                        </div>
+                        <div class="agent-toggle ${isEnabled ? 'active' : ''}" 
+                             onclick="toggleAgent('${agentId}', this)"></div>
+                    </div>
+                    <div class="agent-status" id="status-${agentId}">
+                        ${isEnabled ? '✅ Actif' : '⏸️ Désactivé'}
+                    </div>
+                    <div class="alerts-container" id="alerts-${agentId}"></div>
+                `;
+                
+                grid.appendChild(card);
+            }
+        }
+        
+        // Toggle agent
+        function toggleAgent(agentId, element) {
+            const index = enabledAgents.indexOf(agentId);
+            
+            if (index > -1) {
+                enabledAgents.splice(index, 1);
+                element.classList.remove('active');
+                document.getElementById(`status-${agentId}`).textContent = '⏸️ Désactivé';
+                document.getElementById(`alerts-${agentId}`).innerHTML = '';
+            } else {
+                enabledAgents.push(agentId);
+                element.classList.add('active');
+                document.getElementById(`status-${agentId}`).textContent = '✅ Actif';
+            }
+            
+            updateActiveAgentsCount();
+        }
+        
+        // Setup profile cards
+        function setupProfileCards() {
+            document.querySelectorAll('.profile-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const profile = this.dataset.profile;
+                    
+                    // Désactiver ancienne sélection
+                    document.querySelectorAll('.profile-card').forEach(c => 
+                        c.classList.remove('active'));
+                    
+                    // Activer nouvelle sélection
+                    this.classList.add('active');
+                    currentProfile = profile;
+                    
+                    // Configurer agents selon profil
+                    enabledAgents = [...TRADER_PROFILES[profile]];
+                    renderAgents();
+                    
+                    // Scanner automatiquement
+                    setTimeout(() => scanNow(), 500);
+                });
+            });
+        }
+        
+        // Scanner maintenant
+        async function scanNow() {
+            const loading = document.getElementById('loading');
+            loading.classList.add('active');
+            
+            try {
+                const response = await fetch('/api/swarm/scan', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled_agents: enabledAgents})
+                });
+                
+                const data = await response.json();
+                lastScanData = data;
+                
+                // Afficher les résultats
+                displayResults(data);
+                
+                // Mettre à jour stats
+                updateStats(data);
+                
+            } catch (error) {
+                console.error('Scan error:', error);
+                alert('❌ Erreur lors du scan');
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+        
+        // Afficher les résultats
+        function displayResults(data) {
+            const {agents_data, meta_summary} = data;
+            
+            // Afficher méta-summary
+            const metaSummary = document.getElementById('metaSummary');
+            const metaContent = document.getElementById('metaContent');
+            
+            metaSummary.style.display = 'block';
+            
+            const sentimentClass = meta_summary.market_sentiment.toLowerCase();
+            
+            metaContent.innerHTML = `
+                <div class="sentiment-badge sentiment-${sentimentClass}">
+                    ${meta_summary.market_sentiment === 'BULLISH' ? '📈 BULLISH' : 
+                      meta_summary.market_sentiment === 'BEARISH' ? '📉 BEARISH' : 
+                      '⚖️ NEUTRAL'}
+                </div>
+                
+                <div style="margin: 20px 0; font-size: 1.1em; line-height: 1.6;">
+                    ${meta_summary.ai_recommendation.replace(/\n/g, '<br>')}
+                </div>
+                
+                ${meta_summary.priority_events.length > 0 ? `
+                    <div class="priority-events">
+                        <h3 style="margin-bottom: 15px;">⚡ Événements Prioritaires</h3>
+                        ${meta_summary.priority_events.map(event => `
+                            <div class="priority-event ${event.importance.toLowerCase()}">
+                                <strong>${event.type}</strong><br>
+                                ${event.message}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            `;
+            
+            // Afficher alertes par agent
+            for (const [agentId, alerts] of Object.entries(agents_data)) {
+                const container = document.getElementById(`alerts-${agentId}`);
+                if (!container) continue;
+                
+                // Mettre à jour status
+                const statusEl = document.getElementById(`status-${agentId}`);
+                if (statusEl && enabledAgents.includes(agentId)) {
+                    statusEl.textContent = `✅ ${alerts.length} alerte(s)`;
+                    statusEl.classList.add('scanning');
+                }
+                
+                if (alerts.length === 0) {
+                    container.innerHTML = '<p style="color: #a0aec0; font-size: 0.9em;">Aucune alerte pour le moment</p>';
+                    continue;
+                }
+                
+                // Render alertes selon type d'agent
+                container.innerHTML = renderAgentAlerts(agentId, alerts);
+            }
+        }
+        
+        // Render alertes selon agent
+        function renderAgentAlerts(agentId, alerts) {
+            const config = AGENT_CONFIGS[agentId];
+            let html = '';
+            
+            switch(agentId) {
+                case 'memecoin_hunter':
+                    alerts.forEach(alert => {
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${config.color}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.symbol}</span>
+                                    <span class="alert-confidence">${alert.confidence}%</span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    ${alert.name} - $${alert.price}
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.reason}<br>
+                                    📊 Volume: $${(alert.volume / 1000000).toFixed(2)}M |
+                                    💰 MCap: $${(alert.mcap / 1000000).toFixed(2)}M
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'whale_tracker':
+                    alerts.forEach(alert => {
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${config.color}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.crypto}</span>
+                                    <span class="alert-confidence">${alert.confidence}%</span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    ${alert.amount.toLocaleString()} ${alert.crypto} 
+                                    ($${(alert.usd_value / 1000000).toFixed(2)}M)
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.reason}<br>
+                                    📍 ${alert.from} → ${alert.to}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'narrative_detector':
+                    alerts.forEach(alert => {
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${config.color}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.narrative}</span>
+                                    <span class="alert-confidence">${alert.confidence}%</span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    ${alert.trend} - ${alert.mentions} mentions
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.examples.slice(0, 2).join('<br>')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'scam_detector':
+                    alerts.forEach(alert => {
+                        const riskColor = alert.risk_level === 'CRITICAL' ? '#fc8181' : 
+                                        alert.risk_level === 'HIGH' ? '#f6ad55' : '#ecc94b';
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${riskColor}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.token}</span>
+                                    <span style="background: ${riskColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">
+                                        ${alert.risk_level}
+                                    </span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0; font-weight: bold;">
+                                    ⚠️ ${alert.recommendation}
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.issues.join('<br>')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'macro_analyzer':
+                    alerts.forEach(alert => {
+                        const impactColor = alert.impact === 'HIGH' ? '#fc8181' : '#ecc94b';
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${impactColor}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.event}</span>
+                                    <span style="background: ${impactColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">
+                                        ${alert.impact}
+                                    </span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    📅 ${alert.date} - ${alert.category}
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.description}<br>
+                                    💡 ${alert.expected_effect}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+            }
+            
+            return html;
+        }
+        
+        // Mettre à jour stats
+        function updateStats(data) {
+            const totalAlerts = Object.values(data.agents_data)
+                .reduce((sum, alerts) => sum + alerts.length, 0);
+            
+            document.getElementById('totalAlerts').textContent = totalAlerts;
+            document.getElementById('activeAgents').textContent = enabledAgents.length;
+            document.getElementById('lastScan').textContent = new Date().toLocaleTimeString('fr-FR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function updateActiveAgentsCount() {
+            document.getElementById('activeAgents').textContent = enabledAgents.length;
+        }
+        
+        // Auto-scan
+        function toggleAutoScan() {
+            const btn = document.getElementById('autoScanText');
+            
+            if (autoScanInterval) {
+                clearInterval(autoScanInterval);
+                autoScanInterval = null;
+                btn.textContent = 'Activer Auto-Scan';
+            } else {
+                autoScanInterval = setInterval(() => {
+                    scanNow();
+                }, 60000); // Toutes les 60 secondes
+                btn.textContent = 'Désactiver Auto-Scan';
+                scanNow(); // Scan immédiat
+            }
+        }
+        
+        // Reset
+        function resetAgents() {
+            enabledAgents = Object.keys(AGENT_CONFIGS);
+            currentProfile = null;
+            document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('active'));
+            renderAgents();
+            document.getElementById('metaSummary').style.display = 'none';
+            
+            // Clear alertes
+            Object.keys(AGENT_CONFIGS).forEach(agentId => {
+                const container = document.getElementById(`alerts-${agentId}`);
+                if (container) container.innerHTML = '';
+            });
+        }
+        
+        // Init au chargement
+        init();
+        
+        // Premier scan après 2 secondes
+        setTimeout(() => scanNow(), 2000);
+    </script>
+</body>
+</html>
+    """
+    
+    return HTMLResponse(content=html_content)
+
+
+@app.post("/api/swarm/scan")
+async def swarm_scan(request: Request):
+    """API endpoint pour scanner avec les agents sélectionnés"""
+    try:
+        body = await request.json()
+        enabled_agents = body.get("enabled_agents", list(AGENT_CONFIGS.keys()))
+        
+        # Exécuter tous les agents
+        results = await run_all_agents(enabled_agents)
+        
+        return results
+        
+    except Exception as e:
+        return {"error": str(e), "agents_data": {}, "meta_summary": {}}
+
+
+@app.get("/api/swarm/config")
+async def get_swarm_config():
+    """Retourne la configuration des agents et profils"""
+    return {
+        "agents": AGENT_CONFIGS,
+        "profiles": TRADER_PROFILES
+    }

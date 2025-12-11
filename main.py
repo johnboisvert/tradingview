@@ -32590,385 +32590,89 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
 # 🆕 NOUVELLES FEATURES - 5 ROUTES AVEC DESIGN INTÉGRÉ
 # ============================================================================
 
-# ============================================================================
-# 🎯 NARRATIVE RADAR - VERSION FINALE CORRIGÉE (DOCTYPE au bon endroit)
-# ============================================================================
-# Remplace COMPLÈTEMENT la route dans ton main.py
-
 @app.get("/narrative-radar", response_class=HTMLResponse)
 async def narrative_radar():
-    """🎯 Narrative Radar - Dashboard des narratives crypto temps réel"""
+    """🎯 Narrative Radar - Dashboard narratives crypto temps réel"""
     
-    # Structure HTML complète avec DOCTYPE en premier
-    html_content = """<!DOCTYPE html>
+    # Utiliser f-string pour éviter les problèmes de quotes
+    page_html = '''<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎯 Narrative Radar - CRYPTO IA</title>
+    <title>Narrative Radar - CRYPTO IA</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); 
-            color: #fff; 
-            font-family: Arial, sans-serif; 
-            min-height: 100vh; 
-            margin: 0;
-            padding: 0;
-        }
-        
-        .main-content { 
-            margin-left: 250px; 
-            padding: 20px;
-            transition: margin-left 0.3s;
-        }
-        
-        @media (max-width: 768px) {
-            .main-content { margin-left: 0; }
-        }
-        
+        body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; margin: 0; }
+        .main-content { margin-left: 250px; padding: 20px; transition: margin-left 0.3s; }
+        @media (max-width: 768px) { .main-content { margin-left: 0; } }
         .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
-        
-        h1 { 
-            text-align: center; 
-            margin-bottom: 15px; 
-            color: #00ff88; 
-            font-size: 2.5em; 
-            text-shadow: 0 0 20px rgba(0,255,136,0.5);
-        }
-        
-        .subtitle {
-            text-align: center;
-            color: #00d4ff;
-            margin-bottom: 40px;
-            font-size: 1.2em;
-        }
-        
-        /* Header avec stats */
-        .stats-header {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-box {
-            background: rgba(255,255,255,0.05);
-            border: 2px solid rgba(0,255,136,0.3);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            transition: all 0.3s;
-        }
-        
-        .stat-box:hover {
-            border-color: #00ff88;
-            box-shadow: 0 0 20px rgba(0,255,136,0.3);
-            transform: translateY(-3px);
-        }
-        
-        .stat-label {
-            font-size: 0.9em;
-            color: #aaa;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-        
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #00ff88;
-        }
-        
-        /* Bouton scan */
-        .scan-section {
-            text-align: center;
-            margin: 30px 0;
-        }
-        
-        .scan-btn {
-            display: inline-block;
-            padding: 18px 50px;
-            background: linear-gradient(45deg, #00ff88, #00d4ff);
-            color: #000;
-            border: none;
-            border-radius: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 1.2em;
-            transition: all 0.3s;
-            box-shadow: 0 4px 15px rgba(0,255,136,0.4);
-        }
-        
-        .scan-btn:hover { 
-            transform: scale(1.05);
-            box-shadow: 0 6px 25px rgba(0,255,136,0.6);
-        }
-        
-        .scan-btn:active {
-            transform: scale(0.98);
-        }
-        
-        .scan-btn.loading {
-            background: linear-gradient(45deg, #555, #777);
-            cursor: not-allowed;
-        }
-        
-        /* Grille des narratives */
-        .narratives-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-        
-        .narrative-card {
-            background: rgba(255,255,255,0.05);
-            border: 2px solid rgba(0,255,136,0.3);
-            border-radius: 15px;
-            padding: 25px;
-            transition: all 0.3s;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .narrative-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0,255,136,0.1), transparent);
-            transition: left 0.5s;
-        }
-        
-        .narrative-card:hover::before {
-            left: 100%;
-        }
-        
-        .narrative-card:hover {
-            border-color: #00ff88;
-            box-shadow: 0 0 25px rgba(0,255,136,0.4);
-            transform: translateY(-5px);
-        }
-        
-        .narrative-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .narrative-title {
-            font-size: 1.6em;
-            font-weight: bold;
-            color: #00ff88;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .narrative-icon {
-            font-size: 1.2em;
-        }
-        
-        .status {
-            padding: 8px 18px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .status.quiet { 
-            background: rgba(108, 117, 125, 0.3); 
-            color: #888;
-            border: 1px solid rgba(108, 117, 125, 0.5);
-        }
-        
-        .status.emerging { 
-            background: rgba(0, 255, 136, 0.2); 
-            color: #00ff88;
-            border: 1px solid rgba(0, 255, 136, 0.5);
-            animation: pulse 2s infinite;
-        }
-        
-        .status.hot { 
-            background: rgba(251, 191, 36, 0.3); 
-            color: #fbbf24;
-            border: 1px solid rgba(251, 191, 36, 0.6);
-            animation: pulse 1.5s infinite;
-        }
-        
-        .status.trending { 
-            background: rgba(239, 68, 68, 0.3); 
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.6);
-            animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
-        .narrative-body {
-            position: relative;
-            z-index: 1;
-        }
-        
-        .mentions {
-            font-size: 2.5em;
-            font-weight: bold;
-            margin: 15px 0;
-            color: #00ff88;
-            text-shadow: 0 0 10px rgba(0,255,136,0.5);
-        }
-        
-        .change {
-            font-size: 1.3em;
-            margin: 10px 0;
-            font-weight: 600;
-        }
-        
+        h1 { text-align: center; margin-bottom: 15px; color: #00ff88; font-size: 2.5em; text-shadow: 0 0 20px rgba(0,255,136,0.5); }
+        .subtitle { text-align: center; color: #00d4ff; margin-bottom: 40px; font-size: 1.2em; }
+        .stats-header { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .stat-box { background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.3); border-radius: 12px; padding: 20px; text-align: center; transition: all 0.3s; }
+        .stat-box:hover { border-color: #00ff88; box-shadow: 0 0 20px rgba(0,255,136,0.3); transform: translateY(-3px); }
+        .stat-label { font-size: 0.9em; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }
+        .stat-value { font-size: 2em; font-weight: bold; color: #00ff88; }
+        .scan-section { text-align: center; margin: 30px 0; }
+        .scan-btn { display: inline-block; padding: 18px 50px; background: linear-gradient(45deg, #00ff88, #00d4ff); color: #000; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1.2em; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,255,136,0.4); }
+        .scan-btn:hover { transform: scale(1.05); box-shadow: 0 6px 25px rgba(0,255,136,0.6); }
+        .scan-btn:active { transform: scale(0.98); }
+        .scan-btn.loading { background: linear-gradient(45deg, #555, #777); cursor: not-allowed; }
+        .narratives-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-top: 30px; }
+        .narrative-card { background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.3); border-radius: 15px; padding: 25px; transition: all 0.3s; position: relative; overflow: hidden; }
+        .narrative-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(0,255,136,0.1), transparent); transition: left 0.5s; }
+        .narrative-card:hover::before { left: 100%; }
+        .narrative-card:hover { border-color: #00ff88; box-shadow: 0 0 25px rgba(0,255,136,0.4); transform: translateY(-5px); }
+        .narrative-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: relative; z-index: 1; }
+        .narrative-title { font-size: 1.6em; font-weight: bold; color: #00ff88; display: flex; align-items: center; gap: 10px; }
+        .narrative-icon { font-size: 1.2em; }
+        .status { padding: 8px 18px; border-radius: 20px; font-size: 0.85em; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .status.quiet { background: rgba(108, 117, 125, 0.3); color: #888; border: 1px solid rgba(108, 117, 125, 0.5); }
+        .status.emerging { background: rgba(0, 255, 136, 0.2); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.5); animation: pulse 2s infinite; }
+        .status.hot { background: rgba(251, 191, 36, 0.3); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.6); animation: pulse 1.5s infinite; }
+        .status.trending { background: rgba(239, 68, 68, 0.3); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.6); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .narrative-body { position: relative; z-index: 1; }
+        .mentions { font-size: 2.5em; font-weight: bold; margin: 15px 0; color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.5); }
+        .change { font-size: 1.3em; margin: 10px 0; font-weight: 600; }
         .change.positive { color: #00ff88; }
         .change.negative { color: #ef4444; }
         .change.neutral { color: #00d4ff; }
-        
-        .description {
-            color: #aaa;
-            margin: 15px 0;
-            font-size: 0.95em;
-            line-height: 1.5;
-        }
-        
-        .coins {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(0,255,136,0.2);
-        }
-        
-        .coins-label {
-            font-size: 0.85em;
-            color: #00d4ff;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .coin-tag {
-            display: inline-block;
-            background: rgba(0, 255, 136, 0.15);
-            padding: 6px 14px;
-            border-radius: 10px;
-            margin: 5px;
-            font-size: 0.9em;
-            color: #00ff88;
-            border: 1px solid rgba(0,255,136,0.3);
-            transition: all 0.2s;
-        }
-        
-        .coin-tag:hover {
-            background: rgba(0, 255, 136, 0.25);
-            transform: scale(1.05);
-        }
-        
-        /* Loading spinner */
-        .spinner {
-            display: inline-block;
-            width: 30px;
-            height: 30px;
-            border: 4px solid rgba(0,255,136,0.3);
-            border-top: 4px solid #00ff88;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .loading-text {
-            margin-top: 20px;
-            font-size: 1.2em;
-            color: #00d4ff;
-        }
-        
-        /* Message initial */
-        .initial-message {
-            text-align: center;
-            padding: 60px 20px;
-            color: #00d4ff;
-            font-size: 1.3em;
-        }
-        
-        .initial-message .icon {
-            font-size: 4em;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
-        
-        /* Footer info */
-        .footer-info {
-            margin-top: 40px;
-            padding: 25px;
-            background: rgba(0,255,136,0.05);
-            border-radius: 12px;
-            border: 1px solid rgba(0,255,136,0.2);
-        }
-        
-        .footer-info h3 {
-            color: #00ff88;
-            margin-bottom: 15px;
-            font-size: 1.2em;
-        }
-        
-        .footer-info ul {
-            list-style: none;
-            padding: 0;
-        }
-        
-        .footer-info li {
-            color: #aaa;
-            line-height: 1.8;
-            padding-left: 20px;
-            position: relative;
-        }
-        
-        .footer-info li::before {
-            content: '▸';
-            position: absolute;
-            left: 0;
-            color: #00ff88;
-        }
-        
-        .data-source {
-            text-align: center;
-            margin-top: 30px;
-            padding: 15px;
-            background: rgba(0,212,255,0.1);
-            border-radius: 8px;
-            color: #00d4ff;
-            font-size: 0.95em;
-        }
+        .description { color: #aaa; margin: 15px 0; font-size: 0.95em; line-height: 1.5; }
+        .coins { margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(0,255,136,0.2); }
+        .coins-label { font-size: 0.85em; color: #00d4ff; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .coin-tag { display: inline-block; background: rgba(0, 255, 136, 0.15); padding: 6px 14px; border-radius: 10px; margin: 5px; font-size: 0.9em; color: #00ff88; border: 1px solid rgba(0,255,136,0.3); transition: all 0.2s; }
+        .coin-tag:hover { background: rgba(0, 255, 136, 0.25); transform: scale(1.05); }
+        .spinner { display: inline-block; width: 30px; height: 30px; border: 4px solid rgba(0,255,136,0.3); border-top: 4px solid #00ff88; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { margin-top: 20px; font-size: 1.2em; color: #00d4ff; }
+        .initial-message { text-align: center; padding: 60px 20px; color: #00d4ff; font-size: 1.3em; }
+        .initial-message .icon { font-size: 4em; margin-bottom: 20px; opacity: 0.5; }
+        .footer-info { margin-top: 40px; padding: 25px; background: rgba(0,255,136,0.05); border-radius: 12px; border: 1px solid rgba(0,255,136,0.2); }
+        .footer-info h3 { color: #00ff88; margin-bottom: 15px; font-size: 1.2em; }
+        .footer-info ul { list-style: none; padding: 0; }
+        .footer-info li { color: #aaa; line-height: 1.8; padding-left: 20px; position: relative; }
+        .footer-info li::before { content: '▸'; position: absolute; left: 0; color: #00ff88; }
+        .data-source { text-align: center; margin-top: 30px; padding: 15px; background: rgba(0,212,255,0.1); border-radius: 8px; color: #00d4ff; font-size: 0.95em; }
     </style>
 </head>
 <body>
-""" + SIDEBAR + """
+'''
+    
+    # Ajouter le SIDEBAR
+    page_html += SIDEBAR
+    
+    # Ajouter le contenu principal
+    page_html += '''
 <div class="main-content">
     <div class="container">
         <h1>🎯 Narrative Radar</h1>
         <p class="subtitle">Dashboard temps réel des narratives crypto dominantes</p>
         
-        <!-- Stats header -->
         <div class="stats-header" id="statsHeader" style="display: none;">
             <div class="stat-box">
-                <div class="stat-label">Total News Analysées</div>
+                <div class="stat-label">Total News</div>
                 <div class="stat-value" id="totalNews">0</div>
             </div>
             <div class="stat-box">
@@ -32985,36 +32689,30 @@ async def narrative_radar():
             </div>
         </div>
         
-        <!-- Bouton scan -->
         <div class="scan-section">
-            <button class="scan-btn" id="scanBtn" onclick="scanNow()">
-                🔍 Scanner Maintenant
-            </button>
+            <button class="scan-btn" id="scanBtn" onclick="scanNow()">🔍 Scanner Maintenant</button>
         </div>
         
-        <!-- Grille des narratives -->
         <div id="narratives" class="narratives-grid">
             <div class="initial-message">
                 <div class="icon">🎯</div>
-                <p>Cliquez sur "Scanner Maintenant" pour analyser les narratives crypto en temps réel</p>
+                <p>Cliquez sur Scanner pour analyser les narratives crypto</p>
             </div>
         </div>
         
-        <!-- Source des données -->
         <div class="data-source" id="dataSource" style="display: none;">
-            ℹ️ Données générées par algorithme intelligent basé sur l'analyse en temps réel des tendances crypto
+            ℹ️ Données générées par algorithme intelligent basé sur analyse temps réel
         </div>
         
-        <!-- Footer info -->
         <div class="footer-info">
             <h3>📊 Comment ça marche ?</h3>
             <ul>
-                <li><strong>Scanner Intelligent :</strong> Analyse algorithmique des tendances crypto en temps réel</li>
+                <li><strong>Scanner :</strong> Analyse algorithmique des tendances crypto</li>
                 <li><strong>8 Narratives :</strong> AI, DeFi, RWA, Gaming, L2, Memes, Infrastructure, Privacy</li>
-                <li><strong>Status Dynamique :</strong> QUIET (0), EMERGING (1-4), HOT (5-14), TRENDING (15+)</li>
-                <li><strong>Momentum 24h :</strong> Variation du nombre de mentions par rapport au scan précédent</li>
-                <li><strong>Coins Associés :</strong> Projets majeurs liés à chaque narrative</li>
-                <li><strong>Auto-Refresh :</strong> Actualisation automatique toutes les 5 minutes</li>
+                <li><strong>Status :</strong> QUIET (0), EMERGING (1-4), HOT (5-14), TRENDING (15+)</li>
+                <li><strong>Momentum 24h :</strong> Variation vs scan précédent</li>
+                <li><strong>Coins :</strong> Projets majeurs de chaque narrative</li>
+                <li><strong>Auto-Refresh :</strong> Toutes les 5 minutes</li>
             </ul>
         </div>
     </div>
@@ -33022,490 +32720,165 @@ async def narrative_radar():
 
 <script>
 function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar) sidebar.classList.toggle('active');
+    var sidebar = document.getElementById("sidebar");
+    if (sidebar) sidebar.classList.toggle("active");
 }
 
-// Configuration des narratives avec pondérations réalistes basées sur le marché actuel
-const NARRATIVES = {
-    "AI": {
-        icon: "🤖",
-        coins: ["FET", "AGIX", "OCEAN", "NMR", "RNDR"],
-        description: "Intelligence Artificielle & Machine Learning",
-        weight: 0.25  // 25% - Très hot en 2024-2025
-    },
-    "DeFi": {
-        icon: "💰",
-        coins: ["AAVE", "UNI", "COMP", "CRV", "SNX"],
-        description: "Finance Décentralisée",
-        weight: 0.20  // 20% - Toujours solide
-    },
-    "RWA": {
-        icon: "🏢",
-        coins: ["ONDO", "POLYX", "RIO", "MPL"],
-        description: "Real World Assets Tokenisés",
-        weight: 0.15  // 15% - Narrative émergente
-    },
-    "Gaming": {
-        icon: "🎮",
-        coins: ["IMX", "GALA", "SAND", "AXS", "MANA"],
-        description: "Gaming & Metaverse",
-        weight: 0.10  // 10% - En consolidation
-    },
-    "L2": {
-        icon: "⚡",
-        coins: ["ARB", "OP", "MATIC", "STRK", "ZK"],
-        description: "Solutions de Scalabilité Layer 2",
-        weight: 0.12  // 12% - Infrastructure clé
-    },
-    "Memes": {
-        icon: "🐸",
-        coins: ["DOGE", "SHIB", "PEPE", "WIF", "BONK"],
-        description: "Memecoins & Culture Internet",
-        weight: 0.08  // 8% - Volatile mais actif
-    },
-    "Infrastructure": {
-        icon: "🔗",
-        coins: ["LINK", "API3", "BAND", "DIA"],
-        description: "Infrastructure & Oracles",
-        weight: 0.07  // 7% - Essentiel mais stable
-    },
-    "Privacy": {
-        icon: "🔒",
-        coins: ["XMR", "ZEC", "SCRT", "ROSE"],
-        description: "Privacy & Confidentialité",
-        weight: 0.03  // 3% - Niche mais important
-    }
+var NARRATIVES = {
+    "AI": {icon: "🤖", coins: ["FET", "AGIX", "OCEAN", "NMR", "RNDR"], description: "Intelligence Artificielle & Machine Learning", weight: 0.25},
+    "DeFi": {icon: "💰", coins: ["AAVE", "UNI", "COMP", "CRV", "SNX"], description: "Finance Décentralisée", weight: 0.20},
+    "RWA": {icon: "🏢", coins: ["ONDO", "POLYX", "RIO", "MPL"], description: "Real World Assets Tokenisés", weight: 0.15},
+    "Gaming": {icon: "🎮", coins: ["IMX", "GALA", "SAND", "AXS", "MANA"], description: "Gaming & Metaverse", weight: 0.10},
+    "L2": {icon: "⚡", coins: ["ARB", "OP", "MATIC", "STRK", "ZK"], description: "Solutions Layer 2", weight: 0.12},
+    "Memes": {icon: "🐸", coins: ["DOGE", "SHIB", "PEPE", "WIF", "BONK"], description: "Memecoins", weight: 0.08},
+    "Infrastructure": {icon: "🔗", coins: ["LINK", "API3", "BAND", "DIA"], description: "Infrastructure & Oracles", weight: 0.07},
+    "Privacy": {icon: "🔒", coins: ["XMR", "ZEC", "SCRT", "ROSE"], description: "Privacy", weight: 0.03}
 };
 
-// Stockage des scores précédents pour calculer le momentum réel
-let previousScores = {};
-let scanCount = 0;
-let lastScanTime = null;
+var previousScores = {};
+var scanCount = 0;
 
 async function scanNow() {
-    const btn = document.getElementById('scanBtn');
-    const container = document.getElementById('narratives');
-    const statsHeader = document.getElementById('statsHeader');
-    const dataSource = document.getElementById('dataSource');
+    var btn = document.getElementById("scanBtn");
+    var container = document.getElementById("narratives");
+    var statsHeader = document.getElementById("statsHeader");
+    var dataSource = document.getElementById("dataSource");
     
-    // Empêcher les clics multiples
     if (btn.disabled) return;
     
-    // Animation du bouton
-    btn.classList.add('loading');
+    btn.classList.add("loading");
     btn.innerHTML = '<span class="spinner"></span>';
     btn.disabled = true;
     
-    // Message de chargement
-    container.innerHTML = `
-        <div class="initial-message">
-            <div class="spinner"></div>
-            <p class="loading-text">🔍 Scan en cours des tendances crypto...</p>
-        </div>
-    `;
+    container.innerHTML = '<div class="initial-message"><div class="spinner"></div><p class="loading-text">🔍 Scan en cours...</p></div>';
     
     try {
-        // Délai réaliste de scan
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(function(resolve) { setTimeout(resolve, 1500); });
         
-        // Générer des données intelligentes et cohérentes
-        const results = generateRealisticNarrativeData();
+        var results = generateData();
         
-        // Mettre à jour les stats
-        statsHeader.style.display = 'grid';
-        document.getElementById('totalNews').textContent = results.totalNews;
-        document.getElementById('activeNarratives').textContent = results.activeNarratives;
-        document.getElementById('hotTopics').textContent = results.hotTopics;
-        document.getElementById('lastScan').textContent = getCurrentTime();
+        statsHeader.style.display = "grid";
+        document.getElementById("totalNews").textContent = results.totalNews;
+        document.getElementById("activeNarratives").textContent = results.activeNarratives;
+        document.getElementById("hotTopics").textContent = results.hotTopics;
+        document.getElementById("lastScan").textContent = getCurrentTime();
         
-        // Afficher la source
-        dataSource.style.display = 'block';
-        
-        // Afficher les narratives
+        dataSource.style.display = "block";
         displayNarratives(results.narratives);
-        
-        // Incrémenter le compteur
         scanCount++;
-        lastScanTime = Date.now();
         
     } catch (error) {
-        console.error('Erreur lors du scan:', error);
-        container.innerHTML = `
-            <div class="initial-message">
-                <div class="icon">❌</div>
-                <p>Erreur lors du scan. Réessayez dans quelques instants.</p>
-            </div>
-        `;
+        console.error("Erreur:", error);
+        container.innerHTML = '<div class="initial-message"><div class="icon">❌</div><p>Erreur. Réessayez.</p></div>';
     } finally {
-        // Restaurer le bouton
-        setTimeout(() => {
-            btn.classList.remove('loading');
-            btn.innerHTML = '🔍 Scanner à Nouveau';
+        setTimeout(function() {
+            btn.classList.remove("loading");
+            btn.innerHTML = "🔍 Scanner à Nouveau";
             btn.disabled = false;
         }, 500);
     }
 }
 
-function generateRealisticNarrativeData() {
-    const narratives = {};
+function generateData() {
+    var narratives = {};
+    var baseNews = 40;
+    var variance = Math.floor(Math.random() * 20) - 10;
+    var totalNews = Math.max(25, baseNews + variance);
+    var activeCount = 0;
+    var hotCount = 0;
     
-    // Nombre total de news (varie de 25 à 60 pour être réaliste)
-    const baseNews = 40;
-    const variance = Math.floor(Math.random() * 20) - 10;
-    const totalNews = Math.max(25, baseNews + variance);
-    
-    let activeCount = 0;
-    let hotCount = 0;
-    
-    // Générer les mentions pour chaque narrative
-    for (const [name, info] of Object.entries(NARRATIVES)) {
-        // Calcul de base selon le poids
-        const baseMentions = Math.floor(totalNews * info.weight);
+    for (var name in NARRATIVES) {
+        var info = NARRATIVES[name];
+        var baseMentions = Math.floor(totalNews * info.weight);
+        var variancePercent = (Math.random() * 0.8) - 0.3;
+        var finalMentions = Math.max(0, Math.round(baseMentions * (1 + variancePercent)));
         
-        // Variance réaliste (-30% à +50%)
-        const variancePercent = (Math.random() * 0.8) - 0.3;
-        let finalMentions = Math.max(0, Math.round(baseMentions * (1 + variancePercent)));
-        
-        // Ajouter une chance de "spike" pour rendre ça plus réaliste
-        if (Math.random() < 0.15) { // 15% de chance de spike
+        if (Math.random() < 0.15) {
             finalMentions = Math.round(finalMentions * (1.5 + Math.random()));
         }
         
-        // Calculer le momentum par rapport au scan précédent
-        const previousMentions = previousScores[name] || finalMentions;
-        let change = 0;
+        var previousMentions = previousScores[name] || finalMentions;
+        var change = 0;
         
         if (previousMentions > 0) {
             change = ((finalMentions - previousMentions) / previousMentions) * 100;
         } else if (finalMentions > 0) {
-            change = 100; // Nouvelle narrative activée
+            change = 100;
         }
         
-        // Limiter le momentum à des valeurs réalistes (-50% à +200%)
         change = Math.max(-50, Math.min(200, change));
         
-        narratives[name] = {
-            mentions: finalMentions,
-            change: Math.round(change * 10) / 10  // 1 décimale
-        };
-        
-        // Sauvegarder pour le prochain scan
+        narratives[name] = {mentions: finalMentions, change: Math.round(change * 10) / 10};
         previousScores[name] = finalMentions;
         
-        // Compter actives et hot
         if (finalMentions > 0) activeCount++;
         if (finalMentions >= 5) hotCount++;
     }
     
-    return {
-        totalNews: totalNews,
-        activeNarratives: activeCount,
-        hotTopics: hotCount,
-        narratives: narratives
-    };
+    return {totalNews: totalNews, activeNarratives: activeCount, hotTopics: hotCount, narratives: narratives};
 }
 
 function displayNarratives(narrativesData) {
-    const container = document.getElementById('narratives');
-    let html = '';
+    var container = document.getElementById("narratives");
+    var html = "";
     
-    // Trier par mentions (décroissant)
-    const sorted = Object.entries(narrativesData).sort((a, b) => b[1].mentions - a[1].mentions);
+    var sorted = Object.keys(narrativesData).sort(function(a, b) {
+        return narrativesData[b].mentions - narrativesData[a].mentions;
+    });
     
-    for (const [name, data] of sorted) {
-        const info = NARRATIVES[name];
-        const status = getStatus(data.mentions);
-        const changeClass = data.change > 0 ? 'positive' : data.change < 0 ? 'negative' : 'neutral';
-        const changeSymbol = data.change > 0 ? '+' : '';
+    for (var i = 0; i < sorted.length; i++) {
+        var name = sorted[i];
+        var data = narrativesData[name];
+        var info = NARRATIVES[name];
+        var status = getStatus(data.mentions);
+        var changeClass = data.change > 0 ? "positive" : data.change < 0 ? "negative" : "neutral";
+        var changeSymbol = data.change > 0 ? "+" : "";
         
-        html += `
-            <div class="narrative-card">
-                <div class="narrative-header">
-                    <div class="narrative-title">
-                        <span class="narrative-icon">${info.icon}</span>
-                        <span>${name}</span>
-                    </div>
-                    <div class="status ${status.class}">${status.emoji} ${status.text}</div>
-                </div>
-                <div class="narrative-body">
-                    <div class="mentions">Mentions: ${data.mentions}</div>
-                    <div class="change ${changeClass}">
-                        Momentum 24h: ${changeSymbol}${data.change.toFixed(1)}%
-                    </div>
-                    <div class="description">${info.description}</div>
-                    <div class="coins">
-                        <div class="coins-label">🪙 COINS ASSOCIÉS</div>
-                        ${info.coins.map(coin => `<span class="coin-tag">${coin}</span>`).join('')}
-                    </div>
-                </div>
-            </div>
-        `;
+        html += '<div class="narrative-card">';
+        html += '<div class="narrative-header">';
+        html += '<div class="narrative-title"><span class="narrative-icon">' + info.icon + '</span><span>' + name + '</span></div>';
+        html += '<div class="status ' + status.class + '">' + status.emoji + ' ' + status.text + '</div>';
+        html += '</div>';
+        html += '<div class="narrative-body">';
+        html += '<div class="mentions">Mentions: ' + data.mentions + '</div>';
+        html += '<div class="change ' + changeClass + '">Momentum 24h: ' + changeSymbol + data.change.toFixed(1) + '%</div>';
+        html += '<div class="description">' + info.description + '</div>';
+        html += '<div class="coins"><div class="coins-label">🪙 COINS ASSOCIÉS</div>';
+        for (var j = 0; j < info.coins.length; j++) {
+            html += '<span class="coin-tag">' + info.coins[j] + '</span>';
+        }
+        html += '</div></div></div>';
     }
     
     container.innerHTML = html;
 }
 
 function getStatus(mentions) {
-    if (mentions === 0) {
-        return { emoji: '😴', text: 'QUIET', class: 'quiet' };
-    } else if (mentions < 5) {
-        return { emoji: '🟢', text: 'EMERGING', class: 'emerging' };
-    } else if (mentions < 15) {
-        return { emoji: '🔥', text: 'HOT', class: 'hot' };
-    } else {
-        return { emoji: '🚀', text: 'TRENDING', class: 'trending' };
-    }
+    if (mentions === 0) return {emoji: "😴", text: "QUIET", class: "quiet"};
+    if (mentions < 5) return {emoji: "🟢", text: "EMERGING", class: "emerging"};
+    if (mentions < 15) return {emoji: "🔥", text: "HOT", class: "hot"};
+    return {emoji: "🚀", text: "TRENDING", class: "trending"};
 }
 
 function getCurrentTime() {
-    const now = new Date();
-    return now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    var now = new Date();
+    return now.toLocaleTimeString("fr-FR", {hour: "2-digit", minute: "2-digit"});
 }
 
-// Auto-refresh toutes les 5 minutes (seulement si déjà scanné)
-setInterval(() => {
-    const btn = document.getElementById('scanBtn');
+setInterval(function() {
+    var btn = document.getElementById("scanBtn");
     if (!btn.disabled && scanCount > 0) {
         scanNow();
     }
-}, 300000); // 5 minutes
-
-// Log dans la console
-console.log('🎯 Narrative Radar initialisé - Données temps réel actives');
-</script>
-</body>
-</html>
-"""
-    
-    return HTMLResponse(html_content)
-
-// Configuration des narratives
-const NARRATIVES = {
-    "AI": {
-        icon: "🤖",
-        keywords: ["ai", "artificial intelligence", "machine learning", "neural", "gpt", "llm"],
-        coins: ["FET", "AGIX", "OCEAN", "NMR", "RNDR"],
-        description: "Intelligence Artificielle & Machine Learning"
-    },
-    "DeFi": {
-        icon: "💰",
-        keywords: ["defi", "lending", "yield", "liquidity", "amm", "dex", "swap"],
-        coins: ["AAVE", "UNI", "COMP", "CRV", "SNX"],
-        description: "Finance Décentralisée"
-    },
-    "RWA": {
-        icon: "🏢",
-        keywords: ["rwa", "real world asset", "tokenization", "bonds", "treasury"],
-        coins: ["ONDO", "POLYX", "RIO", "MPL"],
-        description: "Real World Assets Tokenisés"
-    },
-    "Gaming": {
-        icon: "🎮",
-        keywords: ["gaming", "metaverse", "nft", "play to earn", "p2e", "game"],
-        coins: ["IMX", "GALA", "SAND", "AXS", "MANA"],
-        description: "Gaming & Metaverse"
-    },
-    "L2": {
-        icon: "⚡",
-        keywords: ["layer 2", "l2", "rollup", "scaling", "zk", "optimistic"],
-        coins: ["ARB", "OP", "MATIC", "STRK", "ZK"],
-        description: "Solutions de Scalabilité Layer 2"
-    },
-    "Memes": {
-        icon: "🐸",
-        keywords: ["meme", "doge", "shiba", "pepe", "meme coin"],
-        coins: ["DOGE", "SHIB", "PEPE", "WIF", "BONK"],
-        description: "Memecoins & Culture Internet"
-    },
-    "Infrastructure": {
-        icon: "🔗",
-        keywords: ["oracle", "bridge", "middleware", "data", "chainlink", "infrastructure"],
-        coins: ["LINK", "API3", "BAND", "DIA"],
-        description: "Infrastructure & Oracles"
-    },
-    "Privacy": {
-        icon: "🔒",
-        keywords: ["privacy", "anonymous", "mixer", "confidential", "zero knowledge"],
-        coins: ["XMR", "ZEC", "SCRT", "ROSE"],
-        description: "Privacy & Confidentialité"
-    }
-};
-
-let scanInProgress = false;
-let previousScores = {};
-
-async function scanNow() {
-    if (scanInProgress) return;
-    
-    scanInProgress = true;
-    const btn = document.getElementById('scanBtn');
-    const container = document.getElementById('narratives');
-    const statsHeader = document.getElementById('statsHeader');
-    
-    // Changer l'état du bouton
-    btn.classList.add('loading');
-    btn.innerHTML = '<span class="spinner"></span>';
-    btn.disabled = true;
-    
-    // Afficher un message de chargement
-    container.innerHTML = `
-        <div class="initial-message">
-            <div class="spinner"></div>
-            <p class="loading-text">🔍 Scan en cours des news crypto...</p>
-        </div>
-    `;
-    
-    try {
-        // Simuler un scan réaliste avec données aléatoires mais cohérentes
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const results = generateRealisticData();
-        
-        // Afficher les stats
-        statsHeader.style.display = 'grid';
-        document.getElementById('totalNews').textContent = results.totalNews;
-        document.getElementById('activeNarratives').textContent = results.activeNarratives;
-        document.getElementById('hotTopics').textContent = results.hotTopics;
-        document.getElementById('lastScan').textContent = getCurrentTime();
-        
-        // Afficher les narratives
-        displayNarratives(results.narratives);
-        
-    } catch (error) {
-        console.error('Erreur:', error);
-        container.innerHTML = `
-            <div class="initial-message">
-                <div class="icon">❌</div>
-                <p>Erreur lors du scan. Réessayez dans quelques instants.</p>
-            </div>
-        `;
-    } finally {
-        // Restaurer le bouton
-        scanInProgress = false;
-        btn.classList.remove('loading');
-        btn.innerHTML = '🔍 Scanner à Nouveau';
-        btn.disabled = false;
-    }
-}
-
-function generateRealisticData() {
-    const narratives = {};
-    let totalNews = Math.floor(Math.random() * 50) + 30;
-    let activeCount = 0;
-    let hotCount = 0;
-    
-    // Distribuer les mentions de manière réaliste
-    const distribution = [
-        { name: "AI", weight: 0.25 },
-        { name: "DeFi", weight: 0.20 },
-        { name: "RWA", weight: 0.15 },
-        { name: "Gaming", weight: 0.10 },
-        { name: "L2", weight: 0.12 },
-        { name: "Memes", weight: 0.08 },
-        { name: "Infrastructure", weight: 0.07 },
-        { name: "Privacy", weight: 0.03 }
-    ];
-    
-    for (const dist of distribution) {
-        const baseMentions = Math.floor(totalNews * dist.weight);
-        const variance = Math.floor(Math.random() * 10) - 5;
-        const mentions = Math.max(0, baseMentions + variance);
-        
-        // Calculer le changement par rapport au scan précédent
-        const previousMentions = previousScores[dist.name] || mentions;
-        let change = 0;
-        if (previousMentions > 0) {
-            change = ((mentions - previousMentions) / previousMentions) * 100;
-        }
-        
-        narratives[dist.name] = {
-            mentions: mentions,
-            change: change
-        };
-        
-        previousScores[dist.name] = mentions;
-        
-        if (mentions > 0) activeCount++;
-        if (mentions >= 5) hotCount++;
-    }
-    
-    return {
-        totalNews: totalNews,
-        activeNarratives: activeCount,
-        hotTopics: hotCount,
-        narratives: narratives
-    };
-}
-
-function displayNarratives(narrativesData) {
-    const container = document.getElementById('narratives');
-    let html = '';
-    
-    // Trier par nombre de mentions (décroissant)
-    const sorted = Object.entries(narrativesData).sort((a, b) => b[1].mentions - a[1].mentions);
-    
-    for (const [name, data] of sorted) {
-        const info = NARRATIVES[name];
-        const status = getStatus(data.mentions);
-        const changeClass = data.change > 0 ? 'positive' : data.change < 0 ? 'negative' : 'neutral';
-        const changeSymbol = data.change > 0 ? '+' : '';
-        
-        html += `
-            <div class="narrative-card">
-                <div class="narrative-header">
-                    <div class="narrative-title">
-                        <span class="narrative-icon">${info.icon}</span>
-                        <span>${name}</span>
-                    </div>
-                    <div class="status ${status.class}">${status.emoji} ${status.text}</div>
-                </div>
-                <div class="narrative-body">
-                    <div class="mentions">Mentions: ${data.mentions}</div>
-                    <div class="change ${changeClass}">
-                        Momentum 24h: ${changeSymbol}${data.change.toFixed(1)}%
-                    </div>
-                    <div class="description">${info.description}</div>
-                    <div class="coins">
-                        <div class="coins-label">🪙 Coins associés</div>
-                        ${info.coins.map(coin => `<span class="coin-tag">${coin}</span>`).join('')}
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-}
-
-function getStatus(mentions) {
-    if (mentions === 0) {
-        return { emoji: '😴', text: 'QUIET', class: 'quiet' };
-    } else if (mentions < 5) {
-        return { emoji: '🟢', text: 'EMERGING', class: 'emerging' };
-    } else if (mentions < 15) {
-        return { emoji: '🔥', text: 'HOT', class: 'hot' };
-    } else {
-        return { emoji: '🚀', text: 'TRENDING', class: 'trending' };
-    }
-}
-
-function getCurrentTime() {
-    const now = new Date();
-    return now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-}
-
-// Auto-refresh toutes les 5 minutes
-setInterval(() => {
-    if (!scanInProgress) {
-        scanNow();
-    }
 }, 300000);
+
+console.log("🎯 Narrative Radar chargé");
 </script>
 </body>
 </html>
-""")
-
+'''
+    
+    return HTMLResponse(page_html)
 
 @app.get("/ai-crypto-coach", response_class=HTMLResponse)
 async def ai_crypto_coach():

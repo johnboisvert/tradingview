@@ -32664,25 +32664,38 @@ async def api_scan_narratives():
             all_posts = posts.copy()
             next_url = data.get("next")
             
+            print(f"📊 [Narrative] Page 1: {len(all_posts)} posts")
+            print(f"🔗 [Narrative] Next URL: {next_url if next_url else 'None (pagination impossible)'}")
+            
             # Récupérer jusqu'à 5 pages (20 posts × 5 = 100 posts)
             max_pages = 5
             current_page = 1
             
             while next_url and current_page < max_pages and len(all_posts) < 100:
                 try:
-                    next_response = await client.get(next_url, headers=headers, timeout=10.0)
+                    # 🔥 DÉLAI de 1 seconde entre requêtes (éviter rate limit)
+                    import asyncio
+                    await asyncio.sleep(1.0)
+                    
+                    print(f"⏳ [Narrative] Chargement page {current_page + 1}...")
+                    next_response = await client.get(next_url, headers=headers, timeout=15.0)
+                    
                     if next_response.status_code == 200:
                         next_data = next_response.json()
                         next_posts = next_data.get("results", [])
                         all_posts.extend(next_posts)
                         next_url = next_data.get("next")
                         current_page += 1
-                        print(f"📄 [Narrative] Page {current_page} chargée - {len(all_posts)} posts total")
+                        print(f"✅ [Narrative] Page {current_page} chargée - {len(all_posts)} posts total")
+                        print(f"🔗 [Narrative] Next URL: {next_url if next_url else 'None (fin pagination)'}")
                     else:
+                        print(f"❌ [Narrative] Page {current_page + 1} erreur status {next_response.status_code}")
                         break
                 except Exception as e:
-                    print(f"⚠️ [Narrative] Erreur pagination: {e}")
+                    print(f"⚠️ [Narrative] Erreur pagination page {current_page + 1}: {e}")
                     break
+            
+            print(f"🎯 [Narrative] FINAL: {len(all_posts)} posts chargés sur {current_page} pages")
             
             if len(all_posts) == 0:
                 print(f"⚠️ [Narrative] Aucun post → Fallback démo")

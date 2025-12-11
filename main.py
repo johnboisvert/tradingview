@@ -1580,14 +1580,10 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">💎</span>
                 <span class="label">Gem Hunter</span>
             </a>
-            
             <a href="/ai-technical-analysis" class="menu-item ai-feature">
-    <span class="icon">🎯</span>
-    <span class="label">Technical Analysis Pro</span>
-</a>
+                <span class="icon">🎯</span>
+                <span class="label">Technical Analysis Pro</span>
             </a>
-        </div>
-        
             
             <!-- 🆕 5 NOUVELLES FEATURES -->
             <a href="/narrative-radar" class="menu-item ai-feature">
@@ -32587,6 +32583,7 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         error_page += '</div>'
         error_page += '</body>'
         error_page += '</html>'
+        return HTMLResponse(error_page)
 
 
 # ============================================================================
@@ -32595,185 +32592,28 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
 
 @app.get("/narrative-radar", response_class=HTMLResponse)
 async def narrative_radar():
-    """🎯 Narrative Radar - Dashboard des narratives crypto"""
-    
+    """🎯 Narrative Radar"""
     return HTMLResponse(SIDEBAR + """
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎯 Narrative Radar</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); 
-            color: #fff; 
-            font-family: Arial, sans-serif; 
-            min-height: 100vh; 
-        }
-        
+        body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }
         .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
         h1 { text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }
-        
-        .scan-btn {
-            display: block;
-            margin: 20px auto;
-            padding: 15px 40px;
-            background: linear-gradient(45deg, #00ff88, #00d4ff);
-            color: #000;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 1.1em;
-        }
-        .scan-btn:hover { transform: scale(1.05); }
-        
-        .narratives-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-        
-        .narrative-card {
-            background: rgba(255,255,255,0.05);
-            border: 2px solid rgba(0,255,136,0.3);
-            border-radius: 12px;
-            padding: 20px;
-            transition: all 0.3s;
-        }
-        .narrative-card:hover {
-            border-color: #00ff88;
-            box-shadow: 0 0 15px rgba(0,255,136,0.4);
-            transform: translateY(-5px);
-        }
-        
-        .narrative-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .narrative-title {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #00ff88;
-        }
-        
-        .status {
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-        }
-        
-        .status.quiet { background: rgba(108, 117, 125, 0.3); color: #aaa; }
-        .status.emerging { background: rgba(0, 255, 136, 0.3); color: #00ff88; }
-        .status.hot { background: rgba(251, 191, 36, 0.3); color: #fbbf24; }
-        .status.trending { background: rgba(239, 68, 68, 0.3); color: #ef4444; }
-        
-        .mentions {
-            font-size: 2em;
-            font-weight: bold;
-            margin: 10px 0;
-            color: #00ff88;
-        }
-        
-        .change {
-            font-size: 1.2em;
-            margin: 5px 0;
-            color: #00d4ff;
-        }
-        
-        .coins {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid rgba(0,255,136,0.3);
-        }
-        
-        .coin-tag {
-            display: inline-block;
-            background: rgba(0, 255, 136, 0.2);
-            padding: 5px 12px;
-            border-radius: 10px;
-            margin: 5px;
-            font-size: 0.9em;
-            color: #00ff88;
-            border: 1px solid rgba(0,255,136,0.3);
-        }
+        .narratives-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 30px; }
+        .narrative-card { background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.3); border-radius: 12px; padding: 20px; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>🎯 Narrative Radar</h1>
-    <p style="text-align: center; color: #00d4ff; margin-bottom: 30px; font-size: 1.1em;">Dashboard temps réel des narratives crypto</p>
-    
-    <button class="scan-btn" onclick="scanNow()">🔍 Scanner Maintenant</button>
-    
-    <div id="narratives" class="narratives-grid">
-        <div style="text-align: center; padding: 40px; grid-column: 1 / -1; color: #00d4ff;">
-            Cliquez sur "Scanner" pour démarrer l'analyse...
-        </div>
-    </div>
+    <p style="text-align: center; color: #00d4ff;">Feature en développement</p>
 </div>
-
-<script>
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-}
-
-const NARRATIVES = {
-    "AI": { coins: ["FET", "AGIX", "OCEAN", "NMR"] },
-    "DeFi": { coins: ["AAVE", "UNI", "COMP", "CRV"] },
-    "RWA": { coins: ["ONDO", "POLYX", "RIO"] },
-    "Gaming": { coins: ["IMX", "GALA", "SAND", "AXS"] },
-    "L2": { coins: ["ARB", "OP", "MATIC", "STRK"] },
-    "Memes": { coins: ["DOGE", "SHIB", "PEPE", "WIF"] },
-    "Infrastructure": { coins: ["LINK", "API3", "BAND"] },
-    "Privacy": { coins: ["XMR", "ZEC", "SCRT"] }
-};
-
-async function scanNow() {
-    const container = document.getElementById('narratives');
-    container.innerHTML = '<div style="text-align: center; padding: 40px; grid-column: 1 / -1; color: #00ff88;">🔄 Scan en cours...</div>';
-    
-    setTimeout(() => {
-        let html = '';
-        
-        for (const [name, info] of Object.entries(NARRATIVES)) {
-            const mentions = Math.floor(Math.random() * 20);
-            const change = (Math.random() * 10 - 5).toFixed(1);
-            const status = getStatus(mentions);
-            
-            html += `
-                <div class="narrative-card">
-                    <div class="narrative-header">
-                        <div class="narrative-title">${name}</div>
-                        <div class="status ${status.class}">${status.emoji} ${status.text}</div>
-                    </div>
-                    <div class="mentions">Mentions: ${mentions}</div>
-                    <div class="change">Avg Change 24h: ${change >= 0 ? '+' : ''}${change}%</div>
-                    <div class="coins">
-                        ${info.coins.map(coin => `<span class="coin-tag">${coin}</span>`).join('')}
-                    </div>
-                </div>
-            `;
-        }
-        
-        container.innerHTML = html;
-    }, 1000);
-}
-
-function getStatus(mentions) {
-    if (mentions === 0) return {emoji: '😴', text: 'QUIET', class: 'quiet'};
-    if (mentions < 5) return {emoji: '🟢', text: 'EMERGING', class: 'emerging'};
-    if (mentions < 15) return {emoji: '🔥', text: 'HOT', class: 'hot'};
-    return {emoji: '🚀', text: 'TRENDING', class: 'trending'};
-}
-</script>
+<script>function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }</script>
 </body>
 </html>
 """)
@@ -32781,65 +32621,7 @@ function getStatus(mentions) {
 
 @app.get("/ai-crypto-coach", response_class=HTMLResponse)
 async def ai_crypto_coach():
-    """🤖 AI Crypto Coach - Analyse ton profil de trader"""
-    
-    total_trades = len(trades_db)
-    
-    if total_trades < 5:
-        return HTMLResponse(SIDEBAR + f"""
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>🤖 AI Crypto Coach</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ 
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); 
-            color: #fff; 
-            font-family: Arial, sans-serif; 
-            min-height: 100vh; 
-        }}
-        .container {{ max-width: 1000px; margin: 0 auto; padding: 20px; }}
-        h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
-        
-        .warning-box {{
-            background: rgba(255,255,255,0.05);
-            border: 2px solid rgba(239,68,68,0.5);
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-            margin-top: 50px;
-        }}
-        .warning-icon {{ font-size: 4em; margin-bottom: 20px; }}
-        .warning-title {{ font-size: 1.8em; color: #ef4444; margin-bottom: 20px; }}
-        .warning-text {{ font-size: 1.2em; color: #aaa; line-height: 1.6; }}
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>🤖 AI Crypto Coach</h1>
-    <p style="text-align: center; color: #00d4ff; margin-bottom: 30px; font-size: 1.1em;">Analyse de ton profil de trader</p>
-    
-    <div class="warning-box">
-        <div class="warning-icon">⚠️</div>
-        <div class="warning-title">Pas assez de trades</div>
-        <div class="warning-text">
-            Il te faut minimum <strong style="color: #00ff88;">5 trades</strong> dans ton historique pour une analyse complète.<br><br>
-            Trades actuels: <strong style="color: #00d4ff;">{total_trades}</strong><br><br>
-            Va faire quelques trades et reviens ! 📊
-        </div>
-    </div>
-</div>
-<script>
-function toggleSidebar() {{
-    document.getElementById('sidebar').classList.toggle('active');
-}}
-</script>
-</body>
-</html>
-""")
-    
+    """🤖 AI Crypto Coach"""
     return HTMLResponse(SIDEBAR + """
 <!DOCTYPE html>
 <html lang="fr">
@@ -32855,8 +32637,8 @@ function toggleSidebar() {{
 </head>
 <body>
 <div class="container">
-    <h1>🤖 AI Crypto Coach - Analyse en cours...</h1>
-    <p style="text-align: center; color: #00d4ff; margin-bottom: 30px; font-size: 1.1em;">Feature en développement</p>
+    <h1>🤖 AI Crypto Coach</h1>
+    <p style="text-align: center; color: #00d4ff;">Feature en développement</p>
 </div>
 <script>function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }</script>
 </body>
@@ -32866,8 +32648,7 @@ function toggleSidebar() {{
 
 @app.get("/ai-swarm-agents", response_class=HTMLResponse)
 async def ai_swarm_agents():
-    """🤖 AI Swarm Agents - Système multi-agents"""
-    
+    """🤖 AI Swarm Agents"""
     return HTMLResponse(SIDEBAR + """
 <!DOCTYPE html>
 <html lang="fr">
@@ -32879,122 +32660,14 @@ async def ai_swarm_agents():
         body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }
         .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
         h1 { text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }
-        
-        .profiles-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }
-        
-        .profile-card {
-            background: rgba(255,255,255,0.05);
-            border: 2px solid rgba(0,255,136,0.3);
-            border-radius: 12px;
-            padding: 30px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .profile-card:hover {
-            border-color: #00ff88;
-            box-shadow: 0 0 15px rgba(0,255,136,0.4);
-            transform: translateY(-5px);
-        }
-        .profile-card.selected {
-            border-color: #00ff88;
-            background: rgba(0,255,136,0.1);
-        }
-        
-        .profile-icon { font-size: 3em; text-align: center; margin-bottom: 15px; }
-        .profile-title { font-size: 1.5em; color: #00ff88; margin-bottom: 10px; text-align: center; }
-        .profile-desc { color: #aaa; text-align: center; line-height: 1.6; }
-        
-        .btn {
-            display: block;
-            margin: 30px auto;
-            padding: 15px 40px;
-            background: linear-gradient(45deg, #00ff88, #00d4ff);
-            color: #000;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 1.1em;
-        }
-        .btn:hover { transform: scale(1.05); }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>🤖 AI Swarm Agents</h1>
-    <p style="text-align: center; color: #00d4ff; margin-bottom: 30px; font-size: 1.1em;">Système multi-agents d'analyse crypto personnalisée</p>
-    
-    <div class="profiles-grid">
-        <div class="profile-card" onclick="selectProfile('degen', this)">
-            <div class="profile-icon">🚀</div>
-            <div class="profile-title">Degen Memecoin Hunter</div>
-            <div class="profile-desc">Max risk, max rewards. Chasse les 100x avec analyse de memecoins et whale tracking.</div>
-        </div>
-        
-        <div class="profile-card" onclick="selectProfile('investor', this)">
-            <div class="profile-icon">💼</div>
-            <div class="profile-title">Investor Sérieux 1-3 ans</div>
-            <div class="profile-desc">Focus fondamentaux et long terme. Analyse macro et narratives émergentes.</div>
-        </div>
-        
-        <div class="profile-card" onclick="selectProfile('scalper', this)">
-            <div class="profile-icon">⚡</div>
-            <div class="profile-title">Scalper Court Terme</div>
-            <div class="profile-desc">Opportunités rapides, momentum trading. Whale tracking et détection de mouvements.</div>
-        </div>
-    </div>
-    
-    <button class="btn" onclick="runAnalysis()">🚀 Lancer l'Analyse</button>
-    
-    <div id="results"></div>
+    <p style="text-align: center; color: #00d4ff;">Feature en développement</p>
 </div>
-
-<script>
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-}
-
-let selectedProfile = null;
-
-function selectProfile(profile, element) {
-    selectedProfile = profile;
-    document.querySelectorAll('.profile-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    element.classList.add('selected');
-}
-
-function runAnalysis() {
-    if (!selectedProfile) {
-        alert('⚠️ Sélectionne un profil d\'abord !');
-        return;
-    }
-    
-    const results = document.getElementById('results');
-    results.innerHTML = `
-        <div style="background: rgba(0,255,136,0.1); border: 2px solid #00ff88; border-radius: 12px; padding: 30px; text-align: center; margin-top: 30px;">
-            <div style="font-size: 2em; margin-bottom: 20px;">🔄</div>
-            <div style="font-size: 1.5em; color: #00ff88; margin-bottom: 10px;">Analyse en cours...</div>
-            <div style="color: #aaa;">Profil: ${selectedProfile.toUpperCase()}</div>
-        </div>
-    `;
-    
-    setTimeout(() => {
-        results.innerHTML = `
-            <div style="background: rgba(0,255,136,0.1); border: 2px solid #00ff88; border-radius: 12px; padding: 30px; text-align: center;">
-                <div style="font-size: 2em; margin-bottom: 20px;">✅</div>
-                <div style="font-size: 1.5em; color: #00ff88; margin-bottom: 10px;">Feature en développement</div>
-                <div style="color: #aaa;">Les agents seront bientôt connectés aux APIs !</div>
-            </div>
-        `;
-    }, 2000);
-}
-</script>
+<script>function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }</script>
 </body>
 </html>
 """)
@@ -33002,165 +32675,26 @@ function runAnalysis() {
 
 @app.get("/altseason-copilot-pro", response_class=HTMLResponse)
 async def altseason_copilot():
-    """📈 Altseason Copilot Pro - Rotation de capital"""
-    
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            btc_resp = await client.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true")
-            btc_data = btc_resp.json().get("bitcoin", {})
-            btc_price = btc_data.get("usd", 0)
-            btc_change = btc_data.get("usd_24h_change", 0)
-            
-            eth_resp = await client.get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true")
-            eth_data = eth_resp.json().get("ethereum", {})
-            eth_price = eth_data.get("usd", 0)
-            eth_change = eth_data.get("usd_24h_change", 0)
-            
-            global_resp = await client.get("https://api.coingecko.com/api/v3/global")
-            global_data = global_resp.json().get("data", {})
-            btc_dom = global_data.get("market_cap_percentage", {}).get("btc", 0)
-            
-    except:
-        btc_price, btc_change, eth_price, eth_change, btc_dom = 97000, -2.5, 3600, -3.2, 56.5
-    
-    if btc_dom > 55:
-        phase = "BTC Dominance"
-        phase_emoji = "🔵"
-        phase_color = "#3b82f6"
-        recommendation = "💰 Hold BTC ou attends la rotation"
-    elif btc_change > 5:
-        phase = "BTC Pump"
-        phase_emoji = "🟢"
-        phase_color = "#00ff88"
-        recommendation = "🚀 BTC monte ! Prépare-toi pour la rotation vers alts"
-    elif eth_change > 5 and btc_change < 2:
-        phase = "Alt Season 🚀"
-        phase_emoji = "🚀"
-        phase_color = "#00ff88"
-        recommendation = "🔥 ALL IN ALTS ! Capital flow vers les altcoins !"
-    elif abs(btc_change) < 2 and abs(eth_change) < 2:
-        phase = "Consolidation"
-        phase_emoji = "🟡"
-        phase_color = "#fbbf24"
-        recommendation = "⏰ Patience, accumulation en cours"
-    else:
-        phase = "Accumulation"
-        phase_emoji = "🟢"
-        phase_color = "#00ff88"
-        recommendation = "✅ Bon moment pour DCA sur quality alts"
-    
-    return HTMLResponse(SIDEBAR + f"""
+    """📈 Altseason Copilot Pro"""
+    return HTMLResponse(SIDEBAR + """
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <title>📈 Altseason Copilot Pro</title>
     <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }}
-        .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
-        h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
-        
-        .phase-card {{
-            background: rgba(255,255,255,0.05);
-            border: 2px solid {phase_color};
-            border-radius: 15px;
-            padding: 50px;
-            text-align: center;
-            margin: 30px 0;
-            box-shadow: 0 0 20px rgba(0,255,136,0.2);
-        }}
-        
-        .phase-emoji {{ font-size: 5em; margin-bottom: 20px; }}
-        .phase-title {{ font-size: 3em; color: {phase_color}; margin: 20px 0; font-weight: bold; }}
-        .phase-rec {{ font-size: 1.4em; color: #00d4ff; margin-top: 20px; }}
-        
-        .metrics-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }}
-        
-        .metric-card {{
-            background: rgba(255,255,255,0.05);
-            border: 2px solid rgba(0,255,136,0.3);
-            border-radius: 12px;
-            padding: 25px;
-            text-align: center;
-        }}
-        .metric-card:hover {{
-            border-color: #00ff88;
-            box-shadow: 0 0 15px rgba(0,255,136,0.4);
-        }}
-        
-        .metric-label {{ color: #aaa; font-size: 0.9em; margin-bottom: 10px; text-transform: uppercase; }}
-        .metric-value {{ font-size: 2.5em; font-weight: bold; color: #00ff88; margin: 10px 0; }}
-        .metric-change {{ font-size: 1.2em; margin-top: 10px; }}
-        
-        .auto-refresh {{
-            text-align: center;
-            color: #00d4ff;
-            margin-top: 30px;
-            padding: 15px;
-            background: rgba(0,212,255,0.1);
-            border-radius: 8px;
-            border: 1px solid rgba(0,212,255,0.3);
-        }}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        h1 { text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>📈 Altseason Copilot Pro</h1>
-    <p style="text-align: center; color: #00d4ff; margin-bottom: 30px; font-size: 1.1em;">Rotation de capital & Phase du marché en temps réel</p>
-    
-    <div class="phase-card">
-        <div class="phase-emoji">{phase_emoji}</div>
-        <div class="phase-title">{phase}</div>
-        <div class="phase-rec">{recommendation}</div>
-    </div>
-    
-    <div class="metrics-grid">
-        <div class="metric-card">
-            <div class="metric-label">Bitcoin (BTC)</div>
-            <div class="metric-value">${btc_price:,.0f}</div>
-            <div class="metric-change" style="color: {'#00ff88' if btc_change >= 0 else '#ef4444'};">
-                {'+' if btc_change >= 0 else ''}{btc_change:.2f}%
-            </div>
-        </div>
-        
-        <div class="metric-card">
-            <div class="metric-label">Ethereum (ETH)</div>
-            <div class="metric-value">${eth_price:,.0f}</div>
-            <div class="metric-change" style="color: {'#00ff88' if eth_change >= 0 else '#ef4444'};">
-                {'+' if eth_change >= 0 else ''}{eth_change:.2f}%
-            </div>
-        </div>
-        
-        <div class="metric-card">
-            <div class="metric-label">BTC Dominance</div>
-            <div class="metric-value">{btc_dom:.2f}%</div>
-            <div class="metric-change" style="color: #00d4ff;">Market Share</div>
-        </div>
-    </div>
-    
-    <div class="auto-refresh">
-        🔄 Auto-refresh dans <span id="countdown">60</span> secondes
-    </div>
+    <p style="text-align: center; color: #00d4ff;">Feature en développement</p>
 </div>
-
-<script>
-function toggleSidebar() {{
-    document.getElementById('sidebar').classList.toggle('active');
-}}
-
-let counter = 60;
-setInterval(() => {{
-    counter--;
-    document.getElementById('countdown').textContent = counter;
-    if (counter <= 0) location.reload();
-}}, 1000);
-</script>
+<script>function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }</script>
 </body>
 </html>
 """)
@@ -33168,8 +32702,7 @@ setInterval(() => {{
 
 @app.get("/rug-scam-shield", response_class=HTMLResponse)
 async def rug_scam_shield():
-    """🛡️ Rug & Scam Shield - Analyse de sécurité"""
-    
+    """🛡️ Rug & Scam Shield"""
     return HTMLResponse(SIDEBAR + """
 <!DOCTYPE html>
 <html lang="fr">
@@ -33179,189 +32712,16 @@ async def rug_scam_shield():
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
         h1 { text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }
-        
-        .input-section {
-            background: rgba(255,255,255,0.05);
-            border: 2px solid rgba(0,255,136,0.3);
-            border-radius: 12px;
-            padding: 40px;
-            margin: 30px 0;
-        }
-        
-        .input-label {
-            color: #00ff88;
-            font-size: 1.2em;
-            margin-bottom: 15px;
-            font-weight: bold;
-        }
-        
-        .input-grid {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 15px;
-            margin-top: 20px;
-        }
-        
-        input {
-            padding: 15px 20px;
-            background: rgba(15, 12, 41, 0.8);
-            border: 2px solid rgba(0,255,136,0.3);
-            border-radius: 8px;
-            color: #fff;
-            font-size: 1em;
-        }
-        input:focus {
-            outline: none;
-            border-color: #00ff88;
-            box-shadow: 0 0 10px rgba(0,255,136,0.3);
-        }
-        
-        select {
-            padding: 15px 20px;
-            background: rgba(15, 12, 41, 0.8);
-            border: 2px solid rgba(0,255,136,0.3);
-            border-radius: 8px;
-            color: #fff;
-            font-size: 1em;
-            min-width: 180px;
-            cursor: pointer;
-        }
-        select:focus {
-            outline: none;
-            border-color: #00ff88;
-        }
-        
-        .btn {
-            width: 100%;
-            padding: 15px;
-            margin-top: 20px;
-            background: linear-gradient(45deg, #00ff88, #00d4ff);
-            color: #000;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 1.1em;
-        }
-        .btn:hover { transform: scale(1.02); }
-        
-        .info-box {
-            background: rgba(0,255,136,0.1);
-            border-left: 4px solid #00ff88;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 30px;
-            color: #aaa;
-        }
-        
-        .chains-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        
-        .chain-badge {
-            background: rgba(0,255,136,0.2);
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: 1px solid rgba(0,255,136,0.3);
-            color: #00ff88;
-            font-size: 0.9em;
-        }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>🛡️ Rug & Scam Shield</h1>
-    <p style="text-align: center; color: #00d4ff; margin-bottom: 30px; font-size: 1.1em;">Analyse de sécurité des smart contracts</p>
-    
-    <div class="input-section">
-        <div class="input-label">Adresse du Contract</div>
-        
-        <div class="input-grid">
-            <input 
-                type="text" 
-                id="contractAddress" 
-                placeholder="0x..."
-            >
-            <select id="chain">
-                <option value="eth">Ethereum</option>
-                <option value="bsc">BSC</option>
-                <option value="polygon">Polygon</option>
-                <option value="arbitrum">Arbitrum</option>
-                <option value="optimism">Optimism</option>
-                <option value="avalanche">Avalanche</option>
-                <option value="fantom">Fantom</option>
-                <option value="base">Base</option>
-            </select>
-        </div>
-        
-        <button class="btn" onclick="analyzeContract()">🔍 Analyser</button>
-    </div>
-    
-    <div class="info-box">
-        <div style="font-size: 1.2em; color: #00ff88; margin-bottom: 10px;">✅ Blockchains supportées</div>
-        <div class="chains-list">
-            <span class="chain-badge">Ethereum</span>
-            <span class="chain-badge">BSC</span>
-            <span class="chain-badge">Polygon</span>
-            <span class="chain-badge">Arbitrum</span>
-            <span class="chain-badge">Optimism</span>
-            <span class="chain-badge">Avalanche</span>
-            <span class="chain-badge">Fantom</span>
-            <span class="chain-badge">Base</span>
-        </div>
-        <p style="margin-top: 15px; line-height: 1.6;">
-            L'analyse vérifie: Honeypot detection, buy/sell taxes, contract verification, 
-            proxy detection, holder count, et plus encore.
-        </p>
-    </div>
-    
-    <div id="results"></div>
+    <p style="text-align: center; color: #00d4ff;">Feature en développement</p>
 </div>
-
-<script>
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-}
-
-function analyzeContract() {
-    const address = document.getElementById('contractAddress').value.trim();
-    const chain = document.getElementById('chain').value;
-    
-    if (!address || address.length < 40) {
-        alert('⚠️ Entre une adresse de contract valide (0x...)');
-        return;
-    }
-    
-    const results = document.getElementById('results');
-    results.innerHTML = `
-        <div style="background: rgba(0,255,136,0.1); border: 2px solid #00ff88; border-radius: 12px; padding: 40px; text-align: center; margin-top: 30px;">
-            <div style="font-size: 3em; margin-bottom: 20px;">🔄</div>
-            <div style="font-size: 1.5em; color: #00ff88; margin-bottom: 15px;">Analyse en cours...</div>
-            <div style="color: #aaa; font-size: 1.1em;">
-                Contract: ${address.substring(0, 10)}...${address.substring(address.length - 8)}<br>
-                Chain: ${chain.toUpperCase()}
-            </div>
-        </div>
-    `;
-    
-    setTimeout(() => {
-        results.innerHTML = `
-            <div style="background: rgba(0,255,136,0.1); border: 2px solid #00ff88; border-radius: 12px; padding: 40px; text-align: center; margin-top: 30px;">
-                <div style="font-size: 3em; margin-bottom: 20px;">✅</div>
-                <div style="font-size: 1.5em; color: #00ff88; margin-bottom: 15px;">Feature en développement</div>
-                <div style="color: #aaa; font-size: 1.1em;">L'API Honeypot.is sera bientôt intégrée !</div>
-            </div>
-        `;
-    }, 2000);
-}
-</script>
+<script>function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }</script>
 </body>
 </html>
 """)
-
-        return HTMLResponse(error_page)

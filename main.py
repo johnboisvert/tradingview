@@ -33077,13 +33077,13 @@ function toggleDebug() {
 }
 
 function resetScores() {
-    if (confirm('Voulez-vous réinitialiser tous les scores précédents ?\n\nLe prochain scan aura un momentum de 0%, puis les scans suivants montreront les changements réels.')) {
+    if (confirm("Voulez-vous réinitialiser tous les scores précédents ?\n\nLe prochain scan aura un momentum de 0%, puis les scans suivants montreront les changements réels.")) {
         previousScores = {};
         scanCount = 0;
         lastScanTime = 0;
         saveToLocalStorage();
-        alert('✅ Scores réinitialisés !\n\nLe prochain scan sera considéré comme le premier.');
-        console.log('🔄 Scores réinitialisés');
+        alert("✅ Scores réinitialisés !\n\nLe prochain scan sera considéré comme le premier.");
+        console.log("🔄 Scores réinitialisés");
     }
 }
 
@@ -33216,7 +33216,7 @@ async function scanNow() {
         
     } catch (error) {
         console.error('Erreur:', error);
-        container.innerHTML = '<div class="error-box"><div class="icon">❌</div><div class="title">Erreur de connexion</div><div class="message">Impossible de contacter l\\'API. Vérifiez votre connexion.</div></div>';
+        container.innerHTML = '<div class="error-box"><div class="icon">❌</div><div class="title">Erreur de connexion</div><div class="message">Impossible de contacter l\'API. Vérifiez votre connexion.</div></div>';
     } finally {
         setTimeout(function() {
             btn.classList.remove('loading');

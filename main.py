@@ -32252,6 +32252,93 @@ async def get_portfolio_data(request: Request):
         return JSONResponse({'success': False, 'message': str(e), 'exchanges': {}})
 
 # ============================================================================
+# 🤖 AI CRYPTO COACH - CLAUDE API PROXY
+# ============================================================================
+
+class ChatRequest(BaseModel):
+    message: str
+    mode: str
+    history: list = []
+
+@app.post("/api/chat")
+async def chat_with_claude(request: ChatRequest):
+    """Endpoint proxy pour Claude API - évite CORS depuis le navigateur"""
+    try:
+        # Récupérer la clé API depuis les variables d'environnement
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        
+        if not api_key:
+            return JSONResponse({
+                'success': False,
+                'message': '⚠️ API key non configurée. Configurez ANTHROPIC_API_KEY dans Railway.'
+            }, status_code=500)
+        
+        # Construire les messages pour Claude
+        messages = request.history + [{"role": "user", "content": request.message}]
+        
+        # Préparer le system prompt selon le mode
+        system_prompts = {
+            'beginner': 'Tu es un expert crypto coach francophone patient et pédagogique. Tu expliques les concepts de base du trading crypto, blockchain et wallets de manière simple et accessible aux débutants.',
+            'intermediate': 'Tu es un expert crypto coach francophone. Tu aides avec l\'analyse technique avancée, la DeFi, les stratégies de trading intermédiaires. Tu donnes des conseils pratiques et concrets.',
+            'expert': 'Tu es un expert crypto coach francophone de niveau professionnel. Tu discutes de stratégies avancées: leverage, futures, arbitrage DeFi, MEV, smart contracts. Tu fournis des analyses approfondies.'
+        }
+        system_prompt = system_prompts.get(request.mode, system_prompts['beginner'])
+        
+        # Appeler l'API Claude
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                'https://api.anthropic.com/v1/messages',
+                headers={
+                    'x-api-key': api_key,
+                    'anthropic-version': '2023-06-01',
+                    'content-type': 'application/json'
+                },
+                json={
+                    'model': 'claude-sonnet-4-20250514',
+                    'max_tokens': 1000,
+                    'system': system_prompt,
+                    'messages': messages
+                },
+                timeout=30.0
+            )
+        
+        if response.status_code != 200:
+            error_text = response.text[:200]
+            return JSONResponse({
+                'success': False,
+                'message': f'❌ Erreur API Claude ({response.status_code}): {error_text}'
+            }, status_code=response.status_code)
+        
+        data = response.json()
+        
+        # Extraire la réponse de Claude
+        assistant_message = ''
+        if 'content' in data and len(data['content']) > 0:
+            for block in data['content']:
+                if block.get('type') == 'text':
+                    assistant_message += block.get('text', '')
+        
+        if not assistant_message:
+            assistant_message = 'Désolé, je n\'ai pas pu générer de réponse.'
+        
+        return JSONResponse({
+            'success': True,
+            'message': assistant_message
+        })
+    
+    except httpx.TimeoutException:
+        return JSONResponse({
+            'success': False,
+            'message': '⏱️ Timeout: L\'API Claude met trop de temps à répondre. Réessayez.'
+        }, status_code=504)
+    except Exception as e:
+        print(f"Chat API error: {e}")
+        return JSONResponse({
+            'success': False,
+            'message': f'❌ Erreur serveur: {str(e)[:100]}'
+        }, status_code=500)
+
+# ============================================================================
 # 🎯 TECHNICAL ANALYSIS PRO ROUTE - SANS F-STRING (utilise .format())
 # ============================================================================
 
@@ -33495,7 +33582,7 @@ console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 async def ai_crypto_coach():
     """🎓 AI Crypto Coach - Guided Learning Experience avec Claude API"""
     
-    return HTMLResponse(SIDEBAR + '''<!DOCTYPE html>
+    return HTMLResponse('''<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -33509,7 +33596,7 @@ async def ai_crypto_coach():
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
             overflow-x: hidden;
         }
-        .main-content { margin-left: 250px; transition: margin-left 0.3s; }
+        .main-content { margin-left: 280px; transition: margin-left 0.3s; }
         @media (max-width: 768px) { .main-content { margin-left: 0; } }
         
         /* Header */
@@ -34053,6 +34140,8 @@ async def ai_crypto_coach():
     </style>
 </head>
 <body>
+
+''' + SIDEBAR + '''
 
 <div class="main-content">
     <!-- Header -->
@@ -34622,32 +34711,31 @@ async function sendMessage() {
     updateStats();
     
     try {
-        // Call Claude API
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
+        // Call our backend endpoint (not Claude API directly)
+        const response = await fetch('/api/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514',
-                max_tokens: 1000,
-                messages: [
-                    ...chatHistory,
-                    { role: 'user', content: message }
-                ],
-                system: `Tu es un expert crypto coach francophone. Tu aides les utilisateurs à comprendre le trading crypto, la DeFi, les NFTs, etc. Réponds de manière claire, concise et pédagogique. Mode actuel: ${currentMode}.`
+                message: message,
+                mode: currentMode,
+                history: chatHistory
             })
         });
         
         const data = await response.json();
-        const assistantMessage = data.content.find(c => c.type === 'text')?.text || 'Désolé, erreur de communication.';
         
-        // Add assistant message
-        addMessage('assistant', assistantMessage);
-        
-        // Update chat history
-        chatHistory.push({ role: 'user', content: message });
-        chatHistory.push({ role: 'assistant', content: assistantMessage });
+        if (data.success) {
+            // Add assistant message
+            addMessage('assistant', data.message);
+            
+            // Update chat history
+            chatHistory.push({ role: 'user', content: message });
+            chatHistory.push({ role: 'assistant', content: data.message });
+        } else {
+            addMessage('assistant', '⚠️ ' + (data.message || 'Erreur de connexion.'));
+        }
         
     } catch (error) {
         addMessage('assistant', '⚠️ Erreur de connexion. Veuillez réessayer.');

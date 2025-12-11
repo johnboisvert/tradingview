@@ -33216,7 +33216,7 @@ async function scanNow() {
         
     } catch (error) {
         console.error('Erreur:', error);
-        container.innerHTML = '<div class="error-box"><div class="icon">❌</div><div class="title">Erreur de connexion</div><div class="message">Impossible de contacter l\'API. Vérifiez votre connexion.</div></div>';
+        container.innerHTML = "<div class='error-box'><div class='icon'>❌</div><div class='title'>Erreur de connexion</div><div class='message'>Impossible de contacter l'API. Vérifiez votre connexion.</div></div>";
     } finally {
         setTimeout(function() {
             btn.classList.remove('loading');

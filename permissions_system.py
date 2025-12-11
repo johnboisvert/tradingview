@@ -32,6 +32,7 @@ class Feature(str, Enum):
     
     # Features Advanced (3 MOIS+)
     AI_PREDICTIONS = "ai_predictions"
+    AI_TECHNICAL_ANALYSIS = "ai_technical_analysis"
     MARKET_ANALYSIS = "market_analysis"
     FEAR_GREED_HISTORY_6M = "fear_greed_history_6m"
     TRADE_HISTORY_90_DAYS = "trade_history_90_days"
@@ -78,6 +79,7 @@ PLAN_FEATURES = {
         Feature.TP_SL_MONITORING,
         Feature.TRADE_HISTORY_30_DAYS,
         Feature.AI_PREDICTIONS,
+        Feature.AI_TECHNICAL_ANALYSIS,
         Feature.MARKET_ANALYSIS,
         Feature.FEAR_GREED_HISTORY_6M,
         Feature.TRADE_HISTORY_90_DAYS,
@@ -92,6 +94,7 @@ PLAN_FEATURES = {
         Feature.TP_SL_MONITORING,
         Feature.TRADE_HISTORY_30_DAYS,
         Feature.AI_PREDICTIONS,
+        Feature.AI_TECHNICAL_ANALYSIS,
         Feature.MARKET_ANALYSIS,
         Feature.FEAR_GREED_HISTORY_6M,
         Feature.TRADE_HISTORY_90_DAYS,
@@ -113,6 +116,7 @@ PLAN_FEATURES = {
         Feature.TP_SL_MONITORING,
         Feature.TRADE_HISTORY_30_DAYS,
         Feature.AI_PREDICTIONS,
+        Feature.AI_TECHNICAL_ANALYSIS,
         Feature.MARKET_ANALYSIS,
         Feature.FEAR_GREED_HISTORY_6M,
         Feature.TRADE_HISTORY_90_DAYS,

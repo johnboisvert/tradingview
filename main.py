@@ -4973,41 +4973,21 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
             </body></html>
         """, status_code=403)
     
-    # ULTRA REVOLUTIONARY DESIGN
     html = """<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Magic Mike Trading</title>
+    <title>Dashboard - Crypto IA</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
-            overflow-x: hidden; 
-            background: #0a0e27; 
-            color: #fff; 
-            margin-left: 280px; 
-            position: relative; 
-        }
-        .animated-bg { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%);
-            background-size: 400% 400%; animation: gradientFlow 20s ease infinite;
-        }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 280px; position: relative; }
+        .animated-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%); background-size: 400% 400%; animation: gradientFlow 20s ease infinite; }
         @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
-        .particle { 
-            position: absolute; width: 4px; height: 4px; 
-            background: radial-gradient(circle, rgba(102, 126, 234, 0.8), transparent); 
-            border-radius: 50%; animation: float 15s infinite ease-in-out; 
-        }
-        @keyframes float { 
-            0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
-            10% { opacity: 1; } 90% { opacity: 1; }
-            100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
-        }
+        .particle { position: absolute; width: 4px; height: 4px; background: radial-gradient(circle, rgba(102, 126, 234, 0.8), transparent); border-radius: 50%; animation: float 15s infinite ease-in-out; }
+        @keyframes float { 0%, 100% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-100vh) translateX(100px); opacity: 0; } }
         .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.3; pointer-events: none; z-index: 1; animation: orbFloat 20s ease-in-out infinite; }
         .orb1 { width: 500px; height: 500px; background: radial-gradient(circle, #667eea, transparent); top: -200px; left: -200px; }
         .orb2 { width: 400px; height: 400px; background: radial-gradient(circle, #764ba2, transparent); bottom: -100px; right: -100px; animation-delay: -5s; }
@@ -5015,23 +4995,13 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         @keyframes orbFloat { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(50px, -50px) scale(1.1); } 66% { transform: translate(-30px, 30px) scale(0.9); } }
         .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0 auto; }
         .hero { text-align: center; margin-bottom: 60px; position: relative; }
-        .hero-title { 
-            font-size: 4.5em; font-weight: 900;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%);
-            background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-            animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite;
-            letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px;
-        }
+        .hero-title { font-size: 4.5em; font-weight: 900; background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite; letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px; }
         @keyframes titleGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .hero-subtitle { font-size: 1.4em; color: rgba(255, 255, 255, 0.7); font-weight: 400; letter-spacing: 1px; animation: fadeInUp 1s ease; }
+        .hero-subtitle { font-size: 1.2em; color: rgba(255, 255, 255, 0.7); font-weight: 400; line-height: 1.8; max-width: 900px; margin: 0 auto; animation: fadeInUp 1s ease; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 60px; }
-        .stat-card { 
-            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 35px;
-            position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
-        }
+        .stat-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 35px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
         .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb); transform: translateX(-100%); transition: transform 0.6s ease; }
         .stat-card:hover::before { transform: translateX(0); }
         .stat-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.5); box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3), 0 0 0 1px rgba(102, 126, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
@@ -5041,31 +5011,20 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         .stat-label { font-size: 1em; color: rgba(255, 255, 255, 0.6); font-weight: 500; text-transform: uppercase; letter-spacing: 2px; }
         .stat-chart { margin-top: 20px; height: 50px; position: relative; }
         .mini-sparkline { width: 100%; height: 100%; }
-        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 30px; }
-        .tool-card { 
-            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 28px; padding: 40px;
-            text-decoration: none; color: #fff; position: relative; overflow: hidden;
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
-            display: flex; flex-direction: column; align-items: flex-start;
-        }
-        .tool-card::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(135deg, #667eea, #764ba2, #f093fb); border-radius: 28px; opacity: 0; transition: opacity 0.5s; z-index: -1; }
-        .tool-card:hover::before { opacity: 0.5; }
-        .tool-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(102, 126, 234, 0.2), transparent 50%); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-        .tool-card:hover::after { opacity: 1; }
-        .tool-card:hover { transform: translateY(-12px) scale(1.03); background: rgba(255, 255, 255, 0.08); box-shadow: 0 30px 80px rgba(102, 126, 234, 0.4), 0 0 0 1px rgba(102, 126, 234, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
-        .tool-icon-wrapper { width: 80px; height: 80px; border-radius: 20px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2)); display: flex; align-items: center; justify-content: center; margin-bottom: 25px; position: relative; transition: all 0.4s; }
-        .tool-card:hover .tool-icon-wrapper { transform: scale(1.15) rotate(5deg); background: linear-gradient(135deg, rgba(102, 126, 234, 0.4), rgba(118, 75, 162, 0.4)); box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); }
-        .tool-icon { font-size: 2.5em; filter: drop-shadow(0 4px 20px rgba(102, 126, 234, 0.6)); }
-        .tool-title { font-size: 1.6em; font-weight: 700; margin-bottom: 12px; background: linear-gradient(135deg, #fff, rgba(255, 255, 255, 0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.2; }
-        .tool-description { font-size: 1em; color: rgba(255, 255, 255, 0.6); line-height: 1.6; margin-bottom: 20px; flex-grow: 1; }
-        .tool-badge { display: inline-flex; align-items: center; padding: 8px 16px; background: rgba(102, 126, 234, 0.2); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 20px; font-size: 0.85em; font-weight: 600; color: #667eea; text-transform: uppercase; letter-spacing: 1px; margin-top: auto; }
-        .tool-badge::before { content: '⚡'; margin-right: 6px; animation: pulse 2s ease-in-out infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .section-title { font-size: 2.5em; font-weight: 800; text-align: center; margin: 80px 0 40px; background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .crypto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; margin-bottom: 60px; }
+        .crypto-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 30px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .crypto-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.4); box-shadow: 0 20px 50px rgba(102, 126, 234, 0.3); }
+        .crypto-icon { font-size: 2.5em; margin-bottom: 15px; display: block; filter: drop-shadow(0 4px 15px rgba(102, 126, 234, 0.5)); }
+        .crypto-title { font-size: 1.3em; font-weight: 700; margin-bottom: 10px; color: #fff; }
+        .crypto-value { font-size: 2em; font-weight: 800; background: linear-gradient(135deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+        .crypto-change { font-size: 1em; font-weight: 600; padding: 5px 12px; border-radius: 12px; display: inline-block; }
+        .positive { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .negative { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
         .section-divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), rgba(118, 75, 162, 0.5), rgba(240, 147, 251, 0.5), transparent); margin: 80px 0; position: relative; }
         .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
         @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
-        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid { grid-template-columns: 1fr; } .tools-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -5076,37 +5035,32 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     <div class="particles" id="particles"></div>
     <div class="main-content">
         <div class="hero">
-            <h1 class="hero-title">🚀 Bienvenue """ + username + """ ! 💎</h1>
-            <p class="hero-subtitle">Plateforme complète d'analyse crypto & outils professionnels IA</p>
+            <h1 class="hero-title">🚀 Crypto IA 💎</h1>
+            <p class="hero-subtitle">Une plateforme d'analyse crypto pilotée par l'IA, qui convertit le bruit permanent du marché 24/7 en décisions claires, structurées, mesurables — et alignées avec votre stratégie.</p>
         </div>
         <div class="stats-grid">
-            <div class="stat-card" style="animation-delay: 0.1s;"><span class="stat-icon">🚀</span><span class="stat-value">16+</span><span class="stat-label">Outils Actifs</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad1)" stroke-width="2" points="0,40 20,30 40,35 60,20 80,25 100,10"/><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#667eea;stop-opacity:1" /><stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-            <div class="stat-card" style="animation-delay: 0.2s;"><span class="stat-icon">💎</span><span class="stat-value">70-80%</span><span class="stat-label">Winrate Stratégie</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad2)" stroke-width="2" points="0,45 20,42 40,38 60,30 80,22 100,15"/><defs><linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#764ba2;stop-opacity:1" /><stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.1s;"><span class="stat-icon">🚀</span><span class="stat-value">12</span><span class="stat-label">Outils Actifs</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad1)" stroke-width="2" points="0,40 20,30 40,35 60,20 80,25 100,10"/><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#667eea;stop-opacity:1" /><stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.2s;"><span class="stat-icon">💎</span><span class="stat-value">85%+</span><span class="stat-label">Winrate Stratégie IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad2)" stroke-width="2" points="0,45 20,42 40,38 60,30 80,22 100,15"/><defs><linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#764ba2;stop-opacity:1" /><stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" /></linearGradient></defs></svg></div></div>
             <div class="stat-card" style="animation-delay: 0.3s;"><span class="stat-icon">⚡</span><span class="stat-value">24/7</span><span class="stat-label">Données Live</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad3)" stroke-width="2" points="0,25 10,20 20,30 30,15 40,25 50,10 60,20 70,15 80,25 90,10 100,20"/><defs><linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" /><stop offset="100%" style="stop-color:#667eea;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-            <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🎯</span><span class="stat-value">100%</span><span class="stat-label">Gratuit</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,50 25,50 50,50 75,50 100,50"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🌐</span><span class="stat-value">7+</span><span class="stat-label">Exchanges Connectés</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,35 25,30 50,25 75,20 100,15"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
         <div class="section-divider"></div>
-        <div class="tools-grid">
-            <a href="/portfolio-tracker" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">💼</span></div><h3 class="tool-title">Portfolio Tracker</h3><p class="tool-description">Suivez votre portfolio crypto en temps réel avec connexions API multi-exchanges</p><span class="tool-badge">Live</span></a>
-            <a href="/ai-crypto-coach" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎓</span></div><h3 class="tool-title">AI Crypto Coach</h3><p class="tool-description">Assistant IA personnel pour répondre à toutes vos questions crypto</p><span class="tool-badge">AI Powered</span></a>
-            <a href="/ai-technical-analysis" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📊</span></div><h3 class="tool-title">Technical Analysis</h3><p class="tool-description">Analyse technique complète sur 50 cryptos avec 6 indicateurs professionnels</p><span class="tool-badge">Pro</span></a>
-            <a href="/fear-greed" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">😨</span></div><h3 class="tool-title">Fear & Greed Index</h3><p class="tool-description">Indice de sentiment du marché pour optimiser vos entrées et sorties</p><span class="tool-badge">Real-time</span></a>
-            <a href="/narrative-radar" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎯</span></div><h3 class="tool-title">Narrative Radar</h3><p class="tool-description">Détectez les narratives crypto en tendance: DeFi, AI, Gaming, RWA</p><span class="tool-badge">Trending</span></a>
-            <a href="/ai-opportunity-scanner" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🔍</span></div><h3 class="tool-title">Opportunity Scanner</h3><p class="tool-description">Scanner automatique 24/7 qui détecte les meilleures opportunités de trading</p><span class="tool-badge">24/7</span></a>
-            <a href="/ai-gem-hunter" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">💎</span></div><h3 class="tool-title">Gem Hunter</h3><p class="tool-description">Découvrez les pépites crypto avant l'explosion avec analyse fondamentale IA</p><span class="tool-badge">100x Potential</span></a>
-            <a href="/ai-whale-watcher" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🐋</span></div><h3 class="tool-title">Whale Watcher</h3><p class="tool-description">Surveillez les mouvements des baleines et anticipez les gros mouvements</p><span class="tool-badge">Whale Alert</span></a>
-            <a href="/trades" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📈</span></div><h3 class="tool-title">Mes Trades</h3><p class="tool-description">Gérez vos positions avec TP/SL intelligents et trailing stop automatique</p><span class="tool-badge">Smart TP/SL</span></a>
-            <a href="/academy" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎓</span></div><h3 class="tool-title">Trading Academy</h3><p class="tool-description">22 modules de formation du débutant au pro avec quiz et certificats</p><span class="tool-badge">Learn</span></a>
-            <a href="/strategie" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📊</span></div><h3 class="tool-title">Stratégie Magic Mike</h3><p class="tool-description">Stratégie complète testée avec 70-80% de winrate sur 12+ mois</p><span class="tool-badge">Proven</span></a>
-            <a href="/risk-management" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">⚖️</span></div><h3 class="tool-title">Risk Management</h3><p class="tool-description">Calculateurs avancés pour gérer votre capital et limiter les pertes</p><span class="tool-badge">Essential</span></a>
+        <h2 class="section-title">📊 Aperçu du Marché Crypto</h2>
+        <div class="crypto-grid">
+            <div class="crypto-card"><span class="crypto-icon">₿</span><h3 class="crypto-title">Bitcoin (BTC)</h3><div class="crypto-value">$98,245</div><span class="crypto-change positive">+2.34%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">Ξ</span><h3 class="crypto-title">Ethereum (ETH)</h3><div class="crypto-value">$3,842</div><span class="crypto-change positive">+3.12%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">◎</span><h3 class="crypto-title">Solana (SOL)</h3><div class="crypto-value">$218</div><span class="crypto-change positive">+5.67%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">🌍</span><h3 class="crypto-title">Market Cap Total</h3><div class="crypto-value">$3.45T</div><span class="crypto-change positive">+1.89%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">📊</span><h3 class="crypto-title">Volume 24H</h3><div class="crypto-value">$142B</div><span class="crypto-change positive">+8.23%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">💎</span><h3 class="crypto-title">BTC Dominance</h3><div class="crypto-value">54.2%</div><span class="crypto-change negative">-0.45%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">🔥</span><h3 class="crypto-title">DeFi TVL</h3><div class="crypto-value">$98.5B</div><span class="crypto-change positive">+4.12%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">😨</span><h3 class="crypto-title">Fear & Greed</h3><div class="crypto-value">72</div><span class="crypto-change positive">Greed</span></div>
+            <div class="crypto-card"><span class="crypto-icon">🌊</span><h3 class="crypto-title">ETH Gas (Gwei)</h3><div class="crypto-value">18</div><span class="crypto-change positive">Faible</span></div>
         </div>
     </div>
     <script>
         const particlesContainer = document.getElementById('particles');
         for (let i = 0; i < 30; i++) { const particle = document.createElement('div'); particle.className = 'particle'; particle.style.left = Math.random() * 100 + '%'; particle.style.animationDelay = Math.random() * 15 + 's'; particle.style.animationDuration = (15 + Math.random() * 10) + 's'; particlesContainer.appendChild(particle); }
-        document.querySelectorAll('.tool-card').forEach(card => { card.addEventListener('mousemove', (e) => { const rect = card.getBoundingClientRect(); const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100; card.style.setProperty('--mouse-x', x + '%'); card.style.setProperty('--mouse-y', y + '%'); }); });
-        const observer = new IntersectionObserver((entries) => { entries.forEach((entry, index) => { if (entry.isIntersecting) { entry.target.style.animation = `fadeInUp 0.6s ease ${index * 0.1}s forwards`; entry.target.style.opacity = '0'; setTimeout(() => { entry.target.style.opacity = '1'; }, index * 100); } }); }, { threshold: 0.1 });
-        document.querySelectorAll('.tool-card').forEach(card => { observer.observe(card); });
     </script>
 </body>
 </html>"""
@@ -5120,35 +5074,16 @@ async def home():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magic Mike Trading Dashboard</title>
+    <title>Crypto IA</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
-            overflow-x: hidden; 
-            background: #0a0e27; 
-            color: #fff; 
-            margin-left: 280px; 
-            position: relative; 
-        }
-        .animated-bg { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%);
-            background-size: 400% 400%; animation: gradientFlow 20s ease infinite;
-        }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 280px; position: relative; }
+        .animated-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%); background-size: 400% 400%; animation: gradientFlow 20s ease infinite; }
         @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
-        .particle { 
-            position: absolute; width: 4px; height: 4px; 
-            background: radial-gradient(circle, rgba(102, 126, 234, 0.8), transparent); 
-            border-radius: 50%; animation: float 15s infinite ease-in-out; 
-        }
-        @keyframes float { 
-            0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
-            10% { opacity: 1; } 90% { opacity: 1; }
-            100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
-        }
+        .particle { position: absolute; width: 4px; height: 4px; background: radial-gradient(circle, rgba(102, 126, 234, 0.8), transparent); border-radius: 50%; animation: float 15s infinite ease-in-out; }
+        @keyframes float { 0%, 100% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-100vh) translateX(100px); opacity: 0; } }
         .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.3; pointer-events: none; z-index: 1; animation: orbFloat 20s ease-in-out infinite; }
         .orb1 { width: 500px; height: 500px; background: radial-gradient(circle, #667eea, transparent); top: -200px; left: -200px; }
         .orb2 { width: 400px; height: 400px; background: radial-gradient(circle, #764ba2, transparent); bottom: -100px; right: -100px; animation-delay: -5s; }
@@ -5156,23 +5091,13 @@ async def home():
         @keyframes orbFloat { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(50px, -50px) scale(1.1); } 66% { transform: translate(-30px, 30px) scale(0.9); } }
         .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0 auto; }
         .hero { text-align: center; margin-bottom: 60px; position: relative; }
-        .hero-title { 
-            font-size: 4.5em; font-weight: 900;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%);
-            background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-            animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite;
-            letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px;
-        }
+        .hero-title { font-size: 4.5em; font-weight: 900; background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite; letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px; }
         @keyframes titleGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .hero-subtitle { font-size: 1.4em; color: rgba(255, 255, 255, 0.7); font-weight: 400; letter-spacing: 1px; animation: fadeInUp 1s ease; }
+        .hero-subtitle { font-size: 1.2em; color: rgba(255, 255, 255, 0.7); font-weight: 400; line-height: 1.8; max-width: 900px; margin: 0 auto; animation: fadeInUp 1s ease; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 60px; }
-        .stat-card { 
-            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 35px;
-            position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
-        }
+        .stat-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 35px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
         .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb); transform: translateX(-100%); transition: transform 0.6s ease; }
         .stat-card:hover::before { transform: translateX(0); }
         .stat-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.5); box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3), 0 0 0 1px rgba(102, 126, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
@@ -5182,31 +5107,20 @@ async def home():
         .stat-label { font-size: 1em; color: rgba(255, 255, 255, 0.6); font-weight: 500; text-transform: uppercase; letter-spacing: 2px; }
         .stat-chart { margin-top: 20px; height: 50px; position: relative; }
         .mini-sparkline { width: 100%; height: 100%; }
-        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 30px; }
-        .tool-card { 
-            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 28px; padding: 40px;
-            text-decoration: none; color: #fff; position: relative; overflow: hidden;
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
-            display: flex; flex-direction: column; align-items: flex-start;
-        }
-        .tool-card::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(135deg, #667eea, #764ba2, #f093fb); border-radius: 28px; opacity: 0; transition: opacity 0.5s; z-index: -1; }
-        .tool-card:hover::before { opacity: 0.5; }
-        .tool-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(102, 126, 234, 0.2), transparent 50%); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-        .tool-card:hover::after { opacity: 1; }
-        .tool-card:hover { transform: translateY(-12px) scale(1.03); background: rgba(255, 255, 255, 0.08); box-shadow: 0 30px 80px rgba(102, 126, 234, 0.4), 0 0 0 1px rgba(102, 126, 234, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
-        .tool-icon-wrapper { width: 80px; height: 80px; border-radius: 20px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2)); display: flex; align-items: center; justify-content: center; margin-bottom: 25px; position: relative; transition: all 0.4s; }
-        .tool-card:hover .tool-icon-wrapper { transform: scale(1.15) rotate(5deg); background: linear-gradient(135deg, rgba(102, 126, 234, 0.4), rgba(118, 75, 162, 0.4)); box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); }
-        .tool-icon { font-size: 2.5em; filter: drop-shadow(0 4px 20px rgba(102, 126, 234, 0.6)); }
-        .tool-title { font-size: 1.6em; font-weight: 700; margin-bottom: 12px; background: linear-gradient(135deg, #fff, rgba(255, 255, 255, 0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.2; }
-        .tool-description { font-size: 1em; color: rgba(255, 255, 255, 0.6); line-height: 1.6; margin-bottom: 20px; flex-grow: 1; }
-        .tool-badge { display: inline-flex; align-items: center; padding: 8px 16px; background: rgba(102, 126, 234, 0.2); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 20px; font-size: 0.85em; font-weight: 600; color: #667eea; text-transform: uppercase; letter-spacing: 1px; margin-top: auto; }
-        .tool-badge::before { content: '⚡'; margin-right: 6px; animation: pulse 2s ease-in-out infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .section-title { font-size: 2.5em; font-weight: 800; text-align: center; margin: 80px 0 40px; background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .crypto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; margin-bottom: 60px; }
+        .crypto-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 30px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
+        .crypto-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.4); box-shadow: 0 20px 50px rgba(102, 126, 234, 0.3); }
+        .crypto-icon { font-size: 2.5em; margin-bottom: 15px; display: block; filter: drop-shadow(0 4px 15px rgba(102, 126, 234, 0.5)); }
+        .crypto-title { font-size: 1.3em; font-weight: 700; margin-bottom: 10px; color: #fff; }
+        .crypto-value { font-size: 2em; font-weight: 800; background: linear-gradient(135deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
+        .crypto-change { font-size: 1em; font-weight: 600; padding: 5px 12px; border-radius: 12px; display: inline-block; }
+        .positive { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .negative { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
         .section-divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), rgba(118, 75, 162, 0.5), rgba(240, 147, 251, 0.5), transparent); margin: 80px 0; position: relative; }
         .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
         @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
-        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid { grid-template-columns: 1fr; } .tools-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -5217,37 +5131,32 @@ async def home():
     <div class="particles" id="particles"></div>
     <div class="main-content">
         <div class="hero">
-            <h1 class="hero-title">🚀 Magic Mike Trading Dashboard 💎</h1>
-            <p class="hero-subtitle">Plateforme complète d'analyse crypto & outils professionnels IA</p>
+            <h1 class="hero-title">🚀 Crypto IA 💎</h1>
+            <p class="hero-subtitle">Une plateforme d'analyse crypto pilotée par l'IA, qui convertit le bruit permanent du marché 24/7 en décisions claires, structurées, mesurables — et alignées avec votre stratégie.</p>
         </div>
         <div class="stats-grid">
-            <div class="stat-card" style="animation-delay: 0.1s;"><span class="stat-icon">🚀</span><span class="stat-value">16+</span><span class="stat-label">Outils Actifs</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad1)" stroke-width="2" points="0,40 20,30 40,35 60,20 80,25 100,10"/><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#667eea;stop-opacity:1" /><stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-            <div class="stat-card" style="animation-delay: 0.2s;"><span class="stat-icon">💎</span><span class="stat-value">70-80%</span><span class="stat-label">Winrate Stratégie</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad2)" stroke-width="2" points="0,45 20,42 40,38 60,30 80,22 100,15"/><defs><linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#764ba2;stop-opacity:1" /><stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.1s;"><span class="stat-icon">🚀</span><span class="stat-value">12</span><span class="stat-label">Outils Actifs</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad1)" stroke-width="2" points="0,40 20,30 40,35 60,20 80,25 100,10"/><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#667eea;stop-opacity:1" /><stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.2s;"><span class="stat-icon">💎</span><span class="stat-value">85%+</span><span class="stat-label">Winrate Stratégie IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad2)" stroke-width="2" points="0,45 20,42 40,38 60,30 80,22 100,15"/><defs><linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#764ba2;stop-opacity:1" /><stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" /></linearGradient></defs></svg></div></div>
             <div class="stat-card" style="animation-delay: 0.3s;"><span class="stat-icon">⚡</span><span class="stat-value">24/7</span><span class="stat-label">Données Live</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad3)" stroke-width="2" points="0,25 10,20 20,30 30,15 40,25 50,10 60,20 70,15 80,25 90,10 100,20"/><defs><linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" /><stop offset="100%" style="stop-color:#667eea;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-            <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🎯</span><span class="stat-value">100%</span><span class="stat-label">Gratuit</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,50 25,50 50,50 75,50 100,50"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🌐</span><span class="stat-value">7+</span><span class="stat-label">Exchanges Connectés</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,35 25,30 50,25 75,20 100,15"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
         <div class="section-divider"></div>
-        <div class="tools-grid">
-            <a href="/portfolio-tracker" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">💼</span></div><h3 class="tool-title">Portfolio Tracker</h3><p class="tool-description">Suivez votre portfolio crypto en temps réel avec connexions API multi-exchanges</p><span class="tool-badge">Live</span></a>
-            <a href="/ai-crypto-coach" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎓</span></div><h3 class="tool-title">AI Crypto Coach</h3><p class="tool-description">Assistant IA personnel pour répondre à toutes vos questions crypto</p><span class="tool-badge">AI Powered</span></a>
-            <a href="/ai-technical-analysis" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📊</span></div><h3 class="tool-title">Technical Analysis</h3><p class="tool-description">Analyse technique complète sur 50 cryptos avec 6 indicateurs professionnels</p><span class="tool-badge">Pro</span></a>
-            <a href="/fear-greed" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">😨</span></div><h3 class="tool-title">Fear & Greed Index</h3><p class="tool-description">Indice de sentiment du marché pour optimiser vos entrées et sorties</p><span class="tool-badge">Real-time</span></a>
-            <a href="/narrative-radar" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎯</span></div><h3 class="tool-title">Narrative Radar</h3><p class="tool-description">Détectez les narratives crypto en tendance: DeFi, AI, Gaming, RWA</p><span class="tool-badge">Trending</span></a>
-            <a href="/ai-opportunity-scanner" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🔍</span></div><h3 class="tool-title">Opportunity Scanner</h3><p class="tool-description">Scanner automatique 24/7 qui détecte les meilleures opportunités de trading</p><span class="tool-badge">24/7</span></a>
-            <a href="/ai-gem-hunter" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">💎</span></div><h3 class="tool-title">Gem Hunter</h3><p class="tool-description">Découvrez les pépites crypto avant l'explosion avec analyse fondamentale IA</p><span class="tool-badge">100x Potential</span></a>
-            <a href="/ai-whale-watcher" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🐋</span></div><h3 class="tool-title">Whale Watcher</h3><p class="tool-description">Surveillez les mouvements des baleines et anticipez les gros mouvements</p><span class="tool-badge">Whale Alert</span></a>
-            <a href="/trades" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📈</span></div><h3 class="tool-title">Mes Trades</h3><p class="tool-description">Gérez vos positions avec TP/SL intelligents et trailing stop automatique</p><span class="tool-badge">Smart TP/SL</span></a>
-            <a href="/academy" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎓</span></div><h3 class="tool-title">Trading Academy</h3><p class="tool-description">22 modules de formation du débutant au pro avec quiz et certificats</p><span class="tool-badge">Learn</span></a>
-            <a href="/strategie" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📊</span></div><h3 class="tool-title">Stratégie Magic Mike</h3><p class="tool-description">Stratégie complète testée avec 70-80% de winrate sur 12+ mois</p><span class="tool-badge">Proven</span></a>
-            <a href="/risk-management" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">⚖️</span></div><h3 class="tool-title">Risk Management</h3><p class="tool-description">Calculateurs avancés pour gérer votre capital et limiter les pertes</p><span class="tool-badge">Essential</span></a>
+        <h2 class="section-title">📊 Aperçu du Marché Crypto</h2>
+        <div class="crypto-grid">
+            <div class="crypto-card"><span class="crypto-icon">₿</span><h3 class="crypto-title">Bitcoin (BTC)</h3><div class="crypto-value">$98,245</div><span class="crypto-change positive">+2.34%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">Ξ</span><h3 class="crypto-title">Ethereum (ETH)</h3><div class="crypto-value">$3,842</div><span class="crypto-change positive">+3.12%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">◎</span><h3 class="crypto-title">Solana (SOL)</h3><div class="crypto-value">$218</div><span class="crypto-change positive">+5.67%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">🌍</span><h3 class="crypto-title">Market Cap Total</h3><div class="crypto-value">$3.45T</div><span class="crypto-change positive">+1.89%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">📊</span><h3 class="crypto-title">Volume 24H</h3><div class="crypto-value">$142B</div><span class="crypto-change positive">+8.23%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">💎</span><h3 class="crypto-title">BTC Dominance</h3><div class="crypto-value">54.2%</div><span class="crypto-change negative">-0.45%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">🔥</span><h3 class="crypto-title">DeFi TVL</h3><div class="crypto-value">$98.5B</div><span class="crypto-change positive">+4.12%</span></div>
+            <div class="crypto-card"><span class="crypto-icon">😨</span><h3 class="crypto-title">Fear & Greed</h3><div class="crypto-value">72</div><span class="crypto-change positive">Greed</span></div>
+            <div class="crypto-card"><span class="crypto-icon">🌊</span><h3 class="crypto-title">ETH Gas (Gwei)</h3><div class="crypto-value">18</div><span class="crypto-change positive">Faible</span></div>
         </div>
     </div>
     <script>
         const particlesContainer = document.getElementById('particles');
         for (let i = 0; i < 30; i++) { const particle = document.createElement('div'); particle.className = 'particle'; particle.style.left = Math.random() * 100 + '%'; particle.style.animationDelay = Math.random() * 15 + 's'; particle.style.animationDuration = (15 + Math.random() * 10) + 's'; particlesContainer.appendChild(particle); }
-        document.querySelectorAll('.tool-card').forEach(card => { card.addEventListener('mousemove', (e) => { const rect = card.getBoundingClientRect(); const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100; card.style.setProperty('--mouse-x', x + '%'); card.style.setProperty('--mouse-y', y + '%'); }); });
-        const observer = new IntersectionObserver((entries) => { entries.forEach((entry, index) => { if (entry.isIntersecting) { entry.target.style.animation = `fadeInUp 0.6s ease ${index * 0.1}s forwards`; entry.target.style.opacity = '0'; setTimeout(() => { entry.target.style.opacity = '1'; }, index * 100); } }); }, { threshold: 0.1 });
-        document.querySelectorAll('.tool-card').forEach(card => { observer.observe(card); });
     </script>
 </body>
 </html>"""

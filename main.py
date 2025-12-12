@@ -1417,7 +1417,8 @@ app.add_middleware(PermissionMiddleware)
 
 
 # ========== SIDEBAR MENU ==========
-SIDEBAR = """<style>
+# SIDEBAR séparé en deux parties
+SIDEBAR_STYLE = """<style>
 /* Sidebar Ultra Pro - Toutes les pages */
 .sidebar{position:fixed;left:0;top:0;width:280px;height:100vh;background:linear-gradient(180deg,#0f172a 0%,#1e293b 50%,#334155 100%);padding:20px 0;overflow-y:auto;z-index:99999;box-shadow:4px 0 20px rgba(0,0,0,0.5);border-right:2px solid rgba(6,182,212,0.3)}
 .sidebar::-webkit-scrollbar{width:8px}
@@ -1452,7 +1453,9 @@ body{margin-left:0}
 body.sidebar-open{margin-left:280px}
 }
 </style>
-    <!-- SIDEBAR TOGGLE MOBILE -->
+"""
+
+SIDEBAR_HTML = """<!-- SIDEBAR TOGGLE MOBILE -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
     
     <!-- SIDEBAR COMPLÈTE -->
@@ -4966,6 +4969,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
             <html><head><meta charset="UTF-8"><title>Accès Refusé</title>""" + CSS + """</head>
             <body>
+    """ + SIDEBAR_HTML + """
                 <div style="padding: 40px; text-align: center;">
                     <h1 style="color:#ef4444;">Accès Refusé</h1>
                     <a href="/mon-compte" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none;">Mon Compte</a>
@@ -5026,7 +5030,8 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
         @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } }
     </style>
-</head>
+
+    """ + SIDEBAR_STYLE + """</head>
 <body>
     <div class="animated-bg"></div>
     <div class="orb orb1"></div>
@@ -5065,8 +5070,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 </body>
 </html>"""
     
-    return HTMLResponse(SIDEBAR + html)
-
+    return HTMLResponse(html)
 @app.get("/", response_class=HTMLResponse)
 async def home():
     html = """<!DOCTYPE html>
@@ -5122,8 +5126,10 @@ async def home():
         @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
         @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } }
     </style>
-</head>
+
+    """ + SIDEBAR_STYLE + """</head>
 <body>
+    """ + SIDEBAR_HTML + """
     <div class="animated-bg"></div>
     <div class="orb orb1"></div>
     <div class="orb orb2"></div>
@@ -5161,8 +5167,7 @@ async def home():
 </body>
 </html>"""
     
-    return HTMLResponse(SIDEBAR + html)
-
+    return HTMLResponse(html)
 
 @app.get("/spot-trading", response_class=HTMLResponse)
 async def spot_trading_page():

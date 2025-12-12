@@ -29326,6 +29326,172 @@ document.addEventListener('DOMContentLoaded', init);
 
 
 
+
+# ============================================================================
+# 🤖 AI CRYPTO COACH - HELPER FUNCTION
+# ============================================================================
+
+def analyze_trader_profile(trades: List[Dict]) -> Dict:
+    """Analyse complète du profil trader"""
+    
+    if not trades or len(trades) < 5:
+        return {
+            "profile_type": "Débutant",
+            "confidence": "low",
+            "message": "Pas assez de trades pour analyse (minimum 5 requis)",
+            "recommendations": []
+        }
+    
+    winning_trades = [t for t in trades if t.get("result") == "win"]
+    losing_trades = [t for t in trades if t.get("result") == "loss"]
+    
+    total_trades = len(trades)
+    win_count = len(winning_trades)
+    loss_count = len(losing_trades)
+    win_rate = (win_count / total_trades * 100) if total_trades > 0 else 0
+    
+    total_profit = sum(t.get("profit_percent", 0) for t in winning_trades)
+    total_loss = sum(abs(t.get("profit_percent", 0)) for t in losing_trades)
+    
+    avg_win = total_profit / win_count if win_count > 0 else 0
+    avg_loss = total_loss / loss_count if loss_count > 0 else 0
+    
+    rr_ratio = avg_win / avg_loss if avg_loss > 0 else 0
+    
+    patterns_detected = []
+    
+    # FOMO Pattern
+    fomo_trades = [t for t in trades if t.get("entry_after_pump", False)]
+    if len(fomo_trades) >= 3:
+        fomo_loss_rate = len([t for t in fomo_trades if t.get("result") == "loss"]) / len(fomo_trades) * 100
+        patterns_detected.append({
+            "type": "FOMO",
+            "severity": "high" if fomo_loss_rate > 70 else "medium",
+            "description": f"Tu as pris {len(fomo_trades)} trades après un pump",
+            "impact": f"{fomo_loss_rate:.1f}% de pertes sur ces trades FOMO",
+            "advice": "⚠️ Attends le retracement avant d'entrer"
+        })
+    
+    # Paper Hands
+    early_exit_trades = [t for t in winning_trades if t.get("profit_percent", 0) < 5]
+    if len(early_exit_trades) > win_count * 0.4:
+        patterns_detected.append({
+            "type": "Paper Hands",
+            "severity": "medium",
+            "description": f"Tu coupes {len(early_exit_trades)} trades gagnants trop tôt",
+            "impact": f"Gains moyens de seulement {avg_win:.1f}%",
+            "advice": "💎 Laisse courir tes gagnants ! Trailing stops."
+        })
+    
+    # Stop Loss Ignoré
+    big_losses = [t for t in losing_trades if abs(t.get("profit_percent", 0)) > 15]
+    if len(big_losses) > loss_count * 0.3:
+        patterns_detected.append({
+            "type": "Stop Loss Ignoré",
+            "severity": "high",
+            "description": f"{len(big_losses)} trades avec grosses pertes (>15%)",
+            "impact": f"Pertes moyennes de {avg_loss:.1f}%",
+            "advice": "🛑 RESPECTE TES STOP LOSS !"
+        })
+    
+    # Profil type
+    if win_rate < 40:
+        profile_type = "Trader Émotionnel"
+        profile_description = "Tu trades sur l'émotion"
+    elif win_rate >= 60 and rr_ratio > 2:
+        profile_type = "Trader Discipliné"
+        profile_description = "Excellent profil !"
+    elif rr_ratio < 1:
+        profile_type = "Paper Hands"
+        profile_description = "Tu coupes gains trop tôt"
+    elif len(fomo_trades) > total_trades * 0.3:
+        profile_type = "FOMO Trader"
+        profile_description = "Tu entres après les pumps"
+    else:
+        profile_type = "Trader en Développement"
+        profile_description = "Bon potentiel"
+    
+    # Score
+    score = 50
+    if win_rate > 50:
+        score += 20
+    if rr_ratio > 2:
+        score += 20
+    if avg_loss < 10:
+        score += 10
+    score = max(0, min(100, score))
+    
+    # Strengths & Weaknesses
+    strengths = []
+    if win_rate > 55:
+        strengths.append("✅ Bon taux de réussite")
+    if rr_ratio > 1.5:
+        strengths.append("✅ Excellent R:R ratio")
+    if not strengths:
+        strengths.append("📊 Continue à pratiquer")
+    
+    weaknesses = []
+    high_severity = [p for p in patterns_detected if p["severity"] == "high"]
+    for pattern in high_severity:
+        weaknesses.append(f"⚠️ {pattern['type']}: {pattern['description']}")
+    if win_rate < 45:
+        weaknesses.append("⚠️ Taux de réussite faible")
+    if not weaknesses:
+        weaknesses.append("✅ Aucune faiblesse majeure")
+    
+    # Recommendations
+    recommendations = []
+    if profile_type == "FOMO Trader":
+        recommendations.append({
+            "priority": "high",
+            "title": "Arrête le FOMO",
+            "description": "Attends le retracement",
+            "action": "Si +15% en 1h, attends pull-back -8%"
+        })
+    if profile_type == "Paper Hands":
+        recommendations.append({
+            "priority": "high",
+            "title": "Laisse courir tes gagnants",
+            "description": "Utilise trailing stops",
+            "action": "Trailing stop -5% une fois +10% atteint"
+        })
+    
+    for pattern in patterns_detected:
+        if pattern["type"] == "Stop Loss Ignoré":
+            recommendations.append({
+                "priority": "critical",
+                "title": "RESPECTE TES STOP LOSS",
+                "description": "C'est LA règle #1",
+                "action": "SL à -8% max"
+            })
+    
+    if not recommendations:
+        recommendations.append({
+            "priority": "low",
+            "title": "Continue !",
+            "description": "Bon profil",
+            "action": "Revue hebdo"
+        })
+    
+    return {
+        "profile_type": profile_type,
+        "profile_description": profile_description,
+        "score": round(score, 1),
+        "stats": {
+            "total_trades": total_trades,
+            "win_rate": round(win_rate, 1),
+            "avg_win": round(avg_win, 2),
+            "avg_loss": round(avg_loss, 2),
+            "rr_ratio": round(rr_ratio, 2),
+            "total_profit_percent": round(total_profit - total_loss, 2)
+        },
+        "patterns": patterns_detected,
+        "strengths": strengths,
+        "weaknesses": weaknesses,
+        "recommendations": recommendations
+    }
+
+
 # ============================================================================
 # 🆕 NOUVELLES FEATURES 2024 - INTÉGRÉES PAR CLAUDE
 # ============================================================================
@@ -33432,126 +33598,1006 @@ console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 
 
 @app.get("/ai-crypto-coach", response_class=HTMLResponse)
-async def ai_crypto_coach():
-    """🤖 AI Crypto Coach - Analyse ton profil"""
+async def ai_crypto_coach_page(request: Request):
+    """Page AI Crypto Coach"""
     
-    return HTMLResponse(SIDEBAR + CSS + """
-<div class="container">
-    <div class="header">
-        <h1>🤖 AI Crypto Coach</h1>
-        <p>Analyse de ton profil de trader</p>
+    html_content = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>🤖 AI Crypto Coach</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0f172a, #1e293b, #334155); color: white; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; padding: 40px; background: rgba(255,255,255,0.05); border-radius: 20px; }
+        .header h1 { font-size: 3.5em; background: linear-gradient(45deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn { padding: 15px 35px; border: none; border-radius: 12px; background: linear-gradient(45deg, #10b981, #14b8a6); color: white; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+        .profile-card { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 40px; border-radius: 20px; margin: 40px 0; }
+        .profile-type { font-size: 2.5em; font-weight: bold; }
+        .profile-score { font-size: 4em; font-weight: bold; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }
+        .stat-box { background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 2.5em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Crypto Coach</h1>
+            <p>Ton coach personnel IA</p>
+        </div>
+        <button class="btn" onclick="analyzeProfile()">🔍 Analyser Mon Profil</button>
+        <div id="results"></div>
     </div>
-    
-    <div class="card">
-        <h2>⚠️ Configuration requise</h2>
-        <p>Il te faut minimum <strong>5 trades</strong> dans ton historique pour l'analyse.</p>
-        <p style="margin-top: 20px;">Va faire quelques trades et reviens ! 📊</p>
-    </div>
-    
-    <div style="margin-top: 30px; padding: 30px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%); border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.3);">
-        <h3 style="color: #60a5fa; margin-bottom: 15px;">📚 Fonctionnalités à venir</h3>
-        <ul style="color: #94a3b8; line-height: 1.8;">
-            <li>Analyse approfondie de ton style de trading</li>
-            <li>Recommandations personnalisées basées sur tes performances</li>
-            <li>Identification de tes forces et faiblesses</li>
-            <li>Coaching adapté à ton profil risque/rendement</li>
-        </ul>
-    </div>
-</div>
-<script>
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-}
-</script>
+    <script>
+        async function analyzeProfile() {
+            const response = await fetch('/api/ai-coach/analyze', { method: 'POST' });
+            const data = await response.json();
+            
+            if (data.profile_type) {
+                document.getElementById('results').innerHTML = `
+                    <div class="profile-card">
+                        <div class="profile-type">${data.profile_type}</div>
+                        <p>${data.profile_description}</p>
+                        <div class="profile-score">${data.score}/100</div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">${data.stats.total_trades}</div>
+                            <div>Total Trades</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${data.stats.win_rate}%</div>
+                            <div>Win Rate</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${data.stats.rr_ratio}</div>
+                            <div>R:R Ratio</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                alert(data.message || 'Pas assez de trades');
+            }
+        }
+    </script>
 </body>
 </html>
-""")
+    """
+    return HTMLResponse(content=html_content)
+
+
+@app.post("/api/ai-coach/analyze")
+async def api_analyze_trader_profile(request: Request):
+    """API analyze trader profile"""
+    try:
+        token = request.cookies.get("auth_token")
+        user = get_user_from_token(token) if token else None
+        
+        if not user:
+            return {"error": "Non authentifié"}
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT symbol, entry_price, exit_price, profit_percent, 
+                   result, timestamp, setup_type, timeframe, notes
+            FROM trades 
+            WHERE username = ?
+            ORDER BY timestamp DESC
+            LIMIT 100
+        """, (user["username"],))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        trades = []
+        for row in rows:
+            trades.append({
+                "symbol": row[0],
+                "entry_price": row[1],
+                "exit_price": row[2],
+                "profit_percent": row[3],
+                "result": row[4],
+                "timestamp": row[5],
+                "setup_type": row[6] or "unknown",
+                "timeframe": row[7] or "1H",
+                "notes": row[8] or ""
+            })
+        
+        profile = analyze_trader_profile(trades)
+        return profile
+        
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.get("/ai-swarm-agents", response_class=HTMLResponse)
-async def ai_swarm_agents():
-    """🤖 AI Swarm Agents - Multi-agents d'analyse"""
+async def ai_swarm_agents_page(request: Request):
+    """Page principale du Swarm d'agents IA"""
     
-    return HTMLResponse(SIDEBAR + CSS + """
-<style>
-    .profiles {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 20px;
-        margin: 30px 0;
-    }
-    .profile-card {
-        background: #1e293b;
-        padding: 25px;
-        border-radius: 12px;
-        border: 2px solid #334155;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    .profile-card:hover {
-        border-color: #60a5fa;
-        transform: translateY(-5px);
-    }
-    .profile-card.selected {
-        border-color: #10b981;
-        background: rgba(16, 185, 129, 0.1);
-    }
-</style>
-<div class="container">
-    <div class="header">
-        <h1>🤖 AI Swarm Agents</h1>
-        <p>Système multi-agents d'analyse crypto personnalisée</p>
+    # Vérifier authentification (optionnel selon ton système)
+    token = request.cookies.get("auth_token")
+    user = get_user_from_token(token) if token else None
+    
+    html_content = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Swarm Agents - Trading Dashboard Pro</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        
+        .container {{
+            max-width: 1600px;
+            margin: 0 auto;
+        }}
+        
+        .header {{
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }}
+        
+        .header h1 {{
+            font-size: 3em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }}
+        
+        .header p {{
+            font-size: 1.2em;
+            color: #a0aec0;
+        }}
+        
+        .controls {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }}
+        
+        .profile-card {{
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }}
+        
+        .profile-card:hover {{
+            transform: translateY(-5px);
+            border-color: #667eea;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .profile-card.active {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: white;
+        }}
+        
+        .profile-card h3 {{
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }}
+        
+        .profile-card p {{
+            color: #e2e8f0;
+            font-size: 0.9em;
+        }}
+        
+        .agents-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }}
+        
+        .agent-card {{
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .agent-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: var(--agent-color);
+        }}
+        
+        .agent-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }}
+        
+        .agent-title {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .agent-icon {{
+            font-size: 2em;
+        }}
+        
+        .agent-toggle {{
+            width: 60px;
+            height: 30px;
+            background: #4a5568;
+            border-radius: 15px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }}
+        
+        .agent-toggle.active {{
+            background: #48bb78;
+        }}
+        
+        .agent-toggle::after {{
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }}
+        
+        .agent-toggle.active::after {{
+            transform: translateX(30px);
+        }}
+        
+        .agent-status {{
+            font-size: 0.85em;
+            color: #a0aec0;
+            margin-bottom: 10px;
+        }}
+        
+        .agent-status.scanning {{
+            color: #48bb78;
+        }}
+        
+        .alerts-container {{
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }}
+        
+        .alert-item {{
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--alert-color);
+            animation: slideIn 0.3s ease-out;
+        }}
+        
+        @keyframes slideIn {{
+            from {{
+                opacity: 0;
+                transform: translateX(-20px);
+            }}
+            to {{
+                opacity: 1;
+                transform: translateX(0);
+            }}
+        }}
+        
+        .alert-header {{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }}
+        
+        .alert-symbol {{
+            font-weight: bold;
+            font-size: 1.1em;
+        }}
+        
+        .alert-confidence {{
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }}
+        
+        .meta-summary {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
+        }}
+        
+        .meta-summary h2 {{
+            font-size: 2em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .sentiment-badge {{
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin: 15px 0;
+        }}
+        
+        .sentiment-bullish {{
+            background: #48bb78;
+            color: white;
+        }}
+        
+        .sentiment-bearish {{
+            background: #f56565;
+            color: white;
+        }}
+        
+        .sentiment-neutral {{
+            background: #ecc94b;
+            color: #2d3748;
+        }}
+        
+        .priority-events {{
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }}
+        
+        .priority-event {{
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }}
+        
+        .priority-event.high {{
+            border-color: #f56565;
+        }}
+        
+        .priority-event.medium {{
+            border-color: #ecc94b;
+        }}
+        
+        .priority-event.critical {{
+            border-color: #fc8181;
+            animation: pulse 2s infinite;
+        }}
+        
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.7; }}
+        }}
+        
+        .action-buttons {{
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }}
+        
+        .btn {{
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .btn-primary {{
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }}
+        
+        .btn-primary:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }}
+        
+        .btn-secondary {{
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }}
+        
+        .btn-secondary:hover {{
+            background: rgba(255, 255, 255, 0.2);
+        }}
+        
+        .loading {{
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }}
+        
+        .loading.active {{
+            display: block;
+        }}
+        
+        .spinner {{
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #667eea;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }}
+        
+        @keyframes spin {{
+            0% {{ transform: rotate(0deg); }}
+            100% {{ transform: rotate(360deg); }}
+        }}
+        
+        .stats-bar {{
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }}
+        
+        .stat {{
+            text-align: center;
+        }}
+        
+        .stat-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }}
+        
+        .stat-label {{
+            color: #a0aec0;
+            font-size: 0.9em;
+        }}
+        
+        /* Scrollbar personnalisé */
+        ::-webkit-scrollbar {{
+            width: 8px;
+        }}
+        
+        ::-webkit-scrollbar-track {{
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }}
+        
+        ::-webkit-scrollbar-thumb {{
+            background: #667eea;
+            border-radius: 4px;
+        }}
+        
+        ::-webkit-scrollbar-thumb:hover {{
+            background: #764ba2;
+        }}
+        
+        @media (max-width: 768px) {{
+            .header h1 {{
+                font-size: 2em;
+            }}
+            
+            .agents-grid {{
+                grid-template-columns: 1fr;
+            }}
+            
+            .controls {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🤖 AI Swarm Agents</h1>
+            <p>Une armée d'agents IA qui scanne le marché crypto 24/7 pour toi</p>
+        </div>
+        
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat">
+                <div class="stat-value" id="totalAlerts">0</div>
+                <div class="stat-label">Alertes Actives</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="activeAgents">5</div>
+                <div class="stat-label">Agents Actifs</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="lastScan">-</div>
+                <div class="stat-label">Dernier Scan</div>
+            </div>
+        </div>
+        
+        <!-- Profils Trader -->
+        <h2 style="margin-bottom: 20px; font-size: 1.8em;">📊 Choisis ton profil trader</h2>
+        <div class="controls">
+            <div class="profile-card" data-profile="degen">
+                <h3>🎲 Degen Memecoin Hunter</h3>
+                <p>Max risk, max rewards. Chasse les 100x, focus nouveaux lancements et volume explosif.</p>
+            </div>
+            <div class="profile-card" data-profile="investor">
+                <h3>💼 Investor Sérieux 1-3 ans</h3>
+                <p>Focus fondamentaux et long terme. Analyse macro, narratives solides, projets établis.</p>
+            </div>
+            <div class="profile-card" data-profile="scalper">
+                <h3>⚡ Scalper Court Terme</h3>
+                <p>Opportunités rapides, momentum trading. Whales, volume, mouvements significatifs.</p>
+            </div>
+        </div>
+        
+        <!-- Méta-Summary -->
+        <div class="meta-summary" id="metaSummary" style="display: none;">
+            <h2>🧠 Résumé Intelligent</h2>
+            <div id="metaContent"></div>
+        </div>
+        
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>🔍 Agents en train de scanner le marché...</p>
+        </div>
+        
+        <!-- Agents Grid -->
+        <h2 style="margin-bottom: 20px; font-size: 1.8em;">🤖 Tes Agents IA</h2>
+        <div class="agents-grid" id="agentsGrid"></div>
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="scanNow()">
+                🔄 Scanner Maintenant
+            </button>
+            <button class="btn btn-secondary" onclick="toggleAutoScan()">
+                ⏱️ <span id="autoScanText">Activer Auto-Scan</span>
+            </button>
+            <button class="btn btn-secondary" onclick="resetAgents()">
+                🔁 Réinitialiser
+            </button>
+        </div>
     </div>
     
-    <div class="profiles">
-        <div class="profile-card" onclick="selectProfile('degen')">
-            <h3>🚀 Degen Memecoin Hunter</h3>
-            <p>Max risk, max rewards. Chasse les 100x.</p>
-        </div>
-        <div class="profile-card" onclick="selectProfile('investor')">
-            <h3>💼 Investor Sérieux 1-3 ans</h3>
-            <p>Focus fondamentaux et long terme.</p>
-        </div>
-        <div class="profile-card" onclick="selectProfile('scalper')">
-            <h3>⚡ Scalper Court Terme</h3>
-            <p>Opportunités rapides, momentum trading.</p>
-        </div>
-    </div>
-    
-    <div style="text-align: center; margin: 30px 0;">
-        <button style="background: #3b82f6; padding: 15px 40px; border-radius: 8px; color: white; border: none; cursor: pointer; font-size: 1.1em;" onclick="runAnalysis()">
-            🚀 Lancer l'Analyse
-        </button>
-    </div>
-    
-    <div id="results"></div>
-</div>
-<script>
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-}
-
-let selectedProfile = null;
-
-function selectProfile(profile) {
-    selectedProfile = profile;
-    document.querySelectorAll('.profile-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    event.currentTarget.classList.add('selected');
-}
-
-function runAnalysis() {
-    if (!selectedProfile) {
-        alert('Sélectionne un profil d\'abord !');
-        return;
-    }
-    alert('Analyse en développement pour profil: ' + selectedProfile);
-}
-</script>
+    <script>
+        // Configuration
+        const AGENT_CONFIGS = {
+            memecoin_hunter: {
+                name: "Memecoin Hunter",
+                icon: "🚀",
+                description: "Détecte les nouveaux memecoins avec potentiel viral",
+                color: "#ff6b35"
+            },
+            whale_tracker: {
+                name: "Whale Tracker",
+                icon: "🐋",
+                description: "Analyse les mouvements des baleines et smart money",
+                color: "#4ecdc4"
+            },
+            narrative_detector: {
+                name: "Narrative Detector",
+                icon: "📰",
+                description: "Identifie les narratives émergentes et trends",
+                color: "#95e1d3"
+            },
+            scam_detector: {
+                name: "Scam Detector",
+                icon: "🛡️",
+                description: "Détecte les scams, rugs et projets suspects",
+                color: "#ef476f"
+            },
+            macro_analyzer: {
+                name: "Macro Analyzer",
+                icon: "📊",
+                description: "Analyse macro, ETF, régulations et actualités",
+                color: "#ffd23f"
+            }
+        };
+        
+        const TRADER_PROFILES = {
+            degen: ["memecoin_hunter", "whale_tracker", "scam_detector"],
+            investor: ["narrative_detector", "macro_analyzer", "scam_detector"],
+            scalper: ["whale_tracker", "memecoin_hunter", "narrative_detector"]
+        };
+        
+        // État
+        let enabledAgents = Object.keys(AGENT_CONFIGS);
+        let currentProfile = null;
+        let autoScanInterval = null;
+        let lastScanData = null;
+        
+        // Initialisation
+        function init() {
+            renderAgents();
+            setupProfileCards();
+        }
+        
+        // Render agents
+        function renderAgents() {
+            const grid = document.getElementById('agentsGrid');
+            grid.innerHTML = '';
+            
+            for (const [agentId, config] of Object.entries(AGENT_CONFIGS)) {
+                const isEnabled = enabledAgents.includes(agentId);
+                
+                const card = document.createElement('div');
+                card.className = 'agent-card';
+                card.style.setProperty('--agent-color', config.color);
+                card.innerHTML = `
+                    <div class="agent-header">
+                        <div class="agent-title">
+                            <span class="agent-icon">${config.icon}</span>
+                            <div>
+                                <h3>${config.name}</h3>
+                                <p style="color: #a0aec0; font-size: 0.85em;">${config.description}</p>
+                            </div>
+                        </div>
+                        <div class="agent-toggle ${isEnabled ? 'active' : ''}" 
+                             onclick="toggleAgent('${agentId}', this)"></div>
+                    </div>
+                    <div class="agent-status" id="status-${agentId}">
+                        ${isEnabled ? '✅ Actif' : '⏸️ Désactivé'}
+                    </div>
+                    <div class="alerts-container" id="alerts-${agentId}"></div>
+                `;
+                
+                grid.appendChild(card);
+            }
+        }
+        
+        // Toggle agent
+        function toggleAgent(agentId, element) {
+            const index = enabledAgents.indexOf(agentId);
+            
+            if (index > -1) {
+                enabledAgents.splice(index, 1);
+                element.classList.remove('active');
+                document.getElementById(`status-${agentId}`).textContent = '⏸️ Désactivé';
+                document.getElementById(`alerts-${agentId}`).innerHTML = '';
+            } else {
+                enabledAgents.push(agentId);
+                element.classList.add('active');
+                document.getElementById(`status-${agentId}`).textContent = '✅ Actif';
+            }
+            
+            updateActiveAgentsCount();
+        }
+        
+        // Setup profile cards
+        function setupProfileCards() {
+            document.querySelectorAll('.profile-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const profile = this.dataset.profile;
+                    
+                    // Désactiver ancienne sélection
+                    document.querySelectorAll('.profile-card').forEach(c => 
+                        c.classList.remove('active'));
+                    
+                    // Activer nouvelle sélection
+                    this.classList.add('active');
+                    currentProfile = profile;
+                    
+                    // Configurer agents selon profil
+                    enabledAgents = [...TRADER_PROFILES[profile]];
+                    renderAgents();
+                    
+                    // Scanner automatiquement
+                    setTimeout(() => scanNow(), 500);
+                });
+            });
+        }
+        
+        // Scanner maintenant
+        async function scanNow() {
+            const loading = document.getElementById('loading');
+            loading.classList.add('active');
+            
+            try {
+                const response = await fetch('/api/swarm/scan', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled_agents: enabledAgents})
+                });
+                
+                const data = await response.json();
+                lastScanData = data;
+                
+                // Afficher les résultats
+                displayResults(data);
+                
+                // Mettre à jour stats
+                updateStats(data);
+                
+            } catch (error) {
+                console.error('Scan error:', error);
+                alert('❌ Erreur lors du scan');
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+        
+        // Afficher les résultats
+        function displayResults(data) {
+            const {agents_data, meta_summary} = data;
+            
+            // Afficher méta-summary
+            const metaSummary = document.getElementById('metaSummary');
+            const metaContent = document.getElementById('metaContent');
+            
+            metaSummary.style.display = 'block';
+            
+            const sentimentClass = meta_summary.market_sentiment.toLowerCase();
+            
+            metaContent.innerHTML = `
+                <div class="sentiment-badge sentiment-${sentimentClass}">
+                    ${meta_summary.market_sentiment === 'BULLISH' ? '📈 BULLISH' : 
+                      meta_summary.market_sentiment === 'BEARISH' ? '📉 BEARISH' : 
+                      '⚖️ NEUTRAL'}
+                </div>
+                
+                <div style="margin: 20px 0; font-size: 1.1em; line-height: 1.6;">
+                    ${meta_summary.ai_recommendation.replace(/\n/g, '<br>')}
+                </div>
+                
+                ${meta_summary.priority_events.length > 0 ? `
+                    <div class="priority-events">
+                        <h3 style="margin-bottom: 15px;">⚡ Événements Prioritaires</h3>
+                        ${meta_summary.priority_events.map(event => `
+                            <div class="priority-event ${event.importance.toLowerCase()}">
+                                <strong>${event.type}</strong><br>
+                                ${event.message}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            `;
+            
+            // Afficher alertes par agent
+            for (const [agentId, alerts] of Object.entries(agents_data)) {
+                const container = document.getElementById(`alerts-${agentId}`);
+                if (!container) continue;
+                
+                // Mettre à jour status
+                const statusEl = document.getElementById(`status-${agentId}`);
+                if (statusEl && enabledAgents.includes(agentId)) {
+                    statusEl.textContent = `✅ ${alerts.length} alerte(s)`;
+                    statusEl.classList.add('scanning');
+                }
+                
+                if (alerts.length === 0) {
+                    container.innerHTML = '<p style="color: #a0aec0; font-size: 0.9em;">Aucune alerte pour le moment</p>';
+                    continue;
+                }
+                
+                // Render alertes selon type d'agent
+                container.innerHTML = renderAgentAlerts(agentId, alerts);
+            }
+        }
+        
+        // Render alertes selon agent
+        function renderAgentAlerts(agentId, alerts) {
+            const config = AGENT_CONFIGS[agentId];
+            let html = '';
+            
+            switch(agentId) {
+                case 'memecoin_hunter':
+                    alerts.forEach(alert => {
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${config.color}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.symbol}</span>
+                                    <span class="alert-confidence">${alert.confidence}%</span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    ${alert.name} - $${alert.price}
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.reason}<br>
+                                    📊 Volume: $${(alert.volume / 1000000).toFixed(2)}M |
+                                    💰 MCap: $${(alert.mcap / 1000000).toFixed(2)}M
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'whale_tracker':
+                    alerts.forEach(alert => {
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${config.color}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.crypto}</span>
+                                    <span class="alert-confidence">${alert.confidence}%</span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    ${alert.amount.toLocaleString()} ${alert.crypto} 
+                                    ($${(alert.usd_value / 1000000).toFixed(2)}M)
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.reason}<br>
+                                    📍 ${alert.from} → ${alert.to}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'narrative_detector':
+                    alerts.forEach(alert => {
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${config.color}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.narrative}</span>
+                                    <span class="alert-confidence">${alert.confidence}%</span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    ${alert.trend} - ${alert.mentions} mentions
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.examples.slice(0, 2).join('<br>')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'scam_detector':
+                    alerts.forEach(alert => {
+                        const riskColor = alert.risk_level === 'CRITICAL' ? '#fc8181' : 
+                                        alert.risk_level === 'HIGH' ? '#f6ad55' : '#ecc94b';
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${riskColor}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.token}</span>
+                                    <span style="background: ${riskColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">
+                                        ${alert.risk_level}
+                                    </span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0; font-weight: bold;">
+                                    ⚠️ ${alert.recommendation}
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.issues.join('<br>')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'macro_analyzer':
+                    alerts.forEach(alert => {
+                        const impactColor = alert.impact === 'HIGH' ? '#fc8181' : '#ecc94b';
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${impactColor}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.event}</span>
+                                    <span style="background: ${impactColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">
+                                        ${alert.impact}
+                                    </span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    📅 ${alert.date} - ${alert.category}
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.description}<br>
+                                    💡 ${alert.expected_effect}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+            }
+            
+            return html;
+        }
+        
+        // Mettre à jour stats
+        function updateStats(data) {
+            const totalAlerts = Object.values(data.agents_data)
+                .reduce((sum, alerts) => sum + alerts.length, 0);
+            
+            document.getElementById('totalAlerts').textContent = totalAlerts;
+            document.getElementById('activeAgents').textContent = enabledAgents.length;
+            document.getElementById('lastScan').textContent = new Date().toLocaleTimeString('fr-FR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function updateActiveAgentsCount() {
+            document.getElementById('activeAgents').textContent = enabledAgents.length;
+        }
+        
+        // Auto-scan
+        function toggleAutoScan() {
+            const btn = document.getElementById('autoScanText');
+            
+            if (autoScanInterval) {
+                clearInterval(autoScanInterval);
+                autoScanInterval = null;
+                btn.textContent = 'Activer Auto-Scan';
+            } else {
+                autoScanInterval = setInterval(() => {
+                    scanNow();
+                }, 60000); // Toutes les 60 secondes
+                btn.textContent = 'Désactiver Auto-Scan';
+                scanNow(); // Scan immédiat
+            }
+        }
+        
+        // Reset
+        function resetAgents() {
+            enabledAgents = Object.keys(AGENT_CONFIGS);
+            currentProfile = null;
+            document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('active'));
+            renderAgents();
+            document.getElementById('metaSummary').style.display = 'none';
+            
+            // Clear alertes
+            Object.keys(AGENT_CONFIGS).forEach(agentId => {
+                const container = document.getElementById(`alerts-${agentId}`);
+                if (container) container.innerHTML = '';
+            });
+        }
+        
+        // Init au chargement
+        init();
+        
+        // Premier scan après 2 secondes
+        setTimeout(() => scanNow(), 2000);
+    </script>
 </body>
 </html>
-""")
+    """
+    
+    return HTMLResponse(content=html_content)
+
+
 
 
 @app.get("/altseason-copilot-pro", response_class=HTMLResponse)

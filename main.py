@@ -5009,158 +5009,201 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Trading Crypto IA</title>
+    <title>Magic Mike Trading Dashboard</title>
     """ + CSS + """
     <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        
         body {{
-            background: linear-gradient(135deg, #0f172a, #1e293b);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             margin-left: 280px;
-            padding: 40px;
-            color: #fff;
         }}
-        @media (max-width: 768px) {{ body {{ margin-left: 0; padding: 20px; }} }}
         
-        .dashboard-header {{
+        @media (max-width: 768px) {{ body {{ margin-left: 0; }} }}
+        
+        .hero {{
             text-align: center;
-            margin-bottom: 50px;
-        }}
-        .dashboard-header h1 {{
-            font-size: 3em;
-            color: #00d4ff;
-            margin-bottom: 15px;
-            text-shadow: 0 0 20px rgba(0,212,255,0.5);
-        }}
-        .dashboard-header p {{
-            font-size: 1.3em;
-            color: #aaa;
+            padding: 80px 20px 40px 20px;
+            color: white;
         }}
         
-        .quick-actions {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 25px;
-            max-width: 1400px;
-            margin: 0 auto 60px;
+        .hero h1 {{
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+            animation: fadeInDown 0.8s;
         }}
-        .action-card {{
-            background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(0,255,136,0.1));
-            border: 2px solid rgba(0,212,255,0.3);
+        
+        .hero p {{
+            font-size: 1.4em;
+            opacity: 0.95;
+            max-width: 800px;
+            margin: 0 auto 40px auto;
+            animation: fadeIn 1s;
+        }}
+        
+        @keyframes fadeInDown {{
+            from {{ opacity: 0; transform: translateY(-20px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        
+        @keyframes fadeIn {{
+            from {{ opacity: 0; }}
+            to {{ opacity: 1; }}
+        }}
+        
+        .container {{
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }}
+        
+        .features-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 25px;
+            margin: 40px 0;
+        }}
+        
+        .feature-card {{
+            background: white;
             border-radius: 15px;
             padding: 30px;
-            text-align: center;
-            transition: all 0.3s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
             cursor: pointer;
+            text-decoration: none;
+            color: #333;
         }}
-        .action-card:hover {{
+        
+        .feature-card:hover {{
             transform: translateY(-5px);
-            border-color: #00d4ff;
-            box-shadow: 0 10px 30px rgba(0,212,255,0.3);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
         }}
-        .action-card .icon {{
+        
+        .feature-icon {{
             font-size: 3em;
             margin-bottom: 15px;
         }}
-        .action-card h3 {{
-            color: #00d4ff;
-            font-size: 1.3em;
-            margin-bottom: 10px;
+        
+        .feature-card h3 {{
+            color: #667eea;
+            font-size: 1.5em;
+            margin-bottom: 12px;
         }}
-        .action-card p {{
-            color: #aaa;
-            font-size: 0.95em;
+        
+        .feature-card p {{
+            color: #666;
             line-height: 1.6;
+            font-size: 1.05em;
         }}
-        .action-card a {{
-            display: inline-block;
-            margin-top: 15px;
-            padding: 12px 25px;
-            background: #00d4ff;
-            color: #000;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: all 0.3s;
+        
+        .stats-bar {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
         }}
-        .action-card a:hover {{
-            background: #00ff88;
-            transform: scale(1.05);
+        
+        .stat-box {{
+            background: rgba(255,255,255,0.15);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            color: white;
+        }}
+        
+        .stat-number {{
+            font-size: 2.5em;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }}
+        
+        .stat-label {{
+            font-size: 1em;
+            opacity: 0.9;
         }}
     </style>
 </head>
 <body>
-    
-    <!-- Header -->
-    <div class="dashboard-header">
-        <h1>🏠 Bienvenue {username} !</h1>
-        <p>Votre centre de contrôle crypto complet</p>
-    </div>
-
-    <!-- Quick Actions Grid -->
-    <div class="quick-actions">
+    <div class="hero">
+        <h1>🎯 Bienvenue {username} !</h1>
+        <p>Plateforme complète d'analyse crypto & outils professionnels pour traders</p>
         
-        <div class="action-card">
-            <div class="icon">💼</div>
-            <h3>Portfolio Tracker</h3>
-            <p>Connectez vos exchanges et suivez votre portfolio en temps réel</p>
-            <a href="/portfolio-tracker">Gérer Portfolio →</a>
+        <div class="stats-bar">
+            <div class="stat-box">
+                <span class="stat-number">16+</span>
+                <span class="stat-label">Outils Actifs</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-number">70-80%</span>
+                <span class="stat-label">Winrate Stratégie</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-number">24/7</span>
+                <span class="stat-label">Données Live</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-number">100%</span>
+                <span class="stat-label">Gratuit</span>
+            </div>
         </div>
-
-        <div class="action-card">
-            <div class="icon">📊</div>
-            <h3>Mes Trades</h3>
-            <p>Consultez et gérez vos positions ouvertes avec TP/SL</p>
-            <a href="/trades">Voir Trades →</a>
+    </div>
+    
+    <div class="container">
+        <div class="features-grid">
+            <a href="/fear-greed" class="feature-card">
+                <div class="feature-icon">😱</div>
+                <h3>Fear & Greed Index</h3>
+                <p>Mesure le sentiment du marché en temps réel. Sachez quand le marché est en panique ou en euphorie.</p>
+            </a>
+            
+            <a href="/dominance" class="feature-card">
+                <div class="feature-icon">👑</div>
+                <h3>Bitcoin Dominance</h3>
+                <p>Suivez la dominance de Bitcoin et anticipez les rotations entre BTC et altcoins.</p>
+            </a>
+            
+            <a href="/altcoin-season" class="feature-card">
+                <div class="feature-icon">🌟</div>
+                <h3>Altcoin Season</h3>
+                <p>Index professionnel pour identifier si c'est la saison des altcoins ou de Bitcoin.</p>
+            </a>
+            
+            <a href="/heatmap" class="feature-card">
+                <div class="feature-icon">🔥</div>
+                <h3>Heatmap Crypto</h3>
+                <p>Visualisation des performances du top 100 cryptos en un coup d'œil.</p>
+            </a>
+            
+            <a href="/strategie" class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Stratégie Magic Mike</h3>
+                <p>Guide complet de la stratégie 1H et 15min avec 70-80% de winrate validé.</p>
+            </a>
+            
+            <a href="/spot-trading" class="feature-card">
+                <div class="feature-icon">💎</div>
+                <h3>Spot Trading</h3>
+                <p>Guide ultime du trading au comptant : fonctionnement, stratégies recommandées et gestion de risque.</p>
+            </a>
+            
+            <a href="/trades" class="feature-card">
+                <div class="feature-icon">📈</div>
+                <h3>Mes Trades</h3>
+                <p>Gérez vos positions, suivez vos TP/SL, consultez vos performances en temps réel.</p>
+            </a>
+            
+            <a href="/risk-management" class="feature-card">
+                <div class="feature-icon">⚖️</div>
+                <h3>Risk Management</h3>
+                <p>Gérez votre capital avec des règles strictes de position sizing et limites de perte.</p>
+            </a>
         </div>
-
-        <div class="action-card">
-            <div class="icon">🎓</div>
-            <h3>AI Crypto Coach</h3>
-            <p>Apprenez le trading crypto avec votre coach IA personnel</p>
-            <a href="/ai-crypto-coach">Commencer →</a>
-        </div>
-
-        <div class="action-card">
-            <div class="icon">📈</div>
-            <h3>Technical Analysis</h3>
-            <p>Analyse technique avancée sur 50 cryptos avec 6 indicateurs</p>
-            <a href="/ai-technical-analysis">Analyser →</a>
-        </div>
-
-        <div class="action-card">
-            <div class="icon">😨</div>
-            <h3>Fear & Greed Index</h3>
-            <p>Consultez l'indice de peur et d'avidité du marché</p>
-            <a href="/fear-greed">Voir Index →</a>
-        </div>
-
-        <div class="action-card">
-            <div class="icon">🎯</div>
-            <h3>Narrative Radar</h3>
-            <p>Suivez les narratives crypto en tendance en temps réel</p>
-            <a href="/narrative-radar">Explorer →</a>
-        </div>
-
-        <div class="action-card">
-            <div class="icon">🔍</div>
-            <h3>Opportunity Scanner</h3>
-            <p>Scanner IA détectant les opportunités de trading 24/7</p>
-            <a href="/ai-opportunity-scanner">Scanner →</a>
-        </div>
-
-        <div class="action-card">
-            <div class="icon">💎</div>
-            <h3>Gem Hunter</h3>
-            <p>Découvrez les pépites crypto avant qu'elles explosent</p>
-            <a href="/ai-gem-hunter">Chercher →</a>
-        </div>
-
-        <div class="action-card">
-            <div class="icon">🐋</div>
-            <h3>Whale Watcher</h3>
-            <p>Suivez les mouvements des grandes baleines crypto</p>
-            <a href="/ai-whale-watcher">Surveiller →</a>
-        </div>
-
     </div>
 
     <!-- ============================================ -->

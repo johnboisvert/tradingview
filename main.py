@@ -3075,11 +3075,14 @@ async def get_crypto_news_real():
 # ============================================================================
 
 @app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request, error: str = None):
+async def login_page(request: Request, error: str = None, redirect: str = None):
     """Page de connexion"""
     error_msg = ""
     if error:
         error_msg = '<div class="alert alert-error">❌ Identifiants incorrects</div>'
+    
+    # Champ caché pour redirection après login
+    redirect_field = f'<input type="hidden" name="redirect" value="{redirect}">' if redirect else ''
     
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html lang="fr">
@@ -3189,6 +3192,7 @@ async def login_page(request: Request, error: str = None):
         {error_msg}
         
         <form method="POST" action="/login">
+            {redirect_field}
             <div class="form-group">
                 <label for="username">👤 Nom d'utilisateur</label>
                 <input type="text" id="username" name="username" required autocomplete="username">
@@ -3220,6 +3224,7 @@ async def login(request: Request, response: Response):
     form_data = await request.form()
     username = form_data.get("username")
     password = form_data.get("password")
+    redirect_url = form_data.get("redirect", "/")  # Redirection après login
     
     if verify_user(username, password):
         # 🆕 Récupérer les infos complètes de l'utilisateur
@@ -3228,7 +3233,7 @@ async def login(request: Request, response: Response):
         # Créer la session avec les infos d'abonnement
         token = create_session(username, user_info)
         
-        redirect = RedirectResponse(url="/", status_code=303)
+        redirect = RedirectResponse(url=redirect_url, status_code=303)
         redirect.set_cookie(
             key="session_token",
             value=token,
@@ -3238,7 +3243,9 @@ async def login(request: Request, response: Response):
         )
         return redirect
     else:
-        return RedirectResponse(url="/login?error=1", status_code=303)
+        # Garder le redirect dans l'URL en cas d'erreur
+        error_url = f"/login?error=1&redirect={redirect_url}" if redirect_url != "/" else "/login?error=1"
+        return RedirectResponse(url=error_url, status_code=303)
 
 @app.get("/logout")
 async def logout(response: Response, session_token: Optional[str] = Cookie(None)):
@@ -35676,9 +35683,19 @@ class AIChatMessage(BaseModel):
 @app.get("/crypto-academy", response_class=HTMLResponse)
 async def crypto_academy_page(request: Request):
     """Page principale de l'Academy"""
-    username = request.cookies.get("username")
+    session_token = request.cookies.get("session_token")
+    user_data = get_user_from_token(session_token)
+    
+    # Extraire le username (compatible ancien/nouveau format)
+    if isinstance(user_data, str):
+        username = user_data
+    elif isinstance(user_data, dict):
+        username = user_data.get("username")
+    else:
+        username = None
+    
     if not username:
-        return RedirectResponse(url="/signin?redirect=/crypto-academy")
+        return RedirectResponse(url="/login?redirect=/crypto-academy")
     
     if not ACADEMY_AVAILABLE:
         return HTMLResponse(SIDEBAR + "<div class='main-content'><h1>Academy non disponible</h1></div>")

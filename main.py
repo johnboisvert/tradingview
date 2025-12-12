@@ -4962,531 +4962,298 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     
     username = user.get('username', 'Utilisateur')
     
-    # ✅ VÉRIFICATION DES PERMISSIONS
     if not check_route_permission(username, "/dashboard"):
-        return HTMLResponse(SIDEBAR + """
-            <!DOCTYPE html>
+        return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
             <html><head><meta charset="UTF-8"><title>Accès Refusé</title>""" + CSS + """</head>
             <body>
                 <div style="padding: 40px; text-align: center;">
-                    <h1 style="color:#ef4444; font-size: 48px; margin-bottom: 20px;">🚫 Accès Refusé</h1>
-                    <p style="color: #94a3b8; font-size: 20px;">Vous n'avez pas la permission d'accéder à cette page.</p>
-                    <p style="color: #64748b; font-size: 16px; margin-top: 20px;">Contactez votre administrateur pour obtenir l'accès.</p>
-                    <div style="margin-top: 40px;">
-                        <a href="/mon-compte" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; margin: 10px; font-weight: 600;">👤 Mon Compte</a>
-                    </div>
+                    <h1 style="color:#ef4444;">Accès Refusé</h1>
+                    <a href="/mon-compte" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none;">Mon Compte</a>
                 </div>
             </body></html>
         """, status_code=403)
     
-    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
+    # ULTRA REVOLUTIONARY DESIGN
+    html = """<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Magic Mike Trading</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            overflow-x: hidden; 
+            background: #0a0e27; 
+            color: #fff; 
+            margin-left: 280px; 
+            position: relative; 
+        }
+        .animated-bg { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%);
+            background-size: 400% 400%; animation: gradientFlow 20s ease infinite;
+        }
+        @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+        .particle { 
+            position: absolute; width: 4px; height: 4px; 
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.8), transparent); 
+            border-radius: 50%; animation: float 15s infinite ease-in-out; 
+        }
+        @keyframes float { 
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+            10% { opacity: 1; } 90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
+        }
+        .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.3; pointer-events: none; z-index: 1; animation: orbFloat 20s ease-in-out infinite; }
+        .orb1 { width: 500px; height: 500px; background: radial-gradient(circle, #667eea, transparent); top: -200px; left: -200px; }
+        .orb2 { width: 400px; height: 400px; background: radial-gradient(circle, #764ba2, transparent); bottom: -100px; right: -100px; animation-delay: -5s; }
+        .orb3 { width: 350px; height: 350px; background: radial-gradient(circle, #f093fb, transparent); top: 50%; right: 10%; animation-delay: -10s; }
+        @keyframes orbFloat { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(50px, -50px) scale(1.1); } 66% { transform: translate(-30px, 30px) scale(0.9); } }
+        .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0 auto; }
+        .hero { text-align: center; margin-bottom: 60px; position: relative; }
+        .hero-title { 
+            font-size: 4.5em; font-weight: 900;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%);
+            background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite;
+            letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px;
+        }
+        @keyframes titleGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .hero-subtitle { font-size: 1.4em; color: rgba(255, 255, 255, 0.7); font-weight: 400; letter-spacing: 1px; animation: fadeInUp 1s ease; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 60px; }
+        .stat-card { 
+            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 35px;
+            position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
+        }
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb); transform: translateX(-100%); transition: transform 0.6s ease; }
+        .stat-card:hover::before { transform: translateX(0); }
+        .stat-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.5); box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3), 0 0 0 1px rgba(102, 126, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+        .stat-icon { font-size: 3em; margin-bottom: 15px; display: inline-block; animation: iconFloat 3s ease-in-out infinite; filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.6)); }
+        @keyframes iconFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
+        .stat-value { font-size: 3em; font-weight: 900; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: 10px; display: block; }
+        .stat-label { font-size: 1em; color: rgba(255, 255, 255, 0.6); font-weight: 500; text-transform: uppercase; letter-spacing: 2px; }
+        .stat-chart { margin-top: 20px; height: 50px; position: relative; }
+        .mini-sparkline { width: 100%; height: 100%; }
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 30px; }
+        .tool-card { 
+            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 28px; padding: 40px;
+            text-decoration: none; color: #fff; position: relative; overflow: hidden;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
+            display: flex; flex-direction: column; align-items: flex-start;
+        }
+        .tool-card::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(135deg, #667eea, #764ba2, #f093fb); border-radius: 28px; opacity: 0; transition: opacity 0.5s; z-index: -1; }
+        .tool-card:hover::before { opacity: 0.5; }
+        .tool-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(102, 126, 234, 0.2), transparent 50%); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .tool-card:hover::after { opacity: 1; }
+        .tool-card:hover { transform: translateY(-12px) scale(1.03); background: rgba(255, 255, 255, 0.08); box-shadow: 0 30px 80px rgba(102, 126, 234, 0.4), 0 0 0 1px rgba(102, 126, 234, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+        .tool-icon-wrapper { width: 80px; height: 80px; border-radius: 20px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2)); display: flex; align-items: center; justify-content: center; margin-bottom: 25px; position: relative; transition: all 0.4s; }
+        .tool-card:hover .tool-icon-wrapper { transform: scale(1.15) rotate(5deg); background: linear-gradient(135deg, rgba(102, 126, 234, 0.4), rgba(118, 75, 162, 0.4)); box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); }
+        .tool-icon { font-size: 2.5em; filter: drop-shadow(0 4px 20px rgba(102, 126, 234, 0.6)); }
+        .tool-title { font-size: 1.6em; font-weight: 700; margin-bottom: 12px; background: linear-gradient(135deg, #fff, rgba(255, 255, 255, 0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.2; }
+        .tool-description { font-size: 1em; color: rgba(255, 255, 255, 0.6); line-height: 1.6; margin-bottom: 20px; flex-grow: 1; }
+        .tool-badge { display: inline-flex; align-items: center; padding: 8px 16px; background: rgba(102, 126, 234, 0.2); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 20px; font-size: 0.85em; font-weight: 600; color: #667eea; text-transform: uppercase; letter-spacing: 1px; margin-top: auto; }
+        .tool-badge::before { content: '⚡'; margin-right: 6px; animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .section-divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), rgba(118, 75, 162, 0.5), rgba(240, 147, 251, 0.5), transparent); margin: 80px 0; position: relative; }
+        .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
+        @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid { grid-template-columns: 1fr; } .tools-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
 <body>
-    <div style="padding: 40px; text-align: center;">
-        <h1 style="color:white; font-size: 48px; margin-bottom: 20px;">🏠 Bienvenue {username}!</h1>
-        <p style="color: #94a3b8; font-size: 20px;">Votre tableau de bord de trading</p>
-        <div style="margin-top: 40px;">
-            <a href="/fear-greed" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; margin: 10px; font-weight: 600;">📊 Commencer</a>
+    <div class="animated-bg"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+    <div class="particles" id="particles"></div>
+    <div class="main-content">
+        <div class="hero">
+            <h1 class="hero-title">🚀 Bienvenue """ + username + """ ! 💎</h1>
+            <p class="hero-subtitle">Plateforme complète d'analyse crypto & outils professionnels IA</p>
+        </div>
+        <div class="stats-grid">
+            <div class="stat-card" style="animation-delay: 0.1s;"><span class="stat-icon">🚀</span><span class="stat-value">16+</span><span class="stat-label">Outils Actifs</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad1)" stroke-width="2" points="0,40 20,30 40,35 60,20 80,25 100,10"/><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#667eea;stop-opacity:1" /><stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.2s;"><span class="stat-icon">💎</span><span class="stat-value">70-80%</span><span class="stat-label">Winrate Stratégie</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad2)" stroke-width="2" points="0,45 20,42 40,38 60,30 80,22 100,15"/><defs><linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#764ba2;stop-opacity:1" /><stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.3s;"><span class="stat-icon">⚡</span><span class="stat-value">24/7</span><span class="stat-label">Données Live</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad3)" stroke-width="2" points="0,25 10,20 20,30 30,15 40,25 50,10 60,20 70,15 80,25 90,10 100,20"/><defs><linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" /><stop offset="100%" style="stop-color:#667eea;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🎯</span><span class="stat-value">100%</span><span class="stat-label">Gratuit</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,50 25,50 50,50 75,50 100,50"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+        </div>
+        <div class="section-divider"></div>
+        <div class="tools-grid">
+            <a href="/portfolio-tracker" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">💼</span></div><h3 class="tool-title">Portfolio Tracker</h3><p class="tool-description">Suivez votre portfolio crypto en temps réel avec connexions API multi-exchanges</p><span class="tool-badge">Live</span></a>
+            <a href="/ai-crypto-coach" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎓</span></div><h3 class="tool-title">AI Crypto Coach</h3><p class="tool-description">Assistant IA personnel pour répondre à toutes vos questions crypto</p><span class="tool-badge">AI Powered</span></a>
+            <a href="/ai-technical-analysis" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📊</span></div><h3 class="tool-title">Technical Analysis</h3><p class="tool-description">Analyse technique complète sur 50 cryptos avec 6 indicateurs professionnels</p><span class="tool-badge">Pro</span></a>
+            <a href="/fear-greed" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">😨</span></div><h3 class="tool-title">Fear & Greed Index</h3><p class="tool-description">Indice de sentiment du marché pour optimiser vos entrées et sorties</p><span class="tool-badge">Real-time</span></a>
+            <a href="/narrative-radar" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎯</span></div><h3 class="tool-title">Narrative Radar</h3><p class="tool-description">Détectez les narratives crypto en tendance: DeFi, AI, Gaming, RWA</p><span class="tool-badge">Trending</span></a>
+            <a href="/ai-opportunity-scanner" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🔍</span></div><h3 class="tool-title">Opportunity Scanner</h3><p class="tool-description">Scanner automatique 24/7 qui détecte les meilleures opportunités de trading</p><span class="tool-badge">24/7</span></a>
+            <a href="/ai-gem-hunter" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">💎</span></div><h3 class="tool-title">Gem Hunter</h3><p class="tool-description">Découvrez les pépites crypto avant l'explosion avec analyse fondamentale IA</p><span class="tool-badge">100x Potential</span></a>
+            <a href="/ai-whale-watcher" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🐋</span></div><h3 class="tool-title">Whale Watcher</h3><p class="tool-description">Surveillez les mouvements des baleines et anticipez les gros mouvements</p><span class="tool-badge">Whale Alert</span></a>
+            <a href="/trades" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📈</span></div><h3 class="tool-title">Mes Trades</h3><p class="tool-description">Gérez vos positions avec TP/SL intelligents et trailing stop automatique</p><span class="tool-badge">Smart TP/SL</span></a>
+            <a href="/academy" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎓</span></div><h3 class="tool-title">Trading Academy</h3><p class="tool-description">22 modules de formation du débutant au pro avec quiz et certificats</p><span class="tool-badge">Learn</span></a>
+            <a href="/strategie" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📊</span></div><h3 class="tool-title">Stratégie Magic Mike</h3><p class="tool-description">Stratégie complète testée avec 70-80% de winrate sur 12+ mois</p><span class="tool-badge">Proven</span></a>
+            <a href="/risk-management" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">⚖️</span></div><h3 class="tool-title">Risk Management</h3><p class="tool-description">Calculateurs avancés pour gérer votre capital et limiter les pertes</p><span class="tool-badge">Essential</span></a>
         </div>
     </div>
-
-    <div style="max-width: 1200px; margin: 60px auto; padding: 40px; background: rgba(255,255,255,0.05); border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">
-        <h2 style="text-align: center; color: #3b82f6; font-size: 2em; margin-bottom: 30px;">Guide d'Utilisation</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">Navigation Rapide</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Utilisez la sidebar pour accéder à tous les outils. Cliquez sur les cartes pour explorer chaque fonctionnalité.</p>
-            </div>
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">Combinez les Outils</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Utilisez Fear & Greed + Technical Analysis + Scanner pour confirmer vos setups de trading.</p>
-            </div>
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">Formez-vous</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Trading Academy + AI Coach = votre meilleur investissement pour réussir en crypto.</p>
-            </div>
-        </div>
-    </div>
-
-</body></html>""")
-
+    <script>
+        const particlesContainer = document.getElementById('particles');
+        for (let i = 0; i < 30; i++) { const particle = document.createElement('div'); particle.className = 'particle'; particle.style.left = Math.random() * 100 + '%'; particle.style.animationDelay = Math.random() * 15 + 's'; particle.style.animationDuration = (15 + Math.random() * 10) + 's'; particlesContainer.appendChild(particle); }
+        document.querySelectorAll('.tool-card').forEach(card => { card.addEventListener('mousemove', (e) => { const rect = card.getBoundingClientRect(); const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100; card.style.setProperty('--mouse-x', x + '%'); card.style.setProperty('--mouse-y', y + '%'); }); });
+        const observer = new IntersectionObserver((entries) => { entries.forEach((entry, index) => { if (entry.isIntersecting) { entry.target.style.animation = `fadeInUp 0.6s ease ${index * 0.1}s forwards`; entry.target.style.opacity = '0'; setTimeout(() => { entry.target.style.opacity = '1'; }, index * 100); } }); }, { threshold: 0.1 });
+        document.querySelectorAll('.tool-card').forEach(card => { observer.observe(card); });
+    </script>
+</body>
+</html>"""
+    
+    return HTMLResponse(SIDEBAR + html)
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
-    """Page d'accueil professionnelle du dashboard"""
-    html_content = SIDEBAR + """
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Magic Mike Trading Dashboard - Accueil</title>
-        """ + CSS + """
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-            }}
-            
-            .hero {
-                text-align: center;
-                padding: 80px 20px 40px 20px;
-                color: white;
-            }}
-            
-            .hero h1 {
-                font-size: 3em;
-                margin-bottom: 20px;
-                text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
-                animation: fadeInDown 0.8s;
-            }
-            
-            .hero p {
-                font-size: 1.4em;
-                opacity: 0.95;
-                max-width: 800px;
-                margin: 0 auto 40px auto;
-                animation: fadeIn 1s;
-            }
-            
-            @keyframes fadeInDown {
-                from { opacity: 0; transform: translateY(-20px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-            
-            .container {
-                max-width: 1400px;
-                margin: 0 auto;
-                padding: 20px;
-            }
-            
-            .features-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-                gap: 25px;
-                margin: 40px 0;
-            }
-            
-            .feature-card {
-                background: white;
-                border-radius: 15px;
-                padding: 30px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                transition: transform 0.3s, box-shadow 0.3s;
-                cursor: pointer;
-                text-decoration: none;
-                color: #333;
-            }
-            
-            .feature-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-            }
-            
-            .feature-icon {
-                font-size: 3em;
-                margin-bottom: 15px;
-            }
-            
-            .feature-card h3 {
-                color: #667eea;
-                font-size: 1.5em;
-                margin-bottom: 12px;
-            }
-            
-            .feature-card p {
-                color: #666;
-                line-height: 1.6;
-                font-size: 1.05em;
-            }
-            
-            .info-section {
-                background: white;
-                border-radius: 15px;
-                padding: 50px;
-                margin: 40px 0;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            }
-            
-            .info-section h2 {
-                color: #667eea;
-                font-size: 2.2em;
-                margin-bottom: 25px;
-                text-align: center;
-            }
-            
-            .info-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                gap: 30px;
-                margin-top: 30px;
-            }
-            
-            .info-box {
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                padding: 25px;
-                border-radius: 12px;
-                border-left: 5px solid #667eea;
-            }
-            
-            .info-box h3 {
-                color: #667eea;
-                margin-bottom: 15px;
-                font-size: 1.3em;
-            }
-            
-            .info-box ul {
-                list-style: none;
-                padding: 0;
-            }
-            
-            .info-box li {
-                padding: 8px 0;
-                color: #555;
-                line-height: 1.6;
-            }
-            
-            .info-box li:before {
-                content: "✓ ";
-                color: #00d084;
-                font-weight: bold;
-                margin-right: 8px;
-            }
-            
-            .cta-section {
-                text-align: center;
-                padding: 50px 20px;
-                background: rgba(255,255,255,0.1);
-                border-radius: 15px;
-                margin: 40px 0;
-                backdrop-filter: blur(10px);
-            }
-            
-            .cta-section h2 {
-                color: white;
-                font-size: 2em;
-                margin-bottom: 20px;
-            }
-            
-            .cta-button {
-                display: inline-block;
-                background: white;
-                color: #667eea;
-                padding: 15px 40px;
-                border-radius: 50px;
-                text-decoration: none;
-                font-weight: bold;
-                font-size: 1.2em;
-                margin: 10px;
-                transition: transform 0.3s, box-shadow 0.3s;
-            }
-            
-            .cta-button:hover {
-                transform: scale(1.05);
-                box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-            }
-            
-            .stats-bar {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 20px;
-                margin: 30px 0;
-            }
-            
-            .stat-box {
-                background: rgba(255,255,255,0.15);
-                padding: 20px;
-                border-radius: 12px;
-                text-align: center;
-                backdrop-filter: blur(10px);
-                color: white;
-            }
-            
-            .stat-number {
-                font-size: 2.5em;
-                font-weight: bold;
-                display: block;
-                margin-bottom: 5px;
-            }
-            
-            .stat-label {
-                font-size: 1em;
-                opacity: 0.9;
-            }
-        </style>
-    </head>
-    <body>
+    html = """<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magic Mike Trading Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; 
+            overflow-x: hidden; 
+            background: #0a0e27; 
+            color: #fff; 
+            margin-left: 280px; 
+            position: relative; 
+        }
+        .animated-bg { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%);
+            background-size: 400% 400%; animation: gradientFlow 20s ease infinite;
+        }
+        @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+        .particle { 
+            position: absolute; width: 4px; height: 4px; 
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.8), transparent); 
+            border-radius: 50%; animation: float 15s infinite ease-in-out; 
+        }
+        @keyframes float { 
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+            10% { opacity: 1; } 90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(100px); opacity: 0; }
+        }
+        .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.3; pointer-events: none; z-index: 1; animation: orbFloat 20s ease-in-out infinite; }
+        .orb1 { width: 500px; height: 500px; background: radial-gradient(circle, #667eea, transparent); top: -200px; left: -200px; }
+        .orb2 { width: 400px; height: 400px; background: radial-gradient(circle, #764ba2, transparent); bottom: -100px; right: -100px; animation-delay: -5s; }
+        .orb3 { width: 350px; height: 350px; background: radial-gradient(circle, #f093fb, transparent); top: 50%; right: 10%; animation-delay: -10s; }
+        @keyframes orbFloat { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(50px, -50px) scale(1.1); } 66% { transform: translate(-30px, 30px) scale(0.9); } }
+        .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0 auto; }
+        .hero { text-align: center; margin-bottom: 60px; position: relative; }
+        .hero-title { 
+            font-size: 4.5em; font-weight: 900;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%);
+            background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite;
+            letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px;
+        }
+        @keyframes titleGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .hero-subtitle { font-size: 1.4em; color: rgba(255, 255, 255, 0.7); font-weight: 400; letter-spacing: 1px; animation: fadeInUp 1s ease; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 60px; }
+        .stat-card { 
+            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 35px;
+            position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
+        }
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb); transform: translateX(-100%); transition: transform 0.6s ease; }
+        .stat-card:hover::before { transform: translateX(0); }
+        .stat-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.5); box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3), 0 0 0 1px rgba(102, 126, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
+        .stat-icon { font-size: 3em; margin-bottom: 15px; display: inline-block; animation: iconFloat 3s ease-in-out infinite; filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.6)); }
+        @keyframes iconFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
+        .stat-value { font-size: 3em; font-weight: 900; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: 10px; display: block; }
+        .stat-label { font-size: 1em; color: rgba(255, 255, 255, 0.6); font-weight: 500; text-transform: uppercase; letter-spacing: 2px; }
+        .stat-chart { margin-top: 20px; height: 50px; position: relative; }
+        .mini-sparkline { width: 100%; height: 100%; }
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 30px; }
+        .tool-card { 
+            background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 28px; padding: 40px;
+            text-decoration: none; color: #fff; position: relative; overflow: hidden;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
+            display: flex; flex-direction: column; align-items: flex-start;
+        }
+        .tool-card::before { content: ''; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; background: linear-gradient(135deg, #667eea, #764ba2, #f093fb); border-radius: 28px; opacity: 0; transition: opacity 0.5s; z-index: -1; }
+        .tool-card:hover::before { opacity: 0.5; }
+        .tool-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(102, 126, 234, 0.2), transparent 50%); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .tool-card:hover::after { opacity: 1; }
+        .tool-card:hover { transform: translateY(-12px) scale(1.03); background: rgba(255, 255, 255, 0.08); box-shadow: 0 30px 80px rgba(102, 126, 234, 0.4), 0 0 0 1px rgba(102, 126, 234, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+        .tool-icon-wrapper { width: 80px; height: 80px; border-radius: 20px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2)); display: flex; align-items: center; justify-content: center; margin-bottom: 25px; position: relative; transition: all 0.4s; }
+        .tool-card:hover .tool-icon-wrapper { transform: scale(1.15) rotate(5deg); background: linear-gradient(135deg, rgba(102, 126, 234, 0.4), rgba(118, 75, 162, 0.4)); box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); }
+        .tool-icon { font-size: 2.5em; filter: drop-shadow(0 4px 20px rgba(102, 126, 234, 0.6)); }
+        .tool-title { font-size: 1.6em; font-weight: 700; margin-bottom: 12px; background: linear-gradient(135deg, #fff, rgba(255, 255, 255, 0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.2; }
+        .tool-description { font-size: 1em; color: rgba(255, 255, 255, 0.6); line-height: 1.6; margin-bottom: 20px; flex-grow: 1; }
+        .tool-badge { display: inline-flex; align-items: center; padding: 8px 16px; background: rgba(102, 126, 234, 0.2); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 20px; font-size: 0.85em; font-weight: 600; color: #667eea; text-transform: uppercase; letter-spacing: 1px; margin-top: auto; }
+        .tool-badge::before { content: '⚡'; margin-right: 6px; animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .section-divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), rgba(118, 75, 162, 0.5), rgba(240, 147, 251, 0.5), transparent); margin: 80px 0; position: relative; }
+        .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
+        @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid { grid-template-columns: 1fr; } .tools-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="animated-bg"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+    <div class="particles" id="particles"></div>
+    <div class="main-content">
         <div class="hero">
-            <h1>🎯 Magic Mike Trading Dashboard</h1>
-            <p>Plateforme complète d'analyse crypto & outils professionnels pour traders</p>
-            
-            <div class="stats-bar">
-                <div class="stat-box">
-                    <span class="stat-number">16+</span>
-                    <span class="stat-label">Outils Actifs</span>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-number">70-80%</span>
-                    <span class="stat-label">Winrate Stratégie</span>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-number">24/7</span>
-                    <span class="stat-label">Données Live</span>
-                </div>
-                <div class="stat-box">
-                    <span class="stat-number">100%</span>
-                    <span class="stat-label">Gratuit</span>
-                </div>
-            </div>
+            <h1 class="hero-title">🚀 Magic Mike Trading Dashboard 💎</h1>
+            <p class="hero-subtitle">Plateforme complète d'analyse crypto & outils professionnels IA</p>
         </div>
-        
-        
-        
-        <div class="container">
-            <div class="features-grid">
-                <a href="/fear-greed" class="feature-card">
-                    <div class="feature-icon">😱</div>
-                    <h3>Fear & Greed Index</h3>
-                    <p>Mesure le sentiment du marché en temps réel. Sachez quand le marché est en panique ou en euphorie.</p>
-                </a>
-                
-                <a href="/dominance" class="feature-card">
-                    <div class="feature-icon">👑</div>
-                    <h3>Bitcoin Dominance</h3>
-                    <p>Suivez la dominance de Bitcoin et anticipez les rotations entre BTC et altcoins.</p>
-                </a>
-                
-                <a href="/altcoin-season" class="feature-card">
-                    <div class="feature-icon">🌟</div>
-                    <h3>Altcoin Season</h3>
-                    <p>Index professionnel pour identifier si c'est la saison des altcoins ou de Bitcoin.</p>
-                </a>
-                
-                <a href="/heatmap" class="feature-card">
-                    <div class="feature-icon">🔥</div>
-                    <h3>Heatmap Crypto</h3>
-                    <p>Visualisation des performances du top 100 cryptos en un coup d'œil.</p>
-                </a>
-                
-                <a href="/strategie" class="feature-card">
-                    <div class="feature-icon">📚</div>
-                    <h3>Stratégie Magic Mike</h3>
-                    <p>Guide complet de la stratégie 1H et 15min avec 70-80% de winrate validé.</p>
-                </a>
-                
-                <a href="/spot-trading" class="feature-card">
-                    <div class="feature-icon">💎</div>
-                    <h3>Spot Trading</h3>
-                    <p>Guide ultime du trading au comptant : fonctionnement, stratégies, coins recommandés et gestion de risque.</p>
-                </a>
-                
-                <a href="/calculatrice" class="feature-card">
-                    <div class="feature-icon">🧮</div>
-                    <h3>Calculatrice Trading</h3>
-                    <p>Calculez vos positions, risk/reward, liquidation et profits en temps réel.</p>
-                </a>
-                
-                <a href="/risk-management" class="feature-card">
-                    <div class="feature-icon">⚖️</div>
-                    <h3>Risk Management</h3>
-                    <p>Gérez votre capital avec des règles strictes de position sizing et limites de perte.</p>
-                </a>
-                
-                <a href="/watchlist" class="feature-card">
-                    <div class="feature-icon">👀</div>
-                    <h3>Watchlist & Alertes</h3>
-                    <p>Surveillez vos cryptos favorites et recevez des alertes sur vos prix cibles.</p>
-                </a>
-                
-                <a href="/ai-assistant" class="feature-card">
-                    <div class="feature-icon">🤖</div>
-                    <h3>AI Trading Assistant</h3>
-                    <p>Intelligence artificielle qui analyse vos performances et donne des recommandations.</p>
-                </a>
-                
-                <a href="/ai-opportunity-scanner" class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3>AI Opportunity Scanner</h3>
-                    <p>Scanner IA qui détecte les 5 meilleures opportunités de trading avec score 0-100 en temps réel.</p>
-                </a>
-                
-                <a href="/ai-market-regime" class="feature-card">
-                    <div class="feature-icon">🌊</div>
-                    <h3>AI Market Regime</h3>
-                    <p>Détecteur intelligent de la phase actuelle du marché : Bull Run, Bear, Range, Accumulation.</p>
-                </a>
-                
-                <a href="/ai-whale-watcher" class="feature-card">
-                    <div class="feature-icon">🐋</div>
-                    <h3>AI Whale Watcher</h3>
-                    <p>Surveillance des mouvements de baleines et volumes anormaux avec analyse d'impact en temps réel.</p>
-                </a>
-                
-                <a href="/stats-dashboard" class="feature-card">
-                    <div class="feature-icon">$ 📊 $</div>
-                    <h3>Statistiques Avancées</h3>
-                    <p>Sharpe Ratio, Max Drawdown, Win Rate - Tous les KPIs professionnels en un coup d'œil.</p>
-                </a>
-                
-                <a href="/market-simulation" class="feature-card">
-                    <div class="feature-icon">📈</div>
-                    <h3>Simulation Marché</h3>
-                    <p>DCA vs Émotions: Visualisez l'impact réaliste de la discipline sur 4 ans.</p>
-                </a>
-                
-                <a href="/success-stories" class="feature-card">
-                    <div class="feature-icon">🌟</div>
-                    <h3>Success Stories</h3>
-                    <p>5 histoires vraies: Marc 500$/mois → 50K$ en 4 ans. La preuve que la discipline paie!</p>
-                </a>
-                
-                <a href="/nouvelles" class="feature-card">
-                    <div class="feature-icon">📰</div>
-                    <h3>Nouvelles Crypto</h3>
-                    <p>Restez informé des dernières actualités Bitcoin et crypto en temps réel.</p>
-                </a>
-                
-                <a href="/calendrier" class="feature-card">
-                    <div class="feature-icon">📅</div>
-                    <h3>Calendrier Économique</h3>
-                    <p>31 événements économiques majeurs (Fed, BCE, BoE, BoJ) qui impactent les cryptos.</p>
-                </a>
-                
-                <a href="/convertisseur" class="feature-card">
-                    <div class="feature-icon">💱</div>
-                    <h3>Convertisseur</h3>
-                    <p>Convertissez instantanément entre cryptos et devises fiat avec taux live.</p>
-                </a>
-            </div>
-            
-            <div class="info-section">
-                <h2>🚀 Pourquoi Magic Mike Dashboard ?</h2>
-                
-                <div class="info-grid">
-                    <div class="info-box">
-                        <h3>📊 Pour le Trading Spot</h3>
-                        <ul>
-                            <li>Acheter et vendre des cryptos au prix actuel</li>
-                            <li>Pas de leverage = moins de risque</li>
-                            <li>Idéal pour investissement moyen/long terme</li>
-                            <li>Stratégie 1H parfaite pour le spot</li>
-                            <li>Suivre les tendances Fear & Greed</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="info-box">
-                        <h3>⚡ Pour le Trading Futures</h3>
-                        <ul>
-                            <li>Trading avec leverage (10x recommandé)</li>
-                            <li>Possibilité de LONG et SHORT</li>
-                            <li>Profits plus rapides mais plus risqué</li>
-                            <li>Stratégie 15min pour scalping</li>
-                            <li>Risk management CRUCIAL</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="info-box">
-                        <h3>🎯 Stratégie Validée</h3>
-                        <ul>
-                            <li>70-80% de winrate prouvé</li>
-                            <li>Backtesté sur 12+ mois</li>
-                            <li>2 timeframes: 1H (swing) et 15min (scalp)</li>
-                            <li>Filtres HTF pour éviter les faux signaux</li>
-                            <li>Sortie progressive 40/40/20</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="info-box">
-                        <h3>💎 Outils Professionnels</h3>
-                        <ul>
-                            <li>Données en temps réel (API CoinGecko, CMC)</li>
-                            <li>Calculatrice position sizing</li>
-                            <li>AI Assistant pour recommendations</li>
-                            <li>Alertes personnalisées</li>
-                            <li>Journal de trading intégré</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="info-section">
-                <h2>📚 Comment Utiliser ce Dashboard ?</h2>
-                
-                <div class="info-grid">
-                    <div class="info-box" style="border-left-color: #10b981;">
-                        <h3>1️⃣ Analyse du Marché</h3>
-                        <ul>
-                            <li>Commencez par Fear & Greed Index</li>
-                            <li>Vérifiez la Dominance Bitcoin</li>
-                            <li>Consultez l'Altcoin Season Index</li>
-                            <li>Lisez les dernières nouvelles</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="info-box" style="border-left-color: #3b82f6;">
-                        <h3>2️⃣ Identifier les Opportunités</h3>
-                        <ul>
-                            <li>Utilisez la Heatmap pour trouver les winners</li>
-                            <li>Ajoutez vos favoris à la Watchlist</li>
-                            <li>Configurez des alertes de prix</li>
-                            <li>Consultez le Calendrier Économique</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="info-box" style="border-left-color: #f59e0b;">
-                        <h3>3️⃣ Planifier le Trade</h3>
-                        <ul>
-                            <li>Lisez la Stratégie Magic Mike complète</li>
-                            <li>Utilisez la Calculatrice pour sizing</li>
-                            <li>Définissez votre Risk (1-2% max)</li>
-                            <li>Placez TOUJOURS un Stop Loss</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="info-box" style="border-left-color: #ef4444;">
-                        <h3>4️⃣ Gérer & Apprendre</h3>
-                        <ul>
-                            <li>Suivez vos trades dans Risk Management</li>
-                            <li>Consultez l'AI Assistant régulièrement</li>
-                            <li>Respectez vos limites de perte quotidienne</li>
-                            <li>Analysez vos erreurs pour progresser</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="cta-section">
-                <h2>🎯 Prêt à Commencer ?</h2>
-                <p style="color: white; margin-bottom: 30px; font-size: 1.1em;">
-                    Explorez les outils et commencez votre parcours de trading professionnel
-                </p>
-                <a href="/strategie" class="cta-button">📚 Lire la Stratégie</a>
-                <a href="/calculatrice" class="cta-button">🧮 Calculer un Trade</a>
-                <a href="/fear-greed" class="cta-button">😱 Voir le Sentiment</a>
-            </div>
-            
-            <div style="text-align: center; padding: 40px 20px; color: white;">
-                <p style="font-size: 1.1em; margin-bottom: 10px;">
-                    <strong>💡 Rappel Important</strong>
-                </p>
-                <p style="opacity: 0.9;">
-                    Le trading comporte des risques. Ne tradez jamais plus que ce que vous pouvez vous permettre de perdre.<br>
-                    Utilisez toujours un Stop Loss et respectez votre plan de Risk Management.
-                </p>
-            </div>
+        <div class="stats-grid">
+            <div class="stat-card" style="animation-delay: 0.1s;"><span class="stat-icon">🚀</span><span class="stat-value">16+</span><span class="stat-label">Outils Actifs</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad1)" stroke-width="2" points="0,40 20,30 40,35 60,20 80,25 100,10"/><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#667eea;stop-opacity:1" /><stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.2s;"><span class="stat-icon">💎</span><span class="stat-value">70-80%</span><span class="stat-label">Winrate Stratégie</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad2)" stroke-width="2" points="0,45 20,42 40,38 60,30 80,22 100,15"/><defs><linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#764ba2;stop-opacity:1" /><stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.3s;"><span class="stat-icon">⚡</span><span class="stat-value">24/7</span><span class="stat-label">Données Live</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad3)" stroke-width="2" points="0,25 10,20 20,30 30,15 40,25 50,10 60,20 70,15 80,25 90,10 100,20"/><defs><linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" /><stop offset="100%" style="stop-color:#667eea;stop-opacity:1" /></linearGradient></defs></svg></div></div>
+            <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🎯</span><span class="stat-value">100%</span><span class="stat-label">Gratuit</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,50 25,50 50,50 75,50 100,50"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
-    </body>
-    </html>
-    """
-    return HTMLResponse(content=SIDEBAR + html_content)
+        <div class="section-divider"></div>
+        <div class="tools-grid">
+            <a href="/portfolio-tracker" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">💼</span></div><h3 class="tool-title">Portfolio Tracker</h3><p class="tool-description">Suivez votre portfolio crypto en temps réel avec connexions API multi-exchanges</p><span class="tool-badge">Live</span></a>
+            <a href="/ai-crypto-coach" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎓</span></div><h3 class="tool-title">AI Crypto Coach</h3><p class="tool-description">Assistant IA personnel pour répondre à toutes vos questions crypto</p><span class="tool-badge">AI Powered</span></a>
+            <a href="/ai-technical-analysis" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📊</span></div><h3 class="tool-title">Technical Analysis</h3><p class="tool-description">Analyse technique complète sur 50 cryptos avec 6 indicateurs professionnels</p><span class="tool-badge">Pro</span></a>
+            <a href="/fear-greed" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">😨</span></div><h3 class="tool-title">Fear & Greed Index</h3><p class="tool-description">Indice de sentiment du marché pour optimiser vos entrées et sorties</p><span class="tool-badge">Real-time</span></a>
+            <a href="/narrative-radar" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎯</span></div><h3 class="tool-title">Narrative Radar</h3><p class="tool-description">Détectez les narratives crypto en tendance: DeFi, AI, Gaming, RWA</p><span class="tool-badge">Trending</span></a>
+            <a href="/ai-opportunity-scanner" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🔍</span></div><h3 class="tool-title">Opportunity Scanner</h3><p class="tool-description">Scanner automatique 24/7 qui détecte les meilleures opportunités de trading</p><span class="tool-badge">24/7</span></a>
+            <a href="/ai-gem-hunter" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">💎</span></div><h3 class="tool-title">Gem Hunter</h3><p class="tool-description">Découvrez les pépites crypto avant l'explosion avec analyse fondamentale IA</p><span class="tool-badge">100x Potential</span></a>
+            <a href="/ai-whale-watcher" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🐋</span></div><h3 class="tool-title">Whale Watcher</h3><p class="tool-description">Surveillez les mouvements des baleines et anticipez les gros mouvements</p><span class="tool-badge">Whale Alert</span></a>
+            <a href="/trades" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📈</span></div><h3 class="tool-title">Mes Trades</h3><p class="tool-description">Gérez vos positions avec TP/SL intelligents et trailing stop automatique</p><span class="tool-badge">Smart TP/SL</span></a>
+            <a href="/academy" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">🎓</span></div><h3 class="tool-title">Trading Academy</h3><p class="tool-description">22 modules de formation du débutant au pro avec quiz et certificats</p><span class="tool-badge">Learn</span></a>
+            <a href="/strategie" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">📊</span></div><h3 class="tool-title">Stratégie Magic Mike</h3><p class="tool-description">Stratégie complète testée avec 70-80% de winrate sur 12+ mois</p><span class="tool-badge">Proven</span></a>
+            <a href="/risk-management" class="tool-card"><div class="tool-icon-wrapper"><span class="tool-icon">⚖️</span></div><h3 class="tool-title">Risk Management</h3><p class="tool-description">Calculateurs avancés pour gérer votre capital et limiter les pertes</p><span class="tool-badge">Essential</span></a>
+        </div>
+    </div>
+    <script>
+        const particlesContainer = document.getElementById('particles');
+        for (let i = 0; i < 30; i++) { const particle = document.createElement('div'); particle.className = 'particle'; particle.style.left = Math.random() * 100 + '%'; particle.style.animationDelay = Math.random() * 15 + 's'; particle.style.animationDuration = (15 + Math.random() * 10) + 's'; particlesContainer.appendChild(particle); }
+        document.querySelectorAll('.tool-card').forEach(card => { card.addEventListener('mousemove', (e) => { const rect = card.getBoundingClientRect(); const x = ((e.clientX - rect.left) / rect.width) * 100; const y = ((e.clientY - rect.top) / rect.height) * 100; card.style.setProperty('--mouse-x', x + '%'); card.style.setProperty('--mouse-y', y + '%'); }); });
+        const observer = new IntersectionObserver((entries) => { entries.forEach((entry, index) => { if (entry.isIntersecting) { entry.target.style.animation = `fadeInUp 0.6s ease ${index * 0.1}s forwards`; entry.target.style.opacity = '0'; setTimeout(() => { entry.target.style.opacity = '1'; }, index * 100); } }); }, { threshold: 0.1 });
+        document.querySelectorAll('.tool-card').forEach(card => { observer.observe(card); });
+    </script>
+</body>
+</html>"""
+    
+    return HTMLResponse(SIDEBAR + html)
+
 
 @app.get("/spot-trading", response_class=HTMLResponse)
 async def spot_trading_page():

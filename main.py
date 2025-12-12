@@ -35685,13 +35685,17 @@ class AIChatMessage(BaseModel):
 # ============================================================================
 # Cette route remplace celle avec fichiers externes
 
+# ============================================================================
+# 🎓 CRYPTO ACADEMY - VERSION COMPLÈTE AVEC 54 LEÇONS
+# ============================================================================
+
 @app.get("/crypto-academy", response_class=HTMLResponse)
 async def crypto_academy_page(request: Request):
     """Page principale de l'Academy"""
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     
-    # Extraire le username (compatible ancien/nouveau format)
+    # Extraire le username
     if isinstance(user_data, str):
         username = user_data
     elif isinstance(user_data, dict):
@@ -35703,7 +35707,7 @@ async def crypto_academy_page(request: Request):
         return RedirectResponse(url="/login?redirect=/crypto-academy")
     
     if not ACADEMY_AVAILABLE:
-        return HTMLResponse(SIDEBAR + "<div class='main-content'><h1>Academy non disponible</h1></div>")
+        return HTMLResponse(SIDEBAR + "<div class='main-content'><h1>Academy non disponible</h1><p>Fichiers manquants: lessons_data.py, academy_config.py, academy_database.py</p></div>")
     
     # Récupérer la progression
     try:
@@ -35711,10 +35715,112 @@ async def crypto_academy_page(request: Request):
     except:
         progress = {}
     
-    # Interface complète avec CSS et JS intégrés
+    # Les 54 leçons complètes
+    lessons_structure = {
+        "parcours_1": {
+            "title": "📚 Les Bases",
+            "total": 18,
+            "lessons": [
+                {"id": 1, "title": "C'est quoi une crypto ?"},
+                {"id": 2, "title": "La Blockchain"},
+                {"id": 3, "title": "Bitcoin en profondeur"},
+                {"id": 4, "title": "Ethereum et Smart Contracts"},
+                {"id": 5, "title": "Les Altcoins"},
+                {"id": 6, "title": "Wallets : Protéger ses cryptos"},
+                {"id": 7, "title": "Choisir son Exchange"},
+                {"id": 8, "title": "Premiers Achats"},
+                {"id": 9, "title": "Sécuriser ses Cryptos"},
+                {"id": 10, "title": "Staking et Yield"},
+                {"id": 11, "title": "DeFi pour Débutants"},
+                {"id": 12, "title": "NFTs : C'est quoi ?"},
+                {"id": 13, "title": "Market Cap et Dominance"},
+                {"id": 14, "title": "Cycles de Marché"},
+                {"id": 15, "title": "Tokenomics"},
+                {"id": 16, "title": "On-Chain Analysis"},
+                {"id": 17, "title": "Régulation et Fiscalité"},
+                {"id": 18, "title": "L'Avenir des Cryptos"}
+            ]
+        },
+        "parcours_2": {
+            "title": "📊 Trading 101",
+            "total": 18,
+            "lessons": [
+                {"id": 19, "title": "Introduction au Trading"},
+                {"id": 20, "title": "Lire un Graphique"},
+                {"id": 21, "title": "Les Ordres de Trading"},
+                {"id": 22, "title": "Risk Management"},
+                {"id": 23, "title": "Psychologie du Trader"},
+                {"id": 24, "title": "Les Erreurs à Éviter"},
+                {"id": 25, "title": "RSI : Relative Strength Index"},
+                {"id": 26, "title": "MACD"},
+                {"id": 27, "title": "Moyennes Mobiles (EMA/SMA)"},
+                {"id": 28, "title": "Bollinger Bands"},
+                {"id": 29, "title": "Fibonacci Retracements"},
+                {"id": 30, "title": "Volume Profile"},
+                {"id": 31, "title": "Patterns Chartistes"},
+                {"id": 32, "title": "Ichimoku Cloud"},
+                {"id": 33, "title": "Smart Money Concepts"},
+                {"id": 34, "title": "Scalping Strategies"},
+                {"id": 35, "title": "Swing Trading"},
+                {"id": 36, "title": "Backtesting"}
+            ]
+        },
+        "parcours_3": {
+            "title": "🔐 Sécurité",
+            "total": 18,
+            "lessons": [
+                {"id": 37, "title": "Les Menaces Crypto"},
+                {"id": 38, "title": "2FA et Mots de Passe"},
+                {"id": 39, "title": "Seed Phrase Sécurisée"},
+                {"id": 40, "title": "Reconnaître les Scams"},
+                {"id": 41, "title": "Smart Contract Audits"},
+                {"id": 42, "title": "Sécuriser son PC/Mobile"},
+                {"id": 43, "title": "Hardware Wallets"},
+                {"id": 44, "title": "Multi-Sig Wallets"},
+                {"id": 45, "title": "Paper Wallets"},
+                {"id": 46, "title": "Wallet Tracking"},
+                {"id": 47, "title": "Cross-Chain Security"},
+                {"id": 48, "title": "Recovery et Héritage"},
+                {"id": 49, "title": "Impermanent Loss"},
+                {"id": 50, "title": "Flash Loans et Exploits"},
+                {"id": 51, "title": "Rug Pulls Détection"},
+                {"id": 52, "title": "Assurance DeFi"},
+                {"id": 53, "title": "Privacy Coins"},
+                {"id": 54, "title": "Sécurité Ultime"}
+            ]
+        }
+    }
+    
+    # Générer le HTML des parcours
+    parcours_html = ""
+    for parcours_key, parcours_data in lessons_structure.items():
+        parcours_id = parcours_key.split("_")[1]
+        
+        lessons_html = ""
+        for lesson in parcours_data["lessons"]:
+            lessons_html += f"""
+                <div class="lesson-item" onclick="loadLesson({lesson['id']})">
+                    <span class="lesson-icon">{lesson['id']}</span>
+                    <span>{lesson['title']}</span>
+                </div>
+            """
+        
+        parcours_html += f"""
+        <div class="parcours-section">
+            <div class="parcours-title" onclick="toggleParcours({parcours_id})">
+                <span>{parcours_data['title'].split()[0]}</span>
+                <span>{' '.join(parcours_data['title'].split()[1:])}</span>
+                <span class="parcours-progress">0/{parcours_data['total']}</span>
+            </div>
+            <div class="lessons-list" id="parcours-{parcours_id}">
+                {lessons_html}
+            </div>
+        </div>
+        """
+    
+    # Interface complète
     return HTMLResponse(SIDEBAR + CSS + f"""
 <style>
-    /* ACADEMY INTERFACE CSS */
     .main-content {{
         margin-left: 80px;
         padding: 20px;
@@ -35724,7 +35830,6 @@ async def crypto_academy_page(request: Request):
         min-height: 100vh;
     }}
     
-    /* SIDEBAR GAUCHE - Parcours */
     .academy-sidebar-left {{
         background: rgba(15, 23, 42, 0.6);
         border-radius: 16px;
@@ -35733,6 +35838,8 @@ async def crypto_academy_page(request: Request):
         height: fit-content;
         position: sticky;
         top: 20px;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
     }}
     
     .academy-logo {{
@@ -35781,6 +35888,8 @@ async def crypto_academy_page(request: Request):
         margin-left: 15px;
         border-left: 2px solid rgba(100, 116, 139, 0.3);
         padding-left: 15px;
+        max-height: 400px;
+        overflow-y: auto;
     }}
     
     .lessons-list.active {{
@@ -35822,10 +35931,12 @@ async def crypto_academy_page(request: Request):
     }}
     
     .lesson-icon {{
-        font-size: 1.2em;
+        font-size: 0.9em;
+        font-weight: bold;
+        min-width: 25px;
+        text-align: center;
     }}
     
-    /* CONTENU PRINCIPAL - Leçon */
     .academy-main {{
         background: rgba(15, 23, 42, 0.6);
         border-radius: 16px;
@@ -35933,7 +36044,6 @@ async def crypto_academy_page(request: Request):
         box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
     }}
     
-    /* SIDEBAR DROITE - Progression */
     .academy-sidebar-right {{
         display: flex;
         flex-direction: column;
@@ -36064,7 +36174,6 @@ async def crypto_academy_page(request: Request):
         color: #10b981;
     }}
     
-    /* RESPONSIVE */
     @media (max-width: 1400px) {{
         .main-content {{
             grid-template-columns: 280px 1fr 320px;
@@ -36086,72 +36195,16 @@ async def crypto_academy_page(request: Request):
 </style>
 
 <div class="main-content">
-    <!-- SIDEBAR GAUCHE -->
     <div class="academy-sidebar-left">
         <div class="academy-logo">
             <h2>🎓 Academy</h2>
             <p style="color: #94a3b8; font-size: 0.9em;">54 Leçons</p>
         </div>
         
-        <!-- Parcours 1 -->
-        <div class="parcours-section">
-            <div class="parcours-title" onclick="toggleParcours(1)">
-                <span>📚</span>
-                <span>Les Bases</span>
-                <span class="parcours-progress">0/18</span>
-            </div>
-            <div class="lessons-list" id="parcours-1">
-                <div class="lesson-item" onclick="loadLesson(1)">
-                    <span class="lesson-icon">1</span>
-                    <span>C'est quoi une crypto ?</span>
-                </div>
-                <div class="lesson-item" onclick="loadLesson(2)">
-                    <span class="lesson-icon">2</span>
-                    <span>La Blockchain</span>
-                </div>
-                <div class="lesson-item" onclick="loadLesson(3)">
-                    <span class="lesson-icon">3</span>
-                    <span>Bitcoin en profondeur</span>
-                </div>
-                <!-- Autres leçons... -->
-            </div>
-        </div>
-        
-        <!-- Parcours 2 -->
-        <div class="parcours-section">
-            <div class="parcours-title" onclick="toggleParcours(2)">
-                <span>📊</span>
-                <span>Trading 101</span>
-                <span class="parcours-progress">0/18</span>
-            </div>
-            <div class="lessons-list" id="parcours-2">
-                <div class="lesson-item" onclick="loadLesson(19)">
-                    <span class="lesson-icon">19</span>
-                    <span>Introduction Trading</span>
-                </div>
-                <!-- Autres leçons... -->
-            </div>
-        </div>
-        
-        <!-- Parcours 3 -->
-        <div class="parcours-section">
-            <div class="parcours-title" onclick="toggleParcours(3)">
-                <span>🔐</span>
-                <span>Sécurité</span>
-                <span class="parcours-progress">0/18</span>
-            </div>
-            <div class="lessons-list" id="parcours-3">
-                <div class="lesson-item" onclick="loadLesson(37)">
-                    <span class="lesson-icon">37</span>
-                    <span>Les Menaces Crypto</span>
-                </div>
-                <!-- Autres leçons... -->
-            </div>
-        </div>
+        {parcours_html}
     </div>
     
-    <!-- CONTENU PRINCIPAL -->
-    <div class="academy-main">
+    <div class="academy-main" id="lessonContent">
         <div class="lesson-header">
             <div class="breadcrumb">
                 Parcours 1: Les Bases › Module 1 › Leçon 1
@@ -36237,12 +36290,8 @@ async def crypto_academy_page(request: Request):
                 </tbody>
             </table>
             
-            <h2>Exemples Concrets</h2>
-            <p><strong>Envoi d'argent traditionnel :</strong> Tu dois passer par une banque, payer 30-50€ de frais, attendre 3-5 jours.</p>
-            <p><strong>Envoi de Bitcoin :</strong> Tu envoies directement à n'importe qui dans le monde, 1-5$ de frais, 10-30 minutes.</p>
-            
             <h2>Résumé</h2>
-            <p>Les cryptomonnaies sont une forme d'argent numérique qui fonctionne sans banque ni gouvernement, grâce à la technologie blockchain. Bitcoin est la première et la plus connue, mais il en existe des milliers d'autres !</p>
+            <p>Les cryptomonnaies sont une forme d'argent numérique qui fonctionne sans banque ni gouvernement, grâce à la technologie blockchain. Bitcoin est la première et la plus connue !</p>
         </div>
         
         <button class="start-quiz-btn" onclick="startQuiz()">
@@ -36250,9 +36299,7 @@ async def crypto_academy_page(request: Request):
         </button>
     </div>
     
-    <!-- SIDEBAR DROITE -->
     <div class="academy-sidebar-right">
-        <!-- Niveau & XP -->
         <div class="progress-card">
             <div class="level-display">
                 <div class="level-number">1</div>
@@ -36264,7 +36311,6 @@ async def crypto_academy_page(request: Request):
             <div class="xp-text">0 / 500 XP</div>
         </div>
         
-        <!-- Badges -->
         <div class="badges-card">
             <div class="card-title">
                 🏆 Badges
@@ -36309,7 +36355,6 @@ async def crypto_academy_page(request: Request):
             </div>
         </div>
         
-        <!-- Stats -->
         <div class="stats-card">
             <div class="card-title">
                 📈 Statistiques
@@ -36337,24 +36382,36 @@ async def crypto_academy_page(request: Request):
 <script>
 function toggleParcours(parcoursId) {{
     const list = document.getElementById('parcours-' + parcoursId);
-    list.classList.toggle('active');
+    if (list) {{
+        list.classList.toggle('active');
+    }}
 }}
 
 function loadLesson(lessonId) {{
-    console.log('Loading lesson:', lessonId);
-    // TODO: Charger la leçon via API
-    alert('Chargement de la leçon ' + lessonId);
+    // Pour l'instant, seule la leçon 1 a du contenu
+    if (lessonId === 1) {{
+        // Déjà affiché
+        alert('Leçon 1 déjà affichée !');
+    }} else {{
+        alert('Leçon ' + lessonId + ' : Contenu à venir !\\n\\nPour l\\'instant, seule la Leçon 1 est complète.\\nLes 53 autres leçons seront ajoutées prochainement.');
+    }}
 }}
 
 function startQuiz() {{
-    alert('Quiz démarré ! (À implémenter avec les vraies questions)');
+    alert('Quiz de la Leçon 1\\n\\nFonctionnalité à implémenter:\\n- 5 questions sur la cryptomonnaie\\n- Score calculé\\n- XP gagné si réussi\\n- Badge débloqué');
 }}
 
-// Auto-expand premier parcours
-document.getElementById('parcours-1').classList.add('active');
+// Auto-expand premier parcours au chargement
+document.addEventListener('DOMContentLoaded', function() {{
+    const firstParcours = document.getElementById('parcours-1');
+    if (firstParcours) {{
+        firstParcours.classList.add('active');
+    }}
+}});
 </script>
 </body>
 </html>
+""")
 """)
 @app.get("/api/academy/progress")
 async def get_academy_progress(request: Request):

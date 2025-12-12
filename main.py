@@ -5011,7 +5011,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         .stat-label { font-size: 1em; color: rgba(255, 255, 255, 0.6); font-weight: 500; text-transform: uppercase; letter-spacing: 2px; }
         .stat-chart { margin-top: 20px; height: 50px; position: relative; }
         .mini-sparkline { width: 100%; height: 100%; }
-        .section-title { font-size: 2.5em; font-weight: 800; text-align: center; margin: 80px 0 40px; background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .page-section-title { font-size: 2.5em; font-weight: 800; text-align: center; margin: 80px 0 40px; background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .crypto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; margin-bottom: 60px; }
         .crypto-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 30px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
         .crypto-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.4); box-shadow: 0 20px 50px rgba(102, 126, 234, 0.3); }
@@ -5045,7 +5045,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
             <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
         <div class="section-divider"></div>
-        <h2 class="section-title">📊 Aperçu du Marché Crypto</h2>
+        <h2 class="page-section-title">📊 Aperçu du Marché Crypto</h2>
         <div class="crypto-grid">
             <div class="crypto-card"><span class="crypto-icon">₿</span><h3 class="crypto-title">Bitcoin (BTC)</h3><div class="crypto-value">$98,245</div><span class="crypto-change positive">+2.34%</span></div>
             <div class="crypto-card"><span class="crypto-icon">Ξ</span><h3 class="crypto-title">Ethereum (ETH)</h3><div class="crypto-value">$3,842</div><span class="crypto-change positive">+3.12%</span></div>
@@ -5107,7 +5107,7 @@ async def home():
         .stat-label { font-size: 1em; color: rgba(255, 255, 255, 0.6); font-weight: 500; text-transform: uppercase; letter-spacing: 2px; }
         .stat-chart { margin-top: 20px; height: 50px; position: relative; }
         .mini-sparkline { width: 100%; height: 100%; }
-        .section-title { font-size: 2.5em; font-weight: 800; text-align: center; margin: 80px 0 40px; background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .page-section-title { font-size: 2.5em; font-weight: 800; text-align: center; margin: 80px 0 40px; background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .crypto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; margin-bottom: 60px; }
         .crypto-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 30px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
         .crypto-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.4); box-shadow: 0 20px 50px rgba(102, 126, 234, 0.3); }
@@ -5141,7 +5141,7 @@ async def home():
             <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
         <div class="section-divider"></div>
-        <h2 class="section-title">📊 Aperçu du Marché Crypto</h2>
+        <h2 class="page-section-title">📊 Aperçu du Marché Crypto</h2>
         <div class="crypto-grid">
             <div class="crypto-card"><span class="crypto-icon">₿</span><h3 class="crypto-title">Bitcoin (BTC)</h3><div class="crypto-value">$98,245</div><span class="crypto-change positive">+2.34%</span></div>
             <div class="crypto-card"><span class="crypto-icon">Ξ</span><h3 class="crypto-title">Ethereum (ETH)</h3><div class="crypto-value">$3,842</div><span class="crypto-change positive">+3.12%</span></div>

@@ -35680,6 +35680,11 @@ class AIChatMessage(BaseModel):
 
 # ========== ROUTE: PAGE PRINCIPALE ACADEMY ==========
 
+# ============================================================================
+# 🎓 CRYPTO ACADEMY - ROUTE COMPLÈTE (CSS/JS intégrés)
+# ============================================================================
+# Cette route remplace celle avec fichiers externes
+
 @app.get("/crypto-academy", response_class=HTMLResponse)
 async def crypto_academy_page(request: Request):
     """Page principale de l'Academy"""
@@ -35706,27 +35711,651 @@ async def crypto_academy_page(request: Request):
     except:
         progress = {}
     
-    # Charger l'interface complète
-    try:
-        with open("/home/claude/academy_interface_css.html", "r", encoding="utf-8") as f:
-            css_content = f.read()
+    # Interface complète avec CSS et JS intégrés
+    return HTMLResponse(SIDEBAR + CSS + f"""
+<style>
+    /* ACADEMY INTERFACE CSS */
+    .main-content {{
+        margin-left: 80px;
+        padding: 20px;
+        display: grid;
+        grid-template-columns: 320px 1fr 380px;
+        gap: 20px;
+        min-height: 100vh;
+    }}
+    
+    /* SIDEBAR GAUCHE - Parcours */
+    .academy-sidebar-left {{
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+        height: fit-content;
+        position: sticky;
+        top: 20px;
+    }}
+    
+    .academy-logo {{
+        text-align: center;
+        margin-bottom: 30px;
+    }}
+    
+    .academy-logo h2 {{
+        font-size: 1.8em;
+        background: linear-gradient(135deg, #6366f1, #a855f7);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0;
+    }}
+    
+    .parcours-section {{
+        margin-bottom: 25px;
+    }}
+    
+    .parcours-title {{
+        font-size: 1.1em;
+        font-weight: bold;
+        color: #60a5fa;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        padding: 10px;
+        border-radius: 8px;
+        transition: all 0.3s;
+    }}
+    
+    .parcours-title:hover {{
+        background: rgba(96, 165, 250, 0.1);
+    }}
+    
+    .parcours-progress {{
+        font-size: 0.85em;
+        color: #94a3b8;
+        margin-left: auto;
+    }}
+    
+    .lessons-list {{
+        display: none;
+        margin-left: 15px;
+        border-left: 2px solid rgba(100, 116, 139, 0.3);
+        padding-left: 15px;
+    }}
+    
+    .lessons-list.active {{
+        display: block;
+        animation: slideDown 0.3s ease-out;
+    }}
+    
+    @keyframes slideDown {{
+        from {{ opacity: 0; transform: translateY(-10px); }}
+        to {{ opacity: 1; transform: translateY(0); }}
+    }}
+    
+    .lesson-item {{
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 0.9em;
+        color: #cbd5e1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }}
+    
+    .lesson-item:hover {{
+        background: rgba(100, 116, 139, 0.2);
+        transform: translateX(5px);
+    }}
+    
+    .lesson-item.completed {{
+        border-left: 3px solid #10b981;
+        background: rgba(16, 185, 129, 0.1);
+    }}
+    
+    .lesson-item.active {{
+        background: linear-gradient(90deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.2));
+        border-left: 3px solid #6366f1;
+    }}
+    
+    .lesson-icon {{
+        font-size: 1.2em;
+    }}
+    
+    /* CONTENU PRINCIPAL - Leçon */
+    .academy-main {{
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 16px;
+        padding: 30px;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+    }}
+    
+    .lesson-header {{
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid rgba(100, 116, 139, 0.3);
+    }}
+    
+    .breadcrumb {{
+        font-size: 0.9em;
+        color: #94a3b8;
+        margin-bottom: 15px;
+    }}
+    
+    .lesson-title {{
+        font-size: 2.5em;
+        background: linear-gradient(135deg, #60a5fa, #a855f7);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 15px;
+    }}
+    
+    .lesson-meta {{
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }}
+    
+    .meta-badge {{
+        background: rgba(59, 130, 246, 0.2);
+        border: 1px solid #3b82f6;
+        color: #60a5fa;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }}
+    
+    .lesson-content {{
+        font-size: 1.1em;
+        line-height: 1.8;
+        color: #e2e8f0;
+    }}
+    
+    .lesson-content h2 {{
+        color: #60a5fa;
+        margin: 30px 0 15px 0;
+    }}
+    
+    .lesson-content h3 {{
+        color: #818cf8;
+        margin: 25px 0 12px 0;
+    }}
+    
+    .lesson-content ul {{
+        margin: 15px 0;
+        padding-left: 25px;
+    }}
+    
+    .lesson-content li {{
+        margin: 10px 0;
+    }}
+    
+    .lesson-content table {{
+        width: 100%;
+        margin: 20px 0;
+        border-collapse: collapse;
+    }}
+    
+    .lesson-content th {{
+        background: rgba(99, 102, 241, 0.2);
+        padding: 12px;
+        text-align: left;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+    }}
+    
+    .lesson-content td {{
+        padding: 12px;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+    }}
+    
+    .start-quiz-btn {{
+        background: linear-gradient(45deg, #10b981, #14b8a6);
+        border: none;
+        border-radius: 12px;
+        padding: 15px 40px;
+        color: white;
+        font-weight: bold;
+        font-size: 1.1em;
+        cursor: pointer;
+        margin-top: 30px;
+        transition: all 0.3s;
+        width: 100%;
+    }}
+    
+    .start-quiz-btn:hover {{
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }}
+    
+    /* SIDEBAR DROITE - Progression */
+    .academy-sidebar-right {{
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        height: fit-content;
+        position: sticky;
+        top: 20px;
+    }}
+    
+    .progress-card, .badges-card, .stats-card {{
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+    }}
+    
+    .card-title {{
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #60a5fa;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }}
+    
+    .level-display {{
+        text-align: center;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+        border-radius: 12px;
+        margin-bottom: 15px;
+    }}
+    
+    .level-number {{
+        font-size: 3em;
+        font-weight: bold;
+        background: linear-gradient(135deg, #6366f1, #a855f7);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }}
+    
+    .level-name {{
+        font-size: 1.2em;
+        color: #818cf8;
+        margin-top: 5px;
+    }}
+    
+    .xp-bar {{
+        width: 100%;
+        height: 12px;
+        background: rgba(100, 116, 139, 0.3);
+        border-radius: 6px;
+        overflow: hidden;
+        margin: 10px 0;
+    }}
+    
+    .xp-fill {{
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #14b8a6);
+        transition: width 0.5s ease-out;
+    }}
+    
+    .xp-text {{
+        text-align: center;
+        font-size: 0.9em;
+        color: #94a3b8;
+        margin-top: 5px;
+    }}
+    
+    .badges-grid {{
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+    }}
+    
+    .badge-item {{
+        text-align: center;
+        padding: 15px 10px;
+        background: rgba(30, 41, 59, 0.8);
+        border-radius: 12px;
+        border: 2px solid #334155;
+        transition: all 0.3s;
+    }}
+    
+    .badge-item.unlocked {{
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+        animation: pulse 2s infinite;
+    }}
+    
+    @keyframes pulse {{
+        0%, 100% {{ transform: scale(1); }}
+        50% {{ transform: scale(1.05); }}
+    }}
+    
+    .badge-item.locked {{
+        opacity: 0.4;
+    }}
+    
+    .badge-icon {{
+        font-size: 2em;
+        margin-bottom: 8px;
+    }}
+    
+    .badge-name {{
+        font-size: 0.75em;
+        color: #94a3b8;
+    }}
+    
+    .stat-row {{
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+    }}
+    
+    .stat-row:last-child {{
+        border-bottom: none;
+    }}
+    
+    .stat-label {{
+        color: #94a3b8;
+    }}
+    
+    .stat-value {{
+        font-weight: bold;
+        color: #10b981;
+    }}
+    
+    /* RESPONSIVE */
+    @media (max-width: 1400px) {{
+        .main-content {{
+            grid-template-columns: 280px 1fr 320px;
+            gap: 15px;
+        }}
+    }}
+    
+    @media (max-width: 1200px) {{
+        .main-content {{
+            grid-template-columns: 1fr;
+            margin-left: 0;
+        }}
         
-        with open("/home/claude/academy_interface_js.html", "r", encoding="utf-8") as f:
-            js_content = f.read()
-    except:
-        return HTMLResponse(SIDEBAR + "<div class='main-content'><h1>Erreur: Fichiers interface non trouvés</h1></div>")
-    
-    # Injecter le SIDEBAR + interface complète
-    full_html = f"""
-    {SIDEBAR}
-    {css_content}
-    {js_content}
-    """.replace("{{username}}", username)
-    
-    return HTMLResponse(full_html)
+        .academy-sidebar-left,
+        .academy-sidebar-right {{
+            position: static;
+        }}
+    }}
+</style>
 
-# ========== API: PROGRESSION UTILISATEUR ==========
+<div class="main-content">
+    <!-- SIDEBAR GAUCHE -->
+    <div class="academy-sidebar-left">
+        <div class="academy-logo">
+            <h2>🎓 Academy</h2>
+            <p style="color: #94a3b8; font-size: 0.9em;">54 Leçons</p>
+        </div>
+        
+        <!-- Parcours 1 -->
+        <div class="parcours-section">
+            <div class="parcours-title" onclick="toggleParcours(1)">
+                <span>📚</span>
+                <span>Les Bases</span>
+                <span class="parcours-progress">0/18</span>
+            </div>
+            <div class="lessons-list" id="parcours-1">
+                <div class="lesson-item" onclick="loadLesson(1)">
+                    <span class="lesson-icon">1</span>
+                    <span>C'est quoi une crypto ?</span>
+                </div>
+                <div class="lesson-item" onclick="loadLesson(2)">
+                    <span class="lesson-icon">2</span>
+                    <span>La Blockchain</span>
+                </div>
+                <div class="lesson-item" onclick="loadLesson(3)">
+                    <span class="lesson-icon">3</span>
+                    <span>Bitcoin en profondeur</span>
+                </div>
+                <!-- Autres leçons... -->
+            </div>
+        </div>
+        
+        <!-- Parcours 2 -->
+        <div class="parcours-section">
+            <div class="parcours-title" onclick="toggleParcours(2)">
+                <span>📊</span>
+                <span>Trading 101</span>
+                <span class="parcours-progress">0/18</span>
+            </div>
+            <div class="lessons-list" id="parcours-2">
+                <div class="lesson-item" onclick="loadLesson(19)">
+                    <span class="lesson-icon">19</span>
+                    <span>Introduction Trading</span>
+                </div>
+                <!-- Autres leçons... -->
+            </div>
+        </div>
+        
+        <!-- Parcours 3 -->
+        <div class="parcours-section">
+            <div class="parcours-title" onclick="toggleParcours(3)">
+                <span>🔐</span>
+                <span>Sécurité</span>
+                <span class="parcours-progress">0/18</span>
+            </div>
+            <div class="lessons-list" id="parcours-3">
+                <div class="lesson-item" onclick="loadLesson(37)">
+                    <span class="lesson-icon">37</span>
+                    <span>Les Menaces Crypto</span>
+                </div>
+                <!-- Autres leçons... -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- CONTENU PRINCIPAL -->
+    <div class="academy-main">
+        <div class="lesson-header">
+            <div class="breadcrumb">
+                Parcours 1: Les Bases › Module 1 › Leçon 1
+            </div>
+            <h1 class="lesson-title">C'est quoi une cryptomonnaie ?</h1>
+            <div class="lesson-meta">
+                <div class="meta-badge">
+                    <span>⏱️</span>
+                    <span>10 minutes</span>
+                </div>
+                <div class="meta-badge">
+                    <span>⭐</span>
+                    <span>100 XP</span>
+                </div>
+                <div class="meta-badge">
+                    <span>📝</span>
+                    <span>5 questions</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="lesson-content">
+            <h2>Introduction</h2>
+            <p>Bienvenue dans ta première leçon ! Aujourd'hui, nous allons découvrir ce qu'est une cryptomonnaie et pourquoi elle révolutionne le monde de la finance.</p>
+            
+            <h2>L'Histoire de l'Argent</h2>
+            <p>Avant de comprendre les cryptomonnaies, revenons aux origines de l'argent :</p>
+            <ul>
+                <li><strong>Troc</strong> : Échange direct de biens</li>
+                <li><strong>Monnaies physiques</strong> : Or, argent, pièces</li>
+                <li><strong>Billets de banque</strong> : Papier représentant une valeur</li>
+                <li><strong>Monnaie numérique</strong> : Cartes bancaires, virements</li>
+                <li><strong>Cryptomonnaies</strong> : L'évolution ultime 🚀</li>
+            </ul>
+            
+            <h2>Bitcoin : La Révolution</h2>
+            <p>En 2009, une personne (ou un groupe) sous le pseudonyme <strong>Satoshi Nakamoto</strong> a créé Bitcoin, la première cryptomonnaie décentralisée.</p>
+            
+            <h3>Qu'est-ce qui rend Bitcoin révolutionnaire ?</h3>
+            <ul>
+                <li>🔒 <strong>Décentralisé</strong> : Aucune banque ou gouvernement ne le contrôle</li>
+                <li>💻 <strong>Numérique</strong> : Existe uniquement sur Internet</li>
+                <li>🔐 <strong>Sécurisé</strong> : Cryptographie militaire</li>
+                <li>🌍 <strong>Global</strong> : Fonctionne partout dans le monde</li>
+                <li>💰 <strong>Rare</strong> : Maximum 21 millions de BTC</li>
+            </ul>
+            
+            <h2>Crypto vs Monnaie Traditionnelle</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Monnaie Traditionnelle</th>
+                        <th>Cryptomonnaie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Contrôle</td>
+                        <td>Banques centrales</td>
+                        <td>Réseau décentralisé</td>
+                    </tr>
+                    <tr>
+                        <td>Supply</td>
+                        <td>Illimitée (impression)</td>
+                        <td>Limitée et programmée</td>
+                    </tr>
+                    <tr>
+                        <td>Transactions</td>
+                        <td>Intermédiaires requis</td>
+                        <td>Peer-to-peer direct</td>
+                    </tr>
+                    <tr>
+                        <td>Frais</td>
+                        <td>Élevés (intl)</td>
+                        <td>Faibles ou nuls</td>
+                    </tr>
+                    <tr>
+                        <td>Vitesse</td>
+                        <td>Jours (intl)</td>
+                        <td>Minutes/secondes</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h2>Exemples Concrets</h2>
+            <p><strong>Envoi d'argent traditionnel :</strong> Tu dois passer par une banque, payer 30-50€ de frais, attendre 3-5 jours.</p>
+            <p><strong>Envoi de Bitcoin :</strong> Tu envoies directement à n'importe qui dans le monde, 1-5$ de frais, 10-30 minutes.</p>
+            
+            <h2>Résumé</h2>
+            <p>Les cryptomonnaies sont une forme d'argent numérique qui fonctionne sans banque ni gouvernement, grâce à la technologie blockchain. Bitcoin est la première et la plus connue, mais il en existe des milliers d'autres !</p>
+        </div>
+        
+        <button class="start-quiz-btn" onclick="startQuiz()">
+            📝 Commencer le Quiz (5 questions)
+        </button>
+    </div>
+    
+    <!-- SIDEBAR DROITE -->
+    <div class="academy-sidebar-right">
+        <!-- Niveau & XP -->
+        <div class="progress-card">
+            <div class="level-display">
+                <div class="level-number">1</div>
+                <div class="level-name">🌱 Novice</div>
+            </div>
+            <div class="xp-bar">
+                <div class="xp-fill" style="width: 0%"></div>
+            </div>
+            <div class="xp-text">0 / 500 XP</div>
+        </div>
+        
+        <!-- Badges -->
+        <div class="badges-card">
+            <div class="card-title">
+                🏆 Badges
+            </div>
+            <div class="badges-grid">
+                <div class="badge-item locked">
+                    <div class="badge-icon">🔒</div>
+                    <div class="badge-name">Première Leçon</div>
+                </div>
+                <div class="badge-item locked">
+                    <div class="badge-icon">🔒</div>
+                    <div class="badge-name">Débutant</div>
+                </div>
+                <div class="badge-item locked">
+                    <div class="badge-icon">🔒</div>
+                    <div class="badge-name">Intermédiaire</div>
+                </div>
+                <div class="badge-item locked">
+                    <div class="badge-icon">🔒</div>
+                    <div class="badge-name">Expert</div>
+                </div>
+                <div class="badge-item locked">
+                    <div class="badge-icon">🔒</div>
+                    <div class="badge-name">Quiz Master</div>
+                </div>
+                <div class="badge-item locked">
+                    <div class="badge-icon">🔒</div>
+                    <div class="badge-name">Curieux</div>
+                </div>
+                <div class="badge-item locked">
+                    <div class="badge-icon">🔒</div>
+                    <div class="badge-name">Dédié</div>
+                </div>
+                <div class="badge-item locked">
+                    <div class="badge-icon">🔒</div>
+                    <div class="badge-name">Sécurité Pro</div>
+                </div>
+                <div class="badge-item locked">
+                    <div class="badge-icon">🔒</div>
+                    <div class="badge-name">DeFi Expert</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stats -->
+        <div class="stats-card">
+            <div class="card-title">
+                📈 Statistiques
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Leçons Complétées</span>
+                <span class="stat-value">0/54</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Quiz Réussis</span>
+                <span class="stat-value">0/30</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Streak</span>
+                <span class="stat-value">0 jours</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Temps Total</span>
+                <span class="stat-value">0h</span>
+            </div>
+        </div>
+    </div>
+</div>
 
+<script>
+function toggleParcours(parcoursId) {{
+    const list = document.getElementById('parcours-' + parcoursId);
+    list.classList.toggle('active');
+}}
+
+function loadLesson(lessonId) {{
+    console.log('Loading lesson:', lessonId);
+    // TODO: Charger la leçon via API
+    alert('Chargement de la leçon ' + lessonId);
+}}
+
+function startQuiz() {{
+    alert('Quiz démarré ! (À implémenter avec les vraies questions)');
+}}
+
+// Auto-expand premier parcours
+document.getElementById('parcours-1').classList.add('active');
+</script>
+</body>
+</html>
+""")
 @app.get("/api/academy/progress")
 async def get_academy_progress(request: Request):
     """Récupère la progression complète de l'utilisateur"""

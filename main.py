@@ -35884,17 +35884,17 @@ async def crypto_academy_page(request: Request):
     }}
     
     .lessons-list {{
-        display: none;
+        display: block;
         margin-left: 15px;
         border-left: 2px solid rgba(100, 116, 139, 0.3);
         padding-left: 15px;
-        max-height: 400px;
+        max-height: 1000px;
         overflow-y: auto;
+        animation: slideDown 0.3s ease-out;
     }}
     
-    .lessons-list.active {{
-        display: block;
-        animation: slideDown 0.3s ease-out;
+    .lessons-list.collapsed {{
+        display: none;
     }}
     
     @keyframes slideDown {{
@@ -36383,7 +36383,7 @@ async def crypto_academy_page(request: Request):
 function toggleParcours(parcoursId) {{
     const list = document.getElementById('parcours-' + parcoursId);
     if (list) {{
-        list.classList.toggle('active');
+        list.classList.toggle('collapsed');
     }}
 }}
 
@@ -36401,13 +36401,7 @@ function startQuiz() {{
     alert('Quiz de la Leçon 1\\n\\nFonctionnalité à implémenter:\\n- 5 questions sur la cryptomonnaie\\n- Score calculé\\n- XP gagné si réussi\\n- Badge débloqué');
 }}
 
-// Auto-expand premier parcours au chargement
-document.addEventListener('DOMContentLoaded', function() {{
-    const firstParcours = document.getElementById('parcours-1');
-    if (firstParcours) {{
-        firstParcours.classList.add('active');
-    }}
-}});
+// Toutes les leçons sont visibles par défaut (pas besoin d'auto-expand)
 </script>
 </body>
 </html>

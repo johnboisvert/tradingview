@@ -35691,11 +35691,10 @@ class AIChatMessage(BaseModel):
 
 @app.get("/crypto-academy", response_class=HTMLResponse)
 async def crypto_academy_page(request: Request):
-    """🎓 CRYPTO ACADEMY - 54 Leçons - VERSION ULTRA-SIMPLE GARANTIE"""
+    """🎓 CRYPTO ACADEMY - Système Accordéon (Clic pour ouvrir/fermer)"""
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     
-    # Extraire le username
     if isinstance(user_data, str):
         username = user_data
     elif isinstance(user_data, dict):
@@ -35707,9 +35706,8 @@ async def crypto_academy_page(request: Request):
         return RedirectResponse(url="/login?redirect=/crypto-academy")
     
     if not ACADEMY_AVAILABLE:
-        return HTMLResponse(SIDEBAR + "<div class='main-content'><h1>Academy non disponible</h1><p>Fichiers manquants: lessons_data.py, academy_config.py, academy_database.py</p></div>")
+        return HTMLResponse(SIDEBAR + "<div class='main-content'><h1>Academy non disponible</h1></div>")
     
-    # HTML ULTRA-SIMPLE - TOUTES LES 54 LEÇONS VISIBLES
     return HTMLResponse(SIDEBAR + CSS + """
 <style>
     .academy-container {
@@ -35749,27 +35747,54 @@ async def crypto_academy_page(request: Request):
     }
     
     .parcours-section {
-        margin-bottom: 30px;
+        margin-bottom: 20px;
     }
     
     .parcours-header {
-        font-size: 1.2em;
+        font-size: 1.15em;
         font-weight: bold;
         color: #60a5fa;
-        margin-bottom: 15px;
-        padding: 12px;
+        padding: 15px;
         background: rgba(96, 165, 250, 0.1);
         border-radius: 8px;
         border-left: 4px solid #60a5fa;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .parcours-header:hover {
+        background: rgba(96, 165, 250, 0.2);
+        transform: translateX(3px);
+    }
+    
+    .parcours-arrow {
+        font-size: 1.3em;
+        transition: transform 0.3s;
+    }
+    
+    .parcours-header.open .parcours-arrow {
+        transform: rotate(180deg);
     }
     
     .lessons-container {
-        padding-left: 10px;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.4s ease-out;
+        padding-left: 15px;
+        margin-top: 0;
+    }
+    
+    .lessons-container.open {
+        max-height: 2000px;
+        margin-top: 10px;
     }
     
     .lesson-item {
         padding: 12px 15px;
-        margin: 8px 0;
+        margin: 6px 0;
         background: rgba(30, 41, 59, 0.6);
         border-radius: 8px;
         cursor: pointer;
@@ -35783,7 +35808,7 @@ async def crypto_academy_page(request: Request):
     }
     
     .lesson-item:hover {
-        background: rgba(100, 116, 139, 0.3);
+        background: rgba(100, 116, 139, 0.4);
         transform: translateX(8px);
         border-left-color: #6366f1;
     }
@@ -35796,6 +35821,7 @@ async def crypto_academy_page(request: Request):
         padding: 4px 8px;
         border-radius: 6px;
         color: #818cf8;
+        font-size: 0.9em;
     }
     
     .academy-main {
@@ -36039,7 +36065,7 @@ async def crypto_academy_page(request: Request):
             grid-template-columns: 300px 1fr 350px;
             gap: 15px;
         }
-    }}
+    }
     
     @media (max-width: 1200px) {
         .academy-container {
@@ -36064,77 +36090,80 @@ async def crypto_academy_page(request: Request):
         
         <!-- PARCOURS 1: LES BASES (18 leçons) -->
         <div class="parcours-section">
-            <div class="parcours-header">📚 Les Bases (0/18)</div>
-            <div class="lessons-container">
-                <div class="lesson-item" onclick="alert('Leçon 1 déjà affichée !')">
+            <div class="parcours-header" onclick="toggleParcours('bases')">
+                <span>📚 Les Bases (0/18)</span>
+                <span class="parcours-arrow">▼</span>
+            </div>
+            <div class="lessons-container" id="lessons-bases">
+                <div class="lesson-item" onclick="loadLesson(1)">
                     <span class="lesson-number">1</span>
                     <span>C'est quoi une crypto ?</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 2 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(2)">
                     <span class="lesson-number">2</span>
                     <span>La Blockchain</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 3 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(3)">
                     <span class="lesson-number">3</span>
                     <span>Bitcoin en profondeur</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 4 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(4)">
                     <span class="lesson-number">4</span>
                     <span>Ethereum et Smart Contracts</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 5 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(5)">
                     <span class="lesson-number">5</span>
                     <span>Les Altcoins</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 6 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(6)">
                     <span class="lesson-number">6</span>
                     <span>Wallets : Protéger ses cryptos</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 7 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(7)">
                     <span class="lesson-number">7</span>
                     <span>Choisir son Exchange</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 8 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(8)">
                     <span class="lesson-number">8</span>
                     <span>Premiers Achats</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 9 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(9)">
                     <span class="lesson-number">9</span>
                     <span>Sécuriser ses Cryptos</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 10 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(10)">
                     <span class="lesson-number">10</span>
                     <span>Staking et Yield</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 11 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(11)">
                     <span class="lesson-number">11</span>
                     <span>DeFi pour Débutants</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 12 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(12)">
                     <span class="lesson-number">12</span>
                     <span>NFTs : C'est quoi ?</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 13 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(13)">
                     <span class="lesson-number">13</span>
                     <span>Market Cap et Dominance</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 14 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(14)">
                     <span class="lesson-number">14</span>
                     <span>Cycles de Marché</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 15 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(15)">
                     <span class="lesson-number">15</span>
                     <span>Tokenomics</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 16 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(16)">
                     <span class="lesson-number">16</span>
                     <span>On-Chain Analysis</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 17 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(17)">
                     <span class="lesson-number">17</span>
                     <span>Régulation et Fiscalité</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 18 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(18)">
                     <span class="lesson-number">18</span>
                     <span>L'Avenir des Cryptos</span>
                 </div>
@@ -36143,77 +36172,80 @@ async def crypto_academy_page(request: Request):
         
         <!-- PARCOURS 2: TRADING 101 (18 leçons) -->
         <div class="parcours-section">
-            <div class="parcours-header">📊 Trading 101 (0/18)</div>
-            <div class="lessons-container">
-                <div class="lesson-item" onclick="alert('Leçon 19 : Contenu à venir !')">
+            <div class="parcours-header" onclick="toggleParcours('trading')">
+                <span>📊 Trading 101 (0/18)</span>
+                <span class="parcours-arrow">▼</span>
+            </div>
+            <div class="lessons-container" id="lessons-trading">
+                <div class="lesson-item" onclick="loadLesson(19)">
                     <span class="lesson-number">19</span>
                     <span>Introduction au Trading</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 20 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(20)">
                     <span class="lesson-number">20</span>
                     <span>Lire un Graphique</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 21 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(21)">
                     <span class="lesson-number">21</span>
                     <span>Les Ordres de Trading</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 22 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(22)">
                     <span class="lesson-number">22</span>
                     <span>Risk Management</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 23 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(23)">
                     <span class="lesson-number">23</span>
                     <span>Psychologie du Trader</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 24 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(24)">
                     <span class="lesson-number">24</span>
                     <span>Les Erreurs à Éviter</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 25 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(25)">
                     <span class="lesson-number">25</span>
                     <span>RSI : Relative Strength Index</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 26 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(26)">
                     <span class="lesson-number">26</span>
                     <span>MACD</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 27 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(27)">
                     <span class="lesson-number">27</span>
                     <span>Moyennes Mobiles (EMA/SMA)</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 28 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(28)">
                     <span class="lesson-number">28</span>
                     <span>Bollinger Bands</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 29 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(29)">
                     <span class="lesson-number">29</span>
                     <span>Fibonacci Retracements</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 30 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(30)">
                     <span class="lesson-number">30</span>
                     <span>Volume Profile</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 31 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(31)">
                     <span class="lesson-number">31</span>
                     <span>Patterns Chartistes</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 32 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(32)">
                     <span class="lesson-number">32</span>
                     <span>Ichimoku Cloud</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 33 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(33)">
                     <span class="lesson-number">33</span>
                     <span>Smart Money Concepts</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 34 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(34)">
                     <span class="lesson-number">34</span>
                     <span>Scalping Strategies</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 35 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(35)">
                     <span class="lesson-number">35</span>
                     <span>Swing Trading</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 36 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(36)">
                     <span class="lesson-number">36</span>
                     <span>Backtesting</span>
                 </div>
@@ -36222,77 +36254,80 @@ async def crypto_academy_page(request: Request):
         
         <!-- PARCOURS 3: SÉCURITÉ (18 leçons) -->
         <div class="parcours-section">
-            <div class="parcours-header">🔐 Sécurité (0/18)</div>
-            <div class="lessons-container">
-                <div class="lesson-item" onclick="alert('Leçon 37 : Contenu à venir !')">
+            <div class="parcours-header" onclick="toggleParcours('securite')">
+                <span>🔐 Sécurité (0/18)</span>
+                <span class="parcours-arrow">▼</span>
+            </div>
+            <div class="lessons-container" id="lessons-securite">
+                <div class="lesson-item" onclick="loadLesson(37)">
                     <span class="lesson-number">37</span>
                     <span>Les Menaces Crypto</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 38 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(38)">
                     <span class="lesson-number">38</span>
                     <span>2FA et Mots de Passe</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 39 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(39)">
                     <span class="lesson-number">39</span>
                     <span>Seed Phrase Sécurisée</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 40 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(40)">
                     <span class="lesson-number">40</span>
                     <span>Reconnaître les Scams</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 41 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(41)">
                     <span class="lesson-number">41</span>
                     <span>Smart Contract Audits</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 42 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(42)">
                     <span class="lesson-number">42</span>
                     <span>Sécuriser son PC/Mobile</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 43 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(43)">
                     <span class="lesson-number">43</span>
                     <span>Hardware Wallets</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 44 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(44)">
                     <span class="lesson-number">44</span>
                     <span>Multi-Sig Wallets</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 45 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(45)">
                     <span class="lesson-number">45</span>
                     <span>Paper Wallets</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 46 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(46)">
                     <span class="lesson-number">46</span>
                     <span>Wallet Tracking</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 47 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(47)">
                     <span class="lesson-number">47</span>
                     <span>Cross-Chain Security</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 48 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(48)">
                     <span class="lesson-number">48</span>
                     <span>Recovery et Héritage</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 49 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(49)">
                     <span class="lesson-number">49</span>
                     <span>Impermanent Loss</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 50 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(50)">
                     <span class="lesson-number">50</span>
                     <span>Flash Loans et Exploits</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 51 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(51)">
                     <span class="lesson-number">51</span>
                     <span>Rug Pulls Détection</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 52 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(52)">
                     <span class="lesson-number">52</span>
                     <span>Assurance DeFi</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 53 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(53)">
                     <span class="lesson-number">53</span>
                     <span>Privacy Coins</span>
                 </div>
-                <div class="lesson-item" onclick="alert('Leçon 54 : Contenu à venir !')">
+                <div class="lesson-item" onclick="loadLesson(54)">
                     <span class="lesson-number">54</span>
                     <span>Sécurité Ultime</span>
                 </div>
@@ -36474,7 +36509,26 @@ async def crypto_academy_page(request: Request):
 </div>
 
 <script>
-// Script minimal - Juste pour le toggle sidebar mobile
+// Fonction pour ouvrir/fermer les parcours (ACCORDÉON)
+function toggleParcours(parcoursId) {
+    const container = document.getElementById('lessons-' + parcoursId);
+    const header = container.previousElementSibling;
+    
+    // Toggle classe "open"
+    container.classList.toggle('open');
+    header.classList.toggle('open');
+}
+
+// Fonction pour charger une leçon
+function loadLesson(lessonId) {
+    if (lessonId === 1) {
+        alert('Leçon 1 déjà affichée !');
+    } else {
+        alert('Leçon ' + lessonId + ' : Contenu à venir !\\n\\nPour l\\'instant, seule la Leçon 1 est complète.\\nLes 53 autres leçons seront ajoutées prochainement.');
+    }
+}
+
+// Toggle sidebar mobile
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('active');
     document.body.classList.toggle('sidebar-open');

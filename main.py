@@ -1118,6 +1118,35 @@ except Exception as e:
     ACADEMY_AVAILABLE = False
     print(f"⚠️ Academy not available: {e}")
 
+# ==================== HELPER FUNCTION HTML ====================
+def create_html_page(title: str, content: str) -> str:
+    """Crée une page HTML complète avec structure valide"""
+    return f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{title} - Crypto Trading Dashboard</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }}
+    </style>
+</head>
+<body>
+    {content}
+</body>
+</html>"""
+
+
 app = FastAPI()
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -35743,9 +35772,10 @@ async def crypto_academy_page(request: Request):
         return RedirectResponse(url="/login?redirect=/crypto-academy")
     
     if not ACADEMY_AVAILABLE:
-        return HTMLResponse(SIDEBAR + "<div class='main-content'><h1>Academy non disponible</h1></div>")
+        error_html = SIDEBAR + "<div class='main-content'><h1>Academy non disponible</h1></div>"
+        return HTMLResponse(create_html_page("Academy", error_html))
     
-    return HTMLResponse(SIDEBAR + CSS + """
+    academy_html = SIDEBAR + CSS + """
 <style>
     .academy-container {
         margin-left: 300px;
@@ -36574,7 +36604,9 @@ function toggleSidebar() {
 
 </body>
 </html>
-""")
+"""
+    return HTMLResponse(create_html_page("Crypto Academy", academy_html))
+
 @app.get("/api/academy/progress")
 async def get_academy_progress(request: Request):
     """Récupère la progression complète de l'utilisateur"""
@@ -37027,7 +37059,8 @@ async def academy_coach_page(request: Request):
     if not username:
         return RedirectResponse(url="/login?redirect=/coach")
     
-    return HTMLResponse(SIDEBAR + CSS + COACH_INTERFACE_HTML)
+    coach_html = f"{SIDEBAR}{CSS}{COACH_INTERFACE_HTML}"
+    return HTMLResponse(create_html_page("Claude AI Coach", coach_html))
 
 @app.get("/academy-progress", response_class=HTMLResponse)
 async def academy_progress_page(request: Request):
@@ -37072,6 +37105,6 @@ async def academy_progress_page(request: Request):
     </div>
 </div>
 """
-    return HTMLResponse(html)
+    return HTMLResponse(create_html_page("Ma Progression", html))
 
 print("✅ Routes Academy chargées!")

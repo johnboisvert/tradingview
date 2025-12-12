@@ -45,6 +45,12 @@ import requests  # Pour API externe (Fear & Greed, etc.)
 import time
 from urllib.parse import urlencode
 
+# ========== IMPORTS POUR NOUVELLES FEATURES ==========
+from collections import defaultdict
+from typing import List, Dict, Optional
+# =====================================================
+
+
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
 from technical_analyzer import analyzer
 
@@ -1640,33 +1646,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">💎</span>
                 <span class="label">Pépites Crypto</span>
             </a>
-            
-            <!-- 🆕🆕🆕 LES 5 NOUVELLES PAGES 🆕🆕🆕 -->
-            <a href="/narrative-radar" class="menu-item ai-feature">
-                <span class="icon">🎯</span>
-                <span class="label">Narrative Radar</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/ai-crypto-coach" class="menu-item ai-feature">
-                <span class="icon">🤖</span>
-                <span class="label">AI Crypto Coach</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/ai-swarm-agents" class="menu-item ai-feature">
-                <span class="icon">🤖</span>
-                <span class="label">AI Swarm Agents</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/altseason-copilot-pro" class="menu-item ai-feature">
-                <span class="icon">📈</span>
-                <span class="label">Altseason Copilot Pro</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/rug-scam-shield" class="menu-item ai-feature">
-                <span class="icon">🛡️</span>
-                <span class="label">Rug & Scam Shield</span>
-                <span class="badge">NEW</span>
-            </a>
         </div>
         
         <!-- 🛠️ OUTILS -->
@@ -1798,6 +1777,1324 @@ if PERMISSIONS_AVAILABLE and protected_router:
 # ============================================================================
 
 # ===== ROUTE DE DEBUG =====
+
+
+# ============================================================================
+# 🚀 NOUVELLES FEATURES - CODE COMPLET
+# ============================================================================
+# Narrative Radar, AI Crypto Coach, Altseason Copilot, Rug & Scam Shield
+# ============================================================================
+
+# ============================================================================
+# 🚀 NOUVEAU CODE À INTÉGRER DANS MAIN.PY
+# ============================================================================
+# Ce fichier contient TOUT le code des 5 nouvelles features
+# Il sera automatiquement intégré par le script install_features.py
+# ============================================================================
+
+# ============================================================================
+# 📦 IMPORTS NÉCESSAIRES (à ajouter avec tes imports existants)
+# ============================================================================
+"""
+IMPORTS_TO_ADD = '''
+import httpx
+import asyncio
+from collections import defaultdict
+from datetime import datetime, timedelta
+from typing import List, Dict, Optional
+import json
+'''
+"""
+
+# ============================================================================
+# 🎯 NARRATIVE RADAR - SYSTÈME COMPLET
+# ============================================================================
+
+NARRATIVES_CONFIG = {
+    "AI": {
+        "name": "Intelligence Artificielle",
+        "icon": "🤖",
+        "color": "#8b5cf6",
+        "keywords": [
+            "ai", "artificial intelligence", "machine learning", "llm",
+            "chatgpt", "gpt", "neural", "agent", "autonomous",
+            "fetch.ai", "render", "akash", "bittensor", "worldcoin",
+            "ocean protocol"
+        ],
+        "top_coins": ["FET", "RNDR", "AKT", "TAO", "WLD", "OCEAN"],
+        "description": "Tokens liés à l'intelligence artificielle, ML, agents autonomes"
+    },
+    "DeFi": {
+        "name": "Finance Décentralisée",
+        "icon": "💰",
+        "color": "#10b981",
+        "keywords": [
+            "defi", "decentralized finance", "yield", "lending", "borrowing",
+            "dex", "swap", "liquidity", "amm", "farming",
+            "aave", "uniswap", "curve", "compound", "maker"
+        ],
+        "top_coins": ["AAVE", "UNI", "CRV", "COMP", "MKR", "SNX"],
+        "description": "Protocoles de prêt, DEX, yield farming, staking"
+    },
+    "RWA": {
+        "name": "Real World Assets",
+        "icon": "🏦",
+        "color": "#f59e0b",
+        "keywords": [
+            "rwa", "real world asset", "tokenization", "tokenize",
+            "real estate", "property", "bond", "treasury",
+            "centrifuge", "ondo", "maple", "goldfinch"
+        ],
+        "top_coins": ["CFG", "ONDO", "MPL", "GFI", "RIO"],
+        "description": "Tokenisation d'actifs réels (immobilier, obligations, etc.)"
+    },
+    "Gaming": {
+        "name": "Gaming & Metaverse",
+        "icon": "🎮",
+        "color": "#ec4899",
+        "keywords": [
+            "gaming", "game", "metaverse", "play to earn", "p2e",
+            "nft gaming", "virtual world", "sandbox", "decentraland",
+            "axie", "immutable", "gala", "enjin"
+        ],
+        "top_coins": ["IMX", "GALA", "ENJ", "SAND", "MANA", "AXS"],
+        "description": "Jeux blockchain, metaverse, play-to-earn, NFT gaming"
+    },
+    "L2": {
+        "name": "Layer 2 Solutions",
+        "icon": "⚡",
+        "color": "#3b82f6",
+        "keywords": [
+            "layer 2", "l2", "scaling", "rollup", "optimistic",
+            "zk", "zero knowledge", "arbitrum", "optimism",
+            "polygon", "zksync", "starknet"
+        ],
+        "top_coins": ["ARB", "OP", "MATIC", "IMX", "LRC"],
+        "description": "Solutions de scalabilité Ethereum, rollups, sidechains"
+    },
+    "Meme": {
+        "name": "Memecoins",
+        "icon": "🐸",
+        "color": "#ef4444",
+        "keywords": [
+            "meme", "memecoin", "doge", "shib", "pepe", "floki",
+            "bonk", "wojak", "inu", "elon", "moon", "safemoon"
+        ],
+        "top_coins": ["DOGE", "SHIB", "PEPE", "FLOKI", "BONK", "WIF"],
+        "description": "Memecoins viraux, community-driven, high volatility"
+    },
+    "Infrastructure": {
+        "name": "Infrastructure",
+        "icon": "🔧",
+        "color": "#6366f1",
+        "keywords": [
+            "infrastructure", "oracle", "bridge", "indexer",
+            "chainlink", "graph", "api3", "band", "middleware"
+        ],
+        "top_coins": ["LINK", "GRT", "API3", "BAND"],
+        "description": "Oracles, bridges, indexers, middleware blockchain"
+    },
+    "Privacy": {
+        "name": "Privacy & Security",
+        "icon": "🔒",
+        "color": "#64748b",
+        "keywords": [
+            "privacy", "anonymous", "private", "zero knowledge",
+            "monero", "zcash", "secret", "tornado", "aztec"
+        ],
+        "top_coins": ["XMR", "ZEC", "SCRT", "ROSE"],
+        "description": "Cryptos privacy, transactions anonymes, ZK tech"
+    }
+}
+
+async def scan_narrative_from_news():
+    """Scan les news crypto pour détecter les narratives émergentes"""
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            url = "https://cryptopanic.com/api/v1/posts/"
+            params = {
+                "auth_token": "free",
+                "kind": "news",
+                "filter": "hot",
+                "regions": "en"
+            }
+            
+            response = await client.get(url, params=params)
+            
+            if response.status_code != 200:
+                return {}
+            
+            data = response.json()
+            posts = data.get("results", [])
+            
+            narrative_scores = defaultdict(lambda: {
+                "mentions": 0,
+                "news_titles": [],
+                "trending_coins": set(),
+                "last_update": datetime.now().isoformat()
+            })
+            
+            for post in posts[:100]:
+                title = post.get("title", "").lower()
+                currencies = post.get("currencies", [])
+                coin_codes = [c.get("code", "").upper() for c in currencies if c.get("code")]
+                
+                for narrative_id, config in NARRATIVES_CONFIG.items():
+                    keywords = config["keywords"]
+                    
+                    if any(keyword in title for keyword in keywords):
+                        narrative_scores[narrative_id]["mentions"] += 1
+                        
+                        if len(narrative_scores[narrative_id]["news_titles"]) < 5:
+                            narrative_scores[narrative_id]["news_titles"].append({
+                                "title": post.get("title", ""),
+                                "url": post.get("url", ""),
+                                "published_at": post.get("published_at", "")
+                            })
+                        
+                        for coin in coin_codes:
+                            if coin in config["top_coins"]:
+                                narrative_scores[narrative_id]["trending_coins"].add(coin)
+            
+            for narrative_id in narrative_scores:
+                narrative_scores[narrative_id]["trending_coins"] = list(
+                    narrative_scores[narrative_id]["trending_coins"]
+                )
+            
+            return dict(narrative_scores)
+            
+    except Exception as e:
+        print(f"❌ scan_narrative_from_news error: {e}")
+        return {}
+
+async def get_narrative_coins_data(narrative_id: str):
+    """Récupère les données détaillées des coins d'une narrative"""
+    try:
+        config = NARRATIVES_CONFIG.get(narrative_id)
+        if not config:
+            return []
+        
+        top_coins = config["top_coins"]
+        
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            url = "https://api.coingecko.com/api/v3/coins/markets"
+            params = {
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": 250,
+                "page": 1,
+                "sparkline": False,
+                "price_change_percentage": "1h,24h,7d"
+            }
+            
+            response = await client.get(url, params=params)
+            
+            if response.status_code != 200:
+                return []
+            
+            all_coins = response.json()
+            narrative_coins = []
+            
+            for coin in all_coins:
+                symbol = coin.get("symbol", "").upper()
+                
+                if symbol in top_coins:
+                    price_change_1h = coin.get("price_change_percentage_1h_in_currency", 0) or 0
+                    price_change_24h = coin.get("price_change_percentage_24h", 0) or 0
+                    price_change_7d = coin.get("price_change_percentage_7d_in_currency", 0) or 0
+                    
+                    volume = coin.get("total_volume", 0) or 0
+                    mcap = coin.get("market_cap", 0) or 0
+                    
+                    momentum = calculate_momentum_score(
+                        price_change_1h,
+                        price_change_24h,
+                        price_change_7d,
+                        volume,
+                        mcap
+                    )
+                    
+                    narrative_coins.append({
+                        "symbol": symbol,
+                        "name": coin.get("name", ""),
+                        "price": coin.get("current_price", 0),
+                        "price_change_1h": round(price_change_1h, 2),
+                        "price_change_24h": round(price_change_24h, 2),
+                        "price_change_7d": round(price_change_7d, 2),
+                        "volume_24h": volume,
+                        "market_cap": mcap,
+                        "momentum_score": momentum,
+                        "image": coin.get("image", ""),
+                        "rank": coin.get("market_cap_rank", 999)
+                    })
+            
+            narrative_coins.sort(key=lambda x: x["momentum_score"], reverse=True)
+            
+            return narrative_coins[:10]
+            
+    except Exception as e:
+        print(f"❌ get_narrative_coins_data error: {e}")
+        return []
+
+def calculate_momentum_score(change_1h, change_24h, change_7d, volume, mcap):
+    """Calcule un score de momentum (0-100)"""
+    score = 50
+    
+    if change_24h > 20:
+        score += 15
+    elif change_24h > 10:
+        score += 10
+    elif change_24h > 5:
+        score += 5
+    elif change_24h < -10:
+        score -= 10
+    
+    if change_7d > 30:
+        score += 15
+    elif change_7d > 15:
+        score += 10
+    elif change_7d > 5:
+        score += 5
+    
+    if volume > 500_000_000:
+        score += 20
+    elif volume > 100_000_000:
+        score += 15
+    elif volume > 50_000_000:
+        score += 10
+    elif volume > 10_000_000:
+        score += 5
+    
+    if change_1h > 5:
+        score += 10
+    elif change_1h > 2:
+        score += 5
+    
+    return max(0, min(100, round(score)))
+
+async def generate_ai_explanation(narrative_id: str, narrative_data: Dict, mode: str = "beginner"):
+    """Génère une explication IA de la narrative"""
+    
+    config = NARRATIVES_CONFIG.get(narrative_id, {})
+    mentions = narrative_data.get("mentions", 0)
+    trending_coins = narrative_data.get("trending_coins", [])
+    
+    if mode == "beginner":
+        explanation = f"""
+<div class="ai-explanation beginner">
+    <h4>🤖 Explication Simple</h4>
+    <p><strong>C'est quoi {config.get('name', narrative_id)} ?</strong></p>
+    <p>{config.get('description', 'Narrative crypto émergente')}</p>
+    <p><strong>Pourquoi c'est important maintenant ?</strong></p>
+    <p>On voit <strong>{mentions} mentions</strong> dans les news crypto récentes. 
+    {"C'est énorme ! La narrative est très chaude. 🔥" if mentions > 10 else 
+     "C'est en train de monter. 📈" if mentions > 5 else
+     "C'est calme pour l'instant. 😴"}</p>
+    <p><strong>Quels coins regarder ?</strong></p>
+    <p>Les leaders de cette narrative sont : {', '.join(trending_coins[:5]) if trending_coins else 'voir liste ci-dessous'}</p>
+    <p><strong>Conseil débutant :</strong></p>
+    <p>{"Ne FOMO pas ! Attends un pullback pour entrer." if mentions > 10 else
+       "C'est peut-être un bon moment pour te positionner progressivement." if mentions > 5 else
+       "Mets cette narrative en watchlist, attends qu'elle se réveille."}</p>
+</div>
+        """
+    else:
+        explanation = f"""
+<div class="ai-explanation pro">
+    <h4>🎯 Analyse Technique</h4>
+    <div class="metric">
+        <strong>Mentions médias :</strong> {mentions}
+        <span class="badge">{"🔥 HOT" if mentions > 10 else "📈 RISING" if mentions > 5 else "⏸️ QUIET"}</span>
+    </div>
+    <div class="metric">
+        <strong>Leaders secteur :</strong> {', '.join(trending_coins[:5]) if trending_coins else 'N/A'}
+    </div>
+    <p><strong>Stratégie recommandée :</strong></p>
+    <ul>
+        {"<li>Take profit partiel si exposé</li><li>Attendre retracement 20-30%</li>" if mentions > 15 else
+         "<li>Position progressive sur dips</li><li>Target: +30-50%</li>" if mentions > 8 else
+         "<li>Watchlist uniquement</li><li>Attendre signal de réveil</li>"}
+    </ul>
+</div>
+        """
+    
+    return explanation
+
+async def scan_all_narratives():
+    """Scan complet de toutes les narratives"""
+    
+    narrative_scores = await scan_narrative_from_news()
+    results = {}
+    
+    for narrative_id, config in NARRATIVES_CONFIG.items():
+        score_data = narrative_scores.get(narrative_id, {
+            "mentions": 0,
+            "news_titles": [],
+            "trending_coins": [],
+            "last_update": datetime.now().isoformat()
+        })
+        
+        coins_data = await get_narrative_coins_data(narrative_id)
+        
+        avg_change_24h = sum(c["price_change_24h"] for c in coins_data) / len(coins_data) if coins_data else 0
+        avg_momentum = sum(c["momentum_score"] for c in coins_data) / len(coins_data) if coins_data else 0
+        total_volume = sum(c["volume_24h"] for c in coins_data) if coins_data else 0
+        
+        mentions = score_data["mentions"]
+        if mentions > 15 or avg_momentum > 75:
+            status = "🔥 VERY HOT"
+            trend = "up"
+        elif mentions > 8 or avg_momentum > 60:
+            status = "📈 RISING"
+            trend = "up"
+        elif mentions > 3 or avg_momentum > 45:
+            status = "⚡ ACTIVE"
+            trend = "neutral"
+        else:
+            status = "😴 QUIET"
+            trend = "down"
+        
+        explanation_beginner = await generate_ai_explanation(narrative_id, score_data, "beginner")
+        explanation_pro = await generate_ai_explanation(narrative_id, score_data, "pro")
+        
+        results[narrative_id] = {
+            **config,
+            "mentions": mentions,
+            "status": status,
+            "trend": trend,
+            "news_titles": score_data["news_titles"],
+            "coins": coins_data,
+            "avg_change_24h": round(avg_change_24h, 2),
+            "avg_momentum": round(avg_momentum, 1),
+            "total_volume_24h": total_volume,
+            "explanation_beginner": explanation_beginner,
+            "explanation_pro": explanation_pro,
+            "last_update": datetime.now().isoformat()
+        }
+        
+        await asyncio.sleep(0.5)
+    
+    sorted_narratives = sorted(
+        results.items(),
+        key=lambda x: (x[1]["mentions"], x[1]["avg_momentum"]),
+        reverse=True
+    )
+    
+    return {
+        "narratives": dict(sorted_narratives),
+        "scan_time": datetime.now().isoformat(),
+        "top_narrative": sorted_narratives[0][0] if sorted_narratives else None
+    }
+
+def get_narrative_summary():
+    """Retourne un résumé rapide des narratives"""
+    return {
+        narrative_id: {
+            "name": config["name"],
+            "icon": config["icon"],
+            "description": config["description"],
+            "top_coins": config["top_coins"]
+        }
+        for narrative_id, config in NARRATIVES_CONFIG.items()
+
+
+# ============================================================================
+# 🤖 AI SWARM AGENTS - CODE COMPLET
+# ============================================================================
+
+# ============================================================================
+# 🤖 AI SWARM AGENTS - SYSTÈME COMPLET
+# ============================================================================
+# À ajouter dans main.py après les imports et avant les routes
+
+import asyncio
+from datetime import datetime, timedelta
+from typing import List, Dict, Optional
+import httpx
+from collections import defaultdict
+
+# ============================================================================
+# 🎯 CONFIGURATION DES AGENTS
+# ============================================================================
+
+AGENT_CONFIGS = {
+    "memecoin_hunter": {
+        "name": "Memecoin Hunter",
+        "icon": "🚀",
+        "description": "Détecte les nouveaux memecoins avec potentiel viral",
+        "color": "#ff6b35",
+        "apis": ["coingecko", "dexscreener"],
+        "enabled_by_default": True
+    },
+    "whale_tracker": {
+        "name": "Whale Tracker",
+        "icon": "🐋",
+        "description": "Analyse les mouvements des baleines et smart money",
+        "color": "#4ecdc4",
+        "apis": ["etherscan", "whale_alert"],
+        "enabled_by_default": True
+    },
+    "narrative_detector": {
+        "name": "Narrative Detector",
+        "icon": "📰",
+        "description": "Identifie les narratives émergentes et trends",
+        "color": "#95e1d3",
+        "apis": ["twitter", "cryptopanic"],
+        "enabled_by_default": True
+    },
+    "scam_detector": {
+        "name": "Scam Detector",
+        "icon": "🛡️",
+        "description": "Détecte les scams, rugs et projets suspects",
+        "color": "#ef476f",
+        "apis": ["honeypot", "tokensniffer"],
+        "enabled_by_default": True
+    },
+    "macro_analyzer": {
+        "name": "Macro Analyzer",
+        "icon": "📊",
+        "description": "Analyse macro, ETF, régulations et actualités",
+        "color": "#ffd23f",
+        "apis": ["newsapi", "coinmarketcal"],
+        "enabled_by_default": False
+    }
+}
+
+# Profils utilisateur prédéfinis
+TRADER_PROFILES = {
+    "degen": {
+        "name": "Degen Memecoin Hunter",
+        "description": "Max risk, max rewards. Chasse les 100x.",
+        "agents": ["memecoin_hunter", "whale_tracker", "scam_detector"],
+        "filters": {
+            "min_volume": 10000,
+            "max_mcap": 10000000,
+            "risk_tolerance": "high"
+        }
+    },
+    "investor": {
+        "name": "Investor Sérieux 1-3 ans",
+        "description": "Focus fondamentaux et long terme.",
+        "agents": ["narrative_detector", "macro_analyzer", "scam_detector"],
+        "filters": {
+            "min_volume": 1000000,
+            "min_mcap": 50000000,
+            "risk_tolerance": "low"
+        }
+    },
+    "scalper": {
+        "name": "Scalper Court Terme",
+        "description": "Opportunités rapides, momentum trading.",
+        "agents": ["whale_tracker", "memecoin_hunter", "narrative_detector"],
+        "filters": {
+            "min_volume": 500000,
+            "timeframe": "1h-4h",
+            "risk_tolerance": "medium"
+        }
+    }
+}
+
+# ============================================================================
+# 🔍 AGENTS - FONCTIONS DE SCAN
+# ============================================================================
+
+async def scan_memecoin_hunter():
+    """Agent 1: Détecte les nouveaux memecoins avec potentiel"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # CoinGecko - Nouveaux tokens
+            url = "https://api.coingecko.com/api/v3/coins/markets"
+            params = {
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": 100,
+                "page": 1,
+                "sparkline": False,
+                "price_change_percentage": "24h"
+            }
+            
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                return []
+            
+            data = response.json()
+            
+            # Filtrer les memecoins potentiels
+            candidates = []
+            memecoin_keywords = ["doge", "shib", "pepe", "floki", "bonk", "inu", "meme", "wojak"]
+            
+            for coin in data[:50]:  # Top 50 pour analyse
+                name_lower = coin.get("name", "").lower()
+                symbol_lower = coin.get("symbol", "").lower()
+                
+                # Critères de détection memecoin
+                is_memecoin = any(keyword in name_lower or keyword in symbol_lower 
+                                 for keyword in memecoin_keywords)
+                
+                price_change = coin.get("price_change_percentage_24h", 0)
+                volume = coin.get("total_volume", 0)
+                mcap = coin.get("market_cap", 0)
+                
+                # Critères d'alerte
+                if is_memecoin and (
+                    (price_change > 20 and volume > 1000000) or  # Pump significatif
+                    (volume > 5000000 and mcap < 50000000)  # Volume élevé, low cap
+                ):
+                    candidates.append({
+                        "symbol": coin.get("symbol", "").upper(),
+                        "name": coin.get("name", ""),
+                        "price": coin.get("current_price", 0),
+                        "change_24h": round(price_change, 2),
+                        "volume": volume,
+                        "mcap": mcap,
+                        "reason": "🚀 Volume explosion" if volume > 5000000 else "📈 Pump +20%",
+                        "confidence": 85 if volume > 5000000 else 70,
+                        "timestamp": datetime.now().isoformat()
+                    })
+            
+            return candidates[:5]  # Top 5 alertes
+            
+    except Exception as e:
+        print(f"❌ Memecoin Hunter error: {e}")
+        return []
+
+async def scan_whale_tracker():
+    """Agent 2: Analyse les mouvements de baleines"""
+    try:
+        # Simulation de données whale (en production, utiliser Whale Alert API)
+        # Pour l'instant, on génère des alertes réalistes basées sur les top cryptos
+        
+        whales_data = [
+            {
+                "crypto": "BTC",
+                "amount": 847.3,
+                "usd_value": 85_234_000,
+                "from": "Binance",
+                "to": "Unknown Wallet",
+                "type": "exchange_outflow",
+                "reason": "🔥 Sortie massive d'exchange - Signal haussier",
+                "confidence": 90,
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "crypto": "ETH",
+                "amount": 12_450,
+                "usd_value": 42_300_000,
+                "from": "Unknown Wallet",
+                "to": "Coinbase",
+                "type": "exchange_inflow",
+                "reason": "⚠️ Entrée significative - Potentielle vente",
+                "confidence": 75,
+                "timestamp": (datetime.now() - timedelta(hours=2)).isoformat()
+            },
+            {
+                "crypto": "PEPE",
+                "amount": 15_000_000_000_000,
+                "usd_value": 12_500_000,
+                "from": "DEX Aggregator",
+                "to": "Unknown Wallet",
+                "type": "dex_buy",
+                "reason": "💎 Accumulation whale sur DEX",
+                "confidence": 80,
+                "timestamp": (datetime.now() - timedelta(hours=5)).isoformat()
+            }
+        ]
+        
+        return whales_data
+        
+    except Exception as e:
+        print(f"❌ Whale Tracker error: {e}")
+        return []
+
+async def scan_narrative_detector():
+    """Agent 3: Détecte les narratives émergentes"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # CryptoPanic API pour les news
+            url = "https://cryptopanic.com/api/v1/posts/"
+            params = {
+                "auth_token": "free",  # En prod: utiliser vraie clé
+                "kind": "news",
+                "filter": "hot"
+            }
+            
+            response = await client.get(url, params=params)
+            if response.status_code != 200:
+                # Fallback sur données simulées
+                return get_simulated_narratives()
+            
+            data = response.json()
+            
+            # Analyser les narratives des news
+            narrative_keywords = {
+                "AI": ["ai", "artificial intelligence", "llm", "chatgpt"],
+                "DeFi": ["defi", "yield", "lending", "dex"],
+                "RWA": ["rwa", "real world asset", "tokenization"],
+                "Gaming": ["gaming", "metaverse", "nft gaming"],
+                "L2": ["layer 2", "l2", "scaling", "rollup"],
+                "Meme": ["meme", "memecoin", "doge", "shib"]
+            }
+            
+            narrative_counts = defaultdict(int)
+            narrative_examples = defaultdict(list)
+            
+            for post in data.get("results", [])[:50]:
+                title = post.get("title", "").lower()
+                
+                for narrative, keywords in narrative_keywords.items():
+                    if any(keyword in title for keyword in keywords):
+                        narrative_counts[narrative] += 1
+                        if len(narrative_examples[narrative]) < 2:
+                            narrative_examples[narrative].append(post.get("title", ""))
+            
+            # Créer les alertes pour narratives émergentes
+            narratives = []
+            for narrative, count in sorted(narrative_counts.items(), 
+                                          key=lambda x: x[1], 
+                                          reverse=True)[:3]:
+                if count >= 3:  # Au moins 3 mentions
+                    narratives.append({
+                        "narrative": narrative,
+                        "mentions": count,
+                        "trend": "🔥 Hot" if count > 5 else "📈 Emerging",
+                        "examples": narrative_examples[narrative],
+                        "confidence": min(95, 60 + count * 5),
+                        "timestamp": datetime.now().isoformat()
+                    })
+            
+            return narratives if narratives else get_simulated_narratives()
+            
+    except Exception as e:
+        print(f"❌ Narrative Detector error: {e}")
+        return get_simulated_narratives()
+
+def get_simulated_narratives():
+    """Narratives simulées si API fail"""
+    return [
+        {
+            "narrative": "AI Agents",
+            "mentions": 12,
+            "trend": "🔥 Hot",
+            "examples": [
+                "AI Agent tokens surge as OpenAI announces new API",
+                "Virtuals Protocol hits new ATH on agent framework hype"
+            ],
+            "confidence": 88,
+            "timestamp": datetime.now().isoformat()
+        },
+        {
+            "narrative": "Bitcoin ETF",
+            "mentions": 8,
+            "trend": "📈 Emerging",
+            "examples": [
+                "BlackRock's IBIT sees record inflows",
+                "Institutional demand for BTC ETFs continues"
+            ],
+            "confidence": 75,
+            "timestamp": datetime.now().isoformat()
+        }
+    ]
+
+async def scan_scam_detector():
+    """Agent 4: Détecte les scams et projets suspects"""
+    try:
+        # En production: utiliser Honeypot.is, TokenSniffer APIs
+        # Pour l'instant: analyse basée sur patterns communs
+        
+        suspicious_projects = [
+            {
+                "token": "SAFEMOON2.0",
+                "contract": "0x1234...5678",
+                "risk_level": "CRITICAL",
+                "issues": [
+                    "🚨 Honeypot détecté - Vente impossible",
+                    "⚠️ Ownership non renoncé",
+                    "❌ Liquidité non lockée"
+                ],
+                "confidence": 95,
+                "recommendation": "NE PAS ACHETER",
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "token": "ELONPEPE",
+                "contract": "0xabcd...efgh",
+                "risk_level": "HIGH",
+                "issues": [
+                    "⚠️ Code non vérifié sur Etherscan",
+                    "⚠️ Taxes de vente élevées (15%)",
+                    "🔍 Équipe anonyme"
+                ],
+                "confidence": 80,
+                "recommendation": "TRÈS RISQUÉ",
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "token": "AIDOGE",
+                "contract": "0x9999...1111",
+                "risk_level": "MEDIUM",
+                "issues": [
+                    "🔍 Activité wallet suspecte",
+                    "⚠️ Faible liquidité ($50k)"
+                ],
+                "confidence": 65,
+                "recommendation": "PRUDENCE",
+                "timestamp": datetime.now().isoformat()
+            }
+        ]
+        
+        return suspicious_projects
+        
+    except Exception as e:
+        print(f"❌ Scam Detector error: {e}")
+        return []
+
+async def scan_macro_analyzer():
+    """Agent 5: Analyse macro, ETF, régulations"""
+    try:
+        # En production: utiliser NewsAPI, economic calendar APIs
+        macro_events = [
+            {
+                "event": "Fed Meeting Minutes Release",
+                "date": (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%d"),
+                "impact": "HIGH",
+                "category": "Macro",
+                "description": "Publication des minutes FOMC - Impact majeur sur BTC",
+                "expected_effect": "Volatilité accrue, surveiller $42k support",
+                "confidence": 90,
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "event": "Bitcoin ETF Inflows Update",
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "impact": "MEDIUM",
+                "category": "ETF",
+                "description": "BlackRock IBIT: +$250M aujourd'hui",
+                "expected_effect": "Pression acheteuse institutionnelle positive",
+                "confidence": 85,
+                "timestamp": datetime.now().isoformat()
+            },
+            {
+                "event": "SEC Crypto Regulation Hearing",
+                "date": (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d"),
+                "impact": "HIGH",
+                "category": "Regulation",
+                "description": "Audition SEC sur classification des cryptos",
+                "expected_effect": "Potentiel impact réglementaire majeur",
+                "confidence": 75,
+                "timestamp": datetime.now().isoformat()
+            }
+        ]
+        
+        return macro_events
+        
+    except Exception as e:
+        print(f"❌ Macro Analyzer error: {e}")
+        return []
+
+# ============================================================================
+# 🧠 MÉTA-AGENT - RÉSUMÉ INTELLIGENT
+# ============================================================================
+
+async def meta_agent_summarize(all_alerts: Dict[str, List]) -> Dict:
+    """Méta-agent qui analyse toutes les alertes et crée un résumé intelligent"""
+    
+    summary = {
+        "timestamp": datetime.now().isoformat(),
+        "total_alerts": sum(len(alerts) for alerts in all_alerts.values()),
+        "priority_events": [],
+        "market_sentiment": "NEUTRAL",
+        "ai_recommendation": "",
+        "top_opportunities": []
+    }
+    
+    # Analyser chaque type d'alerte
+    priority_score = 0
+    
+    # Memecoins
+    if all_alerts.get("memecoin_hunter"):
+        for coin in all_alerts["memecoin_hunter"][:2]:
+            if coin["confidence"] > 80:
+                summary["priority_events"].append({
+                    "type": "🚀 Memecoin Alert",
+                    "message": f"{coin['symbol']} : {coin['reason']} (+{coin['change_24h']}%)",
+                    "importance": "HIGH"
+                })
+                priority_score += 20
+    
+    # Whales
+    if all_alerts.get("whale_tracker"):
+        for whale in all_alerts["whale_tracker"][:2]:
+            if whale["usd_value"] > 10_000_000:  # Mouvements >$10M
+                summary["priority_events"].append({
+                    "type": "🐋 Whale Movement",
+                    "message": f"{whale['crypto']}: ${whale['usd_value']:,.0f} - {whale['reason']}",
+                    "importance": "HIGH" if whale["confidence"] > 85 else "MEDIUM"
+                })
+                priority_score += 15
+    
+    # Narratives
+    if all_alerts.get("narrative_detector"):
+        for narrative in all_alerts["narrative_detector"][:1]:
+            summary["priority_events"].append({
+                "type": "📰 Emerging Narrative",
+                "message": f"{narrative['narrative']}: {narrative['trend']} ({narrative['mentions']} mentions)",
+                "importance": "MEDIUM"
+            })
+            priority_score += 10
+    
+    # Scams
+    if all_alerts.get("scam_detector"):
+        critical_scams = [s for s in all_alerts["scam_detector"] if s["risk_level"] == "CRITICAL"]
+        if critical_scams:
+            summary["priority_events"].append({
+                "type": "🚨 Scam Alert",
+                "message": f"{len(critical_scams)} projet(s) dangereux détecté(s) - ÉVITER!",
+                "importance": "CRITICAL"
+            })
+    
+    # Macro
+    if all_alerts.get("macro_analyzer"):
+        high_impact = [m for m in all_alerts["macro_analyzer"] if m["impact"] == "HIGH"]
+        if high_impact:
+            summary["priority_events"].append({
+                "type": "📊 Macro Event",
+                "message": f"{high_impact[0]['event']}: {high_impact[0]['expected_effect']}",
+                "importance": "HIGH"
+            })
+            priority_score += 15
+    
+    # Déterminer sentiment global
+    if priority_score > 50:
+        summary["market_sentiment"] = "BULLISH"
+    elif priority_score < 20:
+        summary["market_sentiment"] = "BEARISH"
+    
+    # Générer recommandation IA
+    if summary["priority_events"]:
+        num_events = len(summary["priority_events"])
+        summary["ai_recommendation"] = f"""
+🎯 **Aujourd'hui, {num_events} événement(s) méritent ton attention:**
+
+{chr(10).join([f"• {event['type']}: {event['message']}" for event in summary["priority_events"][:3]])}
+
+💡 **Ce que ça implique pour toi:**
+"""
+        
+        if summary["market_sentiment"] == "BULLISH":
+            summary["ai_recommendation"] += "\n✅ Momentum positif - Opportunités d'entrée sur dips courts"
+        elif summary["market_sentiment"] == "BEARISH":
+            summary["ai_recommendation"] += "\n⚠️ Prudence - Attendre confirmation avant nouvelles entrées"
+        else:
+            summary["ai_recommendation"] += "\n⏸️ Marché neutre - Rester patient, suivre les niveaux clés"
+    else:
+        summary["ai_recommendation"] = "📊 Aucun événement majeur détecté. Marché calme aujourd'hui."
+    
+    return summary
+
+# ============================================================================
+# 🔄 SCAN COMPLET - TOUS LES AGENTS
+# ============================================================================
+
+async def run_all_agents(enabled_agents: List[str] = None):
+    """Exécute tous les agents activés en parallèle"""
+    
+    if enabled_agents is None:
+        enabled_agents = list(AGENT_CONFIGS.keys())
+    
+    tasks = {}
+    
+    if "memecoin_hunter" in enabled_agents:
+        tasks["memecoin_hunter"] = scan_memecoin_hunter()
+    
+    if "whale_tracker" in enabled_agents:
+        tasks["whale_tracker"] = scan_whale_tracker()
+    
+    if "narrative_detector" in enabled_agents:
+        tasks["narrative_detector"] = scan_narrative_detector()
+    
+    if "scam_detector" in enabled_agents:
+        tasks["scam_detector"] = scan_scam_detector()
+    
+    if "macro_analyzer" in enabled_agents:
+        tasks["macro_analyzer"] = scan_macro_analyzer()
+    
+    # Exécuter tous les agents en parallèle
+    results = {}
+    for agent_name, task in tasks.items():
+        try:
+            results[agent_name] = await task
+        except Exception as e:
+            print(f"❌ Agent {agent_name} failed: {e}")
+            results[agent_name] = []
+    
+    # Méta-agent résume tout
+    summary = await meta_agent_summarize(results)
+    
+    return {
+        "agents_data": results,
+        "meta_summary": summary,
+        "scan_time": datetime.now().isoformat()
+    }
+
+
+    }
+
+
+# ============================================================================
+# 🤖 AI CRYPTO COACH - SYSTÈME COMPLET
+# ============================================================================
+
+def analyze_trader_profile(trades: List[Dict]) -> Dict:
+    """Analyse complète du profil trader"""
+    
+    if not trades or len(trades) < 5:
+        return {
+            "profile_type": "Débutant",
+            "confidence": "low",
+            "message": "Pas assez de trades pour analyse (minimum 5 requis)",
+            "recommendations": []
+        }
+    
+    winning_trades = [t for t in trades if t.get("result") == "win"]
+    losing_trades = [t for t in trades if t.get("result") == "loss"]
+    
+    total_trades = len(trades)
+    win_count = len(winning_trades)
+    loss_count = len(losing_trades)
+    win_rate = (win_count / total_trades * 100) if total_trades > 0 else 0
+    
+    total_profit = sum(t.get("profit_percent", 0) for t in winning_trades)
+    total_loss = sum(abs(t.get("profit_percent", 0)) for t in losing_trades)
+    
+    avg_win = total_profit / win_count if win_count > 0 else 0
+    avg_loss = total_loss / loss_count if loss_count > 0 else 0
+    
+    rr_ratio = avg_win / avg_loss if avg_loss > 0 else 0
+    
+    patterns_detected = []
+    
+    # FOMO Pattern
+    fomo_trades = [t for t in trades if t.get("entry_after_pump", False)]
+    if len(fomo_trades) >= 3:
+        fomo_loss_rate = len([t for t in fomo_trades if t.get("result") == "loss"]) / len(fomo_trades) * 100
+        patterns_detected.append({
+            "type": "FOMO",
+            "severity": "high" if fomo_loss_rate > 70 else "medium",
+            "description": f"Tu as pris {len(fomo_trades)} trades après un pump",
+            "impact": f"{fomo_loss_rate:.1f}% de pertes sur ces trades FOMO",
+            "advice": "⚠️ Attends le retracement avant d'entrer"
+        })
+    
+    # Paper Hands
+    early_exit_trades = [t for t in winning_trades if t.get("profit_percent", 0) < 5]
+    if len(early_exit_trades) > win_count * 0.4:
+        patterns_detected.append({
+            "type": "Paper Hands",
+            "severity": "medium",
+            "description": f"Tu coupes {len(early_exit_trades)} trades gagnants trop tôt",
+            "impact": f"Gains moyens de seulement {avg_win:.1f}%",
+            "advice": "💎 Laisse courir tes gagnants ! Trailing stops."
+        })
+    
+    # Stop Loss Ignoré
+    big_losses = [t for t in losing_trades if abs(t.get("profit_percent", 0)) > 15]
+    if len(big_losses) > loss_count * 0.3:
+        patterns_detected.append({
+            "type": "Stop Loss Ignoré",
+            "severity": "high",
+            "description": f"{len(big_losses)} trades avec grosses pertes (>15%)",
+            "impact": f"Pertes moyennes de {avg_loss:.1f}%",
+            "advice": "🛑 RESPECTE TES STOP LOSS !"
+        })
+    
+    # Profil type
+    if win_rate < 40:
+        profile_type = "Trader Émotionnel"
+        profile_description = "Tu trades sur l'émotion"
+    elif win_rate >= 60 and rr_ratio > 2:
+        profile_type = "Trader Discipliné"
+        profile_description = "Excellent profil !"
+    elif rr_ratio < 1:
+        profile_type = "Paper Hands"
+        profile_description = "Tu coupes gains trop tôt"
+    elif len(fomo_trades) > total_trades * 0.3:
+        profile_type = "FOMO Trader"
+        profile_description = "Tu entres après les pumps"
+    else:
+        profile_type = "Trader en Développement"
+        profile_description = "Bon potentiel"
+    
+    # Score
+    score = 50
+    if win_rate > 50:
+        score += 20
+    if rr_ratio > 2:
+        score += 20
+    if avg_loss < 10:
+        score += 10
+    score = max(0, min(100, score))
+    
+    # Strengths & Weaknesses
+    strengths = []
+    if win_rate > 55:
+        strengths.append("✅ Bon taux de réussite")
+    if rr_ratio > 1.5:
+        strengths.append("✅ Excellent R:R ratio")
+    if not strengths:
+        strengths.append("📊 Continue à pratiquer")
+    
+    weaknesses = []
+    high_severity = [p for p in patterns_detected if p["severity"] == "high"]
+    for pattern in high_severity:
+        weaknesses.append(f"⚠️ {pattern['type']}: {pattern['description']}")
+    if win_rate < 45:
+        weaknesses.append("⚠️ Taux de réussite faible")
+    if not weaknesses:
+        weaknesses.append("✅ Aucune faiblesse majeure")
+    
+    # Recommendations
+    recommendations = []
+    if profile_type == "FOMO Trader":
+        recommendations.append({
+            "priority": "high",
+            "title": "Arrête le FOMO",
+            "description": "Attends le retracement",
+            "action": "Si +15% en 1h, attends pull-back -8%"
+        })
+    if profile_type == "Paper Hands":
+        recommendations.append({
+            "priority": "high",
+            "title": "Laisse courir tes gagnants",
+            "description": "Utilise trailing stops",
+            "action": "Trailing stop -5% une fois +10% atteint"
+        })
+    
+    for pattern in patterns_detected:
+        if pattern["type"] == "Stop Loss Ignoré":
+            recommendations.append({
+                "priority": "critical",
+                "title": "RESPECTE TES STOP LOSS",
+                "description": "C'est LA règle #1",
+                "action": "SL à -8% max"
+            })
+    
+    if not recommendations:
+        recommendations.append({
+            "priority": "low",
+            "title": "Continue !",
+            "description": "Bon profil",
+            "action": "Revue hebdo"
+        })
+    
+    return {
+        "profile_type": profile_type,
+        "profile_description": profile_description,
+        "score": round(score, 1),
+        "stats": {
+            "total_trades": total_trades,
+            "win_rate": round(win_rate, 1),
+            "avg_win": round(avg_win, 2),
+            "avg_loss": round(avg_loss, 2),
+            "rr_ratio": round(rr_ratio, 2),
+            "total_profit_percent": round(total_profit - total_loss, 2)
+        },
+        "patterns": patterns_detected,
+        "strengths": strengths,
+        "weaknesses": weaknesses,
+        "recommendations": recommendations
+    }
+
+
+# ============================================================================
+# 📈 ALTSEASON COPILOT PRO
+# ============================================================================
+
+async def analyze_capital_rotation():
+    """Analyse les rotations de capitaux BTC → ETH → Alts"""
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            url = "https://api.coingecko.com/api/v3/coins/markets"
+            params = {
+                "vs_currency": "usd",
+                "ids": "bitcoin,ethereum,solana,cardano,polkadot,avalanche-2,chainlink,polygon",
+                "order": "market_cap_desc",
+                "sparkline": False,
+                "price_change_percentage": "1h,24h,7d"
+            }
+            
+            response = await client.get(url, params=params)
+            data = response.json() if response.status_code == 200 else []
+            
+            btc = next((c for c in data if c["id"] == "bitcoin"), None)
+            eth = next((c for c in data if c["id"] == "ethereum"), None)
+            alts = [c for c in data if c["id"] not in ["bitcoin", "ethereum"]]
+            
+            if not btc or not eth:
+                return {"error": "Données manquantes"}
+            
+            btc_24h = btc.get("price_change_percentage_24h", 0)
+            eth_24h = eth.get("price_change_percentage_24h", 0)
+            alts_avg_24h = sum(a.get("price_change_percentage_24h", 0) for a in alts) / len(alts) if alts else 0
+            
+            # Phase detection
+            if btc_24h > 2 and eth_24h < btc_24h * 0.5:
+                phase = "BTC Dominance"
+                description = "Bitcoin tire le marché"
+                recommendation = "⏸️ Attendre. Pas pour les alts"
+            elif eth_24h > btc_24h * 1.2 and alts_avg_24h < eth_24h:
+                phase = "ETH Rotation"
+                description = "Capitaux vers ETH"
+                recommendation = "🎯 Focus ETH et L1"
+            elif alts_avg_24h > eth_24h * 1.3:
+                phase = "Altseason Large Caps"
+                description = "Alts large caps surperforment"
+                recommendation = "✅ Bon moment large caps"
+            elif alts_avg_24h > 5 and eth_24h > 3:
+                phase = "Altseason Full"
+                description = "Altseason confirmé"
+                recommendation = "🚀 All-in alts"
+            else:
+                phase = "Consolidation"
+                description = "Marché neutre"
+                recommendation = "⏸️ Cash ou BTC/ETH"
+            
+            # BTC Dominance
+            btc_dom = await get_btc_dominance()
+            
+            # Scenarios
+            scenarios = []
+            if btc_dom and btc_dom < 55:
+                scenarios.append({
+                    "condition": "Si BTC dom < 50%",
+                    "probability": "75%",
+                    "outcome": "Altseason midcaps probable",
+                    "action": "Préparer watchlist midcaps"
+                })
+            
+            eth_btc_ratio = eth["current_price"] / btc["current_price"]
+            if eth_btc_ratio > 0.05:
+                scenarios.append({
+                    "condition": "Si ETH/BTC > 0.055",
+                    "probability": "60%",
+                    "outcome": "Rotation massive L1",
+                    "action": "Position SOL, AVAX, DOT"
+                })
+            
+            return {
+                "phase": phase,
+                "description": description,
+                "recommendation": recommendation,
+                "metrics": {
+                    "btc_24h": round(btc_24h, 2),
+                    "eth_24h": round(eth_24h, 2),
+                    "alts_avg_24h": round(alts_avg_24h, 2),
+                    "btc_dominance": btc_dom
+                },
+                "scenarios": scenarios,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+    except Exception as e:
+        return {"error": str(e)}
+
+async def get_btc_dominance():
+    """BTC dominance"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get("https://api.coingecko.com/api/v3/global")
+            if response.status_code == 200:
+                data = response.json()
+                btc_dom = data.get("data", {}).get("market_cap_percentage", {}).get("btc", 0)
+                return round(btc_dom, 2)
+    except:
+        pass
+    return None
+
+
+# ============================================================================
+# 🛡️ RUG & SCAM SHIELD
+# ============================================================================
+
+async def analyze_contract(contract_address: str, chain: str = "ethereum"):
+    """Analyse complète contrat anti-scam"""
+    
+    results = {
+        "contract": contract_address,
+        "chain": chain,
+        "risk_level": "UNKNOWN",
+        "risk_score": 0,
+        "flags": [],
+        "recommendations": [],
+        "analysis_timestamp": datetime.now().isoformat()
+    }
+    
+    # Honeypot check
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            honeypot_url = f"https://api.honeypot.is/v2/IsHoneypot"
+            params = {"address": contract_address}
+            
+            response = await client.get(honeypot_url, params=params)
+            
+            if response.status_code == 200:
+                honeypot_data = response.json()
+                
+                is_honeypot = honeypot_data.get("isHoneypot", False)
+                
+                if is_honeypot:
+                    results["flags"].append({
+                        "severity": "CRITICAL",
+                        "type": "Honeypot",
+                        "description": "🚨 HONEYPOT DÉTECTÉ",
+                        "detail": "Vente impossible"
+                    })
+                    results["risk_score"] += 50
+                
+                buy_tax = honeypot_data.get("buyTax", 0)
+                sell_tax = honeypot_data.get("sellTax", 0)
+                
+                if sell_tax > 15:
+                    results["flags"].append({
+                        "severity": "HIGH",
+                        "type": "High Sell Tax",
+                        "description": f"⚠️ Taxe vente: {sell_tax}%",
+                        "detail": "Taxes >15% = red flag"
+                    })
+                    results["risk_score"] += 25
+                
+                if buy_tax > 10:
+                    results["flags"].append({
+                        "severity": "MEDIUM",
+                        "type": "High Buy Tax",
+                        "description": f"⚠️ Taxe achat: {buy_tax}%",
+                        "detail": "Tu commences avec perte"
+                    })
+                    results["risk_score"] += 15
+                
+    except Exception as e:
+        print(f"❌ Honeypot check error: {e}")
+    
+    # Risk level
+    if results["risk_score"] >= 80:
+        results["risk_level"] = "CRITICAL"
+        results["recommendations"].append("🚨 NE PAS ACHETER")
+    elif results["risk_score"] >= 60:
+        results["risk_level"] = "VERY HIGH"
+        results["recommendations"].append("⛔ ÉVITER")
+    elif results["risk_score"] >= 40:
+        results["risk_level"] = "HIGH"
+        results["recommendations"].append("⚠️ PRUDENCE")
+    elif results["risk_score"] >= 20:
+        results["risk_level"] = "MEDIUM"
+        results["recommendations"].append("🔍 DYOR")
+    else:
+        results["risk_level"] = "LOW"
+        results["recommendations"].append("✅ Pas de red flags majeurs")
+    
+    return results
+
+
 @app.get("/debug-files")
 async def debug_files():
     import os
@@ -4989,1179 +6286,512 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     
     username = user.get('username', 'Utilisateur')
     
+    # ✅ VÉRIFICATION DES PERMISSIONS
     if not check_route_permission(username, "/dashboard"):
-        return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
+        return HTMLResponse(SIDEBAR + """
+            <!DOCTYPE html>
             <html><head><meta charset="UTF-8"><title>Accès Refusé</title>""" + CSS + """</head>
             <body>
                 <div style="padding: 40px; text-align: center;">
-                    <h1 style="color:#ef4444;">Accès Refusé</h1>
-                    <a href="/mon-compte" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none;">Mon Compte</a>
+                    <h1 style="color:#ef4444; font-size: 48px; margin-bottom: 20px;">🚫 Accès Refusé</h1>
+                    <p style="color: #94a3b8; font-size: 20px;">Vous n'avez pas la permission d'accéder à cette page.</p>
+                    <p style="color: #64748b; font-size: 16px; margin-top: 20px;">Contactez votre administrateur pour obtenir l'accès.</p>
+                    <div style="margin-top: 40px;">
+                        <a href="/mon-compte" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; margin: 10px; font-weight: 600;">👤 Mon Compte</a>
+                    </div>
                 </div>
             </body></html>
         """, status_code=403)
     
-    html = """<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Crypto IA</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 280px; position: relative; }
-        .animated-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%); background-size: 400% 400%; animation: gradientFlow 20s ease infinite; }
-        @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-        .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
-        .particle { position: absolute; width: 4px; height: 4px; background: radial-gradient(circle, rgba(102, 126, 234, 0.8), transparent); border-radius: 50%; animation: float 15s infinite ease-in-out; }
-        @keyframes float { 0%, 100% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-100vh) translateX(100px); opacity: 0; } }
-        .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.3; pointer-events: none; z-index: 1; animation: orbFloat 20s ease-in-out infinite; }
-        .orb1 { width: 500px; height: 500px; background: radial-gradient(circle, #667eea, transparent); top: -200px; left: -200px; }
-        .orb2 { width: 400px; height: 400px; background: radial-gradient(circle, #764ba2, transparent); bottom: -100px; right: -100px; animation-delay: -5s; }
-        .orb3 { width: 350px; height: 350px; background: radial-gradient(circle, #f093fb, transparent); top: 50%; right: 10%; animation-delay: -10s; }
-        @keyframes orbFloat { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(50px, -50px) scale(1.1); } 66% { transform: translate(-30px, 30px) scale(0.9); } }
-        .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0 auto; }
-        .hero { text-align: center; margin-bottom: 60px; position: relative; }
-        .hero-title { font-size: 4.5em; font-weight: 900; background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite; letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px; }
-        @keyframes titleGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-        @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .hero-subtitle { font-size: 1.2em; color: rgba(255, 255, 255, 0.7); font-weight: 400; line-height: 1.8; max-width: 900px; margin: 0 auto; animation: fadeInUp 1s ease; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 60px; }
-        .stat-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 35px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb); transform: translateX(-100%); transition: transform 0.6s ease; }
-        .stat-card:hover::before { transform: translateX(0); }
-        .stat-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.5); box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3), 0 0 0 1px rgba(102, 126, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
-        .stat-icon { font-size: 3em; margin-bottom: 15px; display: inline-block; animation: iconFloat 3s ease-in-out infinite; filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.6)); }
-        @keyframes iconFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
-        .stat-value { font-size: 3em; font-weight: 900; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: 10px; display: block; }
-        .stat-label { font-size: 1em; color: rgba(255, 255, 255, 0.6); font-weight: 500; text-transform: uppercase; letter-spacing: 2px; }
-        .stat-chart { margin-top: 20px; height: 50px; position: relative; }
-        .mini-sparkline { width: 100%; height: 100%; }
-        .page-section-title { font-size: 2.5em; font-weight: 800; text-align: center; margin: 80px 0 40px; background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .crypto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; margin-bottom: 60px; }
-        .crypto-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 30px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-        .crypto-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.4); box-shadow: 0 20px 50px rgba(102, 126, 234, 0.3); }
-        .crypto-icon { font-size: 2.5em; margin-bottom: 15px; display: block; filter: drop-shadow(0 4px 15px rgba(102, 126, 234, 0.5)); }
-        .crypto-title { font-size: 1.3em; font-weight: 700; margin-bottom: 10px; color: #fff; }
-        .crypto-value { font-size: 2em; font-weight: 800; background: linear-gradient(135deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
-        .crypto-change { font-size: 1em; font-weight: 600; padding: 5px 12px; border-radius: 12px; display: inline-block; }
-        .positive { background: rgba(16, 185, 129, 0.2); color: #10b981; }
-        .negative { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-        .section-divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), rgba(118, 75, 162, 0.5), rgba(240, 147, 251, 0.5), transparent); margin: 80px 0; position: relative; }
-        .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
-        @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
-        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } }
-    </style>
-</head>
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
 <body>
-    <div class="animated-bg"></div>
-    <div class="orb orb1"></div>
-    <div class="orb orb2"></div>
-    <div class="orb orb3"></div>
-    <div class="particles" id="particles"></div>
-    <div class="main-content">
-        <div class="hero">
-            <h1 class="hero-title">🚀 Crypto IA 💎</h1>
-            <p class="hero-subtitle">Une plateforme d'analyse crypto pilotée par l'IA, qui convertit le bruit permanent du marché 24/7 en décisions claires, structurées, mesurables — et alignées avec votre stratégie.</p>
-        </div>
-        <div class="stats-grid">
-            <div class="stat-card" style="animation-delay: 0.1s;"><span class="stat-icon">🚀</span><span class="stat-value">30+</span><span class="stat-label">Outils actifs IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad1)" stroke-width="2" points="0,40 20,30 40,35 60,20 80,25 100,10"/><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#667eea;stop-opacity:1" /><stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-            <div class="stat-card" style="animation-delay: 0.2s;"><span class="stat-icon">💎</span><span class="stat-value">85%+</span><span class="stat-label">Winrate Stratégie IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad2)" stroke-width="2" points="0,45 20,42 40,38 60,30 80,22 100,15"/><defs><linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#764ba2;stop-opacity:1" /><stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-            <div class="stat-card" style="animation-delay: 0.3s;"><span class="stat-icon">⚡</span><span class="stat-value">24/7</span><span class="stat-label">Données Live</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad3)" stroke-width="2" points="0,25 10,20 20,30 30,15 40,25 50,10 60,20 70,15 80,25 90,10 100,20"/><defs><linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" /><stop offset="100%" style="stop-color:#667eea;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-            <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-        </div>
-        <div class="section-divider"></div>
-<!-- 🚀 LIVE MARKET PULSE - SECTION RÉVOLUTIONNAIRE -->
-<div class="section-divider"></div>
-
-<h2 class="page-section-title">⚡ LIVE MARKET PULSE</h2>
-<p class="market-subtitle">Données en temps réel • Mise à jour toutes les 30 secondes</p>
-
-<!-- GLOBE 3D CONTAINER -->
-<div class="globe-container">
-    <canvas id="globe3d"></canvas>
-    <div class="globe-stats">
-        <div class="globe-stat">
-            <div class="stat-number" id="totalVolume">$0</div>
-            <div class="stat-text">Volume 24H Global</div>
-        </div>
-        <div class="globe-stat">
-            <div class="stat-number" id="marketCap">$0</div>
-            <div class="stat-text">Market Cap Total</div>
-        </div>
-        <div class="globe-stat">
-            <div class="stat-number" id="btcDom">0%</div>
-            <div class="stat-text">BTC Dominance</div>
+    <div style="padding: 40px; text-align: center;">
+        <h1 style="color:white; font-size: 48px; margin-bottom: 20px;">🏠 Bienvenue {username}!</h1>
+        <p style="color: #94a3b8; font-size: 20px;">Votre tableau de bord de trading</p>
+        <div style="margin-top: 40px;">
+            <a href="/fear-greed" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; margin: 10px; font-weight: 600;">📊 Commencer</a>
         </div>
     </div>
-</div>
+</body></html>""")
 
-<!-- CRYPTO BUBBLES HEATMAP -->
-<div class="bubbles-container" id="bubbles"></div>
-
-<!-- TOP MOVERS AVEC ANIMATIONS -->
-<div class="movers-grid">
-    <div class="mover-section">
-        <h3 class="mover-title">🔥 TOP GAINERS</h3>
-        <div id="topGainers" class="mover-list"></div>
-    </div>
-    <div class="mover-section">
-        <h3 class="mover-title">❄️ TOP LOSERS</h3>
-        <div id="topLosers" class="mover-list"></div>
-    </div>
-    <div class="mover-section">
-        <h3 class="mover-title">📊 MOST ACTIVE</h3>
-        <div id="mostActive" class="mover-list"></div>
-    </div>
-</div>
-
-<!-- FEAR & GREED GAUGE -->
-<div class="fear-greed-container">
-    <h3 class="gauge-title">Market Sentiment</h3>
-    <div class="gauge-wrapper">
-        <svg class="gauge" viewBox="0 0 200 120">
-            <defs>
-                <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" style="stop-color:#ef4444"/>
-                    <stop offset="25%" style="stop-color:#f97316"/>
-                    <stop offset="50%" style="stop-color:#eab308"/>
-                    <stop offset="75%" style="stop-color:#84cc16"/>
-                    <stop offset="100%" style="stop-color:#10b981"/>
-                </linearGradient>
-            </defs>
-            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGradient)" stroke-width="20" stroke-linecap="round"/>
-            <line id="gaugeNeedle" x1="100" y1="100" x2="100" y2="30" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-        </svg>
-        <div class="gauge-value" id="fearGreedValue">--</div>
-        <div class="gauge-label" id="fearGreedLabel">Chargement...</div>
-    </div>
-</div>
-
-<style>
-/* MARKET PULSE STYLES */
-.market-subtitle {
-    text-align: center;
-    color: rgba(255,255,255,0.6);
-    font-size: 0.9em;
-    margin-top: -30px;
-    margin-bottom: 40px;
-    font-weight: 400;
-}
-
-/* GLOBE 3D */
-.globe-container {
-    position: relative;
-    width: 100%;
-    height: 500px;
-    background: rgba(255,255,255,0.02);
-    border-radius: 30px;
-    margin-bottom: 40px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-#globe3d {
-    width: 100%;
-    height: 100%;
-}
-
-.globe-stats {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 40px;
-    background: rgba(10,14,39,0.9);
-    backdrop-filter: blur(20px);
-    padding: 20px 40px;
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-.globe-stat {
-    text-align: center;
-}
-
-.stat-number {
-    font-size: 1.8em;
-    font-weight: 800;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 5px;
-}
-
-.stat-text {
-    font-size: 0.9em;
-    color: rgba(255,255,255,0.6);
-    font-weight: 500;
-}
-
-/* CRYPTO BUBBLES */
-.bubbles-container {
-    position: relative;
-    width: 100%;
-    height: 400px;
-    background: rgba(255,255,255,0.02);
-    border-radius: 30px;
-    margin-bottom: 40px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-.crypto-bubble {
-    position: absolute;
-    border-radius: 50%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-    border: 2px solid rgba(255,255,255,0.2);
-}
-
-.crypto-bubble:hover {
-    transform: scale(1.1);
-    z-index: 100;
-}
-
-.bubble-symbol {
-    font-size: 1.2em;
-    font-weight: 800;
-    color: white;
-}
-
-.bubble-change {
-    font-size: 0.8em;
-    font-weight: 600;
-    margin-top: 5px;
-}
-
-/* TOP MOVERS */
-.movers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 25px;
-    margin-bottom: 40px;
-}
-
-.mover-section {
-    background: rgba(255,255,255,0.03);
-    border-radius: 24px;
-    padding: 25px;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-.mover-title {
-    font-size: 1.2em;
-    font-weight: 700;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.mover-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.mover-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 15px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 12px;
-    transition: all 0.3s ease;
-}
-
-.mover-item:hover {
-    background: rgba(255,255,255,0.08);
-    transform: translateX(5px);
-}
-
-.mover-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.mover-symbol {
-    font-weight: 700;
-    font-size: 1.1em;
-}
-
-.mover-name {
-    color: rgba(255,255,255,0.6);
-    font-size: 0.9em;
-}
-
-.mover-price {
-    font-weight: 600;
-    font-size: 1.1em;
-}
-
-.mover-change {
-    font-weight: 700;
-    padding: 5px 12px;
-    border-radius: 8px;
-    font-size: 0.95em;
-}
-
-.change-positive {
-    background: rgba(16,185,129,0.2);
-    color: #10b981;
-}
-
-.change-negative {
-    background: rgba(239,68,68,0.2);
-    color: #ef4444;
-}
-
-/* FEAR & GREED GAUGE */
-.fear-greed-container {
-    background: rgba(255,255,255,0.03);
-    border-radius: 24px;
-    padding: 40px;
-    border: 1px solid rgba(255,255,255,0.1);
-    margin-bottom: 60px;
-}
-
-.gauge-title {
-    text-align: center;
-    font-size: 1.5em;
-    font-weight: 700;
-    margin-bottom: 30px;
-}
-
-.gauge-wrapper {
-    text-align: center;
-}
-
-.gauge {
-    width: 300px;
-    height: auto;
-    margin: 0 auto;
-    display: block;
-}
-
-#gaugeNeedle {
-    transform-origin: 100px 100px;
-    transition: transform 1s ease-out;
-}
-
-.gauge-value {
-    font-size: 3em;
-    font-weight: 900;
-    margin-top: 20px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.gauge-label {
-    font-size: 1.2em;
-    font-weight: 600;
-    color: rgba(255,255,255,0.7);
-    margin-top: 10px;
-}
-
-/* ANIMATIONS */
-@keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 0.8; }
-    50% { transform: scale(1.05); opacity: 1; }
-}
-
-@keyframes float-bubble {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-}
-</style>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
-// 🌍 GLOBE 3D AVEC THREE.JS
-let scene, camera, renderer, globe;
-
-function initGlobe() {
-    const container = document.getElementById('globe3d');
-    scene = new THREE.Scene();
-    
-    camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.z = 2;
-    
-    renderer = new THREE.WebGLRenderer({ canvas: container, alpha: true, antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    
-    // Globe avec texture gradient
-    const geometry = new THREE.SphereGeometry(1, 64, 64);
-    const material = new THREE.MeshBasicMaterial({
-        color: 0x667eea,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.3
-    });
-    globe = new THREE.Mesh(geometry, material);
-    scene.add(globe);
-    
-    // Particules autour du globe
-    const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 1000;
-    const posArray = new Float32Array(particlesCount * 3);
-    
-    for(let i = 0; i < particlesCount * 3; i++) {
-        posArray[i] = (Math.random() - 0.5) * 5;
-    }
-    
-    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    const particlesMaterial = new THREE.PointsMaterial({
-        size: 0.005,
-        color: 0x764ba2,
-        transparent: true,
-        opacity: 0.8
-    });
-    
-    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
-    scene.add(particlesMesh);
-    
-    animateGlobe();
-}
-
-function animateGlobe() {
-    requestAnimationFrame(animateGlobe);
-    globe.rotation.y += 0.002;
-    globe.rotation.x = Math.sin(Date.now() * 0.0005) * 0.1;
-    renderer.render(scene, camera);
-}
-
-// 📊 FETCH DATA FROM COINGECKO API (GRATUIT)
-async function fetchCryptoData() {
-    try {
-        const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h');
-        const data = await response.json();
-        
-        // Global data
-        const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
-        const globalData = await globalResponse.json();
-        
-        updateGlobalStats(globalData.data);
-        createBubbles(data);
-        updateMovers(data);
-        
-    } catch (error) {
-        console.error('Erreur fetch data:', error);
-    }
-}
-
-function updateGlobalStats(data) {
-    document.getElementById('totalVolume').textContent = '$' + (data.total_volume.usd / 1e9).toFixed(1) + 'B';
-    document.getElementById('marketCap').textContent = '$' + (data.total_market_cap.usd / 1e12).toFixed(2) + 'T';
-    document.getElementById('btcDom').textContent = data.market_cap_percentage.btc.toFixed(1) + '%';
-}
-
-// 💎 CREATE INTERACTIVE BUBBLES
-function createBubbles(coins) {
-    const container = document.getElementById('bubbles');
-    container.innerHTML = '';
-    
-    coins.slice(0, 15).forEach((coin, index) => {
-        const bubble = document.createElement('div');
-        bubble.className = 'crypto-bubble';
-        
-        const size = Math.max(60, Math.min(150, coin.market_cap / 1e9 * 2));
-        const change = coin.price_change_percentage_24h;
-        const color = change > 0 ? '16,185,129' : '239,68,68';
-        
-        bubble.style.width = size + 'px';
-        bubble.style.height = size + 'px';
-        bubble.style.background = `radial-gradient(circle, rgba(${color},0.3), rgba(${color},0.1))`;
-        bubble.style.left = (Math.random() * 85 + 5) + '%';
-        bubble.style.top = (Math.random() * 70 + 10) + '%';
-        bubble.style.animation = `float-bubble ${3 + Math.random() * 2}s ease-in-out infinite`;
-        bubble.style.animationDelay = (Math.random() * 2) + 's';
-        
-        bubble.innerHTML = `
-            <div class="bubble-symbol">${coin.symbol.toUpperCase()}</div>
-            <div class="bubble-change">${change > 0 ? '+' : ''}${change.toFixed(1)}%</div>
-        `;
-        
-        bubble.title = `${coin.name}: $${coin.current_price.toFixed(2)}`;
-        
-        container.appendChild(bubble);
-    });
-}
-
-// 🔥 UPDATE TOP MOVERS
-function updateMovers(coins) {
-    const sortedByGain = [...coins].sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h);
-    const topGainers = sortedByGain.slice(0, 5);
-    const topLosers = sortedByGain.slice(-5).reverse();
-    
-    const sortedByVolume = [...coins].sort((a, b) => b.total_volume - a.total_volume);
-    const mostActive = sortedByVolume.slice(0, 5);
-    
-    displayMovers('topGainers', topGainers);
-    displayMovers('topLosers', topLosers);
-    displayMovers('mostActive', mostActive);
-}
-
-function displayMovers(containerId, coins) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = '';
-    
-    coins.forEach(coin => {
-        const change = coin.price_change_percentage_24h;
-        const item = document.createElement('div');
-        item.className = 'mover-item';
-        item.innerHTML = `
-            <div class="mover-info">
-                <img src="${coin.image}" width="32" height="32" style="border-radius:50%">
-                <div>
-                    <div class="mover-symbol">${coin.symbol.toUpperCase()}</div>
-                    <div class="mover-name">${coin.name}</div>
-                </div>
-            </div>
-            <div style="text-align:right">
-                <div class="mover-price">$${coin.current_price.toFixed(2)}</div>
-                <div class="mover-change ${change >= 0 ? 'change-positive' : 'change-negative'}">
-                    ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
-                </div>
-            </div>
-        `;
-        container.appendChild(item);
-    });
-}
-
-// 😨 FETCH FEAR & GREED INDEX
-async function fetchFearGreed() {
-    try {
-        const response = await fetch('https://api.alternative.me/fng/');
-        const data = await response.json();
-        const value = parseInt(data.data[0].value);
-        const classification = data.data[0].value_classification;
-        
-        document.getElementById('fearGreedValue').textContent = value;
-        document.getElementById('fearGreedLabel').textContent = classification;
-        
-        // Rotate needle
-        const angle = -90 + (value * 1.8); // 0-100 -> -90 to 90 degrees
-        document.getElementById('gaugeNeedle').style.transform = `rotate(${angle}deg)`;
-        
-    } catch (error) {
-        console.error('Erreur Fear & Greed:', error);
-    }
-}
-
-// 🚀 INIT ALL
-window.addEventListener('DOMContentLoaded', () => {
-    initGlobe();
-    fetchCryptoData();
-    fetchFearGreed();
-    
-    // Auto refresh every 10 minutes (optimized for free API limits)
-    setInterval(() => {
-        fetchCryptoData();
-        fetchFearGreed();
-    }, 600000);
-});
-</script>
-
-    </div>
-    <script>
-        const particlesContainer = document.getElementById('particles');
-        for (let i = 0; i < 30; i++) { const particle = document.createElement('div'); particle.className = 'particle'; particle.style.left = Math.random() * 100 + '%'; particle.style.animationDelay = Math.random() * 15 + 's'; particle.style.animationDuration = (15 + Math.random() * 10) + 's'; particlesContainer.appendChild(particle); }
-    </script>
-</body>
-</html>"""
-    
-    return HTMLResponse(SIDEBAR + html)
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
-    html = """<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto IA</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: hidden; background: #0a0e27; color: #fff; margin-left: 280px; position: relative; }
-        .animated-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 20%, #2d1b69 40%, #1a1f3a 60%, #0f1419 80%, #0a0e27 100%); background-size: 400% 400%; animation: gradientFlow 20s ease infinite; }
-        @keyframes gradientFlow { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-        .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
-        .particle { position: absolute; width: 4px; height: 4px; background: radial-gradient(circle, rgba(102, 126, 234, 0.8), transparent); border-radius: 50%; animation: float 15s infinite ease-in-out; }
-        @keyframes float { 0%, 100% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(-100vh) translateX(100px); opacity: 0; } }
-        .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.3; pointer-events: none; z-index: 1; animation: orbFloat 20s ease-in-out infinite; }
-        .orb1 { width: 500px; height: 500px; background: radial-gradient(circle, #667eea, transparent); top: -200px; left: -200px; }
-        .orb2 { width: 400px; height: 400px; background: radial-gradient(circle, #764ba2, transparent); bottom: -100px; right: -100px; animation-delay: -5s; }
-        .orb3 { width: 350px; height: 350px; background: radial-gradient(circle, #f093fb, transparent); top: 50%; right: 10%; animation-delay: -10s; }
-        @keyframes orbFloat { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(50px, -50px) scale(1.1); } 66% { transform: translate(-30px, 30px) scale(0.9); } }
-        .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0 auto; }
-        .hero { text-align: center; margin-bottom: 60px; position: relative; }
-        .hero-title { font-size: 4.5em; font-weight: 900; background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite; letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px; }
-        @keyframes titleGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-        @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-        .hero-subtitle { font-size: 1.2em; color: rgba(255, 255, 255, 0.7); font-weight: 400; line-height: 1.8; max-width: 900px; margin: 0 auto; animation: fadeInUp 1s ease; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 60px; }
-        .stat-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 35px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #667eea, #764ba2, #f093fb); transform: translateX(-100%); transition: transform 0.6s ease; }
-        .stat-card:hover::before { transform: translateX(0); }
-        .stat-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.5); box-shadow: 0 20px 60px rgba(102, 126, 234, 0.3), 0 0 0 1px rgba(102, 126, 234, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1); }
-        .stat-icon { font-size: 3em; margin-bottom: 15px; display: inline-block; animation: iconFloat 3s ease-in-out infinite; filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.6)); }
-        @keyframes iconFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
-        .stat-value { font-size: 3em; font-weight: 900; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; margin-bottom: 10px; display: block; }
-        .stat-label { font-size: 1em; color: rgba(255, 255, 255, 0.6); font-weight: 500; text-transform: uppercase; letter-spacing: 2px; }
-        .stat-chart { margin-top: 20px; height: 50px; position: relative; }
-        .mini-sparkline { width: 100%; height: 100%; }
-        .page-section-title { font-size: 2.5em; font-weight: 800; text-align: center; margin: 80px 0 40px; background: linear-gradient(135deg, #fff, rgba(255,255,255,0.8)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .crypto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; margin-bottom: 60px; }
-        .crypto-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 30px; position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-        .crypto-card:hover { transform: translateY(-8px) scale(1.02); background: rgba(255, 255, 255, 0.06); border-color: rgba(102, 126, 234, 0.4); box-shadow: 0 20px 50px rgba(102, 126, 234, 0.3); }
-        .crypto-icon { font-size: 2.5em; margin-bottom: 15px; display: block; filter: drop-shadow(0 4px 15px rgba(102, 126, 234, 0.5)); }
-        .crypto-title { font-size: 1.3em; font-weight: 700; margin-bottom: 10px; color: #fff; }
-        .crypto-value { font-size: 2em; font-weight: 800; background: linear-gradient(135deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 8px; }
-        .crypto-change { font-size: 1em; font-weight: 600; padding: 5px 12px; border-radius: 12px; display: inline-block; }
-        .positive { background: rgba(16, 185, 129, 0.2); color: #10b981; }
-        .negative { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-        .section-divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), rgba(118, 75, 162, 0.5), rgba(240, 147, 251, 0.5), transparent); margin: 80px 0; position: relative; }
-        .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
-        @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
-        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } }
-    </style>
-</head>
-<body>
-    <div class="animated-bg"></div>
-    <div class="orb orb1"></div>
-    <div class="orb orb2"></div>
-    <div class="orb orb3"></div>
-    <div class="particles" id="particles"></div>
-    <div class="main-content">
+    """Page d'accueil professionnelle du dashboard"""
+    html_content = SIDEBAR + """
+    <!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Magic Mike Trading Dashboard - Accueil</title>
+        """ + CSS + """
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+            }}
+            
+            .hero {
+                text-align: center;
+                padding: 80px 20px 40px 20px;
+                color: white;
+            }}
+            
+            .hero h1 {
+                font-size: 3em;
+                margin-bottom: 20px;
+                text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+                animation: fadeInDown 0.8s;
+            }
+            
+            .hero p {
+                font-size: 1.4em;
+                opacity: 0.95;
+                max-width: 800px;
+                margin: 0 auto 40px auto;
+                animation: fadeIn 1s;
+            }
+            
+            @keyframes fadeInDown {
+                from { opacity: 0; transform: translateY(-20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            
+            .features-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+                gap: 25px;
+                margin: 40px 0;
+            }
+            
+            .feature-card {
+                background: white;
+                border-radius: 15px;
+                padding: 30px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                transition: transform 0.3s, box-shadow 0.3s;
+                cursor: pointer;
+                text-decoration: none;
+                color: #333;
+            }
+            
+            .feature-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            }
+            
+            .feature-icon {
+                font-size: 3em;
+                margin-bottom: 15px;
+            }
+            
+            .feature-card h3 {
+                color: #667eea;
+                font-size: 1.5em;
+                margin-bottom: 12px;
+            }
+            
+            .feature-card p {
+                color: #666;
+                line-height: 1.6;
+                font-size: 1.05em;
+            }
+            
+            .info-section {
+                background: white;
+                border-radius: 15px;
+                padding: 50px;
+                margin: 40px 0;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            }
+            
+            .info-section h2 {
+                color: #667eea;
+                font-size: 2.2em;
+                margin-bottom: 25px;
+                text-align: center;
+            }
+            
+            .info-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 30px;
+                margin-top: 30px;
+            }
+            
+            .info-box {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                padding: 25px;
+                border-radius: 12px;
+                border-left: 5px solid #667eea;
+            }
+            
+            .info-box h3 {
+                color: #667eea;
+                margin-bottom: 15px;
+                font-size: 1.3em;
+            }
+            
+            .info-box ul {
+                list-style: none;
+                padding: 0;
+            }
+            
+            .info-box li {
+                padding: 8px 0;
+                color: #555;
+                line-height: 1.6;
+            }
+            
+            .info-box li:before {
+                content: "✓ ";
+                color: #00d084;
+                font-weight: bold;
+                margin-right: 8px;
+            }
+            
+            .cta-section {
+                text-align: center;
+                padding: 50px 20px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 15px;
+                margin: 40px 0;
+                backdrop-filter: blur(10px);
+            }
+            
+            .cta-section h2 {
+                color: white;
+                font-size: 2em;
+                margin-bottom: 20px;
+            }
+            
+            .cta-button {
+                display: inline-block;
+                background: white;
+                color: #667eea;
+                padding: 15px 40px;
+                border-radius: 50px;
+                text-decoration: none;
+                font-weight: bold;
+                font-size: 1.2em;
+                margin: 10px;
+                transition: transform 0.3s, box-shadow 0.3s;
+            }
+            
+            .cta-button:hover {
+                transform: scale(1.05);
+                box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            }
+            
+            .stats-bar {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 20px;
+                margin: 30px 0;
+            }
+            
+            .stat-box {
+                background: rgba(255,255,255,0.15);
+                padding: 20px;
+                border-radius: 12px;
+                text-align: center;
+                backdrop-filter: blur(10px);
+                color: white;
+            }
+            
+            .stat-number {
+                font-size: 2.5em;
+                font-weight: bold;
+                display: block;
+                margin-bottom: 5px;
+            }
+            
+            .stat-label {
+                font-size: 1em;
+                opacity: 0.9;
+            }
+        </style>
+    </head>
+    <body>
         <div class="hero">
-            <h1 class="hero-title">🚀 Crypto IA 💎</h1>
-            <p class="hero-subtitle">Une plateforme d'analyse crypto pilotée par l'IA, qui convertit le bruit permanent du marché 24/7 en décisions claires, structurées, mesurables — et alignées avec votre stratégie.</p>
-        </div>
-        <div class="stats-grid">
-            <div class="stat-card" style="animation-delay: 0.1s;"><span class="stat-icon">🚀</span><span class="stat-value">30+</span><span class="stat-label">Outils actifs IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad1)" stroke-width="2" points="0,40 20,30 40,35 60,20 80,25 100,10"/><defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#667eea;stop-opacity:1" /><stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-            <div class="stat-card" style="animation-delay: 0.2s;"><span class="stat-icon">💎</span><span class="stat-value">85%+</span><span class="stat-label">Winrate Stratégie IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad2)" stroke-width="2" points="0,45 20,42 40,38 60,30 80,22 100,15"/><defs><linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#764ba2;stop-opacity:1" /><stop offset="100%" style="stop-color:#f093fb;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-            <div class="stat-card" style="animation-delay: 0.3s;"><span class="stat-icon">⚡</span><span class="stat-value">24/7</span><span class="stat-label">Données Live</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad3)" stroke-width="2" points="0,25 10,20 20,30 30,15 40,25 50,10 60,20 70,15 80,25 90,10 100,20"/><defs><linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" /><stop offset="100%" style="stop-color:#667eea;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-            <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
-        </div>
-        <div class="section-divider"></div>
-<!-- 🚀 LIVE MARKET PULSE - SECTION RÉVOLUTIONNAIRE -->
-<div class="section-divider"></div>
-
-<h2 class="page-section-title">⚡ LIVE MARKET PULSE</h2>
-<p class="market-subtitle">Données en temps réel • Mise à jour toutes les 30 secondes</p>
-
-<!-- GLOBE 3D CONTAINER -->
-<div class="globe-container">
-    <canvas id="globe3d"></canvas>
-    <div class="globe-stats">
-        <div class="globe-stat">
-            <div class="stat-number" id="totalVolume">$0</div>
-            <div class="stat-text">Volume 24H Global</div>
-        </div>
-        <div class="globe-stat">
-            <div class="stat-number" id="marketCap">$0</div>
-            <div class="stat-text">Market Cap Total</div>
-        </div>
-        <div class="globe-stat">
-            <div class="stat-number" id="btcDom">0%</div>
-            <div class="stat-text">BTC Dominance</div>
-        </div>
-    </div>
-</div>
-
-<!-- CRYPTO BUBBLES HEATMAP -->
-<div class="bubbles-container" id="bubbles"></div>
-
-<!-- TOP MOVERS AVEC ANIMATIONS -->
-<div class="movers-grid">
-    <div class="mover-section">
-        <h3 class="mover-title">🔥 TOP GAINERS</h3>
-        <div id="topGainers" class="mover-list"></div>
-    </div>
-    <div class="mover-section">
-        <h3 class="mover-title">❄️ TOP LOSERS</h3>
-        <div id="topLosers" class="mover-list"></div>
-    </div>
-    <div class="mover-section">
-        <h3 class="mover-title">📊 MOST ACTIVE</h3>
-        <div id="mostActive" class="mover-list"></div>
-    </div>
-</div>
-
-<!-- FEAR & GREED GAUGE -->
-<div class="fear-greed-container">
-    <h3 class="gauge-title">Market Sentiment</h3>
-    <div class="gauge-wrapper">
-        <svg class="gauge" viewBox="0 0 200 120">
-            <defs>
-                <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" style="stop-color:#ef4444"/>
-                    <stop offset="25%" style="stop-color:#f97316"/>
-                    <stop offset="50%" style="stop-color:#eab308"/>
-                    <stop offset="75%" style="stop-color:#84cc16"/>
-                    <stop offset="100%" style="stop-color:#10b981"/>
-                </linearGradient>
-            </defs>
-            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGradient)" stroke-width="20" stroke-linecap="round"/>
-            <line id="gaugeNeedle" x1="100" y1="100" x2="100" y2="30" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
-        </svg>
-        <div class="gauge-value" id="fearGreedValue">--</div>
-        <div class="gauge-label" id="fearGreedLabel">Chargement...</div>
-    </div>
-</div>
-
-<style>
-/* MARKET PULSE STYLES */
-.market-subtitle {
-    text-align: center;
-    color: rgba(255,255,255,0.6);
-    font-size: 0.9em;
-    margin-top: -30px;
-    margin-bottom: 40px;
-    font-weight: 400;
-}
-
-/* GLOBE 3D */
-.globe-container {
-    position: relative;
-    width: 100%;
-    height: 500px;
-    background: rgba(255,255,255,0.02);
-    border-radius: 30px;
-    margin-bottom: 40px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-#globe3d {
-    width: 100%;
-    height: 100%;
-}
-
-.globe-stats {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 40px;
-    background: rgba(10,14,39,0.9);
-    backdrop-filter: blur(20px);
-    padding: 20px 40px;
-    border-radius: 20px;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-.globe-stat {
-    text-align: center;
-}
-
-.stat-number {
-    font-size: 1.8em;
-    font-weight: 800;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 5px;
-}
-
-.stat-text {
-    font-size: 0.9em;
-    color: rgba(255,255,255,0.6);
-    font-weight: 500;
-}
-
-/* CRYPTO BUBBLES */
-.bubbles-container {
-    position: relative;
-    width: 100%;
-    height: 400px;
-    background: rgba(255,255,255,0.02);
-    border-radius: 30px;
-    margin-bottom: 40px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-.crypto-bubble {
-    position: absolute;
-    border-radius: 50%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(10px);
-    border: 2px solid rgba(255,255,255,0.2);
-}
-
-.crypto-bubble:hover {
-    transform: scale(1.1);
-    z-index: 100;
-}
-
-.bubble-symbol {
-    font-size: 1.2em;
-    font-weight: 800;
-    color: white;
-}
-
-.bubble-change {
-    font-size: 0.8em;
-    font-weight: 600;
-    margin-top: 5px;
-}
-
-/* TOP MOVERS */
-.movers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 25px;
-    margin-bottom: 40px;
-}
-
-.mover-section {
-    background: rgba(255,255,255,0.03);
-    border-radius: 24px;
-    padding: 25px;
-    border: 1px solid rgba(255,255,255,0.1);
-}
-
-.mover-title {
-    font-size: 1.2em;
-    font-weight: 700;
-    margin-bottom: 20px;
-    text-align: center;
-}
-
-.mover-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.mover-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 15px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 12px;
-    transition: all 0.3s ease;
-}
-
-.mover-item:hover {
-    background: rgba(255,255,255,0.08);
-    transform: translateX(5px);
-}
-
-.mover-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.mover-symbol {
-    font-weight: 700;
-    font-size: 1.1em;
-}
-
-.mover-name {
-    color: rgba(255,255,255,0.6);
-    font-size: 0.9em;
-}
-
-.mover-price {
-    font-weight: 600;
-    font-size: 1.1em;
-}
-
-.mover-change {
-    font-weight: 700;
-    padding: 5px 12px;
-    border-radius: 8px;
-    font-size: 0.95em;
-}
-
-.change-positive {
-    background: rgba(16,185,129,0.2);
-    color: #10b981;
-}
-
-.change-negative {
-    background: rgba(239,68,68,0.2);
-    color: #ef4444;
-}
-
-/* FEAR & GREED GAUGE */
-.fear-greed-container {
-    background: rgba(255,255,255,0.03);
-    border-radius: 24px;
-    padding: 40px;
-    border: 1px solid rgba(255,255,255,0.1);
-    margin-bottom: 60px;
-}
-
-.gauge-title {
-    text-align: center;
-    font-size: 1.5em;
-    font-weight: 700;
-    margin-bottom: 30px;
-}
-
-.gauge-wrapper {
-    text-align: center;
-}
-
-.gauge {
-    width: 300px;
-    height: auto;
-    margin: 0 auto;
-    display: block;
-}
-
-#gaugeNeedle {
-    transform-origin: 100px 100px;
-    transition: transform 1s ease-out;
-}
-
-.gauge-value {
-    font-size: 3em;
-    font-weight: 900;
-    margin-top: 20px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.gauge-label {
-    font-size: 1.2em;
-    font-weight: 600;
-    color: rgba(255,255,255,0.7);
-    margin-top: 10px;
-}
-
-/* ANIMATIONS */
-@keyframes pulse {
-    0%, 100% { transform: scale(1); opacity: 0.8; }
-    50% { transform: scale(1.05); opacity: 1; }
-}
-
-@keyframes float-bubble {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-}
-</style>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
-// 🌍 GLOBE 3D AVEC THREE.JS
-let scene, camera, renderer, globe;
-
-function initGlobe() {
-    const container = document.getElementById('globe3d');
-    scene = new THREE.Scene();
-    
-    camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
-    camera.position.z = 2;
-    
-    renderer = new THREE.WebGLRenderer({ canvas: container, alpha: true, antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    
-    // Globe avec texture gradient
-    const geometry = new THREE.SphereGeometry(1, 64, 64);
-    const material = new THREE.MeshBasicMaterial({
-        color: 0x667eea,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.3
-    });
-    globe = new THREE.Mesh(geometry, material);
-    scene.add(globe);
-    
-    // Particules autour du globe
-    const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 1000;
-    const posArray = new Float32Array(particlesCount * 3);
-    
-    for(let i = 0; i < particlesCount * 3; i++) {
-        posArray[i] = (Math.random() - 0.5) * 5;
-    }
-    
-    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    const particlesMaterial = new THREE.PointsMaterial({
-        size: 0.005,
-        color: 0x764ba2,
-        transparent: true,
-        opacity: 0.8
-    });
-    
-    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
-    scene.add(particlesMesh);
-    
-    animateGlobe();
-}
-
-function animateGlobe() {
-    requestAnimationFrame(animateGlobe);
-    globe.rotation.y += 0.002;
-    globe.rotation.x = Math.sin(Date.now() * 0.0005) * 0.1;
-    renderer.render(scene, camera);
-}
-
-// 📊 FETCH DATA FROM COINGECKO API (GRATUIT)
-async function fetchCryptoData() {
-    try {
-        const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h');
-        const data = await response.json();
-        
-        // Global data
-        const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
-        const globalData = await globalResponse.json();
-        
-        updateGlobalStats(globalData.data);
-        createBubbles(data);
-        updateMovers(data);
-        
-    } catch (error) {
-        console.error('Erreur fetch data:', error);
-    }
-}
-
-function updateGlobalStats(data) {
-    document.getElementById('totalVolume').textContent = '$' + (data.total_volume.usd / 1e9).toFixed(1) + 'B';
-    document.getElementById('marketCap').textContent = '$' + (data.total_market_cap.usd / 1e12).toFixed(2) + 'T';
-    document.getElementById('btcDom').textContent = data.market_cap_percentage.btc.toFixed(1) + '%';
-}
-
-// 💎 CREATE INTERACTIVE BUBBLES
-function createBubbles(coins) {
-    const container = document.getElementById('bubbles');
-    container.innerHTML = '';
-    
-    coins.slice(0, 15).forEach((coin, index) => {
-        const bubble = document.createElement('div');
-        bubble.className = 'crypto-bubble';
-        
-        const size = Math.max(60, Math.min(150, coin.market_cap / 1e9 * 2));
-        const change = coin.price_change_percentage_24h;
-        const color = change > 0 ? '16,185,129' : '239,68,68';
-        
-        bubble.style.width = size + 'px';
-        bubble.style.height = size + 'px';
-        bubble.style.background = `radial-gradient(circle, rgba(${color},0.3), rgba(${color},0.1))`;
-        bubble.style.left = (Math.random() * 85 + 5) + '%';
-        bubble.style.top = (Math.random() * 70 + 10) + '%';
-        bubble.style.animation = `float-bubble ${3 + Math.random() * 2}s ease-in-out infinite`;
-        bubble.style.animationDelay = (Math.random() * 2) + 's';
-        
-        bubble.innerHTML = `
-            <div class="bubble-symbol">${coin.symbol.toUpperCase()}</div>
-            <div class="bubble-change">${change > 0 ? '+' : ''}${change.toFixed(1)}%</div>
-        `;
-        
-        bubble.title = `${coin.name}: $${coin.current_price.toFixed(2)}`;
-        
-        container.appendChild(bubble);
-    });
-}
-
-// 🔥 UPDATE TOP MOVERS
-function updateMovers(coins) {
-    const sortedByGain = [...coins].sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h);
-    const topGainers = sortedByGain.slice(0, 5);
-    const topLosers = sortedByGain.slice(-5).reverse();
-    
-    const sortedByVolume = [...coins].sort((a, b) => b.total_volume - a.total_volume);
-    const mostActive = sortedByVolume.slice(0, 5);
-    
-    displayMovers('topGainers', topGainers);
-    displayMovers('topLosers', topLosers);
-    displayMovers('mostActive', mostActive);
-}
-
-function displayMovers(containerId, coins) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = '';
-    
-    coins.forEach(coin => {
-        const change = coin.price_change_percentage_24h;
-        const item = document.createElement('div');
-        item.className = 'mover-item';
-        item.innerHTML = `
-            <div class="mover-info">
-                <img src="${coin.image}" width="32" height="32" style="border-radius:50%">
-                <div>
-                    <div class="mover-symbol">${coin.symbol.toUpperCase()}</div>
-                    <div class="mover-name">${coin.name}</div>
+            <h1>🎯 Magic Mike Trading Dashboard</h1>
+            <p>Plateforme complète d'analyse crypto & outils professionnels pour traders</p>
+            
+            <div class="stats-bar">
+                <div class="stat-box">
+                    <span class="stat-number">16+</span>
+                    <span class="stat-label">Outils Actifs</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">70-80%</span>
+                    <span class="stat-label">Winrate Stratégie</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">24/7</span>
+                    <span class="stat-label">Données Live</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-number">100%</span>
+                    <span class="stat-label">Gratuit</span>
                 </div>
             </div>
-            <div style="text-align:right">
-                <div class="mover-price">$${coin.current_price.toFixed(2)}</div>
-                <div class="mover-change ${change >= 0 ? 'change-positive' : 'change-negative'}">
-                    ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
+        </div>
+        
+        
+        
+        <div class="container">
+            <div class="features-grid">
+                <a href="/fear-greed" class="feature-card">
+                    <div class="feature-icon">😱</div>
+                    <h3>Fear & Greed Index</h3>
+                    <p>Mesure le sentiment du marché en temps réel. Sachez quand le marché est en panique ou en euphorie.</p>
+                </a>
+                
+                <a href="/dominance" class="feature-card">
+                    <div class="feature-icon">👑</div>
+                    <h3>Bitcoin Dominance</h3>
+                    <p>Suivez la dominance de Bitcoin et anticipez les rotations entre BTC et altcoins.</p>
+                </a>
+                
+                <a href="/altcoin-season" class="feature-card">
+                    <div class="feature-icon">🌟</div>
+                    <h3>Altcoin Season</h3>
+                    <p>Index professionnel pour identifier si c'est la saison des altcoins ou de Bitcoin.</p>
+                </a>
+                
+                <a href="/heatmap" class="feature-card">
+                    <div class="feature-icon">🔥</div>
+                    <h3>Heatmap Crypto</h3>
+                    <p>Visualisation des performances du top 100 cryptos en un coup d'œil.</p>
+                </a>
+                
+                <a href="/strategie" class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3>Stratégie Magic Mike</h3>
+                    <p>Guide complet de la stratégie 1H et 15min avec 70-80% de winrate validé.</p>
+                </a>
+                
+                <a href="/spot-trading" class="feature-card">
+                    <div class="feature-icon">💎</div>
+                    <h3>Spot Trading</h3>
+                    <p>Guide ultime du trading au comptant : fonctionnement, stratégies, coins recommandés et gestion de risque.</p>
+                </a>
+                
+                <a href="/calculatrice" class="feature-card">
+                    <div class="feature-icon">🧮</div>
+                    <h3>Calculatrice Trading</h3>
+                    <p>Calculez vos positions, risk/reward, liquidation et profits en temps réel.</p>
+                </a>
+                
+                <a href="/risk-management" class="feature-card">
+                    <div class="feature-icon">⚖️</div>
+                    <h3>Risk Management</h3>
+                    <p>Gérez votre capital avec des règles strictes de position sizing et limites de perte.</p>
+                </a>
+                
+                <a href="/watchlist" class="feature-card">
+                    <div class="feature-icon">👀</div>
+                    <h3>Watchlist & Alertes</h3>
+                    <p>Surveillez vos cryptos favorites et recevez des alertes sur vos prix cibles.</p>
+                </a>
+                
+                <a href="/ai-assistant" class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI Trading Assistant</h3>
+                    <p>Intelligence artificielle qui analyse vos performances et donne des recommandations.</p>
+                </a>
+                
+                <a href="/ai-opportunity-scanner" class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>AI Opportunity Scanner</h3>
+                    <p>Scanner IA qui détecte les 5 meilleures opportunités de trading avec score 0-100 en temps réel.</p>
+                </a>
+                
+                <a href="/ai-market-regime" class="feature-card">
+                    <div class="feature-icon">🌊</div>
+                    <h3>AI Market Regime</h3>
+                    <p>Détecteur intelligent de la phase actuelle du marché : Bull Run, Bear, Range, Accumulation.</p>
+                </a>
+                
+                <a href="/ai-whale-watcher" class="feature-card">
+                    <div class="feature-icon">🐋</div>
+                    <h3>AI Whale Watcher</h3>
+                    <p>Surveillance des mouvements de baleines et volumes anormaux avec analyse d'impact en temps réel.</p>
+                </a>
+                
+                <a href="/stats-dashboard" class="feature-card">
+                    <div class="feature-icon">$ 📊 $</div>
+                    <h3>Statistiques Avancées</h3>
+                    <p>Sharpe Ratio, Max Drawdown, Win Rate - Tous les KPIs professionnels en un coup d'œil.</p>
+                </a>
+                
+                <a href="/market-simulation" class="feature-card">
+                    <div class="feature-icon">📈</div>
+                    <h3>Simulation Marché</h3>
+                    <p>DCA vs Émotions: Visualisez l'impact réaliste de la discipline sur 4 ans.</p>
+                </a>
+                
+                <a href="/success-stories" class="feature-card">
+                    <div class="feature-icon">🌟</div>
+                    <h3>Success Stories</h3>
+                    <p>5 histoires vraies: Marc 500$/mois → 50K$ en 4 ans. La preuve que la discipline paie!</p>
+                </a>
+                
+                <a href="/nouvelles" class="feature-card">
+                    <div class="feature-icon">📰</div>
+                    <h3>Nouvelles Crypto</h3>
+                    <p>Restez informé des dernières actualités Bitcoin et crypto en temps réel.</p>
+                </a>
+                
+                <a href="/calendrier" class="feature-card">
+                    <div class="feature-icon">📅</div>
+                    <h3>Calendrier Économique</h3>
+                    <p>31 événements économiques majeurs (Fed, BCE, BoE, BoJ) qui impactent les cryptos.</p>
+                </a>
+                
+                <a href="/convertisseur" class="feature-card">
+                    <div class="feature-icon">💱</div>
+                    <h3>Convertisseur</h3>
+                    <p>Convertissez instantanément entre cryptos et devises fiat avec taux live.</p>
+                </a>
+            </div>
+            
+            <div class="info-section">
+                <h2>🚀 Pourquoi Magic Mike Dashboard ?</h2>
+                
+                <div class="info-grid">
+                    <div class="info-box">
+                        <h3>📊 Pour le Trading Spot</h3>
+                        <ul>
+                            <li>Acheter et vendre des cryptos au prix actuel</li>
+                            <li>Pas de leverage = moins de risque</li>
+                            <li>Idéal pour investissement moyen/long terme</li>
+                            <li>Stratégie 1H parfaite pour le spot</li>
+                            <li>Suivre les tendances Fear & Greed</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h3>⚡ Pour le Trading Futures</h3>
+                        <ul>
+                            <li>Trading avec leverage (10x recommandé)</li>
+                            <li>Possibilité de LONG et SHORT</li>
+                            <li>Profits plus rapides mais plus risqué</li>
+                            <li>Stratégie 15min pour scalping</li>
+                            <li>Risk management CRUCIAL</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h3>🎯 Stratégie Validée</h3>
+                        <ul>
+                            <li>70-80% de winrate prouvé</li>
+                            <li>Backtesté sur 12+ mois</li>
+                            <li>2 timeframes: 1H (swing) et 15min (scalp)</li>
+                            <li>Filtres HTF pour éviter les faux signaux</li>
+                            <li>Sortie progressive 40/40/20</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box">
+                        <h3>💎 Outils Professionnels</h3>
+                        <ul>
+                            <li>Données en temps réel (API CoinGecko, CMC)</li>
+                            <li>Calculatrice position sizing</li>
+                            <li>AI Assistant pour recommendations</li>
+                            <li>Alertes personnalisées</li>
+                            <li>Journal de trading intégré</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
-        `;
-        container.appendChild(item);
-    });
-}
-
-// 😨 FETCH FEAR & GREED INDEX
-async function fetchFearGreed() {
-    try {
-        const response = await fetch('https://api.alternative.me/fng/');
-        const data = await response.json();
-        const value = parseInt(data.data[0].value);
-        const classification = data.data[0].value_classification;
-        
-        document.getElementById('fearGreedValue').textContent = value;
-        document.getElementById('fearGreedLabel').textContent = classification;
-        
-        // Rotate needle
-        const angle = -90 + (value * 1.8); // 0-100 -> -90 to 90 degrees
-        document.getElementById('gaugeNeedle').style.transform = `rotate(${angle}deg)`;
-        
-    } catch (error) {
-        console.error('Erreur Fear & Greed:', error);
-    }
-}
-
-// 🚀 INIT ALL
-window.addEventListener('DOMContentLoaded', () => {
-    initGlobe();
-    fetchCryptoData();
-    fetchFearGreed();
-    
-    // Auto refresh every 10 minutes (optimized for free API limits)
-    setInterval(() => {
-        fetchCryptoData();
-        fetchFearGreed();
-    }, 600000);
-});
-</script>
-
-    </div>
-    <script>
-        const particlesContainer = document.getElementById('particles');
-        for (let i = 0; i < 30; i++) { const particle = document.createElement('div'); particle.className = 'particle'; particle.style.left = Math.random() * 100 + '%'; particle.style.animationDelay = Math.random() * 15 + 's'; particle.style.animationDuration = (15 + Math.random() * 10) + 's'; particlesContainer.appendChild(particle); }
-    </script>
-</body>
-</html>"""
-    
-    return HTMLResponse(SIDEBAR + html)
-
+            
+            <div class="info-section">
+                <h2>📚 Comment Utiliser ce Dashboard ?</h2>
+                
+                <div class="info-grid">
+                    <div class="info-box" style="border-left-color: #10b981;">
+                        <h3>1️⃣ Analyse du Marché</h3>
+                        <ul>
+                            <li>Commencez par Fear & Greed Index</li>
+                            <li>Vérifiez la Dominance Bitcoin</li>
+                            <li>Consultez l'Altcoin Season Index</li>
+                            <li>Lisez les dernières nouvelles</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box" style="border-left-color: #3b82f6;">
+                        <h3>2️⃣ Identifier les Opportunités</h3>
+                        <ul>
+                            <li>Utilisez la Heatmap pour trouver les winners</li>
+                            <li>Ajoutez vos favoris à la Watchlist</li>
+                            <li>Configurez des alertes de prix</li>
+                            <li>Consultez le Calendrier Économique</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box" style="border-left-color: #f59e0b;">
+                        <h3>3️⃣ Planifier le Trade</h3>
+                        <ul>
+                            <li>Lisez la Stratégie Magic Mike complète</li>
+                            <li>Utilisez la Calculatrice pour sizing</li>
+                            <li>Définissez votre Risk (1-2% max)</li>
+                            <li>Placez TOUJOURS un Stop Loss</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="info-box" style="border-left-color: #ef4444;">
+                        <h3>4️⃣ Gérer & Apprendre</h3>
+                        <ul>
+                            <li>Suivez vos trades dans Risk Management</li>
+                            <li>Consultez l'AI Assistant régulièrement</li>
+                            <li>Respectez vos limites de perte quotidienne</li>
+                            <li>Analysez vos erreurs pour progresser</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="cta-section">
+                <h2>🎯 Prêt à Commencer ?</h2>
+                <p style="color: white; margin-bottom: 30px; font-size: 1.1em;">
+                    Explorez les outils et commencez votre parcours de trading professionnel
+                </p>
+                <a href="/strategie" class="cta-button">📚 Lire la Stratégie</a>
+                <a href="/calculatrice" class="cta-button">🧮 Calculer un Trade</a>
+                <a href="/fear-greed" class="cta-button">😱 Voir le Sentiment</a>
+            </div>
+            
+            <div style="text-align: center; padding: 40px 20px; color: white;">
+                <p style="font-size: 1.1em; margin-bottom: 10px;">
+                    <strong>💡 Rappel Important</strong>
+                </p>
+                <p style="opacity: 0.9;">
+                    Le trading comporte des risques. Ne tradez jamais plus que ce que vous pouvez vous permettre de perdre.<br>
+                    Utilisez toujours un Stop Loss et respectez votre plan de Risk Management.
+                </p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=SIDEBAR + html_content)
 
 @app.get("/spot-trading", response_class=HTMLResponse)
 async def spot_trading_page():
@@ -15571,25 +16201,6 @@ async def trades_page():
         setInterval(loadWeeklyPnl, 30000);
         console.log('🚀 Trades Premium initialisé');
     </script>
-
-    <div style="max-width: 1200px; margin: 60px auto 40px; padding: 40px; background: rgba(59,130,246,0.05); border-radius: 20px; border: 1px solid rgba(59,130,246,0.3);">
-        <h2 style="text-align: center; color: #3b82f6; font-size: 2em; margin-bottom: 30px;">Guide - Mes Trades</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">TP / SL</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Configurez Take Profit et Stop Loss intelligents pour chaque position avec trailing stop automatique.</p>
-            </div>
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">Suivi Temps Réel</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Monitoring de vos positions 24/7 avec alertes Telegram quand TP ou SL est atteint.</p>
-            </div>
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">Trailing Stop</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Votre stop loss suit automatiquement le prix à la hausse pour maximiser vos gains.</p>
-            </div>
-        </div>
-    </div>
-
 </body>
 </html>"""
     return HTMLResponse(html)
@@ -25890,24 +26501,6 @@ async def ai_predictor():
             </div>
         </div>
     
-        <div style="max-width: 1200px; margin: 60px auto 40px; padding: 40px; background: rgba(236,72,153,0.05); border-radius: 20px; border: 1px solid rgba(236,72,153,0.3);">
-            <h2 style="text-align: center; color: #ec4899; font-size: 2em; margin-bottom: 30px;">Guide - AI Predictor</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                <div style="padding: 25px; background: rgba(236,72,153,0.1); border-radius: 15px; border-left: 4px solid #ec4899;">
-                    <h3 style="color: #ec4899; margin-bottom: 15px;">Machine Learning</h3>
-                    <p style="color: #cbd5e1; line-height: 1.6;">Prédictions basées sur l'IA et l'analyse de patterns historiques.</p>
-                </div>
-                <div style="padding: 25px; background: rgba(236,72,153,0.1); border-radius: 15px; border-left: 4px solid #ec4899;">
-                    <h3 style="color: #ec4899; margin-bottom: 15px;">24H / 7D / 30D</h3>
-                    <p style="color: #cbd5e1; line-height: 1.6;">Court, moyen et long terme avec niveaux de confiance.</p>
-                </div>
-                <div style="padding: 25px; background: rgba(236,72,153,0.1); border-radius: 15px; border-left: 4px solid #ec4899;">
-                    <h3 style="color: #ec4899; margin-bottom: 15px;">Scénarios</h3>
-                    <p style="color: #cbd5e1; line-height: 1.6;">Bull, Bear, Neutral avec probabilités IA.</p>
-                </div>
-            </div>
-        </div>
-
         </body>
     </html>
     """)
@@ -29491,25 +30084,6 @@ async def portfolio_tracker(request: Request):
         }
     }
     </script>
-
-    <div style="max-width: 1200px; margin: 60px auto 40px; padding: 40px; background: rgba(59,130,246,0.05); border-radius: 20px; border: 1px solid rgba(59,130,246,0.3);">
-        <h2 style="text-align: center; color: #3b82f6; font-size: 2em; margin-bottom: 30px;">Guide - Portfolio Tracker</h2>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">Connexion API</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Connectez vos exchanges (Binance, Coinbase, etc.) via API pour tracking automatique en temps réel.</p>
-            </div>
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">Sécurité</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Utilisez des API keys en READ-ONLY uniquement. Ne donnez jamais les permissions de trading ou withdrawal.</p>
-            </div>
-            <div style="padding: 25px; background: rgba(59,130,246,0.1); border-radius: 15px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #3b82f6; margin-bottom: 15px;">Suivi Live</h3>
-                <p style="color: #cbd5e1; line-height: 1.6;">Valeur totale, P&L par coin, performances, tout en temps réel avec données de marché actualisées.</p>
-            </div>
-        </div>
-    </div>
-
 </body>
 </html>"""
     return HTMLResponse(content=html)
@@ -32982,9 +33556,327 @@ async def get_portfolio_data(request: Request):
 
 # ============================================================================
 # 🎯 TECHNICAL ANALYSIS PRO ROUTE - AVEC SÉLECTEUR CRYPTO
-
-
 # ============================================================================
+@app.get("/ai-technical-analysis", response_class=HTMLResponse)
+async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
+    """Technical Analysis Pro - Multi-crypto avec sélecteur"""
+    
+    try:
+        # Get top 50 cryptos for dropdown
+        all_cryptos = await get_top_50_cryptos()
+        
+        # Build dropdown options
+        dropdown_options = ""
+        for crypto in all_cryptos[:50]:
+            crypto_id = crypto.get('id', '')
+            crypto_name = crypto.get('name', '')
+            crypto_symbol = crypto.get('symbol', '').upper()
+            selected = 'selected' if crypto_id == symbol else ''
+            dropdown_options += '<option value="' + crypto_id + '" ' + selected + '>' + crypto_symbol + ' - ' + crypto_name + '</option>'
+        
+        # Fetch data for selected crypto
+        df = await analyzer.get_ohlcv_data(symbol, days=60)
+        
+        if df is None or len(df) == 0:
+            return HTMLResponse(SIDEBAR + """
+            <!DOCTYPE html>
+            <html lang="fr">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Erreur</title>
+            """ + CSS + """
+            </head>
+            <body>
+                <div class="main-content">
+                    <div style="padding:50px;text-align:center;">
+                        <h1 style="font-size:3em;">⚠️ Données indisponibles</h1>
+                        <p style="font-size:1.3em;">Impossible de charger les données pour """ + symbol + """.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """)
+        
+        # Calculate all indicators
+        indicators = analyzer.calculate_indicators(df)
+        patterns = analyzer.detect_patterns(df)
+        sr_levels = analyzer.find_support_resistance(df)
+        reversal_signals = analyzer.analyze_reversal_points(df, indicators)
+        
+        current_price = df['close'].iloc[-1]
+        change_24h = ((df['close'].iloc[-1] - df['close'].iloc[-24]) / df['close'].iloc[-24]) * 100 if len(df) >= 24 else 0
+        
+        # Get crypto name for display
+        selected_crypto = next((c for c in all_cryptos if c.get('id') == symbol), None)
+        crypto_display_name = selected_crypto.get('name', symbol.upper()) if selected_crypto else symbol.upper()
+        crypto_symbol_display = selected_crypto.get('symbol', symbol).upper() if selected_crypto else symbol.upper()
+        
+        # Build indicators HTML with INLINE styles only
+        rsi_class = 'oversold' if indicators['rsi'] < 30 else ('overbought' if indicators['rsi'] > 70 else 'neutral')
+        macd_class = 'bullish' if indicators['macd_diff'] > 0 else 'bearish'
+        ema200_line = '<div>EMA200: $' + "{:,.0f}".format(indicators['ema200']) + '</div>' if indicators['ema200'] else ''
+        
+        # Signal colors
+        signal_colors = {
+            'oversold': 'background:#dcfce7;color:#166534;',
+            'overbought': 'background:#fee2e2;color:#991b1b;',
+            'bullish': 'background:#d1fae5;color:#065f46;',
+            'bearish': 'background:#fecaca;color:#991b1b;',
+            'neutral': 'background:#f3f4f6;color:#4b5563;'
+        }
+        
+        indicators_html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-bottom:30px;">'
+        
+        # RSI Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📊</span><span style="font-weight:bold;">RSI (14)</span></div>'
+        indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['rsi']) + '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;' + signal_colors[rsi_class] + '">' + indicators['rsi_signal'] + '</div>'
+        indicators_html += '</div>'
+        
+        # MACD Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📈</span><span style="font-weight:bold;">MACD</span></div>'
+        indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['macd']) + '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;' + signal_colors[macd_class] + '">' + indicators['macd_trend'] + '</div>'
+        indicators_html += '</div>'
+        
+        # Bollinger Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📉</span><span style="font-weight:bold;">Bollinger</span></div>'
+        indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">$' + "{:,.2f}".format(current_price) + '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['bb_position'] + '</div>'
+        indicators_html += '</div>'
+        
+        # Stochastic Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">⚡</span><span style="font-weight:bold;">Stochastique</span></div>'
+        indicators_html += '<div style="font-size:1.8em;font-weight:700;color:#667eea;">%K: ' + "{:.1f}".format(indicators['stoch_k']) + '</div>'
+        indicators_html += '<div style="font-size:1.8em;font-weight:700;color:#667eea;">%D: ' + "{:.1f}".format(indicators['stoch_d']) + '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['stoch_signal'] + '</div>'
+        indicators_html += '</div>'
+        
+        # ADX Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">💪</span><span style="font-weight:bold;">ADX</span></div>'
+        indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['adx']) + '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['adx_strength'] + '</div>'
+        indicators_html += '</div>'
+        
+        # EMAs Card
+        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
+        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📐</span><span style="font-weight:bold;">EMAs</span></div>'
+        indicators_html += '<div style="margin:15px 0;">'
+        indicators_html += '<div>EMA20: $' + "{:,.0f}".format(indicators['ema20']) + '</div>'
+        indicators_html += '<div>EMA50: $' + "{:,.0f}".format(indicators['ema50']) + '</div>'
+        indicators_html += ema200_line
+        indicators_html += '</div>'
+        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['ema_alignment'] + '</div>'
+        indicators_html += '</div>'
+        
+        indicators_html += '</div>'
+        
+        # Build patterns HTML
+        patterns_html = ""
+        if patterns:
+            for p in patterns:
+                border_color = '#10b981' if p['type']=='BULLISH' else '#ef4444'
+                patterns_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;border-left:5px solid ' + border_color + ';margin-bottom:15px;">'
+                patterns_html += '<h3 style="margin:0 0 10px 0;">' + p['name'] + '</h3>'
+                patterns_html += '<div><strong>Confiance: ' + str(p['confidence']) + '%</strong></div>'
+                patterns_html += '<p style="margin:10px 0;">' + p['description'] + '</p>'
+                patterns_html += '<div><strong>🎯 Target: $' + "{:,.2f}".format(p['target']) + '</strong></div>'
+                patterns_html += '</div>'
+        else:
+            patterns_html = "<p style='text-align:center;opacity:0.7;'>Aucun pattern détecté actuellement</p>"
+        
+        # Build S/R HTML
+        resistances_html = ""
+        if sr_levels['resistances']:
+            for r in sr_levels['resistances'][:3]:
+                resistances_html += "<div style='padding:10px;background:#f3f4f6;border-radius:8px;margin:8px 0;'>$" + "{:,.2f}".format(r) + "</div>"
+        else:
+            resistances_html = "<p style='opacity:0.6;'>Aucune</p>"
+        
+        supports_html = ""
+        if sr_levels['supports']:
+            for s in sr_levels['supports'][:3]:
+                supports_html += "<div style='padding:10px;background:#f3f4f6;border-radius:8px;margin:8px 0;'>$" + "{:,.2f}".format(s) + "</div>"
+        else:
+            supports_html = "<p style='opacity:0.6;'>Aucun</p>"
+        
+        # Build reversal signals HTML
+        reversal_html = ""
+        if reversal_signals:
+            for sig in reversal_signals[:5]:
+                border_color = '#10b981' if 'BULLISH' in sig['type'] else '#ef4444'
+                rr = abs(sig['target']-sig['entry'])/abs(sig['entry']-sig['stop_loss']) if sig['entry']!=sig['stop_loss'] else 0
+                reversal_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;border-left:5px solid ' + border_color + ';margin-bottom:15px;">'
+                reversal_html += '<div><strong>' + sig['type'] + '</strong> - ' + str(sig['confidence']) + '%</div>'
+                reversal_html += '<p style="margin:10px 0;">' + sig['reason'] + '</p>'
+                reversal_html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:15px;">'
+                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Entry</div><strong>$' + "{:,.2f}".format(sig['entry']) + '</strong></div>'
+                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Target</div><strong>$' + "{:,.2f}".format(sig['target']) + '</strong></div>'
+                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Stop</div><strong>$' + "{:,.2f}".format(sig['stop_loss']) + '</strong></div>'
+                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">R/R</div><strong>' + "{:.1f}".format(rr) + '</strong></div>'
+                reversal_html += '</div></div>'
+        else:
+            reversal_html = "<p style='text-align:center;opacity:0.7;'>Aucun signal de retournement détecté</p>"
+        
+        # Build complete page
+        page = SIDEBAR
+        page += '<!DOCTYPE html>'
+        page += '<html lang="fr">'
+        page += '<head>'
+        page += '<meta charset="UTF-8">'
+        page += '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        page += '<title>🎯 AI Technical Analysis Pro</title>'
+        page += CSS
+        page += '</head>'
+        page += '<body>'
+        page += '<div class="main-content">'
+        
+        # Header with crypto selector
+        page += '<div style="text-align:center;padding:30px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:30px;backdrop-filter:blur(10px);">'
+        page += '<h1 style="font-size:2.5em;margin:0 0 10px 0;color:white;">🎯 AI Technical Analysis Pro</h1>'
+        page += '<p style="font-size:1.2em;opacity:0.9;margin:0 0 20px 0;color:white;">Analyse technique professionnelle en temps réel</p>'
+        
+        # Crypto selector
+        page += '<div style="margin-top:20px;">'
+        page += '<label style="font-size:1.1em;color:white;margin-right:15px;font-weight:600;">Sélectionner une crypto:</label>'
+        page += '<select id="cryptoSelector" style="padding:12px 20px;font-size:1.1em;border-radius:10px;border:2px solid #06b6d4;background:white;color:#333;cursor:pointer;min-width:250px;font-weight:600;" onchange="changeCrypto()">'
+        page += dropdown_options
+        page += '</select>'
+        page += '</div>'
+        page += '</div>'
+        
+        # Current crypto display
+        page += '<div style="text-align:center;padding:15px;background:linear-gradient(135deg,#06b6d4,#3b82f6);border-radius:12px;margin-bottom:30px;">'
+        page += '<div style="font-size:1.8em;font-weight:700;color:white;">' + crypto_symbol_display + ' - ' + crypto_display_name + '</div>'
+        page += '</div>'
+        
+        # Section 1: Indicators
+        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">📊 INDICATEURS TECHNIQUES</div>'
+        page += indicators_html
+        
+        # Section 2: Patterns
+        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">🎯 PATTERNS CHARTISTES DÉTECTÉS</div>'
+        page += patterns_html
+        
+        # Section 3: S/R
+        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">📍 SUPPORT & RÉSISTANCE</div>'
+        page += '<div style="background:white;color:#333;padding:30px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);display:grid;grid-template-columns:1fr auto 1fr;gap:30px;margin-bottom:30px;">'
+        page += '<div>'
+        page += '<h3 style="color:#ef4444;margin-bottom:12px;">🔴 Résistances</h3>'
+        page += resistances_html
+        page += '</div>'
+        page += '<div style="text-align:center;padding:25px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,0.2);">'
+        page += '<div style="font-size:1em;opacity:0.9;">Prix Actuel</div>'
+        page += '<div style="font-size:2.2em;font-weight:900;margin:8px 0;">$' + "{:,.2f}".format(current_price) + '</div>'
+        page += '<div style="font-size:1.2em;font-weight:600;">' + "{:+.2f}".format(change_24h) + '%</div>'
+        page += '</div>'
+        page += '<div>'
+        page += '<h3 style="color:#10b981;margin-bottom:12px;">🟢 Supports</h3>'
+        page += supports_html
+        page += '</div>'
+        page += '</div>'
+        
+        # Section 4: Reversals
+        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">🔄 POINTS DE RETOURNEMENT POTENTIELS</div>'
+        page += reversal_html
+        
+        # Section 5: How to use (informations)
+        page += '<div style="margin:60px 0 40px;padding:40px;background:linear-gradient(135deg,rgba(6,182,212,0.1),rgba(59,130,246,0.1));border:2px solid #06b6d4;border-radius:20px;">'
+        page += '<h2 style="font-size:2em;margin-bottom:30px;color:#06b6d4;text-align:center;">📚 À QUOI SERT CETTE PAGE ?</h2>'
+        
+        page += '<div style="display:grid;gap:25px;">'
+        
+        # Step 1
+        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
+        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">1</div>'
+        page += '<div>'
+        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Analyse Technique Complète</h3>'
+        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Cette page analyse en temps réel les données de prix sur 60 jours et calcule automatiquement 6 indicateurs techniques professionnels (RSI, MACD, Bollinger, Stochastique, ADX, EMAs). Les mêmes indicateurs utilisés par les traders professionnels sur TradingView!</p>'
+        page += '</div>'
+        page += '</div>'
+        
+        # Step 2
+        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
+        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">2</div>'
+        page += '<div>'
+        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Détection de Patterns</h3>'
+        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">L\'IA détecte automatiquement les patterns chartistes classiques (Head & Shoulders, Double Top/Bottom, Triangles, etc.) avec un niveau de confiance et des prix cibles. Ces patterns sont utilisés pour prédire les mouvements futurs du prix.</p>'
+        page += '</div>'
+        page += '</div>'
+        
+        # Step 3
+        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
+        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">3</div>'
+        page += '<div>'
+        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Support & Résistance</h3>'
+        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Identifie automatiquement les niveaux clés de support (où le prix a tendance à rebondir) et de résistance (où le prix a du mal à passer). Ces niveaux sont cruciaux pour prendre des décisions de trading.</p>'
+        page += '</div>'
+        page += '</div>'
+        
+        # Step 4
+        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
+        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">4</div>'
+        page += '<div>'
+        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Signaux de Retournement</h3>'
+        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Génère des signaux d\'achat/vente avec points d\'entrée, objectifs de profit (Target), stop-loss et ratio risque/récompense (R/R). Chaque signal est accompagné d\'un niveau de confiance et d\'une explication.</p>'
+        page += '</div>'
+        page += '</div>'
+        
+        page += '</div>'
+        
+        # Tips section
+        page += '<div style="margin-top:30px;padding:20px;background:rgba(251,191,36,0.1);border-left:4px solid #fbbf24;border-radius:10px;">'
+        page += '<h3 style="font-size:1.3em;color:#fbbf24;margin-bottom:15px;">💡 CONSEILS D\'UTILISATION</h3>'
+        page += '<ul style="color:rgba(255,255,255,0.8);line-height:1.8;padding-left:20px;">'
+        page += '<li><strong>Multi-crypto:</strong> Utilisez le sélecteur en haut pour analyser n\'importe quelle crypto du Top 50</li>'
+        page += '<li><strong>Mise à jour auto:</strong> La page se recharge automatiquement toutes les 5 minutes avec les dernières données</li>'
+        page += '<li><strong>RSI:</strong> &lt;30 = Survendu (opportunité d\'achat), &gt;70 = Suracheté (risque de correction)</li>'
+        page += '<li><strong>MACD:</strong> Crossover positif = Signal haussier, négatif = Signal baissier</li>'
+        page += '<li><strong>Confluence:</strong> Les meilleurs signaux sont ceux confirmés par plusieurs indicateurs</li>'
+        page += '<li><strong>Ratio R/R:</strong> Privilégiez les trades avec un ratio &gt; 2:1 (2x plus de gain potentiel que de perte)</li>'
+        page += '<li><strong>Ne tradez jamais uniquement sur ces signaux:</strong> Utilisez-les comme confirmation de votre propre analyse</li>'
+        page += '</ul>'
+        page += '</div>'
+        
+        page += '</div>'
+        
+        page += '</div>'
+        
+        # JavaScript for crypto selector and auto-refresh
+        page += '<script>'
+        page += 'function changeCrypto() {'
+        page += '  const selector = document.getElementById("cryptoSelector");'
+        page += '  const selectedCrypto = selector.value;'
+        page += '  window.location.href = "/ai-technical-analysis?symbol=" + selectedCrypto;'
+        page += '}'
+        page += 'setTimeout(function(){window.location.reload();},300000);'
+        page += '</script>'
+        page += '</body>'
+        page += '</html>'
+        
+        return HTMLResponse(page)
+        
+    except Exception as e:
+        error_page = SIDEBAR
+        error_page += '<!DOCTYPE html>'
+        error_page += '<html lang="fr">'
+        error_page += '<head>'
+        error_page += '<meta charset="UTF-8">'
+        error_page += '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        error_page += '<title>Erreur</title>'
+        error_page += CSS
+        error_page += '</head>'
+        error_page += '<body>'
+        error_page += '<div class="main-content">'
+        error_page += '<div style="padding:50px;text-align:center;">'
+        error_page += '<h1 style="font-size:3em;color:white;">❌ Erreur technique</h1>'
+        error_page += '<p style="font-size:1.3em;color:white;">Une erreur est survenue: ' + str(e) + '</p>'
         error_page += '</div>'
         error_page += '</div>'
         error_page += '</body>'
@@ -34262,353 +35154,3 @@ async def get_swarm_config():
         "agents": AGENT_CONFIGS,
         "profiles": TRADER_PROFILES
     }
-
-
-
-
-# ============================================================================
-@app.get("/ai-technical-analysis", response_class=HTMLResponse)
-async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
-    """Technical Analysis Pro - Multi-crypto avec sélecteur"""
-    
-    try:
-        # Get top 50 cryptos for dropdown
-        all_cryptos = await get_top_50_cryptos()
-        
-        # Build dropdown options
-        dropdown_options = ""
-        for crypto in all_cryptos[:50]:
-            crypto_id = crypto.get('id', '')
-            crypto_name = crypto.get('name', '')
-            crypto_symbol = crypto.get('symbol', '').upper()
-            selected = 'selected' if crypto_id == symbol else ''
-            dropdown_options += '<option value="' + crypto_id + '" ' + selected + '>' + crypto_symbol + ' - ' + crypto_name + '</option>'
-        
-        # Fetch data for selected crypto
-        df = await analyzer.get_ohlcv_data(symbol, days=60)
-        
-        if df is None or len(df) == 0:
-            return HTMLResponse(SIDEBAR + """
-            <!DOCTYPE html>
-            <html lang="fr">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Erreur</title>
-            """ + CSS + """
-            </head>
-            <body>
-                <div class="main-content">
-                    <div style="padding:50px;text-align:center;">
-                        <h1 style="font-size:3em;">⚠️ Données indisponibles</h1>
-                        <p style="font-size:1.3em;">Impossible de charger les données pour """ + symbol + """.</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """)
-        
-        # Calculate all indicators
-        indicators = analyzer.calculate_indicators(df)
-        patterns = analyzer.detect_patterns(df)
-        sr_levels = analyzer.find_support_resistance(df)
-        reversal_signals = analyzer.analyze_reversal_points(df, indicators)
-        
-        current_price = df['close'].iloc[-1]
-        change_24h = ((df['close'].iloc[-1] - df['close'].iloc[-24]) / df['close'].iloc[-24]) * 100 if len(df) >= 24 else 0
-        
-        # Get crypto name for display
-        selected_crypto = next((c for c in all_cryptos if c.get('id') == symbol), None)
-        crypto_display_name = selected_crypto.get('name', symbol.upper()) if selected_crypto else symbol.upper()
-        crypto_symbol_display = selected_crypto.get('symbol', symbol).upper() if selected_crypto else symbol.upper()
-        
-        # Build indicators HTML with INLINE styles only
-        rsi_class = 'oversold' if indicators['rsi'] < 30 else ('overbought' if indicators['rsi'] > 70 else 'neutral')
-        macd_class = 'bullish' if indicators['macd_diff'] > 0 else 'bearish'
-        ema200_line = '<div>EMA200: $' + "{:,.0f}".format(indicators['ema200']) + '</div>' if indicators['ema200'] else ''
-        
-        # Signal colors
-        signal_colors = {
-            'oversold': 'background:#dcfce7;color:#166534;',
-            'overbought': 'background:#fee2e2;color:#991b1b;',
-            'bullish': 'background:#d1fae5;color:#065f46;',
-            'bearish': 'background:#fecaca;color:#991b1b;',
-            'neutral': 'background:#f3f4f6;color:#4b5563;'
-        }
-        
-        indicators_html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-bottom:30px;">'
-        
-        # RSI Card
-        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
-        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📊</span><span style="font-weight:bold;">RSI (14)</span></div>'
-        indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['rsi']) + '</div>'
-        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;' + signal_colors[rsi_class] + '">' + indicators['rsi_signal'] + '</div>'
-        indicators_html += '</div>'
-        
-        # MACD Card
-        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
-        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📈</span><span style="font-weight:bold;">MACD</span></div>'
-        indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['macd']) + '</div>'
-        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;' + signal_colors[macd_class] + '">' + indicators['macd_trend'] + '</div>'
-        indicators_html += '</div>'
-        
-        # Bollinger Card
-        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
-        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📉</span><span style="font-weight:bold;">Bollinger</span></div>'
-        indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">$' + "{:,.2f}".format(current_price) + '</div>'
-        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['bb_position'] + '</div>'
-        indicators_html += '</div>'
-        
-        # Stochastic Card
-        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
-        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">⚡</span><span style="font-weight:bold;">Stochastique</span></div>'
-        indicators_html += '<div style="font-size:1.8em;font-weight:700;color:#667eea;">%K: ' + "{:.1f}".format(indicators['stoch_k']) + '</div>'
-        indicators_html += '<div style="font-size:1.8em;font-weight:700;color:#667eea;">%D: ' + "{:.1f}".format(indicators['stoch_d']) + '</div>'
-        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['stoch_signal'] + '</div>'
-        indicators_html += '</div>'
-        
-        # ADX Card
-        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
-        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">💪</span><span style="font-weight:bold;">ADX</span></div>'
-        indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['adx']) + '</div>'
-        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['adx_strength'] + '</div>'
-        indicators_html += '</div>'
-        
-        # EMAs Card
-        indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
-        indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📐</span><span style="font-weight:bold;">EMAs</span></div>'
-        indicators_html += '<div style="margin:15px 0;">'
-        indicators_html += '<div>EMA20: $' + "{:,.0f}".format(indicators['ema20']) + '</div>'
-        indicators_html += '<div>EMA50: $' + "{:,.0f}".format(indicators['ema50']) + '</div>'
-        indicators_html += ema200_line
-        indicators_html += '</div>'
-        indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['ema_alignment'] + '</div>'
-        indicators_html += '</div>'
-        
-        indicators_html += '</div>'
-        
-        # Build patterns HTML
-        patterns_html = ""
-        if patterns:
-            for p in patterns:
-                border_color = '#10b981' if p['type']=='BULLISH' else '#ef4444'
-                patterns_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;border-left:5px solid ' + border_color + ';margin-bottom:15px;">'
-                patterns_html += '<h3 style="margin:0 0 10px 0;">' + p['name'] + '</h3>'
-                patterns_html += '<div><strong>Confiance: ' + str(p['confidence']) + '%</strong></div>'
-                patterns_html += '<p style="margin:10px 0;">' + p['description'] + '</p>'
-                patterns_html += '<div><strong>🎯 Target: $' + "{:,.2f}".format(p['target']) + '</strong></div>'
-                patterns_html += '</div>'
-        else:
-            patterns_html = "<p style='text-align:center;opacity:0.7;'>Aucun pattern détecté actuellement</p>"
-        
-        # Build S/R HTML
-        resistances_html = ""
-        if sr_levels['resistances']:
-            for r in sr_levels['resistances'][:3]:
-                resistances_html += "<div style='padding:10px;background:#f3f4f6;border-radius:8px;margin:8px 0;'>$" + "{:,.2f}".format(r) + "</div>"
-        else:
-            resistances_html = "<p style='opacity:0.6;'>Aucune</p>"
-        
-        supports_html = ""
-        if sr_levels['supports']:
-            for s in sr_levels['supports'][:3]:
-                supports_html += "<div style='padding:10px;background:#f3f4f6;border-radius:8px;margin:8px 0;'>$" + "{:,.2f}".format(s) + "</div>"
-        else:
-            supports_html = "<p style='opacity:0.6;'>Aucun</p>"
-        
-        # Build reversal signals HTML
-        reversal_html = ""
-        if reversal_signals:
-            for sig in reversal_signals[:5]:
-                border_color = '#10b981' if 'BULLISH' in sig['type'] else '#ef4444'
-                rr = abs(sig['target']-sig['entry'])/abs(sig['entry']-sig['stop_loss']) if sig['entry']!=sig['stop_loss'] else 0
-                reversal_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;border-left:5px solid ' + border_color + ';margin-bottom:15px;">'
-                reversal_html += '<div><strong>' + sig['type'] + '</strong> - ' + str(sig['confidence']) + '%</div>'
-                reversal_html += '<p style="margin:10px 0;">' + sig['reason'] + '</p>'
-                reversal_html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:15px;">'
-                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Entry</div><strong>$' + "{:,.2f}".format(sig['entry']) + '</strong></div>'
-                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Target</div><strong>$' + "{:,.2f}".format(sig['target']) + '</strong></div>'
-                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">Stop</div><strong>$' + "{:,.2f}".format(sig['stop_loss']) + '</strong></div>'
-                reversal_html += '<div><div style="opacity:0.7;font-size:0.9em;">R/R</div><strong>' + "{:.1f}".format(rr) + '</strong></div>'
-                reversal_html += '</div></div>'
-        else:
-            reversal_html = "<p style='text-align:center;opacity:0.7;'>Aucun signal de retournement détecté</p>"
-        
-        # Build complete page
-        page = SIDEBAR
-        page += '<!DOCTYPE html>'
-        page += '<html lang="fr">'
-        page += '<head>'
-        page += '<meta charset="UTF-8">'
-        page += '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
-        page += '<title>🎯 AI Technical Analysis Pro</title>'
-        page += CSS
-        page += '</head>'
-        page += '<body>'
-        page += '<div class="main-content">'
-        
-        # Header with crypto selector
-        page += '<div style="text-align:center;padding:30px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:30px;backdrop-filter:blur(10px);">'
-        page += '<h1 style="font-size:2.5em;margin:0 0 10px 0;color:white;">🎯 AI Technical Analysis Pro</h1>'
-        page += '<p style="font-size:1.2em;opacity:0.9;margin:0 0 20px 0;color:white;">Analyse technique professionnelle en temps réel</p>'
-        
-        # Crypto selector
-        page += '<div style="margin-top:20px;">'
-        page += '<label style="font-size:1.1em;color:white;margin-right:15px;font-weight:600;">Sélectionner une crypto:</label>'
-        page += '<select id="cryptoSelector" style="padding:12px 20px;font-size:1.1em;border-radius:10px;border:2px solid #06b6d4;background:white;color:#333;cursor:pointer;min-width:250px;font-weight:600;" onchange="changeCrypto()">'
-        page += dropdown_options
-        page += '</select>'
-        page += '</div>'
-        page += '</div>'
-        
-        # Current crypto display
-        page += '<div style="text-align:center;padding:15px;background:linear-gradient(135deg,#06b6d4,#3b82f6);border-radius:12px;margin-bottom:30px;">'
-        page += '<div style="font-size:1.8em;font-weight:700;color:white;">' + crypto_symbol_display + ' - ' + crypto_display_name + '</div>'
-        page += '</div>'
-        
-        # Section 1: Indicators
-        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">📊 INDICATEURS TECHNIQUES</div>'
-        page += indicators_html
-        
-        # Section 2: Patterns
-        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">🎯 PATTERNS CHARTISTES DÉTECTÉS</div>'
-        page += patterns_html
-        
-        # Section 3: S/R
-        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">📍 SUPPORT & RÉSISTANCE</div>'
-        page += '<div style="background:white;color:#333;padding:30px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);display:grid;grid-template-columns:1fr auto 1fr;gap:30px;margin-bottom:30px;">'
-        page += '<div>'
-        page += '<h3 style="color:#ef4444;margin-bottom:12px;">🔴 Résistances</h3>'
-        page += resistances_html
-        page += '</div>'
-        page += '<div style="text-align:center;padding:25px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:12px;box-shadow:0 5px 15px rgba(0,0,0,0.2);">'
-        page += '<div style="font-size:1em;opacity:0.9;">Prix Actuel</div>'
-        page += '<div style="font-size:2.2em;font-weight:900;margin:8px 0;">$' + "{:,.2f}".format(current_price) + '</div>'
-        page += '<div style="font-size:1.2em;font-weight:600;">' + "{:+.2f}".format(change_24h) + '%</div>'
-        page += '</div>'
-        page += '<div>'
-        page += '<h3 style="color:#10b981;margin-bottom:12px;">🟢 Supports</h3>'
-        page += supports_html
-        page += '</div>'
-        page += '</div>'
-        
-        # Section 4: Reversals
-        page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">🔄 POINTS DE RETOURNEMENT POTENTIELS</div>'
-        page += reversal_html
-        
-        # Section 5: How to use (informations)
-        page += '<div style="margin:60px 0 40px;padding:40px;background:linear-gradient(135deg,rgba(6,182,212,0.1),rgba(59,130,246,0.1));border:2px solid #06b6d4;border-radius:20px;">'
-        page += '<h2 style="font-size:2em;margin-bottom:30px;color:#06b6d4;text-align:center;">📚 À QUOI SERT CETTE PAGE ?</h2>'
-        
-        page += '<div style="display:grid;gap:25px;">'
-        
-        # Step 1
-        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
-        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">1</div>'
-        page += '<div>'
-        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Analyse Technique Complète</h3>'
-        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Cette page analyse en temps réel les données de prix sur 60 jours et calcule automatiquement 6 indicateurs techniques professionnels (RSI, MACD, Bollinger, Stochastique, ADX, EMAs). Les mêmes indicateurs utilisés par les traders professionnels sur TradingView!</p>'
-        page += '</div>'
-        page += '</div>'
-        
-        # Step 2
-        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
-        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">2</div>'
-        page += '<div>'
-        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Détection de Patterns</h3>'
-        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">L\'IA détecte automatiquement les patterns chartistes classiques (Head & Shoulders, Double Top/Bottom, Triangles, etc.) avec un niveau de confiance et des prix cibles. Ces patterns sont utilisés pour prédire les mouvements futurs du prix.</p>'
-        page += '</div>'
-        page += '</div>'
-        
-        # Step 3
-        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
-        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">3</div>'
-        page += '<div>'
-        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Support & Résistance</h3>'
-        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Identifie automatiquement les niveaux clés de support (où le prix a tendance à rebondir) et de résistance (où le prix a du mal à passer). Ces niveaux sont cruciaux pour prendre des décisions de trading.</p>'
-        page += '</div>'
-        page += '</div>'
-        
-        # Step 4
-        page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
-        page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">4</div>'
-        page += '<div>'
-        page += '<h3 style="font-size:1.3em;margin-bottom:10px;color:white;">Signaux de Retournement</h3>'
-        page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Génère des signaux d\'achat/vente avec points d\'entrée, objectifs de profit (Target), stop-loss et ratio risque/récompense (R/R). Chaque signal est accompagné d\'un niveau de confiance et d\'une explication.</p>'
-        page += '</div>'
-        page += '</div>'
-        
-        page += '</div>'
-        
-        # Tips section
-        page += '<div style="margin-top:30px;padding:20px;background:rgba(251,191,36,0.1);border-left:4px solid #fbbf24;border-radius:10px;">'
-        page += '<h3 style="font-size:1.3em;color:#fbbf24;margin-bottom:15px;">💡 CONSEILS D\'UTILISATION</h3>'
-        page += '<ul style="color:rgba(255,255,255,0.8);line-height:1.8;padding-left:20px;">'
-        page += '<li><strong>Multi-crypto:</strong> Utilisez le sélecteur en haut pour analyser n\'importe quelle crypto du Top 50</li>'
-        page += '<li><strong>Mise à jour auto:</strong> La page se recharge automatiquement toutes les 5 minutes avec les dernières données</li>'
-        page += '<li><strong>RSI:</strong> &lt;30 = Survendu (opportunité d\'achat), &gt;70 = Suracheté (risque de correction)</li>'
-        page += '<li><strong>MACD:</strong> Crossover positif = Signal haussier, négatif = Signal baissier</li>'
-        page += '<li><strong>Confluence:</strong> Les meilleurs signaux sont ceux confirmés par plusieurs indicateurs</li>'
-        page += '<li><strong>Ratio R/R:</strong> Privilégiez les trades avec un ratio &gt; 2:1 (2x plus de gain potentiel que de perte)</li>'
-        page += '<li><strong>Ne tradez jamais uniquement sur ces signaux:</strong> Utilisez-les comme confirmation de votre propre analyse</li>'
-        page += '</ul>'
-        page += '</div>'
-        
-        page += '</div>'
-        
-        page += '</div>'
-        
-        # JavaScript for crypto selector and auto-refresh
-        page += '<script>'
-        page += 'function changeCrypto() {'
-        page += '  const selector = document.getElementById("cryptoSelector");'
-        page += '  const selectedCrypto = selector.value;'
-        page += '  window.location.href = "/ai-technical-analysis?symbol=" + selectedCrypto;'
-        page += '}'
-        page += 'setTimeout(function(){window.location.reload();},300000);'
-        page += '</script>'
-        
-        # Guide d'utilisation
-        page += '<div style="max-width: 1200px; margin: 60px auto 40px; padding: 40px; background: rgba(16,185,129,0.05); border-radius: 20px; border: 1px solid rgba(16,185,129,0.3);">'
-        page += '<h2 style="text-align: center; color: #10b981; font-size: 2em; margin-bottom: 30px;">Guide - Technical Analysis</h2>'
-        page += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">'
-        page += '<div style="padding: 25px; background: rgba(16,185,129,0.1); border-radius: 15px; border-left: 4px solid #10b981;">'
-        page += '<h3 style="color: #10b981; margin-bottom: 15px;">50 Cryptos</h3>'
-        page += '<p style="color: #cbd5e1; line-height: 1.6;">Analyse complète sur BTC, ETH, SOL et 47 autres cryptos majeurs.</p>'
-        page += '</div>'
-        page += '<div style="padding: 25px; background: rgba(16,185,129,0.1); border-radius: 15px; border-left: 4px solid #10b981;">'
-        page += '<h3 style="color: #10b981; margin-bottom: 15px;">6 Indicateurs</h3>'
-        page += '<p style="color: #cbd5e1; line-height: 1.6;">RSI, MACD, MA, Bollinger Bands, Ichimoku, Stochastic.</p>'
-        page += '</div>'
-        page += '<div style="padding: 25px; background: rgba(16,185,129,0.1); border-radius: 15px; border-left: 4px solid #10b981;">'
-        page += '<h3 style="color: #10b981; margin-bottom: 15px;">Patterns</h3>'
-        page += '<p style="color: #cbd5e1; line-height: 1.6;">Détection automatique de patterns chartistes et signaux reversal.</p>'
-        page += '</div>'
-        page += '</div>'
-        page += '</div>'
-        
-        page += '</body>'
-        page += '</html>'
-        
-        return HTMLResponse(page)
-        
-    except Exception as e:
-        error_page = SIDEBAR
-        error_page += '<!DOCTYPE html>'
-        error_page += '<html lang="fr">'
-        error_page += '<head>'
-        error_page += '<meta charset="UTF-8">'
-        error_page += '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
-        error_page += '<title>Erreur</title>'
-        error_page += CSS
-        error_page += '</head>'
-        error_page += '<body>'
-        error_page += '<div class="main-content">'
-        error_page += '<div style="padding:50px;text-align:center;">'
-        error_page += '<h1 style="font-size:3em;color:white;">❌ Erreur technique</h1>'
-        error_page += '<p style="font-size:1.3em;color:white;">Une erreur est survenue: ' + str(e) + '</p>'
-        error_page += '</div>'
-        error_page += '</div>'
-        error_page += '</body>'
-        error_page += '</html>'
-        return HTMLResponse(error_page)

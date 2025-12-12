@@ -36412,7 +36412,7 @@ document.addEventListener('DOMContentLoaded', function() {{
 </body>
 </html>
 """)
-""")
+
 @app.get("/api/academy/progress")
 async def get_academy_progress(request: Request):
     """Récupère la progression complète de l'utilisateur"""

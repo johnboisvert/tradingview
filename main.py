@@ -5045,18 +5045,504 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
             <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
         <div class="section-divider"></div>
-        <h2 class="page-section-title">📊 Aperçu du Marché Crypto</h2>
-        <div class="crypto-grid">
-            <div class="crypto-card"><span class="crypto-icon">₿</span><h3 class="crypto-title">Bitcoin (BTC)</h3><div class="crypto-value">$98,245</div><span class="crypto-change positive">+2.34%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">Ξ</span><h3 class="crypto-title">Ethereum (ETH)</h3><div class="crypto-value">$3,842</div><span class="crypto-change positive">+3.12%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">◎</span><h3 class="crypto-title">Solana (SOL)</h3><div class="crypto-value">$218</div><span class="crypto-change positive">+5.67%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">🌍</span><h3 class="crypto-title">Market Cap Total</h3><div class="crypto-value">$3.45T</div><span class="crypto-change positive">+1.89%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">📊</span><h3 class="crypto-title">Volume 24H</h3><div class="crypto-value">$142B</div><span class="crypto-change positive">+8.23%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">💎</span><h3 class="crypto-title">BTC Dominance</h3><div class="crypto-value">54.2%</div><span class="crypto-change negative">-0.45%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">🔥</span><h3 class="crypto-title">DeFi TVL</h3><div class="crypto-value">$98.5B</div><span class="crypto-change positive">+4.12%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">😨</span><h3 class="crypto-title">Fear & Greed</h3><div class="crypto-value">72</div><span class="crypto-change positive">Greed</span></div>
-            <div class="crypto-card"><span class="crypto-icon">🌊</span><h3 class="crypto-title">ETH Gas (Gwei)</h3><div class="crypto-value">18</div><span class="crypto-change positive">Faible</span></div>
+<!-- 🚀 LIVE MARKET PULSE - SECTION RÉVOLUTIONNAIRE -->
+<div class="section-divider"></div>
+
+<h2 class="page-section-title">⚡ LIVE MARKET PULSE</h2>
+<p class="market-subtitle">Données en temps réel • Mise à jour toutes les 30 secondes</p>
+
+<!-- GLOBE 3D CONTAINER -->
+<div class="globe-container">
+    <canvas id="globe3d"></canvas>
+    <div class="globe-stats">
+        <div class="globe-stat">
+            <div class="stat-number" id="totalVolume">$0</div>
+            <div class="stat-text">Volume 24H Global</div>
         </div>
+        <div class="globe-stat">
+            <div class="stat-number" id="marketCap">$0</div>
+            <div class="stat-text">Market Cap Total</div>
+        </div>
+        <div class="globe-stat">
+            <div class="stat-number" id="btcDom">0%</div>
+            <div class="stat-text">BTC Dominance</div>
+        </div>
+    </div>
+</div>
+
+<!-- CRYPTO BUBBLES HEATMAP -->
+<div class="bubbles-container" id="bubbles"></div>
+
+<!-- TOP MOVERS AVEC ANIMATIONS -->
+<div class="movers-grid">
+    <div class="mover-section">
+        <h3 class="mover-title">🔥 TOP GAINERS</h3>
+        <div id="topGainers" class="mover-list"></div>
+    </div>
+    <div class="mover-section">
+        <h3 class="mover-title">❄️ TOP LOSERS</h3>
+        <div id="topLosers" class="mover-list"></div>
+    </div>
+    <div class="mover-section">
+        <h3 class="mover-title">📊 MOST ACTIVE</h3>
+        <div id="mostActive" class="mover-list"></div>
+    </div>
+</div>
+
+<!-- FEAR & GREED GAUGE -->
+<div class="fear-greed-container">
+    <h3 class="gauge-title">Market Sentiment</h3>
+    <div class="gauge-wrapper">
+        <svg class="gauge" viewBox="0 0 200 120">
+            <defs>
+                <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#ef4444"/>
+                    <stop offset="25%" style="stop-color:#f97316"/>
+                    <stop offset="50%" style="stop-color:#eab308"/>
+                    <stop offset="75%" style="stop-color:#84cc16"/>
+                    <stop offset="100%" style="stop-color:#10b981"/>
+                </linearGradient>
+            </defs>
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGradient)" stroke-width="20" stroke-linecap="round"/>
+            <line id="gaugeNeedle" x1="100" y1="100" x2="100" y2="30" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <div class="gauge-value" id="fearGreedValue">--</div>
+        <div class="gauge-label" id="fearGreedLabel">Chargement...</div>
+    </div>
+</div>
+
+<style>
+/* MARKET PULSE STYLES */
+.market-subtitle {
+    text-align: center;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.9em;
+    margin-top: -30px;
+    margin-bottom: 40px;
+    font-weight: 400;
+}
+
+/* GLOBE 3D */
+.globe-container {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 30px;
+    margin-bottom: 40px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+#globe3d {
+    width: 100%;
+    height: 100%;
+}
+
+.globe-stats {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 40px;
+    background: rgba(10,14,39,0.9);
+    backdrop-filter: blur(20px);
+    padding: 20px 40px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.globe-stat {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 1.8em;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 5px;
+}
+
+.stat-text {
+    font-size: 0.9em;
+    color: rgba(255,255,255,0.6);
+    font-weight: 500;
+}
+
+/* CRYPTO BUBBLES */
+.bubbles-container {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 30px;
+    margin-bottom: 40px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.crypto-bubble {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255,255,255,0.2);
+}
+
+.crypto-bubble:hover {
+    transform: scale(1.1);
+    z-index: 100;
+}
+
+.bubble-symbol {
+    font-size: 1.2em;
+    font-weight: 800;
+    color: white;
+}
+
+.bubble-change {
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+/* TOP MOVERS */
+.movers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.mover-section {
+    background: rgba(255,255,255,0.03);
+    border-radius: 24px;
+    padding: 25px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.mover-title {
+    font-size: 1.2em;
+    font-weight: 700;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.mover-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mover-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.mover-item:hover {
+    background: rgba(255,255,255,0.08);
+    transform: translateX(5px);
+}
+
+.mover-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mover-symbol {
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+.mover-name {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.9em;
+}
+
+.mover-price {
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.mover-change {
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 0.95em;
+}
+
+.change-positive {
+    background: rgba(16,185,129,0.2);
+    color: #10b981;
+}
+
+.change-negative {
+    background: rgba(239,68,68,0.2);
+    color: #ef4444;
+}
+
+/* FEAR & GREED GAUGE */
+.fear-greed-container {
+    background: rgba(255,255,255,0.03);
+    border-radius: 24px;
+    padding: 40px;
+    border: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 60px;
+}
+
+.gauge-title {
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+.gauge-wrapper {
+    text-align: center;
+}
+
+.gauge {
+    width: 300px;
+    height: auto;
+    margin: 0 auto;
+    display: block;
+}
+
+#gaugeNeedle {
+    transform-origin: 100px 100px;
+    transition: transform 1s ease-out;
+}
+
+.gauge-value {
+    font-size: 3em;
+    font-weight: 900;
+    margin-top: 20px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.gauge-label {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    margin-top: 10px;
+}
+
+/* ANIMATIONS */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.05); opacity: 1; }
+}
+
+@keyframes float-bubble {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// 🌍 GLOBE 3D AVEC THREE.JS
+let scene, camera, renderer, globe;
+
+function initGlobe() {
+    const container = document.getElementById('globe3d');
+    scene = new THREE.Scene();
+    
+    camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.z = 2;
+    
+    renderer = new THREE.WebGLRenderer({ canvas: container, alpha: true, antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    
+    // Globe avec texture gradient
+    const geometry = new THREE.SphereGeometry(1, 64, 64);
+    const material = new THREE.MeshBasicMaterial({
+        color: 0x667eea,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.3
+    });
+    globe = new THREE.Mesh(geometry, material);
+    scene.add(globe);
+    
+    // Particules autour du globe
+    const particlesGeometry = new THREE.BufferGeometry();
+    const particlesCount = 1000;
+    const posArray = new Float32Array(particlesCount * 3);
+    
+    for(let i = 0; i < particlesCount * 3; i++) {
+        posArray[i] = (Math.random() - 0.5) * 5;
+    }
+    
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    const particlesMaterial = new THREE.PointsMaterial({
+        size: 0.005,
+        color: 0x764ba2,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+    scene.add(particlesMesh);
+    
+    animateGlobe();
+}
+
+function animateGlobe() {
+    requestAnimationFrame(animateGlobe);
+    globe.rotation.y += 0.002;
+    globe.rotation.x = Math.sin(Date.now() * 0.0005) * 0.1;
+    renderer.render(scene, camera);
+}
+
+// 📊 FETCH DATA FROM COINGECKO API (GRATUIT)
+async function fetchCryptoData() {
+    try {
+        const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h');
+        const data = await response.json();
+        
+        // Global data
+        const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
+        const globalData = await globalResponse.json();
+        
+        updateGlobalStats(globalData.data);
+        createBubbles(data);
+        updateMovers(data);
+        
+    } catch (error) {
+        console.error('Erreur fetch data:', error);
+    }
+}
+
+function updateGlobalStats(data) {
+    document.getElementById('totalVolume').textContent = '$' + (data.total_volume.usd / 1e9).toFixed(1) + 'B';
+    document.getElementById('marketCap').textContent = '$' + (data.total_market_cap.usd / 1e12).toFixed(2) + 'T';
+    document.getElementById('btcDom').textContent = data.market_cap_percentage.btc.toFixed(1) + '%';
+}
+
+// 💎 CREATE INTERACTIVE BUBBLES
+function createBubbles(coins) {
+    const container = document.getElementById('bubbles');
+    container.innerHTML = '';
+    
+    coins.slice(0, 15).forEach((coin, index) => {
+        const bubble = document.createElement('div');
+        bubble.className = 'crypto-bubble';
+        
+        const size = Math.max(60, Math.min(150, coin.market_cap / 1e9 * 2));
+        const change = coin.price_change_percentage_24h;
+        const color = change > 0 ? '16,185,129' : '239,68,68';
+        
+        bubble.style.width = size + 'px';
+        bubble.style.height = size + 'px';
+        bubble.style.background = `radial-gradient(circle, rgba(${color},0.3), rgba(${color},0.1))`;
+        bubble.style.left = (Math.random() * 85 + 5) + '%';
+        bubble.style.top = (Math.random() * 70 + 10) + '%';
+        bubble.style.animation = `float-bubble ${3 + Math.random() * 2}s ease-in-out infinite`;
+        bubble.style.animationDelay = (Math.random() * 2) + 's';
+        
+        bubble.innerHTML = `
+            <div class="bubble-symbol">${coin.symbol.toUpperCase()}</div>
+            <div class="bubble-change">${change > 0 ? '+' : ''}${change.toFixed(1)}%</div>
+        `;
+        
+        bubble.title = `${coin.name}: $${coin.current_price.toFixed(2)}`;
+        
+        container.appendChild(bubble);
+    });
+}
+
+// 🔥 UPDATE TOP MOVERS
+function updateMovers(coins) {
+    const sortedByGain = [...coins].sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h);
+    const topGainers = sortedByGain.slice(0, 5);
+    const topLosers = sortedByGain.slice(-5).reverse();
+    
+    const sortedByVolume = [...coins].sort((a, b) => b.total_volume - a.total_volume);
+    const mostActive = sortedByVolume.slice(0, 5);
+    
+    displayMovers('topGainers', topGainers);
+    displayMovers('topLosers', topLosers);
+    displayMovers('mostActive', mostActive);
+}
+
+function displayMovers(containerId, coins) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    
+    coins.forEach(coin => {
+        const change = coin.price_change_percentage_24h;
+        const item = document.createElement('div');
+        item.className = 'mover-item';
+        item.innerHTML = `
+            <div class="mover-info">
+                <img src="${coin.image}" width="32" height="32" style="border-radius:50%">
+                <div>
+                    <div class="mover-symbol">${coin.symbol.toUpperCase()}</div>
+                    <div class="mover-name">${coin.name}</div>
+                </div>
+            </div>
+            <div style="text-align:right">
+                <div class="mover-price">$${coin.current_price.toFixed(2)}</div>
+                <div class="mover-change ${change >= 0 ? 'change-positive' : 'change-negative'}">
+                    ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// 😨 FETCH FEAR & GREED INDEX
+async function fetchFearGreed() {
+    try {
+        const response = await fetch('https://api.alternative.me/fng/');
+        const data = await response.json();
+        const value = parseInt(data.data[0].value);
+        const classification = data.data[0].value_classification;
+        
+        document.getElementById('fearGreedValue').textContent = value;
+        document.getElementById('fearGreedLabel').textContent = classification;
+        
+        // Rotate needle
+        const angle = -90 + (value * 1.8); // 0-100 -> -90 to 90 degrees
+        document.getElementById('gaugeNeedle').style.transform = `rotate(${angle}deg)`;
+        
+    } catch (error) {
+        console.error('Erreur Fear & Greed:', error);
+    }
+}
+
+// 🚀 INIT ALL
+window.addEventListener('DOMContentLoaded', () => {
+    initGlobe();
+    fetchCryptoData();
+    fetchFearGreed();
+    
+    // Auto refresh every 30 seconds
+    setInterval(() => {
+        fetchCryptoData();
+        fetchFearGreed();
+    }, 30000);
+});
+</script>
+
     </div>
     <script>
         const particlesContainer = document.getElementById('particles');
@@ -5141,18 +5627,504 @@ async def home():
             <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
         <div class="section-divider"></div>
-        <h2 class="page-section-title">📊 Aperçu du Marché Crypto</h2>
-        <div class="crypto-grid">
-            <div class="crypto-card"><span class="crypto-icon">₿</span><h3 class="crypto-title">Bitcoin (BTC)</h3><div class="crypto-value">$98,245</div><span class="crypto-change positive">+2.34%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">Ξ</span><h3 class="crypto-title">Ethereum (ETH)</h3><div class="crypto-value">$3,842</div><span class="crypto-change positive">+3.12%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">◎</span><h3 class="crypto-title">Solana (SOL)</h3><div class="crypto-value">$218</div><span class="crypto-change positive">+5.67%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">🌍</span><h3 class="crypto-title">Market Cap Total</h3><div class="crypto-value">$3.45T</div><span class="crypto-change positive">+1.89%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">📊</span><h3 class="crypto-title">Volume 24H</h3><div class="crypto-value">$142B</div><span class="crypto-change positive">+8.23%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">💎</span><h3 class="crypto-title">BTC Dominance</h3><div class="crypto-value">54.2%</div><span class="crypto-change negative">-0.45%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">🔥</span><h3 class="crypto-title">DeFi TVL</h3><div class="crypto-value">$98.5B</div><span class="crypto-change positive">+4.12%</span></div>
-            <div class="crypto-card"><span class="crypto-icon">😨</span><h3 class="crypto-title">Fear & Greed</h3><div class="crypto-value">72</div><span class="crypto-change positive">Greed</span></div>
-            <div class="crypto-card"><span class="crypto-icon">🌊</span><h3 class="crypto-title">ETH Gas (Gwei)</h3><div class="crypto-value">18</div><span class="crypto-change positive">Faible</span></div>
+<!-- 🚀 LIVE MARKET PULSE - SECTION RÉVOLUTIONNAIRE -->
+<div class="section-divider"></div>
+
+<h2 class="page-section-title">⚡ LIVE MARKET PULSE</h2>
+<p class="market-subtitle">Données en temps réel • Mise à jour toutes les 30 secondes</p>
+
+<!-- GLOBE 3D CONTAINER -->
+<div class="globe-container">
+    <canvas id="globe3d"></canvas>
+    <div class="globe-stats">
+        <div class="globe-stat">
+            <div class="stat-number" id="totalVolume">$0</div>
+            <div class="stat-text">Volume 24H Global</div>
         </div>
+        <div class="globe-stat">
+            <div class="stat-number" id="marketCap">$0</div>
+            <div class="stat-text">Market Cap Total</div>
+        </div>
+        <div class="globe-stat">
+            <div class="stat-number" id="btcDom">0%</div>
+            <div class="stat-text">BTC Dominance</div>
+        </div>
+    </div>
+</div>
+
+<!-- CRYPTO BUBBLES HEATMAP -->
+<div class="bubbles-container" id="bubbles"></div>
+
+<!-- TOP MOVERS AVEC ANIMATIONS -->
+<div class="movers-grid">
+    <div class="mover-section">
+        <h3 class="mover-title">🔥 TOP GAINERS</h3>
+        <div id="topGainers" class="mover-list"></div>
+    </div>
+    <div class="mover-section">
+        <h3 class="mover-title">❄️ TOP LOSERS</h3>
+        <div id="topLosers" class="mover-list"></div>
+    </div>
+    <div class="mover-section">
+        <h3 class="mover-title">📊 MOST ACTIVE</h3>
+        <div id="mostActive" class="mover-list"></div>
+    </div>
+</div>
+
+<!-- FEAR & GREED GAUGE -->
+<div class="fear-greed-container">
+    <h3 class="gauge-title">Market Sentiment</h3>
+    <div class="gauge-wrapper">
+        <svg class="gauge" viewBox="0 0 200 120">
+            <defs>
+                <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#ef4444"/>
+                    <stop offset="25%" style="stop-color:#f97316"/>
+                    <stop offset="50%" style="stop-color:#eab308"/>
+                    <stop offset="75%" style="stop-color:#84cc16"/>
+                    <stop offset="100%" style="stop-color:#10b981"/>
+                </linearGradient>
+            </defs>
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGradient)" stroke-width="20" stroke-linecap="round"/>
+            <line id="gaugeNeedle" x1="100" y1="100" x2="100" y2="30" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <div class="gauge-value" id="fearGreedValue">--</div>
+        <div class="gauge-label" id="fearGreedLabel">Chargement...</div>
+    </div>
+</div>
+
+<style>
+/* MARKET PULSE STYLES */
+.market-subtitle {
+    text-align: center;
+    color: rgba(255,255,255,0.6);
+    font-size: 0.9em;
+    margin-top: -30px;
+    margin-bottom: 40px;
+    font-weight: 400;
+}
+
+/* GLOBE 3D */
+.globe-container {
+    position: relative;
+    width: 100%;
+    height: 500px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 30px;
+    margin-bottom: 40px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+#globe3d {
+    width: 100%;
+    height: 100%;
+}
+
+.globe-stats {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 40px;
+    background: rgba(10,14,39,0.9);
+    backdrop-filter: blur(20px);
+    padding: 20px 40px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.globe-stat {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 1.8em;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 5px;
+}
+
+.stat-text {
+    font-size: 0.9em;
+    color: rgba(255,255,255,0.6);
+    font-weight: 500;
+}
+
+/* CRYPTO BUBBLES */
+.bubbles-container {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 30px;
+    margin-bottom: 40px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.crypto-bubble {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255,255,255,0.2);
+}
+
+.crypto-bubble:hover {
+    transform: scale(1.1);
+    z-index: 100;
+}
+
+.bubble-symbol {
+    font-size: 1.2em;
+    font-weight: 800;
+    color: white;
+}
+
+.bubble-change {
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-top: 5px;
+}
+
+/* TOP MOVERS */
+.movers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+.mover-section {
+    background: rgba(255,255,255,0.03);
+    border-radius: 24px;
+    padding: 25px;
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.mover-title {
+    font-size: 1.2em;
+    font-weight: 700;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.mover-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.mover-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.mover-item:hover {
+    background: rgba(255,255,255,0.08);
+    transform: translateX(5px);
+}
+
+.mover-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mover-symbol {
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+.mover-name {
+    color: rgba(255,255,255,0.6);
+    font-size: 0.9em;
+}
+
+.mover-price {
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.mover-change {
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 8px;
+    font-size: 0.95em;
+}
+
+.change-positive {
+    background: rgba(16,185,129,0.2);
+    color: #10b981;
+}
+
+.change-negative {
+    background: rgba(239,68,68,0.2);
+    color: #ef4444;
+}
+
+/* FEAR & GREED GAUGE */
+.fear-greed-container {
+    background: rgba(255,255,255,0.03);
+    border-radius: 24px;
+    padding: 40px;
+    border: 1px solid rgba(255,255,255,0.1);
+    margin-bottom: 60px;
+}
+
+.gauge-title {
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: 700;
+    margin-bottom: 30px;
+}
+
+.gauge-wrapper {
+    text-align: center;
+}
+
+.gauge {
+    width: 300px;
+    height: auto;
+    margin: 0 auto;
+    display: block;
+}
+
+#gaugeNeedle {
+    transform-origin: 100px 100px;
+    transition: transform 1s ease-out;
+}
+
+.gauge-value {
+    font-size: 3em;
+    font-weight: 900;
+    margin-top: 20px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.gauge-label {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    margin-top: 10px;
+}
+
+/* ANIMATIONS */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.05); opacity: 1; }
+}
+
+@keyframes float-bubble {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// 🌍 GLOBE 3D AVEC THREE.JS
+let scene, camera, renderer, globe;
+
+function initGlobe() {
+    const container = document.getElementById('globe3d');
+    scene = new THREE.Scene();
+    
+    camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.z = 2;
+    
+    renderer = new THREE.WebGLRenderer({ canvas: container, alpha: true, antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    
+    // Globe avec texture gradient
+    const geometry = new THREE.SphereGeometry(1, 64, 64);
+    const material = new THREE.MeshBasicMaterial({
+        color: 0x667eea,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.3
+    });
+    globe = new THREE.Mesh(geometry, material);
+    scene.add(globe);
+    
+    // Particules autour du globe
+    const particlesGeometry = new THREE.BufferGeometry();
+    const particlesCount = 1000;
+    const posArray = new Float32Array(particlesCount * 3);
+    
+    for(let i = 0; i < particlesCount * 3; i++) {
+        posArray[i] = (Math.random() - 0.5) * 5;
+    }
+    
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    const particlesMaterial = new THREE.PointsMaterial({
+        size: 0.005,
+        color: 0x764ba2,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+    scene.add(particlesMesh);
+    
+    animateGlobe();
+}
+
+function animateGlobe() {
+    requestAnimationFrame(animateGlobe);
+    globe.rotation.y += 0.002;
+    globe.rotation.x = Math.sin(Date.now() * 0.0005) * 0.1;
+    renderer.render(scene, camera);
+}
+
+// 📊 FETCH DATA FROM COINGECKO API (GRATUIT)
+async function fetchCryptoData() {
+    try {
+        const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h');
+        const data = await response.json();
+        
+        // Global data
+        const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
+        const globalData = await globalResponse.json();
+        
+        updateGlobalStats(globalData.data);
+        createBubbles(data);
+        updateMovers(data);
+        
+    } catch (error) {
+        console.error('Erreur fetch data:', error);
+    }
+}
+
+function updateGlobalStats(data) {
+    document.getElementById('totalVolume').textContent = '$' + (data.total_volume.usd / 1e9).toFixed(1) + 'B';
+    document.getElementById('marketCap').textContent = '$' + (data.total_market_cap.usd / 1e12).toFixed(2) + 'T';
+    document.getElementById('btcDom').textContent = data.market_cap_percentage.btc.toFixed(1) + '%';
+}
+
+// 💎 CREATE INTERACTIVE BUBBLES
+function createBubbles(coins) {
+    const container = document.getElementById('bubbles');
+    container.innerHTML = '';
+    
+    coins.slice(0, 15).forEach((coin, index) => {
+        const bubble = document.createElement('div');
+        bubble.className = 'crypto-bubble';
+        
+        const size = Math.max(60, Math.min(150, coin.market_cap / 1e9 * 2));
+        const change = coin.price_change_percentage_24h;
+        const color = change > 0 ? '16,185,129' : '239,68,68';
+        
+        bubble.style.width = size + 'px';
+        bubble.style.height = size + 'px';
+        bubble.style.background = `radial-gradient(circle, rgba(${color},0.3), rgba(${color},0.1))`;
+        bubble.style.left = (Math.random() * 85 + 5) + '%';
+        bubble.style.top = (Math.random() * 70 + 10) + '%';
+        bubble.style.animation = `float-bubble ${3 + Math.random() * 2}s ease-in-out infinite`;
+        bubble.style.animationDelay = (Math.random() * 2) + 's';
+        
+        bubble.innerHTML = `
+            <div class="bubble-symbol">${coin.symbol.toUpperCase()}</div>
+            <div class="bubble-change">${change > 0 ? '+' : ''}${change.toFixed(1)}%</div>
+        `;
+        
+        bubble.title = `${coin.name}: $${coin.current_price.toFixed(2)}`;
+        
+        container.appendChild(bubble);
+    });
+}
+
+// 🔥 UPDATE TOP MOVERS
+function updateMovers(coins) {
+    const sortedByGain = [...coins].sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h);
+    const topGainers = sortedByGain.slice(0, 5);
+    const topLosers = sortedByGain.slice(-5).reverse();
+    
+    const sortedByVolume = [...coins].sort((a, b) => b.total_volume - a.total_volume);
+    const mostActive = sortedByVolume.slice(0, 5);
+    
+    displayMovers('topGainers', topGainers);
+    displayMovers('topLosers', topLosers);
+    displayMovers('mostActive', mostActive);
+}
+
+function displayMovers(containerId, coins) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    
+    coins.forEach(coin => {
+        const change = coin.price_change_percentage_24h;
+        const item = document.createElement('div');
+        item.className = 'mover-item';
+        item.innerHTML = `
+            <div class="mover-info">
+                <img src="${coin.image}" width="32" height="32" style="border-radius:50%">
+                <div>
+                    <div class="mover-symbol">${coin.symbol.toUpperCase()}</div>
+                    <div class="mover-name">${coin.name}</div>
+                </div>
+            </div>
+            <div style="text-align:right">
+                <div class="mover-price">$${coin.current_price.toFixed(2)}</div>
+                <div class="mover-change ${change >= 0 ? 'change-positive' : 'change-negative'}">
+                    ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// 😨 FETCH FEAR & GREED INDEX
+async function fetchFearGreed() {
+    try {
+        const response = await fetch('https://api.alternative.me/fng/');
+        const data = await response.json();
+        const value = parseInt(data.data[0].value);
+        const classification = data.data[0].value_classification;
+        
+        document.getElementById('fearGreedValue').textContent = value;
+        document.getElementById('fearGreedLabel').textContent = classification;
+        
+        // Rotate needle
+        const angle = -90 + (value * 1.8); // 0-100 -> -90 to 90 degrees
+        document.getElementById('gaugeNeedle').style.transform = `rotate(${angle}deg)`;
+        
+    } catch (error) {
+        console.error('Erreur Fear & Greed:', error);
+    }
+}
+
+// 🚀 INIT ALL
+window.addEventListener('DOMContentLoaded', () => {
+    initGlobe();
+    fetchCryptoData();
+    fetchFearGreed();
+    
+    // Auto refresh every 30 seconds
+    setInterval(() => {
+        fetchCryptoData();
+        fetchFearGreed();
+    }, 30000);
+});
+</script>
+
     </div>
     <script>
         const particlesContainer = document.getElementById('particles');

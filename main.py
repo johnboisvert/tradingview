@@ -32988,15 +32988,49 @@ async def get_portfolio_data(request: Request):
 # 🆕 NOUVELLES FEATURES - 5 ROUTES COMPLÈTES
 # ============================================================================
 
+# Variables globales pour le cache
+_narrative_cache = None
+_cache_timestamp = None
+_cache_duration = 600  # 10 minutes en secondes
+_last_request_time = 0
+_request_count_today = 0
+
 @app.get("/api/narrative-radar/scan")
 async def api_scan_narratives():
-    """API Backend - Scan RÉEL via CryptoPanic API v2"""
+    """API Backend - OPTIMISÉ avec cache pour économiser les appels API"""
     
+    global _narrative_cache, _cache_timestamp, _last_request_time, _request_count_today
+    
+    import time
+    current_time = time.time()
+    
+    # RATE LIMIT: Maximum 1 requête par minute
+    if current_time - _last_request_time < 60:
+        time_to_wait = int(60 - (current_time - _last_request_time))
+        return {
+            "success": False,
+            "error": f"⏱️ Rate limit: Attends {time_to_wait} secondes avant de scanner à nouveau",
+            "cached": False
+        }
+    
+    # CACHE: Si données récentes (< 10 minutes), retourner cache
+    if _narrative_cache and _cache_timestamp:
+        cache_age = current_time - _cache_timestamp
+        if cache_age < _cache_duration:
+            cache_minutes = int(cache_age / 60)
+            _narrative_cache["cached"] = True
+            _narrative_cache["cache_age_minutes"] = cache_minutes
+            _narrative_cache["note"] = f"💾 Données en cache ({cache_minutes} min) - Économie d'API"
+            return _narrative_cache
+    
+    # SINON: Faire un vrai appel API
     CRYPTOPANIC_KEY = "bca5327f4c31e7511b4a7824951ed0ae4d8bb5ac"
     
     try:
+        _last_request_time = current_time
+        _request_count_today += 1
+        
         async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, verify=False) as client:
-            # NOUVELLE URL v2 (plus v1)
             response = await client.get(
                 "https://cryptopanic.com/api/developer/v2/posts/",
                 params={
@@ -33028,14 +33062,8 @@ async def api_scan_narratives():
             }
             
             narratives_count = {
-                "AI": 0,
-                "DeFi": 0,
-                "RWA": 0,
-                "Gaming": 0,
-                "L2": 0,
-                "Memes": 0,
-                "Infrastructure": 0,
-                "Privacy": 0
+                "AI": 0, "DeFi": 0, "RWA": 0, "Gaming": 0,
+                "L2": 0, "Memes": 0, "Infrastructure": 0, "Privacy": 0
             }
             
             for post in posts:
@@ -33051,7 +33079,7 @@ async def api_scan_narratives():
             active_narratives = sum(1 for count in narratives_count.values() if count > 0)
             hot_topics = sum(1 for count in narratives_count.values() if count >= 5)
             
-            return {
+            result = {
                 "success": True,
                 "totalNews": len(posts),
                 "totalMentions": total_mentions,
@@ -33059,13 +33087,25 @@ async def api_scan_narratives():
                 "hotTopics": hot_topics,
                 "narratives": narratives_count,
                 "timestamp": datetime.now().isoformat(),
-                "source": "CryptoPanic API v2 ✅"
+                "source": "CryptoPanic API v2 ✅",
+                "cached": False,
+                "api_calls_today": _request_count_today,
+                "note": "⚡ Nouvelles données - Cache actif pour 10 minutes"
             }
+            
+            # Sauvegarder dans le cache
+            _narrative_cache = result.copy()
+            _cache_timestamp = current_time
+            
+            return result
             
     except httpx.TimeoutException:
         return {"error": "Timeout API CryptoPanic", "success": False}
     except Exception as e:
         return {"error": f"Erreur: {str(e)}", "success": False}
+
+
+
 @app.get("/narrative-radar", response_class=HTMLResponse)
 async def narrative_radar():
     """🎯 Narrative Radar - Dashboard avec VRAIES données CryptoPanic"""
@@ -33145,7 +33185,7 @@ async def narrative_radar():
 <div class="main-content">
     <div class="container">
         <h1>🎯 Narrative Radar</h1>
-        <p class="subtitle">Dashboard temps réel - CryptoPanic API v2 ✅</p>
+        <p class="subtitle">Dashboard temps réel - Données CryptoPanic API</p>
         
         <div class="stats-header" id="statsHeader" style="display: none;">
             <div class="stat-box">
@@ -33170,6 +33210,16 @@ async def narrative_radar():
             <button class="scan-btn" id="scanBtn" onclick="scanNow()">🔍 Scanner Maintenant</button>
         </div>
         
+        <div style="background: rgba(251, 191, 36, 0.2); border: 2px solid #fbbf24; border-radius: 12px; padding: 20px; margin: 20px auto; max-width: 900px;">
+            <h3 style="color: #fbbf24; text-align: center; margin-bottom: 15px;">⚠️ OPTIMISATION API ACTIVE</h3>
+            <div style="color: #fff; line-height: 2; text-align: center;">
+                ✅ <strong>Cache actif:</strong> 10 minutes entre scans<br>
+                ✅ <strong>Rate limit:</strong> Maximum 1 scan/minute<br>
+                ❌ <strong>Auto-refresh DÉSACTIVÉ</strong> (scan manuel uniquement)<br>
+                <small style="color: #aaa; display: block; margin-top: 10px;">Économie de 90% des appels API vs auto-refresh 5 min</small>
+            </div>
+        </div>
+        
         <div id="narratives" class="narratives-grid">
             <div class="initial-message">
                 <div class="icon">🎯</div>
@@ -33178,18 +33228,19 @@ async def narrative_radar():
         </div>
         
         <div class="data-source" id="dataSource" style="display: none;">
-            ✅ DONNÉES RÉELLES - Source : CryptoPanic API v2
+            ✅ Données RÉELLES - Source : CryptoPanic API
         </div>
         
         <div class="footer-info">
             <h3>📊 Données 100% Réelles</h3>
             <ul>
-                <li><strong>Source :</strong> CryptoPanic API v2 - News crypto en temps réel</li>
+                <li><strong>Source :</strong> CryptoPanic API - News crypto en temps réel</li>
                 <li><strong>8 Narratives :</strong> AI, DeFi, RWA, Gaming, L2, Memes, Infrastructure, Privacy</li>
                 <li><strong>Status :</strong> QUIET (0), EMERGING (1-4), HOT (5-14), TRENDING (15+)</li>
                 <li><strong>Momentum :</strong> Calculé sur derniers scans réels</li>
                 <li><strong>Coins :</strong> Projets majeurs de chaque narrative</li>
-                <li><strong>Auto-Refresh :</strong> Toutes les 5 minutes</li>
+                <li><strong>Auto-Refresh :</strong> ❌ DÉSACTIVÉ (économie API)</li>
+                <li><strong>Cache :</strong> 10 minutes | Rate limit : 1 scan/minute</li>
             </ul>
         </div>
     </div>
@@ -33329,12 +33380,13 @@ function getCurrentTime() {
     return now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
 }
 
-setInterval(function() {
-    var btn = document.getElementById('scanBtn');
-    if (!btn.disabled && scanCount > 0) {
-        scanNow();
-    }
-}, 300000);
+// AUTO-REFRESH DÉSACTIVÉ POUR ÉCONOMISER L'API
+// setInterval(function() {
+//     var btn = document.getElementById('scanBtn');
+//     if (!btn.disabled && scanCount > 0) {
+//         scanNow();
+//     }
+// }, 300000);
 
 console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 </script>

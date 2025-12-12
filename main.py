@@ -32985,382 +32985,1285 @@ async def get_portfolio_data(request: Request):
 
 
 # ============================================================================
-# 🆕 NOUVELLES FEATURES - 5 ROUTES COMPLÈTES
+        error_page += '</div>'
+        error_page += '</div>'
+        error_page += '</body>'
+        error_page += '</html>'
+        return HTMLResponse(error_page)
+
+
+# ============================================================================
+# 🌐 NOUVELLES ROUTES - PAGES COMPLÈTES
+# ============================================================================
+# Routes pour les 5 nouvelles features
+# ============================================================================
+
+# ============================================================================
+# 🌐 ROUTES DES 5 NOUVELLES FEATURES
+# ============================================================================
+# Ce fichier contient toutes les routes avec HTML
+# À ajouter À LA FIN de tes routes existantes dans main.py
 # ============================================================================
 
 @app.get("/narrative-radar", response_class=HTMLResponse)
-async def narrative_radar():
-    """🎯 Narrative Radar - Dashboard des narratives crypto"""
+async def narrative_radar_page(request: Request):
+    """Page Narrative Radar"""
     
-    return HTMLResponse(SIDEBAR + CSS + """
-<div class="container">
-    <div class="header">
-        <h1>🎯 Narrative Radar</h1>
-        <p>Dashboard temps réel des narratives crypto</p>
-    </div>
+    token = request.cookies.get("auth_token")
+    user = get_user_from_token(token) if token else None
     
-    <div style="text-align: center; margin: 30px 0;">
-        <button style="background: #3b82f6; padding: 15px 40px; border-radius: 8px; color: white; border: none; cursor: pointer; font-size: 1.1em;" onclick="alert('Scanner en développement - Connecte les APIs !')">
-            🔍 Scanner Maintenant
-        </button>
+    html_content = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Narrative Radar</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a8a 100%); color: white; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1800px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; padding: 40px; background: rgba(255,255,255,0.05); border-radius: 20px; }
+        .header h1 { font-size: 3.5em; background: linear-gradient(45deg, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn { padding: 15px 35px; border: none; border-radius: 12px; background: linear-gradient(45deg, #10b981, #14b8a6); color: white; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+        .narratives-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 25px; }
+        .narrative-card { background: rgba(255,255,255,0.05); border-radius: 20px; padding: 30px; border: 2px solid rgba(255,255,255,0.1); }
+        .loading { display: none; text-align: center; padding: 60px; }
+        .loading.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Narrative Radar</h1>
+            <p>Dashboard temps réel des narratives crypto</p>
+        </div>
+        <button class="btn" onclick="scanNarratives()">🔄 Scanner Maintenant</button>
+        <div class="loading" id="loading"><h3>🔍 Scan en cours...</h3></div>
+        <div class="narratives-grid" id="narrativesGrid"></div>
     </div>
-    
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px;">
-        <div style="background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155;">
-            <h3>AI & Machine Learning</h3>
-            <p style="color: #94a3b8;">Momentum: En hausse 📈</p>
-        </div>
-        <div style="background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155;">
-            <h3>DeFi 2.0</h3>
-            <p style="color: #94a3b8;">Momentum: Stable ➡️</p>
-        </div>
-        <div style="background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155;">
-            <h3>Gaming & Metaverse</h3>
-            <p style="color: #94a3b8;">Momentum: En baisse 📉</p>
-        </div>
-    </div>
-</div>
-<script>
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-}
-</script>
+    <script>
+        async function scanNarratives() {
+            document.getElementById('loading').classList.add('active');
+            const response = await fetch('/api/narrative-radar/scan', { method: 'POST' });
+            const data = await response.json();
+            document.getElementById('loading').classList.remove('active');
+            
+            const grid = document.getElementById('narrativesGrid');
+            grid.innerHTML = '';
+            for (const [id, narrative] of Object.entries(data.narratives)) {
+                grid.innerHTML += `<div class="narrative-card">
+                    <h2>${narrative.icon} ${narrative.name}</h2>
+                    <p>Status: ${narrative.status}</p>
+                    <p>Mentions: ${narrative.mentions}</p>
+                    <p>Avg Change 24h: ${narrative.avg_change_24h}%</p>
+                </div>`;
+            }
+        }
+    </script>
 </body>
 </html>
-""")
+    """
+    return HTMLResponse(content=html_content)
+
+
+@app.post("/api/narrative-radar/scan")
+async def api_scan_narratives():
+    """API scan narratives"""
+    try:
+        results = await scan_all_narratives()
+        return results
+    except Exception as e:
+        return {"error": str(e), "narratives": {}}
 
 
 @app.get("/ai-crypto-coach", response_class=HTMLResponse)
-async def ai_crypto_coach():
-    """🤖 AI Crypto Coach - Analyse ton profil"""
+async def ai_crypto_coach_page(request: Request):
+    """Page AI Crypto Coach"""
     
-    return HTMLResponse(SIDEBAR + CSS + """
-<div class="container">
-    <div class="header">
-        <h1>🤖 AI Crypto Coach</h1>
-        <p>Analyse de ton profil de trader</p>
+    html_content = """
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>🤖 AI Crypto Coach</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0f172a, #1e293b, #334155); color: white; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1600px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; padding: 40px; background: rgba(255,255,255,0.05); border-radius: 20px; }
+        .header h1 { font-size: 3.5em; background: linear-gradient(45deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn { padding: 15px 35px; border: none; border-radius: 12px; background: linear-gradient(45deg, #10b981, #14b8a6); color: white; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+        .profile-card { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 40px; border-radius: 20px; margin: 40px 0; }
+        .profile-type { font-size: 2.5em; font-weight: bold; }
+        .profile-score { font-size: 4em; font-weight: bold; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }
+        .stat-box { background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 2.5em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Crypto Coach</h1>
+            <p>Ton coach personnel IA</p>
+        </div>
+        <button class="btn" onclick="analyzeProfile()">🔍 Analyser Mon Profil</button>
+        <div id="results"></div>
     </div>
-    
-    <div class="card">
-        <h2>⚠️ Configuration requise</h2>
-        <p>Il te faut minimum <strong>5 trades</strong> dans ton historique pour l'analyse.</p>
-        <p style="margin-top: 20px;">Va faire quelques trades et reviens ! 📊</p>
-    </div>
-    
-    <div style="margin-top: 30px; padding: 30px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%); border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.3);">
-        <h3 style="color: #60a5fa; margin-bottom: 15px;">📚 Fonctionnalités à venir</h3>
-        <ul style="color: #94a3b8; line-height: 1.8;">
-            <li>Analyse approfondie de ton style de trading</li>
-            <li>Recommandations personnalisées basées sur tes performances</li>
-            <li>Identification de tes forces et faiblesses</li>
-            <li>Coaching adapté à ton profil risque/rendement</li>
-        </ul>
-    </div>
-</div>
-<script>
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-}
-</script>
+    <script>
+        async function analyzeProfile() {
+            const response = await fetch('/api/ai-coach/analyze', { method: 'POST' });
+            const data = await response.json();
+            
+            if (data.profile_type) {
+                document.getElementById('results').innerHTML = `
+                    <div class="profile-card">
+                        <div class="profile-type">${data.profile_type}</div>
+                        <p>${data.profile_description}</p>
+                        <div class="profile-score">${data.score}/100</div>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">${data.stats.total_trades}</div>
+                            <div>Total Trades</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${data.stats.win_rate}%</div>
+                            <div>Win Rate</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${data.stats.rr_ratio}</div>
+                            <div>R:R Ratio</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                alert(data.message || 'Pas assez de trades');
+            }
+        }
+    </script>
 </body>
 </html>
-""")
+    """
+    return HTMLResponse(content=html_content)
 
 
-@app.get("/ai-swarm-agents", response_class=HTMLResponse)
-async def ai_swarm_agents():
-    """🤖 AI Swarm Agents - Multi-agents d'analyse"""
-    
-    return HTMLResponse(SIDEBAR + CSS + """
-<style>
-    .profiles {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 20px;
-        margin: 30px 0;
-    }
-    .profile-card {
-        background: #1e293b;
-        padding: 25px;
-        border-radius: 12px;
-        border: 2px solid #334155;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    .profile-card:hover {
-        border-color: #60a5fa;
-        transform: translateY(-5px);
-    }
-    .profile-card.selected {
-        border-color: #10b981;
-        background: rgba(16, 185, 129, 0.1);
-    }
-</style>
-<div class="container">
-    <div class="header">
-        <h1>🤖 AI Swarm Agents</h1>
-        <p>Système multi-agents d'analyse crypto personnalisée</p>
-    </div>
-    
-    <div class="profiles">
-        <div class="profile-card" onclick="selectProfile('degen')">
-            <h3>🚀 Degen Memecoin Hunter</h3>
-            <p>Max risk, max rewards. Chasse les 100x.</p>
-        </div>
-        <div class="profile-card" onclick="selectProfile('investor')">
-            <h3>💼 Investor Sérieux 1-3 ans</h3>
-            <p>Focus fondamentaux et long terme.</p>
-        </div>
-        <div class="profile-card" onclick="selectProfile('scalper')">
-            <h3>⚡ Scalper Court Terme</h3>
-            <p>Opportunités rapides, momentum trading.</p>
-        </div>
-    </div>
-    
-    <div style="text-align: center; margin: 30px 0;">
-        <button style="background: #3b82f6; padding: 15px 40px; border-radius: 8px; color: white; border: none; cursor: pointer; font-size: 1.1em;" onclick="runAnalysis()">
-            🚀 Lancer l'Analyse
-        </button>
-    </div>
-    
-    <div id="results"></div>
-</div>
-<script>
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-}
-
-let selectedProfile = null;
-
-function selectProfile(profile) {
-    selectedProfile = profile;
-    document.querySelectorAll('.profile-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    event.currentTarget.classList.add('selected');
-}
-
-function runAnalysis() {
-    if (!selectedProfile) {
-        alert('Sélectionne un profil d\'abord !');
-        return;
-    }
-    alert('Analyse en développement pour profil: ' + selectedProfile);
-}
-</script>
-</body>
-</html>
-""")
+@app.post("/api/ai-coach/analyze")
+async def api_analyze_trader_profile(request: Request):
+    """API analyze trader profile"""
+    try:
+        token = request.cookies.get("auth_token")
+        user = get_user_from_token(token) if token else None
+        
+        if not user:
+            return {"error": "Non authentifié"}
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT symbol, entry_price, exit_price, profit_percent, 
+                   result, timestamp, setup_type, timeframe, notes
+            FROM trades 
+            WHERE username = ?
+            ORDER BY timestamp DESC
+            LIMIT 100
+        """, (user["username"],))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        trades = []
+        for row in rows:
+            trades.append({
+                "symbol": row[0],
+                "entry_price": row[1],
+                "exit_price": row[2],
+                "profit_percent": row[3],
+                "result": row[4],
+                "timestamp": row[5],
+                "setup_type": row[6] or "unknown",
+                "timeframe": row[7] or "1H",
+                "notes": row[8] or ""
+            })
+        
+        profile = analyze_trader_profile(trades)
+        return profile
+        
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @app.get("/altseason-copilot-pro", response_class=HTMLResponse)
-async def altseason_copilot():
-    """📈 Altseason Copilot Pro - Rotation de capital"""
+async def altseason_copilot_page(request: Request):
+    """Page Altseason Copilot"""
     
-    # Données de marché en temps réel
-    try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
-            # BTC price
-            btc_resp = await client.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true")
-            btc_data = btc_resp.json().get("bitcoin", {})
-            btc_price = btc_data.get("usd", 0)
-            btc_change = btc_data.get("usd_24h_change", 0)
-            
-            # ETH price
-            eth_resp = await client.get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true")
-            eth_data = eth_resp.json().get("ethereum", {})
-            eth_price = eth_data.get("usd", 0)
-            eth_change = eth_data.get("usd_24h_change", 0)
-            
-            # BTC Dominance
-            global_resp = await client.get("https://api.coingecko.com/api/v3/global")
-            global_data = global_resp.json().get("data", {})
-            btc_dom = global_data.get("market_cap_percentage", {}).get("btc", 0)
-            
-    except:
-        btc_price, btc_change, eth_price, eth_change, btc_dom = 97000, -2.5, 3600, -3.2, 56.5
-    
-    # Déterminer la phase
-    if btc_change < 2 and eth_change < 2:
-        phase = "Consolidation"
-        phase_emoji = "🟡"
-        recommendation = "⏰ Prépare-toi, opportunités à venir"
-    elif btc_change > 5:
-        phase = "BTC Pump"
-        phase_emoji = "🔵"
-        recommendation = "💰 Hold BTC ou cash"
-    elif eth_change > 5 and btc_change < 2:
-        phase = "Alt Season"
-        phase_emoji = "🚀"
-        recommendation = "🚀 ALL IN ALTS !"
-    else:
-        phase = "Accumulation"
-        phase_emoji = "🟢"
-        recommendation = "🟢 Bon moment pour accumuler"
-    
-    return HTMLResponse(SIDEBAR + CSS + f"""
-<style>
-    .phase-card {{
-        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-        padding: 40px;
-        border-radius: 15px;
-        text-align: center;
-        margin: 30px 0;
-        border: 2px solid #60a5fa;
-    }}
-    .phase-emoji {{
-        font-size: 4em;
-        margin-bottom: 20px;
-    }}
-    .metrics-grid {{
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 20px;
-        margin: 30px 0;
-    }}
-    .metric-card {{
-        background: #1e293b;
-        padding: 25px;
-        border-radius: 12px;
-        border: 1px solid #334155;
-    }}
-</style>
-<div class="container">
-    <div class="header">
-        <h1>📈 Altseason Copilot Pro</h1>
-        <p>Rotation de capital & Phase du marché en temps réel</p>
-    </div>
-    
-    <div class="phase-card">
-        <div class="phase-emoji">{phase_emoji}</div>
-        <h2 style="font-size: 2.5em; margin: 20px 0; color: #e2e8f0;">{phase}</h2>
-        <p style="font-size: 1.3em; margin-top: 20px; color: #94a3b8;">{recommendation}</p>
-    </div>
-    
-    <div class="metrics-grid">
-        <div class="metric-card">
-            <h3 style="color: #94a3b8; font-size: 0.9em;">Bitcoin (BTC)</h3>
-            <div style="font-size: 2.5em; font-weight: bold; margin: 10px 0;">${btc_price:,.0f}</div>
-            <div style="color: {'#10b981' if btc_change >= 0 else '#ef4444'}; font-size: 1.2em;">
-                {'+' if btc_change >= 0 else ''}{btc_change:.2f}%
-            </div>
+    html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📈 Altseason Copilot Pro</title>
+    <style>
+        body { font-family: sans-serif; background: linear-gradient(135deg, #1e3a8a, #312e81); color: white; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 3em; }
+        .btn { background: linear-gradient(45deg, #10b981, #14b8a6); color: white; padding: 15px 35px; border: none; border-radius: 12px; font-size: 1.1em; cursor: pointer; }
+        .phase-card { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; margin: 30px 0; }
+        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin: 30px 0; }
+        .metric { background: rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; text-align: center; }
+        .metric-value { font-size: 2.5em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📈 Altseason Copilot Pro</h1>
+            <p>Analyse des flux de capitaux</p>
         </div>
-        
-        <div class="metric-card">
-            <h3 style="color: #94a3b8; font-size: 0.9em;">Ethereum (ETH)</h3>
-            <div style="font-size: 2.5em; font-weight: bold; margin: 10px 0;">${eth_price:,.0f}</div>
-            <div style="color: {'#10b981' if eth_change >= 0 else '#ef4444'}; font-size: 1.2em;">
-                {'+' if eth_change >= 0 else ''}{eth_change:.2f}%
-            </div>
-        </div>
-        
-        <div class="metric-card">
-            <h3 style="color: #94a3b8; font-size: 0.9em;">BTC Dominance</h3>
-            <div style="font-size: 2.5em; font-weight: bold; margin: 10px 0;">{btc_dom:.2f}%</div>
-            <div style="color: #94a3b8; font-size: 1.2em;">Market Share</div>
-        </div>
+        <button class="btn" onclick="analyzeRotation()">🔄 Analyser</button>
+        <div id="results"></div>
     </div>
-</div>
-<script>
-function toggleSidebar() {{
-    document.getElementById('sidebar').classList.toggle('active');
-}}
-
-// Auto-refresh toutes les 60 secondes
-setTimeout(() => location.reload(), 60000);
-</script>
+    <script>
+        async function analyzeRotation() {
+            const res = await fetch('/api/altseason-copilot/analyze', {method: 'POST'});
+            const data = await res.json();
+            
+            document.getElementById('results').innerHTML = `
+                <div class="phase-card">
+                    <h2>Phase: ${data.phase}</h2>
+                    <p>${data.description}</p>
+                    <p style="background: rgba(16,185,129,0.2); padding: 20px; border-radius: 12px; margin-top: 20px;">
+                        ${data.recommendation}
+                    </p>
+                </div>
+                <div class="metrics">
+                    <div class="metric">
+                        <div class="metric-value">${data.metrics.btc_24h}%</div>
+                        <div>BTC 24h</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">${data.metrics.eth_24h}%</div>
+                        <div>ETH 24h</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">${data.metrics.alts_avg_24h}%</div>
+                        <div>Alts 24h</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value">${data.metrics.btc_dominance}%</div>
+                        <div>BTC Dom</div>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
 </body>
 </html>
-""")
+    """
+    return HTMLResponse(content=html)
+
+
+@app.post("/api/altseason-copilot/analyze")
+async def api_altseason_analyze():
+    """API altseason analyze"""
+    results = await analyze_capital_rotation()
+    return results
 
 
 @app.get("/rug-scam-shield", response_class=HTMLResponse)
-async def rug_scam_shield():
-    """🛡️ Rug & Scam Shield - Analyse de sécurité"""
+async def rug_scam_shield_page(request: Request):
+    """Page Rug & Scam Shield"""
     
-    return HTMLResponse(SIDEBAR + CSS + """
-<style>
-    .input-section {
-        background: #1e293b;
-        padding: 30px;
-        border-radius: 12px;
-        margin: 30px 0;
-        border: 1px solid #334155;
-    }
-    .input-group {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 15px;
-        margin-top: 20px;
-    }
-</style>
-<div class="container">
-    <div class="header">
-        <h1>🛡️ Rug & Scam Shield</h1>
-        <p>Analyse de sécurité des smart contracts</p>
-    </div>
-    
-    <div class="input-section">
-        <h2 style="color: #60a5fa; margin-bottom: 20px;">Adresse du Contract</h2>
-        <div class="input-group">
-            <input 
-                type="text" 
-                id="contractAddress" 
-                placeholder="0x..."
-                style="margin-bottom: 0; padding: 15px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white;"
-            >
-            <select id="chain" style="margin-bottom: 0; min-width: 150px; padding: 15px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: white;">
-                <option value="eth">Ethereum</option>
-                <option value="bsc">BSC</option>
-                <option value="polygon">Polygon</option>
-                <option value="arbitrum">Arbitrum</option>
-                <option value="base">Base</option>
-                <option value="avalanche">Avalanche</option>
-                <option value="optimism">Optimism</option>
-                <option value="fantom">Fantom</option>
-            </select>
+    html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🛡️ Rug & Scam Shield</title>
+    <style>
+        body { font-family: sans-serif; background: linear-gradient(135deg, #7c2d12, #991b1b); color: white; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; }
+        input { width: 100%; padding: 15px; font-size: 1.1em; border-radius: 8px; border: none; margin-bottom: 15px; }
+        .btn { background: linear-gradient(45deg, #ef4444, #dc2626); color: white; padding: 15px 35px; border: none; border-radius: 12px; font-size: 1.1em; cursor: pointer; width: 100%; }
+        .risk-card { padding: 30px; border-radius: 15px; margin: 20px 0; }
+        .risk-critical { background: rgba(239,68,68,0.3); border: 3px solid #ef4444; }
+        .risk-low { background: rgba(34,197,94,0.3); border: 3px solid #22c55e; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ Rug & Scam Shield</h1>
+            <p>Analyse anti-scam</p>
         </div>
-        <button 
-            onclick="analyzeContract()" 
-            style="width: 100%; margin-top: 20px; background: #3b82f6; padding: 15px; border-radius: 8px; color: white; border: none; cursor: pointer; font-size: 1.1em;"
-        >
-            🔍 Analyser
-        </button>
+        <input type="text" id="contractInput" placeholder="0x..." />
+        <button class="btn" onclick="scanContract()">🔍 Analyser</button>
+        <div id="results"></div>
     </div>
-    
-    <div id="results"></div>
-    
-    <div style="margin-top: 30px; padding: 20px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.3);">
-        <h3 style="color: #ef4444; margin-bottom: 15px;">⚠️ Red Flags Communs</h3>
-        <ul style="color: #94a3b8; line-height: 1.8;">
-            <li>Honeypot (impossible de vendre)</li>
-            <li>Fonction backdoor dans le code</li>
-            <li>Mint illimité</li>
-            <li>Ownership non renoncé</li>
-            <li>Liquidité non lockée</li>
-        </ul>
-    </div>
-</div>
-<script>
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-}
-
-function analyzeContract() {
-    const address = document.getElementById('contractAddress').value;
-    const chain = document.getElementById('chain').value;
-    
-    if (!address) {
-        alert('Entre une adresse de contract !');
-        return;
-    }
-    
-    alert('Analyse en développement pour: ' + address + ' sur ' + chain);
-}
-</script>
+    <script>
+        async function scanContract() {
+            const contract = document.getElementById('contractInput').value;
+            if (!contract) { alert('Entre un contrat'); return; }
+            
+            const res = await fetch('/api/scam-shield/analyze', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({contract_address: contract})
+            });
+            const data = await res.json();
+            
+            const riskClass = data.risk_level.includes('CRITICAL') ? 'risk-critical' : 'risk-low';
+            
+            document.getElementById('results').innerHTML = `
+                <div class="risk-card ${riskClass}">
+                    <h2>Niveau: ${data.risk_level}</h2>
+                    <p style="font-size: 2em;">Score: ${data.risk_score}/100</p>
+                    <p>${data.recommendations[0] || 'Analyse terminée'}</p>
+                </div>
+            `;
+        }
+    </script>
 </body>
 </html>
-""")
+    """
+    return HTMLResponse(content=html)
+
+
+@app.post("/api/scam-shield/analyze")
+async def api_scam_shield_analyze(request: Request):
+    """API scam shield"""
+    try:
+        body = await request.json()
+        contract = body.get("contract_address", "")
+        if not contract:
+            return {"error": "Contract required"}
+        results = await analyze_contract(contract)
+        return results
+    except Exception as e:
+        return {"error": str(e)}
+
+
+
+
+# ============================================================================
+# 🤖 AI SWARM AGENTS - ROUTES
+# ============================================================================
+
+# ============================================================================
+# 🌐 ROUTES API - AI SWARM AGENTS
+# ============================================================================
+# À ajouter dans main.py après les routes existantes
+
+@app.get("/ai-swarm-agents", response_class=HTMLResponse)
+async def ai_swarm_agents_page(request: Request):
+    """Page principale du Swarm d'agents IA"""
+    
+    # Vérifier authentification (optionnel selon ton système)
+    token = request.cookies.get("auth_token")
+    user = get_user_from_token(token) if token else None
+    
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Swarm Agents - Trading Dashboard Pro</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        
+        .container {{
+            max-width: 1600px;
+            margin: 0 auto;
+        }}
+        
+        .header {{
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }}
+        
+        .header h1 {{
+            font-size: 3em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }}
+        
+        .header p {{
+            font-size: 1.2em;
+            color: #a0aec0;
+        }}
+        
+        .controls {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }}
+        
+        .profile-card {{
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }}
+        
+        .profile-card:hover {{
+            transform: translateY(-5px);
+            border-color: #667eea;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }}
+        
+        .profile-card.active {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: white;
+        }}
+        
+        .profile-card h3 {{
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }}
+        
+        .profile-card p {{
+            color: #e2e8f0;
+            font-size: 0.9em;
+        }}
+        
+        .agents-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }}
+        
+        .agent-card {{
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }}
+        
+        .agent-card::before {{
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: var(--agent-color);
+        }}
+        
+        .agent-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }}
+        
+        .agent-title {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .agent-icon {{
+            font-size: 2em;
+        }}
+        
+        .agent-toggle {{
+            width: 60px;
+            height: 30px;
+            background: #4a5568;
+            border-radius: 15px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }}
+        
+        .agent-toggle.active {{
+            background: #48bb78;
+        }}
+        
+        .agent-toggle::after {{
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }}
+        
+        .agent-toggle.active::after {{
+            transform: translateX(30px);
+        }}
+        
+        .agent-status {{
+            font-size: 0.85em;
+            color: #a0aec0;
+            margin-bottom: 10px;
+        }}
+        
+        .agent-status.scanning {{
+            color: #48bb78;
+        }}
+        
+        .alerts-container {{
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }}
+        
+        .alert-item {{
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--alert-color);
+            animation: slideIn 0.3s ease-out;
+        }}
+        
+        @keyframes slideIn {{
+            from {{
+                opacity: 0;
+                transform: translateX(-20px);
+            }}
+            to {{
+                opacity: 1;
+                transform: translateX(0);
+            }}
+        }}
+        
+        .alert-header {{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }}
+        
+        .alert-symbol {{
+            font-weight: bold;
+            font-size: 1.1em;
+        }}
+        
+        .alert-confidence {{
+            background: rgba(72, 187, 120, 0.2);
+            color: #48bb78;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }}
+        
+        .meta-summary {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 40px;
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
+        }}
+        
+        .meta-summary h2 {{
+            font-size: 2em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        
+        .sentiment-badge {{
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin: 15px 0;
+        }}
+        
+        .sentiment-bullish {{
+            background: #48bb78;
+            color: white;
+        }}
+        
+        .sentiment-bearish {{
+            background: #f56565;
+            color: white;
+        }}
+        
+        .sentiment-neutral {{
+            background: #ecc94b;
+            color: #2d3748;
+        }}
+        
+        .priority-events {{
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }}
+        
+        .priority-event {{
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }}
+        
+        .priority-event.high {{
+            border-color: #f56565;
+        }}
+        
+        .priority-event.medium {{
+            border-color: #ecc94b;
+        }}
+        
+        .priority-event.critical {{
+            border-color: #fc8181;
+            animation: pulse 2s infinite;
+        }}
+        
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; }}
+            50% {{ opacity: 0.7; }}
+        }}
+        
+        .action-buttons {{
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }}
+        
+        .btn {{
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .btn-primary {{
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }}
+        
+        .btn-primary:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }}
+        
+        .btn-secondary {{
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }}
+        
+        .btn-secondary:hover {{
+            background: rgba(255, 255, 255, 0.2);
+        }}
+        
+        .loading {{
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }}
+        
+        .loading.active {{
+            display: block;
+        }}
+        
+        .spinner {{
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #667eea;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }}
+        
+        @keyframes spin {{
+            0% {{ transform: rotate(0deg); }}
+            100% {{ transform: rotate(360deg); }}
+        }}
+        
+        .stats-bar {{
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }}
+        
+        .stat {{
+            text-align: center;
+        }}
+        
+        .stat-value {{
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }}
+        
+        .stat-label {{
+            color: #a0aec0;
+            font-size: 0.9em;
+        }}
+        
+        /* Scrollbar personnalisé */
+        ::-webkit-scrollbar {{
+            width: 8px;
+        }}
+        
+        ::-webkit-scrollbar-track {{
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }}
+        
+        ::-webkit-scrollbar-thumb {{
+            background: #667eea;
+            border-radius: 4px;
+        }}
+        
+        ::-webkit-scrollbar-thumb:hover {{
+            background: #764ba2;
+        }}
+        
+        @media (max-width: 768px) {{
+            .header h1 {{
+                font-size: 2em;
+            }}
+            
+            .agents-grid {{
+                grid-template-columns: 1fr;
+            }}
+            
+            .controls {{
+                grid-template-columns: 1fr;
+            }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🤖 AI Swarm Agents</h1>
+            <p>Une armée d'agents IA qui scanne le marché crypto 24/7 pour toi</p>
+        </div>
+        
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat">
+                <div class="stat-value" id="totalAlerts">0</div>
+                <div class="stat-label">Alertes Actives</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="activeAgents">5</div>
+                <div class="stat-label">Agents Actifs</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="lastScan">-</div>
+                <div class="stat-label">Dernier Scan</div>
+            </div>
+        </div>
+        
+        <!-- Profils Trader -->
+        <h2 style="margin-bottom: 20px; font-size: 1.8em;">📊 Choisis ton profil trader</h2>
+        <div class="controls">
+            <div class="profile-card" data-profile="degen">
+                <h3>🎲 Degen Memecoin Hunter</h3>
+                <p>Max risk, max rewards. Chasse les 100x, focus nouveaux lancements et volume explosif.</p>
+            </div>
+            <div class="profile-card" data-profile="investor">
+                <h3>💼 Investor Sérieux 1-3 ans</h3>
+                <p>Focus fondamentaux et long terme. Analyse macro, narratives solides, projets établis.</p>
+            </div>
+            <div class="profile-card" data-profile="scalper">
+                <h3>⚡ Scalper Court Terme</h3>
+                <p>Opportunités rapides, momentum trading. Whales, volume, mouvements significatifs.</p>
+            </div>
+        </div>
+        
+        <!-- Méta-Summary -->
+        <div class="meta-summary" id="metaSummary" style="display: none;">
+            <h2>🧠 Résumé Intelligent</h2>
+            <div id="metaContent"></div>
+        </div>
+        
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>🔍 Agents en train de scanner le marché...</p>
+        </div>
+        
+        <!-- Agents Grid -->
+        <h2 style="margin-bottom: 20px; font-size: 1.8em;">🤖 Tes Agents IA</h2>
+        <div class="agents-grid" id="agentsGrid"></div>
+        
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn btn-primary" onclick="scanNow()">
+                🔄 Scanner Maintenant
+            </button>
+            <button class="btn btn-secondary" onclick="toggleAutoScan()">
+                ⏱️ <span id="autoScanText">Activer Auto-Scan</span>
+            </button>
+            <button class="btn btn-secondary" onclick="resetAgents()">
+                🔁 Réinitialiser
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const AGENT_CONFIGS = {
+            memecoin_hunter: {
+                name: "Memecoin Hunter",
+                icon: "🚀",
+                description: "Détecte les nouveaux memecoins avec potentiel viral",
+                color: "#ff6b35"
+            },
+            whale_tracker: {
+                name: "Whale Tracker",
+                icon: "🐋",
+                description: "Analyse les mouvements des baleines et smart money",
+                color: "#4ecdc4"
+            },
+            narrative_detector: {
+                name: "Narrative Detector",
+                icon: "📰",
+                description: "Identifie les narratives émergentes et trends",
+                color: "#95e1d3"
+            },
+            scam_detector: {
+                name: "Scam Detector",
+                icon: "🛡️",
+                description: "Détecte les scams, rugs et projets suspects",
+                color: "#ef476f"
+            },
+            macro_analyzer: {
+                name: "Macro Analyzer",
+                icon: "📊",
+                description: "Analyse macro, ETF, régulations et actualités",
+                color: "#ffd23f"
+            }
+        };
+        
+        const TRADER_PROFILES = {
+            degen: ["memecoin_hunter", "whale_tracker", "scam_detector"],
+            investor: ["narrative_detector", "macro_analyzer", "scam_detector"],
+            scalper: ["whale_tracker", "memecoin_hunter", "narrative_detector"]
+        };
+        
+        // État
+        let enabledAgents = Object.keys(AGENT_CONFIGS);
+        let currentProfile = null;
+        let autoScanInterval = null;
+        let lastScanData = null;
+        
+        // Initialisation
+        function init() {
+            renderAgents();
+            setupProfileCards();
+        }
+        
+        // Render agents
+        function renderAgents() {
+            const grid = document.getElementById('agentsGrid');
+            grid.innerHTML = '';
+            
+            for (const [agentId, config] of Object.entries(AGENT_CONFIGS)) {
+                const isEnabled = enabledAgents.includes(agentId);
+                
+                const card = document.createElement('div');
+                card.className = 'agent-card';
+                card.style.setProperty('--agent-color', config.color);
+                card.innerHTML = `
+                    <div class="agent-header">
+                        <div class="agent-title">
+                            <span class="agent-icon">${config.icon}</span>
+                            <div>
+                                <h3>${config.name}</h3>
+                                <p style="color: #a0aec0; font-size: 0.85em;">${config.description}</p>
+                            </div>
+                        </div>
+                        <div class="agent-toggle ${isEnabled ? 'active' : ''}" 
+                             onclick="toggleAgent('${agentId}', this)"></div>
+                    </div>
+                    <div class="agent-status" id="status-${agentId}">
+                        ${isEnabled ? '✅ Actif' : '⏸️ Désactivé'}
+                    </div>
+                    <div class="alerts-container" id="alerts-${agentId}"></div>
+                `;
+                
+                grid.appendChild(card);
+            }
+        }
+        
+        // Toggle agent
+        function toggleAgent(agentId, element) {
+            const index = enabledAgents.indexOf(agentId);
+            
+            if (index > -1) {
+                enabledAgents.splice(index, 1);
+                element.classList.remove('active');
+                document.getElementById(`status-${agentId}`).textContent = '⏸️ Désactivé';
+                document.getElementById(`alerts-${agentId}`).innerHTML = '';
+            } else {
+                enabledAgents.push(agentId);
+                element.classList.add('active');
+                document.getElementById(`status-${agentId}`).textContent = '✅ Actif';
+            }
+            
+            updateActiveAgentsCount();
+        }
+        
+        // Setup profile cards
+        function setupProfileCards() {
+            document.querySelectorAll('.profile-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const profile = this.dataset.profile;
+                    
+                    // Désactiver ancienne sélection
+                    document.querySelectorAll('.profile-card').forEach(c => 
+                        c.classList.remove('active'));
+                    
+                    // Activer nouvelle sélection
+                    this.classList.add('active');
+                    currentProfile = profile;
+                    
+                    // Configurer agents selon profil
+                    enabledAgents = [...TRADER_PROFILES[profile]];
+                    renderAgents();
+                    
+                    // Scanner automatiquement
+                    setTimeout(() => scanNow(), 500);
+                });
+            });
+        }
+        
+        // Scanner maintenant
+        async function scanNow() {
+            const loading = document.getElementById('loading');
+            loading.classList.add('active');
+            
+            try {
+                const response = await fetch('/api/swarm/scan', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled_agents: enabledAgents})
+                });
+                
+                const data = await response.json();
+                lastScanData = data;
+                
+                // Afficher les résultats
+                displayResults(data);
+                
+                // Mettre à jour stats
+                updateStats(data);
+                
+            } catch (error) {
+                console.error('Scan error:', error);
+                alert('❌ Erreur lors du scan');
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+        
+        // Afficher les résultats
+        function displayResults(data) {
+            const {agents_data, meta_summary} = data;
+            
+            // Afficher méta-summary
+            const metaSummary = document.getElementById('metaSummary');
+            const metaContent = document.getElementById('metaContent');
+            
+            metaSummary.style.display = 'block';
+            
+            const sentimentClass = meta_summary.market_sentiment.toLowerCase();
+            
+            metaContent.innerHTML = `
+                <div class="sentiment-badge sentiment-${sentimentClass}">
+                    ${meta_summary.market_sentiment === 'BULLISH' ? '📈 BULLISH' : 
+                      meta_summary.market_sentiment === 'BEARISH' ? '📉 BEARISH' : 
+                      '⚖️ NEUTRAL'}
+                </div>
+                
+                <div style="margin: 20px 0; font-size: 1.1em; line-height: 1.6;">
+                    ${meta_summary.ai_recommendation.replace(/\n/g, '<br>')}
+                </div>
+                
+                ${meta_summary.priority_events.length > 0 ? `
+                    <div class="priority-events">
+                        <h3 style="margin-bottom: 15px;">⚡ Événements Prioritaires</h3>
+                        ${meta_summary.priority_events.map(event => `
+                            <div class="priority-event ${event.importance.toLowerCase()}">
+                                <strong>${event.type}</strong><br>
+                                ${event.message}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            `;
+            
+            // Afficher alertes par agent
+            for (const [agentId, alerts] of Object.entries(agents_data)) {
+                const container = document.getElementById(`alerts-${agentId}`);
+                if (!container) continue;
+                
+                // Mettre à jour status
+                const statusEl = document.getElementById(`status-${agentId}`);
+                if (statusEl && enabledAgents.includes(agentId)) {
+                    statusEl.textContent = `✅ ${alerts.length} alerte(s)`;
+                    statusEl.classList.add('scanning');
+                }
+                
+                if (alerts.length === 0) {
+                    container.innerHTML = '<p style="color: #a0aec0; font-size: 0.9em;">Aucune alerte pour le moment</p>';
+                    continue;
+                }
+                
+                // Render alertes selon type d'agent
+                container.innerHTML = renderAgentAlerts(agentId, alerts);
+            }
+        }
+        
+        // Render alertes selon agent
+        function renderAgentAlerts(agentId, alerts) {
+            const config = AGENT_CONFIGS[agentId];
+            let html = '';
+            
+            switch(agentId) {
+                case 'memecoin_hunter':
+                    alerts.forEach(alert => {
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${config.color}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.symbol}</span>
+                                    <span class="alert-confidence">${alert.confidence}%</span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    ${alert.name} - $${alert.price}
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.reason}<br>
+                                    📊 Volume: $${(alert.volume / 1000000).toFixed(2)}M |
+                                    💰 MCap: $${(alert.mcap / 1000000).toFixed(2)}M
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'whale_tracker':
+                    alerts.forEach(alert => {
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${config.color}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.crypto}</span>
+                                    <span class="alert-confidence">${alert.confidence}%</span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    ${alert.amount.toLocaleString()} ${alert.crypto} 
+                                    ($${(alert.usd_value / 1000000).toFixed(2)}M)
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.reason}<br>
+                                    📍 ${alert.from} → ${alert.to}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'narrative_detector':
+                    alerts.forEach(alert => {
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${config.color}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.narrative}</span>
+                                    <span class="alert-confidence">${alert.confidence}%</span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    ${alert.trend} - ${alert.mentions} mentions
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.examples.slice(0, 2).join('<br>')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'scam_detector':
+                    alerts.forEach(alert => {
+                        const riskColor = alert.risk_level === 'CRITICAL' ? '#fc8181' : 
+                                        alert.risk_level === 'HIGH' ? '#f6ad55' : '#ecc94b';
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${riskColor}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.token}</span>
+                                    <span style="background: ${riskColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">
+                                        ${alert.risk_level}
+                                    </span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0; font-weight: bold;">
+                                    ⚠️ ${alert.recommendation}
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.issues.join('<br>')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+                    
+                case 'macro_analyzer':
+                    alerts.forEach(alert => {
+                        const impactColor = alert.impact === 'HIGH' ? '#fc8181' : '#ecc94b';
+                        html += `
+                            <div class="alert-item" style="--alert-color: ${impactColor}">
+                                <div class="alert-header">
+                                    <span class="alert-symbol">${alert.event}</span>
+                                    <span style="background: ${impactColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">
+                                        ${alert.impact}
+                                    </span>
+                                </div>
+                                <div style="color: #e2e8f0; margin: 5px 0;">
+                                    📅 ${alert.date} - ${alert.category}
+                                </div>
+                                <div style="font-size: 0.85em; color: #a0aec0;">
+                                    ${alert.description}<br>
+                                    💡 ${alert.expected_effect}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    break;
+            }
+            
+            return html;
+        }
+        
+        // Mettre à jour stats
+        function updateStats(data) {
+            const totalAlerts = Object.values(data.agents_data)
+                .reduce((sum, alerts) => sum + alerts.length, 0);
+            
+            document.getElementById('totalAlerts').textContent = totalAlerts;
+            document.getElementById('activeAgents').textContent = enabledAgents.length;
+            document.getElementById('lastScan').textContent = new Date().toLocaleTimeString('fr-FR', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        function updateActiveAgentsCount() {
+            document.getElementById('activeAgents').textContent = enabledAgents.length;
+        }
+        
+        // Auto-scan
+        function toggleAutoScan() {
+            const btn = document.getElementById('autoScanText');
+            
+            if (autoScanInterval) {
+                clearInterval(autoScanInterval);
+                autoScanInterval = null;
+                btn.textContent = 'Activer Auto-Scan';
+            } else {
+                autoScanInterval = setInterval(() => {
+                    scanNow();
+                }, 60000); // Toutes les 60 secondes
+                btn.textContent = 'Désactiver Auto-Scan';
+                scanNow(); // Scan immédiat
+            }
+        }
+        
+        // Reset
+        function resetAgents() {
+            enabledAgents = Object.keys(AGENT_CONFIGS);
+            currentProfile = null;
+            document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('active'));
+            renderAgents();
+            document.getElementById('metaSummary').style.display = 'none';
+            
+            // Clear alertes
+            Object.keys(AGENT_CONFIGS).forEach(agentId => {
+                const container = document.getElementById(`alerts-${agentId}`);
+                if (container) container.innerHTML = '';
+            });
+        }
+        
+        // Init au chargement
+        init();
+        
+        // Premier scan après 2 secondes
+        setTimeout(() => scanNow(), 2000);
+    </script>
+</body>
+</html>
+    """
+    
+    return HTMLResponse(content=html_content)
+
+
+@app.post("/api/swarm/scan")
+async def swarm_scan(request: Request):
+    """API endpoint pour scanner avec les agents sélectionnés"""
+    try:
+        body = await request.json()
+        enabled_agents = body.get("enabled_agents", list(AGENT_CONFIGS.keys()))
+        
+        # Exécuter tous les agents
+        results = await run_all_agents(enabled_agents)
+        
+        return results
+        
+    except Exception as e:
+        return {"error": str(e), "agents_data": {}, "meta_summary": {}}
+
+
+@app.get("/api/swarm/config")
+async def get_swarm_config():
+    """Retourne la configuration des agents et profils"""
+    return {
+        "agents": AGENT_CONFIGS,
+        "profiles": TRADER_PROFILES
+    }
+
+
 
 
 # ============================================================================

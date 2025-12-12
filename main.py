@@ -5005,16 +5005,391 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         """, status_code=403)
     
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>Dashboard</title>""" + CSS + """</head>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Trading Crypto IA</title>
+    """ + CSS + """
+    <style>
+        body {{
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            margin-left: 280px;
+            padding: 40px;
+            color: #fff;
+        }}
+        @media (max-width: 768px) {{ body {{ margin-left: 0; padding: 20px; }} }}
+        
+        .dashboard-header {{
+            text-align: center;
+            margin-bottom: 50px;
+        }}
+        .dashboard-header h1 {{
+            font-size: 3em;
+            color: #00d4ff;
+            margin-bottom: 15px;
+            text-shadow: 0 0 20px rgba(0,212,255,0.5);
+        }}
+        .dashboard-header p {{
+            font-size: 1.3em;
+            color: #aaa;
+        }}
+        
+        .quick-actions {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            max-width: 1400px;
+            margin: 0 auto 60px;
+        }}
+        .action-card {{
+            background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(0,255,136,0.1));
+            border: 2px solid rgba(0,212,255,0.3);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }}
+        .action-card:hover {{
+            transform: translateY(-5px);
+            border-color: #00d4ff;
+            box-shadow: 0 10px 30px rgba(0,212,255,0.3);
+        }}
+        .action-card .icon {{
+            font-size: 3em;
+            margin-bottom: 15px;
+        }}
+        .action-card h3 {{
+            color: #00d4ff;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }}
+        .action-card p {{
+            color: #aaa;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }}
+        .action-card a {{
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 25px;
+            background: #00d4ff;
+            color: #000;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }}
+        .action-card a:hover {{
+            background: #00ff88;
+            transform: scale(1.05);
+        }}
+    </style>
+</head>
 <body>
-    <div style="padding: 40px; text-align: center;">
-        <h1 style="color:white; font-size: 48px; margin-bottom: 20px;">🏠 Bienvenue {username}!</h1>
-        <p style="color: #94a3b8; font-size: 20px;">Votre tableau de bord de trading</p>
-        <div style="margin-top: 40px;">
-            <a href="/fear-greed" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; margin: 10px; font-weight: 600;">📊 Commencer</a>
+    
+    <!-- Header -->
+    <div class="dashboard-header">
+        <h1>🏠 Bienvenue {username} !</h1>
+        <p>Votre centre de contrôle crypto complet</p>
+    </div>
+
+    <!-- Quick Actions Grid -->
+    <div class="quick-actions">
+        
+        <div class="action-card">
+            <div class="icon">💼</div>
+            <h3>Portfolio Tracker</h3>
+            <p>Connectez vos exchanges et suivez votre portfolio en temps réel</p>
+            <a href="/portfolio-tracker">Gérer Portfolio →</a>
+        </div>
+
+        <div class="action-card">
+            <div class="icon">📊</div>
+            <h3>Mes Trades</h3>
+            <p>Consultez et gérez vos positions ouvertes avec TP/SL</p>
+            <a href="/trades">Voir Trades →</a>
+        </div>
+
+        <div class="action-card">
+            <div class="icon">🎓</div>
+            <h3>AI Crypto Coach</h3>
+            <p>Apprenez le trading crypto avec votre coach IA personnel</p>
+            <a href="/ai-crypto-coach">Commencer →</a>
+        </div>
+
+        <div class="action-card">
+            <div class="icon">📈</div>
+            <h3>Technical Analysis</h3>
+            <p>Analyse technique avancée sur 50 cryptos avec 6 indicateurs</p>
+            <a href="/ai-technical-analysis">Analyser →</a>
+        </div>
+
+        <div class="action-card">
+            <div class="icon">😨</div>
+            <h3>Fear & Greed Index</h3>
+            <p>Consultez l'indice de peur et d'avidité du marché</p>
+            <a href="/fear-greed">Voir Index →</a>
+        </div>
+
+        <div class="action-card">
+            <div class="icon">🎯</div>
+            <h3>Narrative Radar</h3>
+            <p>Suivez les narratives crypto en tendance en temps réel</p>
+            <a href="/narrative-radar">Explorer →</a>
+        </div>
+
+        <div class="action-card">
+            <div class="icon">🔍</div>
+            <h3>Opportunity Scanner</h3>
+            <p>Scanner IA détectant les opportunités de trading 24/7</p>
+            <a href="/ai-opportunity-scanner">Scanner →</a>
+        </div>
+
+        <div class="action-card">
+            <div class="icon">💎</div>
+            <h3>Gem Hunter</h3>
+            <p>Découvrez les pépites crypto avant qu'elles explosent</p>
+            <a href="/ai-gem-hunter">Chercher →</a>
+        </div>
+
+        <div class="action-card">
+            <div class="icon">🐋</div>
+            <h3>Whale Watcher</h3>
+            <p>Suivez les mouvements des grandes baleines crypto</p>
+            <a href="/ai-whale-watcher">Surveiller →</a>
+        </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- GUIDE D'UTILISATION -->
+    <!-- ============================================ -->
+    <div style="max-width: 1400px; margin: 60px auto 40px; padding: 40px; background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(0,255,136,0.1)); border-radius: 20px; border: 2px solid rgba(0,212,255,0.3);">
+        
+        <!-- En-tête du Guide -->
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h2 style="font-size: 2.5em; color: #00d4ff; margin-bottom: 15px; text-shadow: 0 0 20px rgba(0,212,255,0.5);">
+                📚 Guide d'Utilisation - Dashboard Principal
+            </h2>
+            <p style="font-size: 1.2em; color: #aaa; max-width: 800px; margin: 0 auto;">
+                Votre hub central pour gérer tous vos outils de trading crypto et IA !
+            </p>
+        </div>
+
+        <!-- Section 1: C'est quoi le Dashboard ? -->
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 1.8em; color: #00ff88; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.3em;">🎯</span>
+                C'est quoi le Dashboard ?
+            </h3>
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; border-left: 4px solid #00d4ff;">
+                <p style="color: #ddd; font-size: 1.1em; line-height: 1.8; margin-bottom: 15px;">
+                    Le <strong style="color: #00d4ff;">Dashboard</strong> est votre <strong style="color: #00ff88;">centre de contrôle crypto</strong> complet. 
+                    C'est le point de départ pour accéder rapidement à tous vos outils de trading, d'analyse et d'apprentissage.
+                </p>
+                <ul style="color: #ddd; font-size: 1.05em; line-height: 1.8; margin-left: 20px;">
+                    <li><strong style="color: #00d4ff;">Accès rapide</strong> à toutes les fonctionnalités principales</li>
+                    <li><strong style="color: #00d4ff;">Navigation intuitive</strong> avec cartes visuelles</li>
+                    <li><strong style="color: #00d4ff;">9 sections principales</strong> pour gérer votre trading</li>
+                    <li><strong style="color: #00d4ff;">Design responsive</strong> (desktop, tablet, mobile)</li>
+                    <li><strong style="color: #00d4ff;">Point de départ</strong> de toutes vos analyses</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Section 2: Comment naviguer ? -->
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 1.8em; color: #00ff88; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.3em;">🚀</span>
+                Comment naviguer ?
+            </h3>
+            
+            <!-- Étape 1: Sidebar -->
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; margin-bottom: 20px; border-left: 4px solid #00d4ff;">
+                <h4 style="color: #00d4ff; font-size: 1.4em; margin-bottom: 15px;">
+                    1️⃣ Utilisez la Sidebar (Menu Gauche)
+                </h4>
+                <p style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-bottom: 15px;">
+                    La sidebar regroupe TOUTES les pages de l'application :
+                </p>
+                <ul style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-left: 20px;">
+                    <li><strong style="color: #00d4ff;">📊 Tableau de Bord</strong> : Dashboard, Stats</li>
+                    <li><strong style="color: #00d4ff;">🎓 Academy</strong> : 22 modules de formation</li>
+                    <li><strong style="color: #00d4ff;">💰 Trading</strong> : Trades, Stratégies, Watchlist</li>
+                    <li><strong style="color: #00d4ff;">🤖 Features IA</strong> : 15+ outils IA avancés</li>
+                    <li><strong style="color: #00d4ff;">📈 Analyse Marché</strong> : Fear&Greed, Dominance, Heatmap</li>
+                    <li><strong style="color: #00d4ff;">🆕 Nouvelles Features</strong> : Narrative Radar, AI Coach, etc.</li>
+                </ul>
+                <div style="background: rgba(0,212,255,0.1); padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px solid rgba(0,212,255,0.2);">
+                    <p style="color: #00d4ff; font-size: 0.95em; margin: 0;">
+                        💡 <strong>Astuce :</strong> Sur mobile, cliquez sur le bouton ☰ en haut à gauche pour ouvrir la sidebar !
+                    </p>
+                </div>
+            </div>
+
+            <!-- Étape 2: Quick Actions -->
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; margin-bottom: 20px; border-left: 4px solid #00ff88;">
+                <h4 style="color: #00ff88; font-size: 1.4em; margin-bottom: 15px;">
+                    2️⃣ Cliquez sur les Cartes d'Action Rapide
+                </h4>
+                <p style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-bottom: 15px;">
+                    Les 9 cartes au centre sont vos <strong style="color: #00ff88;">raccourcis vers les outils principaux</strong> :
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 15px;">
+                    <div style="background: rgba(0,212,255,0.05); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">💼</div>
+                        <strong style="color: #00d4ff; font-size: 0.9em;">Portfolio Tracker</strong>
+                        <p style="color: #888; font-size: 0.85em; margin-top: 5px;">Gérez vos actifs</p>
+                    </div>
+                    <div style="background: rgba(0,255,136,0.05); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">📊</div>
+                        <strong style="color: #00ff88; font-size: 0.9em;">Mes Trades</strong>
+                        <p style="color: #888; font-size: 0.85em; margin-top: 5px;">Positions ouvertes</p>
+                    </div>
+                    <div style="background: rgba(251,191,36,0.05); padding: 12px; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 2em; margin-bottom: 5px;">🎓</div>
+                        <strong style="color: #fbbf24; font-size: 0.9em;">AI Crypto Coach</strong>
+                        <p style="color: #888; font-size: 0.85em; margin-top: 5px;">Apprenez le trading</p>
+                    </div>
+                </div>
+                <p style="color: #aaa; font-size: 0.95em; margin-top: 15px; text-align: center;">
+                    ... et 6 autres outils à découvrir ! 🚀
+                </p>
+            </div>
+
+            <!-- Étape 3: Workflow -->
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; border-left: 4px solid #fbbf24;">
+                <h4 style="color: #fbbf24; font-size: 1.4em; margin-bottom: 15px;">
+                    3️⃣ Workflow Recommandé
+                </h4>
+                <p style="color: #ddd; font-size: 1.05em; line-height: 1.7; margin-bottom: 15px;">
+                    Voici un <strong style="color: #fbbf24;">workflow optimal</strong> pour utiliser l'application :
+                </p>
+                <ol style="color: #ddd; font-size: 1.05em; line-height: 1.8; margin-left: 20px;">
+                    <li><strong style="color: #00d4ff;">Consultez Fear & Greed</strong> → Évaluez le sentiment du marché</li>
+                    <li><strong style="color: #00d4ff;">Lancez Opportunity Scanner</strong> → Trouvez des setups</li>
+                    <li><strong style="color: #00d4ff;">Vérifiez Technical Analysis</strong> → Confirmez avec indicateurs</li>
+                    <li><strong style="color: #00d4ff;">Consultez Narrative Radar</strong> → Identifiez les tendances</li>
+                    <li><strong style="color: #00d4ff;">Ouvrez un Trade</strong> → Passez à l'action !</li>
+                    <li><strong style="color: #00d4ff;">Suivez dans Portfolio Tracker</strong> → Gérez vos positions</li>
+                </ol>
+                <div style="background: rgba(251,191,36,0.1); padding: 15px; border-radius: 10px; margin-top: 15px; border: 1px solid rgba(251,191,36,0.2);">
+                    <p style="color: #fbbf24; font-size: 0.95em; margin: 0;">
+                        🎯 <strong>Conseil Pro :</strong> Combinez plusieurs outils IA pour maximiser vos chances de succès !
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Outils par Catégorie -->
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 1.8em; color: #00ff88; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.3em;">🛠️</span>
+                Outils par Catégorie
+            </h3>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                
+                <!-- Analyse -->
+                <div style="background: rgba(0,212,255,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0,212,255,0.3);">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">📊</div>
+                    <h4 style="color: #00d4ff; font-size: 1.2em; margin-bottom: 10px;">Analyse de Marché</h4>
+                    <ul style="color: #aaa; font-size: 0.9em; line-height: 1.6; margin-left: 15px;">
+                        <li>Fear & Greed Index</li>
+                        <li>BTC Dominance</li>
+                        <li>Altcoin Season</li>
+                        <li>Heatmap</li>
+                        <li>Bull Run Phase</li>
+                    </ul>
+                </div>
+
+                <!-- IA -->
+                <div style="background: rgba(0,255,136,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0,255,136,0.3);">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">🤖</div>
+                    <h4 style="color: #00ff88; font-size: 1.2em; margin-bottom: 10px;">Intelligence Artificielle</h4>
+                    <ul style="color: #aaa; font-size: 0.9em; line-height: 1.6; margin-left: 15px;">
+                        <li>Opportunity Scanner</li>
+                        <li>Technical Analysis</li>
+                        <li>Whale Watcher</li>
+                        <li>Gem Hunter</li>
+                        <li>AI Crypto Coach</li>
+                    </ul>
+                </div>
+
+                <!-- Trading -->
+                <div style="background: rgba(251,191,36,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(251,191,36,0.3);">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">💰</div>
+                    <h4 style="color: #fbbf24; font-size: 1.2em; margin-bottom: 10px;">Trading & Portfolio</h4>
+                    <ul style="color: #aaa; font-size: 0.9em; line-height: 1.6; margin-left: 15px;">
+                        <li>Mes Trades</li>
+                        <li>Portfolio Tracker</li>
+                        <li>Watchlist</li>
+                        <li>Spot Trading</li>
+                        <li>Risk Management</li>
+                    </ul>
+                </div>
+
+                <!-- Éducation -->
+                <div style="background: rgba(139,92,246,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(139,92,246,0.3);">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">🎓</div>
+                    <h4 style="color: #8b5cf6; font-size: 1.2em; margin-bottom: 10px;">Formation & Academy</h4>
+                    <ul style="color: #aaa; font-size: 0.9em; line-height: 1.6; margin-left: 15px;">
+                        <li>Trading Academy (22 modules)</li>
+                        <li>AI Crypto Coach</li>
+                        <li>Success Stories</li>
+                        <li>Stratégies de Trading</li>
+                        <li>Backtesting</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Section 4: Conseils Pro -->
+        <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 1.8em; color: #00ff88; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 1.3em;">💡</span>
+                Conseils Pro
+            </h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div style="background: rgba(0,212,255,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0,212,255,0.3);">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">🎯</div>
+                    <h4 style="color: #00d4ff; font-size: 1.2em; margin-bottom: 10px;">Commencez par l'Analyse</h4>
+                    <p style="color: #aaa; font-size: 0.95em; line-height: 1.6;">
+                        Avant de trader, consultez toujours Fear & Greed, puis scannez les opportunités. L'analyse prime sur l'action !
+                    </p>
+                </div>
+                <div style="background: rgba(0,255,136,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(0,255,136,0.3);">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">🔗</div>
+                    <h4 style="color: #00ff88; font-size: 1.2em; margin-bottom: 10px;">Combinez les Outils</h4>
+                    <p style="color: #aaa; font-size: 0.95em; line-height: 1.6;">
+                        Utilisez plusieurs outils IA en parallèle pour confirmer vos setups. Scanner + Technical Analysis + Whale Watcher = combo gagnant !
+                    </p>
+                </div>
+                <div style="background: rgba(251,191,36,0.1); padding: 20px; border-radius: 12px; border: 1px solid rgba(251,191,36,0.3);">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">📚</div>
+                    <h4 style="color: #fbbf24; font-size: 1.2em; margin-bottom: 10px;">Formez-vous d'abord</h4>
+                    <p style="color: #aaa; font-size: 0.95em; line-height: 1.6;">
+                        Visitez l'Academy et l'AI Crypto Coach avant de trader réellement. La formation est votre meilleur investissement !
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <p style="color: #888; font-size: 0.95em;">
+                Plateforme de trading crypto IA • 
+                Créée avec ❤️ pour les traders • 
+                <strong style="color: #00ff88;">Bon trading ! 🚀</strong>
+            </p>
         </div>
     </div>
-</body></html>""")
+
+</body>
+</html>""")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -28784,6 +29159,110 @@ async def portfolio_tracker(request: Request):
             console.error('Erreur:', err);
         }
     }
+    
+    // ============================================
+    // GUIDE D'UTILISATION - PORTFOLIO TRACKER
+    // ============================================
+    </script>
+    
+    <!-- Guide d'Utilisation -->
+    <div style="max-width: 1400px; margin: 60px auto 40px; padding: 40px; background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(8,145,178,0.1)); border-radius: 20px; border: 2px solid rgba(6,182,212,0.3);">
+        
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h2 style="font-size: 2.5em; color: #06b6d4; margin-bottom: 15px; text-shadow: 0 0 20px rgba(6,182,212,0.5);">
+                📚 Guide - Portfolio Tracker
+            </h2>
+            <p style="font-size: 1.2em; color: #aaa; max-width: 800px; margin: 0 auto;">
+                Connectez vos exchanges et suivez votre portfolio en temps réel !
+            </p>
+        </div>
+
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 1.8em; color: #0891b2; margin-bottom: 20px;">
+                🎯 C'est quoi Portfolio Tracker ?
+            </h3>
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; border-left: 4px solid #06b6d4;">
+                <p style="color: #ddd; font-size: 1.1em; line-height: 1.8; margin-bottom: 15px;">
+                    Portfolio Tracker vous permet de connecter vos exchanges via API pour suivre tous vos holdings automatiquement.
+                </p>
+                <ul style="color: #ddd; font-size: 1.05em; line-height: 1.8; margin-left: 20px;">
+                    <li>8 exchanges supportés (MEXC, Binance, Coinbase, Kraken, Bitget, Bybit, OKX, FTX)</li>
+                    <li>Connexion sécurisée via clés API read-only</li>
+                    <li>Mise à jour automatique des balances</li>
+                    <li>Vue consolidée de tous vos portfolios</li>
+                    <li>Calcul de valeur totale en temps réel</li>
+                </ul>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 1.8em; color: #0891b2; margin-bottom: 20px;">
+                🚀 Comment connecter un Exchange ?
+            </h3>
+            
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; margin-bottom: 20px; border-left: 4px solid #06b6d4;">
+                <h4 style="color: #06b6d4; font-size: 1.4em; margin-bottom: 15px;">1️⃣ Créer une Clé API</h4>
+                <ol style="color: #ddd; font-size: 1.05em; line-height: 1.8; margin-left: 20px;">
+                    <li>Sur votre exchange : Compte → API Management</li>
+                    <li>Créez une nouvelle clé "Trading Dashboard"</li>
+                    <li>⚠️ Activez SEULEMENT "Read" - PAS "Trade" ou "Withdraw" !</li>
+                    <li>Copiez Clé API et Secret API</li>
+                </ol>
+                <div style="background: rgba(239,68,68,0.1); padding: 15px; border-radius: 10px; margin-top: 15px;">
+                    <p style="color: #ef4444; font-size: 0.95em; margin: 0;">
+                        🔒 NE donnez JAMAIS les permissions Trade/Withdraw ! Read-only uniquement.
+                    </p>
+                </div>
+            </div>
+
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; margin-bottom: 20px; border-left: 4px solid #0891b2;">
+                <h4 style="color: #0891b2; font-size: 1.4em; margin-bottom: 15px;">2️⃣ Connecter sur le Dashboard</h4>
+                <ol style="color: #ddd; font-size: 1.05em; line-height: 1.8; margin-left: 20px;">
+                    <li>Sélectionnez votre Exchange</li>
+                    <li>Collez Clé API</li>
+                    <li>Collez Secret API</li>
+                    <li>Cliquez 🔗 Connecter</li>
+                    <li>Vos holdings s'affichent !</li>
+                </ol>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 1.8em; color: #0891b2; margin-bottom: 20px;">💡 Conseils Pro</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                <div style="background: rgba(6,182,212,0.1); padding: 20px; border-radius: 12px;">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">🔒</div>
+                    <h4 style="color: #06b6d4; font-size: 1.2em; margin-bottom: 10px;">Sécurité Maximale</h4>
+                    <p style="color: #aaa; font-size: 0.95em;">
+                        Clés API read-only uniquement. Activez whitelist IP si disponible.
+                    </p>
+                </div>
+                <div style="background: rgba(8,145,178,0.1); padding: 20px; border-radius: 12px;">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">🔄</div>
+                    <h4 style="color: #0891b2; font-size: 1.2em; margin-bottom: 10px;">Rafraîchir</h4>
+                    <p style="color: #aaa; font-size: 0.95em;">
+                        Rechargez la page pour mettre à jour après un trade.
+                    </p>
+                </div>
+                <div style="background: rgba(20,184,166,0.1); padding: 20px; border-radius: 12px;">
+                    <div style="font-size: 1.8em; margin-bottom: 10px;">📊</div>
+                    <h4 style="color: #14b8a6; font-size: 1.2em; margin-bottom: 10px;">Multi-Exchange</h4>
+                    <p style="color: #aaa; font-size: 0.95em;">
+                        Connectez tous vos exchanges pour vue complète !
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <p style="color: #888; font-size: 0.95em;">
+                Tracking sécurisé • API read-only • <strong style="color: #06b6d4;">Suivez vos assets ! 💼</strong>
+            </p>
+        </div>
+    </div>
+    
+    <script>
+    // Vide - juste pour fermer proprement
     </script>
 </body>
 </html>"""
@@ -31664,7 +32143,53 @@ formations[5] = {
 
 
 console.log('✅ JavaScript Academy chargé avec succès!');
-    </script>
+
+    
+    <!-- ============================================ -->
+    <!-- GUIDE - TRADING ACADEMY -->
+    <!-- ============================================ -->
+    <div style="max-width: 1400px; margin: 60px auto 40px; padding: 40px; background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(245,158,11,0.1)); border-radius: 20px; border: 2px solid rgba(251,191,36,0.3); margin-left: 300px;">
+        <div style="text-align: center; margin-bottom: 40px;">
+            <h2 style="font-size: 2.5em; color: #fbbf24; margin-bottom: 15px;">📚 Guide - Trading Academy</h2>
+            <p style="font-size: 1.2em; color: #aaa;">22 modules complets pour maîtriser le trading crypto !</p>
+        </div>
+        <div style="margin-bottom: 40px;">
+            <h3 style="font-size: 1.8em; color: #f59e0b; margin-bottom: 20px;">🎯 C'est quoi ?</h3>
+            <div style="background: rgba(0,0,0,0.3); padding: 25px; border-radius: 15px; border-left: 4px solid #fbbf24;">
+                <p style="color: #ddd; font-size: 1.1em; line-height: 1.8;">Formation complète: Bases → Technique → Avancé → Stratégies</p>
+                <ul style="color: #ddd; margin-left: 20px; margin-top: 10px;">
+                    <li>22 modules structurés</li>
+                    <li>Quiz interactifs</li>
+                    <li>Psychology & risk management</li>
+                </ul>
+            </div>
+        </div>
+        <div style="margin-bottom: 20px;">
+            <h3 style="font-size: 1.8em; color: #f59e0b; margin-bottom: 20px;">💡 Conseils</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+                <div style="background: rgba(251,191,36,0.1); padding: 20px; border-radius: 12px;">
+                    <div style="font-size: 1.8em;">📖</div>
+                    <h4 style="color: #fbbf24;">Progressif</h4>
+                    <p style="color: #aaa; font-size: 0.95em;">Suivez l'ordre des modules</p>
+                </div>
+                <div style="background: rgba(245,158,11,0.1); padding: 20px; border-radius: 12px;">
+                    <div style="font-size: 1.8em;">💪</div>
+                    <h4 style="color: #f59e0b;">Pratiquez</h4>
+                    <p style="color: #aaa; font-size: 0.95em;">Appliquez immédiatement</p>
+                </div>
+                <div style="background: rgba(251,146,60,0.1); padding: 20px; border-radius: 12px;">
+                    <div style="font-size: 1.8em;">🔁</div>
+                    <h4 style="color: #fb923c;">Révisez</h4>
+                    <p style="color: #aaa; font-size: 0.95em;">Relisez régulièrement</p>
+                </div>
+            </div>
+        </div>
+        <div style="text-align: center; padding-top: 30px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <p style="color: #888;">22 modules • <strong style="color: #fbbf24;">Devenez un pro ! 🎓</strong></p>
+        </div>
+    </div>
+    
+</script>
 </body>
 </html>
 """

@@ -33599,74 +33599,512 @@ console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 
 @app.get("/ai-crypto-coach", response_class=HTMLResponse)
 async def ai_crypto_coach_page(request: Request):
-    """Page AI Crypto Coach"""
+    """🤖 AI Crypto Coach - Analyse ton profil avec chat IA"""
     
-    html_content = """
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>🤖 AI Crypto Coach</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #0f172a, #1e293b, #334155); color: white; min-height: 100vh; padding: 20px; }
-        .container { max-width: 1600px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 40px; padding: 40px; background: rgba(255,255,255,0.05); border-radius: 20px; }
-        .header h1 { font-size: 3.5em; background: linear-gradient(45deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .btn { padding: 15px 35px; border: none; border-radius: 12px; background: linear-gradient(45deg, #10b981, #14b8a6); color: white; font-size: 1.1em; font-weight: bold; cursor: pointer; }
-        .profile-card { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 40px; border-radius: 20px; margin: 40px 0; }
-        .profile-type { font-size: 2.5em; font-weight: bold; }
-        .profile-score { font-size: 4em; font-weight: bold; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 30px 0; }
-        .stat-box { background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; text-align: center; }
-        .stat-value { font-size: 2.5em; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🤖 AI Crypto Coach</h1>
-            <p>Ton coach personnel IA</p>
-        </div>
-        <button class="btn" onclick="analyzeProfile()">🔍 Analyser Mon Profil</button>
-        <div id="results"></div>
+    return HTMLResponse(SIDEBAR + CSS + """
+<style>
+    .chat-container {
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        gap: 20px;
+        margin-top: 20px;
+    }
+    
+    .chat-main {
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 16px;
+        padding: 25px;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+    }
+    
+    .chat-sidebar-right {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .progress-card, .badges-card, .stats-card {
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid rgba(100, 116, 139, 0.3);
+    }
+    
+    .card-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-bottom: 15px;
+        color: #60a5fa;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(100, 116, 139, 0.3);
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 10px 0;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #14b8a6);
+        transition: width 0.3s;
+    }
+    
+    .badges-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+    }
+    
+    .badge-item {
+        text-align: center;
+        padding: 15px 10px;
+        background: rgba(30, 41, 59, 0.8);
+        border-radius: 12px;
+        border: 2px solid #334155;
+        transition: all 0.3s;
+    }
+    
+    .badge-item.locked {
+        opacity: 0.4;
+    }
+    
+    .badge-icon {
+        font-size: 2em;
+        margin-bottom: 8px;
+    }
+    
+    .badge-name {
+        font-size: 0.75em;
+        color: #94a3b8;
+    }
+    
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(100, 116, 139, 0.2);
+    }
+    
+    .stat-label {
+        color: #94a3b8;
+    }
+    
+    .stat-value {
+        font-weight: bold;
+        color: #10b981;
+    }
+    
+    .chat-messages {
+        max-height: 500px;
+        overflow-y: auto;
+        margin-bottom: 20px;
+        padding: 20px;
+        background: rgba(30, 41, 59, 0.4);
+        border-radius: 12px;
+    }
+    
+    .message {
+        margin-bottom: 20px;
+        padding: 15px 20px;
+        border-radius: 12px;
+        animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .message.ai {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
+        border-left: 4px solid #6366f1;
+    }
+    
+    .message.user {
+        background: rgba(16, 185, 129, 0.1);
+        border-left: 4px solid #10b981;
+        margin-left: 40px;
+    }
+    
+    .message-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+        font-weight: bold;
+    }
+    
+    .message-icon {
+        font-size: 1.5em;
+    }
+    
+    .suggestion-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
+    .suggestion-btn {
+        background: rgba(59, 130, 246, 0.2);
+        border: 1px solid #3b82f6;
+        color: #60a5fa;
+        padding: 8px 16px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 0.9em;
+        transition: all 0.3s;
+    }
+    
+    .suggestion-btn:hover {
+        background: rgba(59, 130, 246, 0.4);
+        transform: translateY(-2px);
+    }
+    
+    .input-container {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    
+    .chat-input {
+        flex: 1;
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(100, 116, 139, 0.5);
+        border-radius: 12px;
+        padding: 15px 20px;
+        color: white;
+        font-size: 1em;
+    }
+    
+    .send-btn {
+        background: linear-gradient(45deg, #10b981, #14b8a6);
+        border: none;
+        border-radius: 12px;
+        padding: 0 30px;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .send-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    }
+    
+    .analyze-btn {
+        background: linear-gradient(45deg, #6366f1, #8b5cf6);
+        border: none;
+        border-radius: 12px;
+        padding: 15px 30px;
+        color: white;
+        font-weight: bold;
+        font-size: 1.1em;
+        cursor: pointer;
+        width: 100%;
+        margin-bottom: 20px;
+        transition: all 0.3s;
+    }
+    
+    .analyze-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+    
+    @media (max-width: 1200px) {
+        .chat-container {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="container">
+    <div class="header">
+        <h1>🤖 AI Crypto Coach</h1>
+        <p>Ton coach personnel IA propulsé par Claude AI</p>
     </div>
-    <script>
-        async function analyzeProfile() {
-            const response = await fetch('/api/ai-coach/analyze', { method: 'POST' });
-            const data = await response.json();
+    
+    <div class="chat-container">
+        <!-- Zone principale de chat -->
+        <div class="chat-main">
+            <button class="analyze-btn" onclick="analyzeProfile()">
+                🔍 Analyser Mon Profil
+            </button>
             
-            if (data.profile_type) {
-                document.getElementById('results').innerHTML = `
-                    <div class="profile-card">
-                        <div class="profile-type">${data.profile_type}</div>
-                        <p>${data.profile_description}</p>
-                        <div class="profile-score">${data.score}/100</div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message ai">
+                    <div class="message-header">
+                        <span class="message-icon">🤖</span>
+                        <span>AI Coach</span>
                     </div>
-                    <div class="stats-grid">
-                        <div class="stat-box">
-                            <div class="stat-value">${data.stats.total_trades}</div>
-                            <div>Total Trades</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-value">${data.stats.win_rate}%</div>
-                            <div>Win Rate</div>
-                        </div>
-                        <div class="stat-box">
-                            <div class="stat-value">${data.stats.rr_ratio}</div>
-                            <div>R:R Ratio</div>
-                        </div>
+                    <div class="message-content">
+                        Bonjour ! Je suis votre coach crypto personnel propulsé par Claude AI. Posez-moi n'importe quelle question sur le trading, la DeFi, les NFTs, ou choisissez un parcours d'apprentissage pour une formation guidée ! 🚀
                     </div>
-                `;
-            } else {
-                alert(data.message || 'Pas assez de trades');
+                    <div class="suggestion-buttons">
+                        <button class="suggestion-btn" onclick="askQuestion('C\\'est quoi Bitcoin ?')">C'est quoi Bitcoin ?</button>
+                        <button class="suggestion-btn" onclick="askQuestion('Comment acheter ma première crypto ?')">Comment acheter ma première crypto ?</button>
+                        <button class="suggestion-btn" onclick="askQuestion('C\\'est quoi un wallet ?')">C'est quoi un wallet ?</button>
+                        <button class="suggestion-btn" onclick="askQuestion('Comment lire un graphique ?')">Comment lire un graphique ?</button>
+                        <button class="suggestion-btn" onclick="askQuestion('C\\'est quoi le trading ?')">C'est quoi le trading ?</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <input type="text" class="chat-input" id="userInput" placeholder="Posez votre question crypto..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <button class="send-btn" onclick="sendMessage()">Envoyer</button>
+            </div>
+        </div>
+        
+        <!-- Sidebar droite -->
+        <div class="chat-sidebar-right">
+            <!-- Progression -->
+            <div class="progress-card">
+                <div class="card-title">
+                    📊 Votre Progression
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span>Progression Globale</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Badges -->
+            <div class="badges-card">
+                <div class="card-title">
+                    🏆 Badges
+                </div>
+                <div class="badges-grid">
+                    <div class="badge-item locked">
+                        <div class="badge-icon">🔒</div>
+                        <div class="badge-name">Première Leçon</div>
+                    </div>
+                    <div class="badge-item locked">
+                        <div class="badge-icon">🔒</div>
+                        <div class="badge-name">Débutant</div>
+                    </div>
+                    <div class="badge-item locked">
+                        <div class="badge-icon">🔒</div>
+                        <div class="badge-name">Intermédiaire</div>
+                    </div>
+                    <div class="badge-item locked">
+                        <div class="badge-icon">🔒</div>
+                        <div class="badge-name">Expert</div>
+                    </div>
+                    <div class="badge-item locked">
+                        <div class="badge-icon">🔒</div>
+                        <div class="badge-name">Quiz Master</div>
+                    </div>
+                    <div class="badge-item locked">
+                        <div class="badge-icon">🔒</div>
+                        <div class="badge-name">Curieux</div>
+                    </div>
+                    <div class="badge-item locked">
+                        <div class="badge-icon">🔒</div>
+                        <div class="badge-name">Dédié</div>
+                    </div>
+                    <div class="badge-item locked">
+                        <div class="badge-icon">🔒</div>
+                        <div class="badge-name">Sécurité Pro</div>
+                    </div>
+                    <div class="badge-item locked">
+                        <div class="badge-icon">🔒</div>
+                        <div class="badge-name">DeFi Expert</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Statistiques -->
+            <div class="stats-card">
+                <div class="card-title">
+                    📈 Statistiques
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Leçons Complétées</span>
+                    <span class="stat-value" id="lessonsCompleted">0/54</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Quiz Réussis</span>
+                    <span class="stat-value" id="quizPassed">0/30</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Questions Posées</span>
+                    <span class="stat-value" id="questionsAsked">1</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Temps Passé</span>
+                    <span class="stat-value" id="timeSpent">0h</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('active');
+}
+
+let questionCount = 1;
+
+async function analyzeProfile() {
+    addUserMessage("🔍 Analyser mon profil de trader");
+    
+    const aiResponse = document.createElement('div');
+    aiResponse.className = 'message ai';
+    aiResponse.innerHTML = `
+        <div class="message-header">
+            <span class="message-icon">🤖</span>
+            <span>AI Coach</span>
+        </div>
+        <div class="message-content">
+            ⚠️ Erreur de connexion. Veuillez réessayer.
+        </div>
+    `;
+    document.getElementById('chatMessages').appendChild(aiResponse);
+    scrollToBottom();
+    
+    try {
+        const response = await fetch('/api/ai-coach/analyze', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.profile_type) {
+            aiResponse.innerHTML = `
+                <div class="message-header">
+                    <span class="message-icon">🤖</span>
+                    <span>AI Coach</span>
+                </div>
+                <div class="message-content">
+                    <h3 style="color: #6366f1; margin-bottom: 10px;">📊 Analyse de ton profil</h3>
+                    <p><strong>Profil:</strong> ${data.profile_type}</p>
+                    <p><strong>Score:</strong> ${data.score}/100</p>
+                    <p>${data.profile_description}</p>
+                    <div style="margin-top: 15px; padding: 15px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; border-left: 3px solid #10b981;">
+                        <strong>📈 Statistiques:</strong><br>
+                        • Total Trades: ${data.stats.total_trades}<br>
+                        • Win Rate: ${data.stats.win_rate}%<br>
+                        • R:R Ratio: ${data.stats.rr_ratio}
+                    </div>
+                </div>
+            `;
+        } else {
+            aiResponse.innerHTML = `
+                <div class="message-header">
+                    <span class="message-icon">🤖</span>
+                    <span>AI Coach</span>
+                </div>
+                <div class="message-content">
+                    ${data.message || 'Pas assez de trades pour l\\'analyse. Il te faut minimum 5 trades dans ton historique.'}
+                    <br><br>
+                    💡 Va faire quelques trades et reviens pour une analyse complète !
+                </div>
+            `;
+        }
+    } catch (error) {
+        aiResponse.innerHTML = `
+            <div class="message-header">
+                <span class="message-icon">🤖</span>
+                <span>AI Coach</span>
+            </div>
+            <div class="message-content">
+                ⚠️ Erreur lors de l'analyse. Assure-toi d'être connecté et d'avoir au moins 5 trades enregistrés.
+            </div>
+        `;
+    }
+    
+    scrollToBottom();
+}
+
+function askQuestion(question) {
+    document.getElementById('userInput').value = question;
+    sendMessage();
+}
+
+function sendMessage() {
+    const input = document.getElementById('userInput');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    addUserMessage(message);
+    input.value = '';
+    
+    // Simuler réponse AI (à remplacer par vraie API Claude)
+    setTimeout(() => {
+        const responses = {
+            "c'est quoi bitcoin": "Bitcoin est la première cryptomonnaie créée en 2009 par Satoshi Nakamoto. C'est une monnaie numérique décentralisée qui fonctionne sans autorité centrale. 💰",
+            "comment acheter": "Pour acheter ta première crypto : 1) Crée un compte sur un exchange (Binance, Coinbase), 2) Vérifie ton identité, 3) Dépose des fonds, 4) Achète ta crypto ! 🚀",
+            "wallet": "Un wallet (portefeuille) est un outil pour stocker tes cryptos. Il existe des hot wallets (en ligne) et des cold wallets (hors ligne, plus sécurisés). 🔐",
+            "graphique": "Pour lire un graphique : Les bougies vertes = hausse, rouges = baisse. Observe les niveaux de support (plancher) et résistance (plafond). 📊",
+            "trading": "Le trading crypto consiste à acheter et vendre des cryptomonnaies pour faire du profit. Il existe plusieurs stratégies : day trading, swing trading, scalping. ⚡"
+        };
+        
+        const lowerMessage = message.toLowerCase();
+        let aiMessage = "Je suis là pour t'aider ! Pose-moi des questions plus spécifiques sur le trading crypto. 💡";
+        
+        for (const [key, value] of Object.entries(responses)) {
+            if (lowerMessage.includes(key)) {
+                aiMessage = value;
+                break;
             }
         }
-    </script>
+        
+        addAIMessage(aiMessage);
+        
+        questionCount++;
+        document.getElementById('questionsAsked').textContent = questionCount;
+    }, 1000);
+}
+
+function addUserMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message user';
+    messageDiv.innerHTML = `
+        <div class="message-header">
+            <span class="message-icon">👤</span>
+            <span>Vous</span>
+        </div>
+        <div class="message-content">${message}</div>
+    `;
+    document.getElementById('chatMessages').appendChild(messageDiv);
+    scrollToBottom();
+}
+
+function addAIMessage(message) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ai';
+    messageDiv.innerHTML = `
+        <div class="message-header">
+            <span class="message-icon">🤖</span>
+            <span>AI Coach</span>
+        </div>
+        <div class="message-content">${message}</div>
+    `;
+    document.getElementById('chatMessages').appendChild(messageDiv);
+    scrollToBottom();
+}
+
+function scrollToBottom() {
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+</script>
 </body>
 </html>
-    """
-    return HTMLResponse(content=html_content)
+""")
+
 
 
 @app.post("/api/ai-coach/analyze")

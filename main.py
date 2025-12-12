@@ -52,27 +52,6 @@ from technical_analyzer import analyzer
 # 🎓 CRYPTO ACADEMY - IMPORTS
 # ============================================================================
 try:
-    from academy_database import (
-        init_academy_tables, get_user_progress, mark_lesson_complete,
-        save_quiz_result, get_lesson_status, get_all_lessons_progress,
-        save_ai_chat, get_ai_chat_history, get_leaderboard
-    )
-    from academy_config import (
-        PARCOURS_DATA, BADGES_DATA, LEVELS_DATA, get_level_from_xp
-    )
-    from lessons_data import LESSONS_DATA
-    ACADEMY_AVAILABLE = True
-    print("✅ Système Academy chargé")
-except ImportError as e:
-    print(f"⚠️  Système Academy non disponible: {e}")
-    ACADEMY_AVAILABLE = False
-# ============================================================================
-
-
-# ============================================================================
-# 🆕 SYSTÈME DE PERMISSIONS - IMPORTS
-# ============================================================================
-try:
     from permissions_system import (
         Feature, 
         PermissionManager, 

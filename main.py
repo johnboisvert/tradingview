@@ -16773,13 +16773,6 @@ async def startup_event():
     # Initialiser la DB Portfolio
     init_portfolio_db()
     
-    # Initialiser l'Academy
-    if ACADEMY_AVAILABLE:
-        try:
-            init_academy_tables()
-            print("✅ Tables Academy initialisées")
-        except Exception as e:
-            print(f"⚠️ Erreur init Academy: {e}")
     
     # Utiliser try_lock pour éviter de bloquer si un autre worker a déjà lancé
     if not monitor_running:

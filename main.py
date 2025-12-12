@@ -1090,6 +1090,34 @@ UPCOMING_GEMS_COMPLETE = [
 ]
 
 
+
+print("🎓 Chargement Crypto Academy...")
+
+# ==================== IMPORTS ACADEMY ====================
+try:
+    from academy_lessons_complete import LESSONS_DATA, generate_remaining_lessons
+    from academy_progression import (
+        LEVELS, BADGES, CERTIFICATES,
+        get_level_from_xp, generate_certificate_html,
+        get_progress_to_next_level, check_badge_unlocked,
+        check_certificate_earned
+    )
+    from academy_database import (
+        get_user_progress, complete_lesson,
+        get_leaderboard, get_global_stats,
+        update_user_progress
+    )
+    from academy_coach import (
+        get_coach_context, generate_lesson_summary,
+        suggest_next_lesson, generate_motivational_message,
+        COACH_INTERFACE_HTML
+    )
+    ACADEMY_AVAILABLE = True
+    print("✅ Academy system loaded successfully!")
+except Exception as e:
+    ACADEMY_AVAILABLE = False
+    print(f"⚠️ Academy not available: {e}")
+
 app = FastAPI()
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1696,6 +1724,15 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🎓</span>
                 <span class="label">Crypto Academy</span>
                 <span class="badge" style="background: linear-gradient(135deg, #6366f1, #a855f7);">54 LEÇONS</span>
+            </a>
+            <a href="/coach" class="menu-item ai-feature">
+                <span class="icon">🤖</span>
+                <span class="label">Claude AI Coach</span>
+                <span class="badge">NEW</span>
+            </a>
+            <a href="/academy-progress" class="menu-item ai-feature">
+                <span class="icon">📊</span>
+                <span class="label">Ma Progression</span>
             </a>
         </div>
         
@@ -36851,3 +36888,190 @@ async def get_badges_data():
         }, status_code=500)
 
 print("✅ Routes Academy chargées")
+
+# ==================== ROUTES API ACADEMY ====================
+print("📚 Chargement des routes Academy...")
+
+from typing import List
+
+# Modèles Pydantic Academy  
+class QuizSubmissionAcademy(BaseModel):
+    lesson_id: int
+    answers: List[int]
+    time_spent: int
+
+class CoachMessageAcademy(BaseModel):
+    message: str
+    lesson_id: Optional[int] = None
+
+@app.get("/api/academy/lesson/{lesson_id}")
+async def get_academy_lesson(lesson_id: int, request: Request):
+    """Récupère le contenu d'une leçon"""
+    if not ACADEMY_AVAILABLE:
+        return JSONResponse({"error": "Academy non disponible"}, 404)
+    
+    session_token = request.cookies.get("session_token")
+    user_data = get_user_from_token(session_token)
+    username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
+    
+    if not username:
+        return JSONResponse({"error": "Non authentifié"}, 401)
+    
+    if lesson_id not in LESSONS_DATA:
+        return JSONResponse({"error": "Leçon non trouvée"}, 404)
+    
+    lesson = LESSONS_DATA[lesson_id]
+    progress = get_user_progress(username)
+    
+    return JSONResponse({
+        "lesson": lesson,
+        "completed": lesson_id in progress.get("completed_lessons", []),
+        "quiz_score": progress.get("quiz_scores", {}).get(str(lesson_id)),
+        "user_progress": {
+            "xp": progress.get("xp", 0),
+            "level": progress.get("level", 1),
+            "completed_count": len(progress.get("completed_lessons", []))
+        }
+    })
+
+@app.post("/api/academy/quiz/submit")
+async def submit_academy_quiz(submission: QuizSubmissionAcademy, request: Request):
+    """Soumet un quiz"""
+    if not ACADEMY_AVAILABLE:
+        return JSONResponse({"error": "Academy non disponible"}, 404)
+    
+    session_token = request.cookies.get("session_token")
+    user_data = get_user_from_token(session_token)
+    username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
+    
+    if not username:
+        return JSONResponse({"error": "Non authentifié"}, 401)
+    
+    lesson_id = submission.lesson_id
+    if lesson_id not in LESSONS_DATA:
+        return JSONResponse({"error": "Leçon non trouvée"}, 404)
+    
+    lesson = LESSONS_DATA[lesson_id]
+    if "quiz" not in lesson:
+        return JSONResponse({"error": "Pas de quiz"}, 404)
+    
+    questions = lesson["quiz"]["questions"]
+    correct_answers = sum(1 for i, (answer, q) in enumerate(zip(submission.answers, questions)) if answer == q["correct"])
+    score = int((correct_answers / len(questions)) * 100)
+    
+    rewards = complete_lesson(username, lesson_id, score, submission.time_spent)
+    
+    return JSONResponse({
+        "score": score,
+        "correct": correct_answers,
+        "total": len(questions),
+        "rewards": rewards
+    })
+
+@app.get("/api/academy/progress")
+async def get_academy_progress(request: Request):
+    """Progression utilisateur"""
+    session_token = request.cookies.get("session_token")
+    user_data = get_user_from_token(session_token)
+    username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
+    
+    if not username:
+        return JSONResponse({"error": "Non authentifié"}, 401)
+    
+    progress = get_user_progress(username)
+    level = get_level_from_xp(progress.get("xp", 0))
+    level_info = LEVELS[level]
+    
+    return JSONResponse({
+        "username": username,
+        "xp": progress.get("xp", 0),
+        "level": level,
+        "level_name": level_info["name"],
+        "completed_lessons": progress.get("completed_lessons", []),
+        "badges": progress.get("badges", []),
+        "certificates": progress.get("certificates", []),
+        "streak": progress.get("streak", 0)
+    })
+
+@app.post("/api/academy/coach")
+async def chat_academy_coach(message: CoachMessageAcademy, request: Request):
+    """Claude Coach"""
+    session_token = request.cookies.get("session_token")
+    user_data = get_user_from_token(session_token)
+    username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
+    
+    if not username:
+        return JSONResponse({"error": "Non authentifié"}, 401)
+    
+    user_message = message.message.lower()
+    
+    if "prochaine leçon" in user_message:
+        response = suggest_next_lesson(username)
+    elif "motivation" in user_message:
+        progress = get_user_progress(username)
+        response = generate_motivational_message(progress)
+    elif message.lesson_id and "résumé" in user_message:
+        response = generate_lesson_summary(message.lesson_id)
+    else:
+        response = "Je suis là pour t'aider ! 🤖\n\nPose-moi des questions sur:\n- 📖 Les leçons\n- 🎯 Ta progression\n- 💡 Des conseils crypto"
+    
+    return JSONResponse({"response": response})
+
+@app.get("/coach", response_class=HTMLResponse)
+async def academy_coach_page(request: Request):
+    """Page Coach"""
+    session_token = request.cookies.get("session_token")
+    user_data = get_user_from_token(session_token)
+    username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
+    
+    if not username:
+        return RedirectResponse(url="/login?redirect=/coach")
+    
+    return HTMLResponse(SIDEBAR + CSS + COACH_INTERFACE_HTML)
+
+@app.get("/academy-progress", response_class=HTMLResponse)
+async def academy_progress_page(request: Request):
+    """Page Progression"""
+    session_token = request.cookies.get("session_token")
+    user_data = get_user_from_token(session_token)
+    username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
+    
+    if not username:
+        return RedirectResponse(url="/login?redirect=/academy-progress")
+    
+    progress = get_user_progress(username)
+    level = get_level_from_xp(progress.get("xp", 0))
+    level_info = LEVELS[level]
+    completed = progress.get("completed_lessons", [])
+    
+    html = f"""
+{SIDEBAR}{CSS}
+<div style="margin-left:300px;padding:40px;">
+    <div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:20px;padding:40px;color:white;text-align:center;margin-bottom:30px;">
+        <h1>📊 Ta Progression</h1>
+        <h2>Niveau {level} - {level_info["name"]}</h2>
+        <p style="font-size:1.2em;">{progress.get("xp", 0)} XP</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;">
+        <div style="background:rgba(15,23,42,0.8);border-radius:16px;padding:25px;text-align:center;">
+            <h3 style="color:#60a5fa;">📚 Leçons</h3>
+            <div style="font-size:3em;font-weight:bold;color:white;">{len(completed)}/54</div>
+        </div>
+        <div style="background:rgba(15,23,42,0.8);border-radius:16px;padding:25px;text-align:center;">
+            <h3 style="color:#60a5fa;">🏆 Badges</h3>
+            <div style="font-size:3em;font-weight:bold;color:white;">{len(progress.get("badges",[]))}</div>
+        </div>
+        <div style="background:rgba(15,23,42,0.8);border-radius:16px;padding:25px;text-align:center;">
+            <h3 style="color:#60a5fa;">📜 Certificats</h3>
+            <div style="font-size:3em;font-weight:bold;color:white;">{len(progress.get("certificates",[]))}</div>
+        </div>
+        <div style="background:rgba(15,23,42,0.8);border-radius:16px;padding:25px;text-align:center;">
+            <h3 style="color:#60a5fa;">🔥 Streak</h3>
+            <div style="font-size:3em;font-weight:bold;color:white;">{progress.get("streak",0)}</div>
+        </div>
+    </div>
+</div>
+"""
+    return HTMLResponse(html)
+
+print("✅ Routes Academy chargées!")

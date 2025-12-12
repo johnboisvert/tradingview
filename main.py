@@ -32988,46 +32988,356 @@ async def get_portfolio_data(request: Request):
 # 🆕 NOUVELLES FEATURES - 5 ROUTES COMPLÈTES
 # ============================================================================
 
+@app.get("/api/narrative-radar/scan")
+async def api_scan_narratives():
+    """API Backend - Scan RÉEL via CryptoPanic"""
+    
+    CRYPTOPANIC_KEY = "bca5327f4c31e7511b4a7824951ed0ae4d8bb5ac"
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(
+                "https://cryptopanic.com/api/v1/posts/",
+                params={
+                    "auth_token": CRYPTOPANIC_KEY,
+                    "public": "true",
+                    "filter": "rising",
+                    "currencies": "BTC,ETH,SOL,DOGE,SHIB,PEPE,FET,AGIX,OCEAN,AAVE,UNI,LINK,ARB,OP,MATIC"
+                }
+            )
+            
+            if response.status_code != 200:
+                return {"error": "API CryptoPanic non disponible", "status": response.status_code, "success": False}
+            
+            data = response.json()
+            posts = data.get("results", [])
+            
+            narrative_keywords = {
+                "AI": ["ai", "artificial intelligence", "machine learning", "neural", "gpt", "llm", "chatgpt", "agix", "fet", "fetch", "singularitynet", "ocean protocol"],
+                "DeFi": ["defi", "lending", "yield", "liquidity", "amm", "dex", "swap", "aave", "uniswap", "compound", "curve", "synthetix"],
+                "RWA": ["rwa", "real world asset", "tokenization", "tokenized", "bonds", "treasury", "ondo", "real estate"],
+                "Gaming": ["gaming", "metaverse", "nft", "play to earn", "p2e", "game", "immutable", "gala", "sandbox", "axie", "decentraland"],
+                "L2": ["layer 2", "l2", "rollup", "scaling", "zk", "optimistic", "arbitrum", "optimism", "polygon", "starknet"],
+                "Memes": ["meme", "memecoin", "doge", "dogecoin", "shiba", "shib", "pepe", "wif", "bonk", "floki"],
+                "Infrastructure": ["oracle", "bridge", "middleware", "data", "chainlink", "link", "infrastructure", "api3", "band"],
+                "Privacy": ["privacy", "anonymous", "mixer", "confidential", "zero knowledge", "monero", "zcash", "secret"]
+            }
+            
+            narratives_count = {
+                "AI": 0,
+                "DeFi": 0,
+                "RWA": 0,
+                "Gaming": 0,
+                "L2": 0,
+                "Memes": 0,
+                "Infrastructure": 0,
+                "Privacy": 0
+            }
+            
+            for post in posts:
+                title = post.get("title", "").lower()
+                for narrative, keywords in narrative_keywords.items():
+                    if any(keyword in title for keyword in keywords):
+                        narratives_count[narrative] += 1
+            
+            total_mentions = sum(narratives_count.values())
+            active_narratives = sum(1 for count in narratives_count.values() if count > 0)
+            hot_topics = sum(1 for count in narratives_count.values() if count >= 5)
+            
+            return {
+                "success": True,
+                "totalNews": len(posts),
+                "totalMentions": total_mentions,
+                "activeNarratives": active_narratives,
+                "hotTopics": hot_topics,
+                "narratives": narratives_count,
+                "timestamp": datetime.now().isoformat(),
+                "source": "CryptoPanic API"
+            }
+            
+    except httpx.TimeoutException:
+        return {"error": "Timeout API CryptoPanic", "success": False}
+    except Exception as e:
+        return {"error": str(e), "success": False}
+
+
 @app.get("/narrative-radar", response_class=HTMLResponse)
 async def narrative_radar():
-    """🎯 Narrative Radar - Dashboard des narratives crypto"""
+    """🎯 Narrative Radar - Dashboard avec VRAIES données CryptoPanic"""
     
-    return HTMLResponse(SIDEBAR + CSS + """
-<div class="container">
-    <div class="header">
+    page_html = '''<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Narrative Radar - CRYPTO IA</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; margin: 0; }
+        .main-content { margin-left: 250px; padding: 20px; transition: margin-left 0.3s; }
+        @media (max-width: 768px) { .main-content { margin-left: 0; } }
+        .container { max-width: 1600px; margin: 0 auto; padding: 20px; }
+        h1 { text-align: center; margin-bottom: 15px; color: #00ff88; font-size: 2.5em; text-shadow: 0 0 20px rgba(0,255,136,0.5); }
+        .subtitle { text-align: center; color: #00d4ff; margin-bottom: 40px; font-size: 1.2em; }
+        .stats-header { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .stat-box { background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.3); border-radius: 12px; padding: 20px; text-align: center; transition: all 0.3s; }
+        .stat-box:hover { border-color: #00ff88; box-shadow: 0 0 20px rgba(0,255,136,0.3); transform: translateY(-3px); }
+        .stat-label { font-size: 0.9em; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }
+        .stat-value { font-size: 2em; font-weight: bold; color: #00ff88; }
+        .scan-section { text-align: center; margin: 30px 0; }
+        .scan-btn { display: inline-block; padding: 18px 50px; background: linear-gradient(45deg, #00ff88, #00d4ff); color: #000; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 1.2em; transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,255,136,0.4); }
+        .scan-btn:hover { transform: scale(1.05); box-shadow: 0 6px 25px rgba(0,255,136,0.6); }
+        .scan-btn:active { transform: scale(0.98); }
+        .scan-btn.loading { background: linear-gradient(45deg, #555, #777); cursor: not-allowed; }
+        .narratives-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-top: 30px; }
+        .narrative-card { background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.3); border-radius: 15px; padding: 25px; transition: all 0.3s; position: relative; overflow: hidden; }
+        .narrative-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(0,255,136,0.1), transparent); transition: left 0.5s; }
+        .narrative-card:hover::before { left: 100%; }
+        .narrative-card:hover { border-color: #00ff88; box-shadow: 0 0 25px rgba(0,255,136,0.4); transform: translateY(-5px); }
+        .narrative-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: relative; z-index: 1; }
+        .narrative-title { font-size: 1.6em; font-weight: bold; color: #00ff88; display: flex; align-items: center; gap: 10px; }
+        .narrative-icon { font-size: 1.2em; }
+        .status { padding: 8px 18px; border-radius: 20px; font-size: 0.85em; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .status.quiet { background: rgba(108, 117, 125, 0.3); color: #888; border: 1px solid rgba(108, 117, 125, 0.5); }
+        .status.emerging { background: rgba(0, 255, 136, 0.2); color: #00ff88; border: 1px solid rgba(0, 255, 136, 0.5); animation: pulse 2s infinite; }
+        .status.hot { background: rgba(251, 191, 36, 0.3); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.6); animation: pulse 1.5s infinite; }
+        .status.trending { background: rgba(239, 68, 68, 0.3); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.6); animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .narrative-body { position: relative; z-index: 1; }
+        .mentions { font-size: 2.5em; font-weight: bold; margin: 15px 0; color: #00ff88; text-shadow: 0 0 10px rgba(0,255,136,0.5); }
+        .change { font-size: 1.3em; margin: 10px 0; font-weight: 600; }
+        .change.positive { color: #00ff88; }
+        .change.negative { color: #ef4444; }
+        .change.neutral { color: #00d4ff; }
+        .description { color: #aaa; margin: 15px 0; font-size: 0.95em; line-height: 1.5; }
+        .coins { margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(0,255,136,0.2); }
+        .coins-label { font-size: 0.85em; color: #00d4ff; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .coin-tag { display: inline-block; background: rgba(0, 255, 136, 0.15); padding: 6px 14px; border-radius: 10px; margin: 5px; font-size: 0.9em; color: #00ff88; border: 1px solid rgba(0,255,136,0.3); transition: all 0.2s; }
+        .coin-tag:hover { background: rgba(0, 255, 136, 0.25); transform: scale(1.05); }
+        .spinner { display: inline-block; width: 30px; height: 30px; border: 4px solid rgba(0,255,136,0.3); border-top: 4px solid #00ff88; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loading-text { margin-top: 20px; font-size: 1.2em; color: #00d4ff; }
+        .initial-message { text-align: center; padding: 60px 20px; color: #00d4ff; font-size: 1.3em; }
+        .initial-message .icon { font-size: 4em; margin-bottom: 20px; opacity: 0.5; }
+        .footer-info { margin-top: 40px; padding: 25px; background: rgba(0,255,136,0.05); border-radius: 12px; border: 1px solid rgba(0,255,136,0.2); }
+        .footer-info h3 { color: #00ff88; margin-bottom: 15px; font-size: 1.2em; }
+        .footer-info ul { list-style: none; padding: 0; }
+        .footer-info li { color: #aaa; line-height: 1.8; padding-left: 20px; position: relative; }
+        .footer-info li::before { content: '▸'; position: absolute; left: 0; color: #00ff88; }
+        .data-source { text-align: center; margin-top: 30px; padding: 15px; background: rgba(0,212,255,0.1); border-radius: 8px; color: #00d4ff; font-size: 0.95em; }
+        .error-box { background: rgba(239,68,68,0.1); border: 2px solid rgba(239,68,68,0.5); border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0; }
+        .error-box .icon { font-size: 3em; margin-bottom: 15px; }
+        .error-box .title { font-size: 1.5em; color: #ef4444; margin-bottom: 15px; }
+        .error-box .message { color: #aaa; line-height: 1.6; }
+    </style>
+</head>
+<body>
+'''
+    
+    page_html += SIDEBAR
+    
+    page_html += '''
+<div class="main-content">
+    <div class="container">
         <h1>🎯 Narrative Radar</h1>
-        <p>Dashboard temps réel des narratives crypto</p>
-    </div>
-    
-    <div style="text-align: center; margin: 30px 0;">
-        <button style="background: #3b82f6; padding: 15px 40px; border-radius: 8px; color: white; border: none; cursor: pointer; font-size: 1.1em;" onclick="alert('Scanner en développement - Connecte les APIs !')">
-            🔍 Scanner Maintenant
-        </button>
-    </div>
-    
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px;">
-        <div style="background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155;">
-            <h3>AI & Machine Learning</h3>
-            <p style="color: #94a3b8;">Momentum: En hausse 📈</p>
+        <p class="subtitle">Dashboard temps réel - Données CryptoPanic API</p>
+        
+        <div class="stats-header" id="statsHeader" style="display: none;">
+            <div class="stat-box">
+                <div class="stat-label">Total News</div>
+                <div class="stat-value" id="totalNews">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Narratives Actives</div>
+                <div class="stat-value" id="activeNarratives">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Hot Topics</div>
+                <div class="stat-value" id="hotTopics">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Dernier Scan</div>
+                <div class="stat-value" id="lastScan" style="font-size: 1.2em;">--:--</div>
+            </div>
         </div>
-        <div style="background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155;">
-            <h3>DeFi 2.0</h3>
-            <p style="color: #94a3b8;">Momentum: Stable ➡️</p>
+        
+        <div class="scan-section">
+            <button class="scan-btn" id="scanBtn" onclick="scanNow()">🔍 Scanner Maintenant</button>
         </div>
-        <div style="background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155;">
-            <h3>Gaming & Metaverse</h3>
-            <p style="color: #94a3b8;">Momentum: En baisse 📉</p>
+        
+        <div id="narratives" class="narratives-grid">
+            <div class="initial-message">
+                <div class="icon">🎯</div>
+                <p>Cliquez sur Scanner pour analyser les vraies données crypto</p>
+            </div>
+        </div>
+        
+        <div class="data-source" id="dataSource" style="display: none;">
+            ✅ Données RÉELLES - Source : CryptoPanic API
+        </div>
+        
+        <div class="footer-info">
+            <h3>📊 Données 100% Réelles</h3>
+            <ul>
+                <li><strong>Source :</strong> CryptoPanic API - News crypto en temps réel</li>
+                <li><strong>8 Narratives :</strong> AI, DeFi, RWA, Gaming, L2, Memes, Infrastructure, Privacy</li>
+                <li><strong>Status :</strong> QUIET (0), EMERGING (1-4), HOT (5-14), TRENDING (15+)</li>
+                <li><strong>Momentum :</strong> Calculé sur derniers scans réels</li>
+                <li><strong>Coins :</strong> Projets majeurs de chaque narrative</li>
+                <li><strong>Auto-Refresh :</strong> Toutes les 5 minutes</li>
+            </ul>
         </div>
     </div>
 </div>
+
 <script>
 function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
+    var sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.toggle('active');
 }
+
+var NARRATIVES = {
+    AI: {icon: '🤖', coins: ['FET', 'AGIX', 'OCEAN', 'NMR', 'RNDR'], description: 'Intelligence Artificielle & Machine Learning'},
+    DeFi: {icon: '💰', coins: ['AAVE', 'UNI', 'COMP', 'CRV', 'SNX'], description: 'Finance Décentralisée'},
+    RWA: {icon: '🏢', coins: ['ONDO', 'POLYX', 'RIO', 'MPL'], description: 'Real World Assets Tokenisés'},
+    Gaming: {icon: '🎮', coins: ['IMX', 'GALA', 'SAND', 'AXS', 'MANA'], description: 'Gaming & Metaverse'},
+    L2: {icon: '⚡', coins: ['ARB', 'OP', 'MATIC', 'STRK', 'ZK'], description: 'Solutions Layer 2'},
+    Memes: {icon: '🐸', coins: ['DOGE', 'SHIB', 'PEPE', 'WIF', 'BONK'], description: 'Memecoins'},
+    Infrastructure: {icon: '🔗', coins: ['LINK', 'API3', 'BAND', 'DIA'], description: 'Infrastructure & Oracles'},
+    Privacy: {icon: '🔒', coins: ['XMR', 'ZEC', 'SCRT', 'ROSE'], description: 'Privacy'}
+};
+
+var previousScores = {};
+var scanCount = 0;
+
+async function scanNow() {
+    var btn = document.getElementById('scanBtn');
+    var container = document.getElementById('narratives');
+    var statsHeader = document.getElementById('statsHeader');
+    var dataSource = document.getElementById('dataSource');
+    
+    if (btn.disabled) return;
+    
+    btn.classList.add('loading');
+    btn.innerHTML = '<span class="spinner"></span>';
+    btn.disabled = true;
+    
+    container.innerHTML = '<div class="initial-message"><div class="spinner"></div><p class="loading-text">🔍 Scan RÉEL en cours via CryptoPanic API...</p></div>';
+    
+    try {
+        var response = await fetch('/api/narrative-radar/scan');
+        var data = await response.json();
+        
+        if (!data.success) {
+            container.innerHTML = '<div class="error-box"><div class="icon">⚠️</div><div class="title">Erreur API</div><div class="message">' + (data.error || 'Erreur inconnue') + '</div></div>';
+            return;
+        }
+        
+        var narrativesWithMomentum = {};
+        
+        for (var name in data.narratives) {
+            var currentMentions = data.narratives[name];
+            var change = 0;
+            
+            if (previousScores[name] !== undefined && previousScores[name] > 0) {
+                change = ((currentMentions - previousScores[name]) / previousScores[name]) * 100;
+            }
+            
+            change = Math.max(-50, Math.min(200, change));
+            
+            narrativesWithMomentum[name] = {
+                mentions: currentMentions,
+                change: Math.round(change * 10) / 10
+            };
+            
+            previousScores[name] = currentMentions;
+        }
+        
+        statsHeader.style.display = 'grid';
+        document.getElementById('totalNews').textContent = data.totalNews;
+        document.getElementById('activeNarratives').textContent = data.activeNarratives;
+        document.getElementById('hotTopics').textContent = data.hotTopics;
+        document.getElementById('lastScan').textContent = getCurrentTime();
+        
+        dataSource.style.display = 'block';
+        displayNarratives(narrativesWithMomentum);
+        scanCount++;
+        
+        console.log('✅ Scan réel terminé - Source: CryptoPanic');
+        
+    } catch (error) {
+        console.error('Erreur:', error);
+        container.innerHTML = '<div class="error-box"><div class="icon">❌</div><div class="title">Erreur de connexion</div><div class="message">Impossible de contacter l\\'API. Vérifiez votre connexion.</div></div>';
+    } finally {
+        setTimeout(function() {
+            btn.classList.remove('loading');
+            btn.innerHTML = '🔍 Scanner à Nouveau';
+            btn.disabled = false;
+        }, 500);
+    }
+}
+
+function displayNarratives(narrativesData) {
+    var container = document.getElementById('narratives');
+    var html = '';
+    
+    var sorted = Object.keys(narrativesData).sort(function(a, b) {
+        return narrativesData[b].mentions - narrativesData[a].mentions;
+    });
+    
+    for (var i = 0; i < sorted.length; i++) {
+        var name = sorted[i];
+        var data = narrativesData[name];
+        var info = NARRATIVES[name];
+        var status = getStatus(data.mentions);
+        var changeClass = data.change > 0 ? 'positive' : data.change < 0 ? 'negative' : 'neutral';
+        var changeSymbol = data.change > 0 ? '+' : '';
+        
+        html += '<div class="narrative-card">';
+        html += '<div class="narrative-header">';
+        html += '<div class="narrative-title"><span class="narrative-icon">' + info.icon + '</span><span>' + name + '</span></div>';
+        html += '<div class="status ' + status.class + '">' + status.emoji + ' ' + status.text + '</div>';
+        html += '</div>';
+        html += '<div class="narrative-body">';
+        html += '<div class="mentions">Mentions: ' + data.mentions + '</div>';
+        html += '<div class="change ' + changeClass + '">Momentum: ' + changeSymbol + data.change.toFixed(1) + '%</div>';
+        html += '<div class="description">' + info.description + '</div>';
+        html += '<div class="coins"><div class="coins-label">🪙 COINS ASSOCIÉS</div>';
+        for (var j = 0; j < info.coins.length; j++) {
+            html += '<span class="coin-tag">' + info.coins[j] + '</span>';
+        }
+        html += '</div></div></div>';
+    }
+    
+    container.innerHTML = html;
+}
+
+function getStatus(mentions) {
+    if (mentions === 0) return {emoji: '😴', text: 'QUIET', class: 'quiet'};
+    if (mentions < 5) return {emoji: '🟢', text: 'EMERGING', class: 'emerging'};
+    if (mentions < 15) return {emoji: '🔥', text: 'HOT', class: 'hot'};
+    return {emoji: '🚀', text: 'TRENDING', class: 'trending'};
+}
+
+function getCurrentTime() {
+    var now = new Date();
+    return now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+}
+
+setInterval(function() {
+    var btn = document.getElementById('scanBtn');
+    if (!btn.disabled && scanCount > 0) {
+        scanNow();
+    }
+}, 300000);
+
+console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 </script>
 </body>
 </html>
-""")
+'''
+    
+    return HTMLResponse(page_html)
 
 
 @app.get("/ai-crypto-coach", response_class=HTMLResponse)

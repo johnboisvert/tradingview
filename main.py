@@ -33635,17 +33635,45 @@ console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
     return HTMLResponse(page_html)
 
 
+# ============================================================================
+# 🤖 AI CRYPTO COACH - VERSION CORRIGÉE AVEC SIDEBAR
+# ============================================================================
+# Cette route remplace celle cassée dans main.py
+
 @app.get("/ai-crypto-coach", response_class=HTMLResponse)
 async def ai_crypto_coach_page(request: Request):
     """🤖 AI Crypto Coach - Analyse ton profil avec chat IA"""
     
     return HTMLResponse(SIDEBAR + CSS + """
 <style>
+    /* Main content wrapper NÉCESSAIRE pour sidebar */
+    .main-content {
+        margin-left: 80px;
+        padding: 20px;
+        min-height: 100vh;
+    }
+    
+    .coach-header {
+        margin-bottom: 30px;
+    }
+    
+    .coach-header h1 {
+        font-size: 2.5em;
+        background: linear-gradient(135deg, #6366f1, #a855f7);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 10px;
+    }
+    
+    .coach-header p {
+        color: #94a3b8;
+        font-size: 1.1em;
+    }
+    
     .chat-container {
         display: grid;
         grid-template-columns: 1fr 350px;
         gap: 20px;
-        margin-top: 20px;
     }
     
     .chat-main {
@@ -33860,11 +33888,14 @@ async def ai_crypto_coach_page(request: Request):
         .chat-container {
             grid-template-columns: 1fr;
         }
+        .main-content {
+            margin-left: 0;
+        }
     }
 </style>
 
-<div class="container">
-    <div class="header">
+<div class="main-content">
+    <div class="coach-header">
         <h1>🤖 AI Crypto Coach</h1>
         <p>Ton coach personnel IA propulsé par Claude AI</p>
     </div>
@@ -33991,10 +34022,6 @@ async def ai_crypto_coach_page(request: Request):
 </div>
 
 <script>
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('active');
-}
-
 let questionCount = 1;
 
 async function analyzeProfile() {
@@ -34079,7 +34106,7 @@ function sendMessage() {
     addUserMessage(message);
     input.value = '';
     
-    // Simuler réponse AI (à remplacer par vraie API Claude)
+    // Simuler réponse AI
     setTimeout(() => {
         const responses = {
             "c'est quoi bitcoin": "Bitcoin est la première cryptomonnaie créée en 2009 par Satoshi Nakamoto. C'est une monnaie numérique décentralisée qui fonctionne sans autorité centrale. 💰",
@@ -34142,9 +34169,6 @@ function scrollToBottom() {
 </body>
 </html>
 """)
-
-
-
 @app.post("/api/ai-coach/analyze")
 async def api_analyze_trader_profile(request: Request):
     """API analyze trader profile"""

@@ -1425,8 +1425,8 @@ SIDEBAR = """<style>
 .sidebar::-webkit-scrollbar-thumb{background:rgba(6,182,212,0.5);border-radius:4px}
 .sidebar-header{padding:0 20px 20px 20px;border-bottom:2px solid rgba(6,182,212,0.3);margin-bottom:15px}
 .sidebar-title{color:#06b6d4;font-size:20px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:1px}
-.menu-section{margin-bottom:10px}
-.section-title{color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;padding:10px 20px 8px 20px;border-bottom:1px solid rgba(255,255,255,0.1)}
+.sidebar .menu-section{margin-bottom:10px}
+.sidebar .section-title{color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;padding:10px 20px 8px 20px;border-bottom:1px solid rgba(255,255,255,0.1)}
 .menu-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:#e2e8f0;text-decoration:none;font-size:14px;font-weight:500;transition:all 0.3s ease;border-left:3px solid transparent}
 .menu-item:hover{background:rgba(6,182,212,0.15);border-left-color:#06b6d4;color:#fff;padding-left:25px}
 .menu-item .badge{background:rgba(6,182,212,0.2);color:#06b6d4;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:auto;font-weight:600}
@@ -4973,7 +4973,8 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
             </body></html>
         """, status_code=403)
     
-    html = """<!DOCTYPE html>
+    html_content = SIDEBAR + """
+    <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -5065,11 +5066,12 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 </body>
 </html>"""
     
-    return HTMLResponse(SIDEBAR + html)
+    return html_content
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
-    html = """<!DOCTYPE html>
+    html_content = SIDEBAR + """
+    <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -5161,7 +5163,7 @@ async def home():
 </body>
 </html>"""
     
-    return HTMLResponse(SIDEBAR + html)
+    return html_content
 
 
 @app.get("/spot-trading", response_class=HTMLResponse)
@@ -27164,7 +27166,7 @@ async def ai_opportunity_scanner():
             .section-header.hot{{background:linear-gradient(135deg,rgba(239,68,68,0.2),rgba(251,191,36,0.2));border:2px solid #ef4444;border-radius:15px;padding:25px}}
             .section-header.gems{{background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(59,130,246,0.2));border:2px solid #22c55e;border-radius:15px;padding:25px}}
             .section-header.danger{{background:linear-gradient(135deg,rgba(153,27,27,0.3),rgba(127,29,29,0.3));border:2px solid #dc2626;border-radius:15px;padding:25px}}
-            .section-title{{font-size:2.5em;font-weight:800;margin-bottom:10px}}
+            .sidebar .section-title{{font-size:2.5em;font-weight:800;margin-bottom:10px}}
             .section-subtitle{{font-size:1.2em;color:rgba(255,255,255,0.8)}}
             
             /* Grid */
@@ -27211,7 +27213,7 @@ async def ai_opportunity_scanner():
             
             /* Sections */
             .opp-section{{margin:20px 0;padding:15px;background:rgba(0,0,0,0.3);border-radius:10px;border-left:4px solid #fbbf24}}
-            .section-title{{font-weight:700;color:#fbbf24;margin-bottom:12px;font-size:1.05em}}
+            .sidebar .section-title{{font-weight:700;color:#fbbf24;margin-bottom:12px;font-size:1.05em}}
             .entry-price{{font-size:1.4em;font-weight:700;color:#fff}}
             
             /* Targets */

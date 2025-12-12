@@ -32990,14 +32990,15 @@ async def get_portfolio_data(request: Request):
 
 @app.get("/api/narrative-radar/scan")
 async def api_scan_narratives():
-    """API Backend - Scan RÉEL via CryptoPanic"""
+    """API Backend - Scan RÉEL via CryptoPanic API v2"""
     
     CRYPTOPANIC_KEY = "bca5327f4c31e7511b4a7824951ed0ae4d8bb5ac"
     
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, verify=False) as client:
+            # NOUVELLE URL v2 (plus v1)
             response = await client.get(
-                "https://cryptopanic.com/api/v1/posts/",
+                "https://cryptopanic.com/api/developer/v2/posts/",
                 params={
                     "auth_token": CRYPTOPANIC_KEY,
                     "public": "true",
@@ -33007,10 +33008,13 @@ async def api_scan_narratives():
             )
             
             if response.status_code != 200:
-                return {"error": "API CryptoPanic non disponible", "status": response.status_code, "success": False}
+                return {"error": f"API Status {response.status_code}", "success": False}
             
             data = response.json()
             posts = data.get("results", [])
+            
+            if not posts:
+                return {"error": "Aucun post reçu de l'API", "success": False}
             
             narrative_keywords = {
                 "AI": ["ai", "artificial intelligence", "machine learning", "neural", "gpt", "llm", "chatgpt", "agix", "fet", "fetch", "singularitynet", "ocean protocol"],
@@ -33036,8 +33040,11 @@ async def api_scan_narratives():
             
             for post in posts:
                 title = post.get("title", "").lower()
+                description = post.get("description", "").lower()
+                text = title + " " + description
+                
                 for narrative, keywords in narrative_keywords.items():
-                    if any(keyword in title for keyword in keywords):
+                    if any(keyword in text for keyword in keywords):
                         narratives_count[narrative] += 1
             
             total_mentions = sum(narratives_count.values())
@@ -33052,15 +33059,13 @@ async def api_scan_narratives():
                 "hotTopics": hot_topics,
                 "narratives": narratives_count,
                 "timestamp": datetime.now().isoformat(),
-                "source": "CryptoPanic API"
+                "source": "CryptoPanic API v2 ✅"
             }
             
     except httpx.TimeoutException:
         return {"error": "Timeout API CryptoPanic", "success": False}
     except Exception as e:
-        return {"error": str(e), "success": False}
-
-
+        return {"error": f"Erreur: {str(e)}", "success": False}
 @app.get("/narrative-radar", response_class=HTMLResponse)
 async def narrative_radar():
     """🎯 Narrative Radar - Dashboard avec VRAIES données CryptoPanic"""
@@ -33140,7 +33145,7 @@ async def narrative_radar():
 <div class="main-content">
     <div class="container">
         <h1>🎯 Narrative Radar</h1>
-        <p class="subtitle">Dashboard temps réel - Données CryptoPanic API</p>
+        <p class="subtitle">Dashboard temps réel - CryptoPanic API v2 ✅</p>
         
         <div class="stats-header" id="statsHeader" style="display: none;">
             <div class="stat-box">
@@ -33173,13 +33178,13 @@ async def narrative_radar():
         </div>
         
         <div class="data-source" id="dataSource" style="display: none;">
-            ✅ Données RÉELLES - Source : CryptoPanic API
+            ✅ DONNÉES RÉELLES - Source : CryptoPanic API v2
         </div>
         
         <div class="footer-info">
             <h3>📊 Données 100% Réelles</h3>
             <ul>
-                <li><strong>Source :</strong> CryptoPanic API - News crypto en temps réel</li>
+                <li><strong>Source :</strong> CryptoPanic API v2 - News crypto en temps réel</li>
                 <li><strong>8 Narratives :</strong> AI, DeFi, RWA, Gaming, L2, Memes, Infrastructure, Privacy</li>
                 <li><strong>Status :</strong> QUIET (0), EMERGING (1-4), HOT (5-14), TRENDING (15+)</li>
                 <li><strong>Momentum :</strong> Calculé sur derniers scans réels</li>

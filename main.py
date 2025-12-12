@@ -32995,70 +32995,91 @@ _cache_duration = 600  # 10 minutes en secondes
 _last_request_time = 0
 _request_count_today = 0
 
+# Variables globales pour le cache
+_narrative_cache_cg = None
+_cache_timestamp_cg = None
+_cache_duration_cg = 600  # 10 minutes
+_last_request_time_cg = 0
+
 @app.get("/api/narrative-radar/scan")
 async def api_scan_narratives():
-    """API Backend - OPTIMISÉ avec cache pour économiser les appels API"""
+    """API Backend - CoinGecko 100% GRATUIT, SANS LIMITE !"""
     
-    global _narrative_cache, _cache_timestamp, _last_request_time, _request_count_today
+    global _narrative_cache_cg, _cache_timestamp_cg, _last_request_time_cg
     
     import time
     current_time = time.time()
     
-    # RATE LIMIT: Maximum 1 requête par minute
-    if current_time - _last_request_time < 60:
-        time_to_wait = int(60 - (current_time - _last_request_time))
+    # RATE LIMIT: 1 requête par minute (optionnel avec CoinGecko mais gardons-le)
+    if current_time - _last_request_time_cg < 60:
+        time_to_wait = int(60 - (current_time - _last_request_time_cg))
         return {
             "success": False,
-            "error": f"⏱️ Rate limit: Attends {time_to_wait} secondes avant de scanner à nouveau",
+            "error": f"⏱️ Rate limit: Attends {time_to_wait} secondes",
             "cached": False
         }
     
-    # CACHE: Si données récentes (< 10 minutes), retourner cache
-    if _narrative_cache and _cache_timestamp:
-        cache_age = current_time - _cache_timestamp
-        if cache_age < _cache_duration:
+    # CACHE: Si données récentes, retourner cache
+    if _narrative_cache_cg and _cache_timestamp_cg:
+        cache_age = current_time - _cache_timestamp_cg
+        if cache_age < _cache_duration_cg:
             cache_minutes = int(cache_age / 60)
-            _narrative_cache["cached"] = True
-            _narrative_cache["cache_age_minutes"] = cache_minutes
-            _narrative_cache["note"] = f"💾 Données en cache ({cache_minutes} min) - Économie d'API"
-            return _narrative_cache
+            _narrative_cache_cg["cached"] = True
+            _narrative_cache_cg["cache_age_minutes"] = cache_minutes
+            _narrative_cache_cg["note"] = f"💾 Cache ({cache_minutes} min) - CoinGecko API GRATUITE"
+            return _narrative_cache_cg
     
-    # SINON: Faire un vrai appel API
-    CRYPTOPANIC_KEY = "bca5327f4c31e7511b4a7824951ed0ae4d8bb5ac"
-    
+    # APPEL API COINGECKO
     try:
-        _last_request_time = current_time
-        _request_count_today += 1
+        _last_request_time_cg = current_time
         
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, verify=False) as client:
+        async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
+            # CoinGecko Trending API - VRAIMENT gratuit, sans clé !
             response = await client.get(
-                "https://cryptopanic.com/api/developer/v2/posts/",
-                params={
-                    "auth_token": CRYPTOPANIC_KEY,
-                    "public": "true",
-                    "filter": "rising",
-                    "currencies": "BTC,ETH,SOL,DOGE,SHIB,PEPE,FET,AGIX,OCEAN,AAVE,UNI,LINK,ARB,OP,MATIC"
-                }
+                "https://api.coingecko.com/api/v3/search/trending"
             )
             
             if response.status_code != 200:
-                return {"error": f"API Status {response.status_code}", "success": False}
+                return {"error": f"CoinGecko API Status {response.status_code}", "success": False}
             
             data = response.json()
-            posts = data.get("results", [])
+            trending_coins = data.get("coins", [])
             
-            if not posts:
-                return {"error": "Aucun post reçu de l'API", "success": False}
+            if not trending_coins:
+                return {"error": "Aucun coin trending reçu", "success": False}
             
-            narrative_keywords = {
-                "AI": ["ai", "artificial intelligence", "machine learning", "neural", "gpt", "llm", "chatgpt", "agix", "fet", "fetch", "singularitynet", "ocean protocol"],
-                "DeFi": ["defi", "lending", "yield", "liquidity", "amm", "dex", "swap", "aave", "uniswap", "compound", "curve", "synthetix"],
-                "RWA": ["rwa", "real world asset", "tokenization", "tokenized", "bonds", "treasury", "ondo", "real estate"],
-                "Gaming": ["gaming", "metaverse", "nft", "play to earn", "p2e", "game", "immutable", "gala", "sandbox", "axie", "decentraland"],
-                "L2": ["layer 2", "l2", "rollup", "scaling", "zk", "optimistic", "arbitrum", "optimism", "polygon", "starknet"],
-                "Memes": ["meme", "memecoin", "doge", "dogecoin", "shiba", "shib", "pepe", "wif", "bonk", "floki"],
-                "Infrastructure": ["oracle", "bridge", "middleware", "data", "chainlink", "link", "infrastructure", "api3", "band"],
-                "Privacy": ["privacy", "anonymous", "mixer", "confidential", "zero knowledge", "monero", "zcash", "secret"]
+            # Mapping coins → narratives
+            coin_narratives = {
+                # AI coins
+                "fetch-ai": "AI", "singularitynet": "AI", "ocean-protocol": "AI",
+                "numeraire": "AI", "render-token": "AI", "freysa-ai": "AI",
+                
+                # DeFi coins  
+                "aave": "DeFi", "uniswap": "DeFi", "compound-governance-token": "DeFi",
+                "curve-dao-token": "DeFi", "synthetix-network-token": "DeFi",
+                
+                # RWA coins
+                "ondo-finance": "RWA", "polymesh": "RWA", "maple": "RWA",
+                
+                # Gaming coins
+                "immutable-x": "Gaming", "gala": "Gaming", "the-sandbox": "Gaming",
+                "axie-infinity": "Gaming", "decentraland": "Gaming",
+                
+                # L2 coins
+                "arbitrum": "L2", "optimism": "L2", "polygon": "L2",
+                "starknet": "L2", "zksync": "L2",
+                
+                # Meme coins
+                "dogecoin": "Memes", "shiba-inu": "Memes", "pepe": "Memes",
+                "dogwifcoin": "Memes", "bonk": "Memes", "floki": "Memes",
+                
+                # Infrastructure
+                "chainlink": "Infrastructure", "api3": "Infrastructure",
+                "band-protocol": "Infrastructure", "dia-data": "Infrastructure",
+                
+                # Privacy
+                "monero": "Privacy", "zcash": "Privacy", "secret": "Privacy",
+                "oasis-network": "Privacy"
             }
             
             narratives_count = {
@@ -33066,44 +33087,57 @@ async def api_scan_narratives():
                 "L2": 0, "Memes": 0, "Infrastructure": 0, "Privacy": 0
             }
             
-            for post in posts:
-                title = post.get("title", "").lower()
-                description = post.get("description", "").lower()
-                text = title + " " + description
+            # Analyser les trending coins
+            for coin_data in trending_coins:
+                coin_item = coin_data.get("item", {})
+                coin_id = coin_item.get("id", "").lower()
+                coin_name = coin_item.get("name", "").lower()
                 
-                for narrative, keywords in narrative_keywords.items():
-                    if any(keyword in text for keyword in keywords):
-                        narratives_count[narrative] += 1
+                # Vérifier par ID exact
+                if coin_id in coin_narratives:
+                    narrative = coin_narratives[coin_id]
+                    narratives_count[narrative] += 1
+                    continue
+                
+                # Sinon, deviner par nom/symbole
+                if any(term in coin_name for term in ["ai", "gpt", "neural", "intelligence"]):
+                    narratives_count["AI"] += 1
+                elif any(term in coin_name for term in ["defi", "swap", "lend", "yield"]):
+                    narratives_count["DeFi"] += 1
+                elif any(term in coin_name for term in ["game", "meta", "nft"]):
+                    narratives_count["Gaming"] += 1
+                elif any(term in coin_name for term in ["layer", "l2", "rollup", "scaling"]):
+                    narratives_count["L2"] += 1
+                elif any(term in coin_name for term in ["meme", "dog", "cat", "pepe", "shib"]):
+                    narratives_count["Memes"] += 1
             
-            total_mentions = sum(narratives_count.values())
+            total_coins = len(trending_coins)
             active_narratives = sum(1 for count in narratives_count.values() if count > 0)
-            hot_topics = sum(1 for count in narratives_count.values() if count >= 5)
+            hot_topics = sum(1 for count in narratives_count.values() if count >= 3)
             
             result = {
                 "success": True,
-                "totalNews": len(posts),
-                "totalMentions": total_mentions,
+                "totalNews": total_coins,
+                "totalMentions": sum(narratives_count.values()),
                 "activeNarratives": active_narratives,
                 "hotTopics": hot_topics,
                 "narratives": narratives_count,
                 "timestamp": datetime.now().isoformat(),
-                "source": "CryptoPanic API v2 ✅",
+                "source": "CoinGecko Trending API ✅ 100% GRATUIT",
                 "cached": False,
-                "api_calls_today": _request_count_today,
-                "note": "⚡ Nouvelles données - Cache actif pour 10 minutes"
+                "note": "🎉 Aucune limite API - Vraiment gratuit !"
             }
             
-            # Sauvegarder dans le cache
-            _narrative_cache = result.copy()
-            _cache_timestamp = current_time
+            # Sauvegarder cache
+            _narrative_cache_cg = result.copy()
+            _cache_timestamp_cg = current_time
             
             return result
             
     except httpx.TimeoutException:
-        return {"error": "Timeout API CryptoPanic", "success": False}
+        return {"error": "Timeout CoinGecko API", "success": False}
     except Exception as e:
         return {"error": f"Erreur: {str(e)}", "success": False}
-
 
 
 @app.get("/narrative-radar", response_class=HTMLResponse)

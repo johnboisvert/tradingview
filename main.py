@@ -48,6 +48,26 @@ from urllib.parse import urlencode
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
 from technical_analyzer import analyzer
 
+# ============================================================================
+# 🎓 CRYPTO ACADEMY - IMPORTS
+# ============================================================================
+try:
+    from academy_database import (
+        init_academy_tables, get_user_progress, mark_lesson_complete,
+        save_quiz_result, get_lesson_status, get_all_lessons_progress,
+        save_ai_chat, get_ai_chat_history, get_leaderboard
+    )
+    from academy_config import (
+        PARCOURS_DATA, BADGES_DATA, LEVELS_DATA, get_level_from_xp
+    )
+    from lessons_data import LESSONS_DATA
+    ACADEMY_AVAILABLE = True
+    print("✅ Système Academy chargé")
+except ImportError as e:
+    print(f"⚠️  Système Academy non disponible: {e}")
+    ACADEMY_AVAILABLE = False
+# ============================================================================
+
 
 # ============================================================================
 # 🆕 SYSTÈME DE PERMISSIONS - IMPORTS
@@ -1666,6 +1686,16 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🛡️</span>
                 <span class="label">Rug & Scam Shield</span>
                 <span class="badge">NEW</span>
+            </a>
+        </div>
+        
+        <!-- 🎓 FORMATION -->
+        <div class="menu-section">
+            <div class="section-title">🎓 FORMATION</div>
+            <a href="/crypto-academy" class="menu-item academy-feature">
+                <span class="icon">🎓</span>
+                <span class="label">Crypto Academy</span>
+                <span class="badge" style="background: linear-gradient(135deg, #6366f1, #a855f7);">54 LEÇONS</span>
             </a>
         </div>
         
@@ -16745,6 +16775,14 @@ async def startup_event():
     """Démarre la tâche de fond au lancement de l'application"""
     # Initialiser la DB Portfolio
     init_portfolio_db()
+    
+    # Initialiser l'Academy
+    if ACADEMY_AVAILABLE:
+        try:
+            init_academy_tables()
+            print("✅ Tables Academy initialisées")
+        except Exception as e:
+            print(f"⚠️ Erreur init Academy: {e}")
     
     # Utiliser try_lock pour éviter de bloquer si un autre worker a déjà lancé
     if not monitor_running:
@@ -35594,3 +35632,370 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         error_page += '</body>'
         error_page += '</html>'
         return HTMLResponse(error_page)
+# ============================================================================
+# 🎓 CRYPTO ACADEMY - ROUTES (À AJOUTER À LA FIN DE MAIN.PY)
+# ============================================================================
+
+# ========== MODELS PYDANTIC ==========
+class QuizSubmission(BaseModel):
+    lesson_id: int
+    score: int
+    total: int
+    answers: dict
+
+class AIChatMessage(BaseModel):
+    message: str
+    lesson_context: Optional[int] = None
+
+# ========== ROUTE: PAGE PRINCIPALE ACADEMY ==========
+
+@app.get("/crypto-academy", response_class=HTMLResponse)
+async def crypto_academy_page(request: Request):
+    """Page principale de l'Academy"""
+    username = request.cookies.get("username")
+    if not username:
+        return RedirectResponse(url="/signin?redirect=/crypto-academy")
+    
+    if not ACADEMY_AVAILABLE:
+        return HTMLResponse(SIDEBAR + "<div class='main-content'><h1>Academy non disponible</h1></div>")
+    
+    # Récupérer la progression
+    try:
+        progress = get_user_progress(username)
+    except:
+        progress = {}
+    
+    # Charger l'interface complète
+    try:
+        with open("/home/claude/academy_interface_css.html", "r", encoding="utf-8") as f:
+            css_content = f.read()
+        
+        with open("/home/claude/academy_interface_js.html", "r", encoding="utf-8") as f:
+            js_content = f.read()
+    except:
+        return HTMLResponse(SIDEBAR + "<div class='main-content'><h1>Erreur: Fichiers interface non trouvés</h1></div>")
+    
+    # Injecter le SIDEBAR + interface complète
+    full_html = f"""
+    {SIDEBAR}
+    {css_content}
+    {js_content}
+    """.replace("{{username}}", username)
+    
+    return HTMLResponse(full_html)
+
+# ========== API: PROGRESSION UTILISATEUR ==========
+
+@app.get("/api/academy/progress")
+async def get_academy_progress(request: Request):
+    """Récupère la progression complète de l'utilisateur"""
+    username = request.cookies.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    if not ACADEMY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Academy non disponible")
+    
+    try:
+        progress = get_user_progress(username)
+        return JSONResponse({
+            "success": True,
+            "progress": progress
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+# ========== API: DÉTAILS D'UNE LEÇON ==========
+
+@app.get("/api/academy/lesson/{lesson_id}")
+async def get_lesson_details(lesson_id: int, request: Request):
+    """Récupère les détails d'une leçon"""
+    username = request.cookies.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    if not ACADEMY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Academy non disponible")
+    
+    try:
+        lesson = LESSONS_DATA.get(lesson_id)
+        if not lesson:
+            raise HTTPException(status_code=404, detail="Leçon non trouvée")
+        
+        # Récupérer le statut de complétion
+        status = get_lesson_status(username, lesson_id)
+        
+        return JSONResponse({
+            "success": True,
+            "lesson": {
+                **lesson,
+                "completed": status["completed"],
+                "completion_date": status["completion_date"],
+                "time_spent": status["time_spent"]
+            }
+        })
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+# ========== API: MARQUER LEÇON COMME COMPLÉTÉE ==========
+
+@app.post("/api/academy/lesson/{lesson_id}/complete")
+async def complete_lesson(lesson_id: int, request: Request, time_spent: int = 0):
+    """Marque une leçon comme complétée"""
+    username = request.cookies.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    if not ACADEMY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Academy non disponible")
+    
+    try:
+        success = mark_lesson_complete(username, lesson_id, time_spent)
+        
+        if success:
+            # Récupérer la progression mise à jour
+            progress = get_user_progress(username)
+            
+            return JSONResponse({
+                "success": True,
+                "message": "Leçon complétée !",
+                "xp_earned": 100,
+                "progress": progress
+            })
+        else:
+            return JSONResponse({
+                "success": False,
+                "message": "Leçon déjà complétée"
+            })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+# ========== API: SOUMETTRE QUIZ ==========
+
+@app.post("/api/academy/quiz/submit")
+async def submit_quiz(submission: QuizSubmission, request: Request):
+    """Enregistre et évalue un quiz"""
+    username = request.cookies.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    if not ACADEMY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Academy non disponible")
+    
+    try:
+        # Enregistrer le résultat
+        result = save_quiz_result(
+            username,
+            submission.lesson_id,
+            submission.score,
+            submission.total,
+            submission.answers
+        )
+        
+        # Si le quiz est réussi (>=80%), marquer la leçon comme complétée
+        percentage = (submission.score / submission.total) * 100
+        if percentage >= 80:
+            mark_lesson_complete(username, submission.lesson_id)
+        
+        # Récupérer la progression mise à jour
+        progress = get_user_progress(username)
+        
+        return JSONResponse({
+            "success": True,
+            "result": result,
+            "progress": progress
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+# ========== API: CHAT AI COACH ==========
+
+@app.post("/api/academy/ai-coach/chat")
+async def ai_coach_chat(message_data: AIChatMessage, request: Request):
+    """Chat avec l'AI Coach (Claude API)"""
+    username = request.cookies.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    if not ACADEMY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Academy non disponible")
+    
+    try:
+        # Construire le prompt avec contexte
+        system_prompt = """Tu es un coach crypto expert et pédagogue. 
+Tu aides les utilisateurs à comprendre les concepts de crypto, trading, et sécurité.
+Réponds de manière claire, concise, et encourageante.
+Utilise des exemples concrets et des analogies simples."""
+        
+        user_message = message_data.message
+        
+        # Si contexte de leçon, l'ajouter
+        if message_data.lesson_context:
+            lesson = LESSONS_DATA.get(message_data.lesson_context)
+            if lesson:
+                system_prompt += f"\n\nContexte actuel: L'utilisateur étudie la leçon '{lesson['title']}'."
+        
+        # Pour le développement, réponse simulée
+        # TODO: Intégrer vraiment Claude API quand disponible
+        response = f"Excellente question ! Concernant '{user_message}', voici mon explication..."
+        
+        # Enregistrer dans l'historique
+        save_ai_chat(
+            username,
+            user_message,
+            response,
+            message_data.lesson_context
+        )
+        
+        return JSONResponse({
+            "success": True,
+            "response": response
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+# ========== API: HISTORIQUE CHAT ==========
+
+@app.get("/api/academy/ai-coach/history")
+async def get_chat_history(request: Request, limit: int = 20):
+    """Récupère l'historique du chat AI"""
+    username = request.cookies.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    
+    if not ACADEMY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Academy non disponible")
+    
+    try:
+        history = get_ai_chat_history(username, limit)
+        return JSONResponse({
+            "success": True,
+            "history": history
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+# ========== API: LEADERBOARD ==========
+
+@app.get("/api/academy/leaderboard")
+async def get_academy_leaderboard(request: Request, limit: int = 10, sort_by: str = "xp"):
+    """Récupère le classement des utilisateurs"""
+    if not ACADEMY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Academy non disponible")
+    
+    try:
+        leaderboard = get_leaderboard(limit, sort_by)
+        return JSONResponse({
+            "success": True,
+            "leaderboard": leaderboard
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+# ========== API: STATISTIQUES GLOBALES ==========
+
+@app.get("/api/academy/stats")
+async def get_global_stats(request: Request):
+    """Statistiques globales de l'Academy"""
+    if not ACADEMY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Academy non disponible")
+    
+    try:
+        conn = sqlite3.connect("trading_data.db")
+        c = conn.cursor()
+        
+        # Total utilisateurs actifs
+        c.execute("SELECT COUNT(DISTINCT username) FROM user_xp")
+        total_users = c.fetchone()[0]
+        
+        # Total leçons complétées
+        c.execute("SELECT SUM(lessons_completed) FROM user_xp")
+        total_lessons = c.fetchone()[0] or 0
+        
+        # Total XP distribué
+        c.execute("SELECT SUM(total_xp) FROM user_xp")
+        total_xp = c.fetchone()[0] or 0
+        
+        # Total badges débloqués
+        c.execute("SELECT COUNT(*) FROM user_badges")
+        total_badges = c.fetchone()[0]
+        
+        conn.close()
+        
+        return JSONResponse({
+            "success": True,
+            "stats": {
+                "total_users": total_users,
+                "total_lessons_completed": total_lessons,
+                "total_xp_distributed": total_xp,
+                "total_badges_unlocked": total_badges
+            }
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+# ========== API: DONNÉES PARCOURS ==========
+
+@app.get("/api/academy/parcours")
+async def get_parcours_data():
+    """Récupère les données des parcours"""
+    if not ACADEMY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Academy non disponible")
+    
+    try:
+        return JSONResponse({
+            "success": True,
+            "parcours": PARCOURS_DATA
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+# ========== API: DONNÉES BADGES ==========
+
+@app.get("/api/academy/badges")
+async def get_badges_data():
+    """Récupère les données des badges"""
+    if not ACADEMY_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Academy non disponible")
+    
+    try:
+        return JSONResponse({
+            "success": True,
+            "badges": BADGES_DATA
+        })
+    except Exception as e:
+        return JSONResponse({
+            "success": False,
+            "error": str(e)
+        }, status_code=500)
+
+print("✅ Routes Academy chargées")

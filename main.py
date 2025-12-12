@@ -5138,7 +5138,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 </body>
 </html>"""
     
-    return HTMLResponse(SIDEBAR_LITE + html)
+    return HTMLResponse(SIDEBAR + html)
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -5234,7 +5234,7 @@ async def home():
 </body>
 </html>"""
     
-    return HTMLResponse(SIDEBAR_LITE + html)
+    return HTMLResponse(SIDEBAR + html)
 
 
 @app.get("/spot-trading", response_class=HTMLResponse)

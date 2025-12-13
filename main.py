@@ -6010,6 +6010,48 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         .section-divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), rgba(118, 75, 162, 0.5), rgba(240, 147, 251, 0.5), transparent); margin: 80px 0; position: relative; }
         .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
         @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+        
+        /* 🪙 CRYPTO TICKER */
+        .crypto-ticker-container { 
+            width: 100%; 
+            overflow: hidden; 
+            background: rgba(255, 255, 255, 0.02); 
+            border-top: 2px solid rgba(102, 126, 234, 0.3);
+            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+            padding: 30px 0; 
+            margin: 80px 0; 
+            position: relative; 
+        }
+        .crypto-ticker { 
+            display: flex; 
+            animation: scroll 20s linear infinite; 
+            width: fit-content; 
+        }
+        .crypto-logo { 
+            font-size: 3em; 
+            margin: 0 60px; 
+            color: #667eea; 
+            filter: drop-shadow(0 0 15px rgba(102, 126, 234, 0.6)); 
+            animation: float-logo 3s ease-in-out infinite; 
+            flex-shrink: 0; 
+        }
+        .crypto-logo:nth-child(2) { animation-delay: 0.2s; color: #764ba2; }
+        .crypto-logo:nth-child(3) { animation-delay: 0.4s; color: #f093fb; }
+        .crypto-logo:nth-child(4) { animation-delay: 0.6s; color: #10b981; }
+        .crypto-logo:nth-child(5) { animation-delay: 0.8s; color: #3b82f6; }
+        .crypto-logo:nth-child(6) { animation-delay: 1s; color: #f59e0b; }
+        .crypto-logo:nth-child(7) { animation-delay: 1.2s; color: #8b5cf6; }
+        .crypto-logo:nth-child(8) { animation-delay: 1.4s; color: #ec4899; }
+        .crypto-logo:nth-child(9) { animation-delay: 1.6s; color: #06b6d4; }
+        @keyframes scroll { 
+            0% { transform: translateX(0); } 
+            100% { transform: translateX(-50%); } 
+        }
+        @keyframes float-logo { 
+            0%, 100% { transform: translateY(0) rotate(0deg); } 
+            50% { transform: translateY(-15px) rotate(10deg); } 
+        }
+        
         @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -6030,9 +6072,33 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
             <div class="stat-card" style="animation-delay: 0.3s;"><span class="stat-icon">⚡</span><span class="stat-value">24/7</span><span class="stat-label">Données Live</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad3)" stroke-width="2" points="0,25 10,20 20,30 30,15 40,25 50,10 60,20 70,15 80,25 90,10 100,20"/><defs><linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" /><stop offset="100%" style="stop-color:#667eea;stop-opacity:1" /></linearGradient></defs></svg></div></div>
             <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
-        <div class="section-divider"></div>
+        
+        <!-- 🪙 CRYPTO TICKER - Logos animés -->
+        <div class="crypto-ticker-container">
+            <div class="crypto-ticker">
+                <div class="crypto-logo">₿</div>
+                <div class="crypto-logo">Ξ</div>
+                <div class="crypto-logo">⊕</div>
+                <div class="crypto-logo">◈</div>
+                <div class="crypto-logo">₳</div>
+                <div class="crypto-logo">₮</div>
+                <div class="crypto-logo">◎</div>
+                <div class="crypto-logo">Ð</div>
+                <div class="crypto-logo">●</div>
+                <!-- Duplicate pour effet infini -->
+                <div class="crypto-logo">₿</div>
+                <div class="crypto-logo">Ξ</div>
+                <div class="crypto-logo">⊕</div>
+                <div class="crypto-logo">◈</div>
+                <div class="crypto-logo">₳</div>
+                <div class="crypto-logo">₮</div>
+                <div class="crypto-logo">◎</div>
+                <div class="crypto-logo">Ð</div>
+                <div class="crypto-logo">●</div>
+            </div>
+        </div>
+
 <!-- 🚀 LIVE MARKET PULSE - SECTION RÉVOLUTIONNAIRE -->
-<div class="section-divider"></div>
 
 <h2 class="page-section-title">⚡ LIVE MARKET PULSE</h2>
 <p class="market-subtitle">Données en temps réel • Mise à jour toutes les 30 secondes</p>
@@ -6592,6 +6658,48 @@ async def home():
         .section-divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), rgba(118, 75, 162, 0.5), rgba(240, 147, 251, 0.5), transparent); margin: 80px 0; position: relative; }
         .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
         @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+        
+        /* 🪙 CRYPTO TICKER */
+        .crypto-ticker-container { 
+            width: 100%; 
+            overflow: hidden; 
+            background: rgba(255, 255, 255, 0.02); 
+            border-top: 2px solid rgba(102, 126, 234, 0.3);
+            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+            padding: 30px 0; 
+            margin: 80px 0; 
+            position: relative; 
+        }
+        .crypto-ticker { 
+            display: flex; 
+            animation: scroll 20s linear infinite; 
+            width: fit-content; 
+        }
+        .crypto-logo { 
+            font-size: 3em; 
+            margin: 0 60px; 
+            color: #667eea; 
+            filter: drop-shadow(0 0 15px rgba(102, 126, 234, 0.6)); 
+            animation: float-logo 3s ease-in-out infinite; 
+            flex-shrink: 0; 
+        }
+        .crypto-logo:nth-child(2) { animation-delay: 0.2s; color: #764ba2; }
+        .crypto-logo:nth-child(3) { animation-delay: 0.4s; color: #f093fb; }
+        .crypto-logo:nth-child(4) { animation-delay: 0.6s; color: #10b981; }
+        .crypto-logo:nth-child(5) { animation-delay: 0.8s; color: #3b82f6; }
+        .crypto-logo:nth-child(6) { animation-delay: 1s; color: #f59e0b; }
+        .crypto-logo:nth-child(7) { animation-delay: 1.2s; color: #8b5cf6; }
+        .crypto-logo:nth-child(8) { animation-delay: 1.4s; color: #ec4899; }
+        .crypto-logo:nth-child(9) { animation-delay: 1.6s; color: #06b6d4; }
+        @keyframes scroll { 
+            0% { transform: translateX(0); } 
+            100% { transform: translateX(-50%); } 
+        }
+        @keyframes float-logo { 
+            0%, 100% { transform: translateY(0) rotate(0deg); } 
+            50% { transform: translateY(-15px) rotate(10deg); } 
+        }
+        
         @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
@@ -6612,9 +6720,33 @@ async def home():
             <div class="stat-card" style="animation-delay: 0.3s;"><span class="stat-icon">⚡</span><span class="stat-value">24/7</span><span class="stat-label">Données Live</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad3)" stroke-width="2" points="0,25 10,20 20,30 30,15 40,25 50,10 60,20 70,15 80,25 90,10 100,20"/><defs><linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" /><stop offset="100%" style="stop-color:#667eea;stop-opacity:1" /></linearGradient></defs></svg></div></div>
             <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
-        <div class="section-divider"></div>
+        
+        <!-- 🪙 CRYPTO TICKER - Logos animés -->
+        <div class="crypto-ticker-container">
+            <div class="crypto-ticker">
+                <div class="crypto-logo">₿</div>
+                <div class="crypto-logo">Ξ</div>
+                <div class="crypto-logo">⊕</div>
+                <div class="crypto-logo">◈</div>
+                <div class="crypto-logo">₳</div>
+                <div class="crypto-logo">₮</div>
+                <div class="crypto-logo">◎</div>
+                <div class="crypto-logo">Ð</div>
+                <div class="crypto-logo">●</div>
+                <!-- Duplicate pour effet infini -->
+                <div class="crypto-logo">₿</div>
+                <div class="crypto-logo">Ξ</div>
+                <div class="crypto-logo">⊕</div>
+                <div class="crypto-logo">◈</div>
+                <div class="crypto-logo">₳</div>
+                <div class="crypto-logo">₮</div>
+                <div class="crypto-logo">◎</div>
+                <div class="crypto-logo">Ð</div>
+                <div class="crypto-logo">●</div>
+            </div>
+        </div>
+
 <!-- 🚀 LIVE MARKET PULSE - SECTION RÉVOLUTIONNAIRE -->
-<div class="section-divider"></div>
 
 <h2 class="page-section-title">⚡ LIVE MARKET PULSE</h2>
 <p class="market-subtitle">Données en temps réel • Mise à jour toutes les 30 secondes</p>

@@ -2364,6 +2364,7 @@ SIDEBAR = """<style>
 .menu-item:hover{background:rgba(6,182,212,0.15);border-left-color:#06b6d4;color:#fff;padding-left:25px}
 .menu-item .badge{background:rgba(6,182,212,0.2);color:#06b6d4;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:auto;font-weight:600}
 .menu-item.ai-feature{background:linear-gradient(90deg,rgba(6,182,212,0.15) 0%,transparent 100%);border-left:3px solid #06b6d4;font-weight:600}
+.menu-item.v5-feature{background:linear-gradient(90deg,rgba(139,92,246,0.2) 0%,transparent 100%);border-left:3px solid #8b5cf6;font-weight:600}
 .menu-item.premium{background:linear-gradient(90deg,rgba(139,92,246,0.2) 0%,transparent 100%);border-left:3px solid #8b5cf6;font-weight:600}
 .menu-item.admin{background:linear-gradient(90deg,rgba(245,158,11,0.2) 0%,transparent 100%);border-left:3px solid #f59e0b;font-weight:600}
 .menu-item.account{background:linear-gradient(90deg,rgba(16,185,129,0.2) 0%,transparent 100%);border-left:3px solid #10b981;font-weight:600}
@@ -2388,15 +2389,15 @@ body.sidebar-open{margin-left:280px}
     <!-- SIDEBAR TOGGLE MOBILE -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
     
-    <!-- SIDEBAR COMPLÈTE -->
+    <!-- SIDEBAR COMPLÈTE RÉORGANISÉE -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-title">🚀 CRYPTO IA</div>
         </div>
         
-        <!-- 📊 TABLEAU DE BORD -->
+        <!-- 📊 DASHBOARD & TRADING (8) -->
         <div class="menu-section">
-            <div class="section-title">📊 TABLEAU DE BORD</div>
+            <div class="section-title">📊 DASHBOARD & TRADING</div>
             <a href="/dashboard" class="menu-item">
                 <span class="icon">🏠</span>
                 <span class="label">Dashboard Principal</span>
@@ -2405,21 +2406,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">📈</span>
                 <span class="label">Stats Dashboard</span>
             </a>
-        </div>
-        
-        <!-- 🎓 ACADEMY -->
-        <div class="menu-section">
-            <div class="section-title">🎓 ACADEMY & FORMATION</div>
-            <a href="/academy" class="menu-item ai-feature">
-                <span class="icon">🎓</span>
-                <span class="label">Trading Academy Pro</span>
-                <span class="badge">22 modules</span>
-            </a>
-        </div>
-        
-        <!-- 💰 TRADING & STRATÉGIES -->
-        <div class="menu-section">
-            <div class="section-title">💰 TRADING & STRATÉGIES</div>
             <a href="/trades" class="menu-item">
                 <span class="icon">📊</span>
                 <span class="label">Mes Trades</span>
@@ -2446,16 +2432,16 @@ body.sidebar-open{margin-left:280px}
             </a>
         </div>
         
-        <!-- 🤖 FEATURES IA -->
+        <!-- 🤖 INTELLIGENCE ARTIFICIELLE (22) -->
         <div class="menu-section">
-            <div class="section-title">🤖 FEATURES IA</div>
+            <div class="section-title">🤖 INTELLIGENCE ARTIFICIELLE</div>
             <a href="/ai-opportunity-scanner" class="menu-item ai-feature">
                 <span class="icon">🔍</span>
-                <span class="label">Scanner Opportunités</span>
+                <span class="label">Opportunity Scanner</span>
             </a>
             <a href="/ai-market-regime" class="menu-item ai-feature">
                 <span class="icon">📊</span>
-                <span class="label">Régime Marché</span>
+                <span class="label">Market Regime</span>
             </a>
             <a href="/ai-whale-watcher" class="menu-item ai-feature">
                 <span class="icon">🐋</span>
@@ -2463,15 +2449,15 @@ body.sidebar-open{margin-left:280px}
             </a>
             <a href="/ai-assistant" class="menu-item ai-feature">
                 <span class="icon">🤖</span>
-                <span class="label">Assistant IA</span>
+                <span class="label">AI Assistant</span>
             </a>
             <a href="/ai-signals" class="menu-item ai-feature">
                 <span class="icon">📡</span>
-                <span class="label">Signaux IA</span>
+                <span class="label">AI Signals</span>
             </a>
             <a href="/ai-news" class="menu-item ai-feature">
                 <span class="icon">📰</span>
-                <span class="label">News IA</span>
+                <span class="label">AI News</span>
             </a>
             <a href="/ai-predictor" class="menu-item ai-feature">
                 <span class="icon">🔮</span>
@@ -2512,20 +2498,45 @@ body.sidebar-open{margin-left:280px}
             <a href="/ai-gem-hunter" class="menu-item ai-feature">
                 <span class="icon">💎</span>
                 <span class="label">Gem Hunter</span>
-            
+            </a>
             <a href="/ai-technical-analysis" class="menu-item ai-feature">
-    <span class="icon">🎯</span>
-    <span class="label">Technical Analysis Pro</span>
-</a>
+                <span class="icon">🎯</span>
+                <span class="label">Technical Analysis Pro</span>
+            </a>
+            <!-- 🆕 V5 FEATURES -->
+            <a href="/narrative-radar" class="menu-item v5-feature">
+                <span class="icon">🎯</span>
+                <span class="label">Narrative Radar</span>
+                <span class="badge">V5</span>
+            </a>
+            <a href="/ai-crypto-coach" class="menu-item v5-feature">
+                <span class="icon">🤖</span>
+                <span class="label">AI Crypto Coach</span>
+                <span class="badge">V5</span>
+            </a>
+            <a href="/ai-swarm-agents" class="menu-item v5-feature">
+                <span class="icon">🤖</span>
+                <span class="label">AI Swarm Agents</span>
+                <span class="badge">V5</span>
+            </a>
+            <a href="/altseason-copilot-pro" class="menu-item v5-feature">
+                <span class="icon">📈</span>
+                <span class="label">Altseason Copilot Pro</span>
+                <span class="badge">V5</span>
+            </a>
+            <a href="/rug-scam-shield" class="menu-item v5-feature">
+                <span class="icon">🛡️</span>
+                <span class="label">Rug & Scam Shield</span>
+                <span class="badge">V5</span>
             </a>
         </div>
         
-        <!-- 📈 ANALYSE DE MARCHÉ -->
+        <!-- 📈 ANALYSE MARCHÉ (8) -->
         <div class="menu-section">
-            <div class="section-title">📈 ANALYSE DE MARCHÉ</div>
+            <div class="section-title">📈 ANALYSE MARCHÉ</div>
             <a href="/fear-greed" class="menu-item">
                 <span class="icon">😨</span>
-                <span class="label">Fear & Greed</span>
+                <span class="label">Fear & Greed Index</span>
             </a>
             <a href="/fear-greed-chart" class="menu-item">
                 <span class="icon">📊</span>
@@ -2533,90 +2544,67 @@ body.sidebar-open{margin-left:280px}
             </a>
             <a href="/dominance" class="menu-item">
                 <span class="icon">👑</span>
-                <span class="label">BTC Dominance</span>
+                <span class="label">Bitcoin Dominance</span>
             </a>
             <a href="/altcoin-season" class="menu-item">
-                <span class="icon">🎯</span>
+                <span class="icon">🌊</span>
                 <span class="label">Altcoin Season</span>
             </a>
             <a href="/heatmap" class="menu-item">
                 <span class="icon">🔥</span>
-                <span class="label">Heatmap</span>
+                <span class="label">Market Heatmap</span>
             </a>
             <a href="/bullrun-phase" class="menu-item">
-                <span class="icon">🐂</span>
+                <span class="icon">🚀</span>
                 <span class="label">Bull Run Phase</span>
             </a>
             <a href="/graphiques" class="menu-item">
-                <span class="icon">📉</span>
+                <span class="icon">📈</span>
                 <span class="label">Graphiques Avancés</span>
             </a>
             <a href="/onchain-metrics" class="menu-item">
                 <span class="icon">⛓️</span>
-                <span class="label">Métriques On-Chain</span>
+                <span class="label">On-Chain Metrics</span>
             </a>
         </div>
         
-        <!-- 🆕 NOUVELLES FEATURES -->
+        <!-- 💼 PORTFOLIO & DEFI (3) -->
         <div class="menu-section">
-            <div class="section-title">🆕 NOUVELLES FEATURES</div>
-            <a href="/portfolio-tracker" class="menu-item ai-feature">
+            <div class="section-title">💼 PORTFOLIO & DEFI</div>
+            <a href="/portfolio-tracker" class="menu-item">
                 <span class="icon">💼</span>
                 <span class="label">Portfolio Tracker</span>
             </a>
-            <a href="/defi-yield" class="menu-item ai-feature">
-                <span class="icon">🏦</span>
+            <a href="/defi-yield" class="menu-item">
+                <span class="icon">🌾</span>
                 <span class="label">DeFi Yield</span>
             </a>
-            
-            <a href="/crypto-pepites" class="menu-item ai-feature">
+            <a href="/crypto-pepites" class="menu-item">
                 <span class="icon">💎</span>
                 <span class="label">Pépites Crypto</span>
             </a>
-            
-            <!-- 🆕🆕🆕 LES 5 NOUVELLES PAGES 🆕🆕🆕 -->
-            <a href="/narrative-radar" class="menu-item ai-feature">
-                <span class="icon">🎯</span>
-                <span class="label">Narrative Radar</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/ai-crypto-coach" class="menu-item ai-feature">
-                <span class="icon">🤖</span>
-                <span class="label">AI Crypto Coach</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/ai-swarm-agents" class="menu-item ai-feature">
-                <span class="icon">🤖</span>
-                <span class="label">AI Swarm Agents</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/altseason-copilot-pro" class="menu-item ai-feature">
-                <span class="icon">📈</span>
-                <span class="label">Altseason Copilot Pro</span>
-                <span class="badge">NEW</span>
-            </a>
-            <a href="/rug-scam-shield" class="menu-item ai-feature">
-                <span class="icon">🛡️</span>
-                <span class="label">Rug & Scam Shield</span>
-                <span class="badge">NEW</span>
-            </a>
         </div>
         
-        <!-- 🎓 FORMATION -->
+        <!-- 🎓 FORMATION (3) -->
         <div class="menu-section">
             <div class="section-title">🎓 FORMATION</div>
-            <a href="/crypto-academy" class="menu-item academy-feature">
+            <a href="/academy" class="menu-item">
+                <span class="icon">🎓</span>
+                <span class="label">Trading Academy</span>
+                <span class="badge">22 modules</span>
+            </a>
+            <a href="/crypto-academy" class="menu-item">
                 <span class="icon">🎓</span>
                 <span class="label">Crypto Academy</span>
-                <span class="badge" style="background: linear-gradient(135deg, #6366f1, #a855f7);">54 LEÇONS</span>
+                <span class="badge">54 leçons</span>
             </a>
-            <a href="/academy-progress" class="menu-item ai-feature">
+            <a href="/academy-progress" class="menu-item">
                 <span class="icon">📊</span>
                 <span class="label">Ma Progression</span>
             </a>
         </div>
         
-        <!-- 🛠️ OUTILS -->
+        <!-- 🛠️ OUTILS (4) -->
         <div class="menu-section">
             <div class="section-title">🛠️ OUTILS</div>
             <a href="/calculatrice" class="menu-item">
@@ -2633,13 +2621,13 @@ body.sidebar-open{margin-left:280px}
             </a>
             <a href="/calendrier" class="menu-item">
                 <span class="icon">📅</span>
-                <span class="label">Calendrier Éco</span>
+                <span class="label">Calendrier Économique</span>
             </a>
         </div>
         
-        <!-- 📰 NOUVELLES & INFO -->
+        <!-- 📰 CONTENU (2) -->
         <div class="menu-section">
-            <div class="section-title">📰 NOUVELLES & INFO</div>
+            <div class="section-title">📰 CONTENU</div>
             <a href="/nouvelles" class="menu-item">
                 <span class="icon">📰</span>
                 <span class="label">Actualités Crypto</span>
@@ -2650,20 +2638,20 @@ body.sidebar-open{margin-left:280px}
             </a>
         </div>
         
-        <!-- 👤 MON COMPTE -->
+        <!-- 👤 COMPTE (3) -->
         <div class="menu-section">
-            <div class="section-title">👤 MON COMPTE</div>
+            <div class="section-title">👤 COMPTE</div>
+            <a href="/mon-compte" class="menu-item account">
+                <span class="icon">👤</span>
+                <span class="label">Mon Compte</span>
+            </a>
             <a href="/pricing-complete" class="menu-item premium">
                 <span class="icon">💎</span>
                 <span class="label">Abonnements</span>
             </a>
             <a href="/admin-dashboard" class="menu-item admin">
                 <span class="icon">🔧</span>
-                <span class="label">Admin</span>
-            </a>
-            <a href="/mon-compte" class="menu-item account">
-                <span class="icon">👤</span>
-                <span class="label">Mon Compte</span>
+                <span class="label">Admin Dashboard</span>
             </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
@@ -2671,6 +2659,13 @@ body.sidebar-open{margin-left:280px}
             </a>
         </div>
     </nav>
+    
+    <script>
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('active');
+        document.body.classList.toggle('sidebar-open');
+    }
+    </script>
 """
 # ==================================
 

@@ -34716,6 +34716,21 @@ async def ai_crypto_coach_page(request: Request):
         to { opacity: 1; transform: translateY(0); }
     }
     
+    @keyframes loadingDots {
+        0%, 20% { opacity: 0.2; }
+        50% { opacity: 1; }
+        100% { opacity: 0.2; }
+    }
+    
+    .loading-dots span {
+        animation: loadingDots 1.4s infinite;
+        display: inline-block;
+    }
+    
+    .loading-dots span:nth-child(1) { animation-delay: 0s; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    
     .message.ai {
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
         border-left: 4px solid #6366f1;
@@ -35035,31 +35050,63 @@ function sendMessage() {
     addUserMessage(message);
     input.value = '';
     
-    // Simuler réponse AI
-    setTimeout(() => {
-        const responses = {
-            "c'est quoi bitcoin": "Bitcoin est la première cryptomonnaie créée en 2009 par Satoshi Nakamoto. C'est une monnaie numérique décentralisée qui fonctionne sans autorité centrale. 💰",
-            "comment acheter": "Pour acheter ta première crypto : 1) Crée un compte sur un exchange (Binance, Coinbase), 2) Vérifie ton identité, 3) Dépose des fonds, 4) Achète ta crypto ! 🚀",
-            "wallet": "Un wallet (portefeuille) est un outil pour stocker tes cryptos. Il existe des hot wallets (en ligne) et des cold wallets (hors ligne, plus sécurisés). 🔐",
-            "graphique": "Pour lire un graphique : Les bougies vertes = hausse, rouges = baisse. Observe les niveaux de support (plancher) et résistance (plafond). 📊",
-            "trading": "Le trading crypto consiste à acheter et vendre des cryptomonnaies pour faire du profit. Il existe plusieurs stratégies : day trading, swing trading, scalping. ⚡"
-        };
+    // Ajouter un indicateur de chargement
+    addLoadingMessage();
+    
+    // Appeler l'API Claude
+    fetch('/api/ai-coach/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message: message })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Retirer l'indicateur de chargement
+        removeLoadingMessage();
         
-        const lowerMessage = message.toLowerCase();
-        let aiMessage = "Je suis là pour t'aider ! Pose-moi des questions plus spécifiques sur le trading crypto. 💡";
-        
-        for (const [key, value] of Object.entries(responses)) {
-            if (lowerMessage.includes(key)) {
-                aiMessage = value;
-                break;
-            }
+        if (data.success) {
+            addAIMessage(data.message);
+        } else {
+            addAIMessage("Désolé, je rencontre un problème technique. Réessaye ! 🔧");
         }
-        
-        addAIMessage(aiMessage);
         
         questionCount++;
         document.getElementById('questionsAsked').textContent = questionCount;
-    }, 1000);
+    })
+    .catch(error => {
+        console.error('Erreur:', error);
+        removeLoadingMessage();
+        addAIMessage("Une erreur est survenue. Vérifie ta connexion et réessaye ! 🔄");
+    });
+}
+
+function addLoadingMessage() {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ai loading-message';
+    messageDiv.id = 'loadingMessage';
+    messageDiv.innerHTML = `
+        <div class="message-header">
+            <span class="message-icon">🤖</span>
+            <span>AI Coach</span>
+        </div>
+        <div class="message-content">
+            <span style="opacity: 0.6;">Claude réfléchit...</span>
+            <span class="loading-dots">
+                <span>.</span><span>.</span><span>.</span>
+            </span>
+        </div>
+    `;
+    document.getElementById('chatMessages').appendChild(messageDiv);
+    scrollToBottom();
+}
+
+function removeLoadingMessage() {
+    const loadingMsg = document.getElementById('loadingMessage');
+    if (loadingMsg) {
+        loadingMsg.remove();
+    }
 }
 
 function addUserMessage(message) {
@@ -37095,80 +37142,68 @@ async def academy_progress_page(request: Request):
     return HTMLResponse(content=html)
 
 
-@app.get("/coach", response_class=HTMLResponse)
-async def academy_coach_page(request: Request):
-    """🤖 Coach AI avec SIDEBAR"""
-    session_token = request.cookies.get("session_token")
-    user_data = get_user_from_token(session_token)
-    username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
-    
-    if not username:
-        return RedirectResponse(url="/login?redirect=/coach")
-    
-    html = f"""<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coach AI - Crypto Academy</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; }}
-        .container {{ margin-left: 280px; padding: 40px; max-width: 1000px; }}
-        .header {{ background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 20px; 
-                   padding: 40px; text-align: center; color: white; margin-bottom: 30px; 
-                   box-shadow: 0 10px 40px rgba(0,0,0,0.3); }}
-        .content {{ background: rgba(30, 41, 59, 0.8); border-radius: 16px; padding: 30px; 
-                    min-height: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }}
-        .grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 30px; }}
-        .feature {{ background: rgba(15, 23, 42, 0.8); border-radius: 12px; padding: 25px; 
-                    border: 2px solid rgba(100, 116, 139, 0.3); transition: all 0.3s ease; }}
-        .feature:hover {{ border-color: #667eea; transform: translateY(-5px); }}
-        h3 {{ color: #60a5fa; margin-bottom: 10px; font-size: 1.2em; }}
-    </style>
-</head>
-<body>
-    {SIDEBAR}
-    <div class="container">
-        <div class="header">
-            <h1 style="font-size: 2.5em;">🤖 Claude AI Coach</h1>
-            <p style="font-size: 1.2em; margin-top: 15px;">Ton assistant crypto personnel</p>
-        </div>
-        <div class="content">
-            <h2 style="color: #60a5fa; margin-bottom: 20px; font-size: 1.8em;">
-                💬 Je peux t'aider à:
-            </h2>
-            <div class="grid">
-                <div class="feature">
-                    <h3>📚 Expliquer les Concepts</h3>
-                    <p>Blockchain, Bitcoin, DeFi, NFTs, Smart Contracts</p>
-                </div>
-                <div class="feature">
-                    <h3>📈 Analyser le Marché</h3>
-                    <p>Tendances et opportunités du marché crypto</p>
-                </div>
-                <div class="feature">
-                    <h3>💡 Donner des Conseils</h3>
-                    <p>Stratégies de trading et gestion de risque</p>
-                </div>
-                <div class="feature">
-                    <h3>🎯 Suivre ta Progression</h3>
-                    <p>Recommandations personnalisées d'apprentissage</p>
-                </div>
-            </div>
-            <div style="margin-top: 40px; text-align: center; padding: 30px; 
-                        background: rgba(100, 116, 139, 0.2); border-radius: 12px;">
-                <p style="font-size: 1.1em; color: #94a3b8;">
-                    🚀 Interface de chat interactif bientôt disponible
-                </p>
-            </div>
-        </div>
-    </div>
-</body>
-</html>"""
-    
-    return HTMLResponse(content=html)
+@app.post("/api/ai-coach/chat")
+async def ai_coach_chat(request: Request):
+    """🤖 API pour chat avec Claude AI"""
+    try:
+        # Récupérer le message
+        body = await request.json()
+        user_message = body.get("message", "")
+        
+        if not user_message:
+            return JSONResponse({"error": "Message vide"}, status_code=400)
+        
+        # Appeler Claude API
+        import httpx
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "Content-Type": "application/json",
+                    "anthropic-version": "2023-06-01"
+                },
+                json={
+                    "model": "claude-sonnet-4-20250514",
+                    "max_tokens": 1000,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": f"""Tu es un coach crypto expert et pédagogue. 
+Réponds à cette question de manière claire, concise et encourageante.
+Utilise des emojis pour rendre la réponse plus engageante.
+Limite ta réponse à 3-4 phrases maximum.
+
+Question: {user_message}"""
+                        }
+                    ]
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Extraire le texte de la réponse
+                ai_response = ""
+                for block in data.get("content", []):
+                    if block.get("type") == "text":
+                        ai_response += block.get("text", "")
+                
+                return JSONResponse({
+                    "success": True,
+                    "message": ai_response if ai_response else "Désolé, je n'ai pas pu générer une réponse. 🤔"
+                })
+            else:
+                return JSONResponse({
+                    "success": False,
+                    "message": "Désolé, je rencontre un problème technique. Réessaye dans un instant ! 🔧"
+                })
+                
+    except Exception as e:
+        print(f"❌ Erreur AI Coach: {e}")
+        return JSONResponse({
+            "success": False,
+            "message": "Une erreur est survenue. Réessaye ! 🔄"
+        })
 
 
 @app.post("/api/academy/complete-lesson")

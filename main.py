@@ -1083,7 +1083,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 
 # Chemin de la base de données
-DB_PATH = "/tmp/academy.db"
+DB_PATH = "./academy.db"
 
 # ============================================================================
 # INITIALISATION DE LA BASE DE DONNÉES
@@ -1091,6 +1091,16 @@ DB_PATH = "/tmp/academy.db"
 
 def init_academy_db():
     """Initialise toutes les tables Academy"""
+    # Créer le dossier parent si nécessaire
+    import os
+    db_dir = os.path.dirname(DB_PATH)
+    if db_dir and not os.path.exists(db_dir):
+        try:
+            os.makedirs(db_dir, exist_ok=True)
+            print(f"✅ Dossier créé: {db_dir}")
+        except Exception as e:
+            print(f"⚠️ Impossible de créer {db_dir}: {e}")
+    
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     

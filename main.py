@@ -1562,6 +1562,430 @@ LESSONS_DATA = {
             {"q": "Une grosse market cap signifie...", "options": ["Plus de stabilité", "Toujours mauvais", "Arnaque certaine"], "correct": 0}
         ]
     },
+    "bases_13": {
+        "id": "bases_13",
+        "title": "Les Stablecoins",
+        "parcours": "bases",
+        "content": "Un stablecoin est une crypto dont le prix est stabilisé (généralement à 1$). USDT, USDC, DAI sont les plus populaires. C'est super utile pour garder de la valeur sans volatilité, pour faire des transactions rapides, ou pour entrer/sortir du marché crypto rapidement. Certains sont garantis par des dollars réels (USDC), d'autres par des algorithmes (DAI). Attention: même les stablecoins ont des risques (voir le crash de UST en 2022).",
+        "quiz": [
+            {"q": "Un stablecoin vise à...", "options": ["Garder un prix stable", "Monter rapidement", "Remplacer Bitcoin"], "correct": 0},
+            {"q": "USDC est garanti par...", "options": ["Des dollars réels", "Des algorithmes", "Rien du tout"], "correct": 0}
+        ]
+    },
+    "bases_14": {
+        "id": "bases_14",
+        "title": "Les Forks (Divisions)",
+        "parcours": "bases",
+        "content": "Un fork, c'est quand une blockchain se divise en deux. Il y a les soft forks (mise à jour compatible) et les hard forks (division permanente créant une nouvelle crypto). Exemples célèbres: Bitcoin Cash (fork de Bitcoin en 2017), Ethereum Classic (fork d'Ethereum en 2016). Parfois c'est voulu (désaccord dans la communauté), parfois c'est un bug. Quand il y a fork, tu reçois souvent des tokens gratuits sur la nouvelle chaîne!",
+        "quiz": [
+            {"q": "Un hard fork crée...", "options": ["Une nouvelle cryptomonnaie", "Un bug", "Un wallet"], "correct": 0},
+            {"q": "Bitcoin Cash est...", "options": ["Un fork de Bitcoin", "Un clone de Bitcoin", "Un scam"], "correct": 0}
+        ]
+    },
+    "bases_15": {
+        "id": "bases_15",
+        "title": "Le KYC (Know Your Customer)",
+        "parcours": "bases",
+        "content": "KYC = vérification d'identité. La plupart des exchanges centralisés (Binance, Coinbase) exigent le KYC pour respecter les lois anti-blanchiment. Tu dois fournir: pièce d'identité, preuve de domicile, parfois un selfie. Avantages: plus de limites de retrait, plus de sécurité. Inconvénients: moins d'anonymat, tes données sont stockées. Les DEX (exchanges décentralisés) n'ont généralement pas de KYC.",
+        "quiz": [
+            {"q": "KYC signifie...", "options": ["Know Your Customer", "Keep Your Crypto", "Kill Your Cash"], "correct": 0},
+            {"q": "Le KYC demande...", "options": ["Une pièce d'identité", "Ta clé privée", "Tes cryptos"], "correct": 0}
+        ]
+    },
+    "bases_16": {
+        "id": "bases_16",
+        "title": "Le Halving (Réduction de Récompense)",
+        "parcours": "bases",
+        "content": "Le halving Bitcoin se produit tous les 4 ans environ (tous les 210,000 blocs). La récompense des mineurs est divisée par 2. Début: 50 BTC par bloc, puis 25, 12.5, 6.25... Prochainhalving en 2024: 3.125 BTC. Pourquoi c'est important? Moins de nouveaux Bitcoin créés = rareté augmente = prix tend à monter (historiquement). Les halvings de 2012, 2016 et 2020 ont tous été suivis de bull runs massifs!",
+        "quiz": [
+            {"q": "Le halving Bitcoin arrive tous les...", "options": ["4 ans", "1 an", "10 ans"], "correct": 0},
+            {"q": "Le halving réduit...", "options": ["La récompense des mineurs", "Le prix", "Les frais"], "correct": 0}
+        ]
+    },
+    "bases_17": {
+        "id": "bases_17",
+        "title": "Les Layer 2 (Solutions de Scalabilité)",
+        "parcours": "bases",
+        "content": "Les Layer 2 sont des solutions construites au-dessus d'une blockchain (Layer 1) pour la rendre plus rapide et moins chère. Exemples: Lightning Network pour Bitcoin, Polygon et Arbitrum pour Ethereum. Au lieu de traiter chaque transaction sur la chaîne principale (lent et cher), les Layer 2 regroupent des milliers de transactions et ne mettent que le résultat final sur la chaîne principale. Résultat: transactions quasi-instantanées et frais de quelques centimes!",
+        "quiz": [
+            {"q": "Un Layer 2 sert à...", "options": ["Améliorer la vitesse et réduire les coûts", "Créer de nouvelles cryptos", "Miner plus vite"], "correct": 0},
+            {"q": "Polygon est un Layer 2 de...", "options": ["Ethereum", "Bitcoin", "Solana"], "correct": 0}
+        ]
+    },
+    "bases_18": {
+        "id": "bases_18",
+        "title": "Les DAO (Organisations Autonomes)",
+        "parcours": "bases",
+        "content": "Une DAO (Decentralized Autonomous Organization) est une organisation sans patron ni hiérarchie, gouvernée par des smart contracts. Les décisions sont prises par vote des membres détenant des tokens de gouvernance. Exemples: MakerDAO (gère le stablecoin DAI), Uniswap DAO (gère l'exchange). C'est révolutionnaire: imaginez une entreprise où chaque actionnaire vote directement sur toutes les décisions importantes, de façon transparente et automatique!",
+        "quiz": [
+            {"q": "Une DAO est gouvernée par...", "options": ["Ses membres via vote", "Un PDG", "Le gouvernement"], "correct": 0},
+            {"q": "Les décisions d'une DAO sont...", "options": ["Transparentes et automatiques", "Secrètes", "Lentes"], "correct": 0}
+        ]
+    },
+    
+    # PARCOURS 2: TRADING 101 (18 leçons)
+    "trading_1": {
+        "id": "trading_1",
+        "title": "Les Bases du Trading",
+        "parcours": "trading",
+        "content": "Le trading crypto, c'est acheter et vendre des cryptos pour faire du profit. Il y a plusieurs styles: day trading (plusieurs trades par jour), swing trading (garder quelques jours/semaines), holding (garder des mois/années). Règle d'or: ne jamais investir plus que ce que tu peux te permettre de perdre. Le marché crypto est 24/7, ultra-volatil (±20% par jour est normal), et émotionnellement intense. La plupart des débutants perdent de l'argent!",
+        "quiz": [
+            {"q": "Le day trading consiste à...", "options": ["Trader plusieurs fois par jour", "Garder longtemps", "Ne jamais vendre"], "correct": 0},
+            {"q": "Le marché crypto est ouvert...", "options": ["24/7", "9h-17h", "Weekend seulement"], "correct": 0}
+        ]
+    },
+    "trading_2": {
+        "id": "trading_2",
+        "title": "Support et Résistance",
+        "parcours": "trading",
+        "content": "Support = niveau de prix où la crypto a tendance à rebondir (les acheteurs interviennent). Résistance = niveau où elle a du mal à monter (les vendeurs interviennent). Imagine un ballon qui rebondit entre le sol (support) et le plafond (résistance). Quand le prix casse un support, ça devient souvent la nouvelle résistance, et vice-versa. Identifier ces niveaux est crucial pour savoir quand acheter et vendre!",
+        "quiz": [
+            {"q": "Un support est...", "options": ["Un niveau où le prix rebondit", "Un type de crypto", "Un exchange"], "correct": 0},
+            {"q": "Quand le prix casse un support...", "options": ["Ça devient souvent une résistance", "Rien ne change", "C'est toujours bon"], "correct": 0}
+        ]
+    },
+    "trading_3": {
+        "id": "trading_3",
+        "title": "Les Chandeliers Japonais",
+        "parcours": "trading",
+        "content": "Les chandeliers (candlesticks) montrent 4 prix: ouverture, fermeture, plus haut, plus bas. Vert/Blanc = prix a monté, Rouge/Noir = prix a baissé. Un long corps = forte tendance, un petit corps = indécision. Les mèches (shadows) montrent la volatilité. Certains patterns de chandeliers prédisent des retournements: doji (indécision), hammer (possible rebond), shooting star (possible baisse). C'est l'outil de base de l'analyse technique!",
+        "quiz": [
+            {"q": "Un chandelier vert signifie...", "options": ["Le prix a monté", "Le prix a baissé", "Pas de changement"], "correct": 0},
+            {"q": "Un doji indique...", "options": ["De l'indécision", "Une hausse certaine", "Une baisse certaine"], "correct": 0}
+        ]
+    },
+    "trading_4": {
+        "id": "trading_4",
+        "title": "Les Tendances (Trends)",
+        "parcours": "trading",
+        "content": "Il y a 3 types de tendances: haussière (uptrend - hauts et bas de plus en plus élevés), baissière (downtrend - hauts et bas de plus en plus bas), et latérale (range - prix stagne). Règle: 'The trend is your friend' - trade dans le sens de la tendance! Achète dans un uptrend, vends/shorte dans un downtrend, évite les ranges (ou trade les rebonds). Les tendances sur graphiques long-terme (daily, weekly) sont plus fiables que celles sur graphiques court-terme (15min, 1h).",
+        "quiz": [
+            {"q": "Un uptrend c'est...", "options": ["Des hauts et bas croissants", "Des hauts et bas décroissants", "Pas de mouvement"], "correct": 0},
+            {"q": "Quelle tendance est la plus fiable?", "options": ["Long-terme (daily/weekly)", "Court-terme (15min)", "Les deux pareils"], "correct": 0}
+        ]
+    },
+    "trading_5": {
+        "id": "trading_5",
+        "title": "Les Moyennes Mobiles (MA)",
+        "parcours": "trading",
+        "content": "Une moyenne mobile (MA) lisse les prix en calculant la moyenne sur X périodes. MA 50 = moyenne des 50 dernières bougies. Quand le prix est au-dessus de la MA, c'est haussier. En dessous, c'est baissier. Le croisement de 2 MA est puissant: quand la MA rapide (50) croise au-dessus de la MA lente (200), c'est un 'golden cross' (super haussier). L'inverse, c'est un 'death cross' (baissier). Les MA sont les indicateurs les plus utilisés!",
+        "quiz": [
+            {"q": "Une moyenne mobile (MA) sert à...", "options": ["Lisser les prix", "Prédire le futur exactement", "Calculer les frais"], "correct": 0},
+            {"q": "Un golden cross, c'est...", "options": ["MA rapide croise au-dessus de MA lente", "Le prix monte", "Un indicateur inutile"], "correct": 0}
+        ]
+    },
+    "trading_6": {
+        "id": "trading_6",
+        "title": "Le RSI (Relative Strength Index)",
+        "parcours": "trading",
+        "content": "Le RSI mesure la force d'une tendance sur une échelle de 0 à 100. RSI > 70 = suracheté (possible correction à venir), RSI < 30 = survendu (possible rebond). Mais attention: en forte tendance, le RSI peut rester en zone extrême longtemps! Astuce: cherche des divergences - si le prix monte mais le RSI baisse, c'est un signal de faiblesse. Le RSI fonctionne mieux en marché range qu'en forte tendance.",
+        "quiz": [
+            {"q": "RSI > 70 signifie...", "options": ["Suracheté, possible correction", "Acheter immédiatement", "Vendre tout"], "correct": 0},
+            {"q": "Le RSI va de...", "options": ["0 à 100", "0 à 10", "-100 à +100"], "correct": 0}
+        ]
+    },
+    "trading_7": {
+        "id": "trading_7",
+        "title": "Le MACD",
+        "parcours": "trading",
+        "content": "Le MACD (Moving Average Convergence Divergence) montre la relation entre 2 moyennes mobiles. Il a 3 éléments: la ligne MACD, la ligne signal, et l'histogramme. Quand la ligne MACD croise au-dessus de la signal = signal d'achat. En dessous = signal de vente. Plus l'histogramme est grand, plus le momentum est fort. Le MACD est excellent pour confirmer une tendance et repérer les retournements. Combine-le avec le RSI pour plus de précision!",
+        "quiz": [
+            {"q": "MACD croise au-dessus de signal =", "options": ["Signal d'achat", "Signal de vente", "Neutre"], "correct": 0},
+            {"q": "Le MACD mesure...", "options": ["Le momentum", "Le volume", "Les frais"], "correct": 0}
+        ]
+    },
+    "trading_8": {
+        "id": "trading_8",
+        "title": "Les Volumes",
+        "parcours": "trading",
+        "content": "Le volume montre combien de crypto est échangé. Volume élevé = mouvement fort et fiable. Volume faible = mouvement faible, peut s'inverser facilement. Règle: une cassure (breakout) avec gros volume est fiable, sans volume c'est souvent un fake. Si le prix monte mais le volume baisse, méfie-toi - pas de conviction des acheteurs. Volume + Prix qui montent ensemble = tendance saine. Le volume ne ment jamais, c'est de l'argent réel!",
+        "quiz": [
+            {"q": "Un gros volume signifie...", "options": ["Mouvement fort et fiable", "Mouvement faible", "Rien"], "correct": 0},
+            {"q": "Une cassure sans volume est...", "options": ["Souvent un fake", "Toujours bonne", "Super fiable"], "correct": 0}
+        ]
+    },
+    "trading_9": {
+        "id": "trading_9",
+        "title": "Take Profit et Stop Loss",
+        "parcours": "trading",
+        "content": "Take Profit (TP) = prix où tu prends tes profits automatiquement. Stop Loss (SL) = prix où tu coupes tes pertes automatiquement. TOUJOURS utiliser un SL! Ratio risque/rendement optimal: 1:2 ou 1:3 (si tu risques 100$, vise 200-300$ de profit). Exemple: tu achètes à 100$, SL à 95$ (-5%), TP à 110$ (+10%), ratio 1:2. Les traders pros gagnent moins de 50% du temps mais font plus de profit que de pertes grâce au bon ratio!",
+        "quiz": [
+            {"q": "Un Stop Loss sert à...", "options": ["Limiter les pertes", "Garantir les gains", "Acheter plus"], "correct": 0},
+            {"q": "Un bon ratio risque/rendement est...", "options": ["1:2 ou 1:3", "1:1", "3:1"], "correct": 0}
+        ]
+    },
+    "trading_10": {
+        "id": "trading_10",
+        "title": "Les Ordres (Market, Limit, Stop)",
+        "parcours": "trading",
+        "content": "Market Order = achète/vend immédiatement au prix actuel. Rapide mais peut être moins avantageux. Limit Order = achète/vend seulement à un prix spécifique que tu choisis. Mieux pour obtenir un bon prix mais pas garanti d'être exécuté. Stop Order = s'active quand le prix atteint un certain niveau, puis devient market order. Utilise-le pour tes Stop Loss. Pro tip: utilise toujours des limit orders pour éviter le slippage (différence entre prix attendu et prix réel)!",
+        "quiz": [
+            {"q": "Un market order...", "options": ["S'exécute immédiatement", "Attend un prix spécifique", "N'est jamais exécuté"], "correct": 0},
+            {"q": "Un limit order garantit...", "options": ["Le prix (si exécuté)", "L'exécution", "Les deux"], "correct": 0}
+        ]
+    },
+    "trading_11": {
+        "id": "trading_11",
+        "title": "Le Leverage (Effet de Levier)",
+        "parcours": "trading",
+        "content": "Le leverage amplifie tes gains ET tes pertes. Avec leverage 10x, si le prix monte de 5%, tu gagnes 50%. Mais s'il baisse de 5%, tu perds 50%! Avec 100x leverage, -1% = liquidation (tu perds tout). C'est extrêmement risqué! 90% des traders qui utilisent du leverage perdent leur argent. Si tu veux vraiment l'utiliser: commence avec 2-3x maximum, TOUJOURS un stop loss strict, et ne risque que 1-2% de ton capital par trade. Débutant? Évite complètement!",
+        "quiz": [
+            {"q": "Le leverage 10x amplifie...", "options": ["Les gains ET les pertes", "Seulement les gains", "Rien"], "correct": 0},
+            {"q": "Pour un débutant, le leverage c'est...", "options": ["Très risqué, à éviter", "Facile", "Recommandé"], "correct": 0}
+        ]
+    },
+    "trading_12": {
+        "id": "trading_12",
+        "title": "Les Patterns de Chandeliers",
+        "parcours": "trading",
+        "content": "Certains patterns de chandeliers prédisent des mouvements. Patterns haussiers: Hammer (rebond possible), Morning Star (3 bougies, fin de baisse), Bullish Engulfing (grosse bougie verte englobe la rouge). Patterns baissiers: Shooting Star (chute possible), Evening Star (fin de hausse), Bearish Engulfing. Ces patterns fonctionnent mieux près des supports/résistances. Mais attention: aucun pattern n'est fiable à 100%, combine toujours avec d'autres indicateurs!",
+        "quiz": [
+            {"q": "Un Hammer est...", "options": ["Un pattern haussier", "Un pattern baissier", "Neutre"], "correct": 0},
+            {"q": "Les patterns fonctionnent mieux...", "options": ["Près des supports/résistances", "N'importe où", "Jamais"], "correct": 0}
+        ]
+    },
+    "trading_13": {
+        "id": "trading_13",
+        "title": "Les Figures Chartistes",
+        "parcours": "trading",
+        "content": "Les figures chartistes sont des patterns de prix. Continuations: Triangles (prix se stabilise puis explose), Drapeaux (correction rapide dans une tendance). Retournements: Tête-Épaules (fin d'uptrend), Double Top/Bottom (2 pics au même niveau). Cup & Handle = très haussier. Ces figures donnent des objectifs de prix: la hauteur de la figure projetée depuis la cassure. Exemple: triangle de 100$ de hauteur, cassure à 500$, objectif = 600$. Elles marchent vraiment!",
+        "quiz": [
+            {"q": "Une figure Tête-Épaules indique...", "options": ["Un retournement baissier", "Une continuation", "Rien"], "correct": 0},
+            {"q": "L'objectif d'une figure se calcule...", "options": ["Hauteur projetée depuis cassure", "Au hasard", "Prix actuel × 2"], "correct": 0}
+        ]
+    },
+    "trading_14": {
+        "id": "trading_14",
+        "title": "Les Bandes de Bollinger",
+        "parcours": "trading",
+        "content": "Les Bandes de Bollinger montrent la volatilité. 3 lignes: moyenne mobile au centre, bandes supérieure/inférieure à ±2 écarts-types. Quand le prix touche la bande supérieure, c'est suracheté. Bande inférieure = survendu. Quand les bandes se resserrent (squeeze), une grosse explosion de prix arrive bientôt! Direction? Regarde la tendance globale. Les Bollinger Bands fonctionnent super bien en range, moins bien en forte tendance.",
+        "quiz": [
+            {"q": "Bandes de Bollinger resserrées signifient...", "options": ["Explosion de prix bientôt", "Rien ne va se passer", "Vendre immédiatement"], "correct": 0},
+            {"q": "Prix touche bande supérieure =", "options": ["Potentiellement suracheté", "Acheter plus", "Paniquer"], "correct": 0}
+        ]
+    },
+    "trading_15": {
+        "id": "trading_15",
+        "title": "La Psychologie du Trading",
+        "parcours": "trading",
+        "content": "Le trading est 80% mental! Émotions ennemies: FOMO (peur de rater une opportunité), FUD (peur/incertitude/doute), Revenge Trading (trader par vengeance après une perte). Règles d'or: suis ton plan, accepte les pertes (elles arrivent à tout le monde), ne vérifie pas les prix toutes les 5 minutes (stressant et contre-productif), garde un journal de trading. Les meilleurs traders ne sont pas les plus intelligents, ce sont les plus disciplinés!",
+        "quiz": [
+            {"q": "FOMO signifie...", "options": ["Fear Of Missing Out", "For More Money", "Forget Old Money"], "correct": 0},
+            {"q": "Le trading est surtout...", "options": ["Mental/Psychologique", "De la chance", "Des calculs"], "correct": 0}
+        ]
+    },
+    "trading_16": {
+        "id": "trading_16",
+        "title": "Le Money Management",
+        "parcours": "trading",
+        "content": "Règle des 1-2%: ne risque JAMAIS plus de 1-2% de ton capital par trade. Si tu as 1000$, risque max 10-20$ par trade. Ça te permet de survivre à 50+ trades perdants! Diversifie: ne mets pas tout sur une crypto. Réserve toujours du cash pour profiter des opportunités. Ne trade pas avec de l'argent dont tu as besoin (loyer, bouffe, etc.). Le money management est ce qui sépare les traders qui survivent de ceux qui explosent en 1 mois.",
+        "quiz": [
+            {"q": "La règle des 1-2% dit...", "options": ["Risque max 1-2% par trade", "Gagne 1-2% par trade", "Trade 1-2 fois par jour"], "correct": 0},
+            {"q": "Avec 1000$, risque max par trade:", "options": ["10-20$", "100$", "500$"], "correct": 0}
+        ]
+    },
+    "trading_17": {
+        "id": "trading_17",
+        "title": "L'Analyse On-Chain",
+        "parcours": "trading",
+        "content": "L'analyse on-chain regarde ce qui se passe sur la blockchain. Métriques importantes: MVRV (Market Value to Realized Value - cher ou pas?), Exchange Inflows/Outflows (les gens achètent ou vendent?), Whale Activity (que font les gros portefeuilles?), Hash Rate (sécurité du réseau). Sites utiles: Glassnode, CryptoQuant, IntoTheBlock. Exemple: si Bitcoin sort massivement des exchanges, c'est haussier (les gens gardent, pas de pression vendeuse).",
+        "quiz": [
+            {"q": "L'analyse on-chain regarde...", "options": ["Les données de la blockchain", "Les graphiques de prix", "Les news"], "correct": 0},
+            {"q": "Bitcoin sort des exchanges =", "options": ["Haussier (moins de vente)", "Baissier", "Neutre"], "correct": 0}
+        ]
+    },
+    "trading_18": {
+        "id": "trading_18",
+        "title": "Créer un Plan de Trading",
+        "parcours": "trading",
+        "content": "Un plan de trading écrit est essentiel! Il doit inclure: 1) Tes objectifs (combien veux-tu gagner par mois?), 2) Stratégie (quels indicateurs utilises-tu?), 3) Money management (combien risquer par trade?), 4) Critères d'entrée/sortie clairs, 5) Horaires de trading, 6) Journal pour noter chaque trade. Teste ton plan en paper trading (argent fictif) avant d'utiliser de l'argent réel. Puis suis-le religieusement. Pas de plan = jouer au casino. Avec un plan = trader pro.",
+        "quiz": [
+            {"q": "Un plan de trading doit inclure...", "options": ["Objectifs, stratégie, money management", "Juste ton capital", "Rien, improvise"], "correct": 0},
+            {"q": "Avant de trader en réel, teste...", "options": ["En paper trading (fictif)", "Directement avec argent réel", "Rien"], "correct": 0}
+        ]
+    },
+    
+    # PARCOURS 3: SÉCURITÉ CRYPTO (18 leçons)
+    "securite_1": {
+        "id": "securite_1",
+        "title": "Les Bases de la Sécurité",
+        "parcours": "securite",
+        "content": "En crypto, TU ES TA PROPRE BANQUE. Tes cryptos = tes clés privées. Perds tes clés = perds tes cryptos, POUR TOUJOURS. Pas de 'mot de passe oublié' qui marche. Règles d'or: 1) Note ta seed phrase (12-24 mots) sur papier, JAMAIS numériquement, 2) Ne partage JAMAIS tes clés privées, 3) Utilise un hardware wallet pour gros montants, 4) Vérifie toujours les adresses 2 fois. Chaque année, des milliards sont perdus par négligence!",
+        "quiz": [
+            {"q": "Ta seed phrase doit être...", "options": ["Sur papier uniquement", "Dans un fichier Word", "Sur Google Drive"], "correct": 0},
+            {"q": "Si tu perds tes clés privées...", "options": ["Tes cryptos sont perdues à jamais", "Tu peux les récupérer", "La banque t'aide"], "correct": 0}
+        ]
+    },
+    "securite_2": {
+        "id": "securite_2",
+        "title": "Les Hardware Wallets",
+        "parcours": "securite",
+        "content": "Un hardware wallet (Ledger, Trezor) est un mini-ordinateur sécurisé pour stocker tes clés. Avantages: clés JAMAIS exposées à internet (même si ton PC a un virus!), protection PIN, seed phrase backup. Ça coûte 50-200$ mais ça vaut LARGEMENT le coup pour +1000$ de crypto. Setup: achète TOUJOURS directement du fabricant (jamais eBay/Amazon d'occasion), initialise toi-même, note ta seed offline. C'est le standard or de la sécurité crypto.",
+        "quiz": [
+            {"q": "Un hardware wallet garde tes clés...", "options": ["Hors ligne, sécurisées", "Sur internet", "Dans le cloud"], "correct": 0},
+            {"q": "Où acheter un hardware wallet?", "options": ["Directement du fabricant", "eBay d'occasion", "N'importe où"], "correct": 0}
+        ]
+    },
+    "securite_3": {
+        "id": "securite_3",
+        "title": "Les Arnaques Phishing",
+        "parcours": "securite",
+        "content": "Le phishing = faux sites/emails qui imitent des vrais pour voler tes infos. Exemples: faux email 'Binance' avec lien vers binnance.com (2 n), faux pop-up MetaMask demandant ta seed phrase, DM Twitter promettant de doubler tes cryptos. Comment te protéger: vérifie TOUJOURS l'URL exacte, aucun exchange ne demande ta seed phrase, méfie-toi des offres trop belles (doubler tes cryptos = 100% arnaque). Bookmark tes sites crypto préférés!",
+        "quiz": [
+            {"q": "Un site phishing essaie de...", "options": ["Voler tes identifiants", "T'aider gratuitement", "Rien"], "correct": 0},
+            {"q": "Binance te demandera JAMAIS...", "options": ["Ta seed phrase", "Ton email", "Ton mot de passe"], "correct": 0}
+        ]
+    },
+    "securite_4": {
+        "id": "securite_4",
+        "title": "L'Authentification 2FA",
+        "parcours": "securite",
+        "content": "2FA (Two-Factor Authentication) = double sécurité pour tes comptes. Même si quelqu'un vole ton mot de passe, il ne peut pas se connecter sans le 2FA. Meilleure méthode: Google Authenticator ou Authy (app génère un code qui change toutes les 30 secondes). Évite les SMS (peuvent être interceptés). ACTIVE 2FA sur TOUS tes exchanges et wallets qui le supportent. Et sauvegarde tes codes de backup au cas où tu perds ton téléphone!",
+        "quiz": [
+            {"q": "2FA ajoute...", "options": ["Une couche de sécurité supplémentaire", "Rien", "Des frais"], "correct": 0},
+            {"q": "Meilleure méthode 2FA:", "options": ["App authenticator", "SMS", "Email"], "correct": 0}
+        ]
+    },
+    "securite_5": {
+        "id": "securite_5",
+        "title": "Les Rug Pulls et Scams",
+        "parcours": "securite",
+        "content": "Rug pull = les créateurs d'une crypto disparaissent avec l'argent. Signaux d'alerte: token créé il y a moins d'une semaine, équipe anonyme, promesses irréalistes (1000x gains!), liquidité non-lockée, gros portefeuilles (whales) qui peuvent tout vendre. Sites utiles: RugDoc, Token Sniffer pour vérifier. Règle: si c'est trop beau pour être vrai, c'est une arnaque. Fais TOUJOURS tes recherches (DYOR). Des milliers de nouveaux scams chaque mois!",
+        "quiz": [
+            {"q": "Un rug pull c'est...", "options": ["Les créateurs volent l'argent", "Une stratégie de trading", "Un type de wallet"], "correct": 0},
+            {"q": "Signal d'alerte: promesses de...", "options": ["Gains irréalistes (1000x)", "Gains raisonnables (10%)", "Rien"], "correct": 0}
+        ]
+    },
+    "securite_6": {
+        "id": "securite_6",
+        "title": "Les Smart Contracts Malveillants",
+        "parcours": "securite",
+        "content": "Avant d'interagir avec un smart contract (swap, staking, NFT), vérifie-le! Un contrat malveillant peut: voler tous tes tokens approuvés, vendre tes NFTs, drainer ton wallet. Comment vérifier: regarde sur Etherscan si le contrat est vérifié, check les audits (CertiK, PeckShield), lis les permissions demandées, teste avec un petit montant d'abord. Ne connecte JAMAIS ton wallet à un site louche. Sites utiles: revoke.cash pour voir/révoquer tes approbations.",
+        "quiz": [
+            {"q": "Un contrat malveillant peut...", "options": ["Voler tes tokens", "Rien du tout", "Juste lire"], "correct": 0},
+            {"q": "Avant d'utiliser un contrat, vérifie...", "options": ["S'il est audité et vérifié", "Rien", "Juste le prix"], "correct": 0}
+        ]
+    },
+    "securite_7": {
+        "id": "securite_7",
+        "title": "Les Exchanges: Custodial vs Non-Custodial",
+        "parcours": "securite",
+        "content": "Exchange custodial (Binance, Coinbase): ils gardent tes cryptos. Pratique mais risqué - si l'exchange est hacké ou fait faillite (voir FTX 2022), tu peux tout perdre! Exchange non-custodial (Uniswap, PancakeSwap): tu gardes le contrôle, mais responsabilité totale. Règle: 'Not your keys, not your coins'. Pour trader activement, OK d'avoir un peu sur exchange custodial. Pour du long-terme (holding), TOUJOURS dans ton propre wallet.",
+        "quiz": [
+            {"q": "Sur Binance, qui garde tes cryptos?", "options": ["Binance (custodial)", "Toi seul", "Le gouvernement"], "correct": 0},
+            {"q": "'Not your keys, not your coins' signifie...", "options": ["Si tu n'as pas les clés, pas tes cryptos", "Rien", "Achète plus de clés"], "correct": 0}
+        ]
+    },
+    "securite_8": {
+        "id": "securite_8",
+        "title": "Les Malwares et Keyloggers",
+        "parcours": "securite",
+        "content": "Malware = logiciel malveillant. Keylogger = enregistre tout ce que tu tapes (mots de passe!). Clipboard hijacker = change l'adresse que tu copies/colles. Protection: antivirus à jour, ne télécharge rien de sites louches, vérifie toujours l'adresse complète avant d'envoyer (pas juste les premiers/derniers caractères!), utilise un PC dédié pour crypto si gros montants, ne tape JAMAIS ta seed phrase sur un ordinateur. Le plus sûr: hardware wallet + PC propre.",
+        "quiz": [
+            {"q": "Un keylogger enregistre...", "options": ["Ce que tu tapes", "Tes fichiers", "Rien"], "correct": 0},
+            {"q": "Avant d'envoyer des cryptos, vérifie...", "options": ["L'adresse complète", "Juste les 4 premiers caractères", "Rien"], "correct": 0}
+        ]
+    },
+    "securite_9": {
+        "id": "securite_9",
+        "title": "Les Dust Attacks",
+        "parcours": "securite",
+        "content": "Dust attack = quelqu'un envoie une minuscule quantité de crypto (dust) dans ton wallet pour traquer tes transactions. Objectif: identifier qui tu es en analysant comment tu dépenses cette dust. Ce n'est pas directement dangereux mais compromet ta vie privée. Que faire: ne dépense pas la dust, utilise des wallets différents pour différents usages, considère des cryptos privacy (Monero) pour anonymat total. Certains wallets ont une fonction 'ignore dust' utile.",
+        "quiz": [
+            {"q": "Une dust attack sert à...", "options": ["Traquer ta vie privée", "Te donner de l'argent gratuit", "Rien"], "correct": 0},
+            {"q": "Si tu reçois de la dust, tu devrais...", "options": ["Ne pas la dépenser", "La dépenser immédiatement", "Paniquer"], "correct": 0}
+        ]
+    },
+    "securite_10": {
+        "id": "securite_10",
+        "title": "Les Attaques SIM Swap",
+        "parcours": "securite",
+        "content": "SIM swap: un attaquant convainc ton opérateur mobile de transférer ton numéro vers sa SIM. Il peut alors: recevoir tes SMS 2FA, réinitialiser tes mots de passe, vider tes comptes. Protection: n'utilise JAMAIS de 2FA par SMS pour crypto, utilise Google Authenticator, ajoute un PIN sur ton compte mobile, ne lie pas ton téléphone à tes comptes crypto importants. C'est une attaque courante qui a volé des millions!",
+        "quiz": [
+            {"q": "Dans un SIM swap, l'attaquant...", "options": ["Vole ton numéro de téléphone", "Vole ton PC", "Rien"], "correct": 0},
+            {"q": "Pour crypto, évite 2FA par...", "options": ["SMS", "Authenticator app", "Hardware key"], "correct": 0}
+        ]
+    },
+    "securite_11": {
+        "id": "securite_11",
+        "title": "Le Social Engineering",
+        "parcours": "securite",
+        "content": "Social engineering = manipuler psychologiquement quelqu'un pour obtenir ses infos. Exemples: faux support technique qui 'aide' (mais vole tes clés), fausse offre d'emploi qui demande ta seed phrase, arnaqueur se faisant passer pour un ami dans le besoin. Règle d'or: aucune personne légitime ne demandera JAMAIS tes clés/seed phrase. Support Binance, MetaMask, etc. ne te DM jamais en premier. Si quelque chose semble urgent/trop beau, c'est une arnaque!",
+        "quiz": [
+            {"q": "Le social engineering utilise...", "options": ["La manipulation psychologique", "Des virus", "Rien"], "correct": 0},
+            {"q": "Le vrai support crypto demandera...", "options": ["Jamais ta seed phrase", "Toujours ta seed phrase", "Parfois ta seed phrase"], "correct": 0}
+        ]
+    },
+    "securite_12": {
+        "id": "securite_12",
+        "title": "Les Multi-Signatures Wallets",
+        "parcours": "securite",
+        "content": "Un wallet multi-sig nécessite plusieurs signatures pour envoyer des fonds. Exemple: wallet 2-of-3 = besoin de 2 clés sur 3 possibles pour dépenser. Super pour: sécuriser de gros montants (1 clé volée ne suffit pas), entreprises/DAO (plusieurs personnes doivent approuver), prévenir erreurs (besoin de 2 confirmations). Gnosis Safe est populaire. C'est plus compliqué qu'un wallet normal mais drastiquement plus sécurisé. Pour +100k$, considère sérieusement le multi-sig!",
+        "quiz": [
+            {"q": "Un wallet 2-of-3 multi-sig nécessite...", "options": ["2 signatures sur 3", "3 signatures", "1 signature"], "correct": 0},
+            {"q": "Multi-sig est utile pour...", "options": ["Sécuriser de gros montants", "Les débutants", "Rien"], "correct": 0}
+        ]
+    },
+    "securite_13": {
+        "id": "securite_13",
+        "title": "Les NFT Scams",
+        "parcours": "securite",
+        "content": "Arnaques NFT courantes: 1) Faux airdrops (lien malveillant vide ton wallet), 2) Projets pompés puis abandonnés, 3) Faux sites de mint, 4) Offres trop belles sur OpenSea (NFT rare à prix ridicule = fake). Protection: vérifie le contrat officiel sur le site du projet, check si la collection a le badge 'verified', ne clique JAMAIS sur des liens aléatoires, utilise un wallet dédié pour NFTs (sépare de tes gros holdings). Le marché NFT est TRUFFÉ d'arnaques!",
+        "quiz": [
+            {"q": "Avant de mint un NFT, vérifie...", "options": ["Le contrat officiel", "Rien", "Juste le prix"], "correct": 0},
+            {"q": "NFT rare à prix ridicule =", "options": ["Probablement une arnaque", "Super opportunité", "Normal"], "correct": 0}
+        ]
+    },
+    "securite_14": {
+        "id": "securite_14",
+        "title": "La Sécurité des Mots de Passe",
+        "parcours": "securite",
+        "content": "Mot de passe crypto = critique! Règles: minimum 16 caractères, mélange majuscules/minuscules/chiffres/symboles, unique pour chaque site (si 1 site est hacké, les autres sont safe), utilise un password manager (Bitwarden, 1Password). JAMAIS le même mot de passe pour email et exchange (si email piraté, exchange compromis). Change régulièrement les mots de passe importants. Exemple fort: 'Tr@d3!nCryp70_2024$BtC'. Exemple faible: 'bitcoin123'.",
+        "quiz": [
+            {"q": "Un bon mot de passe a minimum...", "options": ["16 caractères variés", "6 caractères", "Ton nom"], "correct": 0},
+            {"q": "Réutiliser le même mot de passe est...", "options": ["Très dangereux", "OK", "Recommandé"], "correct": 0}
+        ]
+    },
+    "securite_15": {
+        "id": "securite_15",
+        "title": "Les Backup et Recovery",
+        "parcours": "securite",
+        "content": "Backup = plan de secours si tu perds/casses ton wallet. Pour seed phrase: écris-la sur papier (JAMAIS photo/fichier), garde des copies dans 2-3 endroits sécurisés (coffre-fort, chez parent de confiance), grave sur métal si gros montants (résiste feu/eau), considère Shamir Backup (divise seed en morceaux). Teste ta recovery: crée wallet → note seed → supprime → restaure avec seed. Si ça marche pas, tu n'as PAS de backup! Un backup vaut des milliers de dollars.",
+        "quiz": [
+            {"q": "Ta seed phrase devrait être...", "options": ["Sur papier, plusieurs copies", "Dans un fichier texte", "Sur Google Photos"], "correct": 0},
+            {"q": "Tu devrais tester...", "options": ["Ta procédure de recovery", "Rien", "Juste acheter"], "correct": 0}
+        ]
+    },
+    "securite_16": {
+        "id": "securite_16",
+        "title": "Les VPN et Sécurité Réseau",
+        "parcours": "securite",
+        "content": "VPN (Virtual Private Network) cache ton adresse IP et crypte ta connexion. Utile pour: trader depuis WiFi public (café, aéroport - sinon TRÈS risqué!), contourner restrictions géographiques, ajouter une couche de privacy. Bons VPN: NordVPN, ExpressVPN, Mullvad. Évite les VPN gratuits (vendent tes données). Mais VPN n'est PAS une solution magique: un keylogger sur ton PC peut quand même te voler. Combine VPN + antivirus + hardware wallet pour sécurité maximale.",
+        "quiz": [
+            {"q": "Un VPN sert à...", "options": ["Crypter ta connexion et cacher ton IP", "Stocker tes cryptos", "Rien"], "correct": 0},
+            {"q": "WiFi public sans VPN est...", "options": ["Très risqué", "Sûr", "Recommandé"], "correct": 0}
+        ]
+    },
+    "securite_17": {
+        "id": "securite_17",
+        "title": "Les Audits de Sécurité",
+        "parcours": "securite",
+        "content": "Un audit = experts vérifient le code d'un smart contract pour trouver des failles. Meilleurs auditeurs: CertiK, PeckShield, OpenZeppelin, Trail of Bits. Un protocole audité = plus sûr (mais pas 100% safe - des protocoles audités ont quand même été hackés!). Vérifie toujours: qui a audité, quand, lis le rapport (cherche 'critical' ou 'high' issues). Les protocoles non-audités = risque ÉNORME. Dans DeFi, un audit sérieux coûte 50-200k$ - signe de sérieux du projet.",
+        "quiz": [
+            {"q": "Un audit de sécurité vérifie...", "options": ["Le code pour trouver des failles", "Le prix", "Les utilisateurs"], "correct": 0},
+            {"q": "Un protocole audité est...", "options": ["Plus sûr (pas 100% safe)", "Totalement safe", "Une arnaque"], "correct": 0}
+        ]
+    },
+    "securite_18": {
+        "id": "securite_18",
+        "title": "Plan de Sécurité Global",
+        "parcours": "securite",
+        "content": "Checklist sécurité ultime: ✅ Hardware wallet pour +1000$, ✅ Seed phrase sur papier/métal, multiples backups, ✅ 2FA (app) sur tous exchanges, ✅ Mots de passe uniques 16+ caractères, ✅ Antivirus + VPN, ✅ Email dédié pour crypto (séparé de perso), ✅ Wallet séparé pour DeFi (risques smart contracts), ✅ Jamais partager tes holdings publiquement, ✅ Tester recovery process, ✅ Éduquer famille (si tu meurs, peuvent-ils accéder?). Sécurité = marathon, pas sprint. Investis temps ET argent dedans!",
+        "quiz": [
+            {"q": "Pour gros montants, utilise...", "options": ["Hardware wallet", "Exchange", "Hot wallet mobile"], "correct": 0},
+            {"q": "Tu devrais avoir...", "options": ["Email dédié crypto", "Même email pour tout", "Aucun email"], "correct": 0}
+        ]
+    },
 }
 
 # Badges disponibles
@@ -36210,23 +36634,54 @@ async def crypto_academy_page(request: Request):
     # Récupérer la progression réelle depuis la DB
     progress = get_user_progress(username)
     
-    # Générer les cartes de leçons - TOUTES les leçons bases
-    lessons_html = ""
-    for lesson_id in ["bases_1", "bases_2", "bases_3", "bases_4", "bases_5", "bases_6", 
-                      "bases_7", "bases_8", "bases_9", "bases_10", "bases_11", "bases_12"]:
-        if lesson_id in LESSONS_DATA:
-            lesson = LESSONS_DATA[lesson_id]
-            status = get_lesson_status(username, lesson_id)
-            
-            completed_class = "completed" if status["completed"] else ""
-            status_text = f"✅ Complétée - {status['score']}/2" if status["completed"] else "📝 Non complétée"
-            
-            lessons_html += f"""
-                <div class="lesson-card {completed_class}" onclick="window.location.href='/crypto-academy/lesson/{lesson_id}'">
-                    <div class="lesson-title">{lesson["title"]}</div>
-                    <div class="lesson-status">{status_text}</div>
-                </div>
-            """
+    # Organiser les leçons par parcours
+    parcours_lessons = {
+        "bases": ["bases_1", "bases_2", "bases_3", "bases_4", "bases_5", "bases_6", 
+                  "bases_7", "bases_8", "bases_9", "bases_10", "bases_11", "bases_12",
+                  "bases_13", "bases_14", "bases_15", "bases_16", "bases_17", "bases_18"],
+        "trading": ["trading_1", "trading_2", "trading_3", "trading_4", "trading_5", "trading_6",
+                    "trading_7", "trading_8", "trading_9", "trading_10", "trading_11", "trading_12",
+                    "trading_13", "trading_14", "trading_15", "trading_16", "trading_17", "trading_18"],
+        "securite": ["securite_1", "securite_2", "securite_3", "securite_4", "securite_5", "securite_6",
+                     "securite_7", "securite_8", "securite_9", "securite_10", "securite_11", "securite_12",
+                     "securite_13", "securite_14", "securite_15", "securite_16", "securite_17", "securite_18"]
+    }
+    
+    parcours_titles = {
+        "bases": "🌱 LES BASES DE LA CRYPTO",
+        "trading": "📈 TRADING 101",
+        "securite": "🔒 SÉCURITÉ CRYPTO"
+    }
+    
+    # Générer le HTML pour chaque parcours
+    all_parcours_html = ""
+    for parcours_key, lesson_ids in parcours_lessons.items():
+        all_parcours_html += f"""
+            <div class="section-title">{parcours_titles[parcours_key]}</div>
+            <p style="color: #94a3b8; margin-bottom: 20px; font-size: 1.1em;">
+                {"Commence ton voyage dans l'univers crypto" if parcours_key == "bases" else 
+                 "Apprends à trader comme un pro" if parcours_key == "trading" else 
+                 "Protège tes investissements contre toutes les menaces"}
+            </p>
+            <div class="lessons-grid">
+        """
+        
+        for lesson_id in lesson_ids:
+            if lesson_id in LESSONS_DATA:
+                lesson = LESSONS_DATA[lesson_id]
+                status = get_lesson_status(username, lesson_id)
+                
+                completed_class = "completed" if status["completed"] else ""
+                status_text = f"✅ Complétée - {status['score']}/2" if status["completed"] else "📝 Non complétée"
+                
+                all_parcours_html += f"""
+                    <div class="lesson-card {completed_class}" onclick="window.location.href='/crypto-academy/lesson/{lesson_id}'">
+                        <div class="lesson-title">{lesson["title"]}</div>
+                        <div class="lesson-status">{status_text}</div>
+                    </div>
+                """
+        
+        all_parcours_html += "</div>"
     
     html = f"""<!DOCTYPE html>
 <html lang="fr">
@@ -36305,21 +36760,7 @@ async def crypto_academy_page(request: Request):
             </div>
         </div>
         
-        <h2 class="section-title">🌱 Les Bases de la Crypto</h2>
-        <p style="color: #94a3b8; margin-bottom: 20px;">Commence ton voyage dans l'univers crypto</p>
-        <div class="lessons-grid">
-            {lessons_html}
-        </div>
-        
-        <h2 class="section-title">📈 Trading 101</h2>
-        <p style="color: #94a3b8; margin-bottom: 20px;">
-            🔒 Débloque ce parcours en complétant les bases
-        </p>
-        
-        <h2 class="section-title">🔒 Sécurité Crypto</h2>
-        <p style="color: #94a3b8; margin-bottom: 20px;">
-            🔒 Débloque ce parcours en complétant Trading 101
-        </p>
+        {all_parcours_html}
     </div>
 </body>
 </html>"""

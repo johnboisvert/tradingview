@@ -49,6 +49,8 @@ from urllib.parse import urlencode
 from technical_analyzer import analyzer
 
 # ============================================================================
+
+# ============================================================================
 # 🆕 SYSTÈME DE PERMISSIONS - IMPORTS
 # ============================================================================
 try:
@@ -1070,10 +1072,8 @@ UPCOMING_GEMS_COMPLETE = [
 
 
 
-
 app = FastAPI()
 
-# ═══════════════════════════════════════════════════════════════════════════
 # 🔐 CORRECTION 2: RATE LIMITING - Protection contre brute-force
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -16773,7 +16773,7 @@ async def startup_event():
     # Initialiser la DB Portfolio
     init_portfolio_db()
     
-    
+    # Initialiser l'Academy
     # Utiliser try_lock pour éviter de bloquer si un autre worker a déjà lancé
     if not monitor_running:
         asyncio.create_task(monitor_trades_background())
@@ -35673,37 +35673,183 @@ class AIChatMessage(BaseModel):
 # ============================================================================
 
 
-# ============ ROUTES ACADEMY STANDALONE ============
+# ============================================================================
+# ROUTES ACADEMY SIMPLES - VERSION TEST
+# ============================================================================
 
 @app.get("/crypto-academy", response_class=HTMLResponse)
 async def crypto_academy_page(request: Request):
+    """Crypto Academy Page"""
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
     if not username:
         return RedirectResponse(url="/login?redirect=/crypto-academy")
-    html = f"""<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Crypto Academy</title></head>
-<body style="font-family:Arial;background:#0f172a;color:#fff;margin:0;">{SIDEBAR}<div style="margin-left:300px;padding:40px;"><h1>🎓 Crypto Academy</h1></div></body></html>"""
-    return HTMLResponse(html)
+    
+    html_content = """<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Academy</title>
+    <style>
+        body { margin: 0; padding: 0; background: #0f172a; color: #e2e8f0; font-family: Arial, sans-serif; }
+        .main { padding: 40px; max-width: 1200px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px; padding: 40px; text-align: center; color: white; margin-bottom: 40px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+        .card { background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 30px; text-align: center; }
+        .icon { font-size: 3em; margin-bottom: 20px; }
+        h3 { color: #60a5fa; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="main">
+        <div class="header">
+            <h1>🎓 Crypto Academy</h1>
+            <p style="font-size: 1.2em; margin-top: 15px;">Formation complète crypto</p>
+        </div>
+        <div class="grid">
+            <div class="card">
+                <div class="icon">🌱</div>
+                <h3>Les Bases</h3>
+                <p>18 leçons - Blockchain et fondamentaux</p>
+            </div>
+            <div class="card">
+                <div class="icon">📈</div>
+                <h3>Trading 101</h3>
+                <p>18 leçons - Analyse technique</p>
+            </div>
+            <div class="card">
+                <div class="icon">🔒</div>
+                <h3>Sécurité</h3>
+                <p>18 leçons - Protection</p>
+            </div>
+        </div>
+        <div style="margin-top: 40px; text-align: center; background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 30px;">
+            <p style="font-size: 1.1em;">🚀 Système complet en développement</p>
+        </div>
+    </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
 
 @app.get("/coach", response_class=HTMLResponse)
 async def academy_coach_page(request: Request):
+    """Coach AI Page"""
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
     if not username:
         return RedirectResponse(url="/login?redirect=/coach")
-    html = f"""<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Coach</title></head>
-<body style="font-family:Arial;background:#0f172a;color:#fff;margin:0;">{SIDEBAR}<div style="margin-left:300px;padding:40px;"><h1>🤖 Coach AI</h1></div></body></html>"""
-    return HTMLResponse(html)
+    
+    html_content = """<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coach AI</title>
+    <style>
+        body { margin: 0; padding: 0; background: #0f172a; color: #e2e8f0; font-family: Arial, sans-serif; }
+        .main { padding: 40px; max-width: 1000px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px; padding: 40px; text-align: center; color: white; margin-bottom: 30px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }
+        .feature { background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 25px; }
+        h3 { color: #60a5fa; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="main">
+        <div class="header">
+            <h1>🤖 Claude AI Coach</h1>
+            <p style="font-size: 1.2em; margin-top: 15px;">Assistant crypto personnel</p>
+        </div>
+        <div style="background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 30px;">
+            <h2 style="color: #60a5fa; margin-bottom: 20px;">💬 Je peux t'aider à:</h2>
+            <div class="grid">
+                <div class="feature">
+                    <h3>📚 Expliquer</h3>
+                    <p>Blockchain, Bitcoin, DeFi</p>
+                </div>
+                <div class="feature">
+                    <h3>📈 Analyser</h3>
+                    <p>Tendances du marché</p>
+                </div>
+                <div class="feature">
+                    <h3>💡 Conseiller</h3>
+                    <p>Stratégies de trading</p>
+                </div>
+                <div class="feature">
+                    <h3>🎯 Suivre</h3>
+                    <p>Ta progression</p>
+                </div>
+            </div>
+            <div style="margin-top: 40px; text-align: center; padding: 30px; background: rgba(100, 116, 139, 0.2); border-radius: 12px;">
+                <p style="font-size: 1.1em;">🚀 Interface de chat bientôt disponible</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
 
 @app.get("/academy-progress", response_class=HTMLResponse)
 async def academy_progress_page(request: Request):
+    """Progression Page"""
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
     if not username:
         return RedirectResponse(url="/login?redirect=/academy-progress")
-    html = f"""<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Progression</title></head>
-<body style="font-family:Arial;background:#0f172a;color:#fff;margin:0;">{SIDEBAR}<div style="margin-left:300px;padding:40px;"><h1>📊 Progression - {username}</h1></div></body></html>"""
-    return HTMLResponse(html)
+    
+    html_content = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progression</title>
+    <style>
+        body {{ margin: 0; padding: 0; background: #0f172a; color: #e2e8f0; font-family: Arial, sans-serif; }}
+        .main {{ padding: 40px; max-width: 1200px; margin: 0 auto; }}
+        .header {{ background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px; padding: 40px; text-align: center; color: white; margin-bottom: 40px; }}
+        .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }}
+        .stat {{ background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 30px; text-align: center; }}
+        .value {{ font-size: 2.5em; font-weight: bold; color: white; margin: 15px 0; }}
+        h3 {{ color: #60a5fa; margin-bottom: 10px; }}
+    </style>
+</head>
+<body>
+    <div class="main">
+        <div class="header">
+            <h1>📊 Ta Progression</h1>
+            <p style="font-size: 1.3em; margin-top: 15px;">Utilisateur: {username}</p>
+            <p style="font-size: 1.1em; margin-top: 10px;">Niveau 1 - Novice</p>
+        </div>
+        <div class="grid">
+            <div class="stat">
+                <h3>📚 Leçons</h3>
+                <div class="value">0/54</div>
+                <p>0% complété</p>
+            </div>
+            <div class="stat">
+                <h3>🏆 Badges</h3>
+                <div class="value">0</div>
+                <p>Sur 12 disponibles</p>
+            </div>
+            <div class="stat">
+                <h3>📜 Certificats</h3>
+                <div class="value">0</div>
+                <p>Sur 4 disponibles</p>
+            </div>
+            <div class="stat">
+                <h3>🔥 Streak</h3>
+                <div class="value">0</div>
+                <p>jours consécutifs</p>
+            </div>
+        </div>
+        <div style="text-align: center; padding: 40px; background: rgba(30, 41, 59, 0.8); border-radius: 12px;">
+            <p style="font-size: 1.1em;">🚀 Système complet en développement</p>
+        </div>
+    </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)

@@ -122,6 +122,13 @@ if STRIPE_AVAILABLE and STRIPE_SECRET_KEY:
     print("✅ Stripe configuré")
 else:
     print("⚠️  Stripe non configuré")
+
+# ===== Configuration Anthropic Claude API =====
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+if ANTHROPIC_API_KEY:
+    print("✅ Anthropic Claude API configurée")
+else:
+    print("⚠️  Anthropic API key non configurée - AI Coach ne fonctionnera pas")
 # =========================================
 
 # Initialiser le client Coinbase Commerce
@@ -37120,6 +37127,13 @@ async def ai_coach_chat(request: Request):
         if not user_message:
             return JSONResponse({"error": "Message vide"}, status_code=400)
         
+        # Vérifier si l'API key est configurée
+        if not ANTHROPIC_API_KEY:
+            return JSONResponse({
+                "success": False,
+                "message": "⚠️ API Claude non configurée. Contacte l'administrateur."
+            })
+        
         # Appeler Claude API
         import httpx
         
@@ -37128,6 +37142,7 @@ async def ai_coach_chat(request: Request):
                 "https://api.anthropic.com/v1/messages",
                 headers={
                     "Content-Type": "application/json",
+                    "x-api-key": ANTHROPIC_API_KEY,
                     "anthropic-version": "2023-06-01"
                 },
                 json={

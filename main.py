@@ -1462,7 +1462,106 @@ LESSONS_DATA = {
             {"q": "En quelle année?", "options": ["2009", "2015", "2020"], "correct": 0}
         ]
     },
-    # ... (Tu peux ajouter les 52 autres leçons plus tard)
+    "bases_3": {
+        "id": "bases_3",
+        "title": "Ethereum et les Smart Contracts",
+        "parcours": "bases",
+        "content": "Ethereum, créé par Vitalik Buterin en 2015, est bien plus qu'une simple cryptomonnaie. C'est une plateforme décentralisée qui permet d'exécuter des smart contracts - des contrats programmables qui s'exécutent automatiquement quand certaines conditions sont remplies. Contrairement à Bitcoin qui se concentre sur les transactions, Ethereum permet de créer des applications décentralisées (dApps).",
+        "quiz": [
+            {"q": "Qui a créé Ethereum?", "options": ["Vitalik Buterin", "Satoshi Nakamoto", "Charles Hoskinson"], "correct": 0},
+            {"q": "Un smart contract est...", "options": ["Un programme auto-exécutable", "Un simple PDF", "Un wallet"], "correct": 0}
+        ]
+    },
+    "bases_4": {
+        "id": "bases_4",
+        "title": "Les Wallets (Portefeuilles)",
+        "parcours": "bases",
+        "content": "Un wallet crypto est comme un compte bancaire digital, mais vous êtes votre propre banque. Il existe deux types principaux: les hot wallets (connectés à internet, pratiques mais moins sécurisés) et les cold wallets (hors ligne, très sécurisés). Chaque wallet a une clé publique (votre adresse) et une clé privée (votre mot de passe ultime). JAMAIS partager votre clé privée!",
+        "quiz": [
+            {"q": "Un cold wallet est...", "options": ["Un wallet hors ligne", "Un wallet gratuit", "Un wallet mobile"], "correct": 0},
+            {"q": "Faut-il partager sa clé privée?", "options": ["Jamais!", "Avec ses amis", "Sur les réseaux sociaux"], "correct": 0}
+        ]
+    },
+    "bases_5": {
+        "id": "bases_5",
+        "title": "Le Mining (Minage)",
+        "parcours": "bases",
+        "content": "Le mining est le processus qui sécurise les blockchains comme Bitcoin. Les mineurs utilisent des ordinateurs puissants pour résoudre des problèmes mathématiques complexes. Quand ils trouvent la solution, ils ajoutent un nouveau bloc à la blockchain et reçoivent des bitcoins en récompense. C'est comme une loterie géante où plus tu as de puissance de calcul, plus tu as de chances de gagner.",
+        "quiz": [
+            {"q": "Le mining sert à...", "options": ["Sécuriser la blockchain", "Créer des NFTs", "Acheter des cryptos"], "correct": 0},
+            {"q": "Les mineurs reçoivent...", "options": ["Des cryptos en récompense", "Des dollars", "Des actions"], "correct": 0}
+        ]
+    },
+    "bases_6": {
+        "id": "bases_6",
+        "title": "Les Altcoins",
+        "parcours": "bases",
+        "content": "Un altcoin est toute cryptomonnaie autre que Bitcoin. Il en existe des milliers! Certains améliorent Bitcoin (comme Litecoin, plus rapide), d'autres ont des fonctions spéciales (comme Ethereum pour les smart contracts, ou Ripple pour les paiements internationaux). Attention: tous les altcoins ne se valent pas, certains sont des scams!",
+        "quiz": [
+            {"q": "Un altcoin est...", "options": ["Une crypto autre que Bitcoin", "Une version de Bitcoin", "Un type de wallet"], "correct": 0},
+            {"q": "Tous les altcoins sont fiables?", "options": ["Non, certains sont des arnaques", "Oui, tous", "Seulement les gratuits"], "correct": 0}
+        ]
+    },
+    "bases_7": {
+        "id": "bases_7",
+        "title": "Les Exchanges (Plateformes)",
+        "parcours": "bases",
+        "content": "Les exchanges sont les marchés où tu peux acheter et vendre des cryptos. Il y a deux types: centralisés (comme Binance, Coinbase - faciles mais tu leur fais confiance) et décentralisés ou DEX (comme Uniswap - plus compliqués mais tu gardes le contrôle). Toujours vérifier la réputation et la sécurité d'un exchange avant d'y mettre ton argent!",
+        "quiz": [
+            {"q": "Un exchange centralisé, c'est...", "options": ["Une plateforme qui garde tes fonds", "Un wallet personnel", "Un type de crypto"], "correct": 0},
+            {"q": "Que vérifier avant d'utiliser un exchange?", "options": ["Sa réputation et sécurité", "Sa couleur", "Son logo"], "correct": 0}
+        ]
+    },
+    "bases_8": {
+        "id": "bases_8",
+        "title": "Le Staking",
+        "parcours": "bases",
+        "content": "Le staking, c'est comme un compte d'épargne crypto. Tu bloques tes cryptos pour aider à sécuriser le réseau (sur les blockchains Proof-of-Stake), et en échange tu reçois des récompenses - généralement entre 5% et 20% par an. C'est du revenu passif! Contrairement au mining, pas besoin d'ordinateurs super puissants. Ethereum est passé au staking en 2022.",
+        "quiz": [
+            {"q": "Le staking permet de...", "options": ["Gagner des récompenses passives", "Miner plus vite", "Acheter des NFTs"], "correct": 0},
+            {"q": "Le staking nécessite...", "options": ["De bloquer ses cryptos", "Un super ordinateur", "De trader activement"], "correct": 0}
+        ]
+    },
+    "bases_9": {
+        "id": "bases_9",
+        "title": "La DeFi (Finance Décentralisée)",
+        "parcours": "bases",
+        "content": "La DeFi recréé tous les services bancaires traditionnels (prêts, emprunts, épargne, trading) mais sans banques! Tout fonctionne via des smart contracts sur Ethereum et d'autres blockchains. Tu peux prêter tes cryptos et gagner des intérêts, emprunter sans demander la permission à une banque, ou échanger des tokens 24/7. Mais attention: c'est puissant mais risqué si tu ne comprends pas bien!",
+        "quiz": [
+            {"q": "La DeFi, c'est...", "options": ["La finance sans banques", "Un type de Bitcoin", "Un wallet spécial"], "correct": 0},
+            {"q": "En DeFi, on peut...", "options": ["Prêter et emprunter des cryptos", "Seulement acheter", "Seulement vendre"], "correct": 0}
+        ]
+    },
+    "bases_10": {
+        "id": "bases_10",
+        "title": "Les NFTs",
+        "parcours": "bases",
+        "content": "Un NFT (Non-Fungible Token) est un certificat digital unique de propriété. Contrairement aux cryptos où 1 BTC = 1 BTC (fongible), chaque NFT est unique. On les utilise principalement pour l'art digital, les objets de collection, les tickets d'événements, et même l'immobilier virtuel. Le NFT le plus cher vendu à ce jour: 69 millions de dollars pour une œuvre de Beeple!",
+        "quiz": [
+            {"q": "NFT signifie...", "options": ["Non-Fungible Token", "New Financial Token", "Next Free Trade"], "correct": 0},
+            {"q": "Chaque NFT est...", "options": ["Unique", "Identique aux autres", "Une crypto comme Bitcoin"], "correct": 0}
+        ]
+    },
+    "bases_11": {
+        "id": "bases_11",
+        "title": "Le Gas Fee (Frais de Transaction)",
+        "parcours": "bases",
+        "content": "Les gas fees sont les frais que tu paies pour faire une transaction sur la blockchain. Sur Ethereum, ces frais peuvent varier énormément - de quelques centimes à plusieurs centaines de dollars selon la congestion du réseau! C'est comme un péage d'autoroute: plus il y a de trafic, plus c'est cher. Astuce: faire ses transactions tôt le matin ou tard le soir coûte souvent moins cher.",
+        "quiz": [
+            {"q": "Les gas fees sont...", "options": ["Les frais de transaction", "Un type de crypto", "Une arnaque"], "correct": 0},
+            {"q": "Quand les gas fees sont moins chers?", "options": ["Quand le réseau est moins congestionné", "Toujours pareils", "Le weekend seulement"], "correct": 0}
+        ]
+    },
+    "bases_12": {
+        "id": "bases_12",
+        "title": "La Market Cap (Capitalisation)",
+        "parcours": "bases",
+        "content": "La market cap d'une crypto = prix × nombre de tokens en circulation. C'est l'indicateur principal pour comparer les cryptos. Bitcoin a la plus grosse market cap (environ 500 milliards). Une grosse market cap = plus stable mais croissance plus lente. Une petite market cap = plus volatile mais potentiel de croissance énorme (et risque énorme aussi!). Ne JAMAIS comparer juste les prix, toujours regarder la market cap.",
+        "quiz": [
+            {"q": "La market cap se calcule...", "options": ["Prix × Supply", "Prix ÷ Supply", "Prix + Supply"], "correct": 0},
+            {"q": "Une grosse market cap signifie...", "options": ["Plus de stabilité", "Toujours mauvais", "Arnaque certaine"], "correct": 0}
+        ]
+    },
 }
 
 # Badges disponibles
@@ -36111,9 +36210,10 @@ async def crypto_academy_page(request: Request):
     # Récupérer la progression réelle depuis la DB
     progress = get_user_progress(username)
     
-    # Générer les cartes de leçons
+    # Générer les cartes de leçons - TOUTES les leçons bases
     lessons_html = ""
-    for lesson_id in ["bases_1", "bases_2"]:
+    for lesson_id in ["bases_1", "bases_2", "bases_3", "bases_4", "bases_5", "bases_6", 
+                      "bases_7", "bases_8", "bases_9", "bases_10", "bases_11", "bases_12"]:
         if lesson_id in LESSONS_DATA:
             lesson = LESSONS_DATA[lesson_id]
             status = get_lesson_status(username, lesson_id)

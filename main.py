@@ -2610,11 +2610,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">Crypto Academy</span>
                 <span class="badge" style="background: linear-gradient(135deg, #6366f1, #a855f7);">54 LEÇONS</span>
             </a>
-            <a href="/coach" class="menu-item ai-feature">
-                <span class="icon">🤖</span>
-                <span class="label">Claude AI Coach</span>
-                <span class="badge">NEW</span>
-            </a>
             <a href="/academy-progress" class="menu-item ai-feature">
                 <span class="icon">📊</span>
                 <span class="label">Ma Progression</span>
@@ -22959,12 +22954,16 @@ async def admin_dashboard(request: Request):
         "/dashboard", "/stats-dashboard", "/trades", "/strategie", 
         "/spot-trading", "/watchlist", "/risk-management", "/backtesting",
         
-        # Intelligence Artificielle (16 outils)
+        # Intelligence Artificielle (21 outils + Technical Analysis)
         "/ai-opportunity-scanner", "/ai-market-regime", "/ai-whale-watcher",
         "/ai-assistant", "/ai-signals", "/ai-news", "/ai-predictor",
         "/prediction-ia", "/ai-patterns", "/ai-sentiment", "/ai-sizer",
         "/ai-exit", "/ai-timeframe", "/ai-liquidity", "/ai-alerts", "/ai-gem-hunter",
         "/ai-technical-analysis",
+        
+        # 🆕 V5 - Les 5 Nouvelles Features Premium
+        "/narrative-radar", "/ai-crypto-coach", "/ai-swarm-agents",
+        "/altseason-copilot-pro", "/rug-scam-shield",
         
         # Analyse de Marché
         "/fear-greed", "/fear-greed-chart", "/dominance", "/altcoin-season",
@@ -22973,11 +22972,14 @@ async def admin_dashboard(request: Request):
         # Portfolio & DeFi
         "/portfolio-tracker", "/defi-yield", "/crypto-pepites",
         
+        # Formation & Academy
+        "/academy", "/crypto-academy", "/academy-progress",
+        
         # Outils
         "/calculatrice", "/convertisseur", "/market-simulation", "/calendrier",
         
         # Contenu & Info
-        "/academy", "/nouvelles", "/success-stories",
+        "/nouvelles", "/success-stories",
         
         # Compte & Pricing
         "/mon-compte", "/pricing-complete"

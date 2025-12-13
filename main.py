@@ -6011,48 +6011,55 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
         @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
         
-        /* 🪙 CRYPTO TICKER */
+        /* 🪙 CRYPTO TICKER - VRAIS LOGOS */
         .crypto-ticker-container { 
             width: 100%; 
             overflow: hidden; 
-            background: rgba(255, 255, 255, 0.02); 
-            border-top: 2px solid rgba(102, 126, 234, 0.3);
-            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
-            padding: 30px 0; 
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05)); 
+            border-top: 2px solid rgba(102, 126, 234, 0.4);
+            border-bottom: 2px solid rgba(102, 126, 234, 0.4);
+            padding: 25px 0; 
             margin: 80px 0; 
-            position: relative; 
+            position: relative;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.2);
         }
         .crypto-ticker { 
             display: flex; 
-            animation: scroll 20s linear infinite; 
+            animation: scroll 25s linear infinite; 
             width: fit-content; 
         }
-        .crypto-logo { 
-            font-size: 3em; 
-            margin: 0 60px; 
-            color: #667eea; 
-            filter: drop-shadow(0 0 15px rgba(102, 126, 234, 0.6)); 
+        .crypto-logo-img { 
+            width: 50px;
+            height: 50px;
+            margin: 0 50px; 
+            filter: drop-shadow(0 4px 20px rgba(102, 126, 234, 0.5));
             animation: float-logo 3s ease-in-out infinite; 
-            flex-shrink: 0; 
+            flex-shrink: 0;
+            transition: all 0.3s ease;
         }
-        .crypto-logo:nth-child(2) { animation-delay: 0.2s; color: #764ba2; }
-        .crypto-logo:nth-child(3) { animation-delay: 0.4s; color: #f093fb; }
-        .crypto-logo:nth-child(4) { animation-delay: 0.6s; color: #10b981; }
-        .crypto-logo:nth-child(5) { animation-delay: 0.8s; color: #3b82f6; }
-        .crypto-logo:nth-child(6) { animation-delay: 1s; color: #f59e0b; }
-        .crypto-logo:nth-child(7) { animation-delay: 1.2s; color: #8b5cf6; }
-        .crypto-logo:nth-child(8) { animation-delay: 1.4s; color: #ec4899; }
-        .crypto-logo:nth-child(9) { animation-delay: 1.6s; color: #06b6d4; }
+        .crypto-logo-img:hover {
+            transform: scale(1.2) rotate(10deg);
+            filter: drop-shadow(0 8px 30px rgba(102, 126, 234, 0.8));
+        }
+        .crypto-logo-img:nth-child(1) { animation-delay: 0s; }
+        .crypto-logo-img:nth-child(2) { animation-delay: 0.2s; }
+        .crypto-logo-img:nth-child(3) { animation-delay: 0.4s; }
+        .crypto-logo-img:nth-child(4) { animation-delay: 0.6s; }
+        .crypto-logo-img:nth-child(5) { animation-delay: 0.8s; }
+        .crypto-logo-img:nth-child(6) { animation-delay: 1s; }
+        .crypto-logo-img:nth-child(7) { animation-delay: 1.2s; }
+        .crypto-logo-img:nth-child(8) { animation-delay: 1.4s; }
+        .crypto-logo-img:nth-child(9) { animation-delay: 1.6s; }
         @keyframes scroll { 
             0% { transform: translateX(0); } 
             100% { transform: translateX(-50%); } 
         }
         @keyframes float-logo { 
-            0%, 100% { transform: translateY(0) rotate(0deg); } 
-            50% { transform: translateY(-15px) rotate(10deg); } 
+            0%, 100% { transform: translateY(0) scale(1); } 
+            50% { transform: translateY(-15px) scale(1.05); } 
         }
         
-        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } .crypto-logo-img { width: 35px; height: 35px; margin: 0 30px; } }
     </style>
 </head>
 <body>
@@ -6073,28 +6080,28 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
             <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
         
-        <!-- 🪙 CRYPTO TICKER - Logos animés -->
+        <!-- 🪙 CRYPTO TICKER - VRAIS LOGOS -->
         <div class="crypto-ticker-container">
             <div class="crypto-ticker">
-                <div class="crypto-logo">₿</div>
-                <div class="crypto-logo">Ξ</div>
-                <div class="crypto-logo">⊕</div>
-                <div class="crypto-logo">◈</div>
-                <div class="crypto-logo">₳</div>
-                <div class="crypto-logo">₮</div>
-                <div class="crypto-logo">◎</div>
-                <div class="crypto-logo">Ð</div>
-                <div class="crypto-logo">●</div>
+                <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.svg" alt="BTC" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/ethereum-eth-logo.svg" alt="ETH" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/bnb-bnb-logo.svg" alt="BNB" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/xrp-xrp-logo.svg" alt="XRP" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/cardano-ada-logo.svg" alt="ADA" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" alt="USDT" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/solana-sol-logo.svg" alt="SOL" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/dogecoin-doge-logo.svg" alt="DOGE" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/polkadot-new-dot-logo.svg" alt="DOT" class="crypto-logo-img">
                 <!-- Duplicate pour effet infini -->
-                <div class="crypto-logo">₿</div>
-                <div class="crypto-logo">Ξ</div>
-                <div class="crypto-logo">⊕</div>
-                <div class="crypto-logo">◈</div>
-                <div class="crypto-logo">₳</div>
-                <div class="crypto-logo">₮</div>
-                <div class="crypto-logo">◎</div>
-                <div class="crypto-logo">Ð</div>
-                <div class="crypto-logo">●</div>
+                <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.svg" alt="BTC" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/ethereum-eth-logo.svg" alt="ETH" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/bnb-bnb-logo.svg" alt="BNB" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/xrp-xrp-logo.svg" alt="XRP" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/cardano-ada-logo.svg" alt="ADA" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" alt="USDT" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/solana-sol-logo.svg" alt="SOL" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/dogecoin-doge-logo.svg" alt="DOGE" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/polkadot-new-dot-logo.svg" alt="DOT" class="crypto-logo-img">
             </div>
         </div>
 
@@ -6659,48 +6666,55 @@ async def home():
         .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
         @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
         
-        /* 🪙 CRYPTO TICKER */
+        /* 🪙 CRYPTO TICKER - VRAIS LOGOS */
         .crypto-ticker-container { 
             width: 100%; 
             overflow: hidden; 
-            background: rgba(255, 255, 255, 0.02); 
-            border-top: 2px solid rgba(102, 126, 234, 0.3);
-            border-bottom: 2px solid rgba(102, 126, 234, 0.3);
-            padding: 30px 0; 
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05)); 
+            border-top: 2px solid rgba(102, 126, 234, 0.4);
+            border-bottom: 2px solid rgba(102, 126, 234, 0.4);
+            padding: 25px 0; 
             margin: 80px 0; 
-            position: relative; 
+            position: relative;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.2);
         }
         .crypto-ticker { 
             display: flex; 
-            animation: scroll 20s linear infinite; 
+            animation: scroll 25s linear infinite; 
             width: fit-content; 
         }
-        .crypto-logo { 
-            font-size: 3em; 
-            margin: 0 60px; 
-            color: #667eea; 
-            filter: drop-shadow(0 0 15px rgba(102, 126, 234, 0.6)); 
+        .crypto-logo-img { 
+            width: 50px;
+            height: 50px;
+            margin: 0 50px; 
+            filter: drop-shadow(0 4px 20px rgba(102, 126, 234, 0.5));
             animation: float-logo 3s ease-in-out infinite; 
-            flex-shrink: 0; 
+            flex-shrink: 0;
+            transition: all 0.3s ease;
         }
-        .crypto-logo:nth-child(2) { animation-delay: 0.2s; color: #764ba2; }
-        .crypto-logo:nth-child(3) { animation-delay: 0.4s; color: #f093fb; }
-        .crypto-logo:nth-child(4) { animation-delay: 0.6s; color: #10b981; }
-        .crypto-logo:nth-child(5) { animation-delay: 0.8s; color: #3b82f6; }
-        .crypto-logo:nth-child(6) { animation-delay: 1s; color: #f59e0b; }
-        .crypto-logo:nth-child(7) { animation-delay: 1.2s; color: #8b5cf6; }
-        .crypto-logo:nth-child(8) { animation-delay: 1.4s; color: #ec4899; }
-        .crypto-logo:nth-child(9) { animation-delay: 1.6s; color: #06b6d4; }
+        .crypto-logo-img:hover {
+            transform: scale(1.2) rotate(10deg);
+            filter: drop-shadow(0 8px 30px rgba(102, 126, 234, 0.8));
+        }
+        .crypto-logo-img:nth-child(1) { animation-delay: 0s; }
+        .crypto-logo-img:nth-child(2) { animation-delay: 0.2s; }
+        .crypto-logo-img:nth-child(3) { animation-delay: 0.4s; }
+        .crypto-logo-img:nth-child(4) { animation-delay: 0.6s; }
+        .crypto-logo-img:nth-child(5) { animation-delay: 0.8s; }
+        .crypto-logo-img:nth-child(6) { animation-delay: 1s; }
+        .crypto-logo-img:nth-child(7) { animation-delay: 1.2s; }
+        .crypto-logo-img:nth-child(8) { animation-delay: 1.4s; }
+        .crypto-logo-img:nth-child(9) { animation-delay: 1.6s; }
         @keyframes scroll { 
             0% { transform: translateX(0); } 
             100% { transform: translateX(-50%); } 
         }
         @keyframes float-logo { 
-            0%, 100% { transform: translateY(0) rotate(0deg); } 
-            50% { transform: translateY(-15px) rotate(10deg); } 
+            0%, 100% { transform: translateY(0) scale(1); } 
+            50% { transform: translateY(-15px) scale(1.05); } 
         }
         
-        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } .crypto-logo-img { width: 35px; height: 35px; margin: 0 30px; } }
     </style>
 </head>
 <body>
@@ -6721,28 +6735,28 @@ async def home():
             <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
         
-        <!-- 🪙 CRYPTO TICKER - Logos animés -->
+        <!-- 🪙 CRYPTO TICKER - VRAIS LOGOS -->
         <div class="crypto-ticker-container">
             <div class="crypto-ticker">
-                <div class="crypto-logo">₿</div>
-                <div class="crypto-logo">Ξ</div>
-                <div class="crypto-logo">⊕</div>
-                <div class="crypto-logo">◈</div>
-                <div class="crypto-logo">₳</div>
-                <div class="crypto-logo">₮</div>
-                <div class="crypto-logo">◎</div>
-                <div class="crypto-logo">Ð</div>
-                <div class="crypto-logo">●</div>
+                <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.svg" alt="BTC" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/ethereum-eth-logo.svg" alt="ETH" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/bnb-bnb-logo.svg" alt="BNB" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/xrp-xrp-logo.svg" alt="XRP" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/cardano-ada-logo.svg" alt="ADA" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" alt="USDT" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/solana-sol-logo.svg" alt="SOL" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/dogecoin-doge-logo.svg" alt="DOGE" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/polkadot-new-dot-logo.svg" alt="DOT" class="crypto-logo-img">
                 <!-- Duplicate pour effet infini -->
-                <div class="crypto-logo">₿</div>
-                <div class="crypto-logo">Ξ</div>
-                <div class="crypto-logo">⊕</div>
-                <div class="crypto-logo">◈</div>
-                <div class="crypto-logo">₳</div>
-                <div class="crypto-logo">₮</div>
-                <div class="crypto-logo">◎</div>
-                <div class="crypto-logo">Ð</div>
-                <div class="crypto-logo">●</div>
+                <img src="https://cryptologos.cc/logos/bitcoin-btc-logo.svg" alt="BTC" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/ethereum-eth-logo.svg" alt="ETH" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/bnb-bnb-logo.svg" alt="BNB" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/xrp-xrp-logo.svg" alt="XRP" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/cardano-ada-logo.svg" alt="ADA" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" alt="USDT" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/solana-sol-logo.svg" alt="SOL" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/dogecoin-doge-logo.svg" alt="DOGE" class="crypto-logo-img">
+                <img src="https://cryptologos.cc/logos/polkadot-new-dot-logo.svg" alt="DOT" class="crypto-logo-img">
             </div>
         </div>
 

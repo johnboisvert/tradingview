@@ -4506,10 +4506,10 @@ async def strategie_page():
             }}
             
             body {
-                margin-left: 0 !important;
+                margin-left: 280px !important;
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: #333;
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+                color: #e2e8f0;
                 line-height: 1.6;
             }}
             
@@ -4523,39 +4523,46 @@ async def strategie_page():
                 text-align: center;
                 color: white;
                 margin-bottom: 50px;
-                background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
                 padding: 40px;
                 border-radius: 15px;
                 backdrop-filter: blur(10px);
-                border: 2px solid rgba(255,255,255,0.2);
-                box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+                border: 2px solid rgba(102, 126, 234, 0.3);
+                box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
             }
             
             header h1 {
                 font-size: 2.8em;
                 margin-bottom: 10px;
-                text-shadow: 0 0 20px rgba(255,255,255,0.5), 2px 2px 8px rgba(0,0,0,0.3);
+                text-shadow: 0 0 30px rgba(102, 126, 234, 0.8), 2px 2px 8px rgba(0,0,0,0.5);
                 font-weight: 900;
                 letter-spacing: 2px;
+                background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
             }
             
             header p {
                 font-size: 1.2em;
                 opacity: 0.9;
+                color: #cbd5e1;
             }
             
             .content {
-                background: white;
+                background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.8) 100%);
                 border-radius: 15px;
                 padding: 50px;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
                 margin-bottom: 40px;
+                border: 1px solid rgba(102, 126, 234, 0.2);
+                color: #e2e8f0;
             }
             
             .section {
                 margin-bottom: 50px;
                 padding-bottom: 30px;
-                border-bottom: 3px solid #f0f0f0;
+                border-bottom: 3px solid rgba(102, 126, 234, 0.2);
             }
             
             .section:last-child {
@@ -4569,18 +4576,21 @@ async def strategie_page():
                 display: flex;
                 align-items: center;
                 gap: 10px;
+                text-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
             }
             
             h3 {
-                color: #764ba2;
+                color: #a78bfa;
                 font-size: 1.5em;
                 margin: 25px 0 15px 0;
+                font-weight: 700;
             }
             
             h4 {
-                color: #667eea;
+                color: #818cf8;
                 font-size: 1.2em;
                 margin: 20px 0 10px 0;
+                font-weight: 600;
             }
             
             .emoji {
@@ -4590,51 +4600,60 @@ async def strategie_page():
             p {
                 margin-bottom: 15px;
                 font-size: 1.05em;
+                color: #cbd5e1;
+                line-height: 1.7;
             }
             
             ul, ol {
                 margin-left: 30px;
                 margin-bottom: 15px;
+                color: #cbd5e1;
             }
             
             li {
                 margin-bottom: 10px;
+                color: #cbd5e1;
             }
             
             .box {
-                background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
                 border-left: 5px solid #667eea;
                 padding: 20px;
                 margin: 20px 0;
                 border-radius: 8px;
+                color: #e2e8f0;
             }
             
             .box.success {
-                border-left-color: #00d084;
-                background: linear-gradient(135deg, #00d08415 0%, #00b86f15 100%);
+                border-left-color: #10b981;
+                background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+                color: #d1fae5;
             }
             
             .box.danger {
-                border-left-color: #ff4757;
-                background: linear-gradient(135deg, #ff475715 0%, #ff684415 100%);
+                border-left-color: #ef4444;
+                background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
+                color: #fecaca;
             }
             
             .box.warning {
-                border-left-color: #ffa502;
-                background: linear-gradient(135deg, #ffa50215 0%, #ff851515 100%);
+                border-left-color: #f59e0b;
+                background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%);
+                color: #fef3c7;
             }
             
             table {
                 width: 100%;
                 border-collapse: collapse;
                 margin: 20px 0;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             }
             
             th, td {
                 padding: 15px;
                 text-align: left;
-                border: 1px solid #e0e0e0;
+                border: 1px solid rgba(102, 126, 234, 0.2);
+                color: #e2e8f0;
             }
             
             th {
@@ -4644,18 +4663,19 @@ async def strategie_page():
             }
             
             tr:nth-child(even) {
-                background: #f9f9f9;
+                background: rgba(30, 41, 59, 0.5);
             }
             
             tr:hover {
-                background: #f0f0f0;
+                background: rgba(102, 126, 234, 0.1);
             }
             
             .checklist {
-                background: #f9f9f9;
+                background: rgba(30, 41, 59, 0.5);
                 padding: 20px;
                 border-radius: 8px;
                 margin: 20px 0;
+                border: 1px solid rgba(102, 126, 234, 0.2);
             }
             
             .checklist label {
@@ -4665,10 +4685,11 @@ async def strategie_page():
                 padding: 8px;
                 border-radius: 4px;
                 transition: 0.3s;
+                color: #e2e8f0;
             }
             
             .checklist label:hover {
-                background: #e0e0e0;
+                background: rgba(102, 126, 234, 0.2);
             }
             
             .checklist input[type="checkbox"] {
@@ -4679,7 +4700,7 @@ async def strategie_page():
             }
             
             .calculator {
-                background: #f0f0f0;
+                background: rgba(30, 41, 59, 0.5);
                 padding: 25px;
                 border-radius: 10px;
                 margin: 20px 0;
@@ -4690,9 +4711,11 @@ async def strategie_page():
                 width: 100%;
                 padding: 12px;
                 margin: 10px 0;
-                border: 1px solid #ddd;
+                border: 1px solid rgba(102, 126, 234, 0.3);
                 border-radius: 5px;
                 font-size: 1em;
+                background: rgba(15, 23, 42, 0.5);
+                color: #e2e8f0;
             }
             
             .calculator button {
@@ -4709,16 +4732,17 @@ async def strategie_page():
             
             .calculator button:hover {
                 transform: translateY(-2px);
-                box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+                box-shadow: 0 10px 20px rgba(102, 126, 234, 0.5);
             }
             
             .result {
-                background: white;
+                background: rgba(16, 185, 129, 0.1);
                 padding: 15px;
                 margin-top: 15px;
                 border-radius: 5px;
-                border-left: 4px solid #00d084;
+                border-left: 4px solid #10b981;
                 display: none;
+                color: #d1fae5;
             }
             
             .result.show {

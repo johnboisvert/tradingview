@@ -1083,7 +1083,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 
 # Chemin de la base de données
-DB_PATH = "/data/academy.db"
+DB_PATH = "/tmp/academy.db"
 
 # ============================================================================
 # INITIALISATION DE LA BASE DE DONNÉES

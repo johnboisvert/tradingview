@@ -1072,6 +1072,404 @@ UPCOMING_GEMS_COMPLETE = [
 
 
 
+
+# ============================================================================
+# CRYPTO ACADEMY - SYSTÈME DE BASE DE DONNÉES INTÉGRÉ
+# ============================================================================
+
+import sqlite3
+import json
+from datetime import datetime, timedelta
+from typing import Optional, Dict, List
+
+# Chemin de la base de données
+DB_PATH = "/data/academy.db"
+
+# ============================================================================
+# INITIALISATION DE LA BASE DE DONNÉES
+# ============================================================================
+
+def init_academy_db():
+    """Initialise toutes les tables Academy"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Table: Progression des leçons
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_lessons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            lesson_id TEXT NOT NULL,
+            completed BOOLEAN DEFAULT 0,
+            score INTEGER DEFAULT 0,
+            completed_at TIMESTAMP,
+            UNIQUE(username, lesson_id)
+        )
+    """)
+    
+    # Table: Badges débloqués
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_badges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            badge_id TEXT NOT NULL,
+            unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(username, badge_id)
+        )
+    """)
+    
+    # Table: XP et niveau
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_progress (
+            username TEXT PRIMARY KEY,
+            total_xp INTEGER DEFAULT 0,
+            level INTEGER DEFAULT 1,
+            streak_days INTEGER DEFAULT 0,
+            last_activity DATE,
+            total_lessons_completed INTEGER DEFAULT 0,
+            quiz_perfect_count INTEGER DEFAULT 0
+        )
+    """)
+    
+    # Table: Résultats des quiz
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS quiz_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            lesson_id TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            total_questions INTEGER NOT NULL,
+            completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    conn.commit()
+    conn.close()
+    print("✅ Base de données Academy initialisée")
+
+# ============================================================================
+# FONCTIONS DE PROGRESSION
+# ============================================================================
+
+def get_user_progress(username: str) -> Dict:
+    """Récupère la progression complète d'un utilisateur"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Progression générale
+    cursor.execute("""
+        SELECT total_xp, level, streak_days, last_activity, 
+               total_lessons_completed, quiz_perfect_count
+        FROM user_progress 
+        WHERE username = ?
+    """, (username,))
+    
+    result = cursor.fetchone()
+    
+    if not result:
+        # Créer un nouvel utilisateur
+        cursor.execute("""
+            INSERT INTO user_progress (username, total_xp, level, streak_days)
+            VALUES (?, 0, 1, 0)
+        """, (username,))
+        conn.commit()
+        result = (0, 1, 0, None, 0, 0)
+    
+    total_xp, level, streak_days, last_activity, lessons_completed, quiz_perfect = result
+    
+    # Compter les leçons complétées
+    cursor.execute("""
+        SELECT COUNT(*) FROM user_lessons 
+        WHERE username = ? AND completed = 1
+    """, (username,))
+    lessons_count = cursor.fetchone()[0]
+    
+    # Compter les badges
+    cursor.execute("""
+        SELECT COUNT(*) FROM user_badges 
+        WHERE username = ?
+    """, (username,))
+    badges_count = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    return {
+        "total_xp": total_xp,
+        "level": level,
+        "streak_days": streak_days,
+        "lessons_completed": lessons_count,
+        "total_lessons": 54,  # 18 leçons × 3 parcours
+        "badges_count": badges_count,
+        "quiz_perfect_count": quiz_perfect or 0,
+        "completion_percentage": round((lessons_count / 54) * 100, 1)
+    }
+
+def complete_lesson(username: str, lesson_id: str, quiz_score: int = 0, quiz_total: int = 0) -> Dict:
+    """Marque une leçon comme complétée et met à jour la progression"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Vérifier si déjà complétée
+    cursor.execute("""
+        SELECT completed FROM user_lessons 
+        WHERE username = ? AND lesson_id = ?
+    """, (username, lesson_id))
+    
+    existing = cursor.fetchone()
+    
+    if existing and existing[0]:
+        conn.close()
+        return {"already_completed": True}
+    
+    # Marquer comme complétée
+    if existing:
+        cursor.execute("""
+            UPDATE user_lessons 
+            SET completed = 1, score = ?, completed_at = ?
+            WHERE username = ? AND lesson_id = ?
+        """, (quiz_score, datetime.now(), username, lesson_id))
+    else:
+        cursor.execute("""
+            INSERT INTO user_lessons (username, lesson_id, completed, score, completed_at)
+            VALUES (?, ?, 1, ?, ?)
+        """, (username, lesson_id, quiz_score, datetime.now()))
+    
+    # Enregistrer le résultat du quiz
+    if quiz_total > 0:
+        cursor.execute("""
+            INSERT INTO quiz_results (username, lesson_id, score, total_questions)
+            VALUES (?, ?, ?, ?)
+        """, (username, lesson_id, quiz_score, quiz_total))
+    
+    # Calculer l'XP gagné (100 XP par leçon + bonus quiz)
+    xp_earned = 100
+    if quiz_score == quiz_total and quiz_total > 0:
+        xp_earned += 50  # Bonus quiz parfait
+    
+    # Mettre à jour la progression
+    cursor.execute("""
+        UPDATE user_progress 
+        SET total_xp = total_xp + ?,
+            total_lessons_completed = total_lessons_completed + 1,
+            quiz_perfect_count = quiz_perfect_count + ?,
+            last_activity = ?
+        WHERE username = ?
+    """, (xp_earned, 1 if quiz_score == quiz_total else 0, datetime.now().date(), username))
+    
+    # Mettre à jour le niveau
+    cursor.execute("SELECT total_xp FROM user_progress WHERE username = ?", (username,))
+    total_xp = cursor.fetchone()[0]
+    new_level = calculate_level(total_xp)
+    
+    cursor.execute("""
+        UPDATE user_progress SET level = ? WHERE username = ?
+    """, (new_level, username))
+    
+    # Vérifier les badges à débloquer
+    check_and_unlock_badges(cursor, username)
+    
+    # Mettre à jour le streak
+    update_streak(cursor, username)
+    
+    conn.commit()
+    conn.close()
+    
+    return {
+        "xp_earned": xp_earned,
+        "new_level": new_level,
+        "quiz_perfect": quiz_score == quiz_total if quiz_total > 0 else False
+    }
+
+def calculate_level(xp: int) -> int:
+    """Calcule le niveau en fonction de l'XP"""
+    # Niveau 1: 0-499 XP
+    # Niveau 2: 500-1499 XP
+    # Niveau 3: 1500-2999 XP
+    # etc.
+    if xp < 500:
+        return 1
+    elif xp < 1500:
+        return 2
+    elif xp < 3000:
+        return 3
+    elif xp < 5000:
+        return 4
+    elif xp < 7500:
+        return 5
+    else:
+        return 6 + (xp - 7500) // 3000
+
+def update_streak(cursor, username: str):
+    """Met à jour le streak de jours consécutifs"""
+    cursor.execute("""
+        SELECT last_activity, streak_days FROM user_progress 
+        WHERE username = ?
+    """, (username,))
+    
+    result = cursor.fetchone()
+    if not result:
+        return
+    
+    last_activity, current_streak = result
+    today = datetime.now().date()
+    
+    if last_activity:
+        last_date = datetime.strptime(last_activity, "%Y-%m-%d").date()
+        days_diff = (today - last_date).days
+        
+        if days_diff == 0:
+            # Même jour, pas de changement
+            return
+        elif days_diff == 1:
+            # Jour consécutif, incrémenter
+            current_streak += 1
+        else:
+            # Streak cassé, recommencer à 1
+            current_streak = 1
+    else:
+        current_streak = 1
+    
+    cursor.execute("""
+        UPDATE user_progress 
+        SET streak_days = ?, last_activity = ?
+        WHERE username = ?
+    """, (current_streak, today, username))
+
+def check_and_unlock_badges(cursor, username: str):
+    """Vérifie et débloque les badges automatiquement"""
+    
+    # Récupérer les stats
+    cursor.execute("""
+        SELECT total_lessons_completed, quiz_perfect_count, streak_days
+        FROM user_progress WHERE username = ?
+    """, (username,))
+    
+    stats = cursor.fetchone()
+    if not stats:
+        return
+    
+    lessons_completed, quiz_perfect, streak = stats
+    
+    badges_to_unlock = []
+    
+    # Badge: Première leçon
+    if lessons_completed >= 1:
+        badges_to_unlock.append("first_lesson")
+    
+    # Badge: 5 leçons en 24h (simplifié: 5 leçons complétées)
+    if lessons_completed >= 5:
+        badges_to_unlock.append("speed_learner")
+    
+    # Badge: Quiz parfait (10 quiz parfaits)
+    if quiz_perfect >= 10:
+        badges_to_unlock.append("quiz_master")
+    
+    # Badge: Streak de 7 jours
+    if streak >= 7:
+        badges_to_unlock.append("dedicated")
+    
+    # Débloquer les badges
+    for badge_id in badges_to_unlock:
+        try:
+            cursor.execute("""
+                INSERT OR IGNORE INTO user_badges (username, badge_id)
+                VALUES (?, ?)
+            """, (username, badge_id))
+        except:
+            pass
+
+def get_user_badges(username: str) -> List[Dict]:
+    """Récupère tous les badges de l'utilisateur"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT badge_id, unlocked_at FROM user_badges 
+        WHERE username = ?
+        ORDER BY unlocked_at DESC
+    """, (username,))
+    
+    badges = []
+    for badge_id, unlocked_at in cursor.fetchall():
+        badges.append({
+            "badge_id": badge_id,
+            "unlocked_at": unlocked_at
+        })
+    
+    conn.close()
+    return badges
+
+def get_lesson_status(username: str, lesson_id: str) -> Dict:
+    """Récupère le statut d'une leçon spécifique"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT completed, score, completed_at 
+        FROM user_lessons 
+        WHERE username = ? AND lesson_id = ?
+    """, (username, lesson_id))
+    
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result:
+        return {
+            "completed": bool(result[0]),
+            "score": result[1],
+            "completed_at": result[2]
+        }
+    else:
+        return {
+            "completed": False,
+            "score": 0,
+            "completed_at": None
+        }
+
+# ============================================================================
+# DONNÉES DES LEÇONS
+# ============================================================================
+
+LESSONS_DATA = {
+    # Parcours 1: Les Bases (18 leçons)
+    "bases_1": {
+        "id": "bases_1",
+        "title": "Qu'est-ce que la blockchain?",
+        "parcours": "bases",
+        "content": "La blockchain est une technologie de stockage et de transmission d'informations, transparente, sécurisée, et fonctionnant sans organe central de contrôle...",
+        "quiz": [
+            {"q": "La blockchain est...", "options": ["Un livre de comptes distribué", "Une crypto", "Une banque"], "correct": 0},
+            {"q": "Bitcoin utilise la blockchain", "options": ["Vrai", "Faux"], "correct": 0}
+        ]
+    },
+    "bases_2": {
+        "id": "bases_2",
+        "title": "Bitcoin: La première crypto",
+        "parcours": "bases",
+        "content": "Bitcoin a été créé en 2009 par Satoshi Nakamoto. C'est la première cryptomonnaie décentralisée...",
+        "quiz": [
+            {"q": "Qui a créé Bitcoin?", "options": ["Satoshi Nakamoto", "Vitalik Buterin", "Elon Musk"], "correct": 0},
+            {"q": "En quelle année?", "options": ["2009", "2015", "2020"], "correct": 0}
+        ]
+    },
+    # ... (Tu peux ajouter les 52 autres leçons plus tard)
+}
+
+# Badges disponibles
+BADGES_DATA = {
+    "first_lesson": {"name": "Première Leçon", "icon": "🎯", "description": "Complete ta première leçon"},
+    "speed_learner": {"name": "Rapide", "icon": "⚡", "description": "5 leçons complétées"},
+    "quiz_master": {"name": "Expert Quiz", "icon": "🧠", "description": "10 quiz parfaits"},
+    "dedicated": {"name": "Dévoué", "icon": "🔥", "description": "7 jours consécutifs"},
+}
+
+# Initialiser la DB au démarrage du module
+try:
+    init_academy_db()
+except Exception as e:
+    print(f"⚠️ Erreur init Academy DB: {e}")
+
+
 app = FastAPI()
 
 # 🔐 CORRECTION 2: RATE LIMITING - Protection contre brute-force
@@ -35677,179 +36075,563 @@ class AIChatMessage(BaseModel):
 # ROUTES ACADEMY SIMPLES - VERSION TEST
 # ============================================================================
 
+
+# ============================================================================
+# CRYPTO ACADEMY - ROUTES COMPLÈTES AVEC DB, SIDEBAR ET QUIZ
+# ============================================================================
+
 @app.get("/crypto-academy", response_class=HTMLResponse)
 async def crypto_academy_page(request: Request):
-    """Crypto Academy Page"""
+    """🎓 Page principale Academy avec progression réelle"""
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
+    
     if not username:
         return RedirectResponse(url="/login?redirect=/crypto-academy")
     
-    html_content = """<!DOCTYPE html>
+    # Récupérer la progression réelle depuis la DB
+    progress = get_user_progress(username)
+    
+    # Générer les cartes de leçons
+    lessons_html = ""
+    for lesson_id in ["bases_1", "bases_2"]:
+        if lesson_id in LESSONS_DATA:
+            lesson = LESSONS_DATA[lesson_id]
+            status = get_lesson_status(username, lesson_id)
+            
+            completed_class = "completed" if status["completed"] else ""
+            status_text = f"✅ Complétée - {status['score']}/2" if status["completed"] else "📝 Non complétée"
+            
+            lessons_html += f"""
+                <div class="lesson-card {completed_class}" onclick="window.location.href='/crypto-academy/lesson/{lesson_id}'">
+                    <div class="lesson-title">{lesson["title"]}</div>
+                    <div class="lesson-status">{status_text}</div>
+                </div>
+            """
+    
+    html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crypto Academy</title>
     <style>
-        body { margin: 0; padding: 0; background: #0f172a; color: #e2e8f0; font-family: Arial, sans-serif; }
-        .main { padding: 40px; max-width: 1200px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px; padding: 40px; text-align: center; color: white; margin-bottom: 40px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
-        .card { background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 30px; text-align: center; }
-        .icon { font-size: 3em; margin-bottom: 20px; }
-        h3 { color: #60a5fa; margin: 20px 0; }
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; }}
+        .container {{ margin-left: 280px; padding: 40px; max-width: 1400px; }}
+        .header {{ background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 20px; 
+                   padding: 40px; text-align: center; color: white; margin-bottom: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }}
+        .progress-bar {{ background: rgba(255,255,255,0.2); height: 24px; border-radius: 12px; 
+                         overflow: hidden; margin-top: 20px; }}
+        .progress-fill {{ background: linear-gradient(90deg, #10b981, #059669); height: 100%; 
+                          transition: width 0.5s ease; }}
+        .section-title {{ color: #60a5fa; font-size: 2em; margin: 40px 0 20px 0; display: flex; 
+                          align-items: center; gap: 15px; }}
+        .lessons-grid {{ display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); 
+                         gap: 20px; margin-bottom: 40px; }}
+        .lesson-card {{ background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 25px; 
+                        border: 2px solid rgba(100, 116, 139, 0.3); cursor: pointer; 
+                        transition: all 0.3s ease; position: relative; overflow: hidden; }}
+        .lesson-card::before {{ content: ''; position: absolute; top: 0; left: 0; right: 0; 
+                                height: 4px; background: linear-gradient(90deg, #667eea, #764ba2); 
+                                transform: scaleX(0); transition: transform 0.3s; }}
+        .lesson-card:hover {{ transform: translateY(-5px); border-color: #667eea; 
+                              box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3); }}
+        .lesson-card:hover::before {{ transform: scaleX(1); }}
+        .lesson-card.completed {{ border-color: #10b981; background: rgba(16, 185, 129, 0.1); }}
+        .lesson-card.completed::before {{ background: linear-gradient(90deg, #10b981, #059669); 
+                                          transform: scaleX(1); }}
+        .lesson-title {{ color: white; font-size: 1.2em; margin-bottom: 10px; font-weight: 600; }}
+        .lesson-status {{ color: #94a3b8; font-size: 0.9em; }}
+        .stats-row {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; 
+                      margin-bottom: 30px; }}
+        .stat-box {{ background: rgba(30, 41, 59, 0.6); padding: 20px; border-radius: 12px; 
+                     text-align: center; }}
+        .stat-value {{ font-size: 2.5em; font-weight: bold; color: #10b981; }}
+        .stat-label {{ color: #94a3b8; margin-top: 8px; }}
     </style>
 </head>
 <body>
-    <div class="main">
+    {SIDEBAR}
+    <div class="container">
         <div class="header">
-            <h1>🎓 Crypto Academy</h1>
-            <p style="font-size: 1.2em; margin-top: 15px;">Formation complète crypto</p>
-        </div>
-        <div class="grid">
-            <div class="card">
-                <div class="icon">🌱</div>
-                <h3>Les Bases</h3>
-                <p>18 leçons - Blockchain et fondamentaux</p>
-            </div>
-            <div class="card">
-                <div class="icon">📈</div>
-                <h3>Trading 101</h3>
-                <p>18 leçons - Analyse technique</p>
-            </div>
-            <div class="card">
-                <div class="icon">🔒</div>
-                <h3>Sécurité</h3>
-                <p>18 leçons - Protection</p>
+            <h1 style="font-size: 2.5em; margin-bottom: 10px;">🎓 Crypto Academy</h1>
+            <p style="font-size: 1.2em; opacity: 0.95;">Ta formation complète pour devenir un expert crypto</p>
+            <div style="margin-top: 30px;">
+                <p style="font-size: 1.1em; margin-bottom: 10px;">
+                    {progress['lessons_completed']}/{progress['total_lessons']} leçons complétées
+                </p>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {progress['completion_percentage']}%"></div>
+                </div>
+                <p style="margin-top: 12px; font-size: 1em;">
+                    {progress['completion_percentage']}% • Niveau {progress['level']} • {progress['total_xp']} XP
+                </p>
             </div>
         </div>
-        <div style="margin-top: 40px; text-align: center; background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 30px;">
-            <p style="font-size: 1.1em;">🚀 Système complet en développement</p>
+        
+        <div class="stats-row">
+            <div class="stat-box">
+                <div class="stat-value">{progress['level']}</div>
+                <div class="stat-label">Niveau</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{progress['total_xp']}</div>
+                <div class="stat-label">XP Total</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">{progress['badges_count']}</div>
+                <div class="stat-label">Badges</div>
+            </div>
         </div>
+        
+        <h2 class="section-title">🌱 Les Bases de la Crypto</h2>
+        <p style="color: #94a3b8; margin-bottom: 20px;">Commence ton voyage dans l'univers crypto</p>
+        <div class="lessons-grid">
+            {lessons_html}
+        </div>
+        
+        <h2 class="section-title">📈 Trading 101</h2>
+        <p style="color: #94a3b8; margin-bottom: 20px;">
+            🔒 Débloque ce parcours en complétant les bases
+        </p>
+        
+        <h2 class="section-title">🔒 Sécurité Crypto</h2>
+        <p style="color: #94a3b8; margin-bottom: 20px;">
+            🔒 Débloque ce parcours en complétant Trading 101
+        </p>
     </div>
 </body>
 </html>"""
-    return HTMLResponse(content=html_content)
+    
+    return HTMLResponse(content=html)
 
-@app.get("/coach", response_class=HTMLResponse)
-async def academy_coach_page(request: Request):
-    """Coach AI Page"""
+
+@app.get("/crypto-academy/lesson/{lesson_id}", response_class=HTMLResponse)
+async def lesson_page(lesson_id: str, request: Request):
+    """📚 Page de leçon avec quiz interactif"""
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
-    if not username:
-        return RedirectResponse(url="/login?redirect=/coach")
     
-    html_content = """<!DOCTYPE html>
+    if not username:
+        return RedirectResponse(url="/login?redirect=/crypto-academy")
+    
+    lesson = LESSONS_DATA.get(lesson_id)
+    if not lesson:
+        return RedirectResponse(url="/crypto-academy")
+    
+    status = get_lesson_status(username, lesson_id)
+    
+    # Générer le HTML du quiz
+    quiz_html = ""
+    for i, q in enumerate(lesson['quiz']):
+        options_html = ""
+        for j, option in enumerate(q['options']):
+            options_html += f"""
+                <label class="quiz-option" data-index="{j}">
+                    <input type="radio" name="q{i}" value="{j}" style="margin-right: 10px;">
+                    <span>{option}</span>
+                </label>
+            """
+        
+        quiz_html += f"""
+            <div class="quiz-question">
+                <h3>Question {i+1}: {q['q']}</h3>
+                <div class="quiz-options">{options_html}</div>
+            </div>
+        """
+    
+    html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coach AI</title>
+    <title>{lesson['title']} - Crypto Academy</title>
     <style>
-        body { margin: 0; padding: 0; background: #0f172a; color: #e2e8f0; font-family: Arial, sans-serif; }
-        .main { padding: 40px; max-width: 1000px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px; padding: 40px; text-align: center; color: white; margin-bottom: 30px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }
-        .feature { background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 25px; }
-        h3 { color: #60a5fa; margin-bottom: 10px; }
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; }}
+        .container {{ margin-left: 280px; padding: 40px; max-width: 900px; }}
+        .lesson-header {{ background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 20px; 
+                          padding: 40px; color: white; margin-bottom: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }}
+        .lesson-content {{ background: rgba(30, 41, 59, 0.8); border-radius: 16px; padding: 40px; 
+                           margin-bottom: 30px; line-height: 1.8; font-size: 1.1em; 
+                           box-shadow: 0 4px 20px rgba(0,0,0,0.2); }}
+        .quiz-section {{ background: rgba(30, 41, 59, 0.8); border-radius: 16px; padding: 40px; 
+                         box-shadow: 0 4px 20px rgba(0,0,0,0.2); }}
+        .quiz-question {{ margin-bottom: 30px; }}
+        .quiz-question h3 {{ color: #60a5fa; margin-bottom: 15px; font-size: 1.2em; }}
+        .quiz-options {{ display: flex; flex-direction: column; gap: 10px; }}
+        .quiz-option {{ background: rgba(15, 23, 42, 0.8); padding: 15px 20px; border-radius: 8px; 
+                        border: 2px solid rgba(100, 116, 139, 0.3); cursor: pointer; 
+                        transition: all 0.3s ease; display: flex; align-items: center; }}
+        .quiz-option:hover {{ border-color: #667eea; transform: translateX(5px); 
+                              background: rgba(102, 126, 234, 0.1); }}
+        .quiz-option.selected {{ border-color: #667eea; background: rgba(102, 126, 234, 0.2); }}
+        .quiz-option.correct {{ border-color: #10b981; background: rgba(16, 185, 129, 0.2); }}
+        .quiz-option.incorrect {{ border-color: #ef4444; background: rgba(239, 68, 68, 0.2); }}
+        .submit-btn {{ background: linear-gradient(135deg, #667eea, #764ba2); color: white; 
+                       padding: 15px 40px; border: none; border-radius: 8px; font-size: 1.1em; 
+                       cursor: pointer; margin-top: 20px; transition: transform 0.2s; 
+                       font-weight: 600; }}
+        .submit-btn:hover {{ transform: scale(1.05); }}
+        .result-message {{ margin-top: 20px; padding: 20px; border-radius: 8px; text-align: center; 
+                           font-size: 1.2em; animation: slideIn 0.3s ease; }}
+        .result-message.success {{ background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981; }}
+        @keyframes slideIn {{ from {{ opacity: 0; transform: translateY(-10px); }} 
+                              to {{ opacity: 1; transform: translateY(0); }} }}
+        .back-link {{ display: inline-block; margin-top: 20px; color: #60a5fa; text-decoration: none; 
+                      font-size: 1.1em; transition: color 0.2s; }}
+        .back-link:hover {{ color: #93c5fd; }}
     </style>
 </head>
 <body>
-    <div class="main">
-        <div class="header">
-            <h1>🤖 Claude AI Coach</h1>
-            <p style="font-size: 1.2em; margin-top: 15px;">Assistant crypto personnel</p>
+    {SIDEBAR}
+    <div class="container">
+        <div class="lesson-header">
+            <p style="opacity: 0.9; margin-bottom: 10px; font-size: 0.9em;">LEÇON</p>
+            <h1 style="font-size: 2em;">{lesson['title']}</h1>
+            {f'<p style="margin-top: 15px; color: #10b981; font-size: 1.1em;">✅ Complétée - Score: {status["score"]}/2</p>' if status['completed'] else ''}
         </div>
-        <div style="background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 30px;">
-            <h2 style="color: #60a5fa; margin-bottom: 20px;">💬 Je peux t'aider à:</h2>
-            <div class="grid">
-                <div class="feature">
-                    <h3>📚 Expliquer</h3>
-                    <p>Blockchain, Bitcoin, DeFi</p>
-                </div>
-                <div class="feature">
-                    <h3>📈 Analyser</h3>
-                    <p>Tendances du marché</p>
-                </div>
-                <div class="feature">
-                    <h3>💡 Conseiller</h3>
-                    <p>Stratégies de trading</p>
-                </div>
-                <div class="feature">
-                    <h3>🎯 Suivre</h3>
-                    <p>Ta progression</p>
-                </div>
-            </div>
-            <div style="margin-top: 40px; text-align: center; padding: 30px; background: rgba(100, 116, 139, 0.2); border-radius: 12px;">
-                <p style="font-size: 1.1em;">🚀 Interface de chat bientôt disponible</p>
-            </div>
+        
+        <div class="lesson-content">
+            <p>{lesson['content']}</p>
+        </div>
+        
+        <div class="quiz-section">
+            <h2 style="color: #60a5fa; margin-bottom: 30px; font-size: 1.8em;">📝 Quiz de Validation</h2>
+            <form id="quizForm">
+                {quiz_html}
+                <button type="button" class="submit-btn" onclick="submitQuiz()">
+                    Valider mes réponses
+                </button>
+                <div id="result"></div>
+            </form>
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="/crypto-academy" class="back-link">← Retour aux leçons</a>
         </div>
     </div>
+    
+    <script>
+        const correctAnswers = {[q['correct'] for q in lesson['quiz']]};
+        
+        // Gérer la sélection des options
+        document.querySelectorAll('.quiz-option').forEach(option => {{
+            option.addEventListener('click', function() {{
+                const radio = this.querySelector('input[type="radio"]');
+                radio.checked = true;
+                
+                // Retirer selected de toutes les options de cette question
+                const questionDiv = this.closest('.quiz-question');
+                questionDiv.querySelectorAll('.quiz-option').forEach(opt => {{
+                    opt.classList.remove('selected');
+                }});
+                
+                // Ajouter selected à l'option cliquée
+                this.classList.add('selected');
+            }});
+        }});
+        
+        function submitQuiz() {{
+            const form = document.getElementById('quizForm');
+            const formData = new FormData(form);
+            let score = 0;
+            
+            // Vérifier chaque réponse
+            correctAnswers.forEach((correct, index) => {{
+                const userAnswer = formData.get('q' + index);
+                if (parseInt(userAnswer) === correct) {{
+                    score++;
+                }}
+                
+                // Marquer visuellement les réponses
+                const questionDiv = form.querySelectorAll('.quiz-question')[index];
+                questionDiv.querySelectorAll('.quiz-option').forEach((option, optIndex) => {{
+                    if (optIndex === correct) {{
+                        option.classList.add('correct');
+                    }}
+                    
+                    const radio = option.querySelector('input[type="radio"]');
+                    if (radio.checked && optIndex !== correct) {{
+                        option.classList.add('incorrect');
+                    }}
+                }});
+            }});
+            
+            // Afficher le résultat
+            const resultDiv = document.getElementById('result');
+            const isPerfect = score === correctAnswers.length;
+            const xpEarned = isPerfect ? 150 : 100;
+            
+            resultDiv.className = 'result-message success';
+            resultDiv.innerHTML = `
+                <h3>${{isPerfect ? '🎉 Parfait ! Quiz Réussi !' : '📚 Bien joué !'}}</h3>
+                <p style="font-size: 1.5em; margin: 10px 0;">Score: ${{score}}/${{correctAnswers.length}}</p>
+                <p style="margin-top: 10px; color: #10b981; font-weight: bold;">
+                    +${{xpEarned}} XP ${{isPerfect ? '(+50 bonus quiz parfait)' : ''}}
+                </p>
+                <p style="margin-top: 15px; font-size: 0.9em; opacity: 0.9;">
+                    Redirection dans 3 secondes...
+                </p>
+            `;
+            
+            // Envoyer au serveur pour enregistrer la progression
+            fetch('/api/academy/complete-lesson', {{
+                method: 'POST',
+                headers: {{ 'Content-Type': 'application/json' }},
+                body: JSON.stringify({{
+                    lesson_id: '{lesson_id}',
+                    score: score,
+                    total: correctAnswers.length
+                }})
+            }}).then(response => response.json())
+              .then(data => {{
+                  if (data.success) {{
+                      setTimeout(() => {{
+                          window.location.href = '/crypto-academy';
+                      }}, 3000);
+                  }}
+              }});
+        }}
+    </script>
 </body>
 </html>"""
-    return HTMLResponse(content=html_content)
+    
+    return HTMLResponse(content=html)
+
 
 @app.get("/academy-progress", response_class=HTMLResponse)
 async def academy_progress_page(request: Request):
-    """Progression Page"""
+    """📊 Page de progression avec stats réelles de la DB"""
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
+    
     if not username:
         return RedirectResponse(url="/login?redirect=/academy-progress")
     
-    html_content = f"""<!DOCTYPE html>
+    # Récupérer les stats réelles depuis la base de données
+    progress = get_user_progress(username)
+    user_badges = get_user_badges(username)
+    unlocked_ids = [b["badge_id"] for b in user_badges]
+    
+    # Générer les badges
+    badges_html = ""
+    for badge_id, badge_info in BADGES_DATA.items():
+        is_unlocked = badge_id in unlocked_ids
+        card_class = "unlocked" if is_unlocked else "locked"
+        
+        badges_html += f"""
+            <div class="badge-card {card_class}">
+                <div class="badge-icon">{badge_info['icon']}</div>
+                <h4 class="badge-name">{badge_info['name']}</h4>
+                <p class="badge-desc">{badge_info['description']}</p>
+                {f'<p class="unlocked-text">✅ Débloqué</p>' if is_unlocked else '<p class="locked-text">🔒 Verrouillé</p>'}
+            </div>
+        """
+    
+    html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Progression</title>
+    <title>Ma Progression - Crypto Academy</title>
     <style>
-        body {{ margin: 0; padding: 0; background: #0f172a; color: #e2e8f0; font-family: Arial, sans-serif; }}
-        .main {{ padding: 40px; max-width: 1200px; margin: 0 auto; }}
-        .header {{ background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px; padding: 40px; text-align: center; color: white; margin-bottom: 40px; }}
-        .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }}
-        .stat {{ background: rgba(30, 41, 59, 0.8); border-radius: 12px; padding: 30px; text-align: center; }}
-        .value {{ font-size: 2.5em; font-weight: bold; color: white; margin: 15px 0; }}
-        h3 {{ color: #60a5fa; margin-bottom: 10px; }}
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; }}
+        .container {{ margin-left: 280px; padding: 40px; max-width: 1200px; }}
+        .header {{ background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 20px; 
+                   padding: 40px; text-align: center; color: white; margin-bottom: 40px; 
+                   box-shadow: 0 10px 40px rgba(0,0,0,0.3); }}
+        .stats-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; 
+                       margin-bottom: 40px; }}
+        .stat-card {{ background: rgba(30, 41, 59, 0.8); border-radius: 16px; padding: 30px; 
+                      text-align: center; border: 2px solid rgba(100, 116, 139, 0.3); 
+                      transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }}
+        .stat-card:hover {{ transform: translateY(-5px); border-color: #667eea; }}
+        .stat-value {{ font-size: 3em; font-weight: bold; color: white; margin: 15px 0; 
+                       background: linear-gradient(135deg, #667eea, #10b981); 
+                       -webkit-background-clip: text; -webkit-text-fill-color: transparent; }}
+        h3 {{ color: #60a5fa; margin-bottom: 15px; font-size: 1.1em; }}
+        .badges-section {{ background: rgba(30, 41, 59, 0.8); border-radius: 16px; padding: 30px; 
+                           margin-bottom: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }}
+        .badges-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; 
+                        margin-top: 20px; }}
+        .badge-card {{ background: rgba(15, 23, 42, 0.8); border-radius: 12px; padding: 25px; 
+                       text-align: center; transition: all 0.3s ease; }}
+        .badge-card.unlocked {{ border: 2px solid #10b981; box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }}
+        .badge-card.unlocked:hover {{ transform: scale(1.05); }}
+        .badge-card.locked {{ opacity: 0.5; border: 2px solid #374151; }}
+        .badge-icon {{ font-size: 3em; margin-bottom: 10px; }}
+        .badge-name {{ color: #e2e8f0; font-size: 1em; margin: 10px 0; }}
+        .badge-desc {{ color: #94a3b8; font-size: 0.85em; margin: 10px 0; }}
+        .unlocked-text {{ margin-top: 10px; color: #10b981; font-size: 0.8em; font-weight: bold; }}
+        .locked-text {{ margin-top: 10px; color: #64748b; font-size: 0.8em; }}
+        .level-badge {{ display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); 
+                        padding: 8px 20px; border-radius: 20px; font-weight: bold; 
+                        margin-top: 10px; }}
     </style>
 </head>
 <body>
-    <div class="main">
+    {SIDEBAR}
+    <div class="container">
         <div class="header">
-            <h1>📊 Ta Progression</h1>
-            <p style="font-size: 1.3em; margin-top: 15px;">Utilisateur: {username}</p>
-            <p style="font-size: 1.1em; margin-top: 10px;">Niveau 1 - Novice</p>
-        </div>
-        <div class="grid">
-            <div class="stat">
-                <h3>📚 Leçons</h3>
-                <div class="value">0/54</div>
-                <p>0% complété</p>
-            </div>
-            <div class="stat">
-                <h3>🏆 Badges</h3>
-                <div class="value">0</div>
-                <p>Sur 12 disponibles</p>
-            </div>
-            <div class="stat">
-                <h3>📜 Certificats</h3>
-                <div class="value">0</div>
-                <p>Sur 4 disponibles</p>
-            </div>
-            <div class="stat">
-                <h3>🔥 Streak</h3>
-                <div class="value">0</div>
-                <p>jours consécutifs</p>
+            <h1 style="font-size: 2.5em; margin-bottom: 10px;">📊 Ta Progression Academy</h1>
+            <p style="font-size: 1.3em; margin-top: 15px;">Utilisateur: <strong>{username}</strong></p>
+            <div class="level-badge">
+                Niveau {progress['level']} • {progress['total_xp']} XP
             </div>
         </div>
-        <div style="text-align: center; padding: 40px; background: rgba(30, 41, 59, 0.8); border-radius: 12px;">
-            <p style="font-size: 1.1em;">🚀 Système complet en développement</p>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>📚 Leçons Complétées</h3>
+                <div class="stat-value">{progress['lessons_completed']}</div>
+                <p style="color: #94a3b8;">sur {progress['total_lessons']} total</p>
+                <p style="color: #10b981; margin-top: 8px; font-weight: bold;">
+                    {progress['completion_percentage']}%
+                </p>
+            </div>
+            <div class="stat-card">
+                <h3>🏆 Badges Débloqués</h3>
+                <div class="stat-value">{progress['badges_count']}</div>
+                <p style="color: #94a3b8;">sur 4 disponibles</p>
+            </div>
+            <div class="stat-card">
+                <h3>🧠 Quiz Parfaits</h3>
+                <div class="stat-value">{progress['quiz_perfect_count']}</div>
+                <p style="color: #94a3b8;">Score 2/2</p>
+            </div>
+            <div class="stat-card">
+                <h3>🔥 Streak Actuel</h3>
+                <div class="stat-value">{progress['streak_days']}</div>
+                <p style="color: #94a3b8;">jours consécutifs</p>
+            </div>
+        </div>
+        
+        <div class="badges-section">
+            <h2 style="color: #60a5fa; margin-bottom: 20px; font-size: 1.8em;">
+                🏅 Collection de Badges
+            </h2>
+            <div class="badges-grid">
+                {badges_html}
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 40px;">
+            <a href="/crypto-academy" style="color: #60a5fa; text-decoration: none; font-size: 1.1em;">
+                ← Retour à l'Academy
+            </a>
         </div>
     </div>
 </body>
 </html>"""
-    return HTMLResponse(content=html_content)
+    
+    return HTMLResponse(content=html)
+
+
+@app.get("/coach", response_class=HTMLResponse)
+async def academy_coach_page(request: Request):
+    """🤖 Coach AI avec SIDEBAR"""
+    session_token = request.cookies.get("session_token")
+    user_data = get_user_from_token(session_token)
+    username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
+    
+    if not username:
+        return RedirectResponse(url="/login?redirect=/coach")
+    
+    html = f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coach AI - Crypto Academy</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; }}
+        .container {{ margin-left: 280px; padding: 40px; max-width: 1000px; }}
+        .header {{ background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 20px; 
+                   padding: 40px; text-align: center; color: white; margin-bottom: 30px; 
+                   box-shadow: 0 10px 40px rgba(0,0,0,0.3); }}
+        .content {{ background: rgba(30, 41, 59, 0.8); border-radius: 16px; padding: 30px; 
+                    min-height: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }}
+        .grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 30px; }}
+        .feature {{ background: rgba(15, 23, 42, 0.8); border-radius: 12px; padding: 25px; 
+                    border: 2px solid rgba(100, 116, 139, 0.3); transition: all 0.3s ease; }}
+        .feature:hover {{ border-color: #667eea; transform: translateY(-5px); }}
+        h3 {{ color: #60a5fa; margin-bottom: 10px; font-size: 1.2em; }}
+    </style>
+</head>
+<body>
+    {SIDEBAR}
+    <div class="container">
+        <div class="header">
+            <h1 style="font-size: 2.5em;">🤖 Claude AI Coach</h1>
+            <p style="font-size: 1.2em; margin-top: 15px;">Ton assistant crypto personnel</p>
+        </div>
+        <div class="content">
+            <h2 style="color: #60a5fa; margin-bottom: 20px; font-size: 1.8em;">
+                💬 Je peux t'aider à:
+            </h2>
+            <div class="grid">
+                <div class="feature">
+                    <h3>📚 Expliquer les Concepts</h3>
+                    <p>Blockchain, Bitcoin, DeFi, NFTs, Smart Contracts</p>
+                </div>
+                <div class="feature">
+                    <h3>📈 Analyser le Marché</h3>
+                    <p>Tendances et opportunités du marché crypto</p>
+                </div>
+                <div class="feature">
+                    <h3>💡 Donner des Conseils</h3>
+                    <p>Stratégies de trading et gestion de risque</p>
+                </div>
+                <div class="feature">
+                    <h3>🎯 Suivre ta Progression</h3>
+                    <p>Recommandations personnalisées d'apprentissage</p>
+                </div>
+            </div>
+            <div style="margin-top: 40px; text-align: center; padding: 30px; 
+                        background: rgba(100, 116, 139, 0.2); border-radius: 12px;">
+                <p style="font-size: 1.1em; color: #94a3b8;">
+                    🚀 Interface de chat interactif bientôt disponible
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>"""
+    
+    return HTMLResponse(content=html)
+
+
+@app.post("/api/academy/complete-lesson")
+async def api_complete_lesson(request: Request):
+    """API pour marquer une leçon comme complétée"""
+    session_token = request.cookies.get("session_token")
+    user_data = get_user_from_token(session_token)
+    username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
+    
+    if not username:
+        return {"success": False, "error": "Not authenticated"}
+    
+    data = await request.json()
+    lesson_id = data.get("lesson_id")
+    score = data.get("score", 0)
+    total = data.get("total", 0)
+    
+    result = complete_lesson(username, lesson_id, score, total)
+    
+    return {
+        "success": True,
+        "xp_earned": result.get("xp_earned"),
+        "new_level": result.get("new_level"),
+        "quiz_perfect": result.get("quiz_perfect")
+    }

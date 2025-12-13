@@ -1464,10 +1464,11 @@ BADGES_DATA = {
 }
 
 # Initialiser la DB au démarrage du module
-try:
-    init_academy_db()
-except Exception as e:
-    print(f"⚠️ Erreur init Academy DB: {e}")
+# DÉSACTIVÉ - On initialise dans startup_event() maintenant
+# try:
+#     init_academy_db()
+# except Exception as e:
+#     print(f"⚠️ Erreur init Academy DB: {e}")
 
 
 app = FastAPI()
@@ -17170,6 +17171,13 @@ async def startup_event():
     """Démarre la tâche de fond au lancement de l'application"""
     # Initialiser la DB Portfolio
     init_portfolio_db()
+    
+    # Initialiser la DB Academy
+    try:
+        init_academy_db()
+        print("✅ Academy DB créée dans startup_event")
+    except Exception as e:
+        print(f"⚠️ Erreur Academy DB startup: {e}")
     
     # Initialiser l'Academy
     # Utiliser try_lock pour éviter de bloquer si un autre worker a déjà lancé

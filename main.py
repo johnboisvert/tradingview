@@ -4523,16 +4523,20 @@ async def strategie_page():
                 text-align: center;
                 color: white;
                 margin-bottom: 50px;
-                background: rgba(0,0,0,0.2);
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
                 padding: 40px;
                 border-radius: 15px;
                 backdrop-filter: blur(10px);
+                border: 2px solid rgba(255,255,255,0.2);
+                box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
             }
             
             header h1 {
-                font-size: 2.5em;
+                font-size: 2.8em;
                 margin-bottom: 10px;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+                text-shadow: 0 0 20px rgba(255,255,255,0.5), 2px 2px 8px rgba(0,0,0,0.3);
+                font-weight: 900;
+                letter-spacing: 2px;
             }
             
             header p {
@@ -7290,10 +7294,12 @@ async def spot_trading_page():
                 text-align: center;
                 color: white;
                 margin-bottom: 50px;
-                background: rgba(0,0,0,0.2);
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
                 padding: 40px;
                 border-radius: 15px;
                 backdrop-filter: blur(10px);
+                border: 2px solid rgba(255,255,255,0.2);
+                box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
             }
             
             header h1 {
@@ -8970,9 +8976,11 @@ async def ai_opportunity_scanner():
             }
             
             header h1 {
-                font-size: 2.5em;
+                font-size: 2.8em;
                 margin-bottom: 10px;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+                text-shadow: 0 0 20px rgba(255,255,255,0.5), 2px 2px 8px rgba(0,0,0,0.3);
+                font-weight: 900;
+                letter-spacing: 2px;
             }
             
             .content {
@@ -9537,9 +9545,11 @@ async def ai_market_regime():
             }
             
             header h1 {
-                font-size: 2.5em;
+                font-size: 2.8em;
                 margin-bottom: 10px;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+                text-shadow: 0 0 20px rgba(255,255,255,0.5), 2px 2px 8px rgba(0,0,0,0.3);
+                font-weight: 900;
+                letter-spacing: 2px;
             }
             
             .content {
@@ -10409,9 +10419,11 @@ async def ai_whale_watcher():
             }
             
             header h1 {
-                font-size: 2.5em;
+                font-size: 2.8em;
                 margin-bottom: 10px;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+                text-shadow: 0 0 20px rgba(255,255,255,0.5), 2px 2px 8px rgba(0,0,0,0.3);
+                font-weight: 900;
+                letter-spacing: 2px;
             }
             
             .content {
@@ -24459,11 +24471,11 @@ async def fear_greed_chart():
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <style>
             body {{
-            margin-left: 0 !important; 
                 font-family: 'Segoe UI', sans-serif; 
                 background: #0f172a; 
                 color: white; 
                 margin: 0;
+                margin-left: 280px;
                 padding-bottom: 40px;
             }}
             .container {{ 
@@ -26788,7 +26800,12 @@ print("Routes 2-3 créées: AI News, AI Predictor")
 async def ai_predictor():
     """Prédictions de prix - TOP 50"""
     cryptos = await get_top_50_cryptos()
-    predictions_html = ""
+    
+    # Générer les cartes pour les 3 périodes
+    predictions_7d = ""
+    predictions_30d = ""
+    predictions_90d = ""
+    
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
         change_24h = crypto.get('price_change_percentage_24h', 0)
@@ -26796,49 +26813,89 @@ async def ai_predictor():
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
         price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
+        
+        # Prédictions
         pred_7d = price * (1 + (change_24h * 3) / 100)
         pred_30d = price * (1 + (change_24h * 10) / 100)
         pred_90d = price * (1 + (change_24h * 25) / 100)
+        
         pred_7d_str = f"{pred_7d:,.6f}" if pred_7d < 1 else f"{pred_7d:,.2f}"
         pred_30d_str = f"{pred_30d:,.6f}" if pred_30d < 1 else f"{pred_30d:,.2f}"
         pred_90d_str = f"{pred_90d:,.6f}" if pred_90d < 1 else f"{pred_90d:,.2f}"
+        
         perc_7d = ((pred_7d - price) / price * 100) if price > 0 else 0
         perc_30d = ((pred_30d - price) / price * 100) if price > 0 else 0
         perc_90d = ((pred_90d - price) / price * 100) if price > 0 else 0
+        
         change_class = "positive" if change_24h > 0 else "negative"
-        predictions_html += f"""
+        
+        # Carte pour 7 jours
+        card_7d = f"""
         <div class="pred-card">
             <div class="pred-header">
                 <div class="crypto-name">#{rank} {symbol}</div>
-                <div style="font-size:0.85em;color:#94a3b8">{name}</div>
+                <div class="crypto-fullname">{name}</div>
             </div>
             <div class="current-section">
-                <span style="color:#94a3b8">Prix Actuel</span>
+                <div class="label">Prix Actuel</div>
                 <div class="current-price">${price_str}</div>
                 <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
             </div>
-            <div class="timeline">
-                <div class="timeline-item">
-                    <div class="timeline-label">7 JOURS</div>
-                    <div class="timeline-price">${pred_7d_str}</div>
-                    <div class="timeline-change {'positive' if perc_7d > 0 else 'negative'}">{perc_7d:+.1f}%</div>
-                    <div class="confidence">Confiance: 78%</div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-label">30 JOURS</div>
-                    <div class="timeline-price">${pred_30d_str}</div>
-                    <div class="timeline-change {'positive' if perc_30d > 0 else 'negative'}">{perc_30d:+.1f}%</div>
-                    <div class="confidence">Confiance: 65%</div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-label">90 JOURS</div>
-                    <div class="timeline-price">${pred_90d_str}</div>
-                    <div class="timeline-change {'positive' if perc_90d > 0 else 'negative'}">{perc_90d:+.1f}%</div>
-                    <div class="confidence">Confiance: 52%</div>
-                </div>
+            <div class="prediction-section">
+                <div class="pred-label">Prédiction 7 jours</div>
+                <div class="pred-price">${pred_7d_str}</div>
+                <div class="pred-change {'positive' if perc_7d > 0 else 'negative'}">{perc_7d:+.1f}%</div>
+                <div class="confidence">Confiance: 78%</div>
             </div>
         </div>
         """
+        
+        # Carte pour 30 jours
+        card_30d = f"""
+        <div class="pred-card">
+            <div class="pred-header">
+                <div class="crypto-name">#{rank} {symbol}</div>
+                <div class="crypto-fullname">{name}</div>
+            </div>
+            <div class="current-section">
+                <div class="label">Prix Actuel</div>
+                <div class="current-price">${price_str}</div>
+                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
+            </div>
+            <div class="prediction-section">
+                <div class="pred-label">Prédiction 30 jours</div>
+                <div class="pred-price">${pred_30d_str}</div>
+                <div class="pred-change {'positive' if perc_30d > 0 else 'negative'}">{perc_30d:+.1f}%</div>
+                <div class="confidence">Confiance: 65%</div>
+            </div>
+        </div>
+        """
+        
+        # Carte pour 90 jours
+        card_90d = f"""
+        <div class="pred-card">
+            <div class="pred-header">
+                <div class="crypto-name">#{rank} {symbol}</div>
+                <div class="crypto-fullname">{name}</div>
+            </div>
+            <div class="current-section">
+                <div class="label">Prix Actuel</div>
+                <div class="current-price">${price_str}</div>
+                <div class="price-change {change_class}">{change_24h:+.2f}% (24h)</div>
+            </div>
+            <div class="prediction-section">
+                <div class="pred-label">Prédiction 90 jours</div>
+                <div class="pred-price">${pred_90d_str}</div>
+                <div class="pred-change {'positive' if perc_90d > 0 else 'negative'}">{perc_90d:+.1f}%</div>
+                <div class="confidence">Confiance: 52%</div>
+            </div>
+        </div>
+        """
+        
+        predictions_7d += card_7d
+        predictions_30d += card_30d
+        predictions_90d += card_90d
+    
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
@@ -26847,184 +26904,221 @@ async def ai_predictor():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>AI Predictor - Top 50</title>
         <style>
-            *{{margin:0;padding:0;box-sizing:border-box}}
-            body{{font-family:Arial,sans-serif;background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff;padding:40px 20px;min-height:100vh}}
-            .container{{max-width:1400px;margin:0 auto}}
-            h1{{font-size:2.8em;text-align:center;margin-bottom:10px}}
-            .subtitle{{text-align:center;font-size:1.1em;margin-bottom:40px;opacity:0.9}}
-            .preds-grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:25px}}
-            .pred-card{{background:rgba(255,255,255,0.05);border:2px solid rgba(255,255,255,0.1);border-radius:15px;padding:25px}}
-            .pred-card:hover{{transform:translateY(-5px);border-color:rgba(255,255,255,0.3)}}
-            .pred-header{{margin-bottom:20px}}
-            .crypto-name{{font-size:1.4em;font-weight:700}}
-            .current-section{{text-align:center;padding:20px;background:rgba(0,0,0,0.3);border-radius:10px;margin:15px 0}}
-            .current-price{{font-size:1.8em;font-weight:700;margin:10px 0}}
-            .price-change{{font-size:1.1em}}
-            .price-change.positive{{color:#10b981}}
-            .price-change.negative{{color:#ef4444}}
-            .timeline{{display:grid;grid-template-columns:repeat(3,1fr);margin-top:20px;gap:12px}}
-            @media (max-width:768px){{.timeline{{grid-template-columns:1fr}}}}
-            .timeline-item{{text-align:center;padding:18px 12px;background:rgba(0,153,255,0.1);border-radius:10px;min-height:120px;display:flex;flex-direction:column;justify-content:center}}
-            .timeline-label{{font-size:0.75em;color:#00d4ff;margin-bottom:8px;text-transform:uppercase;font-weight:700}}
-            .timeline-price{{font-size:1.1em;font-weight:700;margin:8px 0;word-wrap:break-word;overflow-wrap:break-word}}
-            .timeline-change{{font-size:0.9em;margin:5px 0;font-weight:600}}
-            .timeline-change.positive{{color:#00ff88}}
-            .timeline-change.negative{{color:#ff4757}}
-            .confidence{{font-size:0.85em;color:#94a3b8;margin-top:5px}}
-        
-        .how-to-use {{
-            margin: 60px auto;
-            max-width: 1200px;
-            padding: 40px;
-            background: linear-gradient(135deg, rgba(6,182,212,0.1), rgba(59,130,246,0.1));
-            border: 2px solid #06b6d4;
-            border-radius: 20px;
-        }}
-        
-        .how-to-use h2 {{
-            font-size: 2em;
-            margin-bottom: 30px;
-            color: #06b6d4;
-            text-align: center;
-        }}
-        
-        .use-steps {{
-            display: grid;
-            gap: 25px;
-        }}
-        
-        .step {{
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-            padding: 25px;
-            background: rgba(255,255,255,0.05);
-            border-radius: 15px;
-            border-left: 4px solid #06b6d4;
-        }}
-        
-        .step-number {{
-            background: linear-gradient(135deg, #06b6d4, #3b82f6);
-            color: #fff;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5em;
-            font-weight: 700;
-            flex-shrink: 0;
-        }}
-        
-        .step-content h3 {{
-            font-size: 1.3em;
-            margin-bottom: 10px;
-            color: #fff;
-        }}
-        
-        .step-content p {{
-            color: rgba(255,255,255,0.8);
-            line-height: 1.6;
-        }}
-        
-        .use-tips {{
-            margin-top: 30px;
-            padding: 20px;
-            background: rgba(251,191,36,0.1);
-            border-left: 4px solid #fbbf24;
-            border-radius: 10px;
-        }}
-        
-        .use-tips h3 {{
-            color: #fbbf24;
-            margin-bottom: 15px;
-        }}
-        
-        .use-tips ul {{
-            list-style: none;
-            padding: 0;
-        }}
-        
-        .use-tips li {{
-            padding: 8px 0;
-            color: rgba(255,255,255,0.9);
-        }}
-        
-        .use-tips li:before {{
-            content: "💡 ";
-            margin-right: 10px;
-        }}
-</style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{ 
+                font-family: 'Segoe UI', sans-serif; 
+                background: linear-gradient(135deg, #1e1b4b, #312e81); 
+                color: #fff; 
+                min-height: 100vh;
+                margin-left: 280px;
+                padding: 40px 20px;
+            }}
+            .container {{ max-width: 1600px; margin: 0 auto; }}
+            
+            /* HEADER */
+            h1 {{ 
+                font-size: 3em; 
+                text-align: center; 
+                margin-bottom: 10px;
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+            }}
+            .subtitle {{ 
+                text-align: center; 
+                font-size: 1.2em; 
+                margin-bottom: 40px; 
+                opacity: 0.9;
+                color: #cbd5e1;
+            }}
+            
+            /* TABS */
+            .tabs {{
+                display: flex;
+                justify-content: center;
+                gap: 15px;
+                margin-bottom: 40px;
+                flex-wrap: wrap;
+            }}
+            .tab-btn {{
+                padding: 15px 35px;
+                background: rgba(255,255,255,0.1);
+                border: 2px solid rgba(255,255,255,0.2);
+                border-radius: 12px;
+                color: #fff;
+                font-size: 1.1em;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }}
+            .tab-btn:hover {{
+                background: rgba(255,255,255,0.15);
+                transform: translateY(-2px);
+            }}
+            .tab-btn.active {{
+                background: linear-gradient(135deg, #667eea, #764ba2);
+                border-color: #667eea;
+                box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
+            }}
+            
+            /* GRID */
+            .preds-grid {{ 
+                display: grid; 
+                grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
+                gap: 25px;
+            }}
+            .tab-content {{
+                display: none;
+            }}
+            .tab-content.active {{
+                display: block;
+            }}
+            
+            /* CARDS */
+            .pred-card {{ 
+                background: rgba(255,255,255,0.05); 
+                border: 2px solid rgba(255,255,255,0.1); 
+                border-radius: 15px; 
+                padding: 25px;
+                transition: all 0.3s;
+            }}
+            .pred-card:hover {{ 
+                transform: translateY(-5px); 
+                border-color: rgba(102, 126, 234, 0.5);
+                box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+            }}
+            
+            .pred-header {{ 
+                margin-bottom: 20px;
+                border-bottom: 2px solid rgba(255,255,255,0.1);
+                padding-bottom: 15px;
+            }}
+            .crypto-name {{ 
+                font-size: 1.5em; 
+                font-weight: 700;
+                color: #667eea;
+            }}
+            .crypto-fullname {{
+                font-size: 0.9em;
+                color: #94a3b8;
+                margin-top: 5px;
+            }}
+            
+            .current-section {{ 
+                text-align: center; 
+                padding: 20px; 
+                background: rgba(0,0,0,0.3); 
+                border-radius: 10px; 
+                margin: 15px 0;
+            }}
+            .label {{
+                font-size: 0.85em;
+                color: #94a3b8;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }}
+            .current-price {{ 
+                font-size: 1.8em; 
+                font-weight: 700; 
+                margin: 10px 0;
+            }}
+            .price-change {{ 
+                font-size: 1.1em;
+                font-weight: 600;
+            }}
+            .price-change.positive {{ color: #10b981; }}
+            .price-change.negative {{ color: #ef4444; }}
+            
+            .prediction-section {{
+                text-align: center;
+                padding: 20px;
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+                border-radius: 10px;
+                margin-top: 15px;
+            }}
+            .pred-label {{
+                font-size: 0.85em;
+                color: #667eea;
+                margin-bottom: 10px;
+                text-transform: uppercase;
+                font-weight: 700;
+                letter-spacing: 1px;
+            }}
+            .pred-price {{
+                font-size: 2em;
+                font-weight: 700;
+                margin: 10px 0;
+            }}
+            .pred-change {{
+                font-size: 1.2em;
+                font-weight: 600;
+                margin: 8px 0;
+            }}
+            .pred-change.positive {{ color: #00ff88; }}
+            .pred-change.negative {{ color: #ff4757; }}
+            .confidence {{
+                font-size: 0.9em;
+                color: #94a3b8;
+                margin-top: 10px;
+            }}
+            
+            /* RESPONSIVE */
+            @media (max-width: 768px) {{
+                body {{ margin-left: 0; }}
+                h1 {{ font-size: 2em; }}
+                .tabs {{ flex-direction: column; align-items: center; }}
+                .tab-btn {{ width: 100%; max-width: 300px; }}
+            }}
+        </style>
     </head>
     <body>
         <div class="container">
             <h1>🔮 AI PREDICTOR</h1>
             <p class="subtitle">Prédictions de prix - TOP 50 Cryptomonnaies</p>
-            <div class="preds-grid">{predictions_html}</div>
-        </div>
-        <script>setTimeout(function() {{ window.location.reload(); }}, 120000);</script>
-    
-        <div class="how-to-use">
-            <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
-            <div class="use-steps">
-                <div class="step">
-                    <span class="step-number">1</span>
-                    <div class="step-content">
-                        <h3>Analysez les prédictions de prix</h3>
-                        <p>Notre IA prédit les mouvements de prix à court terme (24h-7j) basés sur 50+ indicateurs techniques et l'historique des patterns.</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <span class="step-number">2</span>
-                    <div class="step-content">
-                        <h3>Vérifiez la confiance du modèle</h3>
-                        <p>Confiance >70% = prédiction fiable. Confiance <50% = marché incertain, prudence recommandée.</p>
-                    </div>
-                </div>
-                <div class="step">
-                    <span class="step-number">3</span>
-                    <div class="step-content">
-                        <h3>Planifiez vos positions</h3>
-                        <p>Utilisez les zones de prix prédites (support/résistance) pour placer vos ordres d'achat/vente et stop-loss.</p>
-                    </div>
-                </div>
+            
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('7d')">7 JOURS</button>
+                <button class="tab-btn" onclick="switchTab('30d')">30 JOURS</button>
+                <button class="tab-btn" onclick="switchTab('90d')">90 JOURS</button>
             </div>
-            <div class="use-tips">
-                <h3>⚡ Conseils Pro</h3>
-                <ul>
-                    <li>Les prédictions ne sont pas des garanties!</li>
-                    <li>Utilisez-les pour identifier des zones probables</li>
-                    <li>Combinez avec votre propre analyse</li>
-                </ul>
+            
+            <div id="tab-7d" class="tab-content active">
+                <div class="preds-grid">{predictions_7d}</div>
+            </div>
+            
+            <div id="tab-30d" class="tab-content">
+                <div class="preds-grid">{predictions_30d}</div>
+            </div>
+            
+            <div id="tab-90d" class="tab-content">
+                <div class="preds-grid">{predictions_90d}</div>
             </div>
         </div>
-    
-        <div style="max-width: 1200px; margin: 60px auto 40px; padding: 40px; background: rgba(236,72,153,0.05); border-radius: 20px; border: 1px solid rgba(236,72,153,0.3);">
-            <h2 style="text-align: center; color: #ec4899; font-size: 2em; margin-bottom: 30px;">Guide - AI Predictor</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
-                <div style="padding: 25px; background: rgba(236,72,153,0.1); border-radius: 15px; border-left: 4px solid #ec4899;">
-                    <h3 style="color: #ec4899; margin-bottom: 15px;">Machine Learning</h3>
-                    <p style="color: #cbd5e1; line-height: 1.6;">Prédictions basées sur l'IA et l'analyse de patterns historiques.</p>
-                </div>
-                <div style="padding: 25px; background: rgba(236,72,153,0.1); border-radius: 15px; border-left: 4px solid #ec4899;">
-                    <h3 style="color: #ec4899; margin-bottom: 15px;">24H / 7D / 30D</h3>
-                    <p style="color: #cbd5e1; line-height: 1.6;">Court, moyen et long terme avec niveaux de confiance.</p>
-                </div>
-                <div style="padding: 25px; background: rgba(236,72,153,0.1); border-radius: 15px; border-left: 4px solid #ec4899;">
-                    <h3 style="color: #ec4899; margin-bottom: 15px;">Scénarios</h3>
-                    <p style="color: #cbd5e1; line-height: 1.6;">Bull, Bear, Neutral avec probabilités IA.</p>
-                </div>
-            </div>
-        </div>
-
-        </body>
+        
+        <script>
+            function switchTab(period) {{
+                // Hide all tabs
+                document.querySelectorAll('.tab-content').forEach(tab => {{
+                    tab.classList.remove('active');
+                }});
+                document.querySelectorAll('.tab-btn').forEach(btn => {{
+                    btn.classList.remove('active');
+                }});
+                
+                // Show selected tab
+                document.getElementById('tab-' + period).classList.add('active');
+                event.target.classList.add('active');
+            }}
+            
+            // Auto-refresh every 2 minutes
+            setTimeout(function() {{ window.location.reload(); }}, 120000);
+        </script>
+    </body>
     </html>
     """)
-
-print("Routes 2-3 créées: AI News, AI Predictor")
-
-
 
 @app.get("/ai-whale", response_class=HTMLResponse)
 async def ai_whale():
@@ -31219,83 +31313,27 @@ async def academy_complete_final(request: Request):
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         /* SIDEBAR COMPLÈTE */
-        .sidebar {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 280px;
-            height: 100vh;
-            background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-            padding: 20px 0;
-            overflow-y: auto;
-            z-index: 99999;
-            box-shadow: 4px 0 20px rgba(0,0,0,0.5);
-            border-right: 2px solid rgba(6,182,212,0.3);
-        }
+        
         
         .sidebar::-webkit-scrollbar { width: 8px; }
         .sidebar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
         .sidebar::-webkit-scrollbar-thumb { background: rgba(6,182,212,0.5); border-radius: 4px; }
         
-        .sidebar-header {
-            padding: 0 20px 20px 20px;
-            border-bottom: 2px solid rgba(6,182,212,0.3);
-            margin-bottom: 15px;
-        }
         
-        .sidebar-title {
-            color: #06b6d4;
-            font-size: 20px;
-            font-weight: 700;
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
         
-        .menu-section { margin-bottom: 10px; }
         
-        .section-title {
-            color: rgba(255,255,255,0.5);
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            padding: 10px 20px 8px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
         
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 20px;
-            color: #e2e8f0;
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
-        }
         
-        .menu-item:hover {
-            background: rgba(6,182,212,0.15);
-            border-left-color: #06b6d4;
-            color: #fff;
-            padding-left: 25px;
-        }
         
-        .menu-item.active {
-            background: rgba(6,182,212,0.2);
-            border-left-color: #06b6d4;
-            color: #fff;
-            font-weight: 600;
-        }
         
-        .menu-item.ai-feature {
-            background: linear-gradient(90deg, rgba(6,182,212,0.15) 0%, transparent 100%);
-            border-left: 3px solid #06b6d4;
-            font-weight: 600;
-        }
+        
+        
+        
+        
+        
+        
+        
+        
         
         .icon { font-size: 18px; min-width: 20px; }
         
@@ -31700,10 +31738,7 @@ async def academy_complete_final(request: Request):
         }
         
         @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-            }
+            
             .sidebar.active {
                 transform: translateX(0);
             }
@@ -31732,242 +31767,7 @@ async def academy_complete_final(request: Request):
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
     
     <!-- SIDEBAR COMPLÈTE ULTRA PRO -->
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <div class="sidebar-title">🚀 CRYPTO IA</div>
-        </div>
-        
-        <!-- 📊 TABLEAU DE BORD -->
-        <div class="menu-section">
-            <div class="section-title">📊 TABLEAU DE BORD</div>
-            <a href="/dashboard" class="menu-item">
-                <span class="icon">🏠</span>
-                <span class="label">Dashboard Principal</span>
-            </a>
-            <a href="/stats-dashboard" class="menu-item">
-                <span class="icon">📈</span>
-                <span class="label">Stats Dashboard</span>
-            </a>
-        </div>
-        
-        <!-- 🎓 ACADEMY & FORMATION -->
-        <div class="menu-section">
-            <div class="section-title">🎓 ACADEMY & FORMATION</div>
-            <a href="/academy" class="menu-item ai-feature">
-                <span class="icon">🎓</span>
-                <span class="label">Trading Academy Pro</span>
-                <span class="badge">22 modules</span>
-            </a>
-        </div>
-        
-        <!-- 💰 TRADING & STRATÉGIES -->
-        <div class="menu-section">
-            <div class="section-title">💰 TRADING & STRATÉGIES</div>
-            <a href="/trades" class="menu-item">
-                <span class="icon">📊</span>
-                <span class="label">Mes Trades</span>
-            </a>
-            <a href="/strategie" class="menu-item">
-                <span class="icon">🎯</span>
-                <span class="label">Stratégies</span>
-            </a>
-            <a href="/spot-trading" class="menu-item">
-                <span class="icon">💱</span>
-                <span class="label">Spot Trading</span>
-            </a>
-            <a href="/watchlist" class="menu-item">
-                <span class="icon">⭐</span>
-                <span class="label">Watchlist</span>
-            </a>
-            <a href="/risk-management" class="menu-item">
-                <span class="icon">🛡️</span>
-                <span class="label">Gestion Risques</span>
-            </a>
-            <a href="/backtesting" class="menu-item">
-                <span class="icon">⏮️</span>
-                <span class="label">Backtesting</span>
-            </a>
-        </div>
-        
-        <!-- 🤖 FEATURES IA -->
-        <div class="menu-section">
-            <div class="section-title">🤖 FEATURES IA</div>
-            <a href="/ai-opportunity-scanner" class="menu-item ai-feature">
-                <span class="icon">🔍</span>
-                <span class="label">Scanner Opportunités</span>
-            </a>
-            <a href="/ai-market-regime" class="menu-item ai-feature">
-                <span class="icon">📊</span>
-                <span class="label">Régime Marché</span>
-            </a>
-            <a href="/ai-whale-watcher" class="menu-item ai-feature">
-                <span class="icon">🐋</span>
-                <span class="label">Whale Watcher</span>
-            </a>
-            <a href="/ai-assistant" class="menu-item ai-feature">
-                <span class="icon">🤖</span>
-                <span class="label">Assistant IA</span>
-            </a>
-            <a href="/ai-signals" class="menu-item ai-feature">
-                <span class="icon">📡</span>
-                <span class="label">Signaux IA</span>
-            </a>
-            <a href="/ai-news" class="menu-item ai-feature">
-                <span class="icon">📰</span>
-                <span class="label">News IA</span>
-            </a>
-            <a href="/ai-predictor" class="menu-item ai-feature">
-                <span class="icon">🔮</span>
-                <span class="label">Prédicteur IA</span>
-            </a>
-            <a href="/ai-patterns" class="menu-item ai-feature">
-                <span class="icon">🎨</span>
-                <span class="label">Patterns IA</span>
-            </a>
-            <a href="/ai-sentiment" class="menu-item ai-feature">
-                <span class="icon">😊</span>
-                <span class="label">Sentiment IA</span>
-            </a>
-            <a href="/ai-sizer" class="menu-item ai-feature">
-                <span class="icon">💰</span>
-                <span class="label">Position Sizer</span>
-            </a>
-            <a href="/ai-exit" class="menu-item ai-feature">
-                <span class="icon">🚪</span>
-                <span class="label">Exit Strategy</span>
-            </a>
-            <a href="/ai-timeframe" class="menu-item ai-feature">
-                <span class="icon">⏰</span>
-                <span class="label">Timeframe Analysis</span>
-            </a>
-            <a href="/ai-liquidity" class="menu-item ai-feature">
-                <span class="icon">💧</span>
-                <span class="label">Liquidité IA</span>
-            </a>
-            <a href="/ai-alerts" class="menu-item ai-feature">
-                <span class="icon">🔔</span>
-                <span class="label">Alertes IA</span>
-            </a>
-            <a href="/ai-gem-hunter" class="menu-item ai-feature">
-                <span class="icon">💎</span>
-                <span class="label">Gem Hunter</span>
-            </a>
-        </div>
-        
-        <!-- 📈 ANALYSE DE MARCHÉ -->
-        <div class="menu-section">
-            <div class="section-title">📈 ANALYSE DE MARCHÉ</div>
-            <a href="/fear-greed" class="menu-item">
-                <span class="icon">😨</span>
-                <span class="label">Fear & Greed</span>
-            </a>
-            <a href="/fear-greed-chart" class="menu-item">
-                <span class="icon">📊</span>
-                <span class="label">F&G Graphique</span>
-            </a>
-            <a href="/dominance" class="menu-item">
-                <span class="icon">👑</span>
-                <span class="label">BTC Dominance</span>
-            </a>
-            <a href="/altcoin-season" class="menu-item">
-                <span class="icon">🎯</span>
-                <span class="label">Altcoin Season</span>
-            </a>
-            <a href="/heatmap" class="menu-item">
-                <span class="icon">🔥</span>
-                <span class="label">Heatmap</span>
-            </a>
-            <a href="/bullrun-phase" class="menu-item">
-                <span class="icon">🐂</span>
-                <span class="label">Bull Run Phase</span>
-            </a>
-            <a href="/graphiques" class="menu-item">
-                <span class="icon">📉</span>
-                <span class="label">Graphiques Avancés</span>
-            </a>
-            <a href="/onchain-metrics" class="menu-item">
-                <span class="icon">⛓️</span>
-                <span class="label">Métriques On-Chain</span>
-            </a>
-        </div>
-        
-        <!-- 🆕 NOUVELLES FEATURES -->
-        <div class="menu-section">
-            <div class="section-title">🆕 NOUVELLES FEATURES</div>
-            <a href="/portfolio-tracker" class="menu-item ai-feature">
-                <span class="icon">💼</span>
-                <span class="label">Portfolio Tracker</span>
-            </a>
-            <a href="/defi-yield" class="menu-item ai-feature">
-                <span class="icon">🏦</span>
-                <span class="label">DeFi Yield</span>
-            </a>
-            
-            <a href="/crypto-pepites" class="menu-item ai-feature">
-                <span class="icon">💎</span>
-                <span class="label">Pépites Crypto</span>
-            </a>
-        </div>
-        
-        <!-- 🛠️ OUTILS -->
-        <div class="menu-section">
-            <div class="section-title">🛠️ OUTILS</div>
-            <a href="/calculatrice" class="menu-item">
-                <span class="icon">🧮</span>
-                <span class="label">Calculatrice</span>
-            </a>
-            <a href="/convertisseur" class="menu-item">
-                <span class="icon">💱</span>
-                <span class="label">Convertisseur</span>
-            </a>
-            <a href="/prediction-ia" class="menu-item">
-                <span class="icon">🔮</span>
-                <span class="label">Prédictions IA</span>
-            </a>
-            <a href="/market-simulation" class="menu-item">
-                <span class="icon">🎮</span>
-                <span class="label">Simulation Marché</span>
-            </a>
-            <a href="/calendrier" class="menu-item">
-                <span class="icon">📅</span>
-                <span class="label">Calendrier Éco</span>
-            </a>
-        </div>
-        
-        <!-- 📰 NOUVELLES & INFO -->
-        <div class="menu-section">
-            <div class="section-title">📰 NOUVELLES & INFO</div>
-            <a href="/nouvelles" class="menu-item">
-                <span class="icon">📰</span>
-                <span class="label">Actualités Crypto</span>
-            </a>
-            <a href="/success-stories" class="menu-item">
-                <span class="icon">🏆</span>
-                <span class="label">Success Stories</span>
-            </a>
-        </div>
-        
-        <!-- 👤 MON COMPTE -->
-        <div class="menu-section">
-            <div class="section-title">👤 MON COMPTE</div>
-            <a href="/pricing-complete" class="menu-item premium">
-                <span class="icon">💎</span>
-                <span class="label">Abonnements</span>
-            </a>
-            <a href="/admin-dashboard" class="menu-item admin">
-                <span class="icon">🔧</span>
-                <span class="label">Admin</span>
-            </a>
-            <a href="/mon-compte" class="menu-item account">
-                <span class="icon">👤</span>
-                <span class="label">Mon Compte</span>
-            </a>
-            <a href="/logout" class="menu-item logout">
-                <span class="icon">🚪</span>
-                <span class="label">Déconnexion</span>
-            </a>
-        </div>
-    </nav>
+    
 
 
     
@@ -33669,7 +33469,7 @@ console.log('✅ JavaScript Academy chargé avec succès!');
 </body>
 </html>
 """
-    return HTMLResponse(content=html_content)
+    return HTMLResponse(SIDEBAR + html_content)
 
 @app.get("/launchpad-scanner")
 async def launchpad_scanner():
@@ -34704,7 +34504,7 @@ console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 </html>
 '''
     
-    return HTMLResponse(page_html)
+    return HTMLResponse(SIDEBAR + page_html)
 
 
 # ============================================================================
@@ -36214,7 +36014,7 @@ async def ai_swarm_agents_page(request: Request):
 </html>
     """
     
-    return HTMLResponse(content=html_content)
+    return HTMLResponse(SIDEBAR + html_content)
 
 
 
@@ -36955,7 +36755,7 @@ async def crypto_academy_page(request: Request):
 </body>
 </html>"""
     
-    return HTMLResponse(content=html)
+    return HTMLResponse(SIDEBAR + html)
 
 
 @app.get("/crypto-academy/lesson/{lesson_id}", response_class=HTMLResponse)
@@ -37282,7 +37082,7 @@ async def academy_progress_page(request: Request):
 </body>
 </html>"""
     
-    return HTMLResponse(content=html)
+    return HTMLResponse(SIDEBAR + html)
 
 
 @app.post("/api/ai-coach/chat")

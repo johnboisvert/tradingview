@@ -35845,8 +35845,19 @@ async function analyzeContract() {
         if (data.error) {
             resultsDiv.innerHTML = `
                 <div class="result-card" style="border-left: 4px solid #ef4444;">
-                    <h3 style="color: #ef4444;">❌ Erreur</h3>
-                    <p>${data.error}</p>
+                    <h3 style="color: #ef4444; margin-bottom: 15px;">❌ ${data.error}</h3>
+                    <div style="color: #64748b; line-height: 1.8;">${data.details || 'Erreur inconnue'}</div>
+                    ${data.error.includes('non trouvé') ? `
+                        <div style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+                            <h4 style="color: #3b82f6; margin-bottom: 10px;">🔍 Comment vérifier?</h4>
+                            <p style="color: #64748b; margin: 0;">
+                                1. Copie l'adresse<br>
+                                2. Va sur <a href="https://etherscan.io" target="_blank" style="color: #3b82f6;">Etherscan.io</a> (ETH) ou <a href="https://bscscan.com" target="_blank" style="color: #3b82f6;">BSCScan.com</a> (BSC)<br>
+                                3. Colle l'adresse dans la barre de recherche<br>
+                                4. Vérifie que le contract existe
+                            </p>
+                        </div>
+                    ` : ''}
                 </div>
             `;
         } else {
@@ -36032,7 +36043,7 @@ async def analyze_contract(request: Request):
                 if 'result' not in data or not data['result'] or address not in data['result']:
                     return JSONResponse({
                         "error": "Contract non trouvé",
-                        "details": f"Aucune donnée disponible pour cette adresse sur {chain.upper()}. Vérifiez que l'adresse est correcte et existe sur cette blockchain."
+                        "details": f"Aucune donnée disponible pour cette adresse sur {chain.upper()}.<br><br><strong>Vérifications:</strong><br>✓ L'adresse est-elle correcte?<br>✓ Le contract existe-t-il sur cette blockchain?<br>✓ Essayez sur une autre blockchain si incertain.<br><br><strong>💡 Conseil:</strong> Cherche le contract sur {chain}scan.com pour vérifier qu'il existe."
                     }, status_code=404)
                 
                 contract_data = data['result'][address]
@@ -36343,6 +36354,13 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         sr_levels = analyzer.find_support_resistance(df)
         reversal_signals = analyzer.analyze_reversal_points(df, indicators)
         
+        # 🔍 DEBUG: Log des indicateurs calculés
+        print(f"✅ Indicateurs calculés pour {symbol}:")
+        print(f"   RSI: {indicators['rsi']:.2f}")
+        print(f"   MACD: {indicators['macd']:.2f}")
+        print(f"   Stoch K: {indicators['stoch_k']:.2f}")
+        print(f"   ADX: {indicators['adx']:.2f}")
+        
         # Get crypto info from CoinGecko (RELIABLE SOURCE)
         selected_crypto = next((c for c in all_cryptos if c.get('id') == symbol), None)
         
@@ -36492,6 +36510,8 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         # DEBUG: Afficher le symbol reçu
         page += '<div style="background:rgba(255,255,255,0.1);padding:10px;border-radius:8px;margin:10px 0;font-size:0.9em;color:#fbbf24;">'
         page += f'🔍 Crypto demandée: <strong>{symbol}</strong> | Crypto affichée: <strong>{crypto_symbol_display} ({crypto_display_name})</strong>'
+        page += f'<br>📊 RSI: {indicators["rsi"]:.2f} | MACD: {indicators["macd"]:.2f} | Stoch K: {indicators["stoch_k"]:.2f} | ADX: {indicators["adx"]:.2f}'
+        page += f'<br>⏰ Généré à: {datetime.now().strftime("%H:%M:%S")}'
         page += '</div>'
         
         # Crypto selector
@@ -36609,19 +36629,23 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         
         # JavaScript for crypto selector and auto-refresh
         page += '''<script>
+console.log('🎯 AI Technical Analysis chargé - Symbol actuel:', window.location.search);
+
 function changeCrypto() {
     const selector = document.getElementById('cryptoSelector');
     const selectedCrypto = selector.value;
     const timestamp = new Date().getTime();
-    window.location.href = '/ai-technical-analysis?symbol=' + selectedCrypto + '&t=' + timestamp;
+    
+    console.log('🔄 Changement de crypto vers:', selectedCrypto);
+    
+    // FORCE RELOAD COMPLET - pas de cache!
+    window.location.replace('/ai-technical-analysis?symbol=' + selectedCrypto + '&t=' + timestamp);
 }
 
 // Auto-refresh toutes les 5 minutes
 setTimeout(function() {
-    const selector = document.getElementById('cryptoSelector');
-    const currentSymbol = selector.value;
-    const timestamp = new Date().getTime();
-    window.location.href = '/ai-technical-analysis?symbol=' + currentSymbol + '&t=' + timestamp;
+    console.log('⏰ Auto-refresh après 5 minutes');
+    location.reload(true);
 }, 300000);
 </script>'''
         

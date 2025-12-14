@@ -23701,6 +23701,48 @@ async def admin_dashboard(request: Request):
                 </div>
             </div>
             
+            <!-- 🥉 FEATURE #3 - REVENUE INTELLIGENCE CENTER -->
+            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 2px solid #10b981; border-radius: 15px; padding: 25px;">
+                <h2 style="color: #065f46; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 32px;">💰</span>
+                    Revenue Intelligence Center
+                </h2>
+                <p style="color: #047857; margin-bottom: 20px; font-weight: 600;">
+                    📊 Visibilité financière complète sur ton business
+                </p>
+                
+                <!-- Revenus Overview -->
+                <div id="revenueOverview" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div style="text-align: center; padding: 30px;">
+                        <p style="font-size: 18px; color: #666;">🔄 Chargement des revenus...</p>
+                    </div>
+                </div>
+                
+                <!-- Top Clients -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
+                    <h3 style="color: #333; margin-bottom: 15px;">👑 Top 10 Clients</h3>
+                    <div id="topClientsContent">
+                        <p style="color: #666;">🔄 Chargement...</p>
+                    </div>
+                </div>
+                
+                <!-- CLV par Plan -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
+                    <h3 style="color: #333; margin-bottom: 15px;">💎 Customer Lifetime Value (CLV) par Plan</h3>
+                    <div id="clvByPlanContent">
+                        <p style="color: #666;">🔄 Chargement...</p>
+                    </div>
+                </div>
+                
+                <!-- ROI Codes Promo -->
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <h3 style="color: #333; margin-bottom: 15px;">🎫 ROI des Codes Promo</h3>
+                    <div id="promoRoiContent">
+                        <p style="color: #666;">🔄 Chargement...</p>
+                    </div>
+                </div>
+            </div>
+            
             <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
             <div class="users-section" style="margin-bottom: 30px;">
                 <h2>🎯 Gestion des Accès par Forfait</h2>
@@ -24714,6 +24756,236 @@ async def admin_dashboard(request: Request):
                 }}
             }})();
         }}, 200);
+        
+        // ========================================
+        // 🥉 FEATURE #3 - REVENUE INTELLIGENCE
+        // ========================================
+        
+        async function loadRevenueIntelligence() {{
+            try {{
+                const response = await fetch('/admin/api/revenue-intelligence');
+                const data = await response.json();
+                
+                if (!data.success) {{
+                    console.error('Erreur revenue intelligence:', data);
+                    return;
+                }}
+                
+                // Si aucune donnée
+                if (data.no_data) {{
+                    renderNoRevenueData();
+                    return;
+                }}
+                
+                // Afficher les données réelles
+                renderRevenueOverview(data.overview);
+                renderTopClients(data.top_clients);
+                renderCLVByPlan(data.clv_by_plan);
+                renderPromoROI(data.promo_roi);
+                
+            }} catch (error) {{
+                console.error('Erreur chargement revenue intelligence:', error);
+            }}
+        }}
+        
+        function renderNoRevenueData() {{
+            document.getElementById('revenueOverview').innerHTML = 
+                '<div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 15px; border: 2px dashed #f59e0b;">' +
+                    '<div style="font-size: 64px; margin-bottom: 20px;">💰</div>' +
+                    '<h3 style="color: #92400e; margin-bottom: 15px; font-size: 24px;">Pas encore de revenus</h3>' +
+                    '<p style="color: #78350f; font-size: 16px; margin-bottom: 20px;">Les données de revenus apparaîtront dès tes premiers paiements</p>' +
+                '</div>';
+            
+            document.getElementById('topClientsContent').innerHTML = '<p style="color: #999; text-align: center;">Aucun client pour le moment</p>';
+            document.getElementById('clvByPlanContent').innerHTML = '<p style="color: #999; text-align: center;">Aucune donnée CLV</p>';
+            document.getElementById('promoRoiContent').innerHTML = '<p style="color: #999; text-align: center;">Aucun code promo utilisé</p>';
+        }}
+        
+        function renderRevenueOverview(overview) {{
+            let html = '';
+            
+            // Revenus ce mois
+            html += '<div style="background: linear-gradient(135deg, #10b981, #059669); padding: 25px; border-radius: 12px; color: white; text-align: center;">' +
+                '<div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; opacity: 0.9;">REVENUS CE MOIS</div>' +
+                '<div style="font-size: 42px; font-weight: bold; margin-bottom: 5px;">$' + overview.current_month.toFixed(2) + '</div>' +
+                '<div style="font-size: 12px; opacity: 0.8;">' + overview.current_month_count + ' paiement' + (overview.current_month_count > 1 ? 's' : '') + '</div>' +
+            '</div>';
+            
+            // Revenus total
+            html += '<div style="background: white; border: 2px solid #e5e7eb; padding: 25px; border-radius: 12px; text-align: center;">' +
+                '<div style="color: #6b7280; font-size: 13px; font-weight: 600; margin-bottom: 8px;">REVENUS TOTAL</div>' +
+                '<div style="font-size: 42px; font-weight: bold; color: #10b981; margin-bottom: 5px;">$' + overview.total_revenue.toFixed(2) + '</div>' +
+                '<div style="color: #9ca3af; font-size: 12px;">depuis le début</div>' +
+            '</div>';
+            
+            // Revenu moyen par client
+            html += '<div style="background: white; border: 2px solid #e5e7eb; padding: 25px; border-radius: 12px; text-align: center;">' +
+                '<div style="color: #6b7280; font-size: 13px; font-weight: 600; margin-bottom: 8px;">REVENU MOYEN</div>' +
+                '<div style="font-size: 42px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;">$' + overview.avg_revenue.toFixed(2) + '</div>' +
+                '<div style="color: #9ca3af; font-size: 12px;">par client payant</div>' +
+            '</div>';
+            
+            // Projection 3 mois
+            html += '<div style="background: linear-gradient(135deg, #6366f1, #4f46e5); padding: 25px; border-radius: 12px; color: white; text-align: center;">' +
+                '<div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; opacity: 0.9;">PROJECTION 3 MOIS</div>' +
+                '<div style="font-size: 42px; font-weight: bold; margin-bottom: 5px;">$' + overview.projection_3m.toFixed(2) + '</div>' +
+                '<div style="font-size: 12px; opacity: 0.8;">basé sur tendance actuelle</div>' +
+            '</div>';
+            
+            document.getElementById('revenueOverview').innerHTML = html;
+        }}
+        
+        function renderTopClients(clients) {{
+            const container = document.getElementById('topClientsContent');
+            
+            if (!clients || clients.length === 0) {{
+                container.innerHTML = '<p style="color: #999; text-align: center;">Aucun client pour le moment</p>';
+                return;
+            }}
+            
+            let html = '<div style="overflow-x: auto;">' +
+                '<table style="width: 100%; border-collapse: collapse;">' +
+                    '<thead>' +
+                        '<tr style="background: #f9fafb; border-bottom: 2px solid #e5e7eb;">' +
+                            '<th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280; font-weight: 600;">RANG</th>' +
+                            '<th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280; font-weight: 600;">CLIENT</th>' +
+                            '<th style="padding: 12px; text-align: left; font-size: 12px; color: #6b7280; font-weight: 600;">PLAN</th>' +
+                            '<th style="padding: 12px; text-align: right; font-size: 12px; color: #6b7280; font-weight: 600;">DÉPENSÉ</th>' +
+                        '</tr>' +
+                    '</thead>' +
+                    '<tbody>';
+            
+            clients.forEach((client, index) => {{
+                const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1);
+                const planEmoji = {{
+                    '1_month': '💎',
+                    '3_months': '🚀',
+                    '6_months': '⭐',
+                    '1_year': '👑'
+                }}[client.plan] || '📦';
+                
+                html += '<tr style="border-bottom: 1px solid #f3f4f6;">' +
+                    '<td style="padding: 12px; font-size: 18px;">' + rankEmoji + '</td>' +
+                    '<td style="padding: 12px; font-weight: 600; color: #333;">' + client.username + '</td>' +
+                    '<td style="padding: 12px; color: #666;">' + planEmoji + ' ' + client.plan_name + '</td>' +
+                    '<td style="padding: 12px; text-align: right; font-size: 18px; font-weight: bold; color: #10b981;">$' + client.total_spent.toFixed(2) + '</td>' +
+                '</tr>';
+            }});
+            
+            html += '</tbody></table></div>';
+            
+            container.innerHTML = html;
+        }}
+        
+        function renderCLVByPlan(clvData) {{
+            const container = document.getElementById('clvByPlanContent');
+            
+            if (!clvData || clvData.length === 0) {{
+                container.innerHTML = '<p style="color: #999; text-align: center;">Aucune donnée CLV disponible</p>';
+                return;
+            }}
+            
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">';
+            
+            clvData.forEach(plan => {{
+                const planEmoji = {{
+                    'Premium': '💎',
+                    'Advanced': '🚀',
+                    'Pro': '⭐',
+                    'Elite': '👑'
+                }}[plan.name] || '📦';
+                
+                const isBest = plan.is_best;
+                const borderColor = isBest ? '#10b981' : '#e5e7eb';
+                
+                html += '<div style="background: white; border: 2px solid ' + borderColor + '; padding: 20px; border-radius: 10px; text-align: center;">' +
+                    '<div style="font-size: 32px; margin-bottom: 10px;">' + planEmoji + '</div>' +
+                    '<div style="font-weight: 600; color: #333; margin-bottom: 10px;">' + plan.name + '</div>' +
+                    (isBest ? '<div style="color: #10b981; font-size: 11px; font-weight: 600; margin-bottom: 10px;">🏆 BEST CLV</div>' : '') +
+                    '<div style="font-size: 32px; font-weight: bold; color: ' + borderColor + '; margin-bottom: 5px;">$' + plan.clv.toFixed(2) + '</div>' +
+                    '<div style="color: #666; font-size: 13px; margin-bottom: 10px;">CLV moyen</div>' +
+                    '<div style="background: #f9fafb; padding: 10px; border-radius: 6px; font-size: 12px; color: #6b7280;">' +
+                        plan.count + ' client' + (plan.count > 1 ? 's' : '') +
+                    '</div>' +
+                '</div>';
+            }});
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }}
+        
+        function renderPromoROI(promoData) {{
+            const container = document.getElementById('promoRoiContent');
+            
+            if (!promoData || promoData.codes.length === 0) {{
+                container.innerHTML = 
+                    '<div style="text-align: center; padding: 30px; background: #f9fafb; border-radius: 10px;">' +
+                        '<p style="color: #999; margin-bottom: 10px;">Aucun code promo utilisé pour le moment</p>' +
+                        '<p style="color: #9ca3af; font-size: 13px;">Les stats ROI apparaîtront quand des codes seront utilisés</p>' +
+                    '</div>';
+                return;
+            }}
+            
+            // Stats globales
+            let html = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">';
+            
+            html += '<div style="background: #fef3c7; padding: 15px; border-radius: 8px; text-align: center;">' +
+                '<div style="color: #92400e; font-size: 12px; font-weight: 600; margin-bottom: 5px;">CODES UTILISÉS</div>' +
+                '<div style="font-size: 28px; font-weight: bold; color: #78350f;">' + promoData.total_uses + '</div>' +
+            '</div>';
+            
+            html += '<div style="background: #fecaca; padding: 15px; border-radius: 8px; text-align: center;">' +
+                '<div style="color: #991b1b; font-size: 12px; font-weight: 600; margin-bottom: 5px;">RÉDUCTION TOTALE</div>' +
+                '<div style="font-size: 28px; font-weight: bold; color: #dc2626;">-$' + promoData.total_discount.toFixed(2) + '</div>' +
+            '</div>';
+            
+            html += '<div style="background: #d1fae5; padding: 15px; border-radius: 8px; text-align: center;">' +
+                '<div style="color: #065f46; font-size: 12px; font-weight: 600; margin-bottom: 5px;">REVENUS GÉNÉRÉS</div>' +
+                '<div style="font-size: 28px; font-weight: bold; color: #059669;">$' + promoData.total_revenue.toFixed(2) + '</div>' +
+            '</div>';
+            
+            html += '</div>';
+            
+            // Top codes
+            html += '<h4 style="color: #333; margin-bottom: 10px; font-size: 14px;">🔥 Codes les plus utilisés</h4>';
+            html += '<div style="display: grid; gap: 10px;">';
+            
+            promoData.codes.forEach((code, index) => {{
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🎫';
+                
+                html += '<div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between;">' +
+                    '<div style="display: flex; align-items: center; gap: 10px;">' +
+                        '<div style="font-size: 24px;">' + medal + '</div>' +
+                        '<div>' +
+                            '<div style="font-weight: 600; color: #333;">' + code.code + '</div>' +
+                            '<div style="font-size: 12px; color: #666;">' + code.uses + ' utilisation' + (code.uses > 1 ? 's' : '') + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="text-align: right;">' +
+                        '<div style="font-size: 18px; font-weight: bold; color: #10b981;">$' + code.revenue.toFixed(2) + '</div>' +
+                        '<div style="font-size: 11px; color: #ef4444;">-$' + code.discount.toFixed(2) + '</div>' +
+                    '</div>' +
+                '</div>';
+            }});
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }}
+        
+        // Charger au démarrage - SÉCURISÉ avec délai
+        setTimeout(function() {{
+            (async function() {{
+                try {{
+                    if (typeof loadRevenueIntelligence === 'function') {{
+                        await loadRevenueIntelligence();
+                    }}
+                }} catch (error) {{
+                    console.error('⚠️ Erreur Revenue Intelligence:', error);
+                }}
+            }})();
+        }}, 300);
         
         </script>
     </body>
@@ -25813,6 +26085,210 @@ async def admin_conversion_funnel(
     
     except Exception as e:
         print(f"❌ Erreur conversion funnel: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+# ============================================================================
+# 🥉 FEATURE #3 - REVENUE INTELLIGENCE API
+# ============================================================================
+
+@app.get("/admin/api/revenue-intelligence")
+async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)):
+    """API pour Revenue Intelligence - DONNÉES RÉELLES SEULEMENT"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
+    
+    try:
+        from datetime import datetime, timedelta
+        
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        now = datetime.now()
+        
+        # Compter total revenus et clients payants
+        cursor.execute("""
+            SELECT 
+                COUNT(*) as count,
+                COALESCE(SUM(total_spent), 0) as total_revenue,
+                COALESCE(AVG(total_spent), 0) as avg_revenue
+            FROM users
+            WHERE subscription_plan IS NOT NULL
+            AND subscription_plan != 'free'
+            AND total_spent > 0
+        """)
+        row = cursor.fetchone()
+        total_count = row[0] or 0
+        total_revenue = float(row[1] or 0)
+        avg_revenue = float(row[2] or 0)
+        
+        # Si aucun revenu
+        if total_revenue == 0:
+            cursor.close()
+            conn.close()
+            
+            print(f"⚠️ Revenue Intelligence: Aucun revenu pour le moment")
+            
+            return JSONResponse({
+                "success": True,
+                "no_data": True,
+                "message": "Pas encore de revenus"
+            })
+        
+        # Revenus ce mois
+        start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        cursor.execute("""
+            SELECT 
+                COUNT(*) as count,
+                COALESCE(SUM(total_spent), 0) as revenue
+            FROM users
+            WHERE subscription_plan IS NOT NULL
+            AND subscription_plan != 'free'
+            AND total_spent > 0
+            AND created_at >= ?
+        """, (start_of_month.isoformat(),))
+        row = cursor.fetchone()
+        current_month_count = row[0] or 0
+        current_month_revenue = float(row[1] or 0)
+        
+        # Projection 3 mois (simple: revenus ce mois × 3)
+        # Dans le futur, on pourrait faire une vraie projection basée sur tendances
+        projection_3m = current_month_revenue * 3
+        
+        # Top 10 clients
+        cursor.execute("""
+            SELECT username, subscription_plan, total_spent
+            FROM users
+            WHERE total_spent > 0
+            ORDER BY total_spent DESC
+            LIMIT 10
+        """)
+        
+        top_clients = []
+        plan_names = {
+            '1_month': 'Premium',
+            '3_months': 'Advanced',
+            '6_months': 'Pro',
+            '1_year': 'Elite'
+        }
+        
+        for row in cursor.fetchall():
+            top_clients.append({
+                "username": row[0],
+                "plan": row[1],
+                "plan_name": plan_names.get(row[1], row[1]),
+                "total_spent": float(row[2] or 0)
+            })
+        
+        # CLV par plan
+        clv_by_plan = []
+        plans = [
+            ('Premium', '1_month'),
+            ('Advanced', '3_months'),
+            ('Pro', '6_months'),
+            ('Elite', '1_year')
+        ]
+        
+        for plan_name, plan_id in plans:
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as count,
+                    COALESCE(AVG(total_spent), 0) as avg_clv
+                FROM users
+                WHERE subscription_plan = ?
+                AND total_spent > 0
+            """, (plan_id,))
+            row = cursor.fetchone()
+            count = row[0] or 0
+            avg_clv = float(row[1] or 0)
+            
+            if count > 0:
+                clv_by_plan.append({
+                    "name": plan_name,
+                    "count": count,
+                    "clv": avg_clv,
+                    "is_best": False
+                })
+        
+        # Marquer le meilleur CLV
+        if clv_by_plan:
+            clv_by_plan.sort(key=lambda x: x["clv"], reverse=True)
+            if clv_by_plan[0]["clv"] > 0:
+                clv_by_plan[0]["is_best"] = True
+        
+        # ROI codes promo
+        promo_roi = {
+            "total_uses": 0,
+            "total_discount": 0.0,
+            "total_revenue": 0.0,
+            "codes": []
+        }
+        
+        # Vérifier si table promo_codes existe
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='promo_codes'
+        """)
+        
+        if cursor.fetchone():
+            # Récupérer les codes utilisés
+            cursor.execute("""
+                SELECT code, uses, discount_percent
+                FROM promo_codes
+                WHERE uses > 0
+                ORDER BY uses DESC
+                LIMIT 5
+            """)
+            
+            for row in cursor.fetchall():
+                code = row[0]
+                uses = row[1] or 0
+                discount_percent = row[2] or 0
+                
+                # Estimer revenus et discount (approximatif)
+                # Assume $50 moyen par transaction
+                estimated_revenue_per_use = 50.0 * (1 - discount_percent / 100)
+                estimated_discount_per_use = 50.0 * (discount_percent / 100)
+                
+                total_revenue_code = estimated_revenue_per_use * uses
+                total_discount_code = estimated_discount_per_use * uses
+                
+                promo_roi["codes"].append({
+                    "code": code,
+                    "uses": uses,
+                    "revenue": total_revenue_code,
+                    "discount": total_discount_code
+                })
+                
+                promo_roi["total_uses"] += uses
+                promo_roi["total_revenue"] += total_revenue_code
+                promo_roi["total_discount"] += total_discount_code
+        
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Revenue Intelligence: ${total_revenue:.2f} total, {total_count} clients payants")
+        
+        return JSONResponse({
+            "success": True,
+            "no_data": False,
+            "overview": {
+                "current_month": current_month_revenue,
+                "current_month_count": current_month_count,
+                "total_revenue": total_revenue,
+                "avg_revenue": avg_revenue,
+                "projection_3m": projection_3m
+            },
+            "top_clients": top_clients,
+            "clv_by_plan": clv_by_plan,
+            "promo_roi": promo_roi
+        })
+    
+    except Exception as e:
+        print(f"❌ Erreur revenue intelligence: {e}")
         import traceback
         traceback.print_exc()
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)

@@ -2013,6 +2013,186 @@ BADGES_DATA = {
 
 app = FastAPI()
 
+# ============================================================================
+# 🔒 SYSTÈME DE CONTRÔLE D'ACCÈS PAR ABONNEMENT
+# ============================================================================
+
+# Hiérarchie des plans (du plus bas au plus haut)
+PLAN_HIERARCHY = {
+    None: 0,           # Pas connecté
+    'free': 1,         # Free (gratuit)
+    '1_month': 2,      # Premium - $29.99/mois
+    '3_months': 3,     # Advanced - $89.97/3 mois
+    '6_months': 4,     # Pro - $179.88/6 mois
+    '1_year': 5        # Elite - $239.88/an
+}
+
+# Noms conviviaux des plans
+PLAN_NAMES = {
+    None: 'Visiteur',
+    'free': 'Free',
+    '1_month': 'Premium',
+    '3_months': 'Advanced',
+    '6_months': 'Pro',
+    '1_year': 'Elite'
+}
+
+# Routes accessibles par plan
+ROUTE_ACCESS = {
+    # Routes publiques (accessibles sans connexion)
+    'public': [
+        '/',
+        '/pricing-complete',
+        '/pricing',
+        '/login',
+        '/register'
+    ],
+    
+    # Routes Free (connexion requise, gratuit)
+    'free': [
+        '/dashboard',      # Limité: 3 cryptos visibles sur 10 max
+        '/mon-compte',
+        '/academy'         # Limité: 2 premiers cours seulement
+    ],
+    
+    # Routes Premium ($29.99/mois)
+    'premium': [
+        '/trading-dashboard',           # Webhooks TradingView
+        '/api/tradingview-webhook',     # API webhooks
+        # Academy: 4 premiers cours
+    ],
+    
+    # Routes Advanced ($89.97/3 mois)
+    'advanced': [
+        # User choisit 1 AI feature parmi:
+        # /ai-technical-analysis OU /ai-crypto-coach OU /narrative-radar
+        # Academy: 6 premiers cours
+    ],
+    
+    # Routes Pro ($179.88/6 mois)
+    'pro': [
+        '/ai-technical-analysis',   # AI analysis complète
+        '/ai-crypto-coach',         # AI coach personnel
+        '/narrative-radar',         # Détection narratives
+        '/ai-swarm-agents'          # AI swarm agents
+        # Academy: Tous les 8 cours
+    ],
+    
+    # Routes Elite ($239.88/an) - All Access
+    'elite': [
+        '/altseason-copilot-pro',   # Prédictions altseason
+        '/rug-scam-shield'          # Protection scams
+        # + Support prioritaire 24/7
+        # + Groupe Telegram VIP
+    ]
+}
+
+def get_plan_level(plan: str) -> int:
+    """Retourne le niveau hiérarchique du plan (0-5)"""
+    return PLAN_HIERARCHY.get(plan, 0)
+
+def get_plan_name(plan: str) -> str:
+    """Retourne le nom convivial du plan"""
+    return PLAN_NAMES.get(plan, 'Visiteur')
+
+def has_access_to_route(user_plan: str, route_path: str) -> bool:
+    """
+    Vérifie si le plan de l'utilisateur donne accès à la route
+    
+    Args:
+        user_plan: Plan de l'utilisateur (ex: '1_month', 'free', None)
+        route_path: Chemin de la route (ex: '/dashboard')
+    
+    Returns:
+        True si l'utilisateur a accès, False sinon
+    """
+    # Routes publiques = accès pour tous
+    if route_path in ROUTE_ACCESS['public']:
+        return True
+    
+    # Récupérer le niveau de l'utilisateur
+    user_level = get_plan_level(user_plan)
+    
+    # Vérifier accès par niveau
+    # Free (niveau 1+)
+    if route_path in ROUTE_ACCESS['free'] and user_level >= 1:
+        return True
+    
+    # Premium (niveau 2+)
+    if route_path in ROUTE_ACCESS['premium'] and user_level >= 2:
+        return True
+    
+    # Pro (niveau 4+)
+    if route_path in ROUTE_ACCESS['pro'] and user_level >= 4:
+        return True
+    
+    # Elite (niveau 5)
+    if route_path in ROUTE_ACCESS['elite'] and user_level >= 5:
+        return True
+    
+    # Advanced est spécial (choix de 1 AI feature)
+    # Géré individuellement par route
+    
+    return False
+
+def get_required_plan_for_route(route_path: str) -> str:
+    """
+    Retourne le plan minimum requis pour accéder à une route
+    
+    Returns:
+        Plan minimum (ex: '1_month', '6_months') ou None si public
+    """
+    # Routes publiques
+    if route_path in ROUTE_ACCESS['public']:
+        return None
+    
+    # Routes Elite
+    if route_path in ROUTE_ACCESS['elite']:
+        return '1_year'
+    
+    # Routes Pro
+    if route_path in ROUTE_ACCESS['pro']:
+        return '6_months'
+    
+    # Routes Premium
+    if route_path in ROUTE_ACCESS['premium']:
+        return '1_month'
+    
+    # Routes Free
+    if route_path in ROUTE_ACCESS['free']:
+        return 'free'
+    
+    # Par défaut: Premium requis (sécurité)
+    return '1_month'
+
+def get_upgrade_message(current_plan: str, required_plan: str) -> str:
+    """Génère un message d'upgrade personnalisé"""
+    current_name = get_plan_name(current_plan)
+    required_name = get_plan_name(required_plan)
+    
+    if current_plan is None or current_plan == 'free':
+        return f"🔒 Cette fonctionnalité nécessite un abonnement {required_name}. <a href='/pricing-complete'>Voir les plans</a>"
+    else:
+        return f"🔒 Cette fonctionnalité nécessite un upgrade vers {required_name}. <a href='/pricing-complete'>Upgrader maintenant</a>"
+
+# Décorateur pour protéger les routes (optionnel, peut être utilisé plus tard)
+def require_plan(min_plan: str):
+    """
+    Décorateur pour protéger une route avec un plan minimum
+    Usage: @require_plan('1_month')
+    """
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            # Cette partie serait implémentée si on utilise des décorateurs
+            # Pour l'instant, on fait les vérifications manuellement dans les routes
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+print("✅ Système de contrôle d'accès par abonnement initialisé")
+print(f"   Plans disponibles: {list(PLAN_NAMES.values())}")
+
+
 # 🔐 CORRECTION 2: RATE LIMITING - Protection contre brute-force
 # ═══════════════════════════════════════════════════════════════════════════
 

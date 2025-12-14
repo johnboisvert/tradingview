@@ -18854,7 +18854,7 @@ async def pricing_complete():
                 let validForAnyPlan = false;
                 
                 for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
-                    const response = await fetch(`/admin/test-promo?code=${code}&plan=${plan}&amount=${originalPrice}`);
+                    const response = await fetch(`/api/validate-promo?code=${code}&plan=${plan}&amount=${originalPrice}`);
                     const data = await response.json();
                     
                     if (data.valid && data.discount) {
@@ -19409,27 +19409,73 @@ async def stripe_checkout(request: Request):
                 "message": "Payment system non disponible"
             }, status_code=500)
         
-        # Valider et appliquer le code promo
+        # Valider et appliquer le code promo (NOUVEAU SYSTÈME)
         final_amount = amount
         discount_applied = 0
         
-        if promo_code and PROMO_CODES_AVAILABLE:
-            conn = get_db_connection()
-            valid, msg, discount = PromoCodeManager.validate_promo_code(
-                conn, promo_code, plan, amount
-            )
-            
-            if valid and discount:
-                discount_applied = discount
-                final_amount = amount - discount
-                print(f"✅ Code promo {promo_code} appliqué: -${discount:.2f} (${amount:.2f} → ${final_amount:.2f})")
+        if promo_code:
+            try:
+                conn = db_manager.get_connection()
+                cursor = conn.cursor()
                 
-                # Incrémenter l'utilisation du code
-                PromoCodeManager.use_promo_code(conn, promo_code, email)
-            else:
-                print(f"⚠️  Code promo '{promo_code}' invalide: {msg}")
-            
-            conn.close()
+                # Chercher le code promo dans la nouvelle table
+                cursor.execute("""
+                    SELECT discount, type, valid_until, max_uses, uses
+                    FROM promo_codes
+                    WHERE UPPER(code) = UPPER(?)
+                """, (promo_code,))
+                
+                result = cursor.fetchone()
+                
+                if result:
+                    discount_value, discount_type, valid_until, max_uses, current_uses = result
+                    
+                    # Vérifier expiration
+                    valid = True
+                    if valid_until:
+                        from datetime import datetime
+                        try:
+                            expiry_date = datetime.fromisoformat(valid_until.replace('Z', '+00:00'))
+                            if datetime.now() > expiry_date:
+                                valid = False
+                                print(f"⚠️ Code {promo_code} expiré")
+                        except:
+                            pass
+                    
+                    # Vérifier utilisations
+                    if valid and max_uses and current_uses >= max_uses:
+                        valid = False
+                        print(f"⚠️ Code {promo_code} épuisé ({current_uses}/{max_uses})")
+                    
+                    if valid:
+                        # Calculer le rabais
+                        if discount_type == 'percentage':
+                            discount_applied = amount * (discount_value / 100)
+                        else:  # fixed
+                            discount_applied = discount_value
+                        
+                        final_amount = max(0, amount - discount_applied)
+                        
+                        # Incrémenter l'utilisation
+                        cursor.execute("""
+                            UPDATE promo_codes 
+                            SET uses = uses + 1
+                            WHERE UPPER(code) = UPPER(?)
+                        """, (promo_code,))
+                        conn.commit()
+                        
+                        print(f"✅ Code promo {promo_code} appliqué: -${discount_applied:.2f} (${amount:.2f} → ${final_amount:.2f})")
+                    else:
+                        print(f"⚠️ Code promo '{promo_code}' invalide")
+                else:
+                    print(f"⚠️ Code promo '{promo_code}' non trouvé")
+                
+                cursor.close()
+                conn.close()
+            except Exception as e:
+                print(f"❌ Erreur validation promo: {e}")
+                import traceback
+                traceback.print_exc()
         
         # URLs
         base_url = "https://tradingview-production-5763.up.railway.app"
@@ -19487,27 +19533,73 @@ async def coinbase_checkout(request: Request):
                 "message": error_msg
             }, status_code=500)
         
-        # Valider et appliquer le code promo
+        # Valider et appliquer le code promo (NOUVEAU SYSTÈME)
         final_amount = amount
         discount_applied = 0
         
-        if promo_code and PROMO_CODES_AVAILABLE:
-            conn = get_db_connection()
-            valid, msg, discount = PromoCodeManager.validate_promo_code(
-                conn, promo_code, plan, amount
-            )
-            
-            if valid and discount:
-                discount_applied = discount
-                final_amount = amount - discount
-                print(f"✅ Code promo {promo_code} appliqué: -${discount:.2f} (${amount:.2f} → ${final_amount:.2f})")
+        if promo_code:
+            try:
+                conn = db_manager.get_connection()
+                cursor = conn.cursor()
                 
-                # Incrémenter l'utilisation du code
-                PromoCodeManager.use_promo_code(conn, promo_code, email)
-            else:
-                print(f"⚠️  Code promo '{promo_code}' invalide: {msg}")
-            
-            conn.close()
+                # Chercher le code promo dans la nouvelle table
+                cursor.execute("""
+                    SELECT discount, type, valid_until, max_uses, uses
+                    FROM promo_codes
+                    WHERE UPPER(code) = UPPER(?)
+                """, (promo_code,))
+                
+                result = cursor.fetchone()
+                
+                if result:
+                    discount_value, discount_type, valid_until, max_uses, current_uses = result
+                    
+                    # Vérifier expiration
+                    valid = True
+                    if valid_until:
+                        from datetime import datetime
+                        try:
+                            expiry_date = datetime.fromisoformat(valid_until.replace('Z', '+00:00'))
+                            if datetime.now() > expiry_date:
+                                valid = False
+                                print(f"⚠️ Code {promo_code} expiré")
+                        except:
+                            pass
+                    
+                    # Vérifier utilisations
+                    if valid and max_uses and current_uses >= max_uses:
+                        valid = False
+                        print(f"⚠️ Code {promo_code} épuisé ({current_uses}/{max_uses})")
+                    
+                    if valid:
+                        # Calculer le rabais
+                        if discount_type == 'percentage':
+                            discount_applied = amount * (discount_value / 100)
+                        else:  # fixed
+                            discount_applied = discount_value
+                        
+                        final_amount = max(0, amount - discount_applied)
+                        
+                        # Incrémenter l'utilisation
+                        cursor.execute("""
+                            UPDATE promo_codes 
+                            SET uses = uses + 1
+                            WHERE UPPER(code) = UPPER(?)
+                        """, (promo_code,))
+                        conn.commit()
+                        
+                        print(f"✅ Code promo {promo_code} appliqué: -${discount_applied:.2f} (${amount:.2f} → ${final_amount:.2f})")
+                    else:
+                        print(f"⚠️ Code promo '{promo_code}' invalide")
+                else:
+                    print(f"⚠️ Code promo '{promo_code}' non trouvé")
+                
+                cursor.close()
+                conn.close()
+            except Exception as e:
+                print(f"❌ Erreur validation promo: {e}")
+                import traceback
+                traceback.print_exc()
         
         # Créer charge Coinbase avec montant final
         charge, error = create_coinbase_payment(plan, email, coinbase_client, final_amount)
@@ -23456,17 +23548,17 @@ async def admin_dashboard(request: Request):
                     <button onclick="managePlanAccess('free')" class="btn-add" style="background: linear-gradient(135deg, #94a3b8, #64748b);">
                         🆓 Free
                     </button>
-                    <button onclick="managePlanAccess('premium')" class="btn-add" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
-                        💎 Premium
+                    <button onclick="managePlanAccess('1_month')" class="btn-add" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                        💎 Premium (1 mois)
                     </button>
-                    <button onclick="managePlanAccess('advanced')" class="btn-add" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                        🚀 Advanced
+                    <button onclick="managePlanAccess('3_months')" class="btn-add" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                        🚀 Advanced (3 mois)
                     </button>
-                    <button onclick="managePlanAccess('pro')" class="btn-add" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                        ⭐ Pro
+                    <button onclick="managePlanAccess('6_months')" class="btn-add" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        ⭐ Pro (6 mois)
                     </button>
-                    <button onclick="managePlanAccess('elite')" class="btn-add" style="background: linear-gradient(135deg, #10b981, #059669);">
-                        👑 Elite
+                    <button onclick="managePlanAccess('1_year')" class="btn-add" style="background: linear-gradient(135deg, #10b981, #059669);">
+                        👑 Elite (1 an)
                     </button>
                 </div>
             </div>
@@ -23815,10 +23907,10 @@ async def admin_dashboard(request: Request):
             currentPlan = plan;
             const planNames = {{
                 'free': '🆓 Free',
-                'premium': '💎 Premium',
-                'advanced': '🚀 Advanced',
-                'pro': '⭐ Pro',
-                'elite': '👑 Elite'
+                '1_month': '💎 Premium (1 mois)',
+                '3_months': '🚀 Advanced (3 mois)',
+                '6_months': '⭐ Pro (6 mois)',
+                '1_year': '👑 Elite (1 an)'
             }};
             
             document.getElementById('planName').textContent = planNames[plan];
@@ -23937,7 +24029,7 @@ async def admin_dashboard(request: Request):
         
         async function loadPromoList() {{
             try {{
-                const response = await fetch('/admin/list-promos');
+                const response = await fetch('/admin/api/list-promos');
                 const data = await response.json();
                 
                 const container = document.getElementById('promoListContainer');
@@ -23972,8 +24064,8 @@ async def admin_dashboard(request: Request):
                     container.style.display = 'block';
                 }}
             }} catch (error) {{
-                alert('❌ Erreur de chargement');
-                console.error(error);
+                console.error('Erreur loadPromoList:', error);
+                alert('❌ Erreur de chargement des codes promo');
             }}
         }}
         
@@ -24723,6 +24815,183 @@ async def admin_delete_promo(request: Request, session_token: Optional[str] = Co
     except Exception as e:
         print(f"❌ Erreur delete_promo: {e}")
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+@app.get("/admin/api/list-promos")
+async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
+    """API JSON: Lister tous les codes promo pour l'admin dashboard"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
+    
+    try:
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        # Créer la table si elle n'existe pas
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS promo_codes (
+                code TEXT PRIMARY KEY,
+                discount REAL,
+                type TEXT,
+                valid_until TEXT,
+                max_uses INTEGER,
+                uses INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        
+        # Récupérer tous les codes
+        cursor.execute("""
+            SELECT code, discount, type, valid_until, max_uses, uses
+            FROM promo_codes
+            ORDER BY created_at DESC
+        """)
+        
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        promos = []
+        for row in rows:
+            promos.append({
+                "code": row[0],
+                "discount": row[1],
+                "type": row[2],
+                "valid_until": row[3],
+                "max_uses": row[4],
+                "uses": row[5] or 0
+            })
+        
+        print(f"✅ Liste promos renvoyée: {len(promos)} codes")
+        
+        return JSONResponse({
+            "success": True,
+            "promos": promos
+        })
+    
+    except Exception as e:
+        print(f"❌ Erreur list_promos API: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+@app.get("/api/validate-promo")
+async def api_validate_promo(
+    code: str,
+    plan: str = "1_month",
+    amount: float = 29.99,
+    session_token: Optional[str] = Cookie(None)
+):
+    """Valide un code promo (version simplifiée pour nouveau système)"""
+    user = get_user_from_token(session_token)
+    if not user:
+        return JSONResponse({"valid": False, "message": "Non authentifié"}, status_code=401)
+    
+    try:
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        # Créer la table si elle n'existe pas
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS promo_codes (
+                code TEXT PRIMARY KEY,
+                discount REAL,
+                type TEXT,
+                valid_until TEXT,
+                max_uses INTEGER,
+                uses INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        
+        # Chercher le code promo
+        cursor.execute("""
+            SELECT discount, type, valid_until, max_uses, uses
+            FROM promo_codes
+            WHERE UPPER(code) = UPPER(?)
+        """, (code,))
+        
+        result = cursor.fetchone()
+        
+        if not result:
+            cursor.close()
+            conn.close()
+            return JSONResponse({
+                "valid": False,
+                "message": "Code promo invalide",
+                "original_amount": amount,
+                "discount": 0,
+                "final_amount": amount
+            })
+        
+        discount_value, discount_type, valid_until, max_uses, current_uses = result
+        
+        # Vérifier la date d'expiration
+        if valid_until:
+            from datetime import datetime
+            try:
+                expiry_date = datetime.fromisoformat(valid_until.replace('Z', '+00:00'))
+                if datetime.now() > expiry_date:
+                    cursor.close()
+                    conn.close()
+                    return JSONResponse({
+                        "valid": False,
+                        "message": "Code promo expiré",
+                        "original_amount": amount,
+                        "discount": 0,
+                        "final_amount": amount
+                    })
+            except:
+                pass
+        
+        # Vérifier le nombre d'utilisations
+        if max_uses and current_uses >= max_uses:
+            cursor.close()
+            conn.close()
+            return JSONResponse({
+                "valid": False,
+                "message": "Code promo épuisé",
+                "original_amount": amount,
+                "discount": 0,
+                "final_amount": amount
+            })
+        
+        # Calculer le rabais
+        if discount_type == 'percentage':
+            discount_amount = amount * (discount_value / 100)
+        else:  # fixed
+            discount_amount = discount_value
+        
+        final_amount = max(0, amount - discount_amount)
+        
+        cursor.close()
+        conn.close()
+        
+        return JSONResponse({
+            "valid": True,
+            "message": f"Code {code.upper()} appliqué!",
+            "original_amount": amount,
+            "discount": discount_amount,
+            "final_amount": final_amount,
+            "code": code.upper(),
+            "savings": f"${discount_amount:.2f}"
+        })
+    
+    except Exception as e:
+        print(f"❌ Erreur validate_promo: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({
+            "valid": False,
+            "message": f"Erreur: {str(e)}",
+            "original_amount": amount,
+            "discount": 0,
+            "final_amount": amount
+        }, status_code=500)
 
 
 # ============================================================================

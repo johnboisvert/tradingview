@@ -24302,7 +24302,6 @@ async def mon_compte(request: Request):
         conn.close()
     
     return HTMLResponse(SIDEBAR + f"""
-SIDEBAR + 
     <!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -36144,7 +36143,6 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '</div>'
         
         # JavaScript for crypto selector and auto-refresh
-        page += '<script>'
         page += '<script>'
         page += 'function changeCrypto() {'
         page += '  const selector = document.getElementById("cryptoSelector");'

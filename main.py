@@ -35790,6 +35790,9 @@ function analyzeContract() {
 async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
     """Technical Analysis Pro - Multi-crypto avec sélecteur"""
     
+    # Normaliser le symbol (toujours en lowercase)
+    symbol = symbol.lower().strip()
+    
     try:
         # Get top 50 cryptos for dropdown
         all_cryptos = await get_top_50_cryptos()
@@ -35815,6 +35818,10 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         df = await analyzer.get_ohlcv_data(symbol, days=60)
         
         if df is None or len(df) == 0:
+            # Check if it's a stablecoin
+            stablecoins = ['tether', 'usd-coin', 'dai', 'true-usd', 'paxos-standard', 'binance-usd', 'frax', 'tether-gold']
+            is_stablecoin = symbol.lower() in stablecoins
+            
             return HTMLResponse(SIDEBAR + """
             <head>
                 <meta charset="UTF-8">
@@ -35826,11 +35833,23 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
                 <div class="main-content" style="padding:50px;">
                     <div style="max-width:800px;margin:0 auto;text-align:center;background:rgba(239,68,68,0.1);border:2px solid #ef4444;border-radius:20px;padding:60px;">
                         <h1 style="font-size:4em;margin-bottom:20px;">⚠️</h1>
-                        <h2 style="font-size:2.5em;color:#ef4444;margin-bottom:20px;">Données indisponibles</h2>
+                        <h2 style="font-size:2.5em;color:#ef4444;margin-bottom:20px;">""" + ("Stablecoin détecté" if is_stablecoin else "Données indisponibles") + """</h2>
                         <p style="font-size:1.3em;color:#e2e8f0;line-height:1.8;margin-bottom:30px;">
-                            Impossible de charger les données pour <strong>""" + symbol + """</strong>.
+                            """ + (f"<strong>{symbol.upper()}</strong> est un stablecoin (valeur stable à ~$1). Les indicateurs techniques ne sont pas pertinents pour ce type d'actif." if is_stablecoin else f"Impossible de charger les données pour <strong>{symbol}</strong>.") + """
                         </p>
-                        <div style="background:rgba(255,255,255,0.05);padding:30px;border-radius:12px;margin-top:30px;text-align:left;">
+                        <div style="background:rgba(255,255,255,0.05);padding:30px;border-radius:12px;margin-top:30px;text-align:left;">""" + ("""
+                            <h3 style="color:#fbbf24;margin-bottom:15px;font-size:1.3em;">💡 Pourquoi ?</h3>
+                            <p style="color:#cbd5e1;line-height:2;font-size:1.1em;">
+                                Les stablecoins comme USDT, USDC, DAI sont conçus pour maintenir une valeur stable de $1. 
+                                Ils n'ont donc pas de volatilité, pas de tendances, et les indicateurs techniques (RSI, MACD, etc.) 
+                                ne sont pas applicables.
+                            </p>
+                            <div style="margin-top:25px;padding:20px;background:rgba(6,182,212,0.1);border-radius:8px;border-left:4px solid #06b6d4;">
+                                <p style="color:#06b6d4;font-size:1.1em;margin:0;">
+                                    <strong>💡 Conseil:</strong> Essaie avec des cryptos volatiles comme BTC, ETH, SOL, ADA, BNB, etc. 
+                                    Ces cryptos ont des mouvements de prix intéressants à analyser !
+                                </p>
+                            </div>""" if is_stablecoin else """
                             <h3 style="color:#fbbf24;margin-bottom:15px;font-size:1.3em;">💡 Raisons possibles:</h3>
                             <ul style="color:#cbd5e1;line-height:2;font-size:1.1em;padding-left:25px;">
                                 <li>La crypto est trop récente (moins de 60 jours de données)</li>
@@ -35840,9 +35859,10 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
                             </ul>
                             <div style="margin-top:25px;padding:20px;background:rgba(6,182,212,0.1);border-radius:8px;border-left:4px solid #06b6d4;">
                                 <p style="color:#06b6d4;font-size:1.1em;margin:0;">
-                                    <strong>💡 Conseil:</strong> Essaie avec les cryptos majeures du Top 50 (BTC, ETH, BNB, SOL, ADA, etc.) qui ont toujours des données complètes !
+                                    <strong>💡 Conseil:</strong> Essaie avec les cryptos majeures du Top 50 (BTC, ETH, BNB, SOL, ADA, etc.) 
+                                    qui ont toujours des données complètes !
                                 </p>
-                            </div>
+                            </div>""") + """
                         </div>
                         <a href="/ai-technical-analysis?symbol=bitcoin" style="display:inline-block;margin-top:30px;padding:15px 40px;background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;text-decoration:none;border-radius:12px;font-size:1.2em;font-weight:700;box-shadow:0 4px 15px rgba(6,182,212,0.3);">
                             🔙 Retour à Bitcoin
@@ -35859,13 +35879,21 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         sr_levels = analyzer.find_support_resistance(df)
         reversal_signals = analyzer.analyze_reversal_points(df, indicators)
         
-        current_price = df['close'].iloc[-1]
-        change_24h = ((df['close'].iloc[-1] - df['close'].iloc[-24]) / df['close'].iloc[-24]) * 100 if len(df) >= 24 else 0
-        
-        # Get crypto name for display
+        # Get crypto info from CoinGecko (RELIABLE SOURCE)
         selected_crypto = next((c for c in all_cryptos if c.get('id') == symbol), None)
-        crypto_display_name = selected_crypto.get('name', symbol.upper()) if selected_crypto else symbol.upper()
-        crypto_symbol_display = selected_crypto.get('symbol', symbol).upper() if selected_crypto else symbol.upper()
+        
+        if selected_crypto:
+            # Use CoinGecko price (REAL and UP-TO-DATE)
+            current_price = selected_crypto.get('current_price', 0)
+            change_24h = selected_crypto.get('price_change_percentage_24h', 0)
+            crypto_display_name = selected_crypto.get('name', symbol.upper())
+            crypto_symbol_display = selected_crypto.get('symbol', symbol).upper()
+        else:
+            # Fallback to DataFrame if crypto not in list
+            current_price = df['close'].iloc[-1]
+            change_24h = ((df['close'].iloc[-1] - df['close'].iloc[-24]) / df['close'].iloc[-24]) * 100 if len(df) >= 24 else 0
+            crypto_display_name = symbol.upper()
+            crypto_symbol_display = symbol.upper()
         
         # Build indicators HTML with INLINE styles only
         rsi_class = 'oversold' if indicators['rsi'] < 30 else ('overbought' if indicators['rsi'] > 70 else 'neutral')
@@ -35996,6 +36024,11 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '<div style="text-align:center;padding:30px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:30px;backdrop-filter:blur(10px);">'
         page += '<h1 style="font-size:2.5em;margin:0 0 10px 0;color:white;">🎯 AI Technical Analysis Pro</h1>'
         page += '<p style="font-size:1.2em;opacity:0.9;margin:0 0 20px 0;color:white;">Analyse technique professionnelle en temps réel</p>'
+        
+        # DEBUG: Afficher le symbol reçu
+        page += '<div style="background:rgba(255,255,255,0.1);padding:10px;border-radius:8px;margin:10px 0;font-size:0.9em;color:#fbbf24;">'
+        page += f'🔍 Crypto demandée: <strong>{symbol}</strong> | Crypto affichée: <strong>{crypto_symbol_display} ({crypto_display_name})</strong>'
+        page += '</div>'
         
         # Crypto selector
         page += '<div style="margin-top:20px;">'

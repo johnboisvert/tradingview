@@ -35980,9 +35980,17 @@ function displayResults(data) {
     html += `
         <div style="text-align: center; margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
             <p style="color: #64748b; font-size: 0.9em; margin-bottom: 8px;">
-                <strong>🔒 Analyse effectuée avec GoPlus Security API</strong>
+                <strong>🔒 Analyse effectuée avec ${data.analysis_source || 'Multi-sources'}</strong>
             </p>
-            <p style="color: #64748b; font-size: 0.85em;">
+            ${data.sources_checked ? `
+                <p style="color: #64748b; font-size: 0.85em;">
+                    Sources vérifiées: 
+                    ${data.sources_checked.goplus ? '✅ GoPlus' : '❌ GoPlus'}
+                    ${data.sources_checked.honeypot_is ? ' • ✅ Honeypot.is' : ' • ❌ Honeypot.is'}
+                    ${data.sources_checked.blockchain_explorer ? ' • ✅ Explorer' : ' • ❌ Explorer'}
+                </p>
+            ` : ''}
+            <p style="color: #64748b; font-size: 0.85em; margin-top: 8px;">
                 Données en temps réel depuis la blockchain ${data.chain}
             </p>
         </div>
@@ -35999,7 +36007,7 @@ function displayResults(data) {
 # API endpoint pour l'analyse de contract
 @app.post("/api/analyze-contract")
 async def analyze_contract(request: Request):
-    """API pour analyser un smart contract via GoPlus Security API (VRAIE ANALYSE)"""
+    """API ULTRA-INTELLIGENTE pour analyser un smart contract - Multi-sources avec fallback"""
     try:
         body = await request.json()
         address = body.get('address', '').strip().lower()
@@ -36008,10 +36016,13 @@ async def analyze_contract(request: Request):
         # Vérification basique du format
         if not address or not address.startswith('0x') or len(address) != 42:
             return JSONResponse({
-                "error": "Format d'adresse invalide"
+                "error": "Format d'adresse invalide",
+                "details": "L'adresse doit commencer par 0x et contenir 42 caractères."
             }, status_code=400)
         
-        # Mapping des chains pour GoPlus API
+        print(f"🔍 Analyse demandée: {address} sur {chain.upper()}")
+        
+        # Mapping des chains
         chain_mapping = {
             'eth': '1',
             'bsc': '56',
@@ -36025,235 +36036,367 @@ async def analyze_contract(request: Request):
         
         chain_id = chain_mapping.get(chain, '1')
         
-        # 🔥 VRAIE API GoPlus Security (GRATUITE)
+        # Variables pour stocker les résultats de différentes sources
+        goplus_data = None
+        honeypot_data = None
+        etherscan_data = None
+        
+        # 🔥 SOURCE 1: GoPlus Security API (la plus complète)
         try:
+            print(f"📡 Tentative GoPlus pour {address}...")
             async with httpx.AsyncClient() as client:
                 url = f"https://api.gopluslabs.io/api/v1/token_security/{chain_id}?contract_addresses={address}"
                 response = await client.get(url, timeout=15.0)
                 
-                if response.status_code != 200:
-                    return JSONResponse({
-                        "error": f"Erreur API GoPlus (code {response.status_code})",
-                        "details": "L'API de sécurité ne répond pas correctement"
-                    }, status_code=500)
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'result' in data and data['result'] and address in data['result']:
+                        goplus_data = data['result'][address]
+                        print(f"✅ GoPlus: Données trouvées")
+                    else:
+                        print(f"⚠️ GoPlus: Contract non tracké")
+                else:
+                    print(f"⚠️ GoPlus: HTTP {response.status_code}")
+        except Exception as e:
+            print(f"❌ GoPlus error: {e}")
+        
+        # 🔥 SOURCE 2: Honeypot.is (si ETH ou BSC)
+        if chain in ['eth', 'bsc'] and not goplus_data:
+            try:
+                print(f"📡 Tentative Honeypot.is pour {address}...")
+                async with httpx.AsyncClient() as client:
+                    url = "https://api.honeypot.is/v2/IsHoneypot"
+                    params = {
+                        "address": address,
+                        "chainID": "1" if chain == 'eth' else "56"
+                    }
+                    response = await client.get(url, params=params, timeout=10.0)
+                    
+                    if response.status_code == 200:
+                        honeypot_data = response.json()
+                        print(f"✅ Honeypot.is: Données trouvées")
+                    else:
+                        print(f"⚠️ Honeypot.is: HTTP {response.status_code}")
+            except Exception as e:
+                print(f"❌ Honeypot.is error: {e}")
+        
+        # 🔥 SOURCE 3: Etherscan/BSCScan (vérification basique)
+        if chain == 'eth':
+            explorer_api = "https://api.etherscan.io/api"
+            explorer_name = "Etherscan"
+        elif chain == 'bsc':
+            explorer_api = "https://api.bscscan.com/api"
+            explorer_name = "BSCScan"
+        else:
+            explorer_api = None
+            explorer_name = None
+        
+        if explorer_api and not goplus_data and not honeypot_data:
+            try:
+                print(f"📡 Tentative {explorer_name} pour {address}...")
+                async with httpx.AsyncClient() as client:
+                    # Vérifier si le contract existe et est vérifié
+                    params = {
+                        "module": "contract",
+                        "action": "getsourcecode",
+                        "address": address,
+                        "apikey": "YourApiKeyToken"  # Free tier, pas besoin de vraie clé
+                    }
+                    response = await client.get(explorer_api, params=params, timeout=10.0)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get('status') == '1' and data.get('result'):
+                            result = data['result'][0]
+                            etherscan_data = {
+                                'contract_name': result.get('ContractName', 'Unknown'),
+                                'is_verified': result.get('SourceCode', '') != '',
+                                'compiler': result.get('CompilerVersion', 'Unknown'),
+                                'source_code': result.get('SourceCode', '')
+                            }
+                            print(f"✅ {explorer_name}: Contract trouvé")
+                        else:
+                            print(f"⚠️ {explorer_name}: Contract non trouvé")
+                    else:
+                        print(f"⚠️ {explorer_name}: HTTP {response.status_code}")
+            except Exception as e:
+                print(f"❌ {explorer_name} error: {e}")
+        
+        # 🎯 ANALYSE INTELLIGENTE MULTI-SOURCES
+        score = 100
+        flags = []
+        token_name = "Unknown Token"
+        token_symbol = "N/A"
+        details = {}
+        
+        # Si aucune source n'a de données
+        if not goplus_data and not honeypot_data and not etherscan_data:
+            return JSONResponse({
+                "error": "Contract non trouvé sur aucune source",
+                "details": f"""Impossible de trouver des informations sur ce contract.<br><br>
+                <strong>Sources consultées:</strong><br>
+                • GoPlus Security API<br>
+                • Honeypot.is (si ETH/BSC)<br>
+                • {explorer_name or 'Explorateur blockchain'}<br><br>
+                <strong>Raisons possibles:</strong><br>
+                • Le contract n'existe pas sur {chain.upper()}<br>
+                • Le contract est trop récent ou obscur<br>
+                • Mauvaise blockchain sélectionnée<br><br>
+                <strong>💡 Conseil:</strong> Vérifiez l'adresse sur {explorer_name or 'un explorateur blockchain'}.
+                """
+            }, status_code=404)
+        
+        # 📊 ANALYSE GOPLUS (source principale)
+        if goplus_data:
+            print("🎯 Analyse via GoPlus")
+            token_name = goplus_data.get('token_name', 'Unknown')
+            token_symbol = goplus_data.get('token_symbol', 'N/A')
+            
+            # Honeypot
+            if goplus_data.get('is_honeypot') == '1':
+                flags.append({
+                    "name": "🚨 HONEYPOT DÉTECTÉ",
+                    "description": "DANGER MAXIMUM! Impossible de revendre. NE PAS ACHETER!",
+                    "severity": "critical"
+                })
+                score = 0
+            
+            # Taxes
+            try:
+                buy_tax = float(goplus_data.get('buy_tax', '0') or '0')
+                sell_tax = float(goplus_data.get('sell_tax', '0') or '0')
+                details['buy_tax'] = f"{buy_tax}%"
+                details['sell_tax'] = f"{sell_tax}%"
                 
-                data = response.json()
-                
-                # Vérifier si le contract existe
-                if 'result' not in data or not data['result'] or address not in data['result']:
-                    return JSONResponse({
-                        "error": "Contract non trouvé",
-                        "details": f"Aucune donnée disponible pour cette adresse sur {chain.upper()}.<br><br><strong>Vérifications:</strong><br>✓ L'adresse est-elle correcte?<br>✓ Le contract existe-t-il sur cette blockchain?<br>✓ Essayez sur une autre blockchain si incertain.<br><br><strong>💡 Conseil:</strong> Cherche le contract sur {chain}scan.com pour vérifier qu'il existe."
-                    }, status_code=404)
-                
-                contract_data = data['result'][address]
-                
-                # 🎯 ANALYSE RÉELLE DU CONTRACT
-                score = 100
-                flags = []
-                
-                # 🚨 HONEYPOT CHECK (le plus important!)
-                is_honeypot = contract_data.get('is_honeypot')
-                if is_honeypot == '1':
+                if sell_tax > 50:
                     flags.append({
-                        "name": "🚨 HONEYPOT DÉTECTÉ",
-                        "description": "DANGER MAXIMUM! Impossible de revendre les tokens. Achat possible mais vente BLOQUÉE. NE PAS ACHETER!",
+                        "name": f"🚨 TAXE DE VENTE EXTRÊME: {sell_tax}%",
+                        "description": "Taxe astronomique! Presque impossible de faire du profit.",
                         "severity": "critical"
                     })
-                    score = 0  # Score minimum pour un honeypot
-                
-                # 🔥 TAXES DE VENTE/ACHAT
-                try:
-                    buy_tax = float(contract_data.get('buy_tax', '0') or '0')
-                    sell_tax = float(contract_data.get('sell_tax', '0') or '0')
-                    
-                    if sell_tax > 50:
-                        flags.append({
-                            "name": f"🚨 TAXE DE VENTE EXTRÊME: {sell_tax}%",
-                            "description": f"Taxe de vente de {sell_tax}% - Presque impossible de faire du profit!",
-                            "severity": "critical"
-                        })
-                        score -= 50
-                    elif sell_tax > 20:
-                        flags.append({
-                            "name": f"⚠️ Taxe de vente élevée: {sell_tax}%",
-                            "description": f"Taxe de {sell_tax}% sur chaque vente - Réduit fortement les profits.",
-                            "severity": "warning"
-                        })
-                        score -= 25
-                    elif sell_tax > 10:
-                        flags.append({
-                            "name": f"⚠️ Taxe de vente: {sell_tax}%",
-                            "description": f"Taxe de {sell_tax}% appliquée sur les ventes.",
-                            "severity": "warning"
-                        })
-                        score -= 15
-                    
-                    if buy_tax > 20:
-                        flags.append({
-                            "name": f"⚠️ Taxe d'achat élevée: {buy_tax}%",
-                            "description": f"Taxe de {buy_tax}% sur chaque achat.",
-                            "severity": "warning"
-                        })
-                        score -= 15
-                except:
-                    pass
-                
-                # 🔐 OWNER PRIVILEGES (DANGEREUX)
-                if contract_data.get('owner_change_balance') == '1':
+                    score -= 50
+                elif sell_tax > 20:
                     flags.append({
-                        "name": "🚨 Owner peut modifier les balances",
-                        "description": "Le propriétaire peut changer les soldes des wallets! Risque de vol total.",
-                        "severity": "critical"
+                        "name": f"⚠️ Taxe de vente élevée: {sell_tax}%",
+                        "description": f"Taxe de {sell_tax}% réduit fortement les profits.",
+                        "severity": "warning"
                     })
-                    score -= 45
-                
-                if contract_data.get('can_take_back_ownership') == '1':
+                    score -= 25
+                elif sell_tax > 10:
                     flags.append({
-                        "name": "🚨 Ownership récupérable",
-                        "description": "Le créateur peut reprendre le contrôle même après renonciation.",
+                        "name": f"⚠️ Taxe de vente: {sell_tax}%",
+                        "description": f"Taxe de {sell_tax}% appliquée.",
+                        "severity": "warning"
+                    })
+                    score -= 15
+                
+                if buy_tax > 20:
+                    flags.append({
+                        "name": f"⚠️ Taxe d'achat élevée: {buy_tax}%",
+                        "description": f"Taxe de {buy_tax}% sur chaque achat.",
+                        "severity": "warning"
+                    })
+                    score -= 15
+            except:
+                pass
+            
+            # Droits dangereux du owner
+            if goplus_data.get('owner_change_balance') == '1':
+                flags.append({
+                    "name": "🚨 Owner peut modifier les balances",
+                    "description": "Le propriétaire peut voler vos tokens!",
+                    "severity": "critical"
+                })
+                score -= 45
+            
+            if goplus_data.get('can_take_back_ownership') == '1':
+                flags.append({
+                    "name": "🚨 Ownership récupérable",
+                    "description": "Le créateur peut reprendre le contrôle.",
+                    "severity": "critical"
+                })
+                score -= 40
+            
+            if goplus_data.get('cannot_sell_all') == '1':
+                flags.append({
+                    "name": "🚨 Impossible de tout vendre",
+                    "description": "Vous ne pouvez pas vendre 100% de vos tokens!",
+                    "severity": "critical"
+                })
+                score -= 35
+            
+            if goplus_data.get('hidden_owner') == '1':
+                flags.append({
+                    "name": "🚨 Propriétaire caché",
+                    "description": "Le vrai owner est masqué.",
+                    "severity": "critical"
+                })
+                score -= 30
+            
+            # Warnings
+            if goplus_data.get('is_open_source') == '0':
+                flags.append({
+                    "name": "⚠️ Code source non vérifié",
+                    "description": "Code non publié - impossible à auditer.",
+                    "severity": "warning"
+                })
+                score -= 20
+            
+            if goplus_data.get('is_proxy') == '1':
+                flags.append({
+                    "name": "⚠️ Contract Proxy",
+                    "description": "Peut être modifié après déploiement.",
+                    "severity": "warning"
+                })
+                score -= 15
+            
+            if goplus_data.get('is_mintable') == '1':
+                flags.append({
+                    "name": "⚠️ Fonction mint active",
+                    "description": "Création de tokens possible (dilution).",
+                    "severity": "warning"
+                })
+                score -= 12
+            
+            if goplus_data.get('transfer_pausable') == '1':
+                flags.append({
+                    "name": "⚠️ Transferts pausables",
+                    "description": "L'owner peut bloquer tous les transferts.",
+                    "severity": "warning"
+                })
+                score -= 20
+            
+            # Infos supplémentaires
+            details['is_open_source'] = goplus_data.get('is_open_source') == '1'
+            details['holder_count'] = goplus_data.get('holder_count', 'N/A')
+            details['is_honeypot'] = goplus_data.get('is_honeypot') == '1'
+            
+        # 📊 ANALYSE HONEYPOT.IS (fallback)
+        elif honeypot_data:
+            print("🎯 Analyse via Honeypot.is")
+            honeypot_result = honeypot_data.get('honeypotResult', {})
+            simulation_result = honeypot_data.get('simulationResult', {})
+            
+            token_name = honeypot_data.get('token', {}).get('name', 'Unknown')
+            token_symbol = honeypot_data.get('token', {}).get('symbol', 'N/A')
+            
+            # Honeypot check
+            if honeypot_result.get('isHoneypot'):
+                flags.append({
+                    "name": "🚨 HONEYPOT CONFIRMÉ (Honeypot.is)",
+                    "description": "NE PAS ACHETER! Impossible de vendre.",
+                    "severity": "critical"
+                })
+                score = 0
+            
+            # Taxes
+            buy_tax = simulation_result.get('buyTax', 0)
+            sell_tax = simulation_result.get('sellTax', 0)
+            
+            if buy_tax or sell_tax:
+                details['buy_tax'] = f"{buy_tax}%"
+                details['sell_tax'] = f"{sell_tax}%"
+                
+                if sell_tax > 20:
+                    flags.append({
+                        "name": f"⚠️ Taxe de vente: {sell_tax}%",
+                        "description": "Taxe élevée détectée.",
+                        "severity": "warning"
+                    })
+                    score -= 25
+            
+            details['is_honeypot'] = honeypot_result.get('isHoneypot', False)
+            
+        # 📊 ANALYSE ETHERSCAN (fallback minimal)
+        elif etherscan_data:
+            print("🎯 Analyse via Etherscan/BSCScan")
+            token_name = etherscan_data.get('contract_name', 'Unknown')
+            
+            # Code vérifié?
+            if not etherscan_data['is_verified']:
+                flags.append({
+                    "name": "⚠️ Code source non vérifié",
+                    "description": f"Le code n'est pas publié sur {explorer_name}.",
+                    "severity": "warning"
+                })
+                score -= 30
+            else:
+                # Analyser le code source pour patterns dangereux
+                source_code = etherscan_data.get('source_code', '').lower()
+                
+                if 'selfdestruct' in source_code:
+                    flags.append({
+                        "name": "🚨 SELFDESTRUCT dans le code",
+                        "description": "Le contract peut être détruit!",
                         "severity": "critical"
                     })
                     score -= 40
                 
-                if contract_data.get('cannot_sell_all') == '1':
+                if 'onlyowner' in source_code and 'mint' in source_code:
                     flags.append({
-                        "name": "🚨 Impossible de tout vendre",
-                        "description": "Vous ne pouvez pas vendre 100% de vos tokens - mécanisme de piège!",
-                        "severity": "critical"
-                    })
-                    score -= 35
-                
-                if contract_data.get('hidden_owner') == '1':
-                    flags.append({
-                        "name": "🚨 Propriétaire caché",
-                        "description": "Le vrai propriétaire est masqué dans le code.",
-                        "severity": "critical"
-                    })
-                    score -= 30
-                
-                # ⚠️ WARNINGS
-                if contract_data.get('is_open_source') == '0':
-                    flags.append({
-                        "name": "⚠️ Code source non vérifié",
-                        "description": "Le code n'est pas publié sur l'explorateur - impossible à auditer.",
-                        "severity": "warning"
-                    })
-                    score -= 20
-                
-                if contract_data.get('is_proxy') == '1':
-                    flags.append({
-                        "name": "⚠️ Contract Proxy",
-                        "description": "Le contract peut être modifié après déploiement.",
+                        "name": "⚠️ Fonction mint avec restriction owner",
+                        "description": "Le créateur peut créer des tokens.",
                         "severity": "warning"
                     })
                     score -= 15
                 
-                if contract_data.get('is_mintable') == '1':
+                if source_code and 'renounceownership' not in source_code:
                     flags.append({
-                        "name": "⚠️ Fonction mint active",
-                        "description": "Le créateur peut créer de nouveaux tokens, diluant la valeur.",
-                        "severity": "warning"
-                    })
-                    score -= 12
-                
-                if contract_data.get('external_call') == '1':
-                    flags.append({
-                        "name": "⚠️ Appels externes détectés",
-                        "description": "Le contract appelle des contracts externes (risque potentiel).",
+                        "name": "⚠️ Ownership non renonçable",
+                        "description": "Pas de fonction pour renoncer à la propriété.",
                         "severity": "warning"
                     })
                     score -= 10
-                
-                if contract_data.get('trading_cooldown') == '1':
-                    flags.append({
-                        "name": "⚠️ Cooldown de trading",
-                        "description": "Délai imposé entre les transactions.",
-                        "severity": "warning"
-                    })
-                    score -= 8
-                
-                if contract_data.get('personal_slippage_modifiable') == '1':
-                    flags.append({
-                        "name": "⚠️ Slippage personnel modifiable",
-                        "description": "Le contract peut modifier le slippage pour certains utilisateurs.",
-                        "severity": "warning"
-                    })
-                    score -= 15
-                
-                if contract_data.get('transfer_pausable') == '1':
-                    flags.append({
-                        "name": "⚠️ Transferts pausables",
-                        "description": "Le propriétaire peut bloquer tous les transferts.",
-                        "severity": "warning"
-                    })
-                    score -= 20
-                
-                # ✅ POINTS POSITIFS
-                if contract_data.get('is_open_source') == '1' and len(flags) == 0:
-                    flags.append({
-                        "name": "✅ Code source vérifié",
-                        "description": "Le code est publié et vérifié sur l'explorateur.",
-                        "severity": "safe"
-                    })
-                
-                if contract_data.get('is_honeypot') == '0' and len([f for f in flags if f['severity'] == 'critical']) == 0:
-                    flags.append({
-                        "name": "✅ Pas de honeypot détecté",
-                        "description": "Les transactions de vente semblent fonctionner normalement.",
-                        "severity": "safe"
-                    })
-                
-                # Score final entre 0 et 100
-                score = max(0, min(100, score))
-                
-                # Déterminer le type
-                token_name = contract_data.get('token_name', 'Unknown')
-                token_symbol = contract_data.get('token_symbol', 'N/A')
-                
-                # Récupérer des infos supplémentaires
-                holder_count = contract_data.get('holder_count', 'N/A')
-                total_supply = contract_data.get('total_supply', 'N/A')
-                creator_address = contract_data.get('creator_address', 'N/A')
-                
-                return JSONResponse({
-                    "score": score,
-                    "address": address,
-                    "chain": chain.upper(),
-                    "contract_type": "ERC-20 Token",
-                    "token_name": token_name,
-                    "token_symbol": token_symbol,
-                    "flags": flags,
-                    "details": {
-                        "buy_tax": f"{buy_tax}%" if 'buy_tax' in locals() else "N/A",
-                        "sell_tax": f"{sell_tax}%" if 'sell_tax' in locals() else "N/A",
-                        "is_open_source": contract_data.get('is_open_source') == '1',
-                        "holder_count": holder_count,
-                        "total_supply": total_supply,
-                        "creator_address": creator_address[:10] + "..." if creator_address != 'N/A' else 'N/A',
-                        "is_honeypot": is_honeypot == '1'
-                    }
-                })
+            
+            details['is_open_source'] = etherscan_data['is_verified']
+            details['compiler'] = etherscan_data.get('compiler', 'N/A')
         
-        except httpx.TimeoutException:
-            return JSONResponse({
-                "error": "Timeout - L'API GoPlus ne répond pas",
-                "details": "Le serveur GoPlus met trop de temps à répondre. Réessaie dans quelques secondes."
-            }, status_code=504)
+        # Points positifs
+        if score >= 70 and len([f for f in flags if f['severity'] == 'critical']) == 0:
+            flags.append({
+                "name": "✅ Aucun red flag critique",
+                "description": "Le contract semble relativement sûr.",
+                "severity": "safe"
+            })
         
-        except httpx.HTTPError as e:
-            return JSONResponse({
-                "error": "Erreur de connexion",
-                "details": f"Impossible de contacter l'API GoPlus: {str(e)}"
-            }, status_code=503)
+        # Score final
+        score = max(0, min(100, score))
+        
+        # Source utilisée
+        analysis_source = "GoPlus Security" if goplus_data else ("Honeypot.is" if honeypot_data else explorer_name)
+        
+        print(f"✅ Analyse terminée: Score {score}/100 via {analysis_source}")
+        
+        return JSONResponse({
+            "score": score,
+            "address": address,
+            "chain": chain.upper(),
+            "contract_type": "ERC-20 Token",
+            "token_name": token_name,
+            "token_symbol": token_symbol,
+            "flags": flags,
+            "details": details,
+            "analysis_source": analysis_source,
+            "sources_checked": {
+                "goplus": goplus_data is not None,
+                "honeypot_is": honeypot_data is not None,
+                "blockchain_explorer": etherscan_data is not None
+            }
+        })
+        
+    except httpx.TimeoutException:
+        return JSONResponse({
+            "error": "Timeout",
+            "details": "Les APIs de sécurité mettent trop de temps à répondre. Réessayez dans quelques secondes."
+        }, status_code=504)
         
     except Exception as e:
-        print(f"❌ Erreur analyze_contract: {e}")
+        print(f"❌ Erreur critique analyze_contract: {e}")
         import traceback
         traceback.print_exc()
         return JSONResponse({
             "error": "Erreur interne",
-            "details": f"Erreur lors de l'analyse: {str(e)}"
+            "details": f"Une erreur s'est produite lors de l'analyse: {str(e)}"
         }, status_code=500)
 
 

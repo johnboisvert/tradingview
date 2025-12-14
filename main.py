@@ -25282,30 +25282,9 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
                 "revenue_at_risk": float(row[3] or 0) * 0.3
             })
         
-        # Users Inactifs (7+ jours sans connexion)
-        inactive_date = now - timedelta(days=7)
-        cursor.execute("""
-            SELECT username, subscription_plan, last_login
-            FROM users
-            WHERE subscription_plan IS NOT NULL
-            AND subscription_plan != 'free'
-            AND (last_login IS NULL OR last_login <= ?)
-            ORDER BY last_login ASC
-        """, (inactive_date.isoformat(),))
-        
+        # Users Inactifs - DÉSACTIVÉ (colonne last_login n'existe pas)
+        # Pour l'instant, on retourne une liste vide
         inactive_users = []
-        for row in cursor.fetchall():
-            if row[2]:
-                last_login = datetime.fromisoformat(row[2])
-                days_inactive = (now - last_login).days
-            else:
-                days_inactive = 999  # Jamais connecté
-            
-            inactive_users.append({
-                "username": row[0],
-                "plan": row[1],
-                "days_inactive": days_inactive
-            })
         
         # Stats rétention
         cursor.execute("""

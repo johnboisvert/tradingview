@@ -24579,8 +24579,19 @@ async def admin_dashboard(request: Request):
             alert('🎯 Offre de coaching envoyée à ' + username + '! (Feature prochaine)');
         }}
         
-        // Charger au démarrage
-        loadRetentionDashboard();
+        // Charger au démarrage - SÉCURISÉ avec checks
+        setTimeout(function() {{
+            (async function() {{
+                try {{
+                    if (typeof loadRetentionDashboard === 'function') {{
+                        await loadRetentionDashboard();
+                    }}
+                }} catch (error) {{
+                    console.error('⚠️ Erreur Retention Dashboard:', error);
+                    // Continuer même si erreur
+                }}
+            }})();
+        }}, 100);
         
         // ========================================
         // 🥈 CONVERSION FUNNEL MICROSCOPE
@@ -24588,7 +24599,8 @@ async def admin_dashboard(request: Request):
         
         async function loadConversionFunnel() {{
             try {{
-                const period = document.getElementById('funnelPeriod').value;
+                const periodElement = document.getElementById('funnelPeriod');
+                const period = periodElement ? periodElement.value : '30';
                 const response = await fetch('/admin/api/conversion-funnel?days=' + period);
                 const data = await response.json();
                 
@@ -24728,8 +24740,19 @@ async def admin_dashboard(request: Request):
             container.innerHTML = html;
         }}
         
-        // Charger au démarrage
-        loadConversionFunnel();
+        // Charger au démarrage - SÉCURISÉ avec checks
+        setTimeout(function() {{
+            (async function() {{
+                try {{
+                    if (typeof loadConversionFunnel === 'function') {{
+                        await loadConversionFunnel();
+                    }}
+                }} catch (error) {{
+                    console.error('⚠️ Erreur Conversion Funnel:', error);
+                    // Continuer même si erreur
+                }}
+            }})();
+        }}, 200);
         
         // ========================================
         // 🥉 REVENUE INTELLIGENCE CENTER
@@ -25109,10 +25132,37 @@ async def admin_dashboard(request: Request):
             alert('🚧 Feature en développement: Créer règle d automation');
         }}
         
-        // Charger toutes les features au démarrage
-        loadRevenueIntelligence();
-        loadViralGrowth();
-        loadAutomationEngine();
+        // Charger toutes les features au démarrage - SÉCURISÉ avec checks
+        setTimeout(function() {{
+            (async function() {{
+                // Revenue Intelligence
+                try {{
+                    if (typeof loadRevenueIntelligence === 'function') {{
+                        await loadRevenueIntelligence();
+                    }}
+                }} catch (error) {{
+                    console.error('⚠️ Erreur Revenue Intelligence:', error);
+                }}
+                
+                // Viral Growth
+                try {{
+                    if (typeof loadViralGrowth === 'function') {{
+                        await loadViralGrowth();
+                    }}
+                }} catch (error) {{
+                    console.error('⚠️ Erreur Viral Growth:', error);
+                }}
+                
+                // Automation Engine
+                try {{
+                    if (typeof loadAutomationEngine === 'function') {{
+                        await loadAutomationEngine();
+                    }}
+                }} catch (error) {{
+                    console.error('⚠️ Erreur Automation Engine:', error);
+                }}
+            }})();
+        }}, 300);
         
         </script>
     </body>

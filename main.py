@@ -4335,7 +4335,7 @@ async def admin_panel():
 
 @app.post("/admin/add-user")
 async def add_user(request: Request):
-    """Ajouter un nouvel utilisateur avec permissions par défaut"""
+    """Ajouter un nouvel utilisateur avec permissions par défaut ou plan d'abonnement"""
     try:
         data = await request.json()
         new_username = data.get("username")
@@ -4349,20 +4349,86 @@ async def add_user(request: Request):
         if not password or len(password) < 6:
             return {"success": False, "message": "Mot de passe trop court (min 6 caractères)"}
         
-        # Tenter d'ajouter l'utilisateur
-        if db_manager.add_user(new_username, password, role):
-            # ✅ Attribuer les permissions par défaut (sauf pour les admins)
-            if role != "admin":
+        # Déterminer si c'est un plan d'abonnement ou un rôle normal
+        subscription_plans = ['free', '1_month', '3_months', '6_months', '1_year']
+        is_subscription_plan = role in subscription_plans
+        
+        # Créer l'utilisateur
+        actual_role = "user" if is_subscription_plan else role
+        
+        if db_manager.add_user(new_username, password, actual_role):
+            # Si c'est un plan d'abonnement, assigner le plan et les dates
+            if is_subscription_plan:
+                from datetime import datetime, timedelta
+                
+                conn = db_manager.get_connection()
+                cursor = conn.cursor()
+                
+                # Calculer les dates d'abonnement
+                start_date = datetime.now()
+                duration_days = {
+                    "free": 36500,  # 100 ans (permanent)
+                    "1_month": 30,
+                    "3_months": 90,
+                    "6_months": 180,
+                    "1_year": 365,
+                }
+                end_date = start_date + timedelta(days=duration_days.get(role, 30))
+                
+                # Mettre à jour le plan d'abonnement
+                if db_manager.use_postgresql:
+                    cursor.execute("""
+                        UPDATE users 
+                        SET subscription_plan = %s,
+                            subscription_start = %s,
+                            subscription_end = %s
+                        WHERE username = %s
+                    """, (role, start_date, end_date, new_username))
+                else:
+                    cursor.execute("""
+                        UPDATE users 
+                        SET subscription_plan = ?,
+                            subscription_start = ?,
+                            subscription_end = ?
+                        WHERE username = ?
+                    """, (role, start_date.isoformat(), end_date.isoformat(), new_username))
+                
+                conn.commit()
+                cursor.close()
+                conn.close()
+                
+                plan_names = {
+                    'free': '🆓 Free',
+                    '1_month': '💎 Premium (1 mois)',
+                    '3_months': '🚀 Advanced (3 mois)',
+                    '6_months': '⭐ Pro (6 mois)',
+                    '1_year': '👑 Elite (1 an)'
+                }
+                
+                print(f"✅ Utilisateur {new_username} créé avec plan {plan_names[role]}")
+                
+                return {
+                    "success": True, 
+                    "message": f"Utilisateur '{new_username}' créé avec plan {plan_names[role]} (hérite automatiquement des permissions du plan)"
+                }
+            
+            # Si c'est admin
+            elif role == "admin":
+                return {"success": True, "message": f"Administrateur '{new_username}' créé avec accès complet"}
+            
+            # Si c'est user normal
+            else:
                 give_default_permissions(new_username)
                 return {
                     "success": True, 
                     "message": f"Utilisateur '{new_username}' créé avec {len(DEFAULT_USER_PERMISSIONS)} permissions par défaut"
                 }
-            else:
-                return {"success": True, "message": f"Administrateur '{new_username}' créé avec accès complet"}
         else:
             return {"success": False, "message": "Utilisateur déjà existant ou erreur de création"}
     except Exception as e:
+        print(f"❌ Erreur add_user: {e}")
+        import traceback
+        traceback.print_exc()
         return {"success": False, "message": f"Erreur: {str(e)}"}
 
 @app.post("/admin/delete-user")
@@ -23627,11 +23693,19 @@ async def admin_dashboard(request: Request):
                         <small style="color: #999; font-size: 12px;">* Requis pour nouvel utilisateur, optionnel pour modification</small>
                     </div>
                     <div class="form-group">
-                        <label>👑 Rôle</label>
+                        <label>👑 Rôle / Plan</label>
                         <select id="role">
-                            <option value="user">User (Normal)</option>
+                            <option value="user">User (Normal - Sans abonnement)</option>
                             <option value="admin">Admin (Accès complet)</option>
+                            <option value="free">🆓 Free</option>
+                            <option value="1_month">💎 Premium (1 mois)</option>
+                            <option value="3_months">🚀 Advanced (3 mois)</option>
+                            <option value="6_months">⭐ Pro (6 mois)</option>
+                            <option value="1_year">👑 Elite (1 an)</option>
                         </select>
+                        <small style="color: #999; font-size: 12px; margin-top: 5px; display: block;">
+                            💡 Choisir un plan assignera automatiquement les permissions configurées pour ce plan
+                        </small>
                     </div>
                     <button type="submit" class="btn-submit" id="submitBtn">✅ Créer Utilisateur</button>
                 </form>

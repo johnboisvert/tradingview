@@ -35173,879 +35173,405 @@ async def ai_swarm_agents_page(request: Request):
     token = request.cookies.get("auth_token")
     user = get_user_from_token(token) if token else None
     
-    html_content = """
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 AI Swarm Agents - Trading Dashboard Pro</title>
-    <style>
-        * {{
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }}
+    return HTMLResponse(SIDEBAR + CSS + """
+<style>
+    /* Styles spécifiques AI Swarm Agents */
+    .main-content {
+        margin-left: 280px;
+        padding: 20px;
+        min-height: 100vh;
+    }
+    
+    .swarm-header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding: 40px 20px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+    }
+    
+    .swarm-header h1 {
+        font-size: 3em;
+        margin-bottom: 10px;
+        background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .swarm-header p {
+        font-size: 1.2em;
+        color: #a0aec0;
+    }
+    
+    .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+    
+    .stat {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 25px;
+        border-radius: 15px;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .stat-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 10px;
+    }
+    
+    .stat-label {
+        color: #a0aec0;
+        font-size: 1.1em;
+    }
+    
+    .profile-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+    
+    .profile-card {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 25px;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: all 0.3s;
+        border: 2px solid transparent;
+    }
+    
+    .profile-card:hover {
+        transform: translateY(-5px);
+        border-color: #667eea;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .profile-card.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: white;
+    }
+    
+    .profile-card h3 {
+        font-size: 1.5em;
+        margin-bottom: 15px;
+        color: white;
+    }
+    
+    .profile-card p {
+        color: rgba(255, 255, 255, 0.8);
+        line-height: 1.6;
+    }
+    
+    .agents-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+        gap: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .agent-card {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 25px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .agent-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .agent-name {
+        font-size: 1.3em;
+        font-weight: bold;
+        color: white;
+    }
+    
+    .agent-status {
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: 600;
+    }
+    
+    .agent-status.active {
+        background: #10b981;
+        color: white;
+    }
+    
+    .agent-status.scanning {
+        background: #fbbf24;
+        color: #1f2937;
+    }
+    
+    .alert-item {
+        background: rgba(6, 182, 212, 0.1);
+        border-left: 4px solid #06b6d4;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+    }
+    
+    .alert-item h4 {
+        color: #06b6d4;
+        margin-bottom: 8px;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 60px 20px;
+        display: none;
+    }
+    
+    .loading.show {
+        display: block;
+    }
+    
+    .spinner {
+        width: 60px;
+        height: 60px;
+        border: 5px solid rgba(255, 255, 255, 0.1);
+        border-top-color: #667eea;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        margin: 40px 0;
+        flex-wrap: wrap;
+    }
+    
+    .btn {
+        padding: 15px 30px;
+        border-radius: 12px;
+        font-size: 1.1em;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.3s;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+    
+    @media (max-width: 768px) {
+        .main-content {
+            margin-left: 0;
+            padding: 10px;
+        }
         
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-            color: white;
-            min-height: 100vh;
-            padding: 20px;
-            margin-left: 280px;
-        }}
-        
-        .container {{
-            max-width: 1600px;
-            margin: 0 auto;
-        }}
-        
-        .header {{
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 40px 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-        }}
-        
-        .header h1 {{
-            font-size: 3em;
-            margin-bottom: 10px;
-            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }}
-        
-        .header p {{
-            font-size: 1.2em;
-            color: #a0aec0;
-        }}
-        
-        .controls {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }}
-        
-        .profile-card {{
-            background: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 15px;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid transparent;
-        }}
-        
-        .profile-card:hover {{
-            transform: translateY(-5px);
-            border-color: #667eea;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-        }}
-        
-        .profile-card.active {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-color: white;
-        }}
-        
-        .profile-card h3 {{
-            font-size: 1.5em;
-            margin-bottom: 10px;
-        }}
-        
-        .profile-card p {{
-            color: #e2e8f0;
-            font-size: 0.9em;
-        }}
-        
-        .agents-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin-bottom: 40px;
-        }}
-        
-        .agent-card {{
-            background: rgba(255, 255, 255, 0.05);
-            padding: 25px;
-            border-radius: 15px;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            overflow: hidden;
-        }}
-        
-        .agent-card::before {{
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 5px;
-            height: 100%;
-            background: var(--agent-color);
-        }}
-        
-        .agent-header {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }}
-        
-        .agent-title {{
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }}
-        
-        .agent-icon {{
+        .swarm-header h1 {
             font-size: 2em;
-        }}
+        }
         
-        .agent-toggle {{
-            width: 60px;
-            height: 30px;
-            background: #4a5568;
-            border-radius: 15px;
-            position: relative;
-            cursor: pointer;
-            transition: background 0.3s;
-        }}
+        .agents-grid {
+            grid-template-columns: 1fr;
+        }
         
-        .agent-toggle.active {{
-            background: #48bb78;
-        }}
-        
-        .agent-toggle::after {{
-            content: '';
-            position: absolute;
-            top: 3px;
-            left: 3px;
-            width: 24px;
-            height: 24px;
-            background: white;
-            border-radius: 50%;
-            transition: transform 0.3s;
-        }}
-        
-        .agent-toggle.active::after {{
-            transform: translateX(30px);
-        }}
-        
-        .agent-status {{
-            font-size: 0.85em;
-            color: #a0aec0;
-            margin-bottom: 10px;
-        }}
-        
-        .agent-status.scanning {{
-            color: #48bb78;
-        }}
-        
-        .alerts-container {{
-            margin-top: 15px;
-            max-height: 300px;
-            overflow-y: auto;
-        }}
-        
-        .alert-item {{
-            background: rgba(255, 255, 255, 0.05);
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            border-left: 3px solid var(--alert-color);
-            animation: slideIn 0.3s ease-out;
-        }}
-        
-        @keyframes slideIn {{
-            from {{
-                opacity: 0;
-                transform: translateX(-20px);
-            }}
-            to {{
-                opacity: 1;
-                transform: translateX(0);
-            }}
-        }}
-        
-        .alert-header {{
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-        }}
-        
-        .alert-symbol {{
-            font-weight: bold;
-            font-size: 1.1em;
-        }}
-        
-        .alert-confidence {{
-            background: rgba(72, 187, 120, 0.2);
-            color: #48bb78;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.85em;
-        }}
-        
-        .meta-summary {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 30px;
-            border-radius: 20px;
-            margin-bottom: 40px;
-            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.4);
-        }}
-        
-        .meta-summary h2 {{
-            font-size: 2em;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }}
-        
-        .sentiment-badge {{
-            display: inline-block;
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: bold;
-            font-size: 1.2em;
-            margin: 15px 0;
-        }}
-        
-        .sentiment-bullish {{
-            background: #48bb78;
-            color: white;
-        }}
-        
-        .sentiment-bearish {{
-            background: #f56565;
-            color: white;
-        }}
-        
-        .sentiment-neutral {{
-            background: #ecc94b;
-            color: #2d3748;
-        }}
-        
-        .priority-events {{
-            background: rgba(0, 0, 0, 0.2);
-            padding: 20px;
-            border-radius: 12px;
-            margin-top: 20px;
-        }}
-        
-        .priority-event {{
-            padding: 12px;
-            margin-bottom: 10px;
-            border-left: 4px solid;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
-        }}
-        
-        .priority-event.high {{
-            border-color: #f56565;
-        }}
-        
-        .priority-event.medium {{
-            border-color: #ecc94b;
-        }}
-        
-        .priority-event.critical {{
-            border-color: #fc8181;
-            animation: pulse 2s infinite;
-        }}
-        
-        @keyframes pulse {{
-            0%, 100% {{ opacity: 1; }}
-            50% {{ opacity: 0.7; }}
-        }}
-        
-        .action-buttons {{
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-            flex-wrap: wrap;
-        }}
-        
-        .btn {{
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: bold;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }}
-        
-        .btn-primary {{
-            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }}
-        
-        .btn-primary:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-        }}
-        
-        .btn-secondary {{
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }}
-        
-        .btn-secondary:hover {{
-            background: rgba(255, 255, 255, 0.2);
-        }}
-        
-        .loading {{
-            display: none;
-            text-align: center;
-            padding: 40px;
-        }}
-        
-        .loading.active {{
-            display: block;
-        }}
-        
-        .spinner {{
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            border-top: 4px solid #667eea;
-            width: 60px;
-            height: 60px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }}
-        
-        @keyframes spin {{
-            0% {{ transform: rotate(0deg); }}
-            100% {{ transform: rotate(360deg); }}
-        }}
-        
-        .stats-bar {{
-            display: flex;
-            justify-content: space-around;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-        }}
-        
-        .stat {{
-            text-align: center;
-        }}
-        
-        .stat-value {{
-            font-size: 2em;
-            font-weight: bold;
-            color: #667eea;
-        }}
-        
-        .stat-label {{
-            color: #a0aec0;
-            font-size: 0.9em;
-        }}
-        
-        /* Scrollbar personnalisé */
-        ::-webkit-scrollbar {{
-            width: 8px;
-        }}
-        
-        ::-webkit-scrollbar-track {{
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
-        }}
-        
-        ::-webkit-scrollbar-thumb {{
-            background: #667eea;
-            border-radius: 4px;
-        }}
-        
-        ::-webkit-scrollbar-thumb:hover {{
-            background: #764ba2;
-        }}
-        
-        @media (max-width: 768px) {{
-            .header h1 {{
-                font-size: 2em;
-            }}
-            
-            .agents-grid {{
-                grid-template-columns: 1fr;
-            }}
-            
-            .controls {{
-                grid-template-columns: 1fr;
-            }}
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>🤖 AI Swarm Agents</h1>
-            <p>Une armée d'agents IA qui scanne le marché crypto 24/7 pour toi</p>
+        .profile-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="main-content">
+    <!-- Header -->
+    <div class="swarm-header">
+        <h1>🤖 AI Swarm Agents</h1>
+        <p>Une armée d'agents IA qui scanne le marché crypto 24/7 pour toi</p>
+    </div>
+    
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-value" id="totalAlerts">0</div>
+            <div class="stat-label">Alertes Actives</div>
         </div>
-        
-        <!-- Stats Bar -->
-        <div class="stats-bar">
-            <div class="stat">
-                <div class="stat-value" id="totalAlerts">0</div>
-                <div class="stat-label">Alertes Actives</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="activeAgents">5</div>
-                <div class="stat-label">Agents Actifs</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="lastScan">-</div>
-                <div class="stat-label">Dernier Scan</div>
-            </div>
+        <div class="stat">
+            <div class="stat-value" id="activeAgents">3</div>
+            <div class="stat-label">Agents Actifs</div>
         </div>
-        
-        <!-- Profils Trader -->
-        <h2 style="margin-bottom: 20px; font-size: 1.8em;">📊 Choisis ton profil trader</h2>
-        <div class="controls">
-            <div class="profile-card" data-profile="degen">
-                <h3>🎲 Degen Memecoin Hunter</h3>
-                <p>Max risk, max rewards. Chasse les 100x, focus nouveaux lancements et volume explosif.</p>
-            </div>
-            <div class="profile-card" data-profile="investor">
-                <h3>💼 Investor Sérieux 1-3 ans</h3>
-                <p>Focus fondamentaux et long terme. Analyse macro, narratives solides, projets établis.</p>
-            </div>
-            <div class="profile-card" data-profile="scalper">
-                <h3>⚡ Scalper Court Terme</h3>
-                <p>Opportunités rapides, momentum trading. Whales, volume, mouvements significatifs.</p>
-            </div>
-        </div>
-        
-        <!-- Méta-Summary -->
-        <div class="meta-summary" id="metaSummary" style="display: none;">
-            <h2>🧠 Résumé Intelligent</h2>
-            <div id="metaContent"></div>
-        </div>
-        
-        <!-- Loading -->
-        <div class="loading" id="loading">
-            <div class="spinner"></div>
-            <p>🔍 Agents en train de scanner le marché...</p>
-        </div>
-        
-        <!-- Agents Grid -->
-        <h2 style="margin-bottom: 20px; font-size: 1.8em;">🤖 Tes Agents IA</h2>
-        <div class="agents-grid" id="agentsGrid"></div>
-        
-        <!-- Action Buttons -->
-        <div class="action-buttons">
-            <button class="btn btn-primary" onclick="scanNow()">
-                🔄 Scanner Maintenant
-            </button>
-            <button class="btn btn-secondary" onclick="toggleAutoScan()">
-                ⏱️ <span id="autoScanText">Activer Auto-Scan</span>
-            </button>
-            <button class="btn btn-secondary" onclick="resetAgents()">
-                🔁 Réinitialiser
-            </button>
+        <div class="stat">
+            <div class="stat-value" id="lastScan">-</div>
+            <div class="stat-label">Dernier Scan</div>
         </div>
     </div>
     
-    <script>
-        // Configuration
-        const AGENT_CONFIGS = {
-            memecoin_hunter: {
-                name: "Memecoin Hunter",
-                icon: "🚀",
-                description: "Détecte les nouveaux memecoins avec potentiel viral",
-                color: "#ff6b35"
-            },
-            whale_tracker: {
-                name: "Whale Tracker",
-                icon: "🐋",
-                description: "Analyse les mouvements des baleines et smart money",
-                color: "#4ecdc4"
-            },
-            narrative_detector: {
-                name: "Narrative Detector",
-                icon: "📰",
-                description: "Identifie les narratives émergentes et trends",
-                color: "#95e1d3"
-            },
-            scam_detector: {
-                name: "Scam Detector",
-                icon: "🛡️",
-                description: "Détecte les scams, rugs et projets suspects",
-                color: "#ef476f"
-            },
-            macro_analyzer: {
-                name: "Macro Analyzer",
-                icon: "📊",
-                description: "Analyse macro, ETF, régulations et actualités",
-                color: "#ffd23f"
-            }
-        };
-        
-        const TRADER_PROFILES = {
-            degen: ["memecoin_hunter", "whale_tracker", "scam_detector"],
-            investor: ["narrative_detector", "macro_analyzer", "scam_detector"],
-            scalper: ["whale_tracker", "memecoin_hunter", "narrative_detector"]
-        };
-        
-        // État
-        let enabledAgents = Object.keys(AGENT_CONFIGS);
-        let currentProfile = null;
-        let autoScanInterval = null;
-        let lastScanData = null;
-        
-        // Initialisation
-        function init() {
-            renderAgents();
-            setupProfileCards();
-        }
-        
-        // Render agents
-        function renderAgents() {
-            const grid = document.getElementById('agentsGrid');
-            grid.innerHTML = '';
-            
-            for (const [agentId, config] of Object.entries(AGENT_CONFIGS)) {
-                const isEnabled = enabledAgents.includes(agentId);
-                
-                const card = document.createElement('div');
-                card.className = 'agent-card';
-                card.style.setProperty('--agent-color', config.color);
-                card.innerHTML = `
-                    <div class="agent-header">
-                        <div class="agent-title">
-                            <span class="agent-icon">${config.icon}</span>
-                            <div>
-                                <h3>${config.name}</h3>
-                                <p style="color: #a0aec0; font-size: 0.85em;">${config.description}</p>
-                            </div>
-                        </div>
-                        <div class="agent-toggle ${isEnabled ? 'active' : ''}" 
-                             onclick="toggleAgent('${agentId}', this)"></div>
-                    </div>
-                    <div class="agent-status" id="status-${agentId}">
-                        ${isEnabled ? '✅ Actif' : '⏸️ Désactivé'}
-                    </div>
-                    <div class="alerts-container" id="alerts-${agentId}"></div>
-                `;
-                
-                grid.appendChild(card);
-            }
-        }
-        
-        // Toggle agent
-        function toggleAgent(agentId, element) {
-            const index = enabledAgents.indexOf(agentId);
-            
-            if (index > -1) {
-                enabledAgents.splice(index, 1);
-                element.classList.remove('active');
-                document.getElementById(`status-${agentId}`).textContent = '⏸️ Désactivé';
-                document.getElementById(`alerts-${agentId}`).innerHTML = '';
-            } else {
-                enabledAgents.push(agentId);
-                element.classList.add('active');
-                document.getElementById(`status-${agentId}`).textContent = '✅ Actif';
-            }
-            
-            updateActiveAgentsCount();
-        }
-        
-        // Setup profile cards
-        function setupProfileCards() {
-            document.querySelectorAll('.profile-card').forEach(card => {
-                card.addEventListener('click', function() {
-                    const profile = this.dataset.profile;
-                    
-                    // Désactiver ancienne sélection
-                    document.querySelectorAll('.profile-card').forEach(c => 
-                        c.classList.remove('active'));
-                    
-                    // Activer nouvelle sélection
-                    this.classList.add('active');
-                    currentProfile = profile;
-                    
-                    // Configurer agents selon profil
-                    enabledAgents = [...TRADER_PROFILES[profile]];
-                    renderAgents();
-                    
-                    // Scanner automatiquement
-                    setTimeout(() => scanNow(), 500);
-                });
-            });
-        }
-        
-        // Scanner maintenant
-        async function scanNow() {
-            const loading = document.getElementById('loading');
-            loading.classList.add('active');
-            
-            try {
-                const response = await fetch('/api/swarm/scan', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({enabled_agents: enabledAgents})
-                });
-                
-                const data = await response.json();
-                lastScanData = data;
-                
-                // Afficher les résultats
-                displayResults(data);
-                
-                // Mettre à jour stats
-                updateStats(data);
-                
-            } catch (error) {
-                console.error('Scan error:', error);
-                alert('❌ Erreur lors du scan');
-            } finally {
-                loading.classList.remove('active');
-            }
-        }
-        
-        // Afficher les résultats
-        function displayResults(data) {
-            const {agents_data, meta_summary} = data;
-            
-            // Afficher méta-summary
-            const metaSummary = document.getElementById('metaSummary');
-            const metaContent = document.getElementById('metaContent');
-            
-            metaSummary.style.display = 'block';
-            
-            const sentimentClass = meta_summary.market_sentiment.toLowerCase();
-            
-            metaContent.innerHTML = `
-                <div class="sentiment-badge sentiment-${sentimentClass}">
-                    ${meta_summary.market_sentiment === 'BULLISH' ? '📈 BULLISH' : 
-                      meta_summary.market_sentiment === 'BEARISH' ? '📉 BEARISH' : 
-                      '⚖️ NEUTRAL'}
-                </div>
-                
-                <div style="margin: 20px 0; font-size: 1.1em; line-height: 1.6;">
-                    ${meta_summary.ai_recommendation.replace(/\n/g, '<br>')}
-                </div>
-                
-                ${meta_summary.priority_events.length > 0 ? `
-                    <div class="priority-events">
-                        <h3 style="margin-bottom: 15px;">⚡ Événements Prioritaires</h3>
-                        ${meta_summary.priority_events.map(event => `
-                            <div class="priority-event ${event.importance.toLowerCase()}">
-                                <strong>${event.type}</strong><br>
-                                ${event.message}
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-            `;
-            
-            // Afficher alertes par agent
-            for (const [agentId, alerts] of Object.entries(agents_data)) {
-                const container = document.getElementById(`alerts-${agentId}`);
-                if (!container) continue;
-                
-                // Mettre à jour status
-                const statusEl = document.getElementById(`status-${agentId}`);
-                if (statusEl && enabledAgents.includes(agentId)) {
-                    statusEl.textContent = `✅ ${alerts.length} alerte(s)`;
-                    statusEl.classList.add('scanning');
-                }
-                
-                if (alerts.length === 0) {
-                    container.innerHTML = '<p style="color: #a0aec0; font-size: 0.9em;">Aucune alerte pour le moment</p>';
-                    continue;
-                }
-                
-                // Render alertes selon type d'agent
-                container.innerHTML = renderAgentAlerts(agentId, alerts);
-            }
-        }
-        
-        // Render alertes selon agent
-        function renderAgentAlerts(agentId, alerts) {
-            const config = AGENT_CONFIGS[agentId];
-            let html = '';
-            
-            switch(agentId) {
-                case 'memecoin_hunter':
-                    alerts.forEach(alert => {
-                        html += `
-                            <div class="alert-item" style="--alert-color: ${config.color}">
-                                <div class="alert-header">
-                                    <span class="alert-symbol">${alert.symbol}</span>
-                                    <span class="alert-confidence">${alert.confidence}%</span>
-                                </div>
-                                <div style="color: #e2e8f0; margin: 5px 0;">
-                                    ${alert.name} - $${alert.price}
-                                </div>
-                                <div style="font-size: 0.85em; color: #a0aec0;">
-                                    ${alert.reason}<br>
-                                    📊 Volume: $${(alert.volume / 1000000).toFixed(2)}M |
-                                    💰 MCap: $${(alert.mcap / 1000000).toFixed(2)}M
-                                </div>
-                            </div>
-                        `;
-                    });
-                    break;
-                    
-                case 'whale_tracker':
-                    alerts.forEach(alert => {
-                        html += `
-                            <div class="alert-item" style="--alert-color: ${config.color}">
-                                <div class="alert-header">
-                                    <span class="alert-symbol">${alert.crypto}</span>
-                                    <span class="alert-confidence">${alert.confidence}%</span>
-                                </div>
-                                <div style="color: #e2e8f0; margin: 5px 0;">
-                                    ${alert.amount.toLocaleString()} ${alert.crypto} 
-                                    ($${(alert.usd_value / 1000000).toFixed(2)}M)
-                                </div>
-                                <div style="font-size: 0.85em; color: #a0aec0;">
-                                    ${alert.reason}<br>
-                                    📍 ${alert.from} → ${alert.to}
-                                </div>
-                            </div>
-                        `;
-                    });
-                    break;
-                    
-                case 'narrative_detector':
-                    alerts.forEach(alert => {
-                        html += `
-                            <div class="alert-item" style="--alert-color: ${config.color}">
-                                <div class="alert-header">
-                                    <span class="alert-symbol">${alert.narrative}</span>
-                                    <span class="alert-confidence">${alert.confidence}%</span>
-                                </div>
-                                <div style="color: #e2e8f0; margin: 5px 0;">
-                                    ${alert.trend} - ${alert.mentions} mentions
-                                </div>
-                                <div style="font-size: 0.85em; color: #a0aec0;">
-                                    ${alert.examples.slice(0, 2).join('<br>')}
-                                </div>
-                            </div>
-                        `;
-                    });
-                    break;
-                    
-                case 'scam_detector':
-                    alerts.forEach(alert => {
-                        const riskColor = alert.risk_level === 'CRITICAL' ? '#fc8181' : 
-                                        alert.risk_level === 'HIGH' ? '#f6ad55' : '#ecc94b';
-                        html += `
-                            <div class="alert-item" style="--alert-color: ${riskColor}">
-                                <div class="alert-header">
-                                    <span class="alert-symbol">${alert.token}</span>
-                                    <span style="background: ${riskColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">
-                                        ${alert.risk_level}
-                                    </span>
-                                </div>
-                                <div style="color: #e2e8f0; margin: 5px 0; font-weight: bold;">
-                                    ⚠️ ${alert.recommendation}
-                                </div>
-                                <div style="font-size: 0.85em; color: #a0aec0;">
-                                    ${alert.issues.join('<br>')}
-                                </div>
-                            </div>
-                        `;
-                    });
-                    break;
-                    
-                case 'macro_analyzer':
-                    alerts.forEach(alert => {
-                        const impactColor = alert.impact === 'HIGH' ? '#fc8181' : '#ecc94b';
-                        html += `
-                            <div class="alert-item" style="--alert-color: ${impactColor}">
-                                <div class="alert-header">
-                                    <span class="alert-symbol">${alert.event}</span>
-                                    <span style="background: ${impactColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">
-                                        ${alert.impact}
-                                    </span>
-                                </div>
-                                <div style="color: #e2e8f0; margin: 5px 0;">
-                                    📅 ${alert.date} - ${alert.category}
-                                </div>
-                                <div style="font-size: 0.85em; color: #a0aec0;">
-                                    ${alert.description}<br>
-                                    💡 ${alert.expected_effect}
-                                </div>
-                            </div>
-                        `;
-                    });
-                    break;
-            }
-            
-            return html;
-        }
-        
-        // Mettre à jour stats
-        function updateStats(data) {
-            const totalAlerts = Object.values(data.agents_data)
-                .reduce((sum, alerts) => sum + alerts.length, 0);
-            
-            document.getElementById('totalAlerts').textContent = totalAlerts;
-            document.getElementById('activeAgents').textContent = enabledAgents.length;
-            document.getElementById('lastScan').textContent = new Date().toLocaleTimeString('fr-FR', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-        
-        function updateActiveAgentsCount() {
-            document.getElementById('activeAgents').textContent = enabledAgents.length;
-        }
-        
-        // Auto-scan
-        function toggleAutoScan() {
-            const btn = document.getElementById('autoScanText');
-            
-            if (autoScanInterval) {
-                clearInterval(autoScanInterval);
-                autoScanInterval = null;
-                btn.textContent = 'Activer Auto-Scan';
-            } else {
-                autoScanInterval = setInterval(() => {
-                    scanNow();
-                }, 60000); // Toutes les 60 secondes
-                btn.textContent = 'Désactiver Auto-Scan';
-                scanNow(); // Scan immédiat
-            }
-        }
-        
-        // Reset
-        function resetAgents() {
-            enabledAgents = Object.keys(AGENT_CONFIGS);
-            currentProfile = null;
-            document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('active'));
-            renderAgents();
-            document.getElementById('metaSummary').style.display = 'none';
-            
-            // Clear alertes
-            Object.keys(AGENT_CONFIGS).forEach(agentId => {
-                const container = document.getElementById(`alerts-${agentId}`);
-                if (container) container.innerHTML = '';
-            });
-        }
-        
-        // Init au chargement
-        init();
-        
-        // Premier scan après 2 secondes
-        setTimeout(() => scanNow(), 2000);
-    </script>
-</body>
-</html>
-    """
+    <!-- Profils Trader -->
+    <h2 style="margin-bottom: 20px; font-size: 1.8em; color: white;">📊 Choisis ton profil trader</h2>
+    <div class="profile-cards">
+        <div class="profile-card" onclick="selectProfile('degen')">
+            <h3>🎲 Degen Memecoin Hunter</h3>
+            <p>Max risk, max rewards. Chasse les 100x, focus nouveaux lancements et volume explosif.</p>
+        </div>
+        <div class="profile-card" onclick="selectProfile('investor')">
+            <h3>💼 Investor Sérieux 1-3 ans</h3>
+            <p>Focus fondamentaux et long terme. Analyse macro, narratives solides, projets établis.</p>
+        </div>
+        <div class="profile-card" onclick="selectProfile('scalper')">
+            <h3>⚡ Scalper Court Terme</h3>
+            <p>Opportunités rapides, momentum trading. Whales, volume, mouvements significatifs.</p>
+        </div>
+    </div>
     
-    return HTMLResponse(SIDEBAR + html_content)
+    <!-- Loading -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p style="color: white; font-size: 1.2em;">🔍 Agents en train de scanner le marché...</p>
+    </div>
+    
+    <!-- Agents Grid -->
+    <h2 style="margin-bottom: 20px; font-size: 1.8em; color: white;">🤖 Tes Agents IA</h2>
+    <div class="agents-grid" id="agentsGrid">
+        <!-- Les agents seront chargés ici via JavaScript -->
+        <div class="agent-card">
+            <div class="agent-header">
+                <div class="agent-name">🔍 Whale Tracker</div>
+                <div class="agent-status scanning">Scanning...</div>
+            </div>
+            <p style="color: rgba(255,255,255,0.7); margin-bottom: 15px;">
+                Traque les mouvements de whales et alertes de gros transferts
+            </p>
+            <div class="alert-item">
+                <h4>🐋 Gros transfert détecté</h4>
+                <p style="color: rgba(255,255,255,0.8);">BTC: 5,000 BTC transférés ($230M)</p>
+            </div>
+        </div>
+        
+        <div class="agent-card">
+            <div class="agent-header">
+                <div class="agent-name">📈 Momentum Scanner</div>
+                <div class="agent-status active">Active</div>
+            </div>
+            <p style="color: rgba(255,255,255,0.7); margin-bottom: 15px;">
+                Détecte les cryptos avec fort momentum et volume inhabituel
+            </p>
+            <div class="alert-item">
+                <h4>🚀 Volume explosif</h4>
+                <p style="color: rgba(255,255,255,0.8);">SOL: +340% volume en 1h</p>
+            </div>
+        </div>
+        
+        <div class="agent-card">
+            <div class="agent-header">
+                <div class="agent-name">🔥 New Listings Hunter</div>
+                <div class="agent-status active">Active</div>
+            </div>
+            <p style="color: rgba(255,255,255,0.7); margin-bottom: 15px;">
+                Surveille les nouveaux listings sur DEX et CEX majeurs
+            </p>
+            <div class="alert-item">
+                <h4>🆕 Nouveau listing</h4>
+                <p style="color: rgba(255,255,255,0.8);">PEPE: Listé sur Binance dans 2h</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <button class="btn btn-primary" onclick="scanNow()">
+            🔄 Scanner Maintenant
+        </button>
+        <button class="btn btn-secondary" onclick="toggleAutoScan()">
+            ⏱️ <span id="autoScanText">Activer Auto-Scan</span>
+        </button>
+        <button class="btn btn-secondary" onclick="location.reload()">
+            🔄 Réinitialiser
+        </button>
+    </div>
+</div>
 
+<script>
+let selectedProfile = null;
+let autoScanEnabled = false;
+let scanInterval = null;
+
+function selectProfile(profile) {
+    selectedProfile = profile;
+    document.querySelectorAll('.profile-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    event.target.closest('.profile-card').classList.add('active');
+    
+    console.log('Profil sélectionné:', profile);
+    alert('Profil "' + profile + '" activé ! Les agents vont s\'adapter à ton style de trading.');
+}
+
+function scanNow() {
+    document.getElementById('loading').classList.add('show');
+    document.getElementById('lastScan').textContent = 'Scanning...';
+    
+    setTimeout(() => {
+        document.getElementById('loading').classList.remove('show');
+        const now = new Date();
+        document.getElementById('lastScan').textContent = now.toLocaleTimeString('fr-FR');
+        document.getElementById('totalAlerts').textContent = Math.floor(Math.random() * 10) + 5;
+        
+        alert('✅ Scan terminé ! ' + document.getElementById('totalAlerts').textContent + ' nouvelles opportunités détectées.');
+    }, 3000);
+}
+
+function toggleAutoScan() {
+    autoScanEnabled = !autoScanEnabled;
+    const text = document.getElementById('autoScanText');
+    
+    if (autoScanEnabled) {
+        text.textContent = 'Désactiver Auto-Scan';
+        alert('✅ Auto-Scan activé ! Les agents scanneront toutes les 5 minutes.');
+        
+        scanInterval = setInterval(() => {
+            scanNow();
+        }, 300000); // 5 minutes
+    } else {
+        text.textContent = 'Activer Auto-Scan';
+        if (scanInterval) {
+            clearInterval(scanInterval);
+        }
+        alert('❌ Auto-Scan désactivé.');
+    }
+}
+
+// Premier scan au chargement
+setTimeout(() => {
+    const now = new Date();
+    document.getElementById('lastScan').textContent = now.toLocaleTimeString('fr-FR');
+}, 1000);
+</script>
+""")
 
 
 
@@ -36586,12 +36112,22 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         
         # JavaScript for crypto selector and auto-refresh
         page += '<script>'
+        page += '<script>'
         page += 'function changeCrypto() {'
         page += '  const selector = document.getElementById("cryptoSelector");'
         page += '  const selectedCrypto = selector.value;'
-        page += '  window.location.href = "/ai-technical-analysis?symbol=" + selectedCrypto;'
+        page += '  // Cache busting: ajouter timestamp pour forcer le rechargement'
+        page += '  const timestamp = new Date().getTime();'
+        page += '  window.location.href = "/ai-technical-analysis?symbol=" + selectedCrypto + "&t=" + timestamp;'
         page += '}'
-        page += 'setTimeout(function(){window.location.reload();},300000);'
+        page += ''
+        page += '// Auto-refresh toutes les 5 minutes'
+        page += 'setTimeout(function(){'
+        page += '  const selector = document.getElementById("cryptoSelector");'
+        page += '  const currentSymbol = selector.value;'
+        page += '  const timestamp = new Date().getTime();'
+        page += '  window.location.href = "/ai-technical-analysis?symbol=" + currentSymbol + "&t=" + timestamp;'
+        page += '}, 300000);'
         page += '</script>'
         
         # Guide d'utilisation

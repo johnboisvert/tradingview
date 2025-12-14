@@ -23605,6 +23605,57 @@ async def admin_dashboard(request: Request):
                 </div>
             </div>
             
+            <!-- 🥇 FEATURE #1 - RETENTION WARFARE DASHBOARD -->
+            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 2px solid #ef4444; border-radius: 15px; padding: 25px;">
+                <h2 style="color: #dc2626; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 32px;">⚠️</span>
+                    Retention Warfare - Zone de Combat
+                </h2>
+                <p style="color: #991b1b; margin-bottom: 20px; font-weight: 600;">
+                    📊 Préviens les pertes de clients AVANT qu'il soit trop tard
+                </p>
+                
+                <!-- Zone Rouge - Urgent -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid #dc2626;">
+                    <h3 style="color: #dc2626; margin-bottom: 10px;">🔴 ZONE ROUGE - Urgent (3 jours)</h3>
+                    <div id="redZoneContent">
+                        <p style="color: #666;">🔄 Chargement...</p>
+                    </div>
+                </div>
+                
+                <!-- Zone Orange -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid #f59e0b;">
+                    <h3 style="color: #f59e0b; margin-bottom: 10px;">🟠 ZONE ORANGE (7 jours)</h3>
+                    <div id="orangeZoneContent">
+                        <p style="color: #666;">🔄 Chargement...</p>
+                    </div>
+                </div>
+                
+                <!-- Zone Jaune -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid #eab308;">
+                    <h3 style="color: #eab308; margin-bottom: 10px;">🟡 ZONE JAUNE (30 jours)</h3>
+                    <div id="yellowZoneContent">
+                        <p style="color: #666;">🔄 Chargement...</p>
+                    </div>
+                </div>
+                
+                <!-- Users Inactifs -->
+                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid #6366f1;">
+                    <h3 style="color: #6366f1; margin-bottom: 10px;">👥 Utilisateurs Inactifs (7+ jours)</h3>
+                    <div id="inactiveUsers">
+                        <p style="color: #666;">🔄 Chargement...</p>
+                    </div>
+                </div>
+                
+                <!-- Stats Rétention -->
+                <div style="background: white; padding: 20px; border-radius: 10px;">
+                    <h3 style="color: #333; margin-bottom: 10px;">📈 Taux de Rétention</h3>
+                    <div id="retentionStats">
+                        <p style="color: #666;">🔄 Chargement...</p>
+                    </div>
+                </div>
+            </div>
+            
             <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
             <div class="users-section" style="margin-bottom: 30px;">
                 <h2>🎯 Gestion des Accès par Forfait</h2>
@@ -24187,6 +24238,193 @@ async def admin_dashboard(request: Request):
             }}
         }}
         
+        // ========================================
+        // 🥇 FEATURE #1 - RETENTION DASHBOARD
+        // ========================================
+        
+        async function loadRetentionDashboard() {{
+            try {{
+                const response = await fetch('/admin/api/retention-dashboard');
+                const data = await response.json();
+                
+                if (!data.success) {{
+                    console.error('Erreur retention dashboard:', data);
+                    return;
+                }}
+                
+                // Zone Rouge (3 jours)
+                renderExpiringUsers(data.red_zone, 'redZoneContent', 'red');
+                
+                // Zone Orange (7 jours)
+                renderExpiringUsers(data.orange_zone, 'orangeZoneContent', 'orange');
+                
+                // Zone Jaune (30 jours)
+                renderExpiringUsers(data.yellow_zone, 'yellowZoneContent', 'yellow');
+                
+                // Users Inactifs
+                renderInactiveUsers(data.inactive_users);
+                
+                // Stats Rétention
+                renderRetentionStats(data.retention_stats);
+                
+            }} catch (error) {{
+                console.error('Erreur chargement retention dashboard:', error);
+            }}
+        }}
+        
+        function renderExpiringUsers(users, containerId, zone) {{
+            const container = document.getElementById(containerId);
+            
+            if (!users || users.length === 0) {{
+                container.innerHTML = '<p style="color: #10b981;">✅ Aucun utilisateur dans cette zone!</p>';
+                return;
+            }}
+            
+            const totalRevenue = users.reduce((sum, u) => sum + (u.revenue_at_risk || 0), 0);
+            
+            let html = '<p style="font-weight: 600; color: #333; margin-bottom: 15px;">' + 
+                users.length + ' utilisateurs = <span style="color: #dc2626;">$' + totalRevenue.toFixed(2) + ' à risque</span></p>';
+            
+            users.forEach(user => {{
+                const daysLeft = user.days_until_expiry;
+                const planEmoji = {{
+                    '1_month': '💎',
+                    '3_months': '🚀',
+                    '6_months': '⭐',
+                    '1_year': '👑'
+                }}[user.plan] || '📦';
+                
+                const borderColor = zone === 'red' ? '#dc2626' : zone === 'orange' ? '#f59e0b' : '#eab308';
+                const textColor = zone === 'red' ? '#dc2626' : '#f59e0b';
+                
+                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ' + borderColor + ';">' +
+                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
+                        '<div>' +
+                            '<strong style="color: #333;">' + planEmoji + ' ' + user.username + '</strong>' +
+                            '<span style="color: #666; margin-left: 10px;">' + user.plan + '</span>' +
+                        '</div>' +
+                        '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
+                    '</div>' +
+                    '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
+                        '<button onclick="extendSubscription(' + "'" + user.username + "'" + ', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
+                        '<button onclick="sendRenewalEmail(' + "'" + user.username + "'" + ')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
+                        '<button onclick="offerDiscount(' + "'" + user.username + "'" + ', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
+                    '</div>' +
+                '</div>';
+            }});
+            
+            container.innerHTML = html;
+        }}
+        
+        function renderInactiveUsers(users) {{
+            const container = document.getElementById('inactiveUsers');
+            
+            if (!users || users.length === 0) {{
+                container.innerHTML = '<p style="color: #10b981;">✅ Tous les utilisateurs sont actifs!</p>';
+                return;
+            }}
+            
+            let html = '<p style="font-weight: 600; color: #333; margin-bottom: 15px;">' + 
+                users.length + ' utilisateurs n&apos;ont pas visité depuis 7+ jours</p>';
+            
+            users.forEach(user => {{
+                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #6366f1;">' +
+                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
+                        '<div>' +
+                            '<strong style="color: #333;">' + user.username + '</strong>' +
+                            '<span style="color: #666; margin-left: 10px;">' + user.plan + '</span>' +
+                        '</div>' +
+                        '<div style="color: #6366f1; font-weight: 600;">Inactif depuis ' + user.days_inactive + ' jours</div>' +
+                    '</div>' +
+                    '<div style="display: flex; gap: 8px;">' +
+                        '<button onclick="sendEngagementEmail(' + "'" + user.username + "'" + ')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 On t&apos;a manqué!</button>' +
+                        '<button onclick="offerCoaching(' + "'" + user.username + "'" + ')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
+                    '</div>' +
+                '</div>';
+            }});
+            
+            container.innerHTML = html;
+        }}
+        
+        function renderRetentionStats(stats) {{
+            const container = document.getElementById('retentionStats');
+            
+            if (!stats) {{
+                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
+                return;
+            }}
+            
+            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">';
+            
+            // Global
+            html += '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px; text-align: center;">' +
+                '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">GLOBAL</div>' +
+                '<div style="font-size: 32px; font-weight: bold; color: #10b981;">' + stats.global.toFixed(1) + '%</div>' +
+            '</div>';
+            
+            // Par plan
+            if (stats.by_plan) {{
+                stats.by_plan.forEach(plan => {{
+                    html += '<div style="background: white; border: 2px solid #e5e7eb; padding: 15px; border-radius: 8px; text-align: center;">' +
+                        '<div style="color: #666; font-size: 12px; font-weight: 600; margin-bottom: 5px;">' + plan.name + '</div>' +
+                        '<div style="font-size: 28px; font-weight: bold; color: #6366f1;">' + plan.rate.toFixed(1) + '%</div>' +
+                    '</div>';
+                }});
+            }}
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }}
+        
+        // Actions
+        async function extendSubscription(username, days) {{
+            if (!confirm('Prolonger l&apos;abonnement de ' + username + ' de ' + days + ' jours?')) return;
+            
+            try {{
+                const response = await fetch('/admin/api/extend-subscription', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{ username, days }})
+                }});
+                
+                const data = await response.json();
+                alert(data.success ? '✅ Prolongé!' : '❌ ' + data.message);
+                if (data.success) loadRetentionDashboard();
+            }} catch (error) {{
+                alert('❌ Erreur');
+            }}
+        }}
+        
+        async function sendRenewalEmail(username) {{
+            alert('📧 Email de rappel envoyé à ' + username + '! (Feature prochaine)');
+        }}
+        
+        async function offerDiscount(username, percent) {{
+            alert('💰 Code promo -' + percent + '% envoyé à ' + username + '! (Feature prochaine)');
+        }}
+        
+        async function sendEngagementEmail(username) {{
+            alert('📧 Email &quot;On t&apos;a manqué!&quot; envoyé à ' + username + '! (Feature prochaine)');
+        }}
+        
+        async function offerCoaching(username) {{
+            alert('🎯 Offre de coaching envoyée à ' + username + '! (Feature prochaine)');
+        }}
+        
+        // Charger au démarrage - SÉCURISÉ avec délai
+        setTimeout(function() {{
+            (async function() {{
+                try {{
+                    if (typeof loadRetentionDashboard === 'function') {{
+                        await loadRetentionDashboard();
+                    }}
+                }} catch (error) {{
+                    console.error('⚠️ Erreur Retention Dashboard:', error);
+                    // Continuer même si erreur
+                }}
+            }})();
+        }}, 100);
         
         </script>
     </body>
@@ -24952,6 +25190,253 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
         traceback.print_exc()
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
+
+# ============================================================================
+# 🥇 FEATURE #1 - RETENTION DASHBOARD API
+# ============================================================================
+
+@app.get("/admin/api/retention-dashboard")
+async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None)):
+    """API pour le Retention Dashboard - Utilisateurs qui expirent, inactifs, stats"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
+    
+    try:
+        from datetime import datetime, timedelta
+        
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        now = datetime.now()
+        
+        # Zone Rouge: Expirent dans 3 jours
+        red_date = now + timedelta(days=3)
+        cursor.execute("""
+            SELECT username, subscription_plan, subscription_end, total_spent
+            FROM users
+            WHERE subscription_plan IS NOT NULL
+            AND subscription_plan != 'free'
+            AND subscription_end IS NOT NULL
+            AND subscription_end <= ?
+            AND subscription_end >= ?
+            ORDER BY subscription_end ASC
+        """, (red_date.isoformat(), now.isoformat()))
+        
+        red_zone = []
+        for row in cursor.fetchall():
+            end_date = datetime.fromisoformat(row[2])
+            days_left = (end_date - now).days
+            red_zone.append({
+                "username": row[0],
+                "plan": row[1],
+                "days_until_expiry": days_left,
+                "revenue_at_risk": float(row[3] or 0) * 0.3  # Estimation
+            })
+        
+        # Zone Orange: Expirent dans 7 jours
+        orange_date = now + timedelta(days=7)
+        cursor.execute("""
+            SELECT username, subscription_plan, subscription_end, total_spent
+            FROM users
+            WHERE subscription_plan IS NOT NULL
+            AND subscription_plan != 'free'
+            AND subscription_end IS NOT NULL
+            AND subscription_end <= ?
+            AND subscription_end > ?
+            ORDER BY subscription_end ASC
+        """, (orange_date.isoformat(), red_date.isoformat()))
+        
+        orange_zone = []
+        for row in cursor.fetchall():
+            end_date = datetime.fromisoformat(row[2])
+            days_left = (end_date - now).days
+            orange_zone.append({
+                "username": row[0],
+                "plan": row[1],
+                "days_until_expiry": days_left,
+                "revenue_at_risk": float(row[3] or 0) * 0.3
+            })
+        
+        # Zone Jaune: Expirent dans 30 jours
+        yellow_date = now + timedelta(days=30)
+        cursor.execute("""
+            SELECT username, subscription_plan, subscription_end, total_spent
+            FROM users
+            WHERE subscription_plan IS NOT NULL
+            AND subscription_plan != 'free'
+            AND subscription_end IS NOT NULL
+            AND subscription_end <= ?
+            AND subscription_end > ?
+            ORDER BY subscription_end ASC
+        """, (yellow_date.isoformat(), orange_date.isoformat()))
+        
+        yellow_zone = []
+        for row in cursor.fetchall():
+            end_date = datetime.fromisoformat(row[2])
+            days_left = (end_date - now).days
+            yellow_zone.append({
+                "username": row[0],
+                "plan": row[1],
+                "days_until_expiry": days_left,
+                "revenue_at_risk": float(row[3] or 0) * 0.3
+            })
+        
+        # Users Inactifs (7+ jours sans connexion)
+        inactive_date = now - timedelta(days=7)
+        cursor.execute("""
+            SELECT username, subscription_plan, last_login
+            FROM users
+            WHERE subscription_plan IS NOT NULL
+            AND subscription_plan != 'free'
+            AND (last_login IS NULL OR last_login <= ?)
+            ORDER BY last_login ASC
+        """, (inactive_date.isoformat(),))
+        
+        inactive_users = []
+        for row in cursor.fetchall():
+            if row[2]:
+                last_login = datetime.fromisoformat(row[2])
+                days_inactive = (now - last_login).days
+            else:
+                days_inactive = 999  # Jamais connecté
+            
+            inactive_users.append({
+                "username": row[0],
+                "plan": row[1],
+                "days_inactive": days_inactive
+            })
+        
+        # Stats rétention
+        cursor.execute("""
+            SELECT COUNT(*) FROM users
+            WHERE subscription_plan IS NOT NULL
+            AND subscription_plan != 'free'
+        """)
+        total_paid = cursor.fetchone()[0] or 0
+        
+        cursor.execute("""
+            SELECT COUNT(*) FROM users
+            WHERE subscription_plan IS NOT NULL
+            AND subscription_plan != 'free'
+            AND subscription_end >= ?
+        """, (now.isoformat(),))
+        still_active = cursor.fetchone()[0] or 0
+        
+        global_retention = (still_active / total_paid * 100) if total_paid > 0 else 0
+        
+        # Par plan
+        by_plan = []
+        for plan_id, plan_name in [("1_month", "Premium"), ("3_months", "Advanced"), ("6_months", "Pro"), ("1_year", "Elite")]:
+            cursor.execute("""
+                SELECT COUNT(*) FROM users WHERE subscription_plan = ?
+            """, (plan_id,))
+            plan_total = cursor.fetchone()[0] or 0
+            
+            cursor.execute("""
+                SELECT COUNT(*) FROM users
+                WHERE subscription_plan = ?
+                AND subscription_end >= ?
+            """, (plan_id, now.isoformat()))
+            plan_active = cursor.fetchone()[0] or 0
+            
+            plan_rate = (plan_active / plan_total * 100) if plan_total > 0 else 0
+            
+            by_plan.append({
+                "name": plan_name,
+                "rate": plan_rate
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Retention Dashboard: Rouge={len(red_zone)}, Orange={len(orange_zone)}, Jaune={len(yellow_zone)}, Inactifs={len(inactive_users)}")
+        
+        return JSONResponse({
+            "success": True,
+            "red_zone": red_zone,
+            "orange_zone": orange_zone,
+            "yellow_zone": yellow_zone,
+            "inactive_users": inactive_users,
+            "retention_stats": {
+                "global": global_retention,
+                "by_plan": by_plan
+            }
+        })
+    
+    except Exception as e:
+        print(f"❌ Erreur retention dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+@app.post("/admin/api/extend-subscription")
+async def admin_extend_subscription(
+    request: Request,
+    session_token: Optional[str] = Cookie(None)
+):
+    """Prolonger l'abonnement d'un utilisateur"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
+    
+    try:
+        body = await request.json()
+        username = body.get("username")
+        days = body.get("days", 30)
+        
+        if not username:
+            return JSONResponse({"success": False, "message": "Username requis"})
+        
+        from datetime import datetime, timedelta
+        
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        # Récupérer la date actuelle d'expiration
+        cursor.execute("""
+            SELECT subscription_end FROM users WHERE username = ?
+        """, (username,))
+        
+        result = cursor.fetchone()
+        if not result:
+            cursor.close()
+            conn.close()
+            return JSONResponse({"success": False, "message": "Utilisateur non trouvé"})
+        
+        current_end = result[0]
+        if current_end:
+            current_end_date = datetime.fromisoformat(current_end)
+        else:
+            current_end_date = datetime.now()
+        
+        # Nouvelle date = date actuelle + days
+        new_end = current_end_date + timedelta(days=days)
+        
+        # Mettre à jour
+        cursor.execute("""
+            UPDATE users
+            SET subscription_end = ?
+            WHERE username = ?
+        """, (new_end.isoformat(), username))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Abonnement prolongé: {username} +{days} jours → {new_end.strftime('%Y-%m-%d')}")
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Abonnement prolongé de {days} jours jusqu'au {new_end.strftime('%Y-%m-%d')}"
+        })
+    
+    except Exception as e:
+        print(f"❌ Erreur extend_subscription: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
 
 @app.get("/api/validate-promo")

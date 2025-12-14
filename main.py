@@ -3390,13 +3390,14 @@ def give_default_permissions(username: str) -> bool:
 
 def check_route_permission(username: str, route: str) -> bool:
     """
-    ✅ SYSTÈME DE PERMISSIONS PAR PAGE
+    ✅ SYSTÈME DE PERMISSIONS PAR PAGE (avec vérification du plan)
     
     Vérifie si un utilisateur a la permission d'accéder à une route spécifique.
     
-    RÈGLES:
-    - Les ADMINS ont accès à TOUTES les pages (bypass complet)
-    - Les USERS doivent avoir la permission explicite dans la table user_permissions
+    RÈGLES (par ordre de priorité):
+    1. Les ADMINS ont accès à TOUTES les pages (bypass complet)
+    2. Les USERS avec permissions individuelles → utiliser ces permissions
+    3. Les USERS sans permissions individuelles → vérifier le plan d'abonnement
     
     Args:
         username: Le nom d'utilisateur  
@@ -3413,20 +3414,26 @@ def check_route_permission(username: str, route: str) -> bool:
         conn = db_manager.get_connection()
         c = conn.cursor()
         
-        # Étape 1: Vérifier le rôle de l'utilisateur
+        # Étape 1: Vérifier le rôle et le plan de l'utilisateur
         if db_manager.use_postgresql:
-            c.execute("SELECT role FROM users WHERE username = %s", (username,))
+            c.execute("SELECT role, subscription_plan FROM users WHERE username = %s", (username,))
         else:
-            c.execute("SELECT role FROM users WHERE username = ?", (username,))
+            c.execute("SELECT role, subscription_plan FROM users WHERE username = ?", (username,))
         
         result = c.fetchone()
         
+        if not result:
+            conn.close()
+            return False
+        
+        role, subscription_plan = result[0], result[1] if len(result) > 1 else 'free'
+        
         # Si ADMIN → Accès complet à tout (pas de restrictions)
-        if result and result[0] == "admin":
+        if role == "admin":
             conn.close()
             return True
         
-        # Étape 2: Pour les USER, vérifier les permissions dans user_permissions
+        # Étape 2: Vérifier si l'utilisateur a des permissions individuelles
         if db_manager.use_postgresql:
             c.execute(
                 "SELECT route FROM user_permissions WHERE username = %s AND route = %s",
@@ -3438,10 +3445,26 @@ def check_route_permission(username: str, route: str) -> bool:
                 (username, route)
             )
         
-        has_permission = c.fetchone() is not None
+        has_individual_permission = c.fetchone() is not None
+        
+        # Si permissions individuelles trouvées, les utiliser
+        if has_individual_permission:
+            conn.close()
+            return True
+        
+        # Étape 3: Vérifier les permissions du plan d'abonnement
+        c.execute("SELECT routes FROM plan_access WHERE plan = ?", (subscription_plan,))
+        plan_result = c.fetchone()
+        
         conn.close()
         
-        return has_permission
+        if plan_result and plan_result[0]:
+            import json
+            plan_routes = json.loads(plan_result[0])
+            return route in plan_routes
+        
+        # Par défaut, refuser l'accès si aucune permission trouvée
+        return False
         
     except Exception as e:
         print(f"❌ Erreur vérification permission [{username}] sur [{route}]: {e}")
@@ -23093,6 +23116,17 @@ async def admin_dashboard(request: Request):
                         <label for="perm_{route_id}">{route_label}</label>
                     </div>'''
     
+    # PRÉ-CONSTRUIRE LES CHECKBOXES POUR LES PLANS (même système mais IDs différents)
+    checkboxes_html_plan = ""
+    for route in routes_list:
+        route_id = route.replace('/', '_')
+        route_label = route.replace('/', '').replace('-', ' ').title()
+        checkboxes_html_plan += f'''
+                    <div class="permission-item">
+                        <input type="checkbox" id="plan_perm_{route_id}" class="plan-perm-checkbox" value="{route}">
+                        <label for="plan_perm_{route_id}">{route_label}</label>
+                    </div>'''
+    
     # Construire HTML users
     users_html = ""
     for user_data in users:
@@ -23413,6 +23447,55 @@ async def admin_dashboard(request: Request):
                 </div>
             </div>
             
+            <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
+            <div class="users-section" style="margin-bottom: 30px;">
+                <h2>🎯 Gestion des Accès par Forfait</h2>
+                <p style="color: #666; margin-bottom: 20px;">Définir quelles pages sont accessibles pour chaque plan d'abonnement</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <button onclick="managePlanAccess('free')" class="btn-add" style="background: linear-gradient(135deg, #94a3b8, #64748b);">
+                        🆓 Free
+                    </button>
+                    <button onclick="managePlanAccess('premium')" class="btn-add" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                        💎 Premium
+                    </button>
+                    <button onclick="managePlanAccess('advanced')" class="btn-add" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                        🚀 Advanced
+                    </button>
+                    <button onclick="managePlanAccess('pro')" class="btn-add" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                        ⭐ Pro
+                    </button>
+                    <button onclick="managePlanAccess('elite')" class="btn-add" style="background: linear-gradient(135deg, #10b981, #059669);">
+                        👑 Elite
+                    </button>
+                </div>
+            </div>
+            
+            <!-- SECTION GESTION DES CODES PROMO -->
+            <div class="users-section" style="margin-bottom: 30px;">
+                <h2>🎟️ Gestion des Codes Promo</h2>
+                <p style="color: #666; margin-bottom: 20px;">Créer et gérer les codes de réduction pour les abonnements</p>
+                
+                <div class="action-buttons" style="margin-bottom: 20px;">
+                    <button onclick="openPromoModal()" class="btn-add" style="background: linear-gradient(135deg, #ec4899, #be185d);">
+                        ➕ Créer un Code Promo
+                    </button>
+                    <button onclick="loadPromoList()" class="btn-add" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                        📋 Liste des Codes
+                    </button>
+                    <button onclick="createLaunchPromos()" class="btn-add" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                        🚀 Codes de Lancement (AUTO)
+                    </button>
+                </div>
+                
+                <div id="promoListContainer" style="display: none; margin-top: 20px;">
+                    <h3>Codes Actifs</h3>
+                    <div id="promoListContent" style="background: #f8fafc; padding: 20px; border-radius: 10px;">
+                        <!-- Liste des promos sera chargée ici -->
+                    </div>
+                </div>
+            </div>
+            
             <div class="users-section">
                 <h2>📋 Liste des Utilisateurs</h2>
                 <table>
@@ -23483,6 +23566,65 @@ async def admin_dashboard(request: Request):
                 </div>
                 <button onclick="savePermissions()" class="btn-submit">💾 Enregistrer Permissions</button>
                 <div id="permMessage" class="message"></div>
+            </div>
+        </div>
+        
+        <!-- MODAL GESTION ACCÈS PAR FORFAIT -->
+        <div id="planAccessModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">🎯 Gérer les Accès - <span id="planName"></span></h2>
+                    <button class="close-btn" onclick="closeModal('planAccessModal')">&times;</button>
+                </div>
+                <p style="margin-bottom: 20px; color: #666;">
+                    Sélectionnez les pages accessibles pour ce plan d'abonnement
+                </p>
+                <div class="permissions-grid" id="planPermissionsGrid">
+{checkboxes_html_plan}
+                </div>
+                <div style="display:flex;gap:10px;margin:20px 0;">
+                    <button onclick="selectAllPlanPermissions()" class="btn-select-all" style="flex:1;padding:12px;background:#4caf50;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">✅ Tout Sélectionner</button>
+                    <button onclick="deselectAllPlanPermissions()" class="btn-deselect-all" style="flex:1;padding:12px;background:#f44336;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">❌ Tout Désélectionner</button>
+                </div>
+                <button onclick="savePlanAccess()" class="btn-submit">💾 Enregistrer Accès du Plan</button>
+                <div id="planAccessMessage" class="message"></div>
+            </div>
+        </div>
+        
+        <!-- MODAL CRÉATION CODE PROMO -->
+        <div id="promoModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">🎟️ Créer un Code Promo</h2>
+                    <button class="close-btn" onclick="closeModal('promoModal')">&times;</button>
+                </div>
+                <form id="promoForm" onsubmit="createPromoCode(event)">
+                    <div class="form-group">
+                        <label>🏷️ Code Promo</label>
+                        <input type="text" id="promoCode" required placeholder="Ex: LAUNCH50" style="text-transform: uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label>💰 Réduction</label>
+                        <input type="number" id="promoDiscount" required min="1" step="0.01" placeholder="Ex: 50">
+                    </div>
+                    <div class="form-group">
+                        <label>📊 Type de Réduction</label>
+                        <select id="promoType" required>
+                            <option value="percentage">Pourcentage (%)</option>
+                            <option value="fixed">Montant Fixe ($)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>📅 Valide jusqu'à (optionnel)</label>
+                        <input type="date" id="promoValidUntil">
+                    </div>
+                    <div class="form-group">
+                        <label>🔢 Nombre d'utilisations max (optionnel)</label>
+                        <input type="number" id="promoMaxUses" min="1" placeholder="Illimité si vide">
+                    </div>
+                    <button type="submit" class="btn-submit">✨ Créer le Code Promo</button>
+                    <div id="promoMessage" class="message"></div>
+                </form>
             </div>
         </div>
         
@@ -23665,6 +23807,220 @@ async def admin_dashboard(request: Request):
                 alert('❌ Erreur de connexion');
             }}
         }}
+        
+        // ========== GESTION DES ACCÈS PAR FORFAIT ==========
+        let currentPlan = '';
+        
+        async function managePlanAccess(plan) {{
+            currentPlan = plan;
+            const planNames = {{
+                'free': '🆓 Free',
+                'premium': '💎 Premium',
+                'advanced': '🚀 Advanced',
+                'pro': '⭐ Pro',
+                'elite': '👑 Elite'
+            }};
+            
+            document.getElementById('planName').textContent = planNames[plan];
+            
+            // Charger les permissions actuelles du plan
+            try {{
+                const response = await fetch(`/admin/get-plan-access/${{plan}}`);
+                const data = await response.json();
+                
+                // Décocher toutes
+                document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
+                
+                // Cocher les permissions existantes
+                if (data.success && data.routes) {{
+                    data.routes.forEach(route => {{
+                        const checkbox = document.getElementById('plan_perm_' + route.replace(/\//g, '_'));
+                        if (checkbox) checkbox.checked = true;
+                    }});
+                }}
+                
+                document.getElementById('planAccessModal').classList.add('active');
+            }} catch (error) {{
+                alert('❌ Erreur de chargement');
+                console.error(error);
+            }}
+        }}
+        
+        async function savePlanAccess() {{
+            const selectedRoutes = Array.from(document.querySelectorAll('.plan-perm-checkbox:checked'))
+                .map(cb => cb.value);
+            
+            try {{
+                const response = await fetch('/admin/save-plan-access', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{
+                        plan: currentPlan,
+                        routes: selectedRoutes
+                    }})
+                }});
+                
+                const data = await response.json();
+                const msg = document.getElementById('planAccessMessage');
+                
+                if (data.success) {{
+                    msg.className = 'message success';
+                    msg.textContent = '✅ ' + data.message;
+                    setTimeout(() => {{
+                        closeModal('planAccessModal');
+                    }}, 1500);
+                }} else {{
+                    msg.className = 'message error';
+                    msg.textContent = '❌ ' + data.message;
+                }}
+            }} catch (error) {{
+                alert('❌ Erreur de sauvegarde');
+                console.error(error);
+            }}
+        }}
+        
+        function selectAllPlanPermissions() {{
+            document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = true);
+        }}
+        
+        function deselectAllPlanPermissions() {{
+            document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
+        }}
+        
+        // ========== GESTION DES CODES PROMO ==========
+        function openPromoModal() {{
+            document.getElementById('promoForm').reset();
+            document.getElementById('promoModal').classList.add('active');
+        }}
+        
+        async function createPromoCode(event) {{
+            event.preventDefault();
+            
+            const code = document.getElementById('promoCode').value.toUpperCase();
+            const discount = parseFloat(document.getElementById('promoDiscount').value);
+            const type = document.getElementById('promoType').value;
+            const validUntil = document.getElementById('promoValidUntil').value;
+            const maxUses = parseInt(document.getElementById('promoMaxUses').value) || null;
+            
+            try {{
+                const response = await fetch('/admin/create-promo', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{
+                        code,
+                        discount,
+                        type,
+                        valid_until: validUntil,
+                        max_uses: maxUses
+                    }})
+                }});
+                
+                const data = await response.json();
+                const msg = document.getElementById('promoMessage');
+                
+                if (data.success) {{
+                    msg.className = 'message success';
+                    msg.textContent = '✅ ' + data.message;
+                    setTimeout(() => {{
+                        closeModal('promoModal');
+                        loadPromoList();
+                    }}, 1500);
+                }} else {{
+                    msg.className = 'message error';
+                    msg.textContent = '❌ ' + data.message;
+                }}
+            }} catch (error) {{
+                alert('❌ Erreur de création');
+                console.error(error);
+            }}
+        }}
+        
+        async function loadPromoList() {{
+            try {{
+                const response = await fetch('/admin/list-promos');
+                const data = await response.json();
+                
+                const container = document.getElementById('promoListContainer');
+                const content = document.getElementById('promoListContent');
+                
+                if (data.success && data.promos && data.promos.length > 0) {{
+                    let html = '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu\\'à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
+                    html += '<tbody>';
+                    
+                    data.promos.forEach(promo => {{
+                        const usesText = promo.max_uses ? `${{promo.uses || 0}}/${{promo.max_uses}}` : `${{promo.uses || 0}}/∞`;
+                        const discount = promo.type === 'percentage' ? `${{promo.discount}}%` : `$${{promo.discount}}`;
+                        
+                        html += `<tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 10px;"><strong>${{promo.code}}</strong></td>
+                            <td>${{discount}}</td>
+                            <td>${{promo.type === 'percentage' ? 'Pourcentage' : 'Fixe'}}</td>
+                            <td>${{promo.valid_until || 'Illimité'}}</td>
+                            <td>${{usesText}}</td>
+                            <td>
+                                <button onclick="deletePromo('${{promo.code}}')" style="background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">🗑️</button>
+                            </td>
+                        </tr>`;
+                    }});
+                    
+                    html += '</tbody></table>';
+                    content.innerHTML = html;
+                    container.style.display = 'block';
+                }} else {{
+                    content.innerHTML = '<p style="color: #666; text-align: center;">Aucun code promo actif</p>';
+                    container.style.display = 'block';
+                }}
+            }} catch (error) {{
+                alert('❌ Erreur de chargement');
+                console.error(error);
+            }}
+        }}
+        
+        async function deletePromo(code) {{
+            if (!confirm(`Supprimer le code promo "${{code}}" ?`)) return;
+            
+            try {{
+                const response = await fetch('/admin/delete-promo', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{ code }})
+                }});
+                
+                const data = await response.json();
+                
+                if (data.success) {{
+                    alert('✅ Code supprimé!');
+                    loadPromoList();
+                }} else {{
+                    alert('❌ Erreur: ' + data.message);
+                }}
+            }} catch (error) {{
+                alert('❌ Erreur de connexion');
+            }}
+        }}
+        
+        async function createLaunchPromos() {{
+            if (!confirm('Créer les codes promo de lancement automatiques?')) return;
+            
+            try {{
+                const response = await fetch('/admin/create-launch-promos', {{
+                    method: 'POST'
+                }});
+                
+                const data = await response.json();
+                
+                if (data.success) {{
+                    alert('✅ ' + data.message);
+                    loadPromoList();
+                }} else {{
+                    alert('❌ Erreur: ' + data.message);
+                }}
+            }} catch (error) {{
+                alert('❌ Erreur de création');
+            }}
+        }}
+        
         </script>
     </body>
     </html>
@@ -24165,6 +24521,208 @@ async def admin_test_promo(
             "success": False,
             "message": f"❌ Erreur: {str(e)}"
         }, status_code=500)
+
+
+# ============================================================================
+# 🎯 GESTION DES ACCÈS PAR FORFAIT (ADMIN)
+# ============================================================================
+
+@app.get("/admin/get-plan-access/{plan}")
+async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)):
+    """Récupérer les routes accessibles pour un plan d'abonnement"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
+    
+    try:
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        # Créer la table si elle n'existe pas
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS plan_access (
+                plan TEXT PRIMARY KEY,
+                routes TEXT
+            )
+        """)
+        conn.commit()
+        
+        cursor.execute("SELECT routes FROM plan_access WHERE plan = ?", (plan,))
+        result = cursor.fetchone()
+        
+        cursor.close()
+        conn.close()
+        
+        if result and result[0]:
+            import json
+            routes = json.loads(result[0])
+        else:
+            routes = []
+        
+        return JSONResponse({"success": True, "routes": routes})
+    
+    except Exception as e:
+        print(f"❌ Erreur get_plan_access: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+@app.post("/admin/save-plan-access")
+async def save_plan_access(request: Request, session_token: Optional[str] = Cookie(None)):
+    """Sauvegarder les routes accessibles pour un plan"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
+    
+    try:
+        data = await request.json()
+        plan = data.get('plan')
+        routes = data.get('routes', [])
+        
+        if not plan:
+            return JSONResponse({"success": False, "message": "Plan manquant"}, status_code=400)
+        
+        import json
+        routes_json = json.dumps(routes)
+        
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        # Créer la table si elle n'existe pas
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS plan_access (
+                plan TEXT PRIMARY KEY,
+                routes TEXT
+            )
+        """)
+        
+        # Insérer ou mettre à jour
+        cursor.execute("""
+            INSERT OR REPLACE INTO plan_access (plan, routes)
+            VALUES (?, ?)
+        """, (plan, routes_json))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Accès du plan {plan} sauvegardés: {len(routes)} routes")
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Accès du plan {plan.upper()} sauvegardés ({len(routes)} pages)"
+        })
+    
+    except Exception as e:
+        print(f"❌ Erreur save_plan_access: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+# ============================================================================
+# 🎟️ GESTION DES CODES PROMO (ADMIN) - ROUTES POST
+# ============================================================================
+
+@app.post("/admin/create-promo")
+async def admin_create_promo_post(request: Request, session_token: Optional[str] = Cookie(None)):
+    """Créer un code promo (version POST pour le frontend)"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
+    
+    try:
+        data = await request.json()
+        code = data.get('code', '').upper()
+        discount = data.get('discount')
+        promo_type = data.get('type', 'percentage')
+        valid_until = data.get('valid_until')
+        max_uses = data.get('max_uses')
+        
+        if not code or not discount:
+            return JSONResponse({"success": False, "message": "Code et réduction requis"}, status_code=400)
+        
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        # Créer la table si elle n'existe pas
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS promo_codes (
+                code TEXT PRIMARY KEY,
+                discount REAL,
+                type TEXT,
+                valid_until TEXT,
+                max_uses INTEGER,
+                uses INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Vérifier si le code existe déjà
+        cursor.execute("SELECT code FROM promo_codes WHERE code = ?", (code,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return JSONResponse({"success": False, "message": f"Le code {code} existe déjà"}, status_code=400)
+        
+        # Insérer le nouveau code
+        cursor.execute("""
+            INSERT INTO promo_codes (code, discount, type, valid_until, max_uses)
+            VALUES (?, ?, ?, ?, ?)
+        """, (code, discount, promo_type, valid_until, max_uses))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Code promo créé: {code} (-{discount}{'%' if promo_type == 'percentage' else '$'})")
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Code promo {code} créé avec succès!"
+        })
+    
+    except Exception as e:
+        print(f"❌ Erreur create_promo: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+@app.post("/admin/delete-promo")
+async def admin_delete_promo(request: Request, session_token: Optional[str] = Cookie(None)):
+    """Supprimer un code promo"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
+    
+    try:
+        data = await request.json()
+        code = data.get('code', '').upper()
+        
+        if not code:
+            return JSONResponse({"success": False, "message": "Code manquant"}, status_code=400)
+        
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM promo_codes WHERE code = ?", (code,))
+        deleted = cursor.rowcount
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        if deleted > 0:
+            print(f"✅ Code promo supprimé: {code}")
+            return JSONResponse({"success": True, "message": f"Code {code} supprimé"})
+        else:
+            return JSONResponse({"success": False, "message": "Code non trouvé"}, status_code=404)
+    
+    except Exception as e:
+        print(f"❌ Erreur delete_promo: {e}")
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
 
 
 # ============================================================================

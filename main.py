@@ -24282,9 +24282,8 @@ async def admin_dashboard(request: Request):
             
             const totalRevenue = users.reduce((sum, u) => sum + (u.revenue_at_risk || 0), 0);
             
-            let html = `<p style="font-weight: 600; color: #333; margin-bottom: 15px;">
-                {users.length} utilisateurs = <span style="color: #dc2626;">\\${totalRevenue.toFixed(2)} à risque</span>
-            </p>`;
+            let html = '<p style="font-weight: 600; color: #333; margin-bottom: 15px;">' + 
+                users.length + ' utilisateurs = <span style="color: #dc2626;">$' + totalRevenue.toFixed(2) + ' à risque</span></p>';
             
             users.forEach(user => {{
                 const daysLeft = user.days_until_expiry;
@@ -24295,32 +24294,23 @@ async def admin_dashboard(request: Request):
                     '1_year': '👑'
                 }}[user.plan] || '📦';
                 
-                html += `
-                <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ${{zone === 'red' ? '#dc2626' : zone === 'orange' ? '#f59e0b' : '#eab308'}};">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <div>
-                            <strong style="color: #333;">${{planEmoji}} ${{user.username}}</strong>
-                            <span style="color: #666; margin-left: 10px;">${{user.plan}}</span>
-                        </div>
-                        <div style="color: ${{zone === 'red' ? '#dc2626' : '#f59e0b'}}; font-weight: 600;">
-                            Expire dans ${{daysLeft}} jour(s)
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button onclick="extendSubscription('${{user.username}}', 30)" 
-                                style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                            🎁 +30 jours gratuit
-                        </button>
-                        <button onclick="sendRenewalEmail('${{user.username}}')" 
-                                style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                            📧 Envoyer rappel
-                        </button>
-                        <button onclick="offerDiscount('${{user.username}}', 20)" 
-                                style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                            💰 Offrir -20%
-                        </button>
-                    </div>
-                </div>`;
+                const borderColor = zone === 'red' ? '#dc2626' : zone === 'orange' ? '#f59e0b' : '#eab308';
+                const textColor = zone === 'red' ? '#dc2626' : '#f59e0b';
+                
+                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ' + borderColor + ';">' +
+                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
+                        '<div>' +
+                            '<strong style="color: #333;">' + planEmoji + ' ' + user.username + '</strong>' +
+                            '<span style="color: #666; margin-left: 10px;">' + user.plan + '</span>' +
+                        '</div>' +
+                        '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
+                    '</div>' +
+                    '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
+                        '<button onclick="extendSubscription(\'' + user.username + '\', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
+                        '<button onclick="sendRenewalEmail(\'' + user.username + '\')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
+                        '<button onclick="offerDiscount(\'' + user.username + '\', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
+                    '</div>' +
+                '</div>';
             }});
             
             container.innerHTML = html;
@@ -24334,33 +24324,23 @@ async def admin_dashboard(request: Request):
                 return;
             }}
             
-            let html = `<p style="font-weight: 600; color: #333; margin-bottom: 15px;">
-                ${{users.length}} utilisateurs n'ont pas visité depuis 7+ jours
-            </p>`;
+            let html = '<p style="font-weight: 600; color: #333; margin-bottom: 15px;">' + 
+                users.length + ' utilisateurs n\'ont pas visité depuis 7+ jours</p>';
             
             users.forEach(user => {{
-                html += `
-                <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #6366f1;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <div>
-                            <strong style="color: #333;">${{user.username}}</strong>
-                            <span style="color: #666; margin-left: 10px;">${{user.plan}}</span>
-                        </div>
-                        <div style="color: #6366f1; font-weight: 600;">
-                            Inactif depuis ${{user.days_inactive}} jours
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button onclick="sendEngagementEmail('${{user.username}}')" 
-                                style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                            📧 "On t'a manqué!"
-                        </button>
-                        <button onclick="offerCoaching('${{user.username}}')" 
-                                style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">
-                            🎯 Offrir coaching
-                        </button>
-                    </div>
-                </div>`;
+                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #6366f1;">' +
+                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
+                        '<div>' +
+                            '<strong style="color: #333;">' + user.username + '</strong>' +
+                            '<span style="color: #666; margin-left: 10px;">' + user.plan + '</span>' +
+                        '</div>' +
+                        '<div style="color: #6366f1; font-weight: 600;">Inactif depuis ' + user.days_inactive + ' jours</div>' +
+                    '</div>' +
+                    '<div style="display: flex; gap: 8px;">' +
+                        '<button onclick="sendEngagementEmail(\'' + user.username + '\')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 "On t\'a manqué!"</button>' +
+                        '<button onclick="offerCoaching(\'' + user.username + '\')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
+                    '</div>' +
+                '</div>';
             }});
             
             container.innerHTML = html;
@@ -24374,36 +24354,36 @@ async def admin_dashboard(request: Request):
                 return;
             }}
             
-            const html = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-                    <div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">GLOBAL</div>
-                    <div style="color: #10b981; font-size: 28px; font-weight: bold;">${{stats.global || 0}}%</div>
-                </div>
-                <div style="background: #dbeafe; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                    <div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PREMIUM</div>
-                    <div style="color: #3b82f6; font-size: 28px; font-weight: bold;">${{stats.premium || 0}}%</div>
-                </div>
-                <div style="background: #f3e8ff; padding: 15px; border-radius: 8px; border-left: 4px solid #8b5cf6;">
-                    <div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ADVANCED</div>
-                    <div style="color: #8b5cf6; font-size: 28px; font-weight: bold;">${{stats.advanced || 0}}%</div>
-                </div>
-                <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">
-                    <div style="color: #b45309; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PRO</div>
-                    <div style="color: #f59e0b; font-size: 28px; font-weight: bold;">${{stats.pro || 0}}%</div>
-                </div>
-                <div style="background: #d1fae5; padding: 15px; border-radius: 8px; border-left: 4px solid #059669;">
-                    <div style="color: #047857; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ELITE</div>
-                    <div style="color: #059669; font-size: 28px; font-weight: bold;">${{stats.elite || 0}}%</div>
-                </div>
-            </div>`;
+            const html = 
+            '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
+                '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">' +
+                    '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">GLOBAL</div>' +
+                    '<div style="color: #10b981; font-size: 28px; font-weight: bold;">' + (stats.global || 0) + '%</div>' +
+                '</div>' +
+                '<div style="background: #dbeafe; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">' +
+                    '<div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PREMIUM</div>' +
+                    '<div style="color: #3b82f6; font-size: 28px; font-weight: bold;">' + (stats.premium || 0) + '%</div>' +
+                '</div>' +
+                '<div style="background: #f3e8ff; padding: 15px; border-radius: 8px; border-left: 4px solid #8b5cf6;">' +
+                    '<div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ADVANCED</div>' +
+                    '<div style="color: #8b5cf6; font-size: 28px; font-weight: bold;">' + (stats.advanced || 0) + '%</div>' +
+                '</div>' +
+                '<div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">' +
+                    '<div style="color: #b45309; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PRO</div>' +
+                    '<div style="color: #f59e0b; font-size: 28px; font-weight: bold;">' + (stats.pro || 0) + '%</div>' +
+                '</div>' +
+                '<div style="background: #d1fae5; padding: 15px; border-radius: 8px; border-left: 4px solid #059669;">' +
+                    '<div style="color: #047857; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ELITE</div>' +
+                    '<div style="color: #059669; font-size: 28px; font-weight: bold;">' + (stats.elite || 0) + '%</div>' +
+                '</div>' +
+            '</div>';
             
             container.innerHTML = html;
         }}
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm(`Prolonger l'abonnement de ${{username}} de ${{days}} jours?`)) return;
+            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{
@@ -24421,19 +24401,19 @@ async def admin_dashboard(request: Request):
         }}
         
         async function sendRenewalEmail(username) {{
-            alert(`📧 Email de rappel envoyé à ${{username}}! (Feature prochaine)`);
+            alert('📧 Email de rappel envoyé à ' + username + '! (Feature prochaine)');
         }}
         
         async function offerDiscount(username, percent) {{
-            alert(`💰 Code promo -${{percent}}% envoyé à ${{username}}! (Feature prochaine)`);
+            alert('💰 Code promo -' + percent + '% envoyé à ' + username + '! (Feature prochaine)');
         }}
         
         async function sendEngagementEmail(username) {{
-            alert(`📧 Email "On t'a manqué!" envoyé à ${{username}}! (Feature prochaine)`);
+            alert('📧 Email "On t\'a manqué!" envoyé à ' + username + '! (Feature prochaine)');
         }}
         
         async function offerCoaching(username) {{
-            alert(`🎯 Offre de coaching envoyée à ${{username}}! (Feature prochaine)`);
+            alert('🎯 Offre de coaching envoyée à ' + username + '! (Feature prochaine)');
         }}
         
         // Charger au démarrage

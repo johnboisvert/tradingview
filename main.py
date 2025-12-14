@@ -35174,8 +35174,6 @@ async def ai_swarm_agents_page(request: Request):
     user = get_user_from_token(token) if token else None
     
     html_content = """
-<!DOCTYPE html>
-<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -35193,6 +35191,7 @@ async def ai_swarm_agents_page(request: Request):
             color: white;
             min-height: 100vh;
             padding: 20px;
+            margin-left: 280px;
         }}
         
         .container {{
@@ -36269,33 +36268,59 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         # Get top 50 cryptos for dropdown
         all_cryptos = await get_top_50_cryptos()
         
-        # Build dropdown options
+        # Build dropdown options WITH PRICES
         dropdown_options = ""
         for crypto in all_cryptos[:50]:
             crypto_id = crypto.get('id', '')
             crypto_name = crypto.get('name', '')
             crypto_symbol = crypto.get('symbol', '').upper()
+            crypto_price = crypto.get('current_price', 0)
+            
+            # Format price
+            if crypto_price < 1:
+                price_str = f"${crypto_price:,.6f}"
+            else:
+                price_str = f"${crypto_price:,.2f}"
+            
             selected = 'selected' if crypto_id == symbol else ''
-            dropdown_options += '<option value="' + crypto_id + '" ' + selected + '>' + crypto_symbol + ' - ' + crypto_name + '</option>'
+            dropdown_options += f'<option value="{crypto_id}" {selected}>{crypto_symbol} - {crypto_name} ({price_str})</option>'
         
         # Fetch data for selected crypto
         df = await analyzer.get_ohlcv_data(symbol, days=60)
         
         if df is None or len(df) == 0:
             return HTMLResponse(SIDEBAR + """
-            <!DOCTYPE html>
-            <html lang="fr">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Erreur</title>
+                <title>Données indisponibles</title>
             """ + CSS + """
             </head>
-            <body>
-                <div class="main-content">
-                    <div style="padding:50px;text-align:center;">
-                        <h1 style="font-size:3em;">⚠️ Données indisponibles</h1>
-                        <p style="font-size:1.3em;">Impossible de charger les données pour """ + symbol + """.</p>
+            <body style="margin-left:280px;">
+                <div class="main-content" style="padding:50px;">
+                    <div style="max-width:800px;margin:0 auto;text-align:center;background:rgba(239,68,68,0.1);border:2px solid #ef4444;border-radius:20px;padding:60px;">
+                        <h1 style="font-size:4em;margin-bottom:20px;">⚠️</h1>
+                        <h2 style="font-size:2.5em;color:#ef4444;margin-bottom:20px;">Données indisponibles</h2>
+                        <p style="font-size:1.3em;color:#e2e8f0;line-height:1.8;margin-bottom:30px;">
+                            Impossible de charger les données pour <strong>""" + symbol + """</strong>.
+                        </p>
+                        <div style="background:rgba(255,255,255,0.05);padding:30px;border-radius:12px;margin-top:30px;text-align:left;">
+                            <h3 style="color:#fbbf24;margin-bottom:15px;font-size:1.3em;">💡 Raisons possibles:</h3>
+                            <ul style="color:#cbd5e1;line-height:2;font-size:1.1em;padding-left:25px;">
+                                <li>La crypto est trop récente (moins de 60 jours de données)</li>
+                                <li>Volume de trading trop faible</li>
+                                <li>Données non disponibles sur CoinGecko</li>
+                                <li>Problème de connexion API temporaire</li>
+                            </ul>
+                            <div style="margin-top:25px;padding:20px;background:rgba(6,182,212,0.1);border-radius:8px;border-left:4px solid #06b6d4;">
+                                <p style="color:#06b6d4;font-size:1.1em;margin:0;">
+                                    <strong>💡 Conseil:</strong> Essaie avec les cryptos majeures du Top 50 (BTC, ETH, BNB, SOL, ADA, etc.) qui ont toujours des données complètes !
+                                </p>
+                            </div>
+                        </div>
+                        <a href="/ai-technical-analysis?symbol=bitcoin" style="display:inline-block;margin-top:30px;padding:15px 40px;background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;text-decoration:none;border-radius:12px;font-size:1.2em;font-weight:700;box-shadow:0 4px 15px rgba(6,182,212,0.3);">
+                            🔙 Retour à Bitcoin
+                        </a>
                     </div>
                 </div>
             </body>
@@ -36455,9 +36480,16 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '</div>'
         page += '</div>'
         
-        # Current crypto display
-        page += '<div style="text-align:center;padding:15px;background:linear-gradient(135deg,#06b6d4,#3b82f6);border-radius:12px;margin-bottom:30px;">'
-        page += '<div style="font-size:1.8em;font-weight:700;color:white;">' + crypto_symbol_display + ' - ' + crypto_display_name + '</div>'
+        # Current crypto display with PRICE
+        page += '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:center;text-align:center;padding:25px;background:linear-gradient(135deg,#06b6d4,#3b82f6);border-radius:15px;margin-bottom:30px;box-shadow:0 10px 30px rgba(6,182,212,0.4);">'
+        page += '<div style="font-size:2em;font-weight:700;color:white;">' + crypto_symbol_display + '</div>'
+        page += '<div style="border-left:2px solid rgba(255,255,255,0.3);border-right:2px solid rgba(255,255,255,0.3);padding:0 30px;">'
+        page += '<div style="font-size:0.9em;color:rgba(255,255,255,0.8);margin-bottom:5px;">PRIX ACTUEL</div>'
+        page += '<div style="font-size:3em;font-weight:900;color:white;">$' + "{:,.2f}".format(current_price) + '</div>'
+        change_color = '#10b981' if change_24h >= 0 else '#ef4444'
+        page += '<div style="font-size:1.5em;font-weight:700;margin-top:5px;color:' + change_color + ';">' + "{:+.2f}".format(change_24h) + '% (24h)</div>'
+        page += '</div>'
+        page += '<div style="font-size:2em;font-weight:700;color:white;">' + crypto_display_name + '</div>'
         page += '</div>'
         
         # Section 1: Indicators

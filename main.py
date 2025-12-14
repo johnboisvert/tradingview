@@ -24487,6 +24487,19 @@ async def admin_dashboard(request: Request):
                     return;
                 }}
                 
+                // Si aucune donnée réelle disponible
+                if (data.no_data) {{
+                    renderNoData();
+                    return;
+                }}
+                
+                // Si données réelles mais pas de funnel complet
+                if (data.real_data_only) {{
+                    renderRealDataOnly(data);
+                    return;
+                }}
+                
+                // Sinon afficher funnel complet (pour le futur)
                 renderFunnelVisualization(data.funnel);
                 renderFunnelInsights(data.insights);
                 renderPlanConversion(data.by_plan);
@@ -24494,6 +24507,76 @@ async def admin_dashboard(request: Request):
             }} catch (error) {{
                 console.error('Erreur chargement conversion funnel:', error);
             }}
+        }}
+        
+        function renderNoData() {{
+            const container = document.getElementById('funnelContainer');
+            container.innerHTML = 
+                '<div style="text-align: center; padding: 60px 20px; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border-radius: 15px; border: 2px dashed #3b82f6;">' +
+                    '<div style="font-size: 64px; margin-bottom: 20px;">📊</div>' +
+                    '<h3 style="color: #1e40af; margin-bottom: 15px; font-size: 24px;">Pas encore de données</h3>' +
+                    '<p style="color: #64748b; font-size: 16px; margin-bottom: 25px; max-width: 600px; margin-left: auto; margin-right: auto;">Le Conversion Funnel analysera tes conversions dès que tu auras du trafic sur ton site.</p>' +
+                    '<div style="background: white; padding: 25px; border-radius: 10px; max-width: 700px; margin: 0 auto; text-align: left;">' +
+                        '<h4 style="color: #334155; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;"><span style="font-size: 20px;">✅</span> Pour voir tes données réelles:</h4>' +
+                        '<ul style="color: #64748b; line-height: 2; list-style: none; padding: 0;">' +
+                            '<li style="margin-bottom: 10px;"><strong style="color: #3b82f6;">1.</strong> Créer des utilisateurs sur ton site</li>' +
+                            '<li style="margin-bottom: 10px;"><strong style="color: #3b82f6;">2.</strong> Recevoir des paiements (Premium/Advanced/Pro/Elite)</li>' +
+                            '<li style="margin-bottom: 10px;"><strong style="color: #3b82f6;">3.</strong> Les conversions apparaîtront automatiquement ici</li>' +
+                        '</ul>' +
+                    '</div>' +
+                '</div>';
+            
+            document.getElementById('insightsContent').innerHTML = 
+                '<p style="color: #94a3b8; text-align: center; padding: 20px;">Les insights automatiques apparaîtront quand tu auras des données</p>';
+            
+            document.getElementById('planConversionContent').innerHTML = 
+                '<p style="color: #94a3b8; text-align: center; padding: 20px;">Les conversions par plan apparaîtront ici</p>';
+        }}
+        
+        function renderRealDataOnly(data) {{
+            const container = document.getElementById('funnelContainer');
+            
+            let html = '<div style="text-align: center; padding: 40px 20px;">' +
+                '<div style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); padding: 30px; border-radius: 15px; border: 2px solid #10b981; margin-bottom: 30px;">' +
+                    '<div style="font-size: 48px; margin-bottom: 15px;">✅</div>' +
+                    '<h3 style="color: #166534; margin-bottom: 10px;">Données Réelles Disponibles</h3>' +
+                    '<p style="color: #6b7280; font-size: 14px;">Funnel complet disponible quand tu auras un système de tracking</p>' +
+                '</div>' +
+                '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; max-width: 900px; margin: 0 auto;">' +
+                    '<div style="background: white; padding: 25px; border-radius: 12px; border: 2px solid #e5e7eb;">' +
+                        '<div style="color: #6b7280; font-size: 13px; font-weight: 600; margin-bottom: 8px;">INSCRIPTIONS</div>' +
+                        '<div style="font-size: 36px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;">' + data.signups + '</div>' +
+                        '<div style="color: #9ca3af; font-size: 12px;">utilisateurs créés</div>' +
+                    '</div>' +
+                    '<div style="background: white; padding: 25px; border-radius: 12px; border: 2px solid #e5e7eb;">' +
+                        '<div style="color: #6b7280; font-size: 13px; font-weight: 600; margin-bottom: 8px;">CONVERSIONS</div>' +
+                        '<div style="font-size: 36px; font-weight: bold; color: #10b981; margin-bottom: 5px;">' + data.conversions + '</div>' +
+                        '<div style="color: #9ca3af; font-size: 12px;">paiements complétés</div>' +
+                    '</div>' +
+                    '<div style="background: linear-gradient(135deg, #6366f1, #4f46e5); padding: 25px; border-radius: 12px; color: white;">' +
+                        '<div style="font-size: 13px; font-weight: 600; margin-bottom: 8px; opacity: 0.9;">TAUX DE CONVERSION</div>' +
+                        '<div style="font-size: 36px; font-weight: bold; margin-bottom: 5px;">' + data.conversion_rate.toFixed(1) + '%</div>' +
+                        '<div style="font-size: 12px; opacity: 0.8;">' + data.conversions + ' / ' + data.signups + ' signups</div>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+            
+            container.innerHTML = html;
+            
+            // Insights
+            document.getElementById('insightsContent').innerHTML = 
+                '<div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">' +
+                    '<div style="display: flex; align-items: start; gap: 10px;">' +
+                        '<div style="font-size: 24px;">💡</div>' +
+                        '<div>' +
+                            '<div style="font-weight: 600; color: #92400e; margin-bottom: 5px;">Données réelles actives</div>' +
+                            '<div style="color: #78350f; font-size: 14px;">Le funnel complet nécessite un système de tracking d événements (clics, visites pages). Pour l instant, seules les conversions finales sont trackées.</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            
+            // Plans
+            renderPlanConversion(data.by_plan);
         }}
         
         function renderFunnelVisualization(funnel) {{
@@ -24591,7 +24674,7 @@ async def admin_dashboard(request: Request):
             const container = document.getElementById('planConversionContent');
             
             if (!planData || planData.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Pas encore de données par plan</p>';
+                container.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Pas encore de conversions par plan</p>';
                 return;
             }}
             
@@ -24600,14 +24683,17 @@ async def admin_dashboard(request: Request):
             planData.forEach(plan => {{
                 const isBest = plan.is_best;
                 const isWorst = plan.is_worst;
-                const borderColor = isBest ? '#10b981' : isWorst ? '#ef4444' : '#e5e7eb';
+                const borderColor = isBest ? '#10b981' : isWorst ? '#ef4444' : '#3b82f6';
                 const badge = isBest ? '🏆 BEST' : isWorst ? '⚠️ FAIBLE' : '';
+                
+                // Format avec visits (ancien) ou sans (nouveau - données réelles)
+                const hasVisits = plan.visits !== undefined;
                 
                 html += '<div style="background: white; border: 2px solid ' + borderColor + '; padding: 15px; border-radius: 10px;">' +
                     '<div style="font-weight: 600; color: #333; margin-bottom: 5px;">' + plan.name + '</div>' +
                     (badge ? '<div style="color: ' + borderColor + '; font-size: 11px; font-weight: 600; margin-bottom: 10px;">' + badge + '</div>' : '<div style="margin-bottom: 10px;"></div>') +
-                    '<div style="font-size: 28px; font-weight: bold; color: ' + borderColor + '; margin-bottom: 5px;">' + plan.conversion_rate.toFixed(1) + '%</div>' +
-                    '<div style="color: #666; font-size: 13px;">' + plan.conversions + ' / ' + plan.visits + ' visites</div>' +
+                    '<div style="font-size: 32px; font-weight: bold; color: ' + borderColor + '; margin-bottom: 5px;">' + plan.conversions + '</div>' +
+                    '<div style="color: #666; font-size: 13px;">conversion' + (plan.conversions > 1 ? 's' : '') + '</div>' +
                 '</div>';
             }});
             
@@ -25630,7 +25716,7 @@ async def admin_conversion_funnel(
     days: int = 30,
     session_token: Optional[str] = Cookie(None)
 ):
-    """API pour le Conversion Funnel - Analyse du parcours de conversion"""
+    """API pour le Conversion Funnel - DONNÉES RÉELLES SEULEMENT"""
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
@@ -25644,17 +25730,13 @@ async def admin_conversion_funnel(
         now = datetime.now()
         start_date = now - timedelta(days=days)
         
-        # Pour l'instant, on simule les données car on n'a pas de tracking d'événements
-        # Dans le futur, on pourrait ajouter une table tracking_events
-        
-        # Compter les vrais utilisateurs créés
+        # Compter SEULEMENT les vraies données
         cursor.execute("""
             SELECT COUNT(*) FROM users
             WHERE created_at >= ?
         """, (start_date.isoformat(),))
         total_signups = cursor.fetchone()[0] or 0
         
-        # Compter les paiements réussis
         cursor.execute("""
             SELECT COUNT(*) FROM users
             WHERE created_at >= ?
@@ -25664,95 +25746,20 @@ async def admin_conversion_funnel(
         """, (start_date.isoformat(),))
         total_paid = cursor.fetchone()[0] or 0
         
-        # Simuler les étapes intermédiaires avec des pourcentages réalistes
-        # Étape 1: Visiteurs (simulé - 3x les signups)
-        visitors = max(total_signups * 3, 150)
-        
-        # Étape 2: Visitent /pricing (68% des visiteurs)
-        visit_pricing = int(visitors * 0.68)
-        
-        # Étape 3: Appliquent code promo (34% de ceux qui visitent pricing)
-        apply_promo = int(visit_pricing * 0.34)
-        
-        # Étape 4: Cliquent 'Payer' (52% de ceux qui appliquent promo)
-        click_pay = int(apply_promo * 0.52)
-        
-        # Étape 5: Paiement complété (réel ou 73% de ceux qui cliquent)
-        completed = total_paid if total_paid > 0 else int(click_pay * 0.73)
-        
-        # Construire les étapes du funnel
-        steps = [
-            {
-                "name": "1. Visiteurs site",
-                "count": visitors,
-                "conversion_rate": 100.0,
-                "drop_percent": 0.0
-            },
-            {
-                "name": "2. Visitent /pricing",
-                "count": visit_pricing,
-                "conversion_rate": (visit_pricing / visitors * 100) if visitors > 0 else 0,
-                "drop_percent": ((visitors - visit_pricing) / visitors * 100) if visitors > 0 else 0
-            },
-            {
-                "name": "3. Appliquent code promo",
-                "count": apply_promo,
-                "conversion_rate": (apply_promo / visitors * 100) if visitors > 0 else 0,
-                "drop_percent": ((visit_pricing - apply_promo) / visit_pricing * 100) if visit_pricing > 0 else 0
-            },
-            {
-                "name": "4. Cliquent 'Payer'",
-                "count": click_pay,
-                "conversion_rate": (click_pay / visitors * 100) if visitors > 0 else 0,
-                "drop_percent": ((apply_promo - click_pay) / apply_promo * 100) if apply_promo > 0 else 0
-            },
-            {
-                "name": "5. Paiement complété",
-                "count": completed,
-                "conversion_rate": (completed / visitors * 100) if visitors > 0 else 0,
-                "drop_percent": ((click_pay - completed) / click_pay * 100) if click_pay > 0 else 0
-            }
-        ]
-        
-        global_conversion = (completed / visitors * 100) if visitors > 0 else 0
-        
-        # Générer insights automatiques
-        insights = []
-        
-        # Détecter les gros drops (>50%)
-        for i in range(1, len(steps)):
-            if steps[i]["drop_percent"] > 50:
-                insights.append({
-                    "type": "warning",
-                    "title": f"Gros drop à l'étape: {steps[i]['name']}",
-                    "description": f"{steps[i]['drop_percent']:.1f}% des utilisateurs abandonnent ici",
-                    "action": "Optimiser cette étape en priorité"
-                })
-        
-        # Conversion globale
-        if global_conversion > 10:
-            insights.append({
-                "type": "success",
-                "title": "Excellent taux de conversion!",
-                "description": f"{global_conversion:.1f}% des visiteurs deviennent clients payants",
-                "action": "Continue comme ça!"
-            })
-        elif global_conversion < 5:
-            insights.append({
-                "type": "warning",
-                "title": "Taux de conversion faible",
-                "description": f"Seulement {global_conversion:.1f}% convertissent",
-                "action": "Focus sur l'optimisation du funnel"
-            })
-        else:
-            insights.append({
-                "type": "info",
-                "title": "Taux de conversion standard",
-                "description": f"{global_conversion:.1f}% de conversion - il y a de la marge d'amélioration",
-                "action": "Teste des optimisations pour passer à 10%+"
+        # Si AUCUNE donnée réelle → retourner no_data
+        if total_signups == 0 and total_paid == 0:
+            cursor.close()
+            conn.close()
+            
+            print(f"⚠️ Conversion Funnel ({days}j): Aucune donnée réelle disponible")
+            
+            return JSONResponse({
+                "success": True,
+                "no_data": True,
+                "message": "Pas encore de données - En attente de trafic réel"
             })
         
-        # Conversion par plan (simulé avec répartition réaliste)
+        # Conversion par plan (RÉEL SEULEMENT)
         by_plan = []
         plans = [
             ("Premium", "1_month"),
@@ -25761,6 +25768,7 @@ async def admin_conversion_funnel(
             ("Elite", "1_year")
         ]
         
+        total_plan_conversions = 0
         for plan_name, plan_id in plans:
             cursor.execute("""
                 SELECT COUNT(*) FROM users
@@ -25768,41 +25776,39 @@ async def admin_conversion_funnel(
                 AND subscription_plan = ?
             """, (start_date.isoformat(), plan_id))
             plan_conversions = cursor.fetchone()[0] or 0
+            total_plan_conversions += plan_conversions
             
-            # Simuler les visites (3x les conversions)
-            plan_visits = max(plan_conversions * 3, 30)
-            plan_rate = (plan_conversions / plan_visits * 100) if plan_visits > 0 else 0
-            
-            by_plan.append({
-                "name": plan_name,
-                "visits": plan_visits,
-                "conversions": plan_conversions,
-                "conversion_rate": plan_rate,
-                "is_best": False,
-                "is_worst": False
-            })
+            if plan_conversions > 0:
+                by_plan.append({
+                    "name": plan_name,
+                    "conversions": plan_conversions,
+                    "is_best": False,
+                    "is_worst": False
+                })
         
-        # Marquer le meilleur et le pire
+        # Marquer le meilleur et le pire (si on a des données)
         if by_plan:
-            by_plan.sort(key=lambda x: x["conversion_rate"], reverse=True)
-            if by_plan[0]["conversion_rate"] > 0:
+            by_plan.sort(key=lambda x: x["conversions"], reverse=True)
+            if by_plan[0]["conversions"] > 0:
                 by_plan[0]["is_best"] = True
-            if len(by_plan) > 1 and by_plan[-1]["conversion_rate"] < by_plan[0]["conversion_rate"]:
+            if len(by_plan) > 1 and by_plan[-1]["conversions"] < by_plan[0]["conversions"]:
                 by_plan[-1]["is_worst"] = True
         
         cursor.close()
         conn.close()
         
-        print(f"✅ Conversion Funnel ({days}j): {visitors} visiteurs → {completed} payants = {global_conversion:.1f}%")
+        print(f"✅ Conversion Funnel ({days}j): {total_signups} signups → {total_paid} payants")
         
+        # Retourner SEULEMENT les vraies données
         return JSONResponse({
             "success": True,
-            "funnel": {
-                "steps": steps,
-                "global_conversion": global_conversion
-            },
-            "insights": insights,
-            "by_plan": by_plan
+            "no_data": False,
+            "real_data_only": True,
+            "signups": total_signups,
+            "conversions": total_paid,
+            "conversion_rate": (total_paid / total_signups * 100) if total_signups > 0 else 0,
+            "by_plan": by_plan,
+            "message": "Données réelles - Tracking d'événements non disponible pour funnel complet"
         })
     
     except Exception as e:

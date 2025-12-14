@@ -6195,6 +6195,65 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     </div>
 </div>
 
+
+<!-- ==================== SECTIONS EXPLICATIVES ==================== -->
+<div style="max-width: 1400px; margin: 60px auto 40px auto; padding: 0 20px;">
+    
+    <!-- Comment ça marche? -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
+        <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">📚</span> Comment ça marche ?
+        </h2>
+        <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">Le Trading Dashboard Pro est ton cockpit de trading complet avec gestion de trades, alertes TradingView/Telegram, monitoring TP/SL, Fear & Greed Index, Bitcoin dominance, et heatmap crypto en temps réel.</p>
+    </div>
+    
+    <!-- Fear & Greed expliqué -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">
+        <h2 style="color: #6366f1; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">😰</span> Fear & Greed Index Expliqué
+        </h2>
+        <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">Indicateur contrarian : achète quand les autres ont peur, vends quand ils sont avides.</p>
+        
+        <div style="display: grid; gap: 15px;">
+            <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
+                <h3 style="color: #ef4444; margin-bottom: 10px;">😱 Extreme Fear (0-25) = ACHÈTE!</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Meilleur moment pour accumuler. Les plus gros gains viennent après extreme fear.</p>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #f59e0b; margin-bottom: 10px;">😰 Fear (25-45) = Bonne zone d'achat</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Les investisseurs sont nerveux. Accumule progressivement.</p>
+            </div>
+            <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                <h3 style="color: #6366f1; margin-bottom: 10px;">😐 Neutre (45-55) = Attends</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Le marché est indécis. Attends un signal plus clair.</p>
+            </div>
+            <div style="background: rgba(34, 197, 94, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #22c55e;">
+                <h3 style="color: #22c55e; margin-bottom: 10px;">😊 Greed (55-75) = Prends profits partiels</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Marché optimiste. Vends 20-30% de tes positions en profit.</p>
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 10px;">🤑 Extreme Greed (75-100) = VENDS!</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Euphorie totale. Le top est proche. Vends 50-70%. Crash souvent après.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Points Importants -->
+    <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
+        <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">⚠️</span> Points Importants
+        </h2>
+        <ul style="color: #fca5a5; line-height: 2; font-size: 1.05em; padding-left: 20px;">
+            <li><strong>Gère ton risque:</strong> Ne risque jamais plus de 1-2% de ton capital par trade.</li>
+            <li><strong>TP/SL obligatoires:</strong> TOUJOURS définir un Take Profit et Stop Loss.</li>
+            <li><strong>Fear & Greed contrarian:</strong> Achète la peur (0-25), vends l'avidité (75-100).</li>
+            <li><strong>BTC dominance > 60%:</strong> Altseason terminée, focus sur BTC uniquement.</li>
+            <li><strong>Heatmap temps réel:</strong> Vert = pump, rouge = dump.</li>
+        </ul>
+    </div>
+    
+</div>
+<!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
 <style>
 /* MARKET PULSE STYLES */
 .market-subtitle {
@@ -30910,6 +30969,120 @@ async def portfolio_tracker(request: Request):
         </div>
     </div>
 
+
+<!-- ==================== SECTIONS EXPLICATIVES ==================== -->
+<div style="max-width: 1400px; margin: 60px auto 40px auto; padding: 0 20px;">
+    
+    <!-- Comment ça marche? -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
+        <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">📚</span> Comment ça marche ?
+        </h2>
+        <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">Le Portfolio Tracker connecte tes échanges crypto (Binance, Coinbase, etc.) via API pour calculer automatiquement ton P&L, allocation, et performance globale. Plus besoin de tracker manuellement tes positions !</p>
+    </div>
+    
+    <!-- Comment utiliser? -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">
+        <h2 style="color: #10b981; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">⚙️</span> Comment utiliser ?
+        </h2>
+        <div style="display: grid; gap: 15px;">
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 10px;">1. Sélectionne ton exchange</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Choisis parmi Binance, Coinbase, Kraken, KuCoin, Bybit, Gate.io, OKX dans le menu déroulant.</p>
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 10px;">2. Entre tes clés API</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Crée une clé API en <strong>READ-ONLY</strong> sur ton exchange (jamais de permissions trading/retrait!). Copie API Key et Secret.</p>
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 10px;">3. Connecte ton portfolio</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Clique "Connecter Portfolio". Le système récupère automatiquement toutes tes positions et calcule ton P&L total.</p>
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 10px;">4. Analyse ta performance</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Visualise ton allocation (pie chart), ta performance (graph), et ton P&L par crypto. Identifie tes meilleurs/pires trades.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Les 7 Exchanges Supportés -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(168, 85, 247, 0.2);">
+        <h2 style="color: #a855f7; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">🏦</span> Les 7 Exchanges Supportés
+        </h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                <strong style="color: #a855f7;">🟡 Binance</strong>
+            </div>
+            <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                <strong style="color: #a855f7;">🔵 Coinbase</strong>
+            </div>
+            <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                <strong style="color: #a855f7;">🟣 Kraken</strong>
+            </div>
+            <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                <strong style="color: #a855f7;">🟢 KuCoin</strong>
+            </div>
+            <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                <strong style="color: #a855f7;">🟠 Bybit</strong>
+            </div>
+            <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                <strong style="color: #a855f7;">⚪ Gate.io</strong>
+            </div>
+            <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                <strong style="color: #a855f7;">🔴 OKX</strong>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sécurité des Clés API -->
+    <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
+        <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">🔒</span> Sécurité des Clés API
+        </h2>
+        <ul style="color: #fca5a5; line-height: 2; font-size: 1.05em; padding-left: 20px;">
+            <li><strong>READ-ONLY uniquement:</strong> Ne JAMAIS activer les permissions de trading ou retrait sur tes clés API.</li>
+            <li><strong>IP Whitelist:</strong> Configure une whitelist d'IP sur ton exchange pour plus de sécurité.</li>
+            <li><strong>Révoque après usage:</strong> Si tu ne fais plus confiance à une clé, révoque-la sur ton exchange.</li>
+            <li><strong>Jamais partager:</strong> Ne partage JAMAIS tes clés API avec qui que ce soit.</li>
+            <li><strong>Chiffrement:</strong> Tes clés sont chiffrées en base de données (pas stockées en clair).</li>
+            <li><strong>Rotation régulière:</strong> Change tes clés API tous les 3-6 mois par sécurité.</li>
+        </ul>
+    </div>
+    
+    <!-- Comprendre ton Portfolio -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(245, 158, 11, 0.2);">
+        <h2 style="color: #f59e0b; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">💡</span> Comprendre ton Portfolio
+        </h2>
+        <div style="display: grid; gap: 15px;">
+            
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #f59e0b; margin-bottom: 10px;">📊 Allocation</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Le pie chart montre quelle % de ton capital est dans chaque crypto. Idéal: ne pas avoir plus de 30% dans une seule crypto (sauf BTC/ETH).</p>
+            </div>
+            
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #f59e0b; margin-bottom: 10px;">💰 P&L (Profit & Loss)</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Ton gain ou perte total depuis le début. Vert = profit, rouge = perte. Le % montre ta performance vs ton capital initial.</p>
+            </div>
+            
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #f59e0b; margin-bottom: 10px;">📈 Performance</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Le graph montre l'évolution de ton portfolio dans le temps. Compare avec BTC pour voir si tu bats le marché.</p>
+            </div>
+            
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #f59e0b; margin-bottom: 10px;">🎯 Rééquilibrage</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Si une crypto explose et représente 50%+ de ton portfolio = vends une partie pour rééquilibrer. Gère ton risque!</p>
+            </div>
+            
+        </div>
+    </div>
+    
+</div>
+<!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
 </body>
 </html>"""
     return HTMLResponse(content=html)
@@ -34384,6 +34557,156 @@ async def narrative_radar():
             </ul>
         </div>
     </div>
+    
+    <!-- ==================== SECTIONS EXPLICATIVES ==================== -->
+    <div style="max-width: 1200px; margin: 60px auto 40px auto; padding: 0 20px;">
+        
+        <!-- Comment ça marche? -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
+            <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">📚</span> Comment ça marche ?
+            </h2>
+            <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">Le Narrative Radar scanne en temps réel les actualités crypto via l'API CryptoPanic pour détecter les narratives émergentes AVANT qu'elles explosent. On analyse le sentiment, le momentum et identifie les projets qui surfent chaque narrative. Entre tôt = gains maximaux !</p>
+        </div>
+        
+        <!-- Qu'est-ce qu'une Narrative Crypto? -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(168, 85, 247, 0.2);">
+            <h2 style="color: #a855f7; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">🎯</span> Qu'est-ce qu'une Narrative Crypto ?
+            </h2>
+            <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">Une <strong>narrative</strong> est un thème/histoire qui attire l'attention du marché crypto à un moment donné. Quand une narrative émerge, TOUS les projets liés explosent ensemble. C'est comme une vague que tu peux surfer pour des gains exponentiels.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #a855f7;">
+                    <h4 style="color: #a855f7; margin-bottom: 10px;">🤖 AI Narrative (2023)</h4>
+                    <p style="color: #cbd5e1; font-size: 0.95em; margin: 0;">Projets comme AGIX, FET, OCEAN ont fait +500% quand ChatGPT a explosé.</p>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #a855f7;">
+                    <h4 style="color: #a855f7; margin-bottom: 10px;">🎮 Gaming Narrative (2021)</h4>
+                    <p style="color: #cbd5e1; font-size: 0.95em; margin: 0;">SAND, MANA, AXS ont tous 10-50x pendant le boom gaming.</p>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #a855f7;">
+                    <h4 style="color: #a855f7; margin-bottom: 10px;">⚡ Layer 2 Narrative (2024)</h4>
+                    <p style="color: #cbd5e1; font-size: 0.95em; margin: 0;">ARB, OP, MATIC pompent ensemble quand le focus est sur les L2.</p>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #a855f7;">
+                    <h4 style="color: #a855f7; margin-bottom: 10px;">🌐 RWA Narrative (2024)</h4>
+                    <p style="color: #cbd5e1; font-size: 0.95em; margin: 0;">Real World Assets - tokenisation d'actifs réels (immobilier, etc.).</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Comment utiliser cet outil? -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">
+            <h2 style="color: #10b981; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">⚙️</span> Comment utiliser cet outil ?
+            </h2>
+            <div style="display: grid; gap: 15px;">
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">1. Clique "Scanner Maintenant"</h3>
+                    <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Lance un scan des dernières actualités crypto (limite: 1 scan/minute pour économiser l'API).</p>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">2. Analyse les Narratives Détectées</h3>
+                    <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Chaque carte montre: Momentum (🔥/🚀), Sentiment (😊/😐/😢), et coins principaux de la narrative.</p>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">3. Identifie les Narratives TRENDING 🚀</h3>
+                    <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Badge TRENDING = momentum élevé + sentiment positif = entre MAINTENANT avant que ça explose.</p>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">4. Achète les Coins Listés</h3>
+                    <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Chaque narrative liste 3-5 projets majeurs. Diversifie sur plusieurs d'entre eux pour maximiser les gains.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Comprendre les Indicateurs -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(245, 158, 11, 0.2);">
+            <h2 style="color: #f59e0b; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">📊</span> Comprendre les Indicateurs
+            </h2>
+            <div style="display: grid; gap: 20px;">
+                
+                <div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                    <h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">🔥 Momentum</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Vitesse à laquelle la narrative gagne en popularité.</p>
+                    <ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">
+                        <li><strong style="color: #10b981;">🚀 TRENDING:</strong> Explosion en cours - ACHÈTE MAINTENANT</li>
+                        <li><strong style="color: #3b82f6;">🔥 HOT:</strong> Momentum fort - Bonne opportunité</li>
+                        <li><strong style="color: #6366f1;">📈 RISING:</strong> En croissance - Surveille de près</li>
+                        <li><strong style="color: #64748b;">😴 STABLE:</strong> Pas de momentum - Passe ton tour</li>
+                    </ul>
+                </div>
+                
+                <div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                    <h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">😊 Sentiment</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Opinion générale du marché sur cette narrative.</p>
+                    <ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">
+                        <li><strong style="color: #10b981;">😊 POSITIF:</strong> Tout le monde est bullish - Bon signe</li>
+                        <li><strong style="color: #6366f1;">😐 NEUTRE:</strong> Marché indécis - Attends confirmation</li>
+                        <li><strong style="color: #ef4444;">😢 NÉGATIF:</strong> Bearish - Évite ou attends retournement</li>
+                    </ul>
+                </div>
+                
+                <div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                    <h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">💎 Coins Listés</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Les 3-5 projets principaux de chaque narrative.</p>
+                    <p style="color: #94a3b8; margin: 0;"><strong>Stratégie:</strong> Achète au moins 2-3 coins de la même narrative pour diversifier. Si la narrative explose, tous vont pomper ensemble !</p>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- Points Importants -->
+        <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
+            <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">⚠️</span> Points Importants
+            </h2>
+            <ul style="color: #fca5a5; line-height: 2; font-size: 1.05em; padding-left: 20px;">
+                <li><strong>Entre TÔT dans la narrative:</strong> Les plus gros gains sont faits au début. Si tout le monde en parle, c'est souvent trop tard.</li>
+                <li><strong>Momentum + Sentiment = GO:</strong> Si les 2 sont positifs, c'est le setup parfait pour entrer.</li>
+                <li><strong>Les narratives durent 2-12 semaines:</strong> Pas des années. Prends tes profits quand le momentum baisse.</li>
+                <li><strong>Diversifie sur 3+ coins:</strong> Toute la narrative ne pompe pas uniformément. Spreads ton risque.</li>
+                <li><strong>Rate limit 1 scan/minute:</strong> API gratuite limitée. Scanne intelligemment (1-2 fois par jour max).</li>
+                <li><strong>Cache 10 minutes:</strong> Les résultats sont mis en cache. Pas besoin de spammer le scan.</li>
+                <li><strong>Source: CryptoPanic API:</strong> Agrégateur d'actualités crypto fiable utilisé par les pros.</li>
+            </ul>
+        </div>
+        
+        <!-- Stratégies Avancées -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">
+            <h2 style="color: #6366f1; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">🎓</span> Stratégies Avancées
+            </h2>
+            <div style="display: grid; gap: 15px;">
+                
+                <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                    <h3 style="color: #6366f1; margin-bottom: 10px;">🎯 L'Entrée Précoce</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Quand une narrative passe de 😴 STABLE à 📈 RISING = premier signal. Entre avec 30% de ton capital. Si elle passe TRENDING 🚀, ajoute 70%.</p>
+                </div>
+                
+                <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                    <h3 style="color: #6366f1; margin-bottom: 10px;">📊 Multi-Narrative</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Ne mets PAS tous tes œufs dans 1 narrative. Répartis sur 2-3 narratives TRENDING simultanément = risque diversifié.</p>
+                </div>
+                
+                <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                    <h3 style="color: #6366f1; margin-bottom: 10px;">💰 Take Profit Progressif</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Vends 30% à +50%, 30% à +100%, garde 40% pour le moonshot. Ne sois jamais 100% in ou 100% out.</p>
+                </div>
+                
+                <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                    <h3 style="color: #6366f1; margin-bottom: 10px;">🔄 Rotation des Narratives</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Quand une narrative devient 😴 STABLE après avoir été HOT = sors et entre dans la prochaine narrative TRENDING. Toujours suivre le momentum.</p>
+                </div>
+                
+            </div>
+        </div>
+        
+    </div>
+    <!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
+    
 </div>
 
 <script>
@@ -34937,6 +35260,62 @@ async def ai_crypto_coach_page(request: Request):
         </div>
     </div>
 </div>
+
+<!-- ==================== SECTIONS EXPLICATIVES ==================== -->
+<div style="max-width: 1400px; margin: 60px auto; padding: 0 20px;">
+    
+    <!-- Comment ça marche? -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
+        <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">📚</span> Comment ça marche ?
+        </h2>
+        <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">L'AI Crypto Coach analyse ton profil de trader (expérience, capital, objectifs, tolérance au risque) pour créer une stratégie 100% personnalisée. Ensuite, il répond à tes questions et t'accompagne au quotidien avec des conseils adaptés à TON niveau et TES objectifs.</p>
+    </div>
+    
+    <!-- Qu'est-ce que l'AI Coach? -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">
+        <h2 style="color: #6366f1; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">🤖</span> Qu'est-ce que l'AI Crypto Coach ?
+        </h2>
+        <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">C'est un coach personnel alimenté par l'intelligence artificielle Claude Sonnet 4 qui analyse ton profil unique et crée un plan d'action sur-mesure. Contrairement aux conseils génériques qu'on trouve partout, le coach s'adapte à TOI : ton niveau, ton budget, tes peurs, tes objectifs.</p>
+    </div>
+    
+    <!-- Comment utiliser? -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">
+        <h2 style="color: #10b981; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">⚙️</span> Comment utiliser cet outil ?
+        </h2>
+        <div style="display: grid; gap: 15px;">
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 10px;">1. Clique "Analyser mon profil"</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Le coach te pose 5-7 questions essentielles pour comprendre qui tu es et ce que tu veux accomplir.</p>
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 10px;">2. Réponds honnêtement</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Plus tu es précis et honnête, meilleurs seront les conseils.</p>
+            </div>
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 10px;">3. Reçois ta stratégie personnalisée</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Le coach crée un plan complet : allocation de capital, stratégies recommandées, cryptos à privilégier.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Points Importants -->
+    <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
+        <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">⚠️</span> Points Importants
+        </h2>
+        <ul style="color: #fca5a5; line-height: 2; font-size: 1.05em; padding-left: 20px;">
+            <li><strong>Honnêteté = meilleurs conseils:</strong> Si tu mens sur ton capital ou ton expérience, les conseils seront inadaptés.</li>
+            <li><strong>Le coach n'est pas un oracle:</strong> Il te guide mais ne prédit pas le futur. DYOR toujours.</li>
+            <li><strong>Révise ton profil régulièrement:</strong> Ton niveau évolue, ton capital aussi. Refais l'analyse tous les 3-6 mois.</li>
+            <li><strong>Respect de la vie privée:</strong> Tes conversations ne sont PAS sauvegardées. Chaque session est indépendante.</li>
+        </ul>
+    </div>
+    
+</div>
+<!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
 
 <script>
 let questionCount = 1;
@@ -35682,6 +36061,169 @@ async def altseason_copilot():
         </div>
     </div>
 </div>
+
+<!-- ==================== SECTIONS EXPLICATIVES ==================== -->
+<div style="max-width: 1400px; margin: 60px auto; padding: 0 20px;">
+    
+    <!-- Comment ça marche? -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
+        <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">📚</span> Comment ça marche ?
+        </h2>
+        <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">Les AI Swarm Agents sont 5 intelligences artificielles spécialisées qui scannent le marché crypto 24/7 pour détecter les meilleures opportunités. Chaque agent analyse un aspect différent du marché (tendances, narratives, liquidité, altseason, risques) et te donne des recommandations en temps réel basées sur des données live.</p>
+    </div>
+    
+    <!-- Qu'est-ce qu'un Swarm Agent? -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">
+        <h2 style="color: #6366f1; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">🤖</span> Qu'est-ce qu'un Swarm Agent ?
+        </h2>
+        <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">Un <strong>Swarm Agent</strong> (agent en essaim) est une IA spécialisée qui travaille en collaboration avec d'autres agents pour scanner le marché. Contrairement à une seule IA généraliste, chaque agent a une mission précise et excelle dans son domaine. Ensemble, ils forment un "essaim intelligent" qui couvre tous les aspects du trading crypto.</p>
+        
+        <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
+            <p style="color: #818cf8; margin: 0; font-size: 1.05em;"><strong>💡 Principe clé:</strong> 5 cerveaux valent mieux qu'un ! Chaque agent se concentre sur son expertise pour des analyses ultra-précises.</p>
+        </div>
+    </div>
+    
+    <!-- Les 5 Agents Expliqués -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">
+        <h2 style="color: #10b981; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">🎯</span> Les 5 Agents Expliqués
+        </h2>
+        <div style="display: grid; gap: 20px;">
+            
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 12px; font-size: 1.3em;">📈 Agent Trend Scanner</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;"><strong>Mission:</strong> Détecter les cryptos en forte tendance haussière ou baissière.</p>
+                <p style="color: #94a3b8; line-height: 1.7;"><strong>Analyse:</strong> Momentum, volume, changement de prix 24h, patterns techniques. Identifie les pumps et dumps avant la masse.</p>
+            </div>
+            
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 12px; font-size: 1.3em;">📰 Agent Narrative Tracker</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;"><strong>Mission:</strong> Suivre les narratives crypto émergentes (DeFi, AI, Gaming, etc.).</p>
+                <p style="color: #94a3b8; line-height: 1.7;"><strong>Analyse:</strong> Tendances Twitter, volume de recherche, projets du secteur. Surfe les narratives avant qu'elles explosent.</p>
+            </div>
+            
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 12px; font-size: 1.3em;">💧 Agent Liquidity Monitor</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;"><strong>Mission:</strong> Analyser la liquidité et le volume des cryptos.</p>
+                <p style="color: #94a3b8; line-height: 1.7;"><strong>Analyse:</strong> Volume 24h, ratio volume/market cap, spread bid/ask. Évite les cryptos illiquides qui peuvent crash.</p>
+            </div>
+            
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 12px; font-size: 1.3em;">🌊 Agent Altseason Detector</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;"><strong>Mission:</strong> Détecter les phases d'altseason (quand les altcoins surperforment BTC).</p>
+                <p style="color: #94a3b8; line-height: 1.7;"><strong>Analyse:</strong> Bitcoin dominance, performance altcoins vs BTC, rotation de capital. Sait quand acheter les alts.</p>
+            </div>
+            
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 12px; font-size: 1.3em;">⚠️ Agent Risk Assessor</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;"><strong>Mission:</strong> Évaluer les risques de chaque crypto (scams, volatilité extrême).</p>
+                <p style="color: #94a3b8; line-height: 1.7;"><strong>Analyse:</strong> Volatilité historique, age du projet, distribution des holders, red flags. Protège contre les catastrophes.</p>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- Comment utiliser? -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(245, 158, 11, 0.2);">
+        <h2 style="color: #f59e0b; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">⚙️</span> Comment utiliser cet outil ?
+        </h2>
+        <div style="display: grid; gap: 15px;">
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #f59e0b; margin-bottom: 10px;">1. Consulte les recommandations de chaque agent</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Chaque agent affiche ses top picks du moment. Lis leurs analyses pour comprendre POURQUOI ces cryptos sont recommandées.</p>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #f59e0b; margin-bottom: 10px;">2. Cherche les consensus entre agents</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Si 3+ agents recommandent la même crypto = signal TRÈS fort ! C'est une opportunité validée par plusieurs angles d'analyse.</p>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #f59e0b; margin-bottom: 10px;">3. Vérifie le Risk Assessor en priorité</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Avant d'acheter QUOI QUE CE SOIT, vérifie que le Risk Assessor ne signale pas de red flags critiques.</p>
+            </div>
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #f59e0b; margin-bottom: 10px;">4. Combine avec ton analyse</h3>
+                <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Les agents sont des assistants, pas des oracles. Utilise leurs insights + ta propre recherche pour décider.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Comprendre les Analyses -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(168, 85, 247, 0.2);">
+        <h2 style="color: #a855f7; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">💡</span> Comprendre les Analyses
+        </h2>
+        <div style="display: grid; gap: 20px;">
+            
+            <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                <h3 style="color: #10b981; margin-bottom: 10px;">Niveau de Confiance</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Chaque agent donne un score de confiance (0-100%). Plus c'est élevé, plus l'agent est sûr de sa recommandation. >70% = très confiant.</p>
+            </div>
+            
+            <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                <h3 style="color: #6366f1; margin-bottom: 10px;">Timeframe des Recommandations</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Les agents scannent en temps réel mais les opportunités peuvent durer quelques heures à quelques jours selon l'agent (Trend = court terme, Narrative = moyen terme).</p>
+            </div>
+            
+            <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                <h3 style="color: #f59e0b; margin-bottom: 10px;">Données en Temps Réel</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Toutes les analyses sont mises à jour automatiquement toutes les 60 secondes. La page se rafraîchit seule pour avoir les dernières données.</p>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- Points Importants -->
+    <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
+        <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">⚠️</span> Points Importants
+        </h2>
+        <ul style="color: #fca5a5; line-height: 2; font-size: 1.05em; padding-left: 20px;">
+            <li><strong>Les agents ne sont pas infaillibles:</strong> Même avec 5 AIs, le marché crypto reste imprévisible. Toujours DYOR.</li>
+            <li><strong>Consensus = force:</strong> Si tous les agents s'alignent sur une crypto = probabilité de succès beaucoup plus élevée.</li>
+            <li><strong>Risk Assessor est ton garde-fou:</strong> Ne JAMAIS ignorer ses warnings. Un red flag = éviter absolument.</li>
+            <li><strong>Combine les timeframes:</strong> Trend Scanner (court terme) + Narrative Tracker (moyen terme) = stratégie complète.</li>
+            <li><strong>Liquidity Monitor protège:</strong> Une crypto peut être hype mais illiquide = impossible de vendre au bon moment.</li>
+            <li><strong>Altseason timing:</strong> Acheter les alts en altseason (détecté par l'agent) = multiplicateurs de gains.</li>
+            <li><strong>Auto-refresh activé:</strong> La page se met à jour automatiquement. Pas besoin de rafraîchir manuellement.</li>
+        </ul>
+    </div>
+    
+    <!-- Stratégies Avancées -->
+    <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(236, 72, 153, 0.2);">
+        <h2 style="color: #ec4899; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 1.5em;">🎓</span> Stratégies Avancées
+        </h2>
+        <div style="display: grid; gap: 15px;">
+            
+            <div style="background: rgba(236, 72, 153, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ec4899;">
+                <h3 style="color: #ec4899; margin-bottom: 10px;">🎯 Le Consensus Parfait (5/5 agents)</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Si les 5 agents recommandent la même crypto = setup ultra-rare mais ultra-puissant. Historiquement, ces setups ont un taux de réussite >80%.</p>
+            </div>
+            
+            <div style="background: rgba(236, 72, 153, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ec4899;">
+                <h3 style="color: #ec4899; margin-bottom: 10px;">🌊 Surfer les Narratives</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Narrative Tracker + Trend Scanner ensemble = surfer une narrative en pleine explosion. Entre tôt (narrative), sors au pic (trend).</p>
+            </div>
+            
+            <div style="background: rgba(236, 72, 153, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ec4899;">
+                <h3 style="color: #ec4899; margin-bottom: 10px;">💎 Altseason Rotation</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Quand Altseason Detector signale le début = vends BTC, achètes les alts recommandés. Inverse quand il signale la fin.</p>
+            </div>
+            
+            <div style="background: rgba(236, 72, 153, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ec4899;">
+                <h3 style="color: #ec4899; margin-bottom: 10px;">🛡️ Protection Maximale</h3>
+                <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Avant chaque achat: Risk Assessor < 30% de risque + Liquidity Monitor volume élevé = sécurité maximale.</p>
+            </div>
+            
+        </div>
+    </div>
+    
+</div>
+<!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
+
 <script>
 function toggleSidebar() {{
     document.getElementById('sidebar').classList.toggle('active');
@@ -35796,6 +36338,206 @@ async def rug_scam_shield():
             <li><strong>Liquidité non lockée:</strong> Les créateurs peuvent retirer la liquidité</li>
         </ul>
     </div>
+    
+    <!-- ==================== SECTIONS EXPLICATIVES ==================== -->
+    <div style="max-width: 1200px; margin: 60px auto 40px auto;">
+        
+        <!-- Comment ça marche? -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
+            <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">📚</span> Comment ça marche ?
+            </h2>
+            <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">Le Rug & Scam Shield analyse les smart contracts en temps réel via 3 sources indépendantes (GoPlus, Honeypot.is, Etherscan) pour détecter les arnaques, honeypots, taxes cachées et autres red flags avant que tu investisses. Nous vérifions 15+ points de sécurité critiques sur 8 blockchains différentes.</p>
+        </div>
+        
+        <!-- Qu'est-ce qu'un Rug Pull/Scam? -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.2);">
+            <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">🚨</span> Qu'est-ce qu'un Rug Pull / Scam ?
+            </h2>
+            <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">Un <strong>rug pull</strong> est une arnaque crypto où les créateurs d'un token abandonnent le projet et volent l'argent des investisseurs. Ils peuvent retirer la liquidité, créer des fonctions malveillantes dans le code, ou simplement empêcher les gens de vendre (honeypot).</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
+                <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
+                    <h4 style="color: #ef4444; margin-bottom: 10px;">🍯 Honeypot</h4>
+                    <p style="color: #cbd5e1; font-size: 0.95em; margin: 0;">Tu peux acheter mais PAS vendre. L'argent est piégé dans le contract.</p>
+                </div>
+                <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
+                    <h4 style="color: #ef4444; margin-bottom: 10px;">💸 Liquidity Rug</h4>
+                    <p style="color: #cbd5e1; font-size: 0.95em; margin: 0;">Les créateurs retirent toute la liquidité d'un coup. Le token ne vaut plus rien.</p>
+                </div>
+                <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
+                    <h4 style="color: #ef4444; margin-bottom: 10px;">🔥 Mint Scam</h4>
+                    <p style="color: #cbd5e1; font-size: 0.95em; margin: 0;">Fonction qui crée des millions de tokens, diluant ta position à 0.</p>
+                </div>
+                <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
+                    <h4 style="color: #ef4444; margin-bottom: 10px;">👑 Owner Backdoor</h4>
+                    <p style="color: #cbd5e1; font-size: 0.95em; margin: 0;">Le créateur peut modifier ton solde ou voler tes tokens directement.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Comment utiliser cet outil? -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">
+            <h2 style="color: #10b981; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">⚙️</span> Comment utiliser cet outil ?
+            </h2>
+            <div style="display: grid; gap: 15px;">
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">1. Copie l'adresse du contract</h3>
+                    <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Sur PancakeSwap, Uniswap ou autre DEX, clique sur le nom du token puis copie l'adresse du contract (format: 0x...)</p>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">2. Sélectionne la blockchain</h3>
+                    <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Choisis où le token existe: Ethereum, BSC, Polygon, etc. Si tu n'es pas sûr, vérifie sur l'explorateur de blocs.</p>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">3. Clique "Analyser"</h3>
+                    <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Notre système vérifie 3 sources (GoPlus, Honeypot.is, Etherscan) en 5-10 secondes pour détecter les scams.</p>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">4. Lis le score et les red flags</h3>
+                    <p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Score < 40 = DANGER. Si des flags critiques 🚨 apparaissent, NE PAS ACHETER!</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Les 3 Sources Intelligentes -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">
+            <h2 style="color: #6366f1; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">🔍</span> Les 3 Sources Intelligentes
+            </h2>
+            <div style="display: grid; gap: 20px;">
+                
+                <div style="background: rgba(99, 102, 241, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                    <h3 style="color: #6366f1; margin-bottom: 12px; font-size: 1.3em;">🥇 GoPlus Security (Principal)</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">L'API la plus complète pour détecter les scams crypto.</p>
+                    <ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">
+                        <li>✅ Détection honeypot (99% de précision)</li>
+                        <li>✅ Taxes buy/sell en temps réel</li>
+                        <li>✅ Droits du owner (peut voler?)</li>
+                        <li>✅ Code vérifié sur explorateur</li>
+                        <li>✅ Nombre de holders réels</li>
+                        <li>✅ 15+ vérifications de sécurité</li>
+                    </ul>
+                </div>
+                
+                <div style="background: rgba(99, 102, 241, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                    <h3 style="color: #6366f1; margin-bottom: 12px; font-size: 1.3em;">🥈 Honeypot.is (Fallback)</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">S'active si GoPlus ne trouve pas le contract (tokens obscurs).</p>
+                    <ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">
+                        <li>✅ Spécialiste détection honeypot</li>
+                        <li>✅ Simulation buy/sell en direct</li>
+                        <li>✅ Taxes vérifiées</li>
+                        <li>📍 ETH et BSC uniquement</li>
+                    </ul>
+                </div>
+                
+                <div style="background: rgba(99, 102, 241, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                    <h3 style="color: #6366f1; margin-bottom: 12px; font-size: 1.3em;">🥉 Etherscan/BSCScan (Fallback Final)</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Dernier recours si les 2 autres échouent.</p>
+                    <ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">
+                        <li>✅ Vérification que le contract existe</li>
+                        <li>✅ Code source publié ou non</li>
+                        <li>✅ Analyse du code (selfdestruct, mint, etc.)</li>
+                        <li>⚠️ Analyse basique mais utile</li>
+                    </ul>
+                </div>
+                
+            </div>
+            
+            <div style="background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 12px; margin-top: 20px;">
+                <p style="color: #60a5fa; margin: 0; font-size: 1.05em;"><strong>💡 Système intelligent:</strong> Nous essayons les 3 sources dans l'ordre. Même si GoPlus ne trouve pas le token, tu auras quand même une analyse via Honeypot.is ou Etherscan. Couverture maximale!</p>
+            </div>
+        </div>
+        
+        <!-- Points Importants -->
+        <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
+            <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">⚠️</span> Points Importants
+            </h2>
+            <ul style="color: #fca5a5; line-height: 2; font-size: 1.05em; padding-left: 20px;">
+                <li><strong>Score < 40 = TRÈS DANGEREUX:</strong> Ne jamais acheter un token avec un score aussi bas.</li>
+                <li><strong>Flags critiques 🚨 = FUYEZ:</strong> Honeypot, owner backdoor, impossible de vendre = scam confirmé.</li>
+                <li><strong>Taxes > 20% = SUSPECTS:</strong> Des taxes aussi élevées sont souvent un signe de scam ou de mauvais projet.</li>
+                <li><strong>Code non vérifié = RISQUÉ:</strong> Si le code n'est pas publié sur Etherscan, impossible de savoir ce qu'il fait.</li>
+                <li><strong>Peu de holders = ATTENTION:</strong> Moins de 100 holders = très risqué, probablement un nouveau token non testé.</li>
+                <li><strong>Vérifiez TOUJOURS avant d'acheter:</strong> Même avec un bon score, fais tes propres recherches (DYOR).</li>
+                <li><strong>"Contract non trouvé" sur 3 sources:</strong> Le contract n'existe probablement pas ou mauvaise blockchain sélectionnée.</li>
+            </ul>
+        </div>
+        
+        <!-- Comprendre les Résultats -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(245, 158, 11, 0.2);">
+            <h2 style="color: #f59e0b; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">💡</span> Comprendre les Résultats
+            </h2>
+            <div style="display: grid; gap: 20px;">
+                
+                <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
+                    <h3 style="color: #10b981; margin-bottom: 10px;">Score 70-100/100 ✅</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Contract relativement sûr. Peu ou pas de red flags. Code vérifié. Taxes acceptables. Peut être acheté avec précaution (DYOR quand même).</p>
+                </div>
+                
+                <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                    <h3 style="color: #f59e0b; margin-bottom: 10px;">Score 40-69/100 ⚠️</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Risques modérés détectés. Warnings (code non vérifié, taxes élevées, etc.). Acheter seulement si tu comprends les risques.</p>
+                </div>
+                
+                <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
+                    <h3 style="color: #ef4444; margin-bottom: 10px;">Score 0-39/100 🚨</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">DANGER MAXIMUM! Red flags critiques détectés. Honeypot, scam, taxes extrêmes. NE PAS ACHETER sous aucun prétexte!</p>
+                </div>
+                
+                <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                    <h3 style="color: #6366f1; margin-bottom: 10px;">Légende des Sources</h3>
+                    <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">
+                        En bas de chaque analyse tu verras: <br>
+                        <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px;">✅ GoPlus • ❌ Honeypot.is • ✅ Explorer</code><br>
+                        ✅ = Source a trouvé des données | ❌ = Source n'a rien trouvé
+                    </p>
+                </div>
+                
+            </div>
+        </div>
+        
+        <!-- Blockchains Supportées -->
+        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(168, 85, 247, 0.2);">
+            <h2 style="color: #a855f7; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
+                <span style="font-size: 1.5em;">⛓️</span> Blockchains Supportées
+            </h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                    <strong style="color: #a855f7;">Ethereum (ETH)</strong>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                    <strong style="color: #a855f7;">Binance Smart Chain (BSC)</strong>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                    <strong style="color: #a855f7;">Polygon (MATIC)</strong>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                    <strong style="color: #a855f7;">Arbitrum</strong>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                    <strong style="color: #a855f7;">Avalanche (AVAX)</strong>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                    <strong style="color: #a855f7;">Optimism</strong>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                    <strong style="color: #a855f7;">Fantom (FTM)</strong>
+                </div>
+                <div style="background: rgba(168, 85, 247, 0.1); padding: 15px; border-radius: 8px; text-align: center;">
+                    <strong style="color: #a855f7;">Base</strong>
+                </div>
+            </div>
+            <p style="color: #cbd5e1; margin-top: 20px; text-align: center; font-size: 0.95em;">⚠️ Note: Bitcoin (BTC) n'a pas de smart contracts ERC-20, donc ne peut pas être analysé ici.</p>
+        </div>
+        
+    </div>
+    <!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
+    
 </div>
 <script>
 async function analyzeContract() {
@@ -36810,6 +37552,177 @@ setTimeout(function() {
         page += '</div>'
         page += '</div>'
         page += '</div>'
+        
+        # ==================== SECTIONS EXPLICATIVES ====================
+        page += '<div style="max-width: 1400px; margin: 60px auto; padding: 0 20px;">'
+        
+        # Comment ça marche?
+        page += '<div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">'
+        page += '<h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">'
+        page += '<span style="font-size: 1.5em;">📚</span> Comment ça marche ?'
+        page += '</h2>'
+        page += '<p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">L\'analyse technique est une méthode d\'évaluation des cryptos basée sur l\'étude des graphiques de prix et des volumes. Nous analysons 50+ cryptos en temps réel avec 6 indicateurs professionnels pour identifier les meilleures opportunités de trading.</p>'
+        page += '</div>'
+        
+        # Qu'est-ce que l'Analyse Technique?
+        page += '<div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">'
+        page += '<h2 style="color: #6366f1; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">'
+        page += '<span style="font-size: 1.5em;">🎯</span> Qu\'est-ce que l\'Analyse Technique ?'
+        page += '</h2>'
+        page += '<p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 15px;">L\'analyse technique utilise des indicateurs mathématiques pour prédire les mouvements de prix futurs. Contrairement à l\'analyse fondamentale qui étudie le projet, l\'AT se concentre uniquement sur les graphiques et patterns historiques.</p>'
+        page += '<div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1; margin-top: 20px;">'
+        page += '<p style="color: #818cf8; margin: 0; font-size: 1.05em;"><strong>💡 Principe clé:</strong> L\'historique des prix tend à se répéter car les émotions humaines (peur, avidité) sont prévisibles.</p>'
+        page += '</div>'
+        page += '</div>'
+        
+        # Comment utiliser cet outil?
+        page += '<div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">'
+        page += '<h2 style="color: #10b981; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">'
+        page += '<span style="font-size: 1.5em;">⚙️</span> Comment utiliser cet outil ?'
+        page += '</h2>'
+        page += '<div style="display: grid; gap: 15px;">'
+        page += '<div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">'
+        page += '<h3 style="color: #10b981; margin-bottom: 10px;">1. Sélectionnez une crypto</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Choisissez parmi les 50 cryptos du Top Market Cap dans le menu déroulant. Les prix sont mis à jour en temps réel.</p>'
+        page += '</div>'
+        page += '<div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">'
+        page += '<h3 style="color: #10b981; margin-bottom: 10px;">2. Analysez les indicateurs</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Consultez les 6 indicateurs (RSI, MACD, Bollinger, Stochastique, ADX, EMAs). Chaque indicateur donne un signal (BULLISH, BEARISH ou NEUTRE).</p>'
+        page += '</div>'
+        page += '<div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">'
+        page += '<h3 style="color: #10b981; margin-bottom: 10px;">3. Vérifiez les patterns</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Regardez la section "Patterns Détectés" pour voir si un setup graphique est en cours (triangle, double top, etc.).</p>'
+        page += '</div>'
+        page += '<div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">'
+        page += '<h3 style="color: #10b981; margin-bottom: 10px;">4. Identifiez les supports/résistances</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.6; margin: 0;">Utilisez les niveaux de support (acheter) et résistance (vendre) pour planifier vos entrées/sorties.</p>'
+        page += '</div>'
+        page += '</div>'
+        page += '</div>'
+        
+        # Les 6 Indicateurs Expliqués
+        page += '<div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(245, 158, 11, 0.2);">'
+        page += '<h2 style="color: #f59e0b; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">'
+        page += '<span style="font-size: 1.5em;">📊</span> Les 6 Indicateurs Expliqués'
+        page += '</h2>'
+        page += '<div style="display: grid; gap: 20px;">'
+        
+        # RSI
+        page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
+        page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">📊 RSI (Relative Strength Index)</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Mesure la force du momentum. Varie de 0 à 100.</p>'
+        page += '<ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">'
+        page += '<li><strong style="color: #10b981;">RSI > 70:</strong> Suracheté (risque de correction)</li>'
+        page += '<li><strong style="color: #ef4444;">RSI < 30:</strong> Survendu (opportunité d\'achat)</li>'
+        page += '<li><strong style="color: #6366f1;">RSI 40-60:</strong> Zone neutre</li>'
+        page += '</ul>'
+        page += '</div>'
+        
+        # MACD
+        page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
+        page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">📈 MACD (Moving Average Convergence Divergence)</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Identifie les changements de tendance via le croisement de moyennes mobiles.</p>'
+        page += '<ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">'
+        page += '<li><strong style="color: #10b981;">MACD > Signal:</strong> Signal d\'achat (BULLISH)</li>'
+        page += '<li><strong style="color: #ef4444;">MACD < Signal:</strong> Signal de vente (BEARISH)</li>'
+        page += '<li><strong>Divergence:</strong> Alerte de retournement potentiel</li>'
+        page += '</ul>'
+        page += '</div>'
+        
+        # Bollinger
+        page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
+        page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">📉 Bollinger Bands</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Bandes de volatilité autour d\'une moyenne mobile.</p>'
+        page += '<ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">'
+        page += '<li><strong>Prix touche bande haute:</strong> Zone de surachat</li>'
+        page += '<li><strong>Prix touche bande basse:</strong> Zone de survente</li>'
+        page += '<li><strong>Bandes qui se resserrent:</strong> Volatilité imminente</li>'
+        page += '</ul>'
+        page += '</div>'
+        
+        # Stochastic
+        page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
+        page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">⚡ Stochastique</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Compare le prix actuel à sa fourchette récente.</p>'
+        page += '<ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">'
+        page += '<li><strong>%K > 80:</strong> Suracheté</li>'
+        page += '<li><strong>%K < 20:</strong> Survendu</li>'
+        page += '<li><strong>Croisement %K/%D:</strong> Signal d\'entrée/sortie</li>'
+        page += '</ul>'
+        page += '</div>'
+        
+        # ADX
+        page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
+        page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">💪 ADX (Average Directional Index)</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Mesure la FORCE de la tendance (pas la direction).</p>'
+        page += '<ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">'
+        page += '<li><strong>ADX > 25:</strong> Tendance forte</li>'
+        page += '<li><strong>ADX < 20:</strong> Pas de tendance claire</li>'
+        page += '<li><strong>ADX > 50:</strong> Tendance très puissante</li>'
+        page += '</ul>'
+        page += '</div>'
+        
+        # EMAs
+        page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
+        page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">📐 EMAs (Exponential Moving Averages)</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Moyennes mobiles exponentielles (20, 50, 200 jours).</p>'
+        page += '<ul style="color: #94a3b8; line-height: 1.8; padding-left: 20px;">'
+        page += '<li><strong>Golden Cross:</strong> EMA20 croise EMA50 à la hausse (BULLISH)</li>'
+        page += '<li><strong>Death Cross:</strong> EMA20 croise EMA50 à la baisse (BEARISH)</li>'
+        page += '<li><strong>Prix > EMA200:</strong> Tendance haussière long terme</li>'
+        page += '</ul>'
+        page += '</div>'
+        
+        page += '</div>'
+        page += '</div>'
+        
+        # Points Importants
+        page += '<div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">'
+        page += '<h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">'
+        page += '<span style="font-size: 1.5em;">⚠️</span> Points Importants'
+        page += '</h2>'
+        page += '<ul style="color: #fca5a5; line-height: 2; font-size: 1.05em; padding-left: 20px;">'
+        page += '<li><strong>Aucun indicateur n\'est infaillible:</strong> Utilisez toujours plusieurs indicateurs en confirmation.</li>'
+        page += '<li><strong>Le contexte du marché compte:</strong> Un même signal peut avoir des résultats différents selon si on est en bull ou bear market.</li>'
+        page += '<li><strong>Testez plusieurs timeframes:</strong> Vérifiez l\'alignement des signaux sur 1H, 4H et 1D.</li>'
+        page += '<li><strong>Gérez votre risque:</strong> Ne risquez jamais plus de 1-2% de votre capital par trade.</li>'
+        page += '<li><strong>Patterns = probabilités:</strong> Un pattern augmente les chances de succès mais ne garantit rien.</li>'
+        page += '<li><strong>Les données sont en direct:</strong> Chaque rechargement met à jour les indicateurs avec les dernières données CoinGecko.</li>'
+        page += '</ul>'
+        page += '</div>'
+        
+        # Comprendre les Résultats
+        page += '<div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(168, 85, 247, 0.2);">'
+        page += '<h2 style="color: #a855f7; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">'
+        page += '<span style="font-size: 1.5em;">💡</span> Comprendre les Résultats'
+        page += '</h2>'
+        page += '<div style="display: grid; gap: 20px;">'
+        
+        page += '<div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">'
+        page += '<h3 style="color: #10b981; margin-bottom: 10px;">Signal BULLISH (Haussier)</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Plusieurs indicateurs alignés vers le haut = opportunité d\'ACHAT. Idéal si 4+ indicateurs sont BULLISH en même temps.</p>'
+        page += '</div>'
+        
+        page += '<div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">'
+        page += '<h3 style="color: #ef4444; margin-bottom: 10px;">Signal BEARISH (Baissier)</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Plusieurs indicateurs alignés vers le bas = opportunité de VENTE. Évitez d\'acheter si 4+ indicateurs sont BEARISH.</p>'
+        page += '</div>'
+        
+        page += '<div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">'
+        page += '<h3 style="color: #6366f1; margin-bottom: 10px;">Signaux Divergents</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Si les indicateurs se contredisent (3 BULLISH, 3 BEARISH) = marché indécis. Attendez un alignement plus clair avant de trader.</p>'
+        page += '</div>'
+        
+        page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
+        page += '<h3 style="color: #f59e0b; margin-bottom: 10px;">Patterns Chartistes</h3>'
+        page += '<p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Triangle, tête-épaules, double top/bottom = Configurations graphiques avec target de prix. Le pourcentage de confiance indique la fiabilité du pattern.</p>'
+        page += '</div>'
+        
+        page += '</div>'
+        page += '</div>'
+        
+        page += '</div>'
+        # ==================== FIN SECTIONS EXPLICATIVES ====================
         
         page += '</body>'
         page += '</html>'

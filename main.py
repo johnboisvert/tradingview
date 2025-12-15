@@ -2013,186 +2013,6 @@ BADGES_DATA = {
 
 app = FastAPI()
 
-# ============================================================================
-# 🔒 SYSTÈME DE CONTRÔLE D'ACCÈS PAR ABONNEMENT
-# ============================================================================
-
-# Hiérarchie des plans (du plus bas au plus haut)
-PLAN_HIERARCHY = {
-    None: 0,           # Pas connecté
-    'free': 1,         # Free (gratuit)
-    '1_month': 2,      # Premium - $29.99/mois
-    '3_months': 3,     # Advanced - $89.97/3 mois
-    '6_months': 4,     # Pro - $179.88/6 mois
-    '1_year': 5        # Elite - $239.88/an
-}
-
-# Noms conviviaux des plans
-PLAN_NAMES = {
-    None: 'Visiteur',
-    'free': 'Free',
-    '1_month': 'Premium',
-    '3_months': 'Advanced',
-    '6_months': 'Pro',
-    '1_year': 'Elite'
-}
-
-# Routes accessibles par plan
-ROUTE_ACCESS = {
-    # Routes publiques (accessibles sans connexion)
-    'public': [
-        '/',
-        '/pricing-complete',
-        '/pricing',
-        '/login',
-        '/register'
-    ],
-    
-    # Routes Free (connexion requise, gratuit)
-    'free': [
-        '/dashboard',      # Limité: 3 cryptos visibles sur 10 max
-        '/mon-compte',
-        '/academy'         # Limité: 2 premiers cours seulement
-    ],
-    
-    # Routes Premium ($29.99/mois)
-    'premium': [
-        '/trading-dashboard',           # Webhooks TradingView
-        '/api/tradingview-webhook',     # API webhooks
-        # Academy: 4 premiers cours
-    ],
-    
-    # Routes Advanced ($89.97/3 mois)
-    'advanced': [
-        # User choisit 1 AI feature parmi:
-        # /ai-technical-analysis OU /ai-crypto-coach OU /narrative-radar
-        # Academy: 6 premiers cours
-    ],
-    
-    # Routes Pro ($179.88/6 mois)
-    'pro': [
-        '/ai-technical-analysis',   # AI analysis complète
-        '/ai-crypto-coach',         # AI coach personnel
-        '/narrative-radar',         # Détection narratives
-        '/ai-swarm-agents'          # AI swarm agents
-        # Academy: Tous les 8 cours
-    ],
-    
-    # Routes Elite ($239.88/an) - All Access
-    'elite': [
-        '/altseason-copilot-pro',   # Prédictions altseason
-        '/rug-scam-shield'          # Protection scams
-        # + Support prioritaire 24/7
-        # + Groupe Telegram VIP
-    ]
-}
-
-def get_plan_level(plan: str) -> int:
-    """Retourne le niveau hiérarchique du plan (0-5)"""
-    return PLAN_HIERARCHY.get(plan, 0)
-
-def get_plan_name(plan: str) -> str:
-    """Retourne le nom convivial du plan"""
-    return PLAN_NAMES.get(plan, 'Visiteur')
-
-def has_access_to_route(user_plan: str, route_path: str) -> bool:
-    """
-    Vérifie si le plan de l'utilisateur donne accès à la route
-    
-    Args:
-        user_plan: Plan de l'utilisateur (ex: '1_month', 'free', None)
-        route_path: Chemin de la route (ex: '/dashboard')
-    
-    Returns:
-        True si l'utilisateur a accès, False sinon
-    """
-    # Routes publiques = accès pour tous
-    if route_path in ROUTE_ACCESS['public']:
-        return True
-    
-    # Récupérer le niveau de l'utilisateur
-    user_level = get_plan_level(user_plan)
-    
-    # Vérifier accès par niveau
-    # Free (niveau 1+)
-    if route_path in ROUTE_ACCESS['free'] and user_level >= 1:
-        return True
-    
-    # Premium (niveau 2+)
-    if route_path in ROUTE_ACCESS['premium'] and user_level >= 2:
-        return True
-    
-    # Pro (niveau 4+)
-    if route_path in ROUTE_ACCESS['pro'] and user_level >= 4:
-        return True
-    
-    # Elite (niveau 5)
-    if route_path in ROUTE_ACCESS['elite'] and user_level >= 5:
-        return True
-    
-    # Advanced est spécial (choix de 1 AI feature)
-    # Géré individuellement par route
-    
-    return False
-
-def get_required_plan_for_route(route_path: str) -> str:
-    """
-    Retourne le plan minimum requis pour accéder à une route
-    
-    Returns:
-        Plan minimum (ex: '1_month', '6_months') ou None si public
-    """
-    # Routes publiques
-    if route_path in ROUTE_ACCESS['public']:
-        return None
-    
-    # Routes Elite
-    if route_path in ROUTE_ACCESS['elite']:
-        return '1_year'
-    
-    # Routes Pro
-    if route_path in ROUTE_ACCESS['pro']:
-        return '6_months'
-    
-    # Routes Premium
-    if route_path in ROUTE_ACCESS['premium']:
-        return '1_month'
-    
-    # Routes Free
-    if route_path in ROUTE_ACCESS['free']:
-        return 'free'
-    
-    # Par défaut: Premium requis (sécurité)
-    return '1_month'
-
-def get_upgrade_message(current_plan: str, required_plan: str) -> str:
-    """Génère un message d'upgrade personnalisé"""
-    current_name = get_plan_name(current_plan)
-    required_name = get_plan_name(required_plan)
-    
-    if current_plan is None or current_plan == 'free':
-        return f"🔒 Cette fonctionnalité nécessite un abonnement {required_name}. <a href='/pricing-complete'>Voir les plans</a>"
-    else:
-        return f"🔒 Cette fonctionnalité nécessite un upgrade vers {required_name}. <a href='/pricing-complete'>Upgrader maintenant</a>"
-
-# Décorateur pour protéger les routes (optionnel, peut être utilisé plus tard)
-def require_plan(min_plan: str):
-    """
-    Décorateur pour protéger une route avec un plan minimum
-    Usage: @require_plan('1_month')
-    """
-    def decorator(func):
-        async def wrapper(*args, **kwargs):
-            # Cette partie serait implémentée si on utilise des décorateurs
-            # Pour l'instant, on fait les vérifications manuellement dans les routes
-            return await func(*args, **kwargs)
-        return wrapper
-    return decorator
-
-print("✅ Système de contrôle d'accès par abonnement initialisé")
-print(f"   Plans disponibles: {list(PLAN_NAMES.values())}")
-
-
 # 🔐 CORRECTION 2: RATE LIMITING - Protection contre brute-force
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -3169,6 +2989,44 @@ class DatabaseManager:
             FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
         )''')
 
+        # 💰 TABLE PRICING PLANS - Gestion dynamique des prix
+        c.execute('''CREATE TABLE IF NOT EXISTS pricing_plans (
+            plan_id VARCHAR(50) PRIMARY KEY,
+            plan_name VARCHAR(100) NOT NULL,
+            price DECIMAL(10,2) NOT NULL,
+            duration_months INTEGER NOT NULL,
+            duration_label VARCHAR(50) NOT NULL,
+            features TEXT,
+            badge VARCHAR(100),
+            is_active INTEGER DEFAULT 1,
+            display_order INTEGER DEFAULT 0,
+            stripe_price_id VARCHAR(255),
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Insérer plans par défaut si table vide
+        c.execute("SELECT COUNT(*) FROM pricing_plans")
+        if c.fetchone()[0] == 0:
+            default_plans = [
+                ('1_month', 'Premium', 29.99, 1, '1 mois', 
+                 'Dashboard complet (50 cryptos)|Trading signals temps réel|Alertes Telegram|Webhooks TradingView|Fear & Greed Index',
+                 '💎 POPULAIRE', 1, 1, 'price_premium_monthly'),
+                
+                ('6_months', 'Pro', 99.00, 6, '6 mois',
+                 'Tout Premium +|AI Technical Analysis|AI Crypto Coach|Narrative Radar|AI Swarm Agents|Watchlist illimitée',
+                 '⭐ MEILLEURE VALEUR', 1, 2, 'price_pro_6months'),
+                
+                ('1_year', 'Elite', 199.00, 12, '1 an',
+                 'Tout Pro +|Altseason Copilot Pro (exclusif)|Rug & Scam Shield (exclusif)|Support prioritaire 24/7|Groupe Telegram VIP|Call stratégie mensuel',
+                 '👑 ALL-ACCESS', 1, 3, 'price_elite_yearly')
+            ]
+            
+            c.executemany("""
+                INSERT INTO pricing_plans (plan_id, plan_name, price, duration_months, duration_label, features, badge, is_active, display_order, stripe_price_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, default_plans)
+            print("✅ Table pricing_plans créée avec 3 plans par défaut")
+
         
         # Ajouter les colonnes si elles n'existent pas (pour migration)
         try:
@@ -3254,6 +3112,52 @@ class DatabaseManager:
             c.execute("ALTER TABLE users ADD COLUMN total_spent REAL DEFAULT 0.0")
         except:
             pass
+        
+        # Table user_permissions
+        c.execute('''CREATE TABLE IF NOT EXISTS user_permissions (
+            username TEXT,
+            route TEXT,
+            PRIMARY KEY (username, route),
+            FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
+        )''')
+        
+        # 💰 TABLE PRICING PLANS - Gestion dynamique des prix
+        c.execute('''CREATE TABLE IF NOT EXISTS pricing_plans (
+            plan_id TEXT PRIMARY KEY,
+            plan_name TEXT NOT NULL,
+            price REAL NOT NULL,
+            duration_months INTEGER NOT NULL,
+            duration_label TEXT NOT NULL,
+            features TEXT,
+            badge TEXT,
+            is_active INTEGER DEFAULT 1,
+            display_order INTEGER DEFAULT 0,
+            stripe_price_id TEXT,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )''')
+        
+        # Insérer plans par défaut si table vide
+        c.execute("SELECT COUNT(*) FROM pricing_plans")
+        if c.fetchone()[0] == 0:
+            default_plans = [
+                ('1_month', 'Premium', 29.99, 1, '1 mois', 
+                 'Dashboard complet (50 cryptos)|Trading signals temps réel|Alertes Telegram|Webhooks TradingView|Fear & Greed Index',
+                 '💎 POPULAIRE', 1, 1, 'price_premium_monthly'),
+                
+                ('6_months', 'Pro', 99.00, 6, '6 mois',
+                 'Tout Premium +|AI Technical Analysis|AI Crypto Coach|Narrative Radar|AI Swarm Agents|Watchlist illimitée',
+                 '⭐ MEILLEURE VALEUR', 1, 2, 'price_pro_6months'),
+                
+                ('1_year', 'Elite', 199.00, 12, '1 an',
+                 'Tout Pro +|Altseason Copilot Pro (exclusif)|Rug & Scam Shield (exclusif)|Support prioritaire 24/7|Groupe Telegram VIP|Call stratégie mensuel',
+                 '👑 ALL-ACCESS', 1, 3, 'price_elite_yearly')
+            ]
+            
+            c.executemany("""
+                INSERT INTO pricing_plans (plan_id, plan_name, price, duration_months, duration_label, features, badge, is_active, display_order, stripe_price_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, default_plans)
+            print("✅ Table pricing_plans créée avec 3 plans par défaut")
         
         # Créer un compte admin par défaut si n'existe pas
         c.execute("SELECT * FROM users WHERE username = 'admin'")
@@ -18331,8 +18235,58 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
-    """Page de pricing avec support codes promo"""
-    return HTMLResponse(SIDEBAR + """
+    """Page de pricing avec support codes promo - Prix dynamiques depuis DB"""
+    
+    # ============================================================
+    # 💰 CHARGER LES PRIX DEPUIS LA BASE DE DONNÉES
+    # ============================================================
+    try:
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT plan_id, plan_name, price, duration_label, features, badge
+            FROM pricing_plans
+            WHERE is_active = 1
+            ORDER BY display_order
+        """)
+        
+        plans_db = {}
+        for row in cursor.fetchall():
+            plans_db[row[0]] = {
+                "name": row[1],
+                "price": float(row[2]),
+                "duration": row[3],
+                "features": row[4].split('|') if row[4] else [],
+                "badge": row[5]
+            }
+        
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Pricing plans chargés depuis DB: {list(plans_db.keys())}")
+        
+    except Exception as e:
+        print(f"⚠️ Erreur chargement pricing DB, utilisation valeurs par défaut: {e}")
+        # Fallback vers valeurs par défaut si erreur
+        plans_db = {
+            "1_month": {"name": "Premium", "price": 29.99, "duration": "1 mois", "badge": "💎 POPULAIRE"},
+            "6_months": {"name": "Pro", "price": 99.00, "duration": "6 mois", "badge": "⭐ MEILLEURE VALEUR"},
+            "1_year": {"name": "Elite", "price": 199.00, "duration": "1 an", "badge": "👑 ALL-ACCESS"}
+        }
+    
+    # Extraire les prix pour utilisation dans le template
+    price_1m = plans_db.get("1_month", {}).get("price", 29.99)
+    price_6m = plans_db.get("6_months", {}).get("price", 99.00)
+    price_1y = plans_db.get("1_year", {}).get("price", 199.00)
+    
+    name_1m = plans_db.get("1_month", {}).get("name", "Premium")
+    name_6m = plans_db.get("6_months", {}).get("name", "Pro")
+    name_1y = plans_db.get("1_year", {}).get("name", "Elite")
+    
+    # ============================================================
+    
+    return HTMLResponse(SIDEBAR + f"""
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -18581,7 +18535,7 @@ async def pricing_complete():
                 <div class="plan-name">💳 Premium</div>
                 <div class="discount-badge">1 mois</div>
                 <div class="plan-price" id="price-1-month">
-                    <span class="currency">$</span><span id="amount-1-month">29.99</span>
+                    <span class="currency">$</span><span id="amount-1-month">{price_1m:.2f}</span>
                 </div>
                 <ul class="features">
                     <li>Tous les indicateurs IA</li>
@@ -18589,10 +18543,10 @@ async def pricing_complete():
                     <li>Signaux de trading</li>
                     <li>Support prioritaire</li>
                 </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('1_month', 'stripe', 29.99)">
+                <button class="btn-payment btn-stripe" onclick="checkout('1_month', 'stripe', {price_1m})">
                     💳 Payer par Carte
                 </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('1_month', 'coinbase', 29.99)">
+                <button class="btn-payment btn-coinbase" onclick="checkout('1_month', 'coinbase', {price_1m})">
                     ₿ Payer en Crypto
                 </button>
             </div>
@@ -18621,44 +18575,44 @@ async def pricing_complete():
             
             <!-- Plan 6 Months -->
             <div class="pricing-card">
-                <div class="plan-name">👑 Pro</div>
-                <div class="discount-badge">6 mois - Économisez 25%</div>
+                <div class="plan-name">👑 {name_6m}</div>
+                <div class="discount-badge">6 mois - Meilleure valeur</div>
                 <div class="plan-price" id="price-6-months">
-                    <span class="currency">$</span><span id="amount-6-months">134.94</span>
+                    <span class="currency">$</span><span id="amount-6-months">{price_6m:.2f}</span>
                     <span class="period">/6 mois</span>
                 </div>
                 <ul class="features">
-                    <li>Tous les avantages Advanced</li>
+                    <li>Tous les avantages Premium</li>
                     <li>API accès complet</li>
-                    <li>Backtesting illimité</li>
+                    <li>Toutes les AI features</li>
                     <li>Support VIP</li>
                 </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('6_months', 'stripe', 134.94)">
+                <button class="btn-payment btn-stripe" onclick="checkout('6_months', 'stripe', {price_6m})">
                     💳 Payer par Carte
                 </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('6_months', 'coinbase', 134.94)">
+                <button class="btn-payment btn-coinbase" onclick="checkout('6_months', 'coinbase', {price_6m})">
                     ₿ Payer en Crypto
                 </button>
             </div>
             
             <!-- Plan 1 Year -->
             <div class="pricing-card">
-                <div class="plan-name">🚀 Elite</div>
-                <div class="discount-badge">1 an - Économisez 33%</div>
+                <div class="plan-name">🚀 {name_1y}</div>
+                <div class="discount-badge">1 an - All Access</div>
                 <div class="plan-price" id="price-1-year">
-                    <span class="currency">$</span><span id="amount-1-year">239.88</span>
+                    <span class="currency">$</span><span id="amount-1-year">{price_1y:.2f}</span>
                     <span class="period">/an</span>
                 </div>
                 <ul class="features">
                     <li>Tous les avantages Pro</li>
-                    <li>Rapports PDF hebdomadaires</li>
+                    <li>Features exclusives Elite</li>
                     <li>Formation exclusive</li>
                     <li>Support dédié</li>
                 </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('1_year', 'stripe', 239.88)">
+                <button class="btn-payment btn-stripe" onclick="checkout('1_year', 'stripe', {price_1y})">
                     💳 Payer par Carte
                 </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('1_year', 'coinbase', 239.88)">
+                <button class="btn-payment btn-coinbase" onclick="checkout('1_year', 'coinbase', {price_1y})">
                     ₿ Payer en Crypto
                 </button>
             </div>
@@ -19068,17 +19022,16 @@ async def pricing_complete():
     
     <script>
         // État global pour le code promo
-        let appliedPromo = {
+        let appliedPromo = {{
             code: null,
             discount: 0,
-            originalPrices: {
-                '1_month': 29.99,
-                '3_months': 74.97,
-                '6_months': 134.94,
-                '1_year': 239.88
-            },
-            discountedPrices: {}
-        };
+            originalPrices: {{
+                '1_month': {price_1m},
+                '6_months': {price_6m},
+                '1_year': {price_1y}
+            }},
+            discountedPrices: {{}}
+        }};
         
         // Appliquer le code promo
         async function applyPromo() {
@@ -23923,6 +23876,29 @@ async def admin_dashboard(request: Request):
                 </div>
             </div>
             
+            <!-- 💰 SECTION GESTION DES PRIX -->
+            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 2px solid #10b981; border-radius: 15px; padding: 25px;">
+                <h2 style="color: #065f46; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 32px;">💰</span>
+                    Gestion des Prix
+                </h2>
+                <p style="color: #047857; margin-bottom: 20px; font-weight: 600;">
+                    📊 Modifier les prix affichés sur /pricing-complete - Changements instantanés !
+                </p>
+                
+                <div id="pricingPlansContainer">
+                    <p style="text-align: center; color: #666;">🔄 Chargement des plans...</p>
+                </div>
+                
+                <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid #f59e0b;">
+                    <strong style="color: #92400e;">⚠️ Important:</strong>
+                    <p style="color: #78350f; margin: 10px 0 0 0; font-size: 14px;">
+                        Les modifications sont appliquées instantanément sur /pricing-complete. 
+                        Si tu utilises Stripe, n'oublie pas de créer les nouveaux prix dans ton compte Stripe et mettre à jour les Price IDs.
+                    </p>
+                </div>
+            </div>
+            
             <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
             <div class="users-section" style="margin-bottom: 30px;">
                 <h2>🎯 Gestion des Accès par Forfait</h2>
@@ -25166,6 +25142,155 @@ async def admin_dashboard(request: Request):
                 }}
             }})();
         }}, 300);
+        
+        // ============================================================
+        // 💰 GESTION DES PRIX DYNAMIQUES - JAVASCRIPT
+        // ============================================================
+        
+        async function loadPricingPlans() {{
+            try {{
+                const response = await fetch('/admin/api/pricing-plans');
+                const data = await response.json();
+                
+                if (!data.success) {{
+                    console.error('Erreur chargement pricing:', data);
+                    document.getElementById('pricingPlansContainer').innerHTML = 
+                        '<p style="color: #ef4444; text-align: center;">❌ Erreur de chargement</p>';
+                    return;
+                }}
+                
+                renderPricingPlans(data.plans);
+                
+            }} catch (error) {{
+                console.error('Erreur chargement pricing plans:', error);
+                document.getElementById('pricingPlansContainer').innerHTML = 
+                    '<p style="color: #ef4444; text-align: center;">❌ Erreur: ' + error.message + '</p>';
+            }}
+        }}
+        
+        function renderPricingPlans(plans) {{
+            const container = document.getElementById('pricingPlansContainer');
+            
+            if (!plans || plans.length === 0) {{
+                container.innerHTML = '<p style="color: #999; text-align: center;">Aucun plan configuré</p>';
+                return;
+            }}
+            
+            let html = '<div style="display: grid; gap: 20px;">';
+            
+            plans.forEach(plan => {{
+                const pricePerMonth = plan.duration_months > 1 
+                    ? (plan.price / plan.duration_months).toFixed(2) 
+                    : plan.price.toFixed(2);
+                
+                html += `
+                <div style="background: white; padding: 20px; border-radius: 12px; border: 2px solid ${{plan.plan_id === '1_month' ? '#10b981' : plan.plan_id === '1_year' ? '#f59e0b' : '#3b82f6'}};">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                        <div>
+                            <h3 style="color: #333; margin: 0 0 5px 0; font-size: 24px;">${{plan.plan_name}}</h3>
+                            <span style="background: #f3f4f6; color: #666; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                                ${{plan.badge}}
+                            </span>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 14px; color: #666;">Prix actuel</div>
+                            <div style="font-size: 32px; font-weight: bold; color: #10b981;">$${{plan.price.toFixed(2)}}</div>
+                            <div style="font-size: 12px; color: #999;">${{plan.duration_label}} ($${{pricePerMonth}}/mois)</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                        <div style="font-size: 12px; color: #666; font-weight: 600; margin-bottom: 8px;">FEATURES INCLUSES:</div>
+                        <ul style="margin: 0; padding-left: 20px; color: #333; font-size: 14px; line-height: 1.8;">
+                            ${{plan.features.map(f => '<li>' + f + '</li>').join('')}}
+                        </ul>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input 
+                            type="number" 
+                            id="price_${{plan.plan_id}}" 
+                            value="${{plan.price}}" 
+                            step="0.01" 
+                            min="0" 
+                            max="10000"
+                            style="flex: 1; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; font-weight: 600;"
+                            placeholder="Nouveau prix"
+                        />
+                        <button 
+                            onclick="updatePlanPrice('${{plan.plan_id}}')" 
+                            style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;"
+                        >
+                            ✅ Mettre à jour
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 10px; font-size: 12px; color: #9ca3af;">
+                        Plan ID: <code>${{plan.plan_id}}</code> | 
+                        Stripe Price ID: <code>${{plan.stripe_price_id || 'Non configuré'}}</code>
+                    </div>
+                </div>
+                `;
+            }});
+            
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }}
+        
+        async function updatePlanPrice(planId) {{
+            try {{
+                const input = document.getElementById('price_' + planId);
+                const newPrice = parseFloat(input.value);
+                
+                if (isNaN(newPrice) || newPrice < 0) {{
+                    alert('❌ Prix invalide');
+                    return;
+                }}
+                
+                // Confirmation
+                if (!confirm(`Confirmer le nouveau prix: $${{newPrice.toFixed(2)}} pour ${{planId}}?`)) {{
+                    return;
+                }}
+                
+                const response = await fetch('/admin/api/pricing-plans/update', {{
+                    method: 'POST',
+                    headers: {{
+                        'Content-Type': 'application/json'
+                    }},
+                    body: JSON.stringify({{
+                        plan_id: planId,
+                        price: newPrice
+                    }})
+                }});
+                
+                const data = await response.json();
+                
+                if (data.success) {{
+                    alert('✅ Prix mis à jour avec succès! Les changements sont visibles sur /pricing-complete');
+                    loadPricingPlans(); // Recharger
+                }} else {{
+                    alert('❌ Erreur: ' + data.message);
+                }}
+                
+            }} catch (error) {{
+                console.error('Erreur mise à jour prix:', error);
+                alert('❌ Erreur lors de la mise à jour: ' + error.message);
+            }}
+        }}
+        
+        // Charger au démarrage (après Revenue Intelligence)
+        setTimeout(function() {{
+            (async function() {{
+                try {{
+                    if (typeof loadPricingPlans === 'function') {{
+                        await loadPricingPlans();
+                    }}
+                }} catch (error) {{
+                    console.error('⚠️ Erreur Pricing Plans:', error);
+                }}
+            }})();
+        }}, 500);
         
         </script>
     </body>
@@ -26469,6 +26594,112 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
     
     except Exception as e:
         print(f"❌ Erreur revenue intelligence: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+# ============================================================================
+# 💰 API GESTION DES PRIX DYNAMIQUES
+# ============================================================================
+
+@app.get("/admin/api/pricing-plans")
+async def admin_get_pricing_plans(session_token: Optional[str] = Cookie(None)):
+    """API pour récupérer tous les plans de pricing"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
+    
+    try:
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT plan_id, plan_name, price, duration_months, duration_label, 
+                   features, badge, is_active, display_order, stripe_price_id
+            FROM pricing_plans
+            ORDER BY display_order
+        """)
+        
+        plans = []
+        for row in cursor.fetchall():
+            features_list = row[5].split('|') if row[5] else []
+            plans.append({
+                "plan_id": row[0],
+                "plan_name": row[1],
+                "price": float(row[2]),
+                "duration_months": row[3],
+                "duration_label": row[4],
+                "features": features_list,
+                "badge": row[6],
+                "is_active": row[7] == 1,
+                "display_order": row[8],
+                "stripe_price_id": row[9]
+            })
+        
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Pricing plans récupérés: {len(plans)} plans")
+        return JSONResponse({"success": True, "plans": plans})
+    
+    except Exception as e:
+        print(f"❌ Erreur récupération pricing: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+@app.post("/admin/api/pricing-plans/update")
+async def admin_update_pricing_plan(
+    request: Request,
+    session_token: Optional[str] = Cookie(None)
+):
+    """API pour mettre à jour un plan de pricing"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
+    
+    try:
+        data = await request.json()
+        plan_id = data.get("plan_id")
+        price = float(data.get("price"))
+        
+        # Valider le prix
+        if price < 0 or price > 10000:
+            return JSONResponse({"success": False, "message": "Prix invalide (0-10000)"}, status_code=400)
+        
+        conn = db_manager.get_connection()
+        cursor = conn.cursor()
+        
+        # Mettre à jour selon le type de DB
+        if db_manager.use_postgresql:
+            cursor.execute("""
+                UPDATE pricing_plans
+                SET price = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE plan_id = %s
+            """, (price, plan_id))
+        else:
+            cursor.execute("""
+                UPDATE pricing_plans
+                SET price = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE plan_id = ?
+            """, (price, plan_id))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ Prix mis à jour: {plan_id} → ${price}")
+        
+        return JSONResponse({
+            "success": True,
+            "message": f"Prix mis à jour pour {plan_id}",
+            "new_price": price
+        })
+    
+    except Exception as e:
+        print(f"❌ Erreur mise à jour pricing: {e}")
         import traceback
         traceback.print_exc()
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)

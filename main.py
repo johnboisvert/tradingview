@@ -6143,7 +6143,7 @@ async def webhook(request: Request):
 async def webhook_tv_direct(request: Request):
     """
     Route webhook ultra-permissive - CONTOURNE TOUS LES MIDDLEWARES
-    Accepte n'importe quelle méthode HTTP et n'importe quel format de données
+    Accepte le format Pine Script Magic Mike avec secret, type, etc.
     """
     print("\n" + "="*80)
     print("🔥 WEBHOOK-TV DIRECT APPELÉ !")
@@ -6151,38 +6151,50 @@ async def webhook_tv_direct(request: Request):
     print("="*80)
     
     trade_data = {}
-    symbol = "WEBHOOK_DEFAULT"
+    symbol = "TVHOOK"
     side = "LONG"
     entry = 1000.0
     sl = 980.0
     tp1 = 1020.0
+    tp2 = 1040.0
+    tp3 = 1060.0
     
     try:
-        # Essayer de lire le body
+        # Lire le body
         try:
             body = await request.body()
             if body:
-                print(f"📦 Body reçu: {body[:200]}")
+                print(f"📦 Body reçu (premiers 300 bytes): {body[:300]}")
                 import json
                 trade_data = json.loads(body.decode('utf-8'))
-                print(f"✅ JSON parsé")
-        except:
-            print("⚠️ Pas de body JSON")
+                print(f"✅ JSON parsé: {trade_data}")
+        except Exception as e:
+            print(f"⚠️ Erreur parsing JSON: {e}")
         
-        # Extraire les valeurs
-        symbol = str(trade_data.get('symbol', 'TVHOOK'))
+        # Vérifier le secret (optionnel)
+        if 'secret' in trade_data:
+            print(f"🔐 Secret reçu: {trade_data.get('secret')[:5]}...")
+        
+        # Extraire les valeurs (format Pine Script)
+        symbol = str(trade_data.get('symbol', 'TVHOOK')).upper()
         side = str(trade_data.get('side', 'LONG')).upper()
         
         try:
             entry = float(trade_data.get('entry', 1000))
             sl = float(trade_data.get('sl', entry * 0.98))
             tp1 = float(trade_data.get('tp1', entry * 1.02))
-        except:
+            tp2 = float(trade_data.get('tp2', entry * 1.04))
+            tp3 = float(trade_data.get('tp3', entry * 1.06))
+        except Exception as e:
+            print(f"⚠️ Erreur conversion prix: {e}")
             entry = 1000.0
             sl = 980.0
             tp1 = 1020.0
+            tp2 = 1040.0
+            tp3 = 1060.0
         
         print(f"🎯 SIGNAL: {symbol} {side} @ ${entry}")
+        print(f"   SL: ${sl} | TP1: ${tp1} | TP2: ${tp2} | TP3: ${tp3}")
         print("="*80 + "\n")
         
         # Créer trade
@@ -6192,12 +6204,12 @@ async def webhook_tv_direct(request: Request):
             "entry": entry,
             "sl": sl,
             "tp1": tp1,
-            "tp2": trade_data.get('tp2', entry * 1.04) if trade_data else entry * 1.04,
-            "tp3": trade_data.get('tp3', entry * 1.06) if trade_data else entry * 1.06,
+            "tp2": tp2,
+            "tp3": tp3,
             "status": "open",
             "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
             "confidence": 85,
-            "timeframe": trade_data.get('tf', '1H') if trade_data else '1H',
+            "timeframe": trade_data.get('tf_label', '1H') if trade_data else '1H',
             "tp1_hit": False,
             "tp2_hit": False,
             "tp3_hit": False,
@@ -6211,7 +6223,17 @@ async def webhook_tv_direct(request: Request):
         
         # Telegram
         try:
-            msg = f"🎯 SIGNAL TRADINGVIEW\n\n💱 {symbol}\n📊 {side}\n💰 Entry: ${entry:.2f}\n🛡️ SL: ${sl:.2f}\n🎯 TP1: ${tp1:.2f}\n\n✅ Trade ajouté"
+            msg = f"""🎯 SIGNAL TRADINGVIEW
+
+💱 {symbol}
+📊 {side}
+💰 Entry: ${entry:.2f}
+🛡️ SL: ${sl:.2f}
+🎯 TP1: ${tp1:.2f}
+💎 TP2: ${tp2:.2f}
+🚀 TP3: ${tp3:.2f}
+
+✅ Trade ajouté"""
             async with httpx.AsyncClient(timeout=10.0) as client:
                 await client.post(
                     f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",

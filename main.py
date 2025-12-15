@@ -18286,7 +18286,8 @@ async def pricing_complete():
     
     # ============================================================
     
-    return HTMLResponse(SIDEBAR + f"""
+    # Construire le HTML sans f-string pour éviter conflits avec CSS {}
+    html_content = """
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -18300,18 +18301,18 @@ async def pricing_complete():
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
-        }}
+        }
         .container { max-width: 1400px; margin: 0 auto; }
         .header {
             text-align: center;
             color: white;
             margin-bottom: 50px;
-        }}
+        }
         .header h1 {
             font-size: 48px;
             margin-bottom: 15px;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }}
+        }
         .header p {
             font-size: 20px;
             opacity: 0.9;
@@ -19143,7 +19144,21 @@ async def pricing_complete():
     </script>
 </body>
 </html>
-""")
+"""
+    
+    # Remplacer les placeholders par les valeurs réelles
+    html_content = html_content.replace("{price_1m:.2f}", f"{price_1m:.2f}")
+    html_content = html_content.replace("{price_1m}", str(price_1m))
+    html_content = html_content.replace("{price_6m:.2f}", f"{price_6m:.2f}")
+    html_content = html_content.replace("{price_6m}", str(price_6m))
+    html_content = html_content.replace("{price_1y:.2f}", f"{price_1y:.2f}")
+    html_content = html_content.replace("{price_1y}", str(price_1y))
+    html_content = html_content.replace("{name_1m}", name_1m)
+    html_content = html_content.replace("{name_6m}", name_6m)
+    html_content = html_content.replace("{name_1y}", name_1y)
+    
+    return HTMLResponse(SIDEBAR + html_content)
+
 @app.get("/pricing-new", response_class=HTMLResponse)
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""

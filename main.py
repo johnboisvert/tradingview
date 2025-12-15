@@ -6032,122 +6032,94 @@ async def send_telegram(msg: str):
         print(f"❌ Erreur send_telegram: {e}")
 
 @app.post("/tv-webhook")
-async def webhook(
-    trade: TradeWebhook,
-    token: Optional[str] = None  # Token optionnel (pas utilisé pour l'instant)
-):
+async def webhook(request: Request):
     """
     Webhook TradingView avec détection de revirement
-    Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
-    
-    NOTE: Sécurité désactivée pour compatibilité avec tous les indicateurs
+    VERSION DEBUG - Accepte n'importe quel JSON
     """
-    
-    # ============================================================
-    # 🔓 SÉCURITÉ DÉSACTIVÉE (pour compatibilité indicateur)
-    # ============================================================
-    # Si tu veux réactiver la sécurité plus tard, décommente ces lignes:
-    # WEBHOOK_SECRET_TOKEN = "ton_secret_ici"
-    # if token != WEBHOOK_SECRET_TOKEN:
-    #     print(f"❌ WEBHOOK REFUSÉ - Token invalide: {token}")
-    #     return JSONResponse({"error": "Unauthorized"}, status_code=403)
-    # ============================================================
+    print("\n" + "="*80)
+    print("🔥 WEBHOOK APPELÉ !")
+    print("="*80)
     
     try:
-        print(f"\n{'='*60}")
-        print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
-        print(f"   Symbol: {trade.symbol}")
-        print(f"   Direction: {trade.side}")
-        print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: ${trade.entry:.6f}")
-        print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
-        print(f"{'='*60}\n")
+        # Lire le body brut
+        body = await request.body()
+        print(f"📦 Body reçu (raw bytes): {body[:200]}")  # Premiers 200 bytes
         
-        symbol = trade.symbol
-        new_side = trade.side
+        # Parser le JSON
+        import json
+        try:
+            trade_data = json.loads(body)
+            print(f"✅ JSON parsé: {trade_data}")
+        except Exception as e:
+            print(f"❌ Erreur parsing JSON: {e}")
+            return {"status": "error", "error": "Invalid JSON"}
         
-        # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
-        inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
+        # Extraire les champs
+        symbol = trade_data.get('symbol', 'UNKNOWN')
+        side = trade_data.get('side', 'UNKNOWN')
+        entry = trade_data.get('entry', 0)
+        sl = trade_data.get('sl', 0)
+        tp1 = trade_data.get('tp1', 0)
         
-        # Chercher un trade actif inverse
-        inverse_trade = None
-        for t in trades_db:
-            if (t.get('symbol') == symbol and 
-                t.get('side') == inverse_side and 
-                t.get('status') == 'open'):
-                inverse_trade = t
-                break
+        print(f"🎯 SIGNAL TRADINGVIEW REÇU:")
+        print(f"   Symbol: {symbol}")
+        print(f"   Side: {side}")
+        print(f"   Entry: ${entry}")
+        print(f"   SL: ${sl}")
+        print(f"   TP1: ${tp1}")
+        print("="*80 + "\n")
         
-        # 🔄 Si un trade inverse existe, le fermer automatiquement SANS ouvrir le nouveau
-        if inverse_trade:
-            now = datetime.now(pytz.timezone('America/Montreal'))
-            close_time = now.strftime('%H:%M:%S')
-            close_date = now.strftime('%d/%m/%Y')
-            
-            print(f"⚠️ REVIREMENT DÉTECTÉ sur {symbol}! {inverse_side} → {new_side}")
-            
-            # Fermer le trade inverse
-            inverse_trade['status'] = 'closed'
-            inverse_trade['closed_reason'] = f'Revirement: Signal {new_side} reçu'
-            inverse_trade['closed_at'] = now.isoformat()
-            inverse_trade['sl_hit'] = True  # Bouton SL rouge pour indiquer une perte
-            
-            # 📱 Notification Telegram DÉTAILLÉE du revirement
-            reversal_message = (
-                f"🔄 <b>REVIREMENT DE TENDANCE DÉTECTÉ!</b>\n\n"
-                f"💱 Crypto: <b>{symbol}</b>\n"
-                f"❌ Trade <b>{inverse_side}</b> fermé automatiquement\n\n"
-                f"📊 <b>Détails de fermeture:</b>\n"
-                f"├ Entry: {format_price(inverse_trade.get('entry', 0))}\n"
-                f"├ Prix de fermeture: {format_price(trade.entry)}\n"
-                f"├ Heure: {close_time}\n"
-                f"└ Date: {close_date}\n\n"
-                f"🔔 Signal <b>{new_side}</b> reçu mais <b>NON exécuté</b>\n"
-                f"⏳ En attente du prochain signal propre...\n\n"
-                f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
-            )
-            
-            asyncio.create_task(send_telegram_message(reversal_message))
-            print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
-            
-            return {
-                "status": "reversed",
-                "message": f"Trade {inverse_side} fermé, signal {new_side} ignoré",
-                "closed_trade_id": inverse_trade.get('symbol'),
-                "new_trade_created": False
-            }
-        
-        # 📝 Créer le nouveau trade SEULEMENT si pas de revirement
-        await send_telegram_advanced(trade)
-        
-        confidence_score, _ = calculate_confidence_score(trade)
-        
-        trade_data = {
-            "symbol": trade.symbol,
-            "side": trade.side,
-            "entry": trade.entry,
-            "current_price": trade.current_price,
-            "sl": trade.sl,
-            "tp1": trade.tp1,
-            "tp2": trade.tp2,
-            "tp3": trade.tp3,
-            "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
+        # Créer le trade
+        trade_entry = {
+            "symbol": symbol,
+            "side": side,
+            "entry": entry,
+            "sl": sl,
+            "tp1": tp1,
+            "tp2": trade_data.get('tp2', 0),
+            "tp3": trade_data.get('tp3', 0),
             "status": "open",
-            "confidence": confidence_score,
-            "leverage": trade.leverage,
-            "timeframe": trade.tf,
+            "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
+            "confidence": 85,
+            "timeframe": trade_data.get('tf', '1H'),
             "tp1_hit": False,
             "tp2_hit": False,
             "tp3_hit": False,
             "sl_hit": False,
             "pnl": 0.0
         }
-        trades_db.append(trade_data)
-        save_trades_to_file()  # 💾 Sauvegarder immédiatement
         
-        print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
+        trades_db.append(trade_entry)
+        save_trades_to_file()
         
-        return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
+        print(f"✅ Trade ajouté à la DB: {symbol} {side}")
+        
+        # Envoyer notification Telegram
+        try:
+            msg = f"""🎯 SIGNAL TRADINGVIEW
+
+💱 {symbol}
+📊 Direction: {side}
+💰 Entry: ${entry}
+🛡️ SL: ${sl}
+🎯 TP1: ${tp1}
+
+✅ Trade ajouté au dashboard"""
+            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                    json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"}
+                )
+                if response.status_code == 200:
+                    print(f"✅ Notification Telegram envoyée")
+                else:
+                    print(f"⚠️ Telegram error: {response.status_code}")
+        except Exception as e:
+            print(f"❌ Erreur Telegram: {e}")
+        
+        return {"status": "success", "symbol": symbol, "side": side}
         
     except Exception as e:
         print(f"❌ ERREUR WEBHOOK: {e}")

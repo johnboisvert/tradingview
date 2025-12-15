@@ -2802,6 +2802,15 @@ async def auth_middleware(request: Request, call_next):
     
     path = request.url.path
     
+    # 🔥 WEBHOOKS - RETURN IMMÉDIAT SANS AUCUNE VÉRIFICATION
+    if path in ["/webhook-tv", "/tv-webhook", "/test-webhook-simple"]:
+        print(f"🔥 WEBHOOK DIRECT BYPASS: {path}")
+        return await call_next(request)
+    
+    if path.startswith("/webhook"):
+        print(f"🔥 WEBHOOK PREFIX BYPASS: {path}")
+        return await call_next(request)
+    
     # ✅ ROUTES FREE - Accessibles SANS login (9 pages)
     free_routes = {
         "/",
@@ -2828,9 +2837,6 @@ async def auth_middleware(request: Request, call_next):
     
     # Routes qui commencent par ces préfixes
     public_prefixes = [
-        "/tv-webhook",
-        "/webhook-tv",              # Nouveau webhook ultra-permissif
-        "/webhook/",
         "/api/altcoin-season",      # API Altcoin Season
         "/api/fear-greed",           # API Fear & Greed
         "/api/btc-dominance",        # API BTC Dominance
@@ -2840,7 +2846,6 @@ async def auth_middleware(request: Request, call_next):
         "/api/stripe-checkout",
         "/api/coinbase-checkout",
         "/api/payment-",
-        "/test-webhook",
         "/admin/init-promo",
         "/admin/create-promo",
         "/admin/list-promos",
@@ -6140,92 +6145,54 @@ async def webhook_tv_direct(request: Request):
     print(f"   Méthode: {request.method}")
     print("="*80)
     
+    trade_data = {}
+    symbol = "WEBHOOK_DEFAULT"
+    side = "LONG"
+    entry = 1000.0
+    sl = 980.0
+    tp1 = 1020.0
+    
     try:
-        # Lire le body de toutes les façons possibles
-        body = None
-        trade_data = {}
-        
-        # Tentative 1: Lire comme JSON
+        # Essayer de lire le body
         try:
             body = await request.body()
-            print(f"📦 Body brut reçu: {body[:500]}")
-            
             if body:
+                print(f"📦 Body reçu: {body[:200]}")
                 import json
                 trade_data = json.loads(body.decode('utf-8'))
-                print(f"✅ JSON parsé: {trade_data}")
-        except Exception as e:
-            print(f"⚠️ Pas de JSON dans body: {e}")
+                print(f"✅ JSON parsé")
+        except:
+            print("⚠️ Pas de body JSON")
         
-        # Tentative 2: Lire comme form data
-        if not trade_data:
-            try:
-                form = await request.form()
-                trade_data = dict(form)
-                print(f"✅ Form data parsé: {trade_data}")
-            except Exception as e:
-                print(f"⚠️ Pas de form data: {e}")
+        # Extraire les valeurs
+        symbol = str(trade_data.get('symbol', 'TVHOOK'))
+        side = str(trade_data.get('side', 'LONG')).upper()
         
-        # Tentative 3: Lire les query params
-        if not trade_data:
-            try:
-                trade_data = dict(request.query_params)
-                if trade_data:
-                    print(f"✅ Query params parsés: {trade_data}")
-            except Exception as e:
-                print(f"⚠️ Pas de query params: {e}")
-        
-        # Extraire les champs (avec defaults)
-        symbol = trade_data.get('symbol', 'TVWEBHOOK')
-        side = trade_data.get('side', 'LONG')
-        
-        # Convertir en float si c'est une string
         try:
             entry = float(trade_data.get('entry', 1000))
-        except:
-            entry = 1000
-        
-        try:
             sl = float(trade_data.get('sl', entry * 0.98))
-        except:
-            sl = entry * 0.98
-        
-        try:
             tp1 = float(trade_data.get('tp1', entry * 1.02))
         except:
-            tp1 = entry * 1.02
+            entry = 1000.0
+            sl = 980.0
+            tp1 = 1020.0
         
-        try:
-            tp2 = float(trade_data.get('tp2', entry * 1.04))
-        except:
-            tp2 = entry * 1.04
-        
-        try:
-            tp3 = float(trade_data.get('tp3', entry * 1.06))
-        except:
-            tp3 = entry * 1.06
-        
-        print(f"🎯 SIGNAL REÇU:")
-        print(f"   Symbol: {symbol}")
-        print(f"   Side: {side}")
-        print(f"   Entry: ${entry}")
-        print(f"   SL: ${sl}")
-        print(f"   TP1: ${tp1}")
+        print(f"🎯 SIGNAL: {symbol} {side} @ ${entry}")
         print("="*80 + "\n")
         
-        # Créer le trade
+        # Créer trade
         trade_entry = {
             "symbol": symbol,
-            "side": side.upper(),
+            "side": side,
             "entry": entry,
             "sl": sl,
             "tp1": tp1,
-            "tp2": tp2,
-            "tp3": tp3,
+            "tp2": trade_data.get('tp2', entry * 1.04) if trade_data else entry * 1.04,
+            "tp3": trade_data.get('tp3', entry * 1.06) if trade_data else entry * 1.06,
             "status": "open",
             "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
             "confidence": 85,
-            "timeframe": trade_data.get('tf', '1H'),
+            "timeframe": trade_data.get('tf', '1H') if trade_data else '1H',
             "tp1_hit": False,
             "tp2_hit": False,
             "tp3_hit": False,
@@ -6235,45 +6202,45 @@ async def webhook_tv_direct(request: Request):
         
         trades_db.append(trade_entry)
         save_trades_to_file()
+        print(f"✅ Trade ajouté: {symbol} {side}")
         
-        print(f"✅ Trade ajouté à la DB: {symbol} {side}")
-        
-        # Envoyer notification Telegram
+        # Telegram
         try:
-            msg = f"""🎯 SIGNAL TRADINGVIEW
-
-💱 {symbol}
-📊 Direction: {side}
-💰 Entry: ${entry:.2f}
-🛡️ SL: ${sl:.2f}
-🎯 TP1: ${tp1:.2f}
-
-✅ Trade ajouté au dashboard"""
-            
+            msg = f"🎯 SIGNAL TRADINGVIEW\n\n💱 {symbol}\n📊 {side}\n💰 Entry: ${entry:.2f}\n🛡️ SL: ${sl:.2f}\n🎯 TP1: ${tp1:.2f}\n\n✅ Trade ajouté"
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(
+                await client.post(
                     f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                    json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"}
+                    json={"chat_id": TELEGRAM_CHAT_ID, "text": msg}
                 )
-                if response.status_code == 200:
-                    print(f"✅ Notification Telegram envoyée")
-                else:
-                    print(f"⚠️ Telegram error: {response.status_code}")
-        except Exception as e:
-            print(f"❌ Erreur Telegram: {e}")
+            print("✅ Telegram envoyé")
+        except:
+            print("⚠️ Telegram skip")
         
-        return {
-            "status": "success", 
-            "symbol": symbol, 
-            "side": side,
-            "message": "Webhook processed successfully"
-        }
+        return {"status": "success", "symbol": symbol, "side": side}
         
     except Exception as e:
-        print(f"❌ ERREUR WEBHOOK-TV: {e}")
+        print(f"❌ ERREUR: {e}")
         import traceback
         traceback.print_exc()
-        return {"status": "error", "error": str(e), "message": "Webhook received but error occurred"}
+        return {"status": "error", "error": str(e)}
+
+
+@app.get("/test-webhook-simple")
+@app.post("/test-webhook-simple")
+async def test_webhook_simple():
+    """
+    Route TEST ultra-simple - AUCUNE dépendance
+    Utilise cette URL pour tester: /test-webhook-simple
+    """
+    print("\n" + "="*80)
+    print("🎯 TEST WEBHOOK SIMPLE - GET/POST")
+    print("="*80 + "\n")
+    
+    return {
+        "status": "SUCCESS",
+        "message": "Webhook test simple fonctionne !",
+        "route": "/test-webhook-simple"
+    }
 
 
 @app.get("/health")

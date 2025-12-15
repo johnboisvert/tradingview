@@ -2195,6 +2195,11 @@ class PermissionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         path = request.url.path
         
+        # 🔥 WEBHOOKS - IGNORER COMPLÈTEMENT (AVANT TOUTE VÉRIFICATION)
+        if (path.startswith("/webhook") or 
+            path in ["/test-webhook-simple", "/webhook-tv", "/tv-webhook"]):
+            return await call_next(request)
+        
         # ✅ Routes PUBLIQUES (pas d'authentification requise)
         public_paths = [
             "/", "/login", "/register", "/logout", "/health",

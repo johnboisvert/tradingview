@@ -6032,11 +6032,32 @@ async def send_telegram(msg: str):
         print(f"❌ Erreur send_telegram: {e}")
 
 @app.post("/tv-webhook")
-async def webhook(trade: TradeWebhook):
+async def webhook(
+    trade: TradeWebhook,
+    token: Optional[str] = None  # Token de sécurité dans l'URL
+):
     """
     Webhook TradingView avec détection de revirement
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
+    
+    SÉCURITÉ: Requiert token dans l'URL: /tv-webhook?token=TON_SECRET_ICI
     """
+    
+    # ============================================================
+    # 🔐 VÉRIFICATION DU TOKEN DE SÉCURITÉ
+    # ============================================================
+    WEBHOOK_SECRET_TOKEN = "nqgjiebqgiehgq8e76qhefjqer78gfq0eyrg"  # ← CHANGE CE TOKEN !
+    
+    if token != WEBHOOK_SECRET_TOKEN:
+        print(f"❌ WEBHOOK REFUSÉ - Token invalide: {token}")
+        return JSONResponse(
+            content={"error": "Unauthorized - Invalid token"},
+            status_code=403
+        )
+    
+    print(f"✅ WEBHOOK AUTORISÉ - Token valide")
+    # ============================================================
+    
     try:
         print(f"\n{'='*60}")
         print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")

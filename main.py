@@ -3012,20 +3012,24 @@ class DatabaseManager:
                  'Dashboard complet (50 cryptos)|Trading signals temps réel|Alertes Telegram|Webhooks TradingView|Fear & Greed Index',
                  '💎 POPULAIRE', 1, 1, 'price_premium_monthly'),
                 
+                ('3_months', 'Advanced', 74.97, 3, '3 mois',
+                 'Tout Premium +|Webhooks TradingView avancés|Alertes Telegram prioritaires|Support 24/7|Accès API',
+                 '💎 ÉCONOMISEZ 17%', 1, 2, 'price_advanced_3months'),
+                
                 ('6_months', 'Pro', 99.00, 6, '6 mois',
-                 'Tout Premium +|AI Technical Analysis|AI Crypto Coach|Narrative Radar|AI Swarm Agents|Watchlist illimitée',
-                 '⭐ MEILLEURE VALEUR', 1, 2, 'price_pro_6months'),
+                 'Tout Advanced +|AI Technical Analysis|AI Crypto Coach|Narrative Radar|AI Swarm Agents|Watchlist illimitée',
+                 '⭐ MEILLEURE VALEUR', 1, 3, 'price_pro_6months'),
                 
                 ('1_year', 'Elite', 199.00, 12, '1 an',
                  'Tout Pro +|Altseason Copilot Pro (exclusif)|Rug & Scam Shield (exclusif)|Support prioritaire 24/7|Groupe Telegram VIP|Call stratégie mensuel',
-                 '👑 ALL-ACCESS', 1, 3, 'price_elite_yearly')
+                 '👑 ALL-ACCESS', 1, 4, 'price_elite_yearly')
             ]
             
             c.executemany("""
                 INSERT INTO pricing_plans (plan_id, plan_name, price, duration_months, duration_label, features, badge, is_active, display_order, stripe_price_id)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, default_plans)
-            print("✅ Table pricing_plans créée avec 3 plans par défaut")
+            print("✅ Table pricing_plans créée avec 4 plans par défaut")
 
         
         # Ajouter les colonnes si elles n'existent pas (pour migration)
@@ -3144,20 +3148,24 @@ class DatabaseManager:
                  'Dashboard complet (50 cryptos)|Trading signals temps réel|Alertes Telegram|Webhooks TradingView|Fear & Greed Index',
                  '💎 POPULAIRE', 1, 1, 'price_premium_monthly'),
                 
+                ('3_months', 'Advanced', 74.97, 3, '3 mois',
+                 'Tout Premium +|Webhooks TradingView avancés|Alertes Telegram prioritaires|Support 24/7|Accès API',
+                 '💎 ÉCONOMISEZ 17%', 1, 2, 'price_advanced_3months'),
+                
                 ('6_months', 'Pro', 99.00, 6, '6 mois',
-                 'Tout Premium +|AI Technical Analysis|AI Crypto Coach|Narrative Radar|AI Swarm Agents|Watchlist illimitée',
-                 '⭐ MEILLEURE VALEUR', 1, 2, 'price_pro_6months'),
+                 'Tout Advanced +|AI Technical Analysis|AI Crypto Coach|Narrative Radar|AI Swarm Agents|Watchlist illimitée',
+                 '⭐ MEILLEURE VALEUR', 1, 3, 'price_pro_6months'),
                 
                 ('1_year', 'Elite', 199.00, 12, '1 an',
                  'Tout Pro +|Altseason Copilot Pro (exclusif)|Rug & Scam Shield (exclusif)|Support prioritaire 24/7|Groupe Telegram VIP|Call stratégie mensuel',
-                 '👑 ALL-ACCESS', 1, 3, 'price_elite_yearly')
+                 '👑 ALL-ACCESS', 1, 4, 'price_elite_yearly')
             ]
             
             c.executemany("""
                 INSERT INTO pricing_plans (plan_id, plan_name, price, duration_months, duration_label, features, badge, is_active, display_order, stripe_price_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, default_plans)
-            print("✅ Table pricing_plans créée avec 3 plans par défaut")
+            print("✅ Table pricing_plans créée avec 4 plans par défaut")
         
         # Créer un compte admin par défaut si n'existe pas
         c.execute("SELECT * FROM users WHERE username = 'admin'")
@@ -18271,16 +18279,19 @@ async def pricing_complete():
         # Fallback vers valeurs par défaut si erreur
         plans_db = {
             "1_month": {"name": "Premium", "price": 29.99, "duration": "1 mois", "badge": "💎 POPULAIRE"},
+            "3_months": {"name": "Advanced", "price": 74.97, "duration": "3 mois", "badge": "💎 ÉCONOMISEZ 17%"},
             "6_months": {"name": "Pro", "price": 99.00, "duration": "6 mois", "badge": "⭐ MEILLEURE VALEUR"},
             "1_year": {"name": "Elite", "price": 199.00, "duration": "1 an", "badge": "👑 ALL-ACCESS"}
         }
     
     # Extraire les prix pour utilisation dans le template
     price_1m = plans_db.get("1_month", {}).get("price", 29.99)
+    price_3m = plans_db.get("3_months", {}).get("price", 74.97)
     price_6m = plans_db.get("6_months", {}).get("price", 99.00)
     price_1y = plans_db.get("1_year", {}).get("price", 199.00)
     
     name_1m = plans_db.get("1_month", {}).get("name", "Premium")
+    name_3m = plans_db.get("3_months", {}).get("name", "Advanced")
     name_6m = plans_db.get("6_months", {}).get("name", "Pro")
     name_1y = plans_db.get("1_year", {}).get("name", "Elite")
     
@@ -18554,10 +18565,10 @@ async def pricing_complete():
             
             <!-- Plan 3 Months -->
             <div class="pricing-card featured">
-                <div class="plan-name">💎 Advanced</div>
+                <div class="plan-name">💎 {name_3m}</div>
                 <div class="discount-badge">3 mois - Économisez 17%</div>
                 <div class="plan-price" id="price-3-months">
-                    <span class="currency">$</span><span id="amount-3-months">74.97</span>
+                    <span class="currency">$</span><span id="amount-3-months">{price_3m:.2f}</span>
                     <span class="period">/3 mois</span>
                 </div>
                 <ul class="features">
@@ -18566,10 +18577,10 @@ async def pricing_complete():
                     <li>Alertes Telegram</li>
                     <li>Support 24/7</li>
                 </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('3_months', 'stripe', 74.97)">
+                <button class="btn-payment btn-stripe" onclick="checkout('3_months', 'stripe', {price_3m})">
                     💳 Payer par Carte
                 </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('3_months', 'coinbase', 74.97)">
+                <button class="btn-payment btn-coinbase" onclick="checkout('3_months', 'coinbase', {price_3m})">
                     ₿ Payer en Crypto
                 </button>
             </div>
@@ -19028,6 +19039,7 @@ async def pricing_complete():
             discount: 0,
             originalPrices: {{
                 '1_month': {price_1m},
+                '3_months': {price_3m},
                 '6_months': {price_6m},
                 '1_year': {price_1y}
             }},
@@ -19149,11 +19161,14 @@ async def pricing_complete():
     # Remplacer les placeholders par les valeurs réelles
     html_content = html_content.replace("{price_1m:.2f}", f"{price_1m:.2f}")
     html_content = html_content.replace("{price_1m}", str(price_1m))
+    html_content = html_content.replace("{price_3m:.2f}", f"{price_3m:.2f}")
+    html_content = html_content.replace("{price_3m}", str(price_3m))
     html_content = html_content.replace("{price_6m:.2f}", f"{price_6m:.2f}")
     html_content = html_content.replace("{price_6m}", str(price_6m))
     html_content = html_content.replace("{price_1y:.2f}", f"{price_1y:.2f}")
     html_content = html_content.replace("{price_1y}", str(price_1y))
     html_content = html_content.replace("{name_1m}", name_1m)
+    html_content = html_content.replace("{name_3m}", name_3m)
     html_content = html_content.replace("{name_6m}", name_6m)
     html_content = html_content.replace("{name_1y}", name_1y)
     

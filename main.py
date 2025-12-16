@@ -5847,8 +5847,7 @@ async def send_telegram_advanced(trade: TradeWebhook):
         if trade.tp3:
             msg += f"✅ <b>Target 3:</b> ${trade.tp3:.4f}\n"
         
-        msg += f"✅ <b>Target 4:</b> 🚀🚀🚀\n\n"
-        msg += f"🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
+        msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
         msg += "💡 <b>Après le TP1, veuillez vous mettre en SLBE</b>\n"
         msg += "<i>(Stop Loss Break Even - sécurisez vos gains)</i>"

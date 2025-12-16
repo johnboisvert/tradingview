@@ -2198,7 +2198,8 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         # ✅ Routes PUBLIQUES (pas d'authentification requise)
         public_paths = [
             "/", "/login", "/register", "/logout", "/health",
-            "/manifest.json", "/favicon.ico"
+            "/manifest.json", "/favicon.ico", 
+            "/tv-webhook"  # ← AJOUTÉ POUR WEBHOOKS TRADINGVIEW
         ]
         
         # Chemins API et static sont toujours publics

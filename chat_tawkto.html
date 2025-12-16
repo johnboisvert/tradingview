@@ -1,0 +1,160 @@
+<!-- chat_tawkto.html -->
+<!-- À inclure dans ton template de base (base.html ou layout.html) avant la balise </body> -->
+
+<!-- TAWK.TO LIVE CHAT INTEGRATION -->
+<script type="text/javascript">
+// Configuration Tawk.to
+var Tawk_API = Tawk_API || {};
+var Tawk_LoadStart = new Date();
+
+// Personnalisation selon le user (si connecté)
+{% if user %}
+Tawk_API.onLoad = function(){
+    // Identifier le user
+    Tawk_API.setAttributes({
+        'name': '{{ user.name }}',
+        'email': '{{ user.email }}',
+        'userId': '{{ user.id }}',
+        'plan': '{{ user.subscription_tier }}',
+        'hash': '{{ user.id }}'  // Pour sécurité (voir docs Tawk.to)
+    }, function(error){});
+    
+    // Message d'accueil personnalisé selon le forfait
+    {% if user.subscription_tier == "Free" %}
+    Tawk_API.addEvent('free-user', {
+        'message': 'Utilisateur Free - Pas de support'
+    });
+    {% elif user.subscription_tier == "Premium" %}
+    Tawk_API.addEvent('premium-user', {
+        'responseTime': '48 heures'
+    });
+    {% elif user.subscription_tier == "Advanced" %}
+    Tawk_API.addEvent('advanced-user', {
+        'responseTime': '24 heures'
+    });
+    {% elif user.subscription_tier == "Pro" %}
+    Tawk_API.addEvent('pro-user', {
+        'responseTime': '12 heures',
+        'priority': 'urgent'
+    });
+    {% elif user.subscription_tier == "Elite" %}
+    Tawk_API.addEvent('elite-user', {
+        'responseTime': '2 heures',
+        'priority': 'critical'
+    });
+    {% endif %}
+};
+
+// Message d'accueil personnalisé
+Tawk_API.onChatStarted = function(){
+    {% if user.subscription_tier == "Free" %}
+    // Bloquer le chat pour les users Free
+    Tawk_API.hideWidget();
+    alert("Le chat en direct n'est pas disponible pour les comptes gratuits. Veuillez upgrader votre forfait ou utiliser le formulaire de contact.");
+    {% else %}
+    // Message d'accueil selon le forfait
+    var greeting = "Bonjour {{ user.name }} ! 👋\n\n";
+    greeting += "Forfait : {{ user.subscription_tier }}\n";
+    greeting += "Temps de réponse estimé : ";
+    
+    {% if user.subscription_tier == "Premium" %}
+    greeting += "48 heures ouvrables\n";
+    {% elif user.subscription_tier == "Advanced" %}
+    greeting += "24 heures ouvrables\n";
+    {% elif user.subscription_tier == "Pro" %}
+    greeting += "12 heures\n";
+    {% elif user.subscription_tier == "Elite" %}
+    greeting += "2 heures (prioritaire 24/7)\n";
+    {% endif %}
+    
+    greeting += "\nComment puis-je vous aider aujourd'hui ?";
+    {% endif %}
+};
+{% else %}
+// User non connecté
+Tawk_API.onLoad = function(){
+    Tawk_API.setAttributes({
+        'name': 'Visiteur',
+        'hash': 'visitor'
+    }, function(error){});
+};
+
+Tawk_API.onChatStarted = function(){
+    alert("Pour bénéficier du support, veuillez vous connecter ou créer un compte.");
+    Tawk_API.hideWidget();
+};
+{% endif %}
+
+// Cacher le widget sur certaines pages (optionnel)
+{% if request.path in ['/login', '/signup', '/checkout'] %}
+Tawk_API.onLoad = function(){
+    Tawk_API.hideWidget();
+};
+{% endif %}
+
+// Charger le script Tawk.to
+(function(){
+    var s1 = document.createElement("script");
+    var s0 = document.getElementsByTagName("script")[0];
+    s1.async = true;
+    s1.src = 'https://embed.tawk.to/YOUR_PROPERTY_ID/YOUR_WIDGET_ID';
+    s1.charset = 'UTF-8';
+    s1.setAttribute('crossorigin','*');
+    s0.parentNode.insertBefore(s1,s0);
+})();
+</script>
+
+<!-- Style personnalisé pour le widget (optionnel) -->
+<style>
+    /* Personnaliser la position du widget si nécessaire */
+    #tawkchat-minified-box {
+        bottom: 20px !important;
+        right: 20px !important;
+    }
+    
+    /* Cacher sur mobile si souhaité */
+    @media (max-width: 768px) {
+        #tawkchat-container {
+            display: none;
+        }
+    }
+</style>
+
+<!-- INSTRUCTIONS D'INSTALLATION -->
+<!--
+1. Crée un compte sur https://www.tawk.to (GRATUIT)
+
+2. Après inscription, va dans Administration → Channels
+
+3. Copie ton "Property ID" et "Widget ID" depuis le code d'intégration
+
+4. Remplace dans le code ci-dessus :
+   - YOUR_PROPERTY_ID par ton Property ID
+   - YOUR_WIDGET_ID par ton Widget ID
+
+5. Configuration dans Tawk.to Dashboard :
+   a) Va dans Administration → Chat Widget
+   b) Personnalise les couleurs pour matcher ton site
+   c) Configure ton message d'accueil
+   d) Active les notifications email
+
+6. Réponses automatiques (Triggers) :
+   - Va dans Administration → Triggers
+   - Crée des messages automatiques selon le forfait
+   - Exemple : "Si plan=Free, afficher: Upgrade pour support"
+
+7. Heures d'ouverture :
+   - Va dans Administration → Chat Widget → Availability
+   - Configure tes heures de disponibilité
+   - Message hors ligne automatique
+
+8. Application mobile :
+   - Télécharge l'app Tawk.to sur iOS/Android
+   - Reçois notifications en temps réel
+   - Réponds depuis ton téléphone
+
+9. Templates de réponses :
+   - Crée des réponses pré-enregistrées
+   - Gagne du temps sur questions fréquentes
+   - Raccourcis clavier pour réponses rapides
+-->

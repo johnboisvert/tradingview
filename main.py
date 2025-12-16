@@ -2741,9 +2741,10 @@ NAV_MENU = """
 # ============================================================================
 # 🆕 ENREGISTRER LE ROUTER DES ROUTES PROTÉGÉES
 # ============================================================================
-if PERMISSIONS_AVAILABLE and protected_router:
-    app.include_router(protected_router)
-    print("✅ Routes protégées enregistrées")
+# TEMPORAIREMENT DÉSACTIVÉ POUR TESTER WEBHOOK
+# if PERMISSIONS_AVAILABLE and protected_router:
+#     app.include_router(protected_router)
+#     print("✅ Routes protégées enregistrées")
 # ============================================================================
 
 # ===== ROUTE DE DEBUG =====

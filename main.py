@@ -3319,7 +3319,7 @@ def require_auth(session_token: Optional[str] = Cookie(None)):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Routes TOUJOURS accessibles (sans authentification)
-PUBLIC_ROUTES = ["/", "/login", "/register", "/logout", "/health"]
+PUBLIC_ROUTES = ["/", "/login", "/register", "/logout", "/health", "/tv-webhook"]
 
 # Routes MINIMUM données à TOUS les utilisateurs par défaut
 DEFAULT_USER_PERMISSIONS = [

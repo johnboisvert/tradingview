@@ -1,1 +1,164 @@
-
+<!-- templates/support/support_no_access.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support non disponible - Trading Dashboard Pro</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            background: white;
+            padding: 60px 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        
+        p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .features {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 30px 0;
+            text-align: left;
+        }
+        
+        .features h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .features li {
+            padding: 8px 0;
+            color: #666;
+        }
+        
+        .features li::before {
+            content: "✓ ";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 10px;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .price-highlight {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .price-highlight h3 {
+            margin-bottom: 10px;
+        }
+        
+        .price {
+            font-size: 48px;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .price small {
+            font-size: 18px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🔒</div>
+        
+        <h1>Support non disponible</h1>
+        
+        <p>{{ message }}</p>
+        
+        <div class="price-highlight">
+            <h3>Débloquez le support dès maintenant !</h3>
+            <div class="price">29.99$<small>/mois</small></div>
+            <p style="margin: 0; color: white; opacity: 0.9;">
+                Forfait Premium - Support email 48h
+            </p>
+        </div>
+        
+        <div class="features">
+            <h3>🎁 Avantages Premium :</h3>
+            <ul>
+                <li>Support email prioritaire (48h)</li>
+                <li>50 signaux de trading/mois</li>
+                <li>Alertes Telegram en temps réel</li>
+                <li>1 paire crypto à surveiller</li>
+                <li>Accès à l'Academy (3 modules)</li>
+                <li>30 requêtes AI/jour</li>
+                <li>Historique 30 jours</li>
+            </ul>
+        </div>
+        
+        <a href="/pricing" class="btn">💎 Voir les forfaits</a>
+        <a href="/" class="btn btn-secondary">← Retour au dashboard</a>
+        
+        <p style="margin-top: 30px; font-size: 14px; color: #999;">
+            Besoin d'aide pour choisir ? Consultez notre page des tarifs.
+        </p>
+    </div>
+</body>
+</html>

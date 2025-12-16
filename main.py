@@ -2802,6 +2802,11 @@ async def auth_middleware(request: Request, call_next):
     
     path = request.url.path
     
+    # 🔥 BYPASS FORCÉ POUR WEBHOOK - À TESTER
+    if path == "/tv-webhook" or path.startswith("/tv-webhook"):
+        print(f"🔥🔥🔥 WEBHOOK BYPASS FORCÉ - PASS DIRECT 🔥🔥🔥")
+        return await call_next(request)
+    
     # ✅ ROUTES FREE - Accessibles SANS login (9 pages)
     free_routes = {
         "/",

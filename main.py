@@ -48,7 +48,6 @@ from urllib.parse import urlencode
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
 from technical_analyzer import analyzer
 
-
 # ============================================================================
 # 🎫 SYSTÈME DE SUPPORT (AJOUTÉ AUTOMATIQUEMENT)
 # ============================================================================
@@ -231,6 +230,7 @@ def create_coinbase_payment(plan, email, client, amount=None):
         print(f"❌ Erreur Coinbase: {e}")
         return None, str(e)
 
+
 def create_stripe_checkout_session(plan, email, success_url, cancel_url, amount=None):
     """Crée une session Stripe Checkout avec montant personnalisé"""
     try:
@@ -276,6 +276,7 @@ def create_stripe_checkout_session(plan, email, success_url, cancel_url, amount=
     except Exception as e:
         print(f"❌ Erreur Stripe: {e}")
         return None, str(e)
+
 
 def init_payments_db():
     """Crée la table payments pour Coinbase Commerce"""
@@ -326,6 +327,7 @@ def init_payments_db():
         print(f"❌ Init payments: {e}")
         return False
 
+
 def create_payment_record(charge_id, user_id, email, amount, currency, description, charge_data):
     """Crée un enregistrement de paiement"""
     try:
@@ -337,12 +339,139 @@ def create_payment_record(charge_id, user_id, email, amount, currency, descripti
         crypto_currency = ""
         
         # Extraire les infos crypto de charge_data
-        if "address" in charge_data:
-            crypto_address = charge_data["address"]
-        if "pricing" in charge_data and "crypto" in charge_data["pricing"]:
-            for crypto in charge_data["pricing"]["crypto"]:
-                crypto_amount = float(crypto["amount"])
+        if "addresses" in charge_data:
+            # Prendre la première adresse disponible
+            for curr, addr_info in charge_data["addresses"].items():
+                crypto_currency = curr
+                crypto_address = addr_info.get("address", "")
+                break
+        
+        if "pricing" in charge_data:
+            for curr, price_info in charge_data["pricing"].items():
+                if curr != "local":
+                    crypto_amount = float(price_info.get("amount", 0))
+                    crypto_currency = curr
+                    break
+        
+        # Insérer dans la base
+        c.execute("""INSERT INTO payments 
+            (charge_id, user_id, email, amount, currency, description, status, 
+             crypto_address, crypto_amount, crypto_currency)
+            VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)""",
+            (charge_id, user_id, email, amount, currency, description,
+             crypto_address, crypto_amount, crypto_currency))
+        
+        conn.commit()
+        conn.close()
+        print(f"✅ Payment record créé: {charge_id}")
+        return True
+    except Exception as e:
+        print(f"❌ Erreur create_payment_record: {e}")
+        return False
 
+
+# ============================================================================
+# 🎫 FONCTIONS DE SUPPORT (AJOUTÉ AUTOMATIQUEMENT)
+# ============================================================================
+def init_support_tables():
+    """Crée les tables pour le système de support"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS support_tickets (
+                id SERIAL PRIMARY KEY, ticket_id TEXT UNIQUE, user_id INTEGER,
+                user_email TEXT, user_name TEXT, user_plan TEXT DEFAULT 'Free',
+                subject TEXT, type TEXT DEFAULT 'support', status TEXT DEFAULT 'open',
+                priority TEXT DEFAULT 'normal', created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW())""")
+            c.execute("""CREATE TABLE IF NOT EXISTS ticket_messages (
+                id SERIAL PRIMARY KEY, ticket_id INTEGER REFERENCES support_tickets(id),
+                sender_id INTEGER, sender_name TEXT, sender_email TEXT,
+                is_admin INTEGER DEFAULT 0, message TEXT, created_at TIMESTAMP DEFAULT NOW())""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS support_tickets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id TEXT UNIQUE, user_id INTEGER,
+                user_email TEXT, user_name TEXT, user_plan TEXT DEFAULT 'Free',
+                subject TEXT, type TEXT DEFAULT 'support', status TEXT DEFAULT 'open',
+                priority TEXT DEFAULT 'normal', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+            c.execute("""CREATE TABLE IF NOT EXISTS ticket_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id INTEGER, sender_id INTEGER,
+                sender_name TEXT, sender_email TEXT, is_admin INTEGER DEFAULT 0,
+                message TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""")
+        conn.commit()
+        conn.close()
+        print("✅ Tables support créées")
+        return True
+    except Exception as e:
+        print(f"❌ Erreur: {e}")
+        return False
+
+def send_support_email(to, subject, body, html=None):
+    """Envoie un email de support"""
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['From'], msg['To'], msg['Subject'] = EMAIL_USER, to, subject
+        msg.attach(MIMEText(body, 'plain'))
+        if html: msg.attach(MIMEText(html, 'html'))
+        server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        return True
+    except: return False
+
+def generate_ticket_id():
+    """Génère un ID de ticket unique"""
+    return f"TKT-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
+
+def get_priority_by_plan(plan):
+    """Détermine la priorité selon le forfait"""
+    return {"Free":"low","Premium":"normal","Advanced":"high","Pro":"urgent","Elite":"critical"}.get(plan,"normal")
+
+def get_response_time(plan):
+    """Temps de réponse selon le forfait"""
+    return {"Free":"Pas de support","Premium":"48h","Advanced":"24h","Pro":"12h","Elite":"2h"}.get(plan,"48h")
+
+def get_ticket_by_id(tid):
+    """Récupère un ticket par ID"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT * FROM support_tickets WHERE id=?", (tid,))
+        t = c.fetchone()
+        conn.close()
+        return t
+    except: return None
+
+def get_ticket_messages(tid):
+    """Récupère tous les messages d'un ticket"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT * FROM ticket_messages WHERE ticket_id=? ORDER BY created_at", (tid,))
+        m = c.fetchall()
+        conn.close()
+        return m
+    except: return []
+
+def get_user_tickets(uid):
+    """Récupère tous les tickets d'un user"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT * FROM support_tickets WHERE user_id=? ORDER BY created_at DESC", (uid,))
+        t = c.fetchall()
+        conn.close()
+        return t
+    except: return []
+# ============================================================================
+
+
+# 🔽🔽🔽 APRÈS CETTE LIGNE, CONTINUE AVEC LE RESTE DE TON MAIN.PY ORIGINAL 🔽🔽🔽
+# (Tout le reste de ton fichier - les 40,000+ lignes restantes)
 # ============================================================================
 # 🎫 FONCTIONS DE SUPPORT (AJOUTÉ AUTOMATIQUEMENT)
 # ============================================================================

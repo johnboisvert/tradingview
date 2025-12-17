@@ -131,13 +131,13 @@ if ANTHROPIC_API_KEY:
     print("✅ Anthropic Claude API configurée")
 else:
     print("⚠️  Anthropic API key non configurée - AI Coach ne fonctionnera pas")
+# =========================================
+
 
 # ✅ CORRECTION: Configuration ebooks directory
 EBOOKS_DIR = Path("/tmp/ebooks")
 EBOOKS_DIR.mkdir(parents=True, exist_ok=True)
 print(f"✅ Répertoire ebooks créé: {EBOOKS_DIR}")
-
-# =========================================
 
 # Initialiser le client Coinbase Commerce
 coinbase_client = None
@@ -318,107 +318,6 @@ def init_payments_db():
         return False
 
 def create_payment_record(charge_id, user_id, email, amount, currency, description, charge_data):
-
-
-def init_ebooks_table():
-    """Crée les tables ebooks et contact_messages"""
-    try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        
-        # Table ebooks
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("""CREATE TABLE IF NOT EXISTS ebooks (
-                id SERIAL PRIMARY KEY,
-                title TEXT NOT NULL,
-                description TEXT,
-                filename TEXT NOT NULL,
-                file_size INTEGER,
-                min_plan TEXT DEFAULT 'Free',
-                downloads INTEGER DEFAULT 0,
-                active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT NOW()
-            )""")
-        else:
-            c.execute("""CREATE TABLE IF NOT EXISTS ebooks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                description TEXT,
-                filename TEXT NOT NULL,
-                file_size INTEGER,
-                min_plan TEXT DEFAULT 'Free',
-                downloads INTEGER DEFAULT 0,
-                active INTEGER DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )""")
-        
-        # Table contact_messages
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("""CREATE TABLE IF NOT EXISTS contact_messages (
-                id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL,
-                email TEXT NOT NULL,
-                subject TEXT,
-                message TEXT NOT NULL,
-                user_id TEXT,
-                status TEXT DEFAULT 'unread',
-                created_at TIMESTAMP DEFAULT NOW()
-            )""")
-        else:
-            c.execute("""CREATE TABLE IF NOT EXISTS contact_messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT NOT NULL,
-                subject TEXT,
-                message TEXT NOT NULL,
-                user_id TEXT,
-                status TEXT DEFAULT 'unread',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )""")
-        
-        conn.commit()
-        conn.close()
-        print(f"✅ Tables ebooks et contact créées ({DB_CONFIG['type']})")
-        return True
-    except Exception as e:
-        print(f"❌ Init ebooks/contact: {e}")
-        return False
-
-def get_user_from_request(request: Request):
-    """Récupère l'utilisateur depuis les cookies (version synchrone)"""
-    try:
-        user_id = request.cookies.get("user_id")
-        if not user_id:
-            return None
-        
-        conn = get_db_connection()
-        if DB_CONFIG["type"] == "postgres":
-            from psycopg2.extras import RealDictCursor
-            c = conn.cursor(cursor_factory=RealDictCursor)
-        else:
-            conn.row_factory = sqlite3.Row
-            c = conn.cursor()
-        
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("SELECT * FROM users WHERE id=%s", (user_id,))
-        else:
-            c.execute("SELECT * FROM users WHERE id=?", (user_id,))
-        
-        row = c.fetchone()
-        conn.close()
-        
-        if not row:
-            return None
-        
-        user_dict = dict(row)
-        user_dict["is_admin"] = user_dict.get("role") == "admin"
-        user_dict["subscription_tier"] = user_dict.get("plan", "Free")
-        
-        return user_dict
-    except Exception as e:
-        print(f"❌ get_user_from_request error: {e}")
-        return None
-
     """Crée un enregistrement de paiement"""
     try:
         conn = get_db_connection()
@@ -2129,6 +2028,111 @@ print("✅ Templates Jinja2 configurés")
 # Enregistrer les fonctions template si système permissions disponible
 if PERMISSIONS_AVAILABLE:
     register_template_functions(templates)
+
+
+# ============================================================================
+# ✅ CORRECTION: FONCTIONS EBOOKS ET CONTACT
+# ============================================================================
+
+def init_ebooks_table():
+    """Crée les tables ebooks et contact_messages"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Table ebooks
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS ebooks (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                filename TEXT NOT NULL,
+                file_size INTEGER,
+                min_plan TEXT DEFAULT 'Free',
+                downloads INTEGER DEFAULT 0,
+                active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS ebooks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT,
+                filename TEXT NOT NULL,
+                file_size INTEGER,
+                min_plan TEXT DEFAULT 'Free',
+                downloads INTEGER DEFAULT 0,
+                active INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+        
+        # Table contact_messages
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS contact_messages (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                subject TEXT,
+                message TEXT NOT NULL,
+                user_id TEXT,
+                status TEXT DEFAULT 'unread',
+                created_at TIMESTAMP DEFAULT NOW()
+            )""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS contact_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                subject TEXT,
+                message TEXT NOT NULL,
+                user_id TEXT,
+                status TEXT DEFAULT 'unread',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+        
+        conn.commit()
+        conn.close()
+        print(f"✅ Tables ebooks et contact créées ({DB_CONFIG['type']})")
+        return True
+    except Exception as e:
+        print(f"❌ Init ebooks/contact: {e}")
+        return False
+
+def get_user_from_request(request: Request):
+    """Récupère l'utilisateur depuis les cookies (version synchrone)"""
+    try:
+        user_id = request.cookies.get("user_id")
+        if not user_id:
+            return None
+        
+        conn = get_db_connection()
+        if DB_CONFIG["type"] == "postgres":
+            from psycopg2.extras import RealDictCursor
+            c = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("SELECT * FROM users WHERE id=%s", (user_id,))
+        else:
+            c.execute("SELECT * FROM users WHERE id=?", (user_id,))
+        
+        row = c.fetchone()
+        conn.close()
+        
+        if not row:
+            return None
+        
+        user_dict = dict(row)
+        user_dict["is_admin"] = user_dict.get("role") == "admin"
+        user_dict["subscription_tier"] = user_dict.get("plan", "Free")
+        
+        return user_dict
+    except Exception as e:
+        print(f"❌ get_user_from_request error: {e}")
+        return None
+
 
 
 # 🔐 CORRECTION 2: RATE LIMITING - Protection contre brute-force
@@ -10340,7 +10344,7 @@ async def ai_market_regime():
                         <div class="indicator-status">Sentiment marché</div>
                     </div>
                     <div class="indicator-card">
-    <div class="indicator-title">Force Tendance</div>
+                        <div class="indicator-title">Force Tendance</div>
                         <div class="indicator-value">${data.indicators.trendStrength}</div>
                         <div class="indicator-status">ADX & Momentum</div>
                     </div>
@@ -18159,7 +18163,6 @@ async def startup_event():
     # ✅ CORRECTION: Initialiser la table ebooks
     init_ebooks_table()
     
-    
     # Initialiser la DB Academy
     try:
         init_academy_db()
@@ -20568,7 +20571,7 @@ async def market_simulation():
             border-color: #00ff88; 
             box-shadow: 0 0 15px rgba(0,255,136,0.5);
             background: rgba(15, 23, 42, 1);
-            }
+        }
         
         button {
             background: linear-gradient(45deg, #00ff88, #00d4ff);
@@ -30792,7 +30795,7 @@ async def ai_exit():
         </div>
         """
     return HTMLResponse(SIDEBAR + f"""
-            <!DOCTYPE html>
+    <!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
@@ -41344,3 +41347,7 @@ async def toggle_ebook(ebook_id: int, request: Request):
     except Exception as e:
         print(f"❌ Toggle ebook error: {e}")
         raise HTTPException(500, f"Erreur: {str(e)}")
+
+# ============================================================================
+# FIN DU FICHIER - TOUTES LES CORRECTIONS APPLIQUÉES
+# ============================================================================

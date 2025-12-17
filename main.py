@@ -40956,7 +40956,15 @@ def init_ebooks_table():
     except Exception as e:
         print(f"❌ Erreur init ebooks: {e}")
         return False
-
+def init_ebooks_table():
+    """Créer la table des ebooks"""
+    try:
+        # Créer le dossier ebooks
+        EBOOKS_DIR = Path("/tmp/ebooks")
+        EBOOKS_DIR.mkdir(parents=True, exist_ok=True)
+        
+        conn = get_db_connection()
+        # ... reste du code
 # ============================================================================
 # 📧 ROUTES CONTACT
 # ============================================================================

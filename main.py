@@ -40891,8 +40891,7 @@ async def api_complete_lesson(request: Request):
 from pathlib import Path
 import shutil
 
-# Créer le dossier pour les ebooks
-EBOOKS_DIR = Path("static/ebooks")
+EBOOKS_DIR = Path("/tmp/ebooks")  # Utiliser /tmp au lieu de static
 EBOOKS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ============================================================================

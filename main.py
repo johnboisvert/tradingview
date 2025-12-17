@@ -41060,141 +41060,83 @@ async def api_complete_lesson(request: Request):
 # 📧 ROUTES CONTACT ET TÉLÉCHARGEMENTS - HTML INTÉGRÉ
 # ============================================================================
 
+
 # Route 1: GET /contact - Afficher formulaire
 @app.get("/contact")
 async def contact_page(request: Request):
-    """Page de contact"""
+    """Page de contact avec sidebar"""
     user_data = get_user_from_request(request)
     
-    # Créer un template HTML simple si le fichier n'existe pas
-    html_content = """
-    <!DOCTYPE html>
+    if not user_data:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    username = user_data.get("username", "Utilisateur")
+    
+    html = """<!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Contact - Trading Dashboard Pro</title>
-        <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                color: white;
-                min-height: 100vh;
-                padding: 20px;
-            }
-            .container {
-                max-width: 600px;
-                margin: 50px auto;
-                background: rgba(255, 255, 255, 0.1);
-                backdrop-filter: blur(10px);
-                padding: 40px;
-                border-radius: 20px;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-            }
-            h1 {
-                font-size: 32px;
-                margin-bottom: 10px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-            }
-            .form-group { margin-bottom: 20px; }
-            label {
-                display: block;
-                margin-bottom: 8px;
-                font-weight: 600;
-                color: rgba(255, 255, 255, 0.9);
-            }
-            input, textarea {
-                width: 100%;
-                padding: 12px 15px;
-                background: rgba(255, 255, 255, 0.1);
-                border: 2px solid rgba(255, 255, 255, 0.2);
-                border-radius: 10px;
-                color: white;
-                font-size: 16px;
-            }
-            input:focus, textarea:focus {
-                outline: none;
-                border-color: #667eea;
-                background: rgba(255, 255, 255, 0.15);
-            }
-            textarea { min-height: 150px; resize: vertical; font-family: inherit; }
-            button {
-                width: 100%;
-                padding: 15px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                border: none;
-                border-radius: 10px;
-                color: white;
-                font-size: 18px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s;
-            }
-            button:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-            }
-            .back-link {
-                display: inline-block;
-                margin-top: 20px;
-                color: #667eea;
-                text-decoration: none;
-            }
-            .success {
-                background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-                padding: 15px;
-                border-radius: 10px;
-                margin-bottom: 20px;
-                text-align: center;
-                font-weight: 600;
-            }
-        </style>
+    """ + CSS + """
     </head>
     <body>
-        <div class="container">
-            <h1>📧 Contactez-nous</h1>
-            <p style="color: rgba(255,255,255,0.7); margin-bottom: 30px;">
-                Remplissez le formulaire ci-dessous et nous vous répondrons rapidement.
-            </p>
+        <div class="container" style="max-width: 800px;">
+            <div class="header">
+                <h1>📧 Contactez-nous</h1>
+                <p>Remplissez le formulaire ci-dessous</p>
+            </div>
             
-            <form method="POST" action="/contact">
-                <div class="form-group">
-                    <label for="name">Nom complet *</label>
-                    <input type="text" id="name" name="name" required placeholder="Votre nom">
-                </div>
+            <div class="card">
+                <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 30px;">
+                    Bonjour <strong style="color: #06b6d4;">""" + username + """</strong>, 
+                    nous vous répondrons dans les plus brefs délais.
+                </p>
                 
-                <div class="form-group">
-                    <label for="email">Email *</label>
-                    <input type="email" id="email" name="email" required placeholder="votre@email.com">
-                </div>
-                
-                <div class="form-group">
-                    <label for="subject">Sujet</label>
-                    <input type="text" id="subject" name="subject" placeholder="Sujet de votre message">
-                </div>
-                
-                <div class="form-group">
-                    <label for="message">Message *</label>
-                    <textarea id="message" name="message" required placeholder="Votre message..."></textarea>
-                </div>
-                
-                <button type="submit">Envoyer le message</button>
-            </form>
-            
-            <a href="/" class="back-link">← Retour au dashboard</a>
+                <form method="POST" action="/contact" style="width: 100%;">
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #e2e8f0;">Nom complet *</label>
+                        <input type="text" name="name" required placeholder="Votre nom">
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #e2e8f0;">Email *</label>
+                        <input type="email" name="email" required placeholder="votre@email.com">
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #e2e8f0;">Sujet</label>
+                        <input type="text" name="subject" placeholder="Sujet de votre message">
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #e2e8f0;">Message *</label>
+                        <textarea name="message" required placeholder="Votre message..." rows="6" 
+                            style="width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; 
+                            border-radius: 8px; color: #e2e8f0; font-size: 14px; resize: vertical; font-family: inherit;"></textarea>
+                    </div>
+                    
+                    <button type="submit" style="width: 100%;">
+                        Envoyer le message
+                    </button>
+                </form>
+            </div>
         </div>
     </body>
     </html>
     """
     
-    return HTMLResponse(content=html_content)
+    return HTMLResponse(SIDEBAR + html)
 
 # Route 2: POST /contact - Soumettre message
 @app.post("/contact")
 async def submit_contact(request: Request):
     """Traiter le formulaire de contact"""
+    user_data = get_user_from_request(request)
+    
+    if not user_data:
+        return RedirectResponse(url="/login", status_code=303)
+    
     try:
         form_data = await request.form()
         name = form_data.get("name", "")
@@ -41203,10 +41145,9 @@ async def submit_contact(request: Request):
         message = form_data.get("message", "")
         
         if not name or not email or not message:
-            raise HTTPException(400, "Tous les champs sont requis")
+            raise HTTPException(400, "Tous les champs requis manquants")
         
-        user_data = get_user_from_request(request)
-        user_id = user_data["id"] if user_data else None
+        user_id = user_data.get("id", user_data.get("username"))
         
         conn = get_db_connection()
         c = conn.cursor()
@@ -41221,90 +41162,56 @@ async def submit_contact(request: Request):
         conn.commit()
         conn.close()
         
-        # Page de succès
-        success_html = f"""
-        <!DOCTYPE html>
+        print(f"✅ Message contact reçu de {name} ({email})")
+        
+        # Page de succès avec sidebar
+        success_html = """<!DOCTYPE html>
         <html lang="fr">
         <head>
             <meta charset="UTF-8">
             <title>Message envoyé - Trading Dashboard Pro</title>
-            <style>
-                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                body {{
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    color: white;
-                    min-height: 100vh;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 20px;
-                }}
-                .success-box {{
-                    max-width: 500px;
-                    background: rgba(255, 255, 255, 0.1);
-                    backdrop-filter: blur(10px);
-                    padding: 40px;
-                    border-radius: 20px;
-                    text-align: center;
-                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-                }}
-                .icon {{ font-size: 64px; margin-bottom: 20px; }}
-                h1 {{
-                    font-size: 28px;
-                    margin-bottom: 15px;
-                    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                }}
-                p {{ color: rgba(255, 255, 255, 0.8); margin-bottom: 30px; line-height: 1.6; }}
-                a {{
-                    display: inline-block;
-                    padding: 12px 30px;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 10px;
-                    font-weight: 600;
-                    transition: all 0.3s;
-                }}
-                a:hover {{
-                    transform: translateY(-2px);
-                    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-                }}
-            </style>
+        """ + CSS + """
         </head>
         <body>
-            <div class="success-box">
-                <div class="icon">✅</div>
-                <h1>Message envoyé avec succès!</h1>
-                <p>Merci de nous avoir contactés. Nous vous répondrons dans les plus brefs délais.</p>
-                <a href="/">Retour au dashboard</a>
+            <div class="container" style="max-width: 600px;">
+                <div class="card" style="text-align: center; padding: 60px 40px;">
+                    <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
+                    <h1 style="color: #10b981; margin-bottom: 15px;">Message envoyé avec succès!</h1>
+                    <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 30px;">
+                        Merci de nous avoir contactés. Nous vous répondrons dans les plus brefs délais.
+                    </p>
+                    <a href="/" style="display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
+                        color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+                        Retour au dashboard
+                    </a>
+                </div>
             </div>
         </body>
         </html>
         """
         
-        return HTMLResponse(content=success_html)
+        return HTMLResponse(SIDEBAR + success_html)
         
     except Exception as e:
         print(f"❌ Contact error: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(500, f"Erreur: {str(e)}")
+        return RedirectResponse(url="/contact?error=1", status_code=303)
 
 # Route 3: GET /telechargements - Liste ebooks
 @app.get("/telechargements")
 async def telechargements(request: Request):
-    """Page de téléchargements ebooks"""
+    """Page de téléchargements ebooks avec sidebar"""
     user_data = get_user_from_request(request)
     
-    # CORRECTION: Vérifier que l'utilisateur est connecté
     if not user_data:
+        print("❌ /telechargements: Pas d'utilisateur, redirect vers /login")
         return RedirectResponse(url="/login", status_code=303)
     
     user_plan = user_data.get("subscription_tier", "Free")
     username = user_data.get("username", "Utilisateur")
+    
+    print(f"✅ /telechargements: user={username}, plan={user_plan}")
     
     plan_hierarchy = {
         "Free": 0,
@@ -41321,179 +41228,59 @@ async def telechargements(request: Request):
         if DB_CONFIG["type"] == "postgres":
             from psycopg2.extras import RealDictCursor
             c = conn.cursor(cursor_factory=RealDictCursor)
+            c.execute("SELECT * FROM ebooks WHERE active=TRUE ORDER BY created_at DESC")
         else:
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
-        
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("SELECT * FROM ebooks WHERE active=TRUE ORDER BY created_at DESC")
-        else:
             c.execute("SELECT * FROM ebooks WHERE active=1 ORDER BY created_at DESC")
         
         all_ebooks = [dict(row) for row in c.fetchall()]
         conn.close()
         
-        # Filtrer selon le plan
-        accessible_ebooks = []
-        locked_ebooks = []
-        
-        for ebook in all_ebooks:
-            ebook_level = plan_hierarchy.get(ebook.get("min_plan", "Free"), 0)
-            if user_level >= ebook_level:
-                accessible_ebooks.append(ebook)
-            else:
-                ebook["required_plan"] = ebook.get("min_plan", "Premium")
-                locked_ebooks.append(ebook)
-        
-        # Créer la page HTML
-        ebooks_html = f"""
-        <!DOCTYPE html>
+        # Générer le HTML des ebooks
+        ebooks_html = """<!DOCTYPE html>
         <html lang="fr">
         <head>
             <meta charset="UTF-8">
             <title>Téléchargements - Trading Dashboard Pro</title>
-            <style>
-                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                body {{
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    color: white;
-                    min-height: 100vh;
-                    padding: 20px;
-                }}
-                .container {{
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    padding: 40px 20px;
-                }}
-                h1 {{
-                    font-size: 36px;
-                    margin-bottom: 10px;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                }}
-                .user-info {{
-                    color: rgba(255, 255, 255, 0.7);
-                    margin-bottom: 30px;
-                    font-size: 18px;
-                }}
-                .plan-badge {{
-                    display: inline-block;
-                    padding: 5px 15px;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    border-radius: 20px;
-                    font-weight: 600;
-                    margin-left: 10px;
-                }}
-                .ebooks-grid {{
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                    gap: 20px;
-                    margin-bottom: 40px;
-                }}
-                .ebook-card {{
-                    background: rgba(255, 255, 255, 0.1);
-                    backdrop-filter: blur(10px);
-                    padding: 25px;
-                    border-radius: 15px;
-                    transition: all 0.3s;
-                    border: 2px solid rgba(255, 255, 255, 0.1);
-                }}
-                .ebook-card:hover {{
-                    transform: translateY(-5px);
-                    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
-                    border-color: #667eea;
-                }}
-                .ebook-card.locked {{
-                    opacity: 0.6;
-                    border-color: rgba(255, 0, 0, 0.3);
-                }}
-                .ebook-title {{
-                    font-size: 22px;
-                    font-weight: 600;
-                    margin-bottom: 10px;
-                }}
-                .ebook-description {{
-                    color: rgba(255, 255, 255, 0.7);
-                    margin-bottom: 15px;
-                    line-height: 1.5;
-                }}
-                .ebook-meta {{
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 15px;
-                    font-size: 14px;
-                    color: rgba(255, 255, 255, 0.6);
-                }}
-                .download-btn {{
-                    display: block;
-                    width: 100%;
-                    padding: 12px;
-                    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-                    color: white;
-                    text-align: center;
-                    text-decoration: none;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    transition: all 0.3s;
-                }}
-                .download-btn:hover {{
-                    transform: scale(1.02);
-                    box-shadow: 0 5px 20px rgba(17, 153, 142, 0.4);
-                }}
-                .locked-btn {{
-                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                    cursor: not-allowed;
-                }}
-                .back-link {{
-                    display: inline-block;
-                    margin-top: 30px;
-                    color: #667eea;
-                    text-decoration: none;
-                    font-size: 18px;
-                }}
-                .section-title {{
-                    font-size: 28px;
-                    margin: 40px 0 20px 0;
-                    color: rgba(255, 255, 255, 0.9);
-                }}
-                .empty-state {{
-                    text-align: center;
-                    padding: 60px 20px;
-                    color: rgba(255, 255, 255, 0.6);
-                }}
-            </style>
+        """ + CSS + """
+        <style>
+        .ebooks-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:20px;margin-top:20px}
+        .ebook-card{background:#1e293b;padding:25px;border-radius:12px;border:2px solid #334155;transition:all 0.3s}
+        .ebook-card:hover{transform:translateY(-5px);box-shadow:0 10px 30px rgba(0,0,0,0.3)}
+        .ebook-card.locked{opacity:0.6;border-color:rgba(239,68,68,0.3)}
+        .ebook-title{font-size:20px;font-weight:600;margin-bottom:10px;color:#e2e8f0}
+        .ebook-description{color:#94a3b8;margin-bottom:15px;line-height:1.5;font-size:14px}
+        .ebook-meta{display:flex;justify-content:space-between;margin-bottom:15px;font-size:13px;color:#64748b}
+        .download-btn{display:block;width:100%;padding:12px;background:linear-gradient(135deg,#10b981 0%,#059669 100%);
+            color:white;text-align:center;text-decoration:none;border-radius:8px;font-weight:600;transition:all 0.3s}
+        .download-btn:hover{transform:scale(1.02);box-shadow:0 5px 20px rgba(16,185,129,0.4)}
+        .locked-btn{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);cursor:not-allowed}
+        .plan-badge{display:inline-block;padding:5px 15px;background:linear-gradient(135deg,#06b6d4 0%,#0891b2 100%);
+            border-radius:20px;font-weight:600;margin-left:10px;font-size:14px}
+        </style>
         </head>
         <body>
             <div class="container">
-                <h1>📚 Téléchargements</h1>
-                <div class="user-info">
-                    Bonjour <strong>{username}</strong>
-                    <span class="plan-badge">{user_plan}</span>
+                <div class="header">
+                    <h1>📚 Téléchargements</h1>
+                    <p>Bonjour <strong style="color:#06b6d4">""" + username + """</strong> - 
+                    Votre plan: <span class="plan-badge">""" + user_plan + """</span></p>
                 </div>
-                
-                {'<h2 class="section-title">✅ Disponibles pour vous</h2>' if accessible_ebooks else ''}
-                <div class="ebooks-grid">
-                    {self._generate_ebooks_html(accessible_ebooks, True) if accessible_ebooks else '<div class="empty-state">Aucun ebook disponible pour votre plan actuel.</div>'}
-                </div>
-                
-                {'<h2 class="section-title">🔒 Nécessite un upgrade</h2>' if locked_ebooks else ''}
-                <div class="ebooks-grid">
-                    {self._generate_ebooks_html(locked_ebooks, False) if locked_ebooks else ''}
-                </div>
-                
-                <a href="/" class="back-link">← Retour au dashboard</a>
-            </div>
-        </body>
-        </html>
         """
         
-        # Générer le HTML des ebooks
-        def generate_ebooks(ebooks, accessible):
-            html = ""
-            for ebook in ebooks:
+        if not all_ebooks:
+            ebooks_html += """
+                <div class="card" style="text-align:center;padding:60px 20px">
+                    <div style="font-size:64px;margin-bottom:20px">📚</div>
+                    <h2 style="color:#94a3b8;margin-bottom:15px">Aucun ebook disponible</h2>
+                    <p style="color:#64748b">Les ebooks seront ajoutés prochainement!</p>
+                </div>
+            """
+        else:
+            ebooks_html += '<div class="ebooks-grid">'
+            
+            for ebook in all_ebooks:
                 title = ebook.get("title", "Sans titre")
                 description = ebook.get("description", "")
                 min_plan = ebook.get("min_plan", "Free")
@@ -41502,12 +41289,17 @@ async def telechargements(request: Request):
                 size_mb = round(file_size / 1024 / 1024, 2) if file_size > 0 else 0
                 ebook_id = ebook.get("id")
                 
-                card_class = "ebook-card" if accessible else "ebook-card locked"
-                btn_class = "download-btn" if accessible else "download-btn locked-btn"
-                btn_text = f"📥 Télécharger" if accessible else f"🔒 Nécessite {min_plan}"
-                btn_href = f"/telechargements/download/{ebook_id}" if accessible else "#"
+                ebook_level = plan_hierarchy.get(min_plan, 0)
+                accessible = user_level >= ebook_level
                 
-                html += f'''
+                card_class = "ebook-card" if accessible else "ebook-card locked"
+                
+                if accessible:
+                    btn_html = f'<a href="/telechargements/download/{ebook_id}" class="download-btn">📥 Télécharger</a>'
+                else:
+                    btn_html = f'<div class="download-btn locked-btn">🔒 Nécessite {min_plan}</div>'
+                
+                ebooks_html += f'''
                 <div class="{card_class}">
                     <div class="ebook-title">{title}</div>
                     <div class="ebook-description">{description}</div>
@@ -41515,28 +41307,27 @@ async def telechargements(request: Request):
                         <span>📊 {downloads} téléchargements</span>
                         <span>💾 {size_mb} MB</span>
                     </div>
-                    <a href="{btn_href}" class="{btn_class}">{btn_text}</a>
+                    {btn_html}
                 </div>
                 '''
-            return html
+            
+            ebooks_html += '</div>'
         
-        ebooks_html = ebooks_html.replace(
-            "{self._generate_ebooks_html(accessible_ebooks, True) if accessible_ebooks else '<div class=\"empty-state\">Aucun ebook disponible pour votre plan actuel.</div>'}",
-            generate_ebooks(accessible_ebooks, True) if accessible_ebooks else '<div class="empty-state">Aucun ebook disponible pour votre plan actuel.</div>'
-        )
+        ebooks_html += """
+            </div>
+        </body>
+        </html>
+        """
         
-        ebooks_html = ebooks_html.replace(
-            "{self._generate_ebooks_html(locked_ebooks, False) if locked_ebooks else ''}",
-            generate_ebooks(locked_ebooks, False) if locked_ebooks else ''
-        )
-        
-        return HTMLResponse(content=ebooks_html)
+        return HTMLResponse(SIDEBAR + ebooks_html)
         
     except Exception as e:
         print(f"❌ Téléchargements error: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(500, f"Erreur: {str(e)}")
+        error_html = """<!DOCTYPE html><html><head><title>Erreur</title>""" + CSS + """</head>
+        <body><div class="container"><div class="card"><h2>❌ Erreur</h2><p>""" + str(e) + """</p></div></div></body></html>"""
+        return HTMLResponse(SIDEBAR + error_html)
 
 # Route 4: GET /telechargements/download/{ebook_id} - Télécharger
 @app.get("/telechargements/download/{ebook_id}")
@@ -41548,13 +41339,7 @@ async def download_ebook(ebook_id: int, request: Request):
         raise HTTPException(403, "Connexion requise")
     
     user_plan = user_data.get("subscription_tier", "Free")
-    plan_hierarchy = {
-        "Free": 0,
-        "Premium": 1,
-        "Advanced": 2,
-        "Pro": 3,
-        "Elite": 4
-    }
+    plan_hierarchy = {"Free": 0, "Premium": 1, "Advanced": 2, "Pro": 3, "Elite": 4}
     user_level = plan_hierarchy.get(user_plan, 0)
     
     try:
@@ -41562,13 +41347,10 @@ async def download_ebook(ebook_id: int, request: Request):
         if DB_CONFIG["type"] == "postgres":
             from psycopg2.extras import RealDictCursor
             c = conn.cursor(cursor_factory=RealDictCursor)
+            c.execute("SELECT * FROM ebooks WHERE id=%s", (ebook_id,))
         else:
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
-        
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("SELECT * FROM ebooks WHERE id=%s", (ebook_id,))
-        else:
             c.execute("SELECT * FROM ebooks WHERE id=?", (ebook_id,))
         
         row = c.fetchone()
@@ -41606,22 +41388,23 @@ async def download_ebook(ebook_id: int, request: Request):
         )
     except Exception as e:
         print(f"❌ Download error: {e}")
-        import traceback
-        traceback.print_exc()
         raise HTTPException(500, f"Erreur: {str(e)}")
 
 # Route 5: GET /admin/ebooks - Dashboard admin
 @app.get("/admin/ebooks")
 async def admin_ebooks(request: Request):
-    """Dashboard admin ebooks"""
+    """Dashboard admin ebooks avec sidebar"""
     user_data = get_user_from_request(request)
     
-    # CORRECTION CRITIQUE: Vérifier is_admin
     if not user_data:
+        print("❌ /admin/ebooks: Pas d'utilisateur")
         raise HTTPException(403, "Connexion requise")
     
     if not user_data.get("is_admin"):
-        raise HTTPException(403, f"Accès refusé - Administrateur requis (votre rôle: {user_data.get('role', 'user')})")
+        print(f"❌ /admin/ebooks: User {user_data.get('username')} is not admin")
+        raise HTTPException(403, "Admin requis")
+    
+    print(f"✅ /admin/ebooks: Admin access granted for {user_data.get('username')}")
     
     try:
         conn = get_db_connection()
@@ -41636,124 +41419,35 @@ async def admin_ebooks(request: Request):
         ebooks = [dict(row) for row in c.fetchall()]
         conn.close()
         
-        # Générer la page admin
-        admin_html = f"""
-        <!DOCTYPE html>
+        # Générer HTML dashboard admin
+        admin_html = """<!DOCTYPE html>
         <html lang="fr">
         <head>
             <meta charset="UTF-8">
             <title>Admin Ebooks - Trading Dashboard Pro</title>
-            <style>
-                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                body {{
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    color: white;
-                    min-height: 100vh;
-                    padding: 20px;
-                }}
-                .container {{ max-width: 1400px; margin: 0 auto; padding: 40px 20px; }}
-                h1 {{
-                    font-size: 36px;
-                    margin-bottom: 30px;
-                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-                    -webkit-background-clip: text;
-                    -webkit-text-fill-color: transparent;
-                }}
-                .add-form {{
-                    background: rgba(255, 255, 255, 0.1);
-                    backdrop-filter: blur(10px);
-                    padding: 30px;
-                    border-radius: 15px;
-                    margin-bottom: 40px;
-                }}
-                .form-row {{
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 20px;
-                    margin-bottom: 20px;
-                }}
-                .form-group {{ margin-bottom: 20px; }}
-                label {{
-                    display: block;
-                    margin-bottom: 8px;
-                    font-weight: 600;
-                    color: rgba(255, 255, 255, 0.9);
-                }}
-                input, textarea, select {{
-                    width: 100%;
-                    padding: 12px;
-                    background: rgba(255, 255, 255, 0.1);
-                    border: 2px solid rgba(255, 255, 255, 0.2);
-                    border-radius: 8px;
-                    color: white;
-                    font-size: 16px;
-                }}
-                textarea {{ min-height: 100px; resize: vertical; }}
-                button {{
-                    padding: 12px 30px;
-                    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-                    border: none;
-                    border-radius: 8px;
-                    color: white;
-                    font-size: 16px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                }}
-                button:hover {{
-                    transform: translateY(-2px);
-                    box-shadow: 0 10px 30px rgba(17, 153, 142, 0.4);
-                }}
-                table {{
-                    width: 100%;
-                    background: rgba(255, 255, 255, 0.1);
-                    backdrop-filter: blur(10px);
-                    border-radius: 15px;
-                    overflow: hidden;
-                }}
-                th, td {{ padding: 15px; text-align: left; }}
-                th {{
-                    background: rgba(255, 255, 255, 0.1);
-                    font-weight: 600;
-                }}
-                tr:hover {{ background: rgba(255, 255, 255, 0.05); }}
-                .action-btn {{
-                    padding: 8px 15px;
-                    margin: 0 5px;
-                    border-radius: 5px;
-                    text-decoration: none;
-                    color: white;
-                    font-size: 14px;
-                    display: inline-block;
-                }}
-                .toggle-btn {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }}
-                .delete-btn {{ background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }}
-                .back-link {{
-                    display: inline-block;
-                    margin-top: 30px;
-                    color: #667eea;
-                    text-decoration: none;
-                    font-size: 18px;
-                }}
-                .status-active {{ color: #38ef7d; }}
-                .status-inactive {{ color: #f5576c; }}
-            </style>
+        """ + CSS + """
+        <style>
+        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+        @media(max-width:768px){.form-grid{grid-template-columns:1fr}}
+        </style>
         </head>
         <body>
             <div class="container">
-                <h1>🛠️ Admin - Gestion des Ebooks</h1>
+                <div class="header">
+                    <h1>🛠️ Admin - Gestion des Ebooks</h1>
+                    <p>Ajouter, modifier et gérer les ebooks</p>
+                </div>
                 
-                <div class="add-form">
-                    <h2 style="margin-bottom: 20px;">Ajouter un nouvel ebook</h2>
+                <div class="card">
+                    <h2>📤 Ajouter un nouvel ebook</h2>
                     <form method="POST" action="/admin/ebooks/add" enctype="multipart/form-data">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Titre *</label>
+                        <div class="form-grid">
+                            <div>
+                                <label style="display:block;margin-bottom:8px;font-weight:600;color:#e2e8f0">Titre *</label>
                                 <input type="text" name="title" required>
                             </div>
-                            <div class="form-group">
-                                <label>Plan minimum requis</label>
+                            <div>
+                                <label style="display:block;margin-bottom:8px;font-weight:600;color:#e2e8f0">Plan minimum</label>
                                 <select name="min_plan">
                                     <option value="Free">Free</option>
                                     <option value="Premium">Premium</option>
@@ -41763,62 +41457,81 @@ async def admin_ebooks(request: Request):
                                 </select>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>Description</label>
-                            <textarea name="description"></textarea>
+                        <div style="margin-bottom:20px">
+                            <label style="display:block;margin-bottom:8px;font-weight:600;color:#e2e8f0">Description</label>
+                            <textarea name="description" rows="3"></textarea>
                         </div>
-                        <div class="form-group">
-                            <label>Fichier *</label>
+                        <div style="margin-bottom:20px">
+                            <label style="display:block;margin-bottom:8px;font-weight:600;color:#e2e8f0">Fichier *</label>
                             <input type="file" name="file" required accept=".pdf,.epub,.mobi">
                         </div>
-                        <button type="submit">Ajouter l'ebook</button>
+                        <button type="submit">📤 Ajouter l'ebook</button>
                     </form>
                 </div>
                 
-                <h2 style="margin-bottom: 20px;">📚 Ebooks existants ({len(ebooks)})</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Titre</th>
-                            <th>Plan</th>
-                            <th>Téléchargements</th>
-                            <th>Statut</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {''.join([f'''
-                        <tr>
-                            <td>{e.get("id")}</td>
-                            <td>{e.get("title", "")}</td>
-                            <td>{e.get("min_plan", "Free")}</td>
-                            <td>{e.get("downloads", 0)}</td>
-                            <td class="{'status-active' if e.get("active") else 'status-inactive'}">
-                                {'✅ Actif' if e.get("active") else '❌ Inactif'}
-                            </td>
-                            <td>
-                                <form method="POST" action="/admin/ebooks/toggle/{e.get('id')}" style="display: inline;">
-                                    <button type="submit" class="action-btn toggle-btn">
-                                        {'🔴 Désactiver' if e.get("active") else '🟢 Activer'}
-                                    </button>
-                                </form>
-                                <form method="POST" action="/admin/ebooks/delete/{e.get('id')}" style="display: inline;" onsubmit="return confirm('Supprimer cet ebook?');">
-                                    <button type="submit" class="action-btn delete-btn">🗑️ Supprimer</button>
-                                </form>
-                            </td>
-                        </tr>
-                        ''' for e in ebooks]) if ebooks else '<tr><td colspan="6" style="text-align: center; color: rgba(255,255,255,0.5);">Aucun ebook pour le moment</td></tr>'}
-                    </tbody>
-                </table>
+                <div class="card">
+                    <h2>📚 Ebooks existants (""" + str(len(ebooks)) + """)</h2>
+                    <div style="overflow-x:auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Titre</th>
+                                    <th>Plan</th>
+                                    <th>Téléch.</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+        """
+        
+        if ebooks:
+            for e in ebooks:
+                status_color = "#10b981" if e.get("active") else "#ef4444"
+                status_text = "✅ Actif" if e.get("active") else "❌ Inactif"
+                toggle_text = "🔴 Désactiver" if e.get("active") else "🟢 Activer"
                 
-                <a href="/admin-dashboard" class="back-link">← Retour au dashboard admin</a>
+                admin_html += f"""
+                                <tr>
+                                    <td>{e.get("id")}</td>
+                                    <td>{e.get("title", "")}</td>
+                                    <td>{e.get("min_plan", "Free")}</td>
+                                    <td>{e.get("downloads", 0)}</td>
+                                    <td style="color:{status_color}">{status_text}</td>
+                                    <td>
+                                        <form method="POST" action="/admin/ebooks/toggle/{e.get('id')}" style="display:inline">
+                                            <button type="submit" style="padding:8px 15px;margin:0 5px;font-size:13px">{toggle_text}</button>
+                                        </form>
+                                        <form method="POST" action="/admin/ebooks/delete/{e.get('id')}" style="display:inline" 
+                                            onsubmit="return confirm('Supprimer cet ebook?')">
+                                            <button type="submit" class="btn-danger" style="padding:8px 15px;margin:0 5px;font-size:13px">
+                                                🗑️ Supprimer
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                """
+        else:
+            admin_html += """
+                                <tr>
+                                    <td colspan="6" style="text-align:center;color:#64748b;padding:40px">
+                                        Aucun ebook pour le moment
+                                    </td>
+                                </tr>
+            """
+        
+        admin_html += """
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </body>
         </html>
         """
         
-        return HTMLResponse(content=admin_html)
+        return HTMLResponse(SIDEBAR + admin_html)
         
     except Exception as e:
         print(f"❌ Admin ebooks error: {e}")
@@ -41845,7 +41558,6 @@ async def add_ebook(request: Request):
         if not title or not file:
             raise HTTPException(400, "Titre et fichier requis")
         
-        # Sauvegarder le fichier
         file_content = await file.read()
         filename = file.filename
         file_path = EBOOKS_DIR / filename
@@ -41855,7 +41567,6 @@ async def add_ebook(request: Request):
         
         file_size = len(file_content)
         
-        # Insérer en DB
         conn = get_db_connection()
         c = conn.cursor()
         
@@ -41874,8 +41585,6 @@ async def add_ebook(request: Request):
         
     except Exception as e:
         print(f"❌ Add ebook error: {e}")
-        import traceback
-        traceback.print_exc()
         raise HTTPException(500, f"Erreur: {str(e)}")
 
 # Route 7: POST /admin/ebooks/delete/{ebook_id} - Supprimer
@@ -41892,13 +41601,10 @@ async def delete_ebook(ebook_id: int, request: Request):
         if DB_CONFIG["type"] == "postgres":
             from psycopg2.extras import RealDictCursor
             c = conn.cursor(cursor_factory=RealDictCursor)
+            c.execute("SELECT filename FROM ebooks WHERE id=%s", (ebook_id,))
         else:
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
-        
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("SELECT filename FROM ebooks WHERE id=%s", (ebook_id,))
-        else:
             c.execute("SELECT filename FROM ebooks WHERE id=?", (ebook_id,))
         
         row = c.fetchone()
@@ -41922,8 +41628,6 @@ async def delete_ebook(ebook_id: int, request: Request):
         
     except Exception as e:
         print(f"❌ Delete ebook error: {e}")
-        import traceback
-        traceback.print_exc()
         raise HTTPException(500, f"Erreur: {str(e)}")
 
 # Route 8: POST /admin/ebooks/toggle/{ebook_id} - Activer/Désactiver
@@ -41952,11 +41656,9 @@ async def toggle_ebook(ebook_id: int, request: Request):
         
     except Exception as e:
         print(f"❌ Toggle ebook error: {e}")
-        import traceback
-        traceback.print_exc()
         raise HTTPException(500, f"Erreur: {str(e)}")
 
 
 # ============================================================================
-# FIN DU CORRECTIF
+# FIN DES ROUTES EBOOKS/CONTACT - TOUT EST PRÊT!
 # ============================================================================

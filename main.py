@@ -10222,7 +10222,7 @@ async def ai_market_regime():
                         <div class="indicator-status">Sentiment marché</div>
                     </div>
                     <div class="indicator-card">
-                        <div class="indicator-title">Force Tendance</div>
+    <div class="indicator-title">Force Tendance</div>
                         <div class="indicator-value">${data.indicators.trendStrength}</div>
                         <div class="indicator-status">ADX & Momentum</div>
                     </div>
@@ -15334,7 +15334,6 @@ async def charts_page():
                     </div>
                 </div>
             </div>
-            
             <div class="chart-card">
                 <h3>🏆 Classement par Performance</h3>
                 <div class="canvas-container small">
@@ -20446,7 +20445,7 @@ async def market_simulation():
             border-color: #00ff88; 
             box-shadow: 0 0 15px rgba(0,255,136,0.5);
             background: rgba(15, 23, 42, 1);
-        }
+            }
         
         button {
             background: linear-gradient(45deg, #00ff88, #00d4ff);
@@ -25558,7 +25557,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
                     padding: 12px;
                     border-bottom: 1px solid #334155;
                 }}
-                tr:hover {{ background: #334155; }}
+            tr:hover {{ background: #334155; }}
             </style>
         </head>
         <body>
@@ -30670,7 +30669,7 @@ async def ai_exit():
         </div>
         """
     return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
+            <!DOCTYPE html>
     <html lang="fr">
     <head>
         <meta charset="UTF-8">
@@ -35781,8 +35780,7 @@ function showFormation(id) {
     if (formation.quiz && formation.quiz.length > 0) {
         html += '<div class="quiz-section"><h2>📝 Quiz de Certification</h2>';
         html += '<p>Répondez à ces questions pour obtenir votre certificat. Score minimum: 70%</p>';
-        
-        for (var q = 0; q < formation.quiz.length; q++) {
+            for (var q = 0; q < formation.quiz.length; q++) {
             var quiz = formation.quiz[q];
             html += '<div class="quiz-question"><h4>Question ' + (q+1) + ': ' + quiz.question + '</h4>';
             html += '<div class="quiz-options">';
@@ -40885,6 +40883,261 @@ async def api_complete_lesson(request: Request):
     data = await request.json()
     lesson_id = data.get("lesson_id")
     score = data.get("score", 0)
+
+# ============================================================================
+# 📧 CONTACT + 📚 TÉLÉCHARGEMENTS EBOOKS - CODE COMPLET
+# ============================================================================
+
+from pathlib import Path
+import shutil
+
+# Créer le dossier pour les ebooks
+EBOOKS_DIR = Path("static/ebooks")
+EBOOKS_DIR.mkdir(parents=True, exist_ok=True)
+
+# ============================================================================
+# INITIALISATION TABLES
+# ============================================================================
+
+def init_ebooks_table():
+    """Créer la table des ebooks"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS ebooks (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                filename TEXT NOT NULL,
+                file_size INTEGER,
+                min_plan TEXT DEFAULT 'Free',
+                downloads INTEGER DEFAULT 0,
+                active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )""")
+            c.execute("""CREATE TABLE IF NOT EXISTS contact_messages (
+                id SERIAL PRIMARY KEY,
+                name TEXT,
+                email TEXT,
+                subject TEXT,
+                message TEXT,
+                user_id INTEGER,
+                status TEXT DEFAULT 'new',
+                created_at TIMESTAMP DEFAULT NOW()
+            )""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS ebooks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT,
+                filename TEXT NOT NULL,
+                file_size INTEGER,
+                min_plan TEXT DEFAULT 'Free',
+                downloads INTEGER DEFAULT 0,
+                active INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+            c.execute("""CREATE TABLE IF NOT EXISTS contact_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                email TEXT,
+                subject TEXT,
+                message TEXT,
+                user_id INTEGER,
+                status TEXT DEFAULT 'new',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+        
+        conn.commit()
+        conn.close()
+        print("✅ Tables ebooks et contact créées")
+        return True
+    except Exception as e:
+        print(f"❌ Erreur init ebooks: {e}")
+        return False
+
+# ============================================================================
+# 📧 ROUTES CONTACT
+# ============================================================================
+
+@app.get("/contact", response_class=HTMLResponse)
+@limiter.limit("30/minute")
+async def contact_page(request: Request):
+    """Page de contact"""
+    user_data = await get_current_user(request)
+    return templates.TemplateResponse("contact.html", {
+        "request": request,
+        "user": user_data
+    })
+
+@app.post("/contact")
+@limiter.limit("5/minute")
+async def submit_contact(request: Request, name: str = Form(...), email: str = Form(...), subject: str = Form(...), message: str = Form(...)):
+    """Traiter le formulaire de contact"""
+    try:
+        user_data = await get_current_user(request)
+        conn = get_db_connection()
+        c = conn.cursor()
+        user_id = user_data.get("id") if user_data else None
+        c.execute("INSERT INTO contact_messages (name, email, subject, message, user_id) VALUES (?, ?, ?, ?, ?)", (name, email, subject, message, user_id))
+        conn.commit()
+        conn.close()
+        return templates.TemplateResponse("contact_success.html", {"request": request, "user": user_data, "name": name})
+    except Exception as e:
+        print(f"❌ Erreur contact: {e}")
+        raise HTTPException(500, "Erreur lors de l'envoi du message")
+
+# ============================================================================
+# 📚 ROUTES TÉLÉCHARGEMENTS
+# ============================================================================
+
+@app.get("/telechargements", response_class=HTMLResponse)
+@limiter.limit("30/minute")
+async def downloads_page(request: Request):
+    """Page de téléchargements"""
+    user_data = await get_current_user(request)
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM ebooks WHERE active = ? ORDER BY created_at DESC", (1,))
+    ebooks = c.fetchall()
+    conn.close()
+    user_plan = "Free"
+    if user_data:
+        user_plan = user_data.get("subscription_tier", "Free")
+    plan_hierarchy = {"Free": 0, "Premium": 1, "Advanced": 2, "Pro": 3, "Elite": 4}
+    user_plan_level = plan_hierarchy.get(user_plan, 0)
+    accessible_ebooks = []
+    locked_ebooks = []
+    for ebook in ebooks:
+        ebook_plan = ebook[5]
+        ebook_plan_level = plan_hierarchy.get(ebook_plan, 0)
+        ebook_dict = {"id": ebook[0], "title": ebook[1], "description": ebook[2], "filename": ebook[3], "file_size": ebook[4], "min_plan": ebook_plan, "downloads": ebook[6], "accessible": user_plan_level >= ebook_plan_level}
+        if ebook_dict["accessible"]:
+            accessible_ebooks.append(ebook_dict)
+        else:
+            locked_ebooks.append(ebook_dict)
+    return templates.TemplateResponse("downloads.html", {"request": request, "user": user_data, "accessible_ebooks": accessible_ebooks, "locked_ebooks": locked_ebooks, "user_plan": user_plan})
+
+@app.get("/telechargements/download/{ebook_id}")
+@limiter.limit("10/minute")
+async def download_ebook(request: Request, ebook_id: int):
+    """Télécharger un ebook"""
+    user_data = await get_current_user(request)
+    if not user_data:
+        return RedirectResponse(url="/login")
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM ebooks WHERE id = ? AND active = ?", (ebook_id, 1))
+    ebook = c.fetchone()
+    if not ebook:
+        conn.close()
+        raise HTTPException(404, "Ebook non trouvé")
+    user_plan = user_data.get("subscription_tier", "Free")
+    min_plan = ebook[5]
+    plan_hierarchy = {"Free": 0, "Premium": 1, "Advanced": 2, "Pro": 3, "Elite": 4}
+    if plan_hierarchy.get(user_plan, 0) < plan_hierarchy.get(min_plan, 0):
+        conn.close()
+        raise HTTPException(403, "Plan insuffisant")
+    c.execute("UPDATE ebooks SET downloads = downloads + 1 WHERE id = ?", (ebook_id,))
+    conn.commit()
+    conn.close()
+    filename = ebook[3]
+    file_path = EBOOKS_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(404, "Fichier non trouvé")
+    return FileResponse(path=file_path, filename=filename, media_type="application/octet-stream")
+
+# ============================================================================
+# 🔧 ADMIN - GESTION DES EBOOKS
+# ============================================================================
+
+@app.get("/admin/ebooks", response_class=HTMLResponse)
+@limiter.limit("30/minute")
+async def admin_ebooks(request: Request):
+    """Admin - Liste des ebooks"""
+    user_data = await get_current_user(request)
+    if not user_data or not user_data.get("is_admin"):
+        raise HTTPException(403, "Accès refusé")
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM ebooks ORDER BY created_at DESC")
+    ebooks = c.fetchall()
+    conn.close()
+    return templates.TemplateResponse("admin_ebooks.html", {"request": request, "user": user_data, "ebooks": ebooks})
+
+@app.post("/admin/ebooks/add")
+@limiter.limit("10/minute")
+async def admin_add_ebook(request: Request, title: str = Form(...), description: str = Form(...), min_plan: str = Form(...), file: UploadFile = File(...)):
+    """Admin - Ajouter un ebook"""
+    user_data = await get_current_user(request)
+    if not user_data or not user_data.get("is_admin"):
+        raise HTTPException(403, "Accès refusé")
+    try:
+        file_path = EBOOKS_DIR / file.filename
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        file_size = file_path.stat().st_size
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("INSERT INTO ebooks (title, description, filename, file_size, min_plan) VALUES (?, ?, ?, ?, ?)", (title, description, file.filename, file_size, min_plan))
+        conn.commit()
+        conn.close()
+        return RedirectResponse(url="/admin/ebooks", status_code=303)
+    except Exception as e:
+        print(f"❌ Erreur ajout ebook: {e}")
+        raise HTTPException(500, "Erreur lors de l'ajout de l'ebook")
+
+@app.post("/admin/ebooks/delete/{ebook_id}")
+@limiter.limit("10/minute")
+async def admin_delete_ebook(request: Request, ebook_id: int):
+    """Admin - Supprimer un ebook"""
+    user_data = await get_current_user(request)
+    if not user_data or not user_data.get("is_admin"):
+        raise HTTPException(403, "Accès refusé")
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT filename FROM ebooks WHERE id = ?", (ebook_id,))
+        ebook = c.fetchone()
+        if ebook:
+            file_path = EBOOKS_DIR / ebook[0]
+            if file_path.exists():
+                file_path.unlink()
+            c.execute("DELETE FROM ebooks WHERE id = ?", (ebook_id,))
+            conn.commit()
+        conn.close()
+        return RedirectResponse(url="/admin/ebooks", status_code=303)
+    except Exception as e:
+        print(f"❌ Erreur suppression ebook: {e}")
+        raise HTTPException(500, "Erreur lors de la suppression")
+
+@app.post("/admin/ebooks/toggle/{ebook_id}")
+@limiter.limit("10/minute")
+async def admin_toggle_ebook(request: Request, ebook_id: int):
+    """Admin - Activer/Désactiver un ebook"""
+    user_data = await get_current_user(request)
+    if not user_data or not user_data.get("is_admin"):
+        raise HTTPException(403, "Accès refusé")
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("UPDATE ebooks SET active = NOT active WHERE id = ?", (ebook_id,))
+        else:
+            c.execute("UPDATE ebooks SET active = 1 - active WHERE id = ?", (ebook_id,))
+        conn.commit()
+        conn.close()
+        return RedirectResponse(url="/admin/ebooks", status_code=303)
+    except Exception as e:
+        print(f"❌ Erreur toggle ebook: {e}")
+        raise HTTPException(500, "Erreur")
+
+# ============================================================================
+# FIN DU CODE CONTACT + TÉLÉCHARGEMENTS
+# ============================================================================
+
     total = data.get("total", 0)
     
     result = complete_lesson(username, lesson_id, score, total)

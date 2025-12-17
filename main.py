@@ -40885,13 +40885,14 @@ async def api_complete_lesson(request: Request):
     score = data.get("score", 0)
 
 # ============================================================================
-# 📧 CONTACT + 📚 TÉLÉCHARGEMENTS EBOOKS - CODE COMPLET
+# 📧 CONTACT + 📚 TÉLÉCHARGEMENTS EBOOKS - CODE COMPLET CORRIGÉ
 # ============================================================================
 
 from pathlib import Path
 import shutil
 
-EBOOKS_DIR = Path("/tmp/ebooks")  # Utiliser /tmp au lieu de static
+# Créer le dossier pour les ebooks dans /tmp (permissions OK sur Railway)
+EBOOKS_DIR = Path("/tmp/ebooks")
 EBOOKS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ============================================================================
@@ -40956,15 +40957,7 @@ def init_ebooks_table():
     except Exception as e:
         print(f"❌ Erreur init ebooks: {e}")
         return False
-def init_ebooks_table():
-    """Créer la table des ebooks"""
-    try:
-        # Créer le dossier ebooks
-        EBOOKS_DIR = Path("/tmp/ebooks")
-        EBOOKS_DIR.mkdir(parents=True, exist_ok=True)
-        
-        conn = get_db_connection()
-        # ... reste du code
+
 # ============================================================================
 # 📧 ROUTES CONTACT
 # ============================================================================
@@ -41056,6 +41049,94 @@ async def download_ebook(request: Request, ebook_id: int):
         raise HTTPException(404, "Fichier non trouvé")
     return FileResponse(path=file_path, filename=filename, media_type="application/octet-stream")
 
+# ============================================================================
+# 🔧 ADMIN - GESTION DES EBOOKS
+# ============================================================================
+
+@app.get("/admin/ebooks", response_class=HTMLResponse)
+@limiter.limit("30/minute")
+async def admin_ebooks(request: Request):
+    """Admin - Liste des ebooks"""
+    user_data = await get_current_user(request)
+    if not user_data or not user_data.get("is_admin"):
+        raise HTTPException(403, "Accès refusé")
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM ebooks ORDER BY created_at DESC")
+    ebooks = c.fetchall()
+    conn.close()
+    return templates.TemplateResponse("admin_ebooks.html", {"request": request, "user": user_data, "ebooks": ebooks})
+
+@app.post("/admin/ebooks/add")
+@limiter.limit("10/minute")
+async def admin_add_ebook(request: Request, title: str = Form(...), description: str = Form(...), min_plan: str = Form(...), file: UploadFile = File(...)):
+    """Admin - Ajouter un ebook"""
+    user_data = await get_current_user(request)
+    if not user_data or not user_data.get("is_admin"):
+        raise HTTPException(403, "Accès refusé")
+    try:
+        file_path = EBOOKS_DIR / file.filename
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        file_size = file_path.stat().st_size
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("INSERT INTO ebooks (title, description, filename, file_size, min_plan) VALUES (?, ?, ?, ?, ?)", (title, description, file.filename, file_size, min_plan))
+        conn.commit()
+        conn.close()
+        return RedirectResponse(url="/admin/ebooks", status_code=303)
+    except Exception as e:
+        print(f"❌ Erreur ajout ebook: {e}")
+        raise HTTPException(500, "Erreur lors de l'ajout de l'ebook")
+
+@app.post("/admin/ebooks/delete/{ebook_id}")
+@limiter.limit("10/minute")
+async def admin_delete_ebook(request: Request, ebook_id: int):
+    """Admin - Supprimer un ebook"""
+    user_data = await get_current_user(request)
+    if not user_data or not user_data.get("is_admin"):
+        raise HTTPException(403, "Accès refusé")
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        c.execute("SELECT filename FROM ebooks WHERE id = ?", (ebook_id,))
+        ebook = c.fetchone()
+        if ebook:
+            file_path = EBOOKS_DIR / ebook[0]
+            if file_path.exists():
+                file_path.unlink()
+            c.execute("DELETE FROM ebooks WHERE id = ?", (ebook_id,))
+            conn.commit()
+        conn.close()
+        return RedirectResponse(url="/admin/ebooks", status_code=303)
+    except Exception as e:
+        print(f"❌ Erreur suppression ebook: {e}")
+        raise HTTPException(500, "Erreur lors de la suppression")
+
+@app.post("/admin/ebooks/toggle/{ebook_id}")
+@limiter.limit("10/minute")
+async def admin_toggle_ebook(request: Request, ebook_id: int):
+    """Admin - Activer/Désactiver un ebook"""
+    user_data = await get_current_user(request)
+    if not user_data or not user_data.get("is_admin"):
+        raise HTTPException(403, "Accès refusé")
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("UPDATE ebooks SET active = NOT active WHERE id = ?", (ebook_id,))
+        else:
+            c.execute("UPDATE ebooks SET active = 1 - active WHERE id = ?", (ebook_id,))
+        conn.commit()
+        conn.close()
+        return RedirectResponse(url="/admin/ebooks", status_code=303)
+    except Exception as e:
+        print(f"❌ Erreur toggle ebook: {e}")
+        raise HTTPException(500, "Erreur")
+
+# ============================================================================
+# FIN DU CODE CONTACT + TÉLÉCHARGEMENTS
+# ============================================================================
 # ============================================================================
 # 🔧 ADMIN - GESTION DES EBOOKS
 # ============================================================================

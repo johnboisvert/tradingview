@@ -2099,33 +2099,35 @@ def init_ebooks_table():
         return False
 
 def get_user_from_request(request: Request):
-    """Récupère l'utilisateur depuis les cookies (version synchrone compatible)"""
+    """Récupère l'utilisateur depuis les cookies - VERSION CORRIGÉE"""
     try:
-        # Récupérer le user_id depuis les cookies
-        user_id = request.cookies.get("user_id")
-        if not user_id:
+        # ✅ CORRECTION: Utiliser session_token, pas user_id!
+        session_token = request.cookies.get("session_token")
+        
+        if not session_token:
+            print("⚠️ get_user_from_request: Pas de session_token dans les cookies")
             return None
         
-        conn = get_db_connection()
+        # ✅ CORRECTION: Utiliser get_user_from_token() qui existe déjà
+        user = get_user_from_token(session_token)
         
-        # Adapter selon le type de DB
-        if DB_CONFIG["type"] == "postgres":
-            from psycopg2.extras import RealDictCursor
-            c = conn.cursor(cursor_factory=RealDictCursor)
-            c.execute("SELECT * FROM users WHERE id=%s", (user_id,))
+        if not user:
+            print(f"⚠️ get_user_from_request: session_token trouvé mais utilisateur non trouvé")
+            return None
+        
+        # L'utilisateur peut être soit un dict, soit juste un username (ancien format)
+        if isinstance(user, str):
+            # Ancien format: juste le username
+            username = user
+            user_dict = {
+                "username": username,
+                "id": username,
+                "plan": "Free",
+                "role": "admin" if username == "admin" else "user"
+            }
         else:
-            conn.row_factory = sqlite3.Row
-            c = conn.cursor()
-            c.execute("SELECT * FROM users WHERE id=?", (user_id,))
-        
-        row = c.fetchone()
-        conn.close()
-        
-        if not row:
-            return None
-        
-        # Convertir en dict
-        user_dict = dict(row)
+            # Nouveau format: déjà un dict
+            user_dict = user
         
         # ✅ CORRECTION CRITIQUE: Vérifier le rôle admin
         # Le champ dans la DB peut être "role" ou "plan"

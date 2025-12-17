@@ -1,21 +1,18 @@
 # -*- coding: utf-8 -*-
-from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, PlainTextResponse
+from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie, Form, File, UploadFile
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, PlainTextResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-
 # 🔐 CORRECTION 2: Rate Limiting pour sécurité
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-
 from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
 import ccxt
 from cryptography.fernet import Fernet
-
 # Imports pour système d'emails et codes promo
 try:
     from email_service import email_service
@@ -23,7 +20,6 @@ try:
 except ImportError:
     EMAIL_SERVICE_AVAILABLE = False
     print("⚠️  email_service non disponible")
-
 try:
     from promo_codes import PromoCodeManager, create_promo_codes_table
     PROMO_CODES_AVAILABLE = True
@@ -44,7 +40,6 @@ import hmac
 import requests  # Pour API externe (Fear & Greed, etc.)
 import time
 from urllib.parse import urlencode
-
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
 from technical_analyzer import analyzer
 

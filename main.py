@@ -2788,9 +2788,17 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🏆</span>
                 <span class="label">Success Stories</span>
             </a>
+            <a href="/contact" class="menu-item">
+                <span class="icon">📧</span>
+                <span class="label">Contact</span>
+            </a>
+            <a href="/telechargements" class="menu-item">
+                <span class="icon">📚</span>
+                <span class="label">Téléchargements</span>
+            </a>
         </div>
         
-        <!-- 👤 COMPTE (3) -->
+        <!-- 👤 COMPTE (4) -->
         <div class="menu-section">
             <div class="section-title">👤 COMPTE</div>
             <a href="/mon-compte" class="menu-item account">
@@ -2804,6 +2812,10 @@ body.sidebar-open{margin-left:280px}
             <a href="/admin-dashboard" class="menu-item admin">
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
+            </a>
+            <a href="/admin/ebooks" class="menu-item admin">
+                <span class="icon">📚</span>
+                <span class="label">Admin Ebooks</span>
             </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>

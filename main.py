@@ -41054,14 +41054,49 @@ def init_ebooks_table():
         return False
 
 # ============================================================================
+# 📧 FONCTION HELPER POUR RÉCUPÉRER L'UTILISATEUR
+# ============================================================================
+# AJOUTE CETTE FONCTION AVANT TES ROUTES (vers ligne 3000)
+
+def get_user_from_request(request: Request):
+    """Récupère l'utilisateur depuis les cookies et la DB"""
+    try:
+        username = request.cookies.get("username")
+        if not username:
+            return None
+        
+        conn = get_db_connection()
+        if DB_CONFIG["type"] == "postgres":
+            c = conn.cursor(cursor_factory=RealDictCursor)
+        else:
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+        
+        c.execute("SELECT * FROM users WHERE username=%s" if DB_CONFIG["type"] == "postgres" 
+                  else "SELECT * FROM users WHERE username=?", (username,))
+        user = c.fetchone()
+        conn.close()
+        
+        if user:
+            user_dict = dict(user)
+            # Ajouter les champs attendus
+            user_dict["is_admin"] = (user_dict.get("role") == "admin")
+            user_dict["subscription_tier"] = user_dict.get("plan", "Free")
+            return user_dict
+        return None
+    except Exception as e:
+        print(f"❌ Erreur get_user_from_request: {e}")
+        return None
+
+# ============================================================================
 # 📧 ROUTES CONTACT
 # ============================================================================
 
-@app.get("/contact", response_class=HTMLResponse)
-@limiter.limit("30/minute")
+@app.get("/contact")
 async def contact_page(request: Request):
     """Page de contact"""
-    user_data = await get_current_user(request)
+    user_data = get_user_from_request(request)
+    
     return templates.TemplateResponse("contact.html", {
         "request": request,
         "user": user_data
@@ -41069,17 +41104,40 @@ async def contact_page(request: Request):
 
 @app.post("/contact")
 @limiter.limit("5/minute")
-async def submit_contact(request: Request, name: str = Form(...), email: str = Form(...), subject: str = Form(...), message: str = Form(...)):
+async def submit_contact(
+    request: Request, 
+    name: str = Form(...), 
+    email: str = Form(...), 
+    subject: str = Form(...), 
+    message: str = Form(...)
+):
     """Traiter le formulaire de contact"""
     try:
-        user_data = await get_current_user(request)
+        user_data = get_user_from_request(request)
+        user_id = user_data.get("id") if user_data else None
+        
         conn = get_db_connection()
         c = conn.cursor()
-        user_id = user_data.get("id") if user_data else None
-        c.execute("INSERT INTO contact_messages (name, email, subject, message, user_id) VALUES (?, ?, ?, ?, ?)", (name, email, subject, message, user_id))
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute(
+                "INSERT INTO contact_messages (name, email, subject, message, user_id) VALUES (%s, %s, %s, %s, %s)",
+                (name, email, subject, message, user_id)
+            )
+        else:
+            c.execute(
+                "INSERT INTO contact_messages (name, email, subject, message, user_id) VALUES (?, ?, ?, ?, ?)",
+                (name, email, subject, message, user_id)
+            )
+        
         conn.commit()
         conn.close()
-        return templates.TemplateResponse("contact_success.html", {"request": request, "user": user_data, "name": name})
+        
+        return templates.TemplateResponse("contact_success.html", {
+            "request": request,
+            "user": user_data,
+            "name": name
+        })
     except Exception as e:
         print(f"❌ Erreur contact: {e}")
         raise HTTPException(500, "Erreur lors de l'envoi du message")
@@ -41092,57 +41150,129 @@ async def submit_contact(request: Request, name: str = Form(...), email: str = F
 @limiter.limit("30/minute")
 async def downloads_page(request: Request):
     """Page de téléchargements"""
-    user_data = await get_current_user(request)
+    user_data = get_user_from_request(request)
+    
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM ebooks WHERE active = ? ORDER BY created_at DESC", (1,))
+    
+    if DB_CONFIG["type"] == "postgres":
+        c.execute("SELECT * FROM ebooks WHERE active = TRUE ORDER BY created_at DESC")
+    else:
+        c.execute("SELECT * FROM ebooks WHERE active = 1 ORDER BY created_at DESC")
+    
     ebooks = c.fetchall()
     conn.close()
+    
+    # Déterminer le plan de l'utilisateur
     user_plan = "Free"
     if user_data:
         user_plan = user_data.get("subscription_tier", "Free")
-    plan_hierarchy = {"Free": 0, "Premium": 1, "Advanced": 2, "Pro": 3, "Elite": 4}
+    
+    # Hiérarchie des plans
+    plan_hierarchy = {
+        "Free": 0,
+        "Premium": 1,
+        "Advanced": 2,
+        "Pro": 3,
+        "Elite": 4
+    }
     user_plan_level = plan_hierarchy.get(user_plan, 0)
+    
+    # Filtrer les ebooks
     accessible_ebooks = []
     locked_ebooks = []
+    
     for ebook in ebooks:
-        ebook_plan = ebook[5]
+        ebook_dict = dict(ebook)
+        ebook_plan = ebook_dict.get("min_plan", "Free")
         ebook_plan_level = plan_hierarchy.get(ebook_plan, 0)
-        ebook_dict = {"id": ebook[0], "title": ebook[1], "description": ebook[2], "filename": ebook[3], "file_size": ebook[4], "min_plan": ebook_plan, "downloads": ebook[6], "accessible": user_plan_level >= ebook_plan_level}
-        if ebook_dict["accessible"]:
-            accessible_ebooks.append(ebook_dict)
+        
+        ebook_info = {
+            "id": ebook_dict.get("id"),
+            "title": ebook_dict.get("title"),
+            "description": ebook_dict.get("description"),
+            "filename": ebook_dict.get("filename"),
+            "file_size": ebook_dict.get("file_size"),
+            "min_plan": ebook_plan,
+            "downloads": ebook_dict.get("downloads", 0),
+            "accessible": user_plan_level >= ebook_plan_level
+        }
+        
+        if ebook_info["accessible"]:
+            accessible_ebooks.append(ebook_info)
         else:
-            locked_ebooks.append(ebook_dict)
-    return templates.TemplateResponse("downloads.html", {"request": request, "user": user_data, "accessible_ebooks": accessible_ebooks, "locked_ebooks": locked_ebooks, "user_plan": user_plan})
+            locked_ebooks.append(ebook_info)
+    
+    return templates.TemplateResponse("downloads.html", {
+        "request": request,
+        "user": user_data,
+        "accessible_ebooks": accessible_ebooks,
+        "locked_ebooks": locked_ebooks,
+        "user_plan": user_plan
+    })
 
 @app.get("/telechargements/download/{ebook_id}")
 @limiter.limit("10/minute")
 async def download_ebook(request: Request, ebook_id: int):
     """Télécharger un ebook"""
-    user_data = await get_current_user(request)
+    user_data = get_user_from_request(request)
+    
     if not user_data:
-        return RedirectResponse(url="/login")
+        return RedirectResponse(url="/login", status_code=303)
+    
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute("SELECT * FROM ebooks WHERE id = ? AND active = ?", (ebook_id, 1))
+    
+    if DB_CONFIG["type"] == "postgres":
+        c.execute("SELECT * FROM ebooks WHERE id = %s AND active = TRUE", (ebook_id,))
+    else:
+        c.execute("SELECT * FROM ebooks WHERE id = ? AND active = 1", (ebook_id,))
+    
     ebook = c.fetchone()
+    
     if not ebook:
         conn.close()
         raise HTTPException(404, "Ebook non trouvé")
+    
+    ebook_dict = dict(ebook)
+    
+    # Vérifier le plan
     user_plan = user_data.get("subscription_tier", "Free")
-    min_plan = ebook[5]
-    plan_hierarchy = {"Free": 0, "Premium": 1, "Advanced": 2, "Pro": 3, "Elite": 4}
+    min_plan = ebook_dict.get("min_plan", "Free")
+    
+    plan_hierarchy = {
+        "Free": 0,
+        "Premium": 1,
+        "Advanced": 2,
+        "Pro": 3,
+        "Elite": 4
+    }
+    
     if plan_hierarchy.get(user_plan, 0) < plan_hierarchy.get(min_plan, 0):
         conn.close()
-        raise HTTPException(403, "Plan insuffisant")
-    c.execute("UPDATE ebooks SET downloads = downloads + 1 WHERE id = ?", (ebook_id,))
+        raise HTTPException(403, "Plan insuffisant pour télécharger cet ebook")
+    
+    # Incrémenter le compteur de téléchargements
+    if DB_CONFIG["type"] == "postgres":
+        c.execute("UPDATE ebooks SET downloads = downloads + 1 WHERE id = %s", (ebook_id,))
+    else:
+        c.execute("UPDATE ebooks SET downloads = downloads + 1 WHERE id = ?", (ebook_id,))
+    
     conn.commit()
     conn.close()
-    filename = ebook[3]
+    
+    # Télécharger le fichier
+    filename = ebook_dict.get("filename")
     file_path = EBOOKS_DIR / filename
+    
     if not file_path.exists():
-        raise HTTPException(404, "Fichier non trouvé")
-    return FileResponse(path=file_path, filename=filename, media_type="application/octet-stream")
+        raise HTTPException(404, "Fichier non trouvé sur le serveur")
+    
+    return FileResponse(
+        path=file_path,
+        filename=filename,
+        media_type="application/pdf"
+    )
 
 # ============================================================================
 # 🔧 ADMIN - GESTION DES EBOOKS
@@ -41152,56 +41282,122 @@ async def download_ebook(request: Request, ebook_id: int):
 @limiter.limit("30/minute")
 async def admin_ebooks(request: Request):
     """Admin - Liste des ebooks"""
-    user_data = await get_current_user(request)
+    user_data = get_user_from_request(request)
+    
     if not user_data or not user_data.get("is_admin"):
-        raise HTTPException(403, "Accès refusé")
+        return RedirectResponse(url="/login", status_code=303)
+    
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT * FROM ebooks ORDER BY created_at DESC")
     ebooks = c.fetchall()
     conn.close()
-    return templates.TemplateResponse("admin_ebooks.html", {"request": request, "user": user_data, "ebooks": ebooks})
+    
+    # Convertir en liste de dicts
+    ebooks_list = [dict(e) for e in ebooks]
+    
+    # Statistiques
+    total_ebooks = len(ebooks_list)
+    active_ebooks = sum(1 for e in ebooks_list if e.get("active"))
+    total_downloads = sum(e.get("downloads", 0) for e in ebooks_list)
+    
+    return templates.TemplateResponse("admin_ebooks.html", {
+        "request": request,
+        "user": user_data,
+        "ebooks": ebooks_list,
+        "total_ebooks": total_ebooks,
+        "active_ebooks": active_ebooks,
+        "total_downloads": total_downloads
+    })
 
 @app.post("/admin/ebooks/add")
 @limiter.limit("10/minute")
-async def admin_add_ebook(request: Request, title: str = Form(...), description: str = Form(...), min_plan: str = Form(...), file: UploadFile = File(...)):
+async def admin_add_ebook(
+    request: Request,
+    title: str = Form(...),
+    description: str = Form(...),
+    min_plan: str = Form(...),
+    file: UploadFile = File(...)
+):
     """Admin - Ajouter un ebook"""
-    user_data = await get_current_user(request)
+    user_data = get_user_from_request(request)
+    
     if not user_data or not user_data.get("is_admin"):
         raise HTTPException(403, "Accès refusé")
+    
     try:
+        # Vérifier que c'est un PDF
+        if not file.filename.endswith('.pdf'):
+            raise HTTPException(400, "Seuls les fichiers PDF sont acceptés")
+        
+        # Sauvegarder le fichier
         file_path = EBOOKS_DIR / file.filename
         with file_path.open("wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
+        
         file_size = file_path.stat().st_size
+        
+        # Enregistrer dans la DB
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("INSERT INTO ebooks (title, description, filename, file_size, min_plan) VALUES (?, ?, ?, ?, ?)", (title, description, file.filename, file_size, min_plan))
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute(
+                "INSERT INTO ebooks (title, description, filename, file_size, min_plan) VALUES (%s, %s, %s, %s, %s)",
+                (title, description, file.filename, file_size, min_plan)
+            )
+        else:
+            c.execute(
+                "INSERT INTO ebooks (title, description, filename, file_size, min_plan) VALUES (?, ?, ?, ?, ?)",
+                (title, description, file.filename, file_size, min_plan)
+            )
+        
         conn.commit()
         conn.close()
+        
         return RedirectResponse(url="/admin/ebooks", status_code=303)
     except Exception as e:
         print(f"❌ Erreur ajout ebook: {e}")
-        raise HTTPException(500, "Erreur lors de l'ajout de l'ebook")
+        raise HTTPException(500, f"Erreur lors de l'ajout de l'ebook: {str(e)}")
 
 @app.post("/admin/ebooks/delete/{ebook_id}")
 @limiter.limit("10/minute")
 async def admin_delete_ebook(request: Request, ebook_id: int):
     """Admin - Supprimer un ebook"""
-    user_data = await get_current_user(request)
+    user_data = get_user_from_request(request)
+    
     if not user_data or not user_data.get("is_admin"):
         raise HTTPException(403, "Accès refusé")
+    
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        c.execute("SELECT filename FROM ebooks WHERE id = ?", (ebook_id,))
+        
+        # Récupérer le nom du fichier
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("SELECT filename FROM ebooks WHERE id = %s", (ebook_id,))
+        else:
+            c.execute("SELECT filename FROM ebooks WHERE id = ?", (ebook_id,))
+        
         ebook = c.fetchone()
+        
         if ebook:
-            file_path = EBOOKS_DIR / ebook[0]
+            ebook_dict = dict(ebook)
+            filename = ebook_dict.get("filename")
+            
+            # Supprimer le fichier physique
+            file_path = EBOOKS_DIR / filename
             if file_path.exists():
                 file_path.unlink()
-            c.execute("DELETE FROM ebooks WHERE id = ?", (ebook_id,))
+            
+            # Supprimer de la DB
+            if DB_CONFIG["type"] == "postgres":
+                c.execute("DELETE FROM ebooks WHERE id = %s", (ebook_id,))
+            else:
+                c.execute("DELETE FROM ebooks WHERE id = ?", (ebook_id,))
+            
             conn.commit()
+        
         conn.close()
         return RedirectResponse(url="/admin/ebooks", status_code=303)
     except Exception as e:
@@ -41212,122 +41408,28 @@ async def admin_delete_ebook(request: Request, ebook_id: int):
 @limiter.limit("10/minute")
 async def admin_toggle_ebook(request: Request, ebook_id: int):
     """Admin - Activer/Désactiver un ebook"""
-    user_data = await get_current_user(request)
+    user_data = get_user_from_request(request)
+    
     if not user_data or not user_data.get("is_admin"):
         raise HTTPException(403, "Accès refusé")
+    
     try:
         conn = get_db_connection()
         c = conn.cursor()
+        
         if DB_CONFIG["type"] == "postgres":
-            c.execute("UPDATE ebooks SET active = NOT active WHERE id = ?", (ebook_id,))
+            c.execute("UPDATE ebooks SET active = NOT active WHERE id = %s", (ebook_id,))
         else:
             c.execute("UPDATE ebooks SET active = 1 - active WHERE id = ?", (ebook_id,))
+        
         conn.commit()
         conn.close()
+        
         return RedirectResponse(url="/admin/ebooks", status_code=303)
     except Exception as e:
         print(f"❌ Erreur toggle ebook: {e}")
-        raise HTTPException(500, "Erreur")
+        raise HTTPException(500, "Erreur lors du changement de statut")
 
 # ============================================================================
 # FIN DU CODE CONTACT + TÉLÉCHARGEMENTS
 # ============================================================================
-# ============================================================================
-# 🔧 ADMIN - GESTION DES EBOOKS
-# ============================================================================
-
-@app.get("/admin/ebooks", response_class=HTMLResponse)
-@limiter.limit("30/minute")
-async def admin_ebooks(request: Request):
-    """Admin - Liste des ebooks"""
-    user_data = await get_current_user(request)
-    if not user_data or not user_data.get("is_admin"):
-        raise HTTPException(403, "Accès refusé")
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM ebooks ORDER BY created_at DESC")
-    ebooks = c.fetchall()
-    conn.close()
-    return templates.TemplateResponse("admin_ebooks.html", {"request": request, "user": user_data, "ebooks": ebooks})
-
-@app.post("/admin/ebooks/add")
-@limiter.limit("10/minute")
-async def admin_add_ebook(request: Request, title: str = Form(...), description: str = Form(...), min_plan: str = Form(...), file: UploadFile = File(...)):
-    """Admin - Ajouter un ebook"""
-    user_data = await get_current_user(request)
-    if not user_data or not user_data.get("is_admin"):
-        raise HTTPException(403, "Accès refusé")
-    try:
-        file_path = EBOOKS_DIR / file.filename
-        with file_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        file_size = file_path.stat().st_size
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("INSERT INTO ebooks (title, description, filename, file_size, min_plan) VALUES (?, ?, ?, ?, ?)", (title, description, file.filename, file_size, min_plan))
-        conn.commit()
-        conn.close()
-        return RedirectResponse(url="/admin/ebooks", status_code=303)
-    except Exception as e:
-        print(f"❌ Erreur ajout ebook: {e}")
-        raise HTTPException(500, "Erreur lors de l'ajout de l'ebook")
-
-@app.post("/admin/ebooks/delete/{ebook_id}")
-@limiter.limit("10/minute")
-async def admin_delete_ebook(request: Request, ebook_id: int):
-    """Admin - Supprimer un ebook"""
-    user_data = await get_current_user(request)
-    if not user_data or not user_data.get("is_admin"):
-        raise HTTPException(403, "Accès refusé")
-    try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        c.execute("SELECT filename FROM ebooks WHERE id = ?", (ebook_id,))
-        ebook = c.fetchone()
-        if ebook:
-            file_path = EBOOKS_DIR / ebook[0]
-            if file_path.exists():
-                file_path.unlink()
-            c.execute("DELETE FROM ebooks WHERE id = ?", (ebook_id,))
-            conn.commit()
-        conn.close()
-        return RedirectResponse(url="/admin/ebooks", status_code=303)
-    except Exception as e:
-        print(f"❌ Erreur suppression ebook: {e}")
-        raise HTTPException(500, "Erreur lors de la suppression")
-
-@app.post("/admin/ebooks/toggle/{ebook_id}")
-@limiter.limit("10/minute")
-async def admin_toggle_ebook(request: Request, ebook_id: int):
-    """Admin - Activer/Désactiver un ebook"""
-    user_data = await get_current_user(request)
-    if not user_data or not user_data.get("is_admin"):
-        raise HTTPException(403, "Accès refusé")
-    try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("UPDATE ebooks SET active = NOT active WHERE id = ?", (ebook_id,))
-        else:
-            c.execute("UPDATE ebooks SET active = 1 - active WHERE id = ?", (ebook_id,))
-        conn.commit()
-        conn.close()
-        return RedirectResponse(url="/admin/ebooks", status_code=303)
-    except Exception as e:
-        print(f"❌ Erreur toggle ebook: {e}")
-        raise HTTPException(500, "Erreur")
-
-# ============================================================================
-# FIN DU CODE CONTACT + TÉLÉCHARGEMENTS
-# ============================================================================
-
-    total = data.get("total", 0)
-    
-    result = complete_lesson(username, lesson_id, score, total)
-    
-    return {
-        "success": True,
-        "xp_earned": result.get("xp_earned"),
-        "new_level": result.get("new_level"),
-        "quiz_perfect": result.get("quiz_perfect")
-    }

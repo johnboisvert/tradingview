@@ -40,6 +40,8 @@ import hmac
 import requests  # Pour API externe (Fear & Greed, etc.)
 import time
 from urllib.parse import urlencode
+from pathlib import Path  # ← AJOUTÉ
+import shutil  # ← AJOUTÉ
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
 from technical_analyzer import analyzer
 
@@ -125,6 +127,13 @@ if ANTHROPIC_API_KEY:
 else:
     print("⚠️  Anthropic API key non configurée - AI Coach ne fonctionnera pas")
 # =========================================
+
+# ============================================================================
+# 📚 CONFIGURATION EBOOKS - AJOUTÉ
+# ============================================================================
+EBOOKS_DIR = Path("/tmp/ebooks")
+EBOOKS_DIR.mkdir(parents=True, exist_ok=True)
+# ============================================================================
 
 # Initialiser le client Coinbase Commerce
 coinbase_client = None
@@ -304,6 +313,69 @@ def init_payments_db():
         print(f"❌ Init payments: {e}")
         return False
 
+# ============================================================================
+# 📚 FONCTION INIT_EBOOKS_TABLE - AJOUTÉ
+# ============================================================================
+def init_ebooks_table():
+    """Créer les tables ebooks et contact_messages"""
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS ebooks (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                filename TEXT NOT NULL,
+                file_size INTEGER,
+                min_plan TEXT DEFAULT 'Free',
+                downloads INTEGER DEFAULT 0,
+                active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )""")
+            c.execute("""CREATE TABLE IF NOT EXISTS contact_messages (
+                id SERIAL PRIMARY KEY,
+                name TEXT,
+                email TEXT,
+                subject TEXT,
+                message TEXT,
+                user_id INTEGER,
+                status TEXT DEFAULT 'new',
+                created_at TIMESTAMP DEFAULT NOW()
+            )""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS ebooks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT,
+                filename TEXT NOT NULL,
+                file_size INTEGER,
+                min_plan TEXT DEFAULT 'Free',
+                downloads INTEGER DEFAULT 0,
+                active INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+            c.execute("""CREATE TABLE IF NOT EXISTS contact_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                email TEXT,
+                subject TEXT,
+                message TEXT,
+                user_id INTEGER,
+                status TEXT DEFAULT 'new',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+        
+        conn.commit()
+        conn.close()
+        print(f"✅ Tables ebooks et contact créées ({DB_CONFIG['type']})")
+        return True
+    except Exception as e:
+        print(f"❌ Erreur init ebooks: {e}")
+        return False
+# ============================================================================
+
 def create_payment_record(charge_id, user_id, email, amount, currency, description, charge_data):
     """Crée un enregistrement de paiement"""
     try:
@@ -428,6 +500,34 @@ except ImportError:
     POSTGRESQL_AVAILABLE = False
     print("⚠️  psycopg2 non installé - utilisation de SQLite en fallback")
 
+
+# ============================================================================
+# ⚠️ IMPORTANT: MAINTENANT CHERCHE LA FONCTION startup() DANS TON MAIN.PY
+# ============================================================================
+# 
+# CHERCHE (Ctrl+F): @app.on_event("startup")
+# OU CHERCHE: async def startup()
+#
+# TU DEVRAIS TROUVER:
+#
+# @app.on_event("startup")
+# async def startup():
+#     init_db()
+#     init_payments_db()
+#     if SUBSCRIPTION_ENABLED:
+#         init_subscription_tables()
+#
+# MODIFIE EN AJOUTANT init_ebooks_table():
+#
+# @app.on_event("startup")
+# async def startup():
+#     init_db()
+#     init_payments_db()
+#     init_ebooks_table()  # ← AJOUTE CETTE LIGNE
+#     if SUBSCRIPTION_ENABLED:
+#         init_subscription_tables()
+#
+# ============================================================================
 # ============================================================================
 # 💾 SYSTÈME SQL POUR LES TRADES - Intégré directement
 # ============================================================================

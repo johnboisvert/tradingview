@@ -41682,23 +41682,105 @@ async def toggle_ebook(ebook_id: int, request: Request):
 
 @app.get("/admin/messages", response_class=HTMLResponse)
 async def admin_messages_page(request: Request):
-    """Page messages de contact"""
+    """Page messages de contact avec sidebar"""
     user_data = get_user_from_request(request)
     if not user_data or user_data.get("role") != "admin":
         return RedirectResponse("/login", status_code=303)
     
-    return HTMLResponse("""<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Messages</title><style>
-    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; font-family: sans-serif; }
-    .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-    h1 { color: #333; margin-top: 0; }
-    a { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; }
-    </style></head><body>
-    <div class="container">
-    <h1>💬 Messages de Contact</h1>
-    <p style="color: #666;">Aucun message pour le moment.</p>
-    <a href="/admin-dashboard">← Retour au Dashboard</a>
-    </div></body></html>""")
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("SELECT id, name, email, subject, message, created_at FROM contact_messages ORDER BY created_at DESC")
+        else:
+            c.execute("SELECT id, name, email, subject, message, created_at FROM contact_messages ORDER BY created_at DESC")
+        
+        messages = c.fetchall()
+        conn.close()
+        
+        # Construire le HTML des messages
+        messages_html = ""
+        if messages:
+            for msg_id, name, email, subject, message_text, created_at in messages:
+                created_date = str(created_at)[:10] if created_at else "N/A"
+                messages_html += f"""
+                <div style="background: white; padding: 20px; margin: 15px 0; border-radius: 10px; border-left: 5px solid #667eea; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <strong style="color: #333; font-size: 16px;">{name}</strong><br>
+                            <small style="color: #666;">📧 {email}</small><br>
+                            <small style="color: #999; font-size: 12px;">{created_date}</small>
+                        </div>
+                        <button onclick="if(confirm('Supprimer ce message?')) {{fetch('/admin/messages/delete/{msg_id}', {{method:'POST'}}).then(()=>location.reload());}}" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600;">🗑️</button>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <strong style="color: #667eea; font-size: 15px;">📌 {subject}</strong>
+                        <p style="color: #555; margin-top: 10px; line-height: 1.6;">{message_text}</p>
+                    </div>
+                </div>
+                """
+        else:
+            messages_html = '<div style="text-align: center; padding: 40px; color: #999;"><p style="font-size: 48px; margin: 0;">📭</p><p>Aucun message pour le moment</p></div>'
+        
+        html = f"""<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Messages de Contact</title>
+            <style>
+                .main-content {{ margin-left: 260px; padding: 20px; }}
+                .page-title {{ color: #333; font-size: 28px; margin-top: 0; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; }}
+                .messages-container {{ max-width: 1000px; }}
+                @media (max-width: 768px) {{
+                    .main-content {{ margin-left: 0; padding: 15px; }}
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="main-content">
+                <h1 class="page-title">💬 Messages de Contact</h1>
+                <div class="messages-container">
+                    {messages_html}
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        return HTMLResponse(SIDEBAR + html)
+    
+    except Exception as e:
+        print(f"❌ Error /admin/messages: {e}")
+        return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
+        <html><body style="margin-left: 260px; padding: 20px;"><h1>Erreur</h1><p>{str(e)}</p></body></html>
+        """)
+
+
+@app.post("/admin/messages/delete/{message_id}")
+async def delete_message(message_id: int, request: Request):
+    """Supprimer un message de contact"""
+    user_data = get_user_from_request(request)
+    if not user_data or user_data.get("role") != "admin":
+        raise HTTPException(403, "Admin requis")
+    
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("DELETE FROM contact_messages WHERE id=%s", (message_id,))
+        else:
+            c.execute("DELETE FROM contact_messages WHERE id=?", (message_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse({"success": True})
+    
+    except Exception as e:
+        print(f"❌ Error deleting message: {e}")
+        raise HTTPException(500, str(e))
 
 
 @app.get("/mon-parrain", response_class=HTMLResponse)

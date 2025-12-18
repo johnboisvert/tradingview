@@ -2813,10 +2813,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🎁</span>
                 <span class="label">Mon Parrainage</span>
             </a>
-            <a href="/contact" class="menu-item">
-                <span class="icon">📧</span>
-                <span class="label">Contact</span>
-            </a>
             <a href="/admin-dashboard" class="menu-item admin">
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
@@ -23429,7 +23425,10 @@ async def admin_dashboard(request: Request):
         "/nouvelles", "/success-stories",
         
         # Compte & Pricing
-        "/mon-compte", "/pricing-complete"
+        "/mon-compte", "/pricing-complete", "/mon-parrain",
+        
+        # Admin & Gestion
+        "/admin/messages"
     ]
     
     # PRÉ-CONSTRUIRE LE HTML DES CHECKBOXES (ÉVITER F-STRING AVEC BACKSLASH)

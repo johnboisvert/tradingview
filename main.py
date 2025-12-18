@@ -2831,16 +2831,6 @@ body.sidebar-open{margin-left:280px}
     }
     </script>
 """
-
-# Préparer SIDEBAR pour utilisation dans f-strings (échapper les accolades)
-_css_end = SIDEBAR.find('</style>') + 8
-SIDEBAR_CSS_RAW = SIDEBAR[:_css_end]
-SIDEBAR_HTML_RAW = SIDEBAR[_css_end:]
-
-# Échapper les accolades pour les f-strings
-SIDEBAR_CSS_ESCAPED = SIDEBAR_CSS_RAW.replace('{', '{{').replace('}', '}}')
-SIDEBAR_HTML_ESCAPED = SIDEBAR_HTML_RAW.replace('{', '{{').replace('}', '}}')
-
 # ==================================
 
 # ============================================================================
@@ -23490,7 +23480,8 @@ async def admin_dashboard(request: Request):
         </tr>
         """
     
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""
+    <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
@@ -23753,10 +23744,8 @@ async def admin_dashboard(request: Request):
                 display: block;
             }}
         </style>
-        {SIDEBAR_CSS_ESCAPED}
     </head>
     <body>
-    {SIDEBAR_HTML_ESCAPED}
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>
@@ -24198,7 +24187,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
+            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24645,7 +24634,7 @@ async def admin_dashboard(request: Request):
                         '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
                     '</div>' +
                     '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-                        '<button onclick="extendSubscription(\'' + user.username + '\', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
+                        '<button onclick="extendSubscription(' + "'" + '" + user.username + "'" + ', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
                         '<button onclick="sendRenewalEmail(\'' + user.username + '\')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
                         '<button onclick="offerDiscount(\'' + user.username + '\', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
                     '</div>' +
@@ -24722,7 +24711,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
+            if (!confirm("Prolonger l'abonnement de " + username + " de " + days + " jours?")) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{

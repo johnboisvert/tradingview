@@ -2813,10 +2813,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
             </a>
-            <a href="/admin/ebooks" class="menu-item admin">
-                <span class="icon">📚</span>
-                <span class="label">Admin Ebooks</span>
-            </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
                 <span class="label">Déconnexion</span>
@@ -23771,6 +23767,22 @@ async def admin_dashboard(request: Request):
                 </div>
             </div>
             
+            <!-- 🔗 QUICK LINKS -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                <a href="/admin/ebooks" style="padding: 20px; border-radius: 12px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: all 0.3s;">
+                    <div style="font-size: 32px; margin-bottom: 10px;">📚</div>
+                    <div>Gérer Ebooks</div>
+                </a>
+                <a href="/admin/messages" style="padding: 20px; border-radius: 12px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: all 0.3s;">
+                    <div style="font-size: 32px; margin-bottom: 10px;">💬</div>
+                    <div>Messages</div>
+                </a>
+                <a href="/mon-parrain" style="padding: 20px; border-radius: 12px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #34d399 0%, #10b981 100%); box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: all 0.3s;">
+                    <div style="font-size: 32px; margin-bottom: 10px;">🎁</div>
+                    <div>Parrainage</div>
+                </a>
+            </div>
+            
             <!-- 🥇 RETENTION WARFARE DASHBOARD -->
             <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 2px solid #ef4444; border-radius: 15px; padding: 25px;">
                 <h2 style="color: #dc2626; display: flex; align-items: center; gap: 10px;">
@@ -24635,9 +24647,9 @@ async def admin_dashboard(request: Request):
                         '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
                     '</div>' +
                     '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-                        '<button onclick="extendSubscription(\'' + user.username + '\', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
-                        '<button onclick="sendRenewalEmail(\'' + user.username + '\')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
-                        '<button onclick="offerDiscount(\'' + user.username + '\', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
+                        '<button onclick="extendSubscription(\' + user.username + '\, 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
+                        '<button onclick="sendRenewalEmail(\' + user.username + '\)" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
+                        '<button onclick="offerDiscount(\' + user.username + '\, 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
                     '</div>' +
                 '</div>';
             }});
@@ -24666,8 +24678,8 @@ async def admin_dashboard(request: Request):
                         '<div style="color: #6366f1; font-weight: 600;">Inactif depuis ' + user.days_inactive + ' jours</div>' +
                     '</div>' +
                     '<div style="display: flex; gap: 8px;">' +
-                        '<button onclick="sendEngagementEmail(' + "'" + user.username + "'" + ')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 On t&apos;a manqué!</button>' +
-                        '<button onclick="offerCoaching(' + "'" + user.username + "'" + ')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
+                        '<button onclick="sendEngagementEmail(' + user.username + ')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 On t&apos;a manqué!</button>' +
+                        '<button onclick="offerCoaching(' + user.username + ')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
                     '</div>' +
                 '</div>';
             }});

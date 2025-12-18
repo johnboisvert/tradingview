@@ -23422,7 +23422,7 @@ async def admin_dashboard(request: Request):
         "/calculatrice", "/convertisseur", "/market-simulation", "/calendrier",
         
         # Contenu & Info
-        "/nouvelles", "/success-stories",
+        "/nouvelles", "/success-stories", "/contact", "/telechargements",
         
         # Compte & Pricing
         "/mon-compte", "/pricing-complete", "/mon-parrain",

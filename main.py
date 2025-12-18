@@ -2813,6 +2813,10 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
             </a>
+            <a href="/admin/ebooks" class="menu-item admin">
+                <span class="icon">📚</span>
+                <span class="label">Admin Ebooks</span>
+            </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
                 <span class="label">Déconnexion</span>
@@ -23460,7 +23464,7 @@ async def admin_dashboard(request: Request):
         # Construire le bouton delete en dehors du f-string (éviter backslash)
         delete_button = ""
         if username != "admin":
-            delete_button = f"<button onclick=\"deleteUser('{username}')\" class=\"btn btn-danger\">🗑️ Supprimer</button>"
+            delete_button = f'<button onclick="deleteUser(\'{username}\')" class="btn btn-danger">🗑️ Supprimer</button>'
         
         users_html += f"""
         <tr>
@@ -23764,13 +23768,6 @@ async def admin_dashboard(request: Request):
                     <div class="stat-label">Revenus Totaux</div>
                     <div class="stat-value">${total_revenue:.2f}</div>
                 </div>
-            </div>
-            
-            <!-- 🔗 QUICK LINKS -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px;">
-                <a href="/admin/ebooks" style="padding: 12px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #f59e0b, #f97316); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">📚 Ebooks</a>
-                <a href="/admin/messages" style="padding: 12px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">💬 Messages</a>
-                <a href="/mon-parrain" style="padding: 12px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">🎁 Parrainage</a>
             </div>
             
             <!-- 🥇 RETENTION WARFARE DASHBOARD -->
@@ -24190,7 +24187,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
+            document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24493,7 +24490,7 @@ async def admin_dashboard(request: Request):
                 
                 if (data.success && data.promos && data.promos.length > 0) {{
                     let html = '<table style="width: 100%; border-collapse: collapse;">';
-                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu' + "'" + 'à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
+                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu\\'à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
                     html += '<tbody>';
                     
                     data.promos.forEach(promo => {{
@@ -24637,9 +24634,9 @@ async def admin_dashboard(request: Request):
                         '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
                     '</div>' +
                     '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-                        '<button onclick="extendSubscription('' + user.username + '', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
-                        '<button onclick="sendRenewalEmail('' + user.username + '')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
-                        '<button onclick="offerDiscount('' + user.username + '', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
+                        '<button onclick="extendSubscription(\'' + user.username + '\', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
+                        '<button onclick="sendRenewalEmail(\'' + user.username + '\')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
+                        '<button onclick="offerDiscount(\'' + user.username + '\', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
                     '</div>' +
                 '</div>';
             }});
@@ -24714,7 +24711,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm('Prolonger l'abonnement de ' + username + ' de ' + days + ' jours?')) return;
+            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{
@@ -41665,3 +41662,67 @@ async def toggle_ebook(ebook_id: int, request: Request):
 # ============================================================================
 # FIN DES ROUTES EBOOKS/CONTACT - TOUT EST PRÊT!
 # ============================================================================
+
+
+# ============================================================================
+# ROUTES SIMPLES: /admin/messages et /mon-parrain
+# ============================================================================
+
+@app.get("/admin/messages", response_class=HTMLResponse)
+async def admin_messages_page(request: Request):
+    """Page messages de contact"""
+    user_data = get_user_from_request(request)
+    if not user_data or user_data.get("role") != "admin":
+        return RedirectResponse("/login", status_code=303)
+    
+    return HTMLResponse("""<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Messages</title><style>
+    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; font-family: sans-serif; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    h1 { color: #333; margin-top: 0; }
+    a { display: inline-block; margin-top: 20px; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; }
+    </style></head><body>
+    <div class="container">
+    <h1>💬 Messages de Contact</h1>
+    <p style="color: #666;">Aucun message pour le moment.</p>
+    <a href="/admin-dashboard">← Retour au Dashboard</a>
+    </div></body></html>""")
+
+
+@app.get("/mon-parrain", response_class=HTMLResponse)
+async def mon_parrain_page(request: Request):
+    """Page code de parrainage"""
+    user_data = get_user_from_request(request)
+    if not user_data:
+        return RedirectResponse("/login", status_code=303)
+    
+    username = user_data.get("username", "user")
+    ref_code = f"REF{username[:6].upper()}"
+    
+    return HTMLResponse(f"""<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Parrainage</title><style>
+    body {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }}
+    .card {{ background: white; padding: 50px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); text-align: center; max-width: 500px; width: 100%; }}
+    h1 {{ color: #333; margin-top: 0; }}
+    .code-box {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin: 30px 0; }}
+    .code {{ font-size: 48px; font-weight: bold; letter-spacing: 4px; font-family: monospace; margin: 20px 0; }}
+    button {{ background: white; color: #667eea; border: none; padding: 12px 25px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px; }}
+    .stats {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 30px 0; }}
+    .stat {{ background: #f5f5f5; padding: 20px; border-radius: 8px; }}
+    .stat-num {{ font-size: 28px; font-weight: bold; color: #667eea; }}
+    .stat-label {{ font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase; }}
+    a {{ display: inline-block; margin-top: 20px; padding: 12px 25px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; }}
+    </style></head><body>
+    <div class="card">
+    <h1>🎁 Mon Code de Parrainage</h1>
+    <div class="code-box">
+    <div class="code">{ref_code}</div>
+    <button onclick="navigator.clipboard.writeText('{ref_code}').then(()=>alert('✅ Copié!'))">📋 Copier le code</button>
+    </div>
+    <div class="stats">
+    <div class="stat"><div class="stat-num">0</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-num">0</div><div class="stat-label">Payants</div></div>
+    <div class="stat"><div class="stat-num">$0</div><div class="stat-label">Revenus</div></div>
+    </div>
+    <a href="/admin-dashboard">← Retour au Dashboard</a>
+    </div></body></html>""")

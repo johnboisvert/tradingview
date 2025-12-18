@@ -2831,6 +2831,12 @@ body.sidebar-open{margin-left:280px}
     }
     </script>
 """
+
+# Diviser SIDEBAR en CSS et HTML
+_sidebar_css_end = SIDEBAR.find('</style>') + len('</style>')
+SIDEBAR_CSS = SIDEBAR[:_sidebar_css_end]
+SIDEBAR_HTML = SIDEBAR[_sidebar_css_end:]
+
 # ==================================
 
 # ============================================================================
@@ -23480,8 +23486,7 @@ async def admin_dashboard(request: Request):
         </tr>
         """
     
-    return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
+    return HTMLResponse(f"""<!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
@@ -23743,9 +23748,11 @@ async def admin_dashboard(request: Request):
                 border: 1px solid #f5c6cb;
                 display: block;
             }}
-        </style>
+        </style>        """ + SIDEBAR_CSS + f"""
+
     </head>
     <body>
+    """ + SIDEBAR_HTML + f"""
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>
@@ -41713,6 +41720,34 @@ async def mon_parrain_page(request: Request):
         </div>
     </div>
     </body></html>""")
+
+
+# ============================================================================
+# ROUTE: /admin/messages
+# ============================================================================
+
+@app.get("/admin/messages", response_class=HTMLResponse)
+async def admin_messages_page(request: Request):
+    user_data = get_user_from_request(request)
+    if not user_data or user_data.get("role") != "admin":
+        return RedirectResponse("/login", status_code=303)
+    return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Messages</title></head><body style="margin-left: 300px; padding: 20px;"><h1>💬 Messages</h1></body></html>""")
+
+
+# ============================================================================
+# ROUTE: /mon-parrain
+# ============================================================================
+
+@app.get("/mon-parrain", response_class=HTMLResponse)
+async def mon_parrain_page(request: Request):
+    user_data = get_user_from_request(request)
+    if not user_data:
+        return RedirectResponse("/login", status_code=303)
+    username = user_data.get("username", "user")
+    ref_code = f"REF{username[:6].upper()}"
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Parrainage</title></head><body style="margin-left: 300px; padding: 40px;"><h1>🎁 Code: {ref_code}</h1></body></html>""")
 
 
 # ============================================================================

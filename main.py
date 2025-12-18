@@ -23460,7 +23460,7 @@ async def admin_dashboard(request: Request):
         # Construire le bouton delete en dehors du f-string (éviter backslash)
         delete_button = ""
         if username != "admin":
-            delete_button = f'<button onclick="deleteUser('{username}')" class="btn btn-danger">🗑️ Supprimer</button>'
+            delete_button = f"<button onclick=\"deleteUser('{username}')\" class=\"btn btn-danger\">🗑️ Supprimer</button>"
         
         users_html += f"""
         <tr>
@@ -24190,7 +24190,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = 'Modifier l\'Utilisateur';
+            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24493,7 +24493,7 @@ async def admin_dashboard(request: Request):
                 
                 if (data.success && data.promos && data.promos.length > 0) {{
                     let html = '<table style="width: 100%; border-collapse: collapse;">';
-                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu\'à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
+                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu' + "'" + 'à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
                     html += '<tbody>';
                     
                     data.promos.forEach(promo => {{

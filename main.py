@@ -2788,10 +2788,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🏆</span>
                 <span class="label">Success Stories</span>
             </a>
-            <a href="/contact" class="menu-item">
-                <span class="icon">📧</span>
-                <span class="label">Contact</span>
-            </a>
             <a href="/telechargements" class="menu-item">
                 <span class="icon">📚</span>
                 <span class="label">Téléchargements</span>
@@ -2809,13 +2805,13 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">💎</span>
                 <span class="label">Abonnements</span>
             </a>
+            <a href="/contact" class="menu-item">
+                <span class="icon">📧</span>
+                <span class="label">Contact</span>
+            </a>
             <a href="/admin-dashboard" class="menu-item admin">
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
-            </a>
-            <a href="/admin/ebooks" class="menu-item admin">
-                <span class="icon">📚</span>
-                <span class="label">Admin Ebooks</span>
             </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
@@ -41718,7 +41714,7 @@ async def admin_messages(request: Request):
                 created_time = str(created_at)[11:16] if created_at else "N/A"
                 
                 messages_html += f"""
-                <div class="message-card">
+                <div class="message-card" data-message-id="{msg_id}">
                     <div class="message-header">
                         <div class="message-info">
                             <h3>{name}</h3>
@@ -41727,6 +41723,9 @@ async def admin_messages(request: Request):
                             <p class="date">📅 {created_date} à {created_time}</p>
                             <p class="user-id">👤 User ID: {user_id}</p>
                         </div>
+                        <button onclick="deleteMessage({msg_id})" class="btn-delete" title="Supprimer ce message">
+                            🗑️
+                        </button>
                     </div>
                     <div class="message-body">
                         <p>{message}</p>
@@ -41805,6 +41804,13 @@ async def admin_messages(request: Request):
                     background: linear-gradient(135deg, #667eea, #764ba2);
                     color: white;
                     padding: 20px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                }}
+                
+                .message-info {{
+                    flex: 1;
                 }}
                 
                 .message-info h3 {{
@@ -41820,6 +41826,24 @@ async def admin_messages(request: Request):
                 
                 .message-info .email {{ font-weight: 600; }}
                 .message-info .subject {{ font-weight: 600; }}
+                
+                .btn-delete {{
+                    background: rgba(255,255,255,0.2);
+                    border: 2px solid rgba(255,255,255,0.4);
+                    color: white;
+                    font-size: 20px;
+                    padding: 8px 12px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    margin-left: 15px;
+                }}
+                
+                .btn-delete:hover {{
+                    background: #ff6b6b;
+                    border-color: #ff6b6b;
+                    transform: scale(1.1);
+                }}
                 
                 .message-body {{
                     padding: 20px;
@@ -41881,6 +41905,39 @@ async def admin_messages(request: Request):
                     {messages_html}
                 </div>
             </div>
+            
+            <script>
+                function deleteMessage(messageId) {{
+                    if (confirm('⚠️ Êtes-vous sûr de vouloir supprimer ce message ?\\n\\nCette action est irréversible.')) {{
+                        fetch(`/admin/messages/delete/${{messageId}}`, {{
+                            method: 'POST',
+                            headers: {{
+                                'Content-Type': 'application/json'
+                            }}
+                        }})
+                        .then(response => {{
+                            if (response.ok) {{
+                                // Retirer le message de la page avec une animation
+                                const messageCard = document.querySelector(`[data-message-id="${{messageId}}"]`);
+                                if (messageCard) {{
+                                    messageCard.style.opacity = '0';
+                                    messageCard.style.transform = 'scale(0.9)';
+                                    setTimeout(() => {{
+                                        messageCard.remove();
+                                    }}, 300);
+                                }}
+                                alert('✅ Message supprimé avec succès');
+                            }} else {{
+                                alert('❌ Erreur lors de la suppression');
+                            }}
+                        }})
+                        .catch(error => {{
+                            console.error('Erreur:', error);
+                            alert('❌ Erreur réseau');
+                        }});
+                    }}
+                }}
+            </script>
         </body>
         </html>
         """)
@@ -41888,6 +41945,36 @@ async def admin_messages(request: Request):
     except Exception as e:
         print(f"❌ Erreur /admin/messages: {e}")
         return HTMLResponse(SIDEBAR + f"<h1>❌ Erreur: {str(e)}</h1>", status_code=500)
+
+
+# Route 10: POST /admin/messages/delete/{message_id} - Supprimer un message
+@app.post("/admin/messages/delete/{message_id}")
+async def delete_message(message_id: int, request: Request):
+    """Supprimer un message de contact"""
+    
+    user_data = get_user_from_request(request)
+    if not user_data or user_data.get("role") != "admin":
+        raise HTTPException(403, "Admin requis")
+    
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Supprimer le message
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("DELETE FROM contact_messages WHERE id=%s", (message_id,))
+        else:
+            c.execute("DELETE FROM contact_messages WHERE id=?", (message_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Message {message_id} supprimé")
+        return JSONResponse({"success": True, "message": "Message supprimé"})
+        
+    except Exception as e:
+        print(f"❌ Erreur suppression message: {e}")
+        raise HTTPException(500, f"Erreur: {str(e)}")
 
 
 # ============================================================================

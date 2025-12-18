@@ -2813,10 +2813,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
             </a>
-            <a href="/admin/ebooks" class="menu-item admin">
-                <span class="icon">📚</span>
-                <span class="label">Admin Ebooks</span>
-            </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
                 <span class="label">Déconnexion</span>
@@ -23768,6 +23764,22 @@ async def admin_dashboard(request: Request):
                     <div class="stat-label">Revenus Totaux</div>
                     <div class="stat-value">${total_revenue:.2f}</div>
                 </div>
+            </div>
+            
+            <!-- 🔗 QUICK LINKS - Admin Pages -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 30px;">
+                <a href="/admin/ebooks" style="padding: 15px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #f59e0b, #f97316); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">📚</div>
+                    <div>Gérer Ebooks</div>
+                </a>
+                <a href="/admin/messages" style="padding: 15px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">💬</div>
+                    <div>Messages</div>
+                </a>
+                <a href="/mon-parrain" style="padding: 15px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;">
+                    <div style="font-size: 32px; margin-bottom: 8px;">🎁</div>
+                    <div>Parrainage</div>
+                </a>
             </div>
             
             <!-- 🥇 RETENTION WARFARE DASHBOARD -->

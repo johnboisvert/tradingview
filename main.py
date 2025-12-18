@@ -24199,7 +24199,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
+            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24723,7 +24723,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
+            if (!confirm("Prolonger l'abonnement de " + username + " de " + days + " jours?")) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{

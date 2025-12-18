@@ -41793,24 +41793,34 @@ async def mon_parrain_page(request: Request):
     username = user_data.get("username", "user")
     ref_code = f"REF{username[:6].upper()}"
     
-    html = f"""<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Parrainage</title><style>
-    body {{ margin: 0; padding: 0; font-family: sans-serif; background: #f8f9fa; }}
-    .main-content {{ margin-left: 260px; padding: 40px 20px; }}
-    .page-title {{ color: #333; font-size: 28px; margin-top: 0; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; }}
-    .card {{ background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 600px; text-align: center; }}
-    .code-box {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin: 30px 0; }}
-    .code {{ font-size: 48px; font-weight: bold; letter-spacing: 4px; font-family: monospace; margin: 20px 0; }}
-    button {{ background: white; color: #667eea; border: none; padding: 12px 25px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px; }}
-    .stats {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 30px 0; }}
-    .stat {{ background: #f5f5f5; padding: 20px; border-radius: 8px; }}
-    .stat-num {{ font-size: 28px; font-weight: bold; color: #667eea; }}
-    .stat-label {{ font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase; }}
-    @media (max-width: 768px) {{
-        .main-content {{ margin-left: 0; padding: 20px; }}
-    }}
-    </style></head><body>
-    <div class="main-content">
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Mon Parrainage</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{ 
+                font-family: 'Segoe UI', sans-serif; 
+                background: #f8f9fa; 
+                padding: 20px;
+                padding-left: 300px;
+            }}
+            .page-title {{ color: #333; font-size: 28px; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; }}
+            .card {{ background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 600px; }}
+            .code-box {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin: 30px 0; text-align: center; }}
+            .code {{ font-size: 48px; font-weight: bold; letter-spacing: 4px; font-family: monospace; margin: 20px 0; }}
+            button {{ background: white; color: #667eea; border: none; padding: 12px 25px; border-radius: 6px; font-weight: 600; cursor: pointer; }}
+            .stats {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 30px 0; }}
+            .stat {{ background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center; }}
+            .stat-num {{ font-size: 28px; font-weight: bold; color: #667eea; }}
+            .stat-label {{ font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase; }}
+            @media (max-width: 768px) {{
+                body {{ padding-left: 20px; }}
+            }}
+        </style>
+    </head>
+    <body>
         <h1 class="page-title">🎁 Mon Code de Parrainage</h1>
         <div class="card">
             <div class="code-box">
@@ -41823,8 +41833,6 @@ async def mon_parrain_page(request: Request):
                 <div class="stat"><div class="stat-num">$0</div><div class="stat-label">Revenus</div></div>
             </div>
         </div>
-    </div>
-    </body></html>
-    """
-    
-    return HTMLResponse(SIDEBAR + html)
+    </body>
+    </html>
+    """)

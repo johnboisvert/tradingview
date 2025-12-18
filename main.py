@@ -2090,12 +2090,92 @@ def init_ebooks_table():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )""")
         
+        # Table referral_codes - Système de parrainage
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS referral_codes (
+                id SERIAL PRIMARY KEY,
+                user_id TEXT NOT NULL UNIQUE,
+                referral_code VARCHAR(16) NOT NULL UNIQUE,
+                total_referrals INTEGER DEFAULT 0,
+                paid_referrals INTEGER DEFAULT 0,
+                revenue_generated DECIMAL(10,2) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
+            )""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS referral_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL UNIQUE,
+                referral_code TEXT NOT NULL UNIQUE,
+                total_referrals INTEGER DEFAULT 0,
+                paid_referrals INTEGER DEFAULT 0,
+                revenue_generated REAL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+        
+        # Table referral_signups - Suivi des signups par parrainage
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS referral_signups (
+                id SERIAL PRIMARY KEY,
+                referrer_id TEXT NOT NULL,
+                referred_user_id TEXT NOT NULL,
+                referred_email TEXT,
+                referral_code VARCHAR(16),
+                is_paid BOOLEAN DEFAULT FALSE,
+                revenue DECIMAL(10,2) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW()
+            )""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS referral_signups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                referrer_id TEXT NOT NULL,
+                referred_user_id TEXT NOT NULL,
+                referred_email TEXT,
+                referral_code TEXT,
+                is_paid INTEGER DEFAULT 0,
+                revenue REAL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+        
+        # Table automation_rules - Règles d'automation
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""CREATE TABLE IF NOT EXISTS automation_rules (
+                id SERIAL PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                rule_type VARCHAR(50),
+                trigger_condition TEXT,
+                action_type VARCHAR(50),
+                action_data TEXT,
+                is_active BOOLEAN DEFAULT TRUE,
+                executions INTEGER DEFAULT 0,
+                conversions INTEGER DEFAULT 0,
+                revenue DECIMAL(10,2) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT NOW(),
+                updated_at TIMESTAMP DEFAULT NOW()
+            )""")
+        else:
+            c.execute("""CREATE TABLE IF NOT EXISTS automation_rules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                rule_type TEXT,
+                trigger_condition TEXT,
+                action_type TEXT,
+                action_data TEXT,
+                is_active INTEGER DEFAULT 1,
+                executions INTEGER DEFAULT 0,
+                conversions INTEGER DEFAULT 0,
+                revenue REAL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
+        
         conn.commit()
         conn.close()
-        print(f"✅ Tables ebooks et contact créées ({DB_CONFIG['type']})")
+        print(f"✅ Tables ebooks, contact, referrals et automation créées ({DB_CONFIG['type']})")
         return True
     except Exception as e:
-        print(f"❌ Init ebooks/contact: {e}")
+        print(f"❌ Init tables: {e}")
         return False
 
 def get_user_from_request(request: Request):
@@ -2788,6 +2868,10 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🏆</span>
                 <span class="label">Success Stories</span>
             </a>
+            <a href="/contact" class="menu-item">
+                <span class="icon">📧</span>
+                <span class="label">Contact</span>
+            </a>
             <a href="/telechargements" class="menu-item">
                 <span class="icon">📚</span>
                 <span class="label">Téléchargements</span>
@@ -2804,6 +2888,10 @@ body.sidebar-open{margin-left:280px}
             <a href="/pricing-complete" class="menu-item premium">
                 <span class="icon">💎</span>
                 <span class="label">Abonnements</span>
+            </a>
+            <a href="/mon-parrain" class="menu-item">
+                <span class="icon">🎁</span>
+                <span class="label">Mon Parrainage</span>
             </a>
             <a href="/contact" class="menu-item">
                 <span class="icon">📧</span>
@@ -23766,24 +23854,6 @@ async def admin_dashboard(request: Request):
                 </div>
             </div>
             
-            <!-- 🔗 QUICK LINKS ADMIN -->
-            <div class="stats-grid" style="margin-bottom: 30px;">
-                <a href="/admin/ebooks" style="text-decoration:none;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); cursor: pointer; transition: all 0.3s;">
-                        <div style="font-size: 28px; margin-bottom: 10px;">📚</div>
-                        <div class="stat-label" style="color: white;">Gérer Ebooks</div>
-                        <div style="color: white; font-size: 14px; margin-top: 8px;">Ajouter/Modifier/Supprimer</div>
-                    </div>
-                </a>
-                <a href="/admin/messages" style="text-decoration:none;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); cursor: pointer; transition: all 0.3s;">
-                        <div style="font-size: 28px; margin-bottom: 10px;">💬</div>
-                        <div class="stat-label" style="color: white;">Messages Contact</div>
-                        <div style="color: white; font-size: 14px; margin-top: 8px;">Consulter les messages</div>
-                    </div>
-                </a>
-            </div>
-            
             <!-- 🥇 RETENTION WARFARE DASHBOARD -->
             <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 2px solid #ef4444; border-radius: 15px; padding: 25px;">
                 <h2 style="color: #dc2626; display: flex; align-items: center; gap: 10px;">
@@ -41673,269 +41743,157 @@ async def toggle_ebook(ebook_id: int, request: Request):
         raise HTTPException(500, f"Erreur: {str(e)}")
 
 
+
+
 # ============================================================================
-# ROUTE 9: GET /admin/messages - Consulter tous les messages de contact
+# 🚀 SYSTÈME DE PARRAINAGE COMPLET
 # ============================================================================
-@app.get("/admin/messages", response_class=HTMLResponse)
-async def admin_messages(request: Request):
-    """Page d'administration des messages de contact"""
-    
+
+import string
+def generate_referral_code():
+    """Générer un code de parrainage unique"""
+    import random
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+
+@app.get("/mon-parrain", response_class=HTMLResponse)
+async def mon_parrain(request: Request):
+    """Page pour voir son code de parrainage"""
     user_data = get_user_from_request(request)
-    if not user_data or user_data.get("role") != "admin":
+    if not user_data:
         return RedirectResponse("/login", status_code=303)
+    
+    user_id = user_data.get("id", user_data.get("username"))
     
     try:
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Récupérer tous les messages
+        # Récupérer les données de parrainage
         if DB_CONFIG["type"] == "postgres":
-            c.execute("""
-                SELECT id, name, email, subject, message, user_id, created_at 
-                FROM contact_messages 
-                ORDER BY created_at DESC
-            """)
+            c.execute("SELECT referral_code, total_referrals, paid_referrals, revenue_generated FROM referral_codes WHERE user_id=%s", (user_id,))
         else:
-            c.execute("""
-                SELECT id, name, email, subject, message, user_id, created_at 
-                FROM contact_messages 
-                ORDER BY created_at DESC
-            """)
+            c.execute("SELECT referral_code, total_referrals, paid_referrals, revenue_generated FROM referral_codes WHERE user_id=?", (user_id,))
         
-        messages = c.fetchall()
+        ref_data = c.fetchone()
         conn.close()
         
-        # Construire HTML des messages
-        messages_html = ""
-        if messages:
-            for msg in messages:
-                msg_id, name, email, subject, message, user_id, created_at = msg
-                created_date = str(created_at)[:10] if created_at else "N/A"
-                created_time = str(created_at)[11:16] if created_at else "N/A"
-                
-                messages_html += f"""
-                <div class="message-card" data-message-id="{msg_id}">
-                    <div class="message-header">
-                        <div class="message-info">
-                            <h3>{name}</h3>
-                            <p class="email">📧 {email}</p>
-                            <p class="subject">📌 {subject}</p>
-                            <p class="date">📅 {created_date} à {created_time}</p>
-                            <p class="user-id">👤 User ID: {user_id}</p>
-                        </div>
-                        <button onclick="deleteMessage({msg_id})" class="btn-delete" title="Supprimer ce message">
-                            🗑️
-                        </button>
-                    </div>
-                    <div class="message-body">
-                        <p>{message}</p>
-                    </div>
-                </div>
-                """
+        if not ref_data:
+            referral_code = "Aucun code"
+            total_refs = 0
+            paid_refs = 0
+            revenue = 0
         else:
-            messages_html = '<div class="no-messages"><p>✅ Aucun message reçu</p></div>'
+            referral_code, total_refs, paid_refs, revenue = ref_data
         
         return HTMLResponse(SIDEBAR + f"""
         <!DOCTYPE html>
-        <html>
+        <html lang="fr">
         <head>
             <meta charset="UTF-8">
-            <title>Messages de Contact - Admin</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Mon Code de Parrainage</title>
+            {CSS}
             <style>
-                * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                body {{ 
-                    font-family: 'Segoe UI', sans-serif; 
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    min-height: 100vh; 
-                    padding: 20px; 
-                }}
-                
-                .container {{ max-width: 1000px; margin: 0 auto; }}
-                
-                .header {{
-                    background: white;
+                .referral-container {{ max-width: 800px; margin: 40px auto; }}
+                .referral-card {{ background: white; border-radius: 20px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }}
+                .code-display {{ 
+                    background: linear-gradient(135deg, #667eea, #764ba2);
+                    color: white;
                     padding: 30px;
                     border-radius: 15px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                    margin-bottom: 30px;
-                }}
-                
-                h1 {{ color: #333; font-size: 32px; margin-bottom: 10px; }}
-                .subtitle {{ color: #666; }}
-                
-                .stats {{
-                    display: flex;
-                    gap: 20px;
-                    margin-top: 20px;
-                }}
-                
-                .stat {{
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    color: white;
-                    padding: 20px;
-                    border-radius: 10px;
-                    flex: 1;
                     text-align: center;
+                    margin: 30px 0;
                 }}
-                
-                .stat-value {{ font-size: 28px; font-weight: bold; }}
-                .stat-label {{ font-size: 12px; opacity: 0.9; margin-top: 5px; }}
-                
-                .messages-container {{
-                    display: flex;
-                    flex-direction: column;
-                    gap: 20px;
-                }}
-                
-                .message-card {{
-                    background: white;
-                    border-radius: 15px;
-                    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-                    overflow: hidden;
+                .code-display h2 {{ font-size: 18px; opacity: 0.9; margin-bottom: 10px; }}
+                .code-display .code {{ font-size: 48px; font-weight: bold; letter-spacing: 8px; margin: 20px 0; font-family: 'Courier New', monospace; }}
+                .code-display p {{ font-size: 12px; opacity: 0.8; }}
+                .copy-btn {{ 
+                    background: white; 
+                    color: #667eea; 
+                    border: none; 
+                    padding: 12px 30px; 
+                    border-radius: 8px; 
+                    font-weight: 600; 
+                    cursor: pointer; 
+                    margin-top: 15px;
                     transition: all 0.3s;
                 }}
-                
-                .message-card:hover {{
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                    transform: translateY(-5px);
+                .copy-btn:hover {{ transform: scale(1.05); }}
+                .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 30px; }}
+                .stat-box {{ background: #f8f9fa; padding: 25px; border-radius: 12px; text-align: center; border-left: 4px solid #667eea; }}
+                .stat-value {{ font-size: 32px; font-weight: bold; color: #667eea; }}
+                .stat-label {{ font-size: 12px; color: #666; margin-top: 8px; text-transform: uppercase; }}
+                .share-section {{ 
+                    background: #f0f4ff; 
+                    padding: 25px; 
+                    border-radius: 12px; 
+                    margin-top: 30px;
                 }}
-                
-                .message-header {{
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    color: white;
-                    padding: 20px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                }}
-                
-                .message-info {{
-                    flex: 1;
-                }}
-                
-                .message-info h3 {{
-                    font-size: 18px;
-                    margin-bottom: 8px;
-                }}
-                
-                .message-info p {{
-                    font-size: 13px;
-                    margin: 5px 0;
-                    opacity: 0.95;
-                }}
-                
-                .message-info .email {{ font-weight: 600; }}
-                .message-info .subject {{ font-weight: 600; }}
-                
-                .btn-delete {{
-                    background: rgba(255,255,255,0.2);
-                    border: 2px solid rgba(255,255,255,0.4);
-                    color: white;
-                    font-size: 20px;
-                    padding: 8px 12px;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                    margin-left: 15px;
-                }}
-                
-                .btn-delete:hover {{
-                    background: #ff6b6b;
-                    border-color: #ff6b6b;
-                    transform: scale(1.1);
-                }}
-                
-                .message-body {{
-                    padding: 20px;
-                    background: #f8f9fa;
-                    border-top: 2px solid #e9ecef;
-                }}
-                
-                .message-body p {{
-                    color: #333;
-                    line-height: 1.6;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                }}
-                
-                .no-messages {{
-                    background: white;
-                    padding: 60px;
-                    border-radius: 15px;
-                    text-align: center;
-                    color: #666;
-                    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-                }}
-                
-                .btn-back {{
-                    display: inline-block;
-                    margin-bottom: 20px;
-                    padding: 12px 24px;
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 8px;
+                .share-section h3 {{ color: #333; margin-bottom: 15px; }}
+                .share-buttons {{ display: flex; gap: 10px; flex-wrap: wrap; }}
+                .share-btn {{ 
+                    padding: 10px 20px; 
+                    border: none; 
+                    border-radius: 8px; 
+                    cursor: pointer; 
                     font-weight: 600;
                     transition: all 0.3s;
                 }}
-                
-                .btn-back:hover {{
-                    transform: translateY(-2px);
-                    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-                }}
+                .share-btn:hover {{ transform: translateY(-2px); }}
             </style>
         </head>
         <body>
-            <div class="container">
-                <a href="/admin-dashboard" class="btn-back">← Retour au Dashboard</a>
-                
-                <div class="header">
-                    <h1>💬 Messages de Contact</h1>
-                    <p class="subtitle">Tous les messages reçus par tes clients</p>
+            <div class="referral-container">
+                <div class="referral-card">
+                    <h1>🎁 Mon Code de Parrainage</h1>
+                    <p style="color: #666; margin-bottom: 30px;">Gagne de l'argent en parrainant tes amis !</p>
                     
-                    <div class="stats">
-                        <div class="stat">
-                            <div class="stat-value">{len(messages)}</div>
-                            <div class="stat-label">Messages Total</div>
+                    <div class="code-display">
+                        <h2>Ton Code Unique</h2>
+                        <div class="code">{referral_code}</div>
+                        <p>Partage-le avec tes amis pour que tu gagnes des commissions</p>
+                        <button class="copy-btn" onclick="copyCode()">📋 Copier le Code</button>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-value">{total_refs}</div>
+                            <div class="stat-label">Total Parrainages</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">{paid_refs}</div>
+                            <div class="stat-label">Parrainages Payants</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value">${revenue:.2f}</div>
+                            <div class="stat-label">Revenus Générés</div>
                         </div>
                     </div>
-                </div>
-                
-                <div class="messages-container">
-                    {messages_html}
+                    
+                    <div class="share-section">
+                        <h3>📢 Partager</h3>
+                        <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Copie ce lien et partage-le avec tes amis:</p>
+                        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; word-break: break-all; font-size: 13px; color: #333;">
+                            https://trading-dashboard.pro/signup?ref={referral_code}
+                        </div>
+                        <div class="share-buttons">
+                            <button class="share-btn" style="background: #1DA1F2; color: white;">🐦 Twitter</button>
+                            <button class="share-btn" style="background: #E1306C; color: white;">📸 Instagram</button>
+                            <button class="share-btn" style="background: #25D366; color: white;">💬 WhatsApp</button>
+                            <button class="share-btn" style="background: #0A66C2; color: white;">💼 LinkedIn</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             
             <script>
-                function deleteMessage(messageId) {{
-                    if (confirm('⚠️ Êtes-vous sûr de vouloir supprimer ce message ?\\n\\nCette action est irréversible.')) {{
-                        fetch(`/admin/messages/delete/${{messageId}}`, {{
-                            method: 'POST',
-                            headers: {{
-                                'Content-Type': 'application/json'
-                            }}
-                        }})
-                        .then(response => {{
-                            if (response.ok) {{
-                                // Retirer le message de la page avec une animation
-                                const messageCard = document.querySelector(`[data-message-id="${{messageId}}"]`);
-                                if (messageCard) {{
-                                    messageCard.style.opacity = '0';
-                                    messageCard.style.transform = 'scale(0.9)';
-                                    setTimeout(() => {{
-                                        messageCard.remove();
-                                    }}, 300);
-                                }}
-                                alert('✅ Message supprimé avec succès');
-                            }} else {{
-                                alert('❌ Erreur lors de la suppression');
-                            }}
-                        }})
-                        .catch(error => {{
-                            console.error('Erreur:', error);
-                            alert('❌ Erreur réseau');
-                        }});
-                    }}
+                function copyCode() {{
+                    const code = '{referral_code}';
+                    navigator.clipboard.writeText(code).then(() => {{
+                        alert('✅ Code copié !');
+                    }}).catch(() => {{
+                        alert('❌ Erreur lors de la copie');
+                    }});
                 }}
             </script>
         </body>
@@ -41943,38 +41901,106 @@ async def admin_messages(request: Request):
         """)
         
     except Exception as e:
-        print(f"❌ Erreur /admin/messages: {e}")
-        return HTMLResponse(SIDEBAR + f"<h1>❌ Erreur: {str(e)}</h1>", status_code=500)
+        print(f"❌ Erreur /mon-parrain: {{e}}")
+        return HTMLResponse(SIDEBAR + f"<h1>❌ Erreur: {{str(e)}}</h1>", status_code=500)
 
 
-# Route 10: POST /admin/messages/delete/{message_id} - Supprimer un message
-@app.post("/admin/messages/delete/{message_id}")
-async def delete_message(message_id: int, request: Request):
-    """Supprimer un message de contact"""
-    
+# ============================================================================
+# 🤖 AUTOMATION ENGINE COMPLET
+# ============================================================================
+
+@app.post("/admin/api/automation-rules/create")
+async def create_automation_rule(request: Request):
+    """Créer une nouvelle règle d'automation"""
     user_data = get_user_from_request(request)
     if not user_data or user_data.get("role") != "admin":
         raise HTTPException(403, "Admin requis")
     
     try:
+        data = await request.json()
+        name = data.get("name")
+        rule_type = data.get("rule_type")
+        trigger = data.get("trigger")
+        action = data.get("action")
+        
+        if not all([name, rule_type, trigger, action]):
+            raise ValueError("Champs manquants")
+        
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Supprimer le message
+        user_id = user_data.get("id", user_data.get("username"))
+        
         if DB_CONFIG["type"] == "postgres":
-            c.execute("DELETE FROM contact_messages WHERE id=%s", (message_id,))
+            c.execute("""INSERT INTO automation_rules (user_id, name, rule_type, trigger_condition, action_type)
+                VALUES (%s, %s, %s, %s, %s)""", (user_id, name, rule_type, trigger, action))
         else:
-            c.execute("DELETE FROM contact_messages WHERE id=?", (message_id,))
+            c.execute("""INSERT INTO automation_rules (user_id, name, rule_type, trigger_condition, action_type)
+                VALUES (?, ?, ?, ?, ?)""", (user_id, name, rule_type, trigger, action))
         
         conn.commit()
         conn.close()
         
-        print(f"✅ Message {message_id} supprimé")
-        return JSONResponse({"success": True, "message": "Message supprimé"})
-        
+        return JSONResponse({{"success": True, "message": "✅ Règle créée avec succès"}})
+    
     except Exception as e:
-        print(f"❌ Erreur suppression message: {e}")
-        raise HTTPException(500, f"Erreur: {str(e)}")
+        print(f"❌ Erreur création règle: {{e}}")
+        raise HTTPException(500, f"Erreur: {{str(e)}}")
+
+
+@app.get("/admin/api/automation-engine")
+async def admin_automation_engine_api(session_token: Optional[str] = Cookie(None)):
+    """API pour Automation Engine - Règles actives, performance"""
+    user = get_user_from_token(session_token)
+    if not user or user.get("role") != "admin":
+        return JSONResponse({{"success": False, "message": "Non autorisé"}}, status_code=403)
+    
+    try:
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        user_id = user.get("id", user.get("username"))
+        
+        if DB_CONFIG["type"] == "postgres":
+            c.execute("""SELECT id, name, rule_type, is_active, executions, conversions, revenue 
+                FROM automation_rules WHERE user_id=%s ORDER BY created_at DESC""", (user_id,))
+        else:
+            c.execute("""SELECT id, name, rule_type, is_active, executions, conversions, revenue 
+                FROM automation_rules WHERE user_id=? ORDER BY created_at DESC""", (user_id,))
+        
+        rules = c.fetchall()
+        conn.close()
+        
+        rules_data = []
+        for rule in rules:
+            rules_data.append({{
+                "id": rule[0],
+                "name": rule[1],
+                "type": rule[2],
+                "active": rule[3],
+                "executions": rule[4],
+                "conversions": rule[5],
+                "revenue": float(rule[6] or 0)
+            }})
+        
+        total_executions = sum(r["executions"] for r in rules_data)
+        total_conversions = sum(r["conversions"] for r in rules_data)
+        total_revenue = sum(r["revenue"] for r in rules_data)
+        
+        return JSONResponse({{
+            "success": True,
+            "rules": rules_data,
+            "performance": {{
+                "total_executions": total_executions,
+                "total_conversions": total_conversions,
+                "total_revenue": total_revenue,
+                "conversion_rate": (total_conversions / total_executions * 100) if total_executions > 0 else 0
+            }}
+        }})
+    
+    except Exception as e:
+        print(f"❌ Erreur automation engine: {{e}}")
+        return JSONResponse({{"success": False, "message": str(e)}}, status_code=500)
 
 
 # ============================================================================

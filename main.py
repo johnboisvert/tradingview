@@ -23422,13 +23422,11 @@ async def admin_dashboard(request: Request):
         "/calculatrice", "/convertisseur", "/market-simulation", "/calendrier",
         
         # Contenu & Info
-        "/nouvelles", "/success-stories", "/contact", "/telechargements",
+        "/nouvelles", "/success-stories",
         
         # Compte & Pricing
         "/mon-compte", "/pricing-complete", "/mon-parrain",
-        
-        # Admin
-        "/admin/messages"
+        "/admin/messages", "/contact", "/telechargements"
     ]
     
     # PRÉ-CONSTRUIRE LE HTML DES CHECKBOXES (ÉVITER F-STRING AVEC BACKSLASH)
@@ -23483,9 +23481,8 @@ async def admin_dashboard(request: Request):
         </tr>
         """
     
-    return HTMLResponse(SIDEBAR + f"""
+    return HTMLResponse(f"""<!DOCTYPE html>
     <!DOCTYPE html>
-    <html>
     <head>
         <meta charset="UTF-8">
         <title>Admin Dashboard</title>
@@ -23749,6 +23746,7 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
+        {SIDEBAR}
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>
@@ -24668,8 +24666,8 @@ async def admin_dashboard(request: Request):
                         '<div style="color: #6366f1; font-weight: 600;">Inactif depuis ' + user.days_inactive + ' jours</div>' +
                     '</div>' +
                     '<div style="display: flex; gap: 8px;">' +
-                        '<button onclick="sendEngagementEmail('' + user.username + '')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 On t&apos;a manqué!</button>' +
-                        '<button onclick="offerCoaching('' + user.username + '')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
+                        '<button onclick="sendEngagementEmail(' + "'" + user.username + "'" + ')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 On t&apos;a manqué!</button>' +
+                        '<button onclick="offerCoaching(' + "'" + user.username + "'" + ')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
                     '</div>' +
                 '</div>';
             }});
@@ -41663,12 +41661,12 @@ async def toggle_ebook(ebook_id: int, request: Request):
 
 
 # ============================================================================
-# ROUTE: GET /admin/messages - Voir les messages de contact
+# ROUTE: GET /admin/messages
 # ============================================================================
 
 @app.get("/admin/messages", response_class=HTMLResponse)
 async def admin_messages(request: Request):
-    """Page pour voir les messages de contact"""
+    """Voir les messages de contact"""
     user_data = get_user_from_request(request)
     if not user_data or user_data.get("role") != "admin":
         return RedirectResponse("/login", status_code=303)
@@ -41676,84 +41674,21 @@ async def admin_messages(request: Request):
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("SELECT id, name, email, subject, message, user_id, created_at FROM contact_messages ORDER BY created_at DESC")
-        else:
-            c.execute("SELECT id, name, email, subject, message, user_id, created_at FROM contact_messages ORDER BY created_at DESC")
-        
+        c.execute("SELECT id, name, email, subject, message, created_at FROM contact_messages ORDER BY created_at DESC")
         messages = c.fetchall()
         conn.close()
         
-        messages_html = ""
-        if messages:
-            for msg in messages:
-                msg_id, name, email, subject, message_text, user_id, created_at = msg
-                created_date = str(created_at)[:10] if created_at else "N/A"
-                created_time = str(created_at)[11:16] if created_at else "N/A"
-                
-                messages_html += f"""
-                <div class="message-card" data-message-id="{msg_id}">
-                    <div class="message-header">
-                        <div class="message-info">
-                            <h3>{name}</h3>
-                            <p class="email">📧 {email}</p>
-                            <p class="subject">📌 {subject}</p>
-                            <p class="date">📅 {created_date} à {created_time}</p>
-                        </div>
-                        <button onclick="deleteMessage({msg_id})" class="btn-delete">🗑️</button>
-                    </div>
-                    <div class="message-body"><p>{message_text}</p></div>
-                </div>
-                """
-        else:
-            messages_html = '<p style="text-align:center;color:#999;">✅ Aucun message</p>'
+        msg_html = ""
+        for msg_id, name, email, subject, msg_text, created_at in messages:
+            msg_html += f'<div style="background:#f5f5f5;padding:15px;margin:10px 0;border-radius:8px;"><strong>{name}</strong> ({email})<br>{subject}<br><small>{created_at}</small><br><button onclick="fetch(\'/admin/messages/delete/{msg_id}\',{{method:\'POST\'}}).then(()=>location.reload())">Delete</button></div>'
         
-        return HTMLResponse(SIDEBAR + f"""
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>Messages</title><style>
-        body{{background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;padding:20px}}
-        .container{{max-width:1000px;margin:0 auto}}
-        .header{{background:white;padding:30px;border-radius:15px;margin-bottom:30px}}
-        h1{{color:#333;font-size:32px}}
-        .message-card{{background:white;border-radius:15px;margin-bottom:20px;box-shadow:0 5px 15px rgba(0,0,0,0.1)}}
-        .message-header{{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:20px;display:flex;justify-content:space-between}}
-        .message-body{{padding:20px;background:#f8f9fa}}
-        .btn-delete{{background:rgba(255,255,255,0.2);border:none;color:white;padding:8px 12px;cursor:pointer;border-radius:6px}}
-        .btn-delete:hover{{background:#ff6b6b}}
-        .btn-back{{display:inline-block;padding:12px 24px;background:linear-gradient(135deg,#667eea,#764ba2);color:white;text-decoration:none;border-radius:8px;margin-bottom:20px}}
-        </style></head>
-        <body>
-        <div class="container">
-            <a href="/admin-dashboard" class="btn-back">← Retour</a>
-            <div class="header">
-                <h1>💬 Messages ({len(messages)})</h1>
-            </div>
-            {messages_html}
-        </div>
-        <script>
-        function deleteMessage(id) {{
-            if (confirm('Supprimer?')) {{
-                fetch(`/admin/messages/delete/${{id}}`, {{method:'POST'}})
-                .then(r => {{
-                    if(r.ok) {{
-                        document.querySelector(`[data-message-id="${{id}}"]`).remove();
-                    }}
-                }})
-            }}
-        }}
-        </script>
-        </body>
-        </html>
-        """)
-    
+        return HTMLResponse(SIDEBAR + f"<div style='padding:20px'><h2>Messages</h2>{msg_html}</div></body></html>")
     except Exception as e:
-        return HTMLResponse(SIDEBAR + f"<h1>❌ Erreur</h1>", status_code=500)
+        return HTMLResponse(SIDEBAR + f"<h1>Error</h1>", status_code=500)
 
 
 # ============================================================================
-# ROUTE: POST /admin/messages/delete - Supprimer un message
+# ROUTE: POST /admin/messages/delete
 # ============================================================================
 
 @app.post("/admin/messages/delete/{message_id}")
@@ -41761,78 +41696,51 @@ async def delete_message(message_id: int, request: Request):
     """Supprimer un message"""
     user_data = get_user_from_request(request)
     if not user_data or user_data.get("role") != "admin":
-        raise HTTPException(403, "Admin requis")
+        raise HTTPException(403, "Admin required")
     
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        
         if DB_CONFIG["type"] == "postgres":
             c.execute("DELETE FROM contact_messages WHERE id=%s", (message_id,))
         else:
             c.execute("DELETE FROM contact_messages WHERE id=?", (message_id,))
-        
         conn.commit()
         conn.close()
-        
-        return JSONResponse({{"success": True}})
-    
+        return JSONResponse({"success": True})
     except Exception as e:
-        raise HTTPException(500, f"Erreur: {{str(e)}}")
+        raise HTTPException(500, str(e))
 
 
 # ============================================================================
-# ROUTE: GET /mon-parrain - Code de parrainage
+# ROUTE: GET /mon-parrain
 # ============================================================================
 
 @app.get("/mon-parrain", response_class=HTMLResponse)
 async def mon_parrain(request: Request):
-    """Page du code de parrainage"""
+    """Code de parrainage"""
     user_data = get_user_from_request(request)
     if not user_data:
         return RedirectResponse("/login", status_code=303)
     
     user_id = user_data.get("id", user_data.get("username"))
-    referral_code = f"REF{user_id[:6].upper()}"
+    code = f"REF{user_id[:6].upper()}"
     
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
-    <html>
-    <head><meta charset="UTF-8"><title>Mon Parrainage</title><style>
-    body{{background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;padding:20px}}
-    .container{{max-width:800px;margin:0 auto}}
-    .card{{background:white;border-radius:20px;padding:40px;box-shadow:0 10px 40px rgba(0,0,0,0.2)}}
-    h1{{color:#333;font-size:32px;margin-bottom:20px}}
-    .code-display{{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:30px;border-radius:15px;text-align:center;margin:30px 0}}
-    .code{{font-size:48px;font-weight:bold;letter-spacing:8px;margin:20px 0;font-family:'Courier New'}}
-    .copy-btn{{background:white;color:#667eea;border:none;padding:12px 30px;border-radius:8px;font-weight:600;cursor:pointer}}
-    .stats{{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:30px 0}}
-    .stat{{background:#f8f9fa;padding:20px;border-radius:12px;text-align:center}}
-    .stat-value{{font-size:28px;font-weight:bold;color:#667eea}}
-    </style></head>
-    <body>
-    <div class="container">
-        <div class="card">
-            <h1>🎁 Mon Code de Parrainage</h1>
-            <div class="code-display">
-                <div class="code">{referral_code}</div>
-                <button class="copy-btn" onclick="navigator.clipboard.writeText('{referral_code}').then(()=>alert('✅ Copié'))">📋 Copier</button>
-            </div>
-            <div class="stats">
-                <div class="stat"><div class="stat-value">0</div><div>Total</div></div>
-                <div class="stat"><div class="stat-value">0</div><div>Payants</div></div>
-                <div class="stat"><div class="stat-value">$0</div><div>Revenus</div></div>
-            </div>
-        </div>
+    <html><body style='padding:20px;font-family:sans-serif'>
+    <h1>Mon Parrainage</h1>
+    <div style='background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:30px;border-radius:12px;text-align:center'>
+    <div style='font-size:48px;font-weight:bold'>{code}</div>
+    <button onclick="navigator.clipboard.writeText('{code}')">Copy Code</button>
     </div>
-    </body>
-    </html>
+    <div style='margin-top:30px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px'>
+    <div style='background:#f5f5f5;padding:20px;border-radius:8px;text-align:center'><div style='font-size:28px;font-weight:bold'>0</div>Total</div>
+    <div style='background:#f5f5f5;padding:20px;border-radius:8px;text-align:center'><div style='font-size:28px;font-weight:bold'>0</div>Paid</div>
+    <div style='background:#f5f5f5;padding:20px;border-radius:8px;text-align:center'><div style='font-size:28px;font-weight:bold'>$0</div>Revenue</div>
+    </div>
+    </body></html>
     """)
-
-
-# ============================================================================
-# FIN - TOUT EST PRÊT
-# ============================================================================
 
 
 # ============================================================================

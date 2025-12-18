@@ -23476,8 +23476,7 @@ async def admin_dashboard(request: Request):
         </tr>
         """
     
-    return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
+    return HTMLResponse(f"""<!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
@@ -23742,6 +23741,7 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
+    """ + SIDEBAR + f"""
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>

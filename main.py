@@ -2809,6 +2809,14 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">💎</span>
                 <span class="label">Abonnements</span>
             </a>
+            <a href="/mon-parrain" class="menu-item">
+                <span class="icon">🎁</span>
+                <span class="label">Mon Parrainage</span>
+            </a>
+            <a href="/contact" class="menu-item">
+                <span class="icon">📧</span>
+                <span class="label">Contact</span>
+            </a>
             <a href="/admin-dashboard" class="menu-item admin">
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
@@ -23354,9 +23362,11 @@ async def stripe_webhook_debug(request: Request):
 # PAGE ADMIN DASHBOARD
 # ============================================================================
 
+# VERSION SIMPLE DU DASHBOARD QUI MARCHE
+
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
-    """Page d'administration moderne avec gestion des permissions"""
+    """Page d'administration - VERSION SIMPLE ET FONCTIONNELLE"""
     
     # Vérifier l'authentification
     session_token = request.cookies.get("session_token")
@@ -23367,1999 +23377,305 @@ async def admin_dashboard(request: Request):
     if not user or user.get("role") != "admin":
         return HTMLResponse(SIDEBAR + "<h1>403 - Accès refusé</h1>", status_code=403)
     
-    # Récupérer tous les utilisateurs
+    # Récupérer les stats
     conn = db_manager.get_connection()
     cursor = conn.cursor()
     
-    cursor.execute("""
-        SELECT username, role, subscription_plan, subscription_end, 
-               payment_method, created_at, total_spent
-        FROM users 
-        ORDER BY created_at DESC
-    """)
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users = cursor.fetchone()[0]
     
-    users = cursor.fetchall()
+    cursor.execute("SELECT COUNT(*) FROM users WHERE subscription_plan != 'free'")
+    active_subs = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT SUM(total_spent) FROM users")
+    total_revenue = cursor.fetchone()[0] or 0
+    
     cursor.close()
     conn.close()
     
-    # Stats
-    total_users = len(users)
-    active_subs = sum(1 for u in users if u[2] and u[2] != 'free' and u[3])
-    total_revenue = sum(float(u[6] or 0) for u in users)
-    
-    # Liste des routes disponibles
-    routes_list = [
-        # Dashboard & Trading
-        "/dashboard", "/stats-dashboard", "/trades", "/strategie", 
-        "/spot-trading", "/watchlist", "/risk-management", "/backtesting",
-        
-        # Intelligence Artificielle (21 outils + Technical Analysis)
-        "/ai-opportunity-scanner", "/ai-market-regime", "/ai-whale-watcher",
-        "/ai-assistant", "/ai-signals", "/ai-news", "/ai-predictor",
-        "/prediction-ia", "/ai-patterns", "/ai-sentiment", "/ai-sizer",
-        "/ai-exit", "/ai-timeframe", "/ai-liquidity", "/ai-alerts", "/ai-gem-hunter",
-        "/ai-technical-analysis",
-        
-        # 🆕 V5 - Les 5 Nouvelles Features Premium
-        "/narrative-radar", "/ai-crypto-coach", "/ai-swarm-agents",
-        "/altseason-copilot-pro", "/rug-scam-shield",
-        
-        # Analyse de Marché
-        "/fear-greed", "/fear-greed-chart", "/dominance", "/altcoin-season",
-        "/heatmap", "/bullrun-phase", "/graphiques", "/onchain-metrics",
-        
-        # Portfolio & DeFi
-        "/portfolio-tracker", "/defi-yield", "/crypto-pepites",
-        
-        # Formation & Academy
-        "/academy", "/crypto-academy", "/academy-progress",
-        
-        # Outils
-        "/calculatrice", "/convertisseur", "/market-simulation", "/calendrier",
-        
-        # Contenu & Info
-        "/nouvelles", "/success-stories",
-        
-        # Compte & Pricing
-        "/mon-compte", "/pricing-complete"
-    ]
-    
-    # PRÉ-CONSTRUIRE LE HTML DES CHECKBOXES (ÉVITER F-STRING AVEC BACKSLASH)
-    checkboxes_html = ""
-    for route in routes_list:
-        route_id = route.replace('/', '_')  # Fait en dehors du f-string!
-        route_label = route.replace('/', '').replace('-', ' ').title()
-        checkboxes_html += f'''
-                    <div class="permission-item">
-                        <input type="checkbox" id="perm_{route_id}" class="perm-checkbox" value="{route}">
-                        <label for="perm_{route_id}">{route_label}</label>
-                    </div>'''
-    
-    # PRÉ-CONSTRUIRE LES CHECKBOXES POUR LES PLANS (même système mais IDs différents)
-    checkboxes_html_plan = ""
-    for route in routes_list:
-        route_id = route.replace('/', '_')
-        route_label = route.replace('/', '').replace('-', ' ').title()
-        checkboxes_html_plan += f'''
-                    <div class="permission-item">
-                        <input type="checkbox" id="plan_perm_{route_id}" class="plan-perm-checkbox" value="{route}">
-                        <label for="plan_perm_{route_id}">{route_label}</label>
-                    </div>'''
-    
-    # Construire HTML users
-    users_html = ""
-    for user_data in users:
-        username = user_data[0]
-        role = user_data[1]
-        plan = user_data[2] or 'free'
-        created = str(user_data[5])[:10] if user_data[5] else '-'
-        
-        role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
-        plan_badge = f'<span class="badge badge-premium">{plan}</span>'
-        
-        # Construire le bouton delete en dehors du f-string (éviter backslash)
-        delete_button = ""
-        if username != "admin":
-            delete_button = f'<button onclick="deleteUser(\'{username}\')" class="btn btn-danger">🗑️ Supprimer</button>'
-        
-        users_html += f"""
-        <tr>
-            <td><strong>{username}</strong></td>
-            <td>{role_badge}</td>
-            <td>{plan_badge}</td>
-            <td>{created}</td>
-            <td class="actions">
-                <button onclick="editUser('{username}')" class="btn btn-edit">✏️ Modifier</button>
-                <button onclick="managePermissions('{username}')" class="btn btn-permissions">🔐 Permissions</button>
-                {delete_button}
-            </td>
-        </tr>
-        """
-    
+    # Retourner le HTML simple
     return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Admin Dashboard</title>
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{ 
-                font-family: 'Segoe UI', sans-serif; 
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                min-height: 100vh; 
-                padding: 20px; 
-            }}
-            
-            .container {{ max-width: 1600px; margin: 0 auto; }}
-            
-            .header {{
-                background: white;
-                padding: 30px;
-                border-radius: 15px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                margin-bottom: 30px;
-            }}
-            
-            h1 {{ color: #333; font-size: 32px; margin-bottom: 10px; }}
-            .subtitle {{ color: #666; }}
-            
-            .action-buttons {{
-                display: flex;
-                gap: 15px;
-                margin-top: 20px;
-            }}
-            
-            .btn-add {{
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                color: white;
-                border: none;
-                padding: 15px 30px;
-                border-radius: 10px;
-                font-size: 16px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s;
-            }}
-            
-            .btn-add:hover {{
-                transform: translateY(-2px);
-                box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-            }}
-            
-            .stats-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 20px;
-                margin-bottom: 30px;
-            }}
-            
-            .stat-card {{
-                background: white;
-                padding: 25px;
-                border-radius: 15px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            }}
-            
-            .stat-label {{ color: #666; font-size: 14px; text-transform: uppercase; }}
-            .stat-value {{ font-size: 36px; font-weight: bold; color: #667eea; margin: 10px 0; }}
-            
-            .users-section {{
-                background: white;
-                padding: 30px;
-                border-radius: 15px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            }}
-            
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 20px;
-            }}
-            
-            th, td {{
-                padding: 15px;
-                text-align: left;
-                border-bottom: 1px solid #eee;
-            }}
-            
-            th {{ background: #f8f9fa; font-weight: 600; color: #333; }}
-            
-            .badge {{
-                padding: 5px 12px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 600;
-            }}
-            
-            .badge-admin {{ background: #ffd43b; color: #333; }}
-            .badge-user {{ background: #e0e0e0; color: #666; }}
-            .badge-premium {{ background: #51cf66; color: white; }}
-            
-            .actions {{ display: flex; gap: 8px; flex-wrap: wrap; }}
-            
-            .btn {{
-                padding: 8px 15px;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 13px;
-                font-weight: 600;
-                transition: all 0.3s;
-            }}
-            
-            .btn-edit {{ background: #4dabf7; color: white; }}
-            .btn-edit:hover {{ background: #339af0; }}
-            
-            .btn-permissions {{ background: #ffd43b; color: #333; }}
-            .btn-permissions:hover {{ background: #fcc419; }}
-            
-            .btn-danger {{ background: #ff6b6b; color: white; }}
-            .btn-danger:hover {{ background: #f03e3e; }}
-            
-            /* MODAL STYLES */
-            .modal {{
-                display: none;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.7);
-                z-index: 10000;
-                justify-content: center;
-                align-items: center;
-            }}
-            
-            .modal.active {{ display: flex; }}
-            
-            .modal-content {{
-                background: white;
-                padding: 40px;
-                border-radius: 20px;
-                max-width: 600px;
-                width: 90%;
-                max-height: 90vh;
-                overflow-y: auto;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-            }}
-            
-            .modal-header {{
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 30px;
-            }}
-            
-            .modal-title {{ font-size: 24px; font-weight: 700; color: #333; }}
-            
-            .close-btn {{
-                background: none;
-                border: none;
-                font-size: 30px;
-                cursor: pointer;
-                color: #999;
-            }}
-            
-            .close-btn:hover {{ color: #333; }}
-            
-            .form-group {{
-                margin-bottom: 20px;
-            }}
-            
-            .form-group label {{
-                display: block;
-                font-weight: 600;
-                color: #333;
-                margin-bottom: 8px;
-            }}
-            
-            .form-group input,
-            .form-group select {{
-                width: 100%;
-                padding: 12px;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                font-size: 14px;
-                transition: all 0.3s;
-            }}
-            
-            .form-group input:focus,
-            .form-group select:focus {{
-                outline: none;
-                border-color: #667eea;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            }}
-            
-            .permissions-grid {{
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-                max-height: 450px;
-                overflow-y: auto;
-                padding: 15px;
-                background: #f8f9fa;
-                border-radius: 8px;
-            }}
-            
-            .permission-item {{
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }}
-            
-            .permission-item input[type="checkbox"] {{
-                width: 18px;
-                height: 18px;
-                cursor: pointer;
-            }}
-            
-            .permission-item label {{
-                cursor: pointer;
-                font-weight: 500;
-                margin: 0;
-            }}
-            
-            .btn-submit {{
-                width: 100%;
-                padding: 15px;
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                color: white;
-                border: none;
-                border-radius: 10px;
-                font-size: 16px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s;
-                margin-top: 20px;
-            }}
-            
-            .btn-submit:hover {{
-                transform: translateY(-2px);
-                box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-            }}
-            
-            .message {{
-                padding: 15px;
-                border-radius: 8px;
-                margin-top: 15px;
-                display: none;
-            }}
-            
-            .message.success {{
-                background: #d4edda;
-                color: #155724;
-                border: 1px solid #c3e6cb;
-                display: block;
-            }}
-            
-            .message.error {{
-                background: #f8d7da;
-                color: #721c24;
-                border: 1px solid #f5c6cb;
-                display: block;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>👑 Admin Dashboard</h1>
-                <p class="subtitle">Gestion des utilisateurs et permissions</p>
-                <div class="action-buttons">
-                    <button onclick="openAddUserModal()" class="btn-add">➕ Ajouter un Utilisateur</button>
-                </div>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{ font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }}
+        .container {{ max-width: 1400px; margin: 0 auto; }}
+        .header {{ background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; }}
+        h1 {{ color: #333; font-size: 32px; margin-bottom: 10px; }}
+        .subtitle {{ color: #666; margin-bottom: 30px; }}
+        
+        .stats {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }}
+        .stat {{ background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 25px; border-radius: 12px; text-align: center; }}
+        .stat-value {{ font-size: 36px; font-weight: bold; }}
+        .stat-label {{ font-size: 12px; opacity: 0.9; margin-top: 8px; text-transform: uppercase; }}
+        
+        .quick-links {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px; }}
+        .quick-link {{ padding: 25px; border-radius: 12px; text-align: center; text-decoration: none; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; }}
+        .quick-link:hover {{ transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.2); }}
+        .link-ebooks {{ background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); }}
+        .link-messages {{ background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); }}
+        .icon {{ font-size: 32px; margin-bottom: 10px; display: block; }}
+        
+        .section {{ background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-bottom: 30px; }}
+        .section h2 {{ color: #333; margin-bottom: 20px; font-size: 24px; }}
+        
+        .btn {{ background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-right: 10px; transition: all 0.3s; }}
+        .btn:hover {{ transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }}
+        
+        table {{ width: 100%; border-collapse: collapse; margin-top: 20px; }}
+        th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0; }}
+        th {{ background: #f8f9fa; font-weight: 600; color: #333; }}
+        tr:hover {{ background: #f8f9fa; }}
+        
+        .message {{ padding: 15px; border-radius: 8px; margin-bottom: 15px; }}
+        .msg-success {{ background: #d1fae5; color: #065f46; border: 2px solid #10b981; }}
+        .msg-error {{ background: #fee2e2; color: #991b1b; border: 2px solid #ef4444; }}
+        
+        .modal {{ display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; }}
+        .modal.active {{ display: flex; }}
+        .modal-content {{ background: white; padding: 40px; border-radius: 15px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; }}
+        .modal-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }}
+        .close-btn {{ background: none; border: none; font-size: 28px; cursor: pointer; color: #999; }}
+        
+        .form-group {{ margin-bottom: 20px; }}
+        .form-group label {{ display: block; font-weight: 600; color: #333; margin-bottom: 8px; }}
+        .form-group input, .form-group select, .form-group textarea {{ width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; }}
+        .form-group input:focus, .form-group select:focus {{ outline: none; border-color: #667eea; }}
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>👑 Admin Dashboard</h1>
+        <p class="subtitle">Gestion de la plateforme</p>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value">{total_users}</div>
+                <div class="stat-label">Total Utilisateurs</div>
             </div>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Total Utilisateurs</div>
-                    <div class="stat-value">{total_users}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Abonnements Actifs</div>
-                    <div class="stat-value">{active_subs}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Revenus Totaux</div>
-                    <div class="stat-value">${total_revenue:.2f}</div>
-                </div>
+            <div class="stat">
+                <div class="stat-value">{active_subs}</div>
+                <div class="stat-label">Abonnements Actifs</div>
             </div>
-            
-            <!-- 🔗 QUICK LINKS ADMIN -->
-            <div class="stats-grid" style="margin-bottom: 30px;">
-                <a href="/admin/ebooks" style="text-decoration:none;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); cursor: pointer; transition: all 0.3s;">
-                        <div style="font-size: 28px; margin-bottom: 10px;">📚</div>
-                        <div class="stat-label" style="color: white;">Gérer Ebooks</div>
-                        <div style="color: white; font-size: 14px; margin-top: 8px;">Ajouter/Modifier/Supprimer</div>
-                    </div>
-                </a>
-                <a href="/admin/messages" style="text-decoration:none;">
-                    <div class="stat-card" style="background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); cursor: pointer; transition: all 0.3s;">
-                        <div style="font-size: 28px; margin-bottom: 10px;">💬</div>
-                        <div class="stat-label" style="color: white;">Messages Contact</div>
-                        <div style="color: white; font-size: 14px; margin-top: 8px;">Consulter les messages</div>
-                    </div>
-                </a>
-            </div>
-            
-            <!-- 🥇 RETENTION WARFARE DASHBOARD -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 2px solid #ef4444; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #dc2626; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">⚠️</span>
-                    Retention Warfare - Zone de Combat
-                </h2>
-                <p style="color: #991b1b; margin-bottom: 20px; font-weight: 600;">
-                    🎯 Sauve tes revenus avant qu'il soit trop tard !
-                </p>
-                
-                <!-- Zone Rouge - Urgent -->
-                <div id="redZone" style="background: white; border-left: 5px solid #dc2626; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #dc2626; margin-bottom: 15px;">🚨 ZONE ROUGE - Expirent dans 3 jours</h3>
-                    <div id="redZoneContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Zone Orange -->
-                <div id="orangeZone" style="background: white; border-left: 5px solid #f59e0b; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #f59e0b; margin-bottom: 15px;">⚠️ ZONE ORANGE - Expirent dans 7 jours</h3>
-                    <div id="orangeZoneContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Zone Jaune -->
-                <div id="yellowZone" style="background: white; border-left: 5px solid #eab308; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #eab308; margin-bottom: 15px;">🟡 ZONE JAUNE - Expirent dans 30 jours</h3>
-                    <div id="yellowZoneContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Users Inactifs -->
-                <div style="background: white; border-left: 5px solid #6366f1; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #6366f1; margin-bottom: 15px;">💤 Utilisateurs Inactifs (7+ jours)</h3>
-                    <div id="inactiveUsers">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Stats Rétention -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-top: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Taux de Rétention</h3>
-                    <div id="retentionStats">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 🥈 CONVERSION FUNNEL MICROSCOPE -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border: 2px solid #6366f1; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #4f46e5; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">🔍</span>
-                    Conversion Funnel Microscope
-                </h2>
-                <p style="color: #3730a3; margin-bottom: 20px; font-weight: 600;">
-                    📊 Voir EXACTEMENT où tu perds des conversions
-                </p>
-                
-                <!-- Période -->
-                <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-                    <label style="font-weight: 600; color: #333; margin-right: 10px;">Période:</label>
-                    <select id="funnelPeriod" onchange="loadConversionFunnel()" style="padding: 8px 15px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
-                        <option value="7">7 derniers jours</option>
-                        <option value="30" selected>30 derniers jours</option>
-                        <option value="90">90 derniers jours</option>
-                    </select>
-                </div>
-                
-                <!-- Funnel Visualization -->
-                <div id="funnelContainer" style="background: white; padding: 25px; border-radius: 10px; margin-bottom: 15px;">
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        <p style="font-size: 18px; margin-bottom: 10px;">🔄 Chargement du funnel...</p>
-                        <p style="font-size: 14px; color: #999;">Analyse des conversions en cours</p>
-                    </div>
-                </div>
-                
-                <!-- Insights Automatiques -->
-                <div id="funnelInsights" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">💡 Insights Automatiques</h3>
-                    <div id="insightsContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Conversion par Plan -->
-                <div id="funnelByPlan" style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Conversion par Plan</h3>
-                    <div id="planConversionContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
-            <div class="users-section" style="margin-bottom: 30px;">
-                <h2>🎯 Gestion des Accès par Forfait</h2>
-                <p style="color: #666; margin-bottom: 20px;">Définir quelles pages sont accessibles pour chaque plan d'abonnement</p>
-                
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                    <button onclick="managePlanAccess('free')" class="btn-add" style="background: linear-gradient(135deg, #94a3b8, #64748b);">
-                        🆓 Free
-                    </button>
-                    <button onclick="managePlanAccess('1_month')" class="btn-add" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
-                        💎 Premium (1 mois)
-                    </button>
-                    <button onclick="managePlanAccess('3_months')" class="btn-add" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                        🚀 Advanced (3 mois)
-                    </button>
-                    <button onclick="managePlanAccess('6_months')" class="btn-add" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                        ⭐ Pro (6 mois)
-                    </button>
-                    <button onclick="managePlanAccess('1_year')" class="btn-add" style="background: linear-gradient(135deg, #10b981, #059669);">
-                        👑 Elite (1 an)
-                    </button>
-                </div>
-            </div>
-            
-            <!-- 🥉 REVENUE INTELLIGENCE CENTER -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #d97706; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">💰</span>
-                    Revenue Intelligence Center
-                </h2>
-                <p style="color: #92400e; margin-bottom: 20px; font-weight: 600;">
-                    📈 Prédis tes revenus & optimise les profits
-                </p>
-                
-                <!-- Revenus & Projections -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">💵 Revenus & Projections</h3>
-                    <div id="revenueProjections">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- CLV par Plan -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🎯 Customer Lifetime Value (CLV)</h3>
-                    <div id="clvByPlan">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Top Clients -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🏆 Top 10 Clients (Lifetime Value)</h3>
-                    <div id="topClients">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- ROI Codes Promo -->
-                <div style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🎟️ ROI des Codes Promo</h3>
-                    <div id="promoROI">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 4️⃣ VIRAL GROWTH MACHINE -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 2px solid #10b981; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #047857; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">🚀</span>
-                    Viral Growth Machine
-                </h2>
-                <p style="color: #065f46; margin-bottom: 20px; font-weight: 600;">
-                    📢 Croissance organique explosive (0$ en ads!)
-                </p>
-                
-                <!-- Stats Globales -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Stats Parrainage</h3>
-                    <div id="referralStats">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Leaderboard -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🏆 Top Parrains</h3>
-                    <div id="referralLeaderboard">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Tracking Source -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📈 Sources d'Acquisition</h3>
-                    <div id="acquisitionSources">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- CPA Comparison -->
-                <div style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">💰 Coût Par Acquisition (CPA)</h3>
-                    <div id="cpaComparison">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 5️⃣ AUTOMATION ENGINE -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border: 2px solid #8b5cf6; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #6d28d9; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">🤖</span>
-                    Automation Engine
-                </h2>
-                <p style="color: #5b21b6; margin-bottom: 20px; font-weight: 600;">
-                    ⚡ Robot marketing 24/7 qui travaille pour toi
-                </p>
-                
-                <!-- Règles Actives -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="color: #333; margin: 0;">⚙️ Règles d'Automation</h3>
-                        <button onclick="openCreateRuleModal()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                            ➕ Créer Règle
-                        </button>
-                    </div>
-                    <div id="automationRules">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Performance Globale -->
-                <div style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Performance Globale</h3>
-                    <div id="automationPerformance">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- SECTION GESTION DES CODES PROMO -->
-            <div class="users-section" style="margin-bottom: 30px;">
-                <h2>🎟️ Gestion des Codes Promo</h2>
-                <p style="color: #666; margin-bottom: 20px;">Créer et gérer les codes de réduction pour les abonnements</p>
-                
-                <div class="action-buttons" style="margin-bottom: 20px;">
-                    <button onclick="openPromoModal()" class="btn-add" style="background: linear-gradient(135deg, #ec4899, #be185d);">
-                        ➕ Créer un Code Promo
-                    </button>
-                    <button onclick="loadPromoList()" class="btn-add" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
-                        📋 Liste des Codes
-                    </button>
-                    <button onclick="createLaunchPromos()" class="btn-add" style="background: linear-gradient(135deg, #f97316, #ea580c);">
-                        🚀 Codes de Lancement (AUTO)
-                    </button>
-                </div>
-                
-                <div id="promoListContainer" style="display: none; margin-top: 20px;">
-                    <h3>Codes Actifs</h3>
-                    <div id="promoListContent" style="background: #f8fafc; padding: 20px; border-radius: 10px;">
-                        <!-- Liste des promos sera chargée ici -->
-                    </div>
-                </div>
-            </div>
-            
-            <div class="users-section">
-                <h2>📋 Liste des Utilisateurs</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Utilisateur</th>
-                            <th>Rôle</th>
-                            <th>Plan</th>
-                            <th>Créé</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {users_html}
-                    </tbody>
-                </table>
+            <div class="stat">
+                <div class="stat-value">${total_revenue:.2f}</div>
+                <div class="stat-label">Revenus Totaux</div>
             </div>
         </div>
-        
-        <!-- MODAL AJOUTER/MODIFIER UTILISATEUR -->
-        <div id="userModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title" id="modalTitle">Ajouter un Utilisateur</h2>
-                    <button class="close-btn" onclick="closeModal('userModal')">&times;</button>
-                </div>
-                <form id="userForm">
-                    <input type="hidden" id="editMode" value="false">
-                    <input type="hidden" id="originalUsername" value="">
-                    <div class="form-group">
-                        <label>👤 Nom d'utilisateur</label>
-                        <input type="text" id="username" required minlength="3" placeholder="Ex: john_doe">
-                    </div>
-                    <div class="form-group">
-                        <label>🔒 Mot de passe</label>
-                        <input type="password" id="password" minlength="6" placeholder="Laissez vide pour ne pas changer">
-                        <small style="color: #999; font-size: 12px;">* Requis pour nouvel utilisateur, optionnel pour modification</small>
-                    </div>
-                    <div class="form-group">
-                        <label>👑 Rôle / Plan</label>
-                        <select id="role">
-                            <option value="user">User (Normal - Sans abonnement)</option>
-                            <option value="admin">Admin (Accès complet)</option>
-                            <option value="free">🆓 Free</option>
-                            <option value="1_month">💎 Premium (1 mois)</option>
-                            <option value="3_months">🚀 Advanced (3 mois)</option>
-                            <option value="6_months">⭐ Pro (6 mois)</option>
-                            <option value="1_year">👑 Elite (1 an)</option>
-                        </select>
-                        <small style="color: #999; font-size: 12px; margin-top: 5px; display: block;">
-                            💡 Choisir un plan assignera automatiquement les permissions configurées pour ce plan
-                        </small>
-                    </div>
-                    <button type="submit" class="btn-submit" id="submitBtn">✅ Créer Utilisateur</button>
-                </form>
-                <div id="userMessage" class="message"></div>
-            </div>
-        </div>
-        
-        <!-- MODAL PERMISSIONS -->
-        <div id="permissionsModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">🔐 Gérer les Permissions</h2>
-                    <button class="close-btn" onclick="closeModal('permissionsModal')">&times;</button>
-                </div>
-                <p style="margin-bottom: 20px; color: #666;">
-                    Sélectionnez les pages accessibles pour <strong id="permUsername"></strong>
-                </p>
-                <div class="permissions-grid" id="permissionsGrid">
-{checkboxes_html}
-                </div>
-                <div style="display:flex;gap:10px;margin:20px 0;">
-                    <button onclick="selectAllPermissions()" class="btn-select-all" style="flex:1;padding:12px;background:#4caf50;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">✅ Tout Sélectionner</button>
-                    <button onclick="deselectAllPermissions()" class="btn-deselect-all" style="flex:1;padding:12px;background:#f44336;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">❌ Tout Désélectionner</button>
-                </div>
-                <button onclick="savePermissions()" class="btn-submit">💾 Enregistrer Permissions</button>
-                <div id="permMessage" class="message"></div>
-            </div>
-        </div>
-        
-        <!-- MODAL GESTION ACCÈS PAR FORFAIT -->
-        <div id="planAccessModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">🎯 Gérer les Accès - <span id="planName"></span></h2>
-                    <button class="close-btn" onclick="closeModal('planAccessModal')">&times;</button>
-                </div>
-                <p style="margin-bottom: 20px; color: #666;">
-                    Sélectionnez les pages accessibles pour ce plan d'abonnement
-                </p>
-                <div class="permissions-grid" id="planPermissionsGrid">
-{checkboxes_html_plan}
-                </div>
-                <div style="display:flex;gap:10px;margin:20px 0;">
-                    <button onclick="selectAllPlanPermissions()" class="btn-select-all" style="flex:1;padding:12px;background:#4caf50;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">✅ Tout Sélectionner</button>
-                    <button onclick="deselectAllPlanPermissions()" class="btn-deselect-all" style="flex:1;padding:12px;background:#f44336;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">❌ Tout Désélectionner</button>
-                </div>
-                <button onclick="savePlanAccess()" class="btn-submit">💾 Enregistrer Accès du Plan</button>
-                <div id="planAccessMessage" class="message"></div>
-            </div>
-        </div>
-        
-        <!-- MODAL CRÉATION CODE PROMO -->
-        <div id="promoModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">🎟️ Créer un Code Promo</h2>
-                    <button class="close-btn" onclick="closeModal('promoModal')">&times;</button>
-                </div>
-                <form id="promoForm" onsubmit="createPromoCode(event)">
-                    <div class="form-group">
-                        <label>🏷️ Code Promo</label>
-                        <input type="text" id="promoCode" required placeholder="Ex: LAUNCH50" style="text-transform: uppercase;">
-                    </div>
-                    <div class="form-group">
-                        <label>💰 Réduction</label>
-                        <input type="number" id="promoDiscount" required min="1" step="0.01" placeholder="Ex: 50">
-                    </div>
-                    <div class="form-group">
-                        <label>📊 Type de Réduction</label>
-                        <select id="promoType" required>
-                            <option value="percentage">Pourcentage (%)</option>
-                            <option value="fixed">Montant Fixe ($)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>📅 Valide jusqu'à (optionnel)</label>
-                        <input type="date" id="promoValidUntil">
-                    </div>
-                    <div class="form-group">
-                        <label>🔢 Nombre d'utilisations max (optionnel)</label>
-                        <input type="number" id="promoMaxUses" min="1" placeholder="Illimité si vide">
-                    </div>
-                    <button type="submit" class="btn-submit">✨ Créer le Code Promo</button>
-                    <div id="promoMessage" class="message"></div>
-                </form>
-            </div>
-        </div>
-        
-        <script>
-        let currentPermUser = '';
-        
-        function openAddUserModal() {{
-            document.getElementById('modalTitle').textContent = 'Ajouter un Utilisateur';
-            document.getElementById('userForm').reset();
-            document.getElementById('editMode').value = 'false';
-            document.getElementById('username').readOnly = false;
-            document.getElementById('password').required = true;
-            document.getElementById('submitBtn').textContent = '✅ Créer Utilisateur';
-            document.getElementById('userModal').classList.add('active');
-        }}
-        
-        async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
-            document.getElementById('editMode').value = 'true';
-            document.getElementById('originalUsername').value = username;
-            
-            // Charger les infos de l'utilisateur
-            try {{
-                const response = await fetch(`/admin/get-user/${{username}}`);
-                const data = await response.json();
-                
-                if (data.success) {{
-                    document.getElementById('username').value = data.user.username;
-                    document.getElementById('username').readOnly = true; // Pas de changement de username
-                    document.getElementById('role').value = data.user.role;
-                    document.getElementById('password').value = '';
-                    document.getElementById('password').required = false;
-                    document.getElementById('submitBtn').textContent = '💾 Sauvegarder Modifications';
-                    document.getElementById('userModal').classList.add('active');
-                }} else {{
-                    alert('❌ Erreur: ' + data.message);
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de connexion');
-                console.error(error);
-            }}
-        }}
-        
-        function closeModal(modalId) {{
-            document.getElementById(modalId).classList.remove('active');
-        }}
-        
-        async function managePermissions(username) {{
-            currentPermUser = username;
-            document.getElementById('permUsername').textContent = username;
-            
-            // Charger les permissions actuelles
-            try {{
-                const response = await fetch(`/admin/get-permissions/${{username}}`);
-                const data = await response.json();
-                
-                // Décocher toutes
-                document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
-                
-                // Cocher les permissions existantes
-                if (data.success && data.routes) {{
-                    data.routes.forEach(route => {{
-                        const checkbox = document.getElementById('perm_' + route.replace(/\//g, '_'));
-                        if (checkbox) checkbox.checked = true;
-                    }});
-                }}
-                
-                document.getElementById('permissionsModal').classList.add('active');
-            }} catch (error) {{
-                alert('Erreur lors du chargement des permissions');
-            }}
-        }}
-        
-        async function savePermissions() {{
-            const checkboxes = document.querySelectorAll('.perm-checkbox:checked');
-            const routes = Array.from(checkboxes).map(cb => cb.value);
-            
-            try {{
-                const response = await fetch('/admin/update-permissions', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{
-                        username: currentPermUser,
-                        routes: routes
-                    }})
-                }});
-                
-                const data = await response.json();
-                
-                const msg = document.getElementById('permMessage');
-                if (data.success) {{
-                    msg.className = 'message success';
-                    msg.textContent = '✅ ' + data.message;
-                    setTimeout(() => {{ closeModal('permissionsModal'); }}, 1500);
-                }} else {{
-                    msg.className = 'message error';
-                    msg.textContent = '❌ ' + data.message;
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de connexion');
-            }}
-        }}
-        
-        function selectAllPermissions() {{
-            document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = true);
-        }}
-        
-        function deselectAllPermissions() {{
-            document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
-        }}
-        
-        document.getElementById('userForm').addEventListener('submit', async (e) => {{
-            e.preventDefault();
-            
-            const editMode = document.getElementById('editMode').value === 'true';
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const role = document.getElementById('role').value;
-            const originalUsername = document.getElementById('originalUsername').value;
-            
-            // Validation du mot de passe pour nouvel utilisateur
-            if (!editMode && !password) {{
-                alert('❌ Le mot de passe est requis pour un nouvel utilisateur');
-                return;
-            }}
-            
-            try {{
-                const endpoint = editMode ? '/admin/edit-user' : '/admin/add-user';
-                const payload = editMode 
-                    ? {{originalUsername, username, password, role}}
-                    : {{username, password, role}};
-                
-                const response = await fetch(endpoint, {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify(payload)
-                }});
-                
-                const data = await response.json();
-                console.log('Server response:', data);
-                
-                const msg = document.getElementById('userMessage');
-                if (data.success) {{
-                    msg.className = 'message success';
-                    msg.textContent = '✅ ' + data.message;
-                    setTimeout(() => {{
-                        window.location.reload();
-                    }}, 1500);
-                }} else {{
-                    msg.className = 'message error';
-                    msg.textContent = '❌ ' + data.message;
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de connexion au serveur');
-                console.error(error);
-            }}
-        }});
-        
-        async function deleteUser(username) {{
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer "${{username}}" ?`)) {{
-                return;
-            }}
-            
-            try {{
-                const response = await fetch('/admin/delete-user', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{username}})
-                }});
-                
-                const data = await response.json();
-                
-                if (data.status === 'success') {{
-                    alert('✅ Utilisateur supprimé!');
-                    window.location.reload();
-                }} else {{
-                    alert('❌ Erreur: ' + data.message);
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de connexion');
-            }}
-        }}
-        
-        // ========== GESTION DES ACCÈS PAR FORFAIT ==========
-        let currentPlan = '';
-        
-        async function managePlanAccess(plan) {{
-            currentPlan = plan;
-            const planNames = {{
-                'free': '🆓 Free',
-                '1_month': '💎 Premium (1 mois)',
-                '3_months': '🚀 Advanced (3 mois)',
-                '6_months': '⭐ Pro (6 mois)',
-                '1_year': '👑 Elite (1 an)'
-            }};
-            
-            document.getElementById('planName').textContent = planNames[plan];
-            
-            // Charger les permissions actuelles du plan
-            try {{
-                const response = await fetch(`/admin/get-plan-access/${{plan}}`);
-                const data = await response.json();
-                
-                // Décocher toutes
-                document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
-                
-                // Cocher les permissions existantes
-                if (data.success && data.routes) {{
-                    data.routes.forEach(route => {{
-                        const checkbox = document.getElementById('plan_perm_' + route.replace(/\//g, '_'));
-                        if (checkbox) checkbox.checked = true;
-                    }});
-                }}
-                
-                document.getElementById('planAccessModal').classList.add('active');
-            }} catch (error) {{
-                alert('❌ Erreur de chargement');
-                console.error(error);
-            }}
-        }}
-        
-        async function savePlanAccess() {{
-            const selectedRoutes = Array.from(document.querySelectorAll('.plan-perm-checkbox:checked'))
-                .map(cb => cb.value);
-            
-            try {{
-                const response = await fetch('/admin/save-plan-access', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{
-                        plan: currentPlan,
-                        routes: selectedRoutes
-                    }})
-                }});
-                
-                const data = await response.json();
-                const msg = document.getElementById('planAccessMessage');
-                
-                if (data.success) {{
-                    msg.className = 'message success';
-                    msg.textContent = '✅ ' + data.message;
-                    setTimeout(() => {{
-                        closeModal('planAccessModal');
-                    }}, 1500);
-                }} else {{
-                    msg.className = 'message error';
-                    msg.textContent = '❌ ' + data.message;
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de sauvegarde');
-                console.error(error);
-            }}
-        }}
-        
-        function selectAllPlanPermissions() {{
-            document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = true);
-        }}
-        
-        function deselectAllPlanPermissions() {{
-            document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
-        }}
-        
-        // ========== GESTION DES CODES PROMO ==========
-        function openPromoModal() {{
-            document.getElementById('promoForm').reset();
-            document.getElementById('promoModal').classList.add('active');
-        }}
-        
-        async function createPromoCode(event) {{
-            event.preventDefault();
-            
-            const code = document.getElementById('promoCode').value.toUpperCase();
-            const discount = parseFloat(document.getElementById('promoDiscount').value);
-            const type = document.getElementById('promoType').value;
-            const validUntil = document.getElementById('promoValidUntil').value;
-            const maxUses = parseInt(document.getElementById('promoMaxUses').value) || null;
-            
-            try {{
-                const response = await fetch('/admin/create-promo', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{
-                        code,
-                        discount,
-                        type,
-                        valid_until: validUntil,
-                        max_uses: maxUses
-                    }})
-                }});
-                
-                const data = await response.json();
-                const msg = document.getElementById('promoMessage');
-                
-                if (data.success) {{
-                    msg.className = 'message success';
-                    msg.textContent = '✅ ' + data.message;
-                    setTimeout(() => {{
-                        closeModal('promoModal');
-                        loadPromoList();
-                    }}, 1500);
-                }} else {{
-                    msg.className = 'message error';
-                    msg.textContent = '❌ ' + data.message;
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de création');
-                console.error(error);
-            }}
-        }}
-        
-        async function loadPromoList() {{
-            try {{
-                const response = await fetch('/admin/api/list-promos');
-                const data = await response.json();
-                
-                const container = document.getElementById('promoListContainer');
-                const content = document.getElementById('promoListContent');
-                
-                if (data.success && data.promos && data.promos.length > 0) {{
-                    let html = '<table style="width: 100%; border-collapse: collapse;">';
-                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu\\'à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
-                    html += '<tbody>';
-                    
-                    data.promos.forEach(promo => {{
-                        const usesText = promo.max_uses ? `${{promo.uses || 0}}/${{promo.max_uses}}` : `${{promo.uses || 0}}/∞`;
-                        const discount = promo.type === 'percentage' ? `${{promo.discount}}%` : `$${{promo.discount}}`;
-                        
-                        html += `<tr style="border-bottom: 1px solid #e2e8f0;">
-                            <td style="padding: 10px;"><strong>${{promo.code}}</strong></td>
-                            <td>${{discount}}</td>
-                            <td>${{promo.type === 'percentage' ? 'Pourcentage' : 'Fixe'}}</td>
-                            <td>${{promo.valid_until || 'Illimité'}}</td>
-                            <td>${{usesText}}</td>
-                            <td>
-                                <button onclick="deletePromo('${{promo.code}}')" style="background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">🗑️</button>
-                            </td>
-                        </tr>`;
-                    }});
-                    
-                    html += '</tbody></table>';
-                    content.innerHTML = html;
-                    container.style.display = 'block';
-                }} else {{
-                    content.innerHTML = '<p style="color: #666; text-align: center;">Aucun code promo actif</p>';
-                    container.style.display = 'block';
-                }}
-            }} catch (error) {{
-                console.error('Erreur loadPromoList:', error);
-                alert('❌ Erreur de chargement des codes promo');
-            }}
-        }}
-        
-        async function deletePromo(code) {{
-            if (!confirm(`Supprimer le code promo "${{code}}" ?`)) return;
-            
-            try {{
-                const response = await fetch('/admin/delete-promo', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{ code }})
-                }});
-                
-                const data = await response.json();
-                
-                if (data.success) {{
-                    alert('✅ Code supprimé!');
-                    loadPromoList();
-                }} else {{
-                    alert('❌ Erreur: ' + data.message);
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de connexion');
-            }}
-        }}
-        
-        async function createLaunchPromos() {{
-            if (!confirm('Créer les codes promo de lancement automatiques?')) return;
-            
-            try {{
-                const response = await fetch('/admin/create-launch-promos', {{
-                    method: 'POST'
-                }});
-                
-                const data = await response.json();
-                
-                if (data.success) {{
-                    alert('✅ ' + data.message);
-                    loadPromoList();
-                }} else {{
-                    alert('❌ Erreur: ' + data.message);
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de création');
-            }}
-        }}
-        
-        // ========================================
-        // 🥇 RETENTION WARFARE DASHBOARD
-        // ========================================
-        
-        async function loadRetentionDashboard() {{
-            try {{
-                const response = await fetch('/admin/api/retention-dashboard');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur retention dashboard:', data);
-                    return;
-                }}
-                
-                // Zone Rouge (3 jours)
-                renderExpiringUsers(data.red_zone, 'redZoneContent', 'red');
-                
-                // Zone Orange (7 jours)
-                renderExpiringUsers(data.orange_zone, 'orangeZoneContent', 'orange');
-                
-                // Zone Jaune (30 jours)
-                renderExpiringUsers(data.yellow_zone, 'yellowZoneContent', 'yellow');
-                
-                // Users Inactifs
-                renderInactiveUsers(data.inactive_users);
-                
-                // Stats Rétention
-                renderRetentionStats(data.retention_stats);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement retention dashboard:', error);
-            }}
-        }}
-        
-        function renderExpiringUsers(users, containerId, zone) {{
-            const container = document.getElementById(containerId);
-            
-            if (!users || users.length === 0) {{
-                container.innerHTML = '<p style="color: #10b981;">✅ Aucun utilisateur dans cette zone!</p>';
-                return;
-            }}
-            
-            const totalRevenue = users.reduce((sum, u) => sum + (u.revenue_at_risk || 0), 0);
-            
-            let html = '<p style="font-weight: 600; color: #333; margin-bottom: 15px;">' + 
-                users.length + ' utilisateurs = <span style="color: #dc2626;">$' + totalRevenue.toFixed(2) + ' à risque</span></p>';
-            
-            users.forEach(user => {{
-                const daysLeft = user.days_until_expiry;
-                const planEmoji = {{
-                    '1_month': '💎',
-                    '3_months': '🚀',
-                    '6_months': '⭐',
-                    '1_year': '👑'
-                }}[user.plan] || '📦';
-                
-                const borderColor = zone === 'red' ? '#dc2626' : zone === 'orange' ? '#f59e0b' : '#eab308';
-                const textColor = zone === 'red' ? '#dc2626' : '#f59e0b';
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ' + borderColor + ';">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
-                        '<div>' +
-                            '<strong style="color: #333;">' + planEmoji + ' ' + user.username + '</strong>' +
-                            '<span style="color: #666; margin-left: 10px;">' + user.plan + '</span>' +
-                        '</div>' +
-                        '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
-                    '</div>' +
-                    '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-                        '<button onclick="extendSubscription(\'' + user.username + '\', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
-                        '<button onclick="sendRenewalEmail(\'' + user.username + '\')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
-                        '<button onclick="offerDiscount(\'' + user.username + '\', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderInactiveUsers(users) {{
-            const container = document.getElementById('inactiveUsers');
-            
-            if (!users || users.length === 0) {{
-                container.innerHTML = '<p style="color: #10b981;">✅ Tous les utilisateurs sont actifs!</p>';
-                return;
-            }}
-            
-            let html = '<p style="font-weight: 600; color: #333; margin-bottom: 15px;">' + 
-                users.length + ' utilisateurs n&apos;ont pas visité depuis 7+ jours</p>';
-            
-            users.forEach(user => {{
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #6366f1;">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
-                        '<div>' +
-                            '<strong style="color: #333;">' + user.username + '</strong>' +
-                            '<span style="color: #666; margin-left: 10px;">' + user.plan + '</span>' +
-                        '</div>' +
-                        '<div style="color: #6366f1; font-weight: 600;">Inactif depuis ' + user.days_inactive + ' jours</div>' +
-                    '</div>' +
-                    '<div style="display: flex; gap: 8px;">' +
-                        '<button onclick="sendEngagementEmail(' + "'" + user.username + "'" + ')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 On t&apos;a manqué!</button>' +
-                        '<button onclick="offerCoaching(' + "'" + user.username + "'" + ')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderRetentionStats(stats) {{
-            const container = document.getElementById('retentionStats');
-            
-            if (!stats) {{
-                container.innerHTML = '<p style="color: #666;">Aucune donnée disponible</p>';
-                return;
-            }}
-            
-            const html = 
-            '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
-                '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">' +
-                    '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">GLOBAL</div>' +
-                    '<div style="color: #10b981; font-size: 28px; font-weight: bold;">' + (stats.global || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #dbeafe; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">' +
-                    '<div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PREMIUM</div>' +
-                    '<div style="color: #3b82f6; font-size: 28px; font-weight: bold;">' + (stats.premium || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #f3e8ff; padding: 15px; border-radius: 8px; border-left: 4px solid #8b5cf6;">' +
-                    '<div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ADVANCED</div>' +
-                    '<div style="color: #8b5cf6; font-size: 28px; font-weight: bold;">' + (stats.advanced || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">' +
-                    '<div style="color: #b45309; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PRO</div>' +
-                    '<div style="color: #f59e0b; font-size: 28px; font-weight: bold;">' + (stats.pro || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #d1fae5; padding: 15px; border-radius: 8px; border-left: 4px solid #059669;">' +
-                    '<div style="color: #047857; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ELITE</div>' +
-                    '<div style="color: #059669; font-size: 28px; font-weight: bold;">' + (stats.elite || 0) + '%</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        // Actions
-        async function extendSubscription(username, days) {{
-            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
-            
-            try {{
-                const response = await fetch('/admin/api/extend-subscription', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{ username, days }})
-                }});
-                
-                const data = await response.json();
-                alert(data.success ? '✅ Prolongé!' : '❌ ' + data.message);
-                if (data.success) loadRetentionDashboard();
-            }} catch (error) {{
-                alert('❌ Erreur');
-            }}
-        }}
-        
-        async function sendRenewalEmail(username) {{
-            alert('📧 Email de rappel envoyé à ' + username + '! (Feature prochaine)');
-        }}
-        
-        async function offerDiscount(username, percent) {{
-            alert('💰 Code promo -' + percent + '% envoyé à ' + username + '! (Feature prochaine)');
-        }}
-        
-        async function sendEngagementEmail(username) {{
-            alert('📧 Email &quot;On t&apos;a manqué!&quot; envoyé à ' + username + '! (Feature prochaine)');
-        }}
-        
-        async function offerCoaching(username) {{
-            alert('🎯 Offre de coaching envoyée à ' + username + '! (Feature prochaine)');
-        }}
-        
-        // Charger au démarrage - SÉCURISÉ avec checks
-        setTimeout(function() {{
-            (async function() {{
-                try {{
-                    if (typeof loadRetentionDashboard === 'function') {{
-                        await loadRetentionDashboard();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Retention Dashboard:', error);
-                    // Continuer même si erreur
-                }}
-            }})();
-        }}, 100);
-        
-        // ========================================
-        // 🥈 CONVERSION FUNNEL MICROSCOPE
-        // ========================================
-        
-        async function loadConversionFunnel() {{
-            try {{
-                const periodElement = document.getElementById('funnelPeriod');
-                const period = periodElement ? periodElement.value : '30';
-                const response = await fetch('/admin/api/conversion-funnel?days=' + period);
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur conversion funnel:', data);
-                    return;
-                }}
-                
-                renderFunnelVisualization(data.funnel);
-                renderFunnelInsights(data.insights);
-                renderPlanConversion(data.by_plan);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement conversion funnel:', error);
-            }}
-        }}
-        
-        function renderFunnelVisualization(funnel) {{
-            const container = document.getElementById('funnelContainer');
-            
-            if (!funnel || !funnel.steps) {{
-                container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px;">Pas encore de données</p>';
-                return;
-            }}
-            
-            let html = '<div style="max-width: 800px; margin: 0 auto;">';
-            
-            funnel.steps.forEach((step, index) => {{
-                const isLast = index === funnel.steps.length - 1;
-                const dropPercent = step.drop_percent || 0;
-                const isHighDrop = dropPercent > 50;
-                
-                // Barre de progression
-                const barWidth = (step.count / funnel.steps[0].count) * 100;
-                const barColor = isHighDrop ? '#ef4444' : step.conversion_rate > 70 ? '#10b981' : '#f59e0b';
-                
-                html += '<div style="margin-bottom: 20px;">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">' +
-                        '<div style="font-weight: 600; color: #333; font-size: 16px;">' + step.name + '</div>' +
-                        '<div style="font-size: 20px; font-weight: bold; color: ' + barColor + ';">' + step.count.toLocaleString() + ' users</div>' +
-                    '</div>' +
-                    '<div style="background: #f3f4f6; height: 40px; border-radius: 8px; overflow: hidden; position: relative;">' +
-                        '<div style="background: ' + barColor + '; height: 100%; width: ' + barWidth + '%; transition: width 0.3s;"></div>' +
-                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 600; color: #333;">' + 
-                            barWidth.toFixed(1) + '%' +
-                        '</div>' +
-                    '</div>';
-                
-                if (!isLast) {{
-                    const arrow = isHighDrop ? '🚨' : '↓';
-                    const dropColor = isHighDrop ? '#dc2626' : '#666';
-                    html += '<div style="text-align: center; padding: 10px; color: ' + dropColor + '; font-weight: 600;">' +
-                        arrow + ' ' + dropPercent.toFixed(1) + '% perdus ici' +
-                    '</div>';
-                }}
-                
-                html += '</div>';
-            }});
-            
-            // Taux de conversion global
-            html += '<div style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; padding: 20px; border-radius: 10px; text-align: center; margin-top: 30px;">' +
-                '<div style="font-size: 14px; margin-bottom: 5px;">TAUX DE CONVERSION GLOBAL</div>' +
-                '<div style="font-size: 36px; font-weight: bold;">' + funnel.global_conversion.toFixed(1) + '%</div>' +
-            '</div>';
-            
-            html += '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderFunnelInsights(insights) {{
-            const container = document.getElementById('insightsContent');
-            
-            if (!insights || insights.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Aucun insight pour le moment</p>';
-                return;
-            }}
-            
-            let html = '';
-            
-            insights.forEach(insight => {{
-                const iconMap = {{
-                    'warning': '⚠️',
-                    'success': '✅',
-                    'info': '💡'
-                }};
-                const colorMap = {{
-                    'warning': '#f59e0b',
-                    'success': '#10b981',
-                    'info': '#3b82f6'
-                }};
-                
-                const icon = iconMap[insight.type] || '💡';
-                const color = colorMap[insight.type] || '#3b82f6';
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ' + color + ';">' +
-                    '<div style="display: flex; align-items: start; gap: 10px;">' +
-                        '<div style="font-size: 24px;">' + icon + '</div>' +
-                        '<div style="flex: 1;">' +
-                            '<div style="font-weight: 600; color: #333; margin-bottom: 5px;">' + insight.title + '</div>' +
-                            '<div style="color: #666; font-size: 14px;">' + insight.description + '</div>' +
-                            (insight.action ? '<div style="color: ' + color + '; font-weight: 600; font-size: 13px; margin-top: 8px;">→ Action: ' + insight.action + '</div>' : '') +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderPlanConversion(planData) {{
-            const container = document.getElementById('planConversionContent');
-            
-            if (!planData || planData.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Pas encore de données par plan</p>';
-                return;
-            }}
-            
-            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">';
-            
-            planData.forEach(plan => {{
-                const isBest = plan.is_best;
-                const isWorst = plan.is_worst;
-                const borderColor = isBest ? '#10b981' : isWorst ? '#ef4444' : '#e5e7eb';
-                const badge = isBest ? '🏆 BEST' : isWorst ? '⚠️ FAIBLE' : '';
-                
-                html += '<div style="background: white; border: 2px solid ' + borderColor + '; padding: 15px; border-radius: 10px;">' +
-                    '<div style="font-weight: 600; color: #333; margin-bottom: 5px;">' + plan.name + '</div>' +
-                    (badge ? '<div style="color: ' + borderColor + '; font-size: 11px; font-weight: 600; margin-bottom: 10px;">' + badge + '</div>' : '<div style="margin-bottom: 10px;"></div>') +
-                    '<div style="font-size: 28px; font-weight: bold; color: ' + borderColor + '; margin-bottom: 5px;">' + plan.conversion_rate.toFixed(1) + '%</div>' +
-                    '<div style="color: #666; font-size: 13px;">' + plan.conversions + ' / ' + plan.visits + ' visites</div>' +
-                '</div>';
-            }});
-            
-            html += '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        // Charger au démarrage - SÉCURISÉ avec checks
-        setTimeout(function() {{
-            (async function() {{
-                try {{
-                    if (typeof loadConversionFunnel === 'function') {{
-                        await loadConversionFunnel();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Conversion Funnel:', error);
-                    // Continuer même si erreur
-                }}
-            }})();
-        }}, 200);
-        
-        // ========================================
-        // 🥉 REVENUE INTELLIGENCE CENTER
-        // ========================================
-        
-        async function loadRevenueIntelligence() {{
-            try {{
-                const response = await fetch('/admin/api/revenue-intelligence');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur revenue intelligence:', data);
-                    return;
-                }}
-                
-                renderRevenueProjections(data.projections);
-                renderCLVByPlan(data.clv_by_plan);
-                renderTopClients(data.top_clients);
-                renderPromoROI(data.promo_roi);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement revenue intelligence:', error);
-            }}
-        }}
-        
-        function renderRevenueProjections(data) {{
-            const container = document.getElementById('revenueProjections');
-            
-            if (!data) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">' +
-                '<div style="background: #f0fdf4; padding: 20px; border-radius: 10px; border-left: 4px solid #10b981;">' +
-                    '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">CE MOIS</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #10b981; margin-bottom: 5px;">$' + data.current_month.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">Confirmé</div>' +
-                '</div>' +
-                '<div style="background: #dbeafe; padding: 20px; border-radius: 10px; border-left: 4px solid #3b82f6;">' +
-                    '<div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PROJECTION 3 MOIS</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;">$' + data.next_3_months.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">Estimé</div>' +
-                '</div>' +
-                '<div style="background: #f3e8ff; padding: 20px; border-radius: 10px; border-left: 4px solid #8b5cf6;">' +
-                    '<div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">REVENUS À RISQUE</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #8b5cf6; margin-bottom: 5px;">$' + data.at_risk.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">' + data.users_expiring + ' users expirent</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderCLVByPlan(plans) {{
-            const container = document.getElementById('clvByPlan');
-            
-            if (!plans || plans.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">';
-            
-            plans.forEach(plan => {{
-                const isBest = plan.is_best;
-                const borderColor = isBest ? '#10b981' : '#e5e7eb';
-                const badge = isBest ? '<div style="color: #10b981; font-size: 11px; font-weight: 600; margin-bottom: 8px;">🏆 BEST CLV</div>' : '';
-                
-                html += '<div style="background: white; border: 2px solid ' + borderColor + '; padding: 15px; border-radius: 10px;">' +
-                    '<div style="font-weight: 600; color: #333; margin-bottom: 5px;">' + plan.name + '</div>' +
-                    badge +
-                    '<div style="font-size: 28px; font-weight: bold; color: ' + borderColor + '; margin-bottom: 5px;">$' + plan.clv.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">Renouvellent ' + plan.renewal_rate.toFixed(1) + 'x</div>' +
-                '</div>';
-            }});
-            
-            html += '</div>';
-            container.innerHTML = html;
-        }}
-        
-        function renderTopClients(clients) {{
-            const container = document.getElementById('topClients');
-            
-            if (!clients || clients.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Pas encore de clients</p>';
-                return;
-            }}
-            
-            let html = '<div style="max-width: 800px;">';
-            
-            clients.forEach((client, index) => {{
-                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1) + '.';
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">' +
-                    '<div style="display: flex; align-items: center; gap: 15px;">' +
-                        '<div style="font-size: 24px; width: 40px;">' + medal + '</div>' +
-                        '<div>' +
-                            '<div style="font-weight: 600; color: #333;">' + client.username + '</div>' +
-                            '<div style="color: #666; font-size: 13px;">' + client.plan + '</div>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div style="font-size: 24px; font-weight: bold; color: #10b981;">$' + client.lifetime_value.toFixed(2) + '</div>' +
-                '</div>';
-            }});
-            
-            html += '</div>';
-            container.innerHTML = html;
-        }}
-        
-        function renderPromoROI(promos) {{
-            const container = document.getElementById('promoROI');
-            
-            if (!promos || promos.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Aucun code promo utilisé</p>';
-                return;
-            }}
-            
-            let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">' +
-                '<thead><tr style="background: #f3f4f6;">' +
-                '<th style="padding: 12px; text-align: left; font-weight: 600;">Code</th>' +
-                '<th style="padding: 12px; text-align: center; font-weight: 600;">Utilisé</th>' +
-                '<th style="padding: 12px; text-align: right; font-weight: 600;">Rabais</th>' +
-                '<th style="padding: 12px; text-align: right; font-weight: 600;">Revenus</th>' +
-                '<th style="padding: 12px; text-align: right; font-weight: 600;">ROI</th>' +
-                '</tr></thead><tbody>';
-            
-            promos.forEach(promo => {{
-                const roiColor = promo.roi > 200 ? '#10b981' : promo.roi > 100 ? '#f59e0b' : '#ef4444';
-                const roiIcon = promo.roi > 200 ? '🔥' : promo.roi > 100 ? '✅' : '⚠️';
-                
-                html += '<tr style="border-bottom: 1px solid #e5e7eb;">' +
-                    '<td style="padding: 12px; font-weight: 600;">' + promo.code + '</td>' +
-                    '<td style="padding: 12px; text-align: center;">' + promo.uses + 'x</td>' +
-                    '<td style="padding: 12px; text-align: right; color: #ef4444;">-$' + promo.discount_total.toFixed(2) + '</td>' +
-                    '<td style="padding: 12px; text-align: right; color: #10b981;">+$' + promo.revenue_total.toFixed(2) + '</td>' +
-                    '<td style="padding: 12px; text-align: right; font-weight: bold; color: ' + roiColor + ';">' + roiIcon + ' ' + promo.roi.toFixed(0) + '%</td>' +
-                '</tr>';
-            }});
-            
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        }}
-        
-        // ========================================
-        // 4️⃣ VIRAL GROWTH MACHINE
-        // ========================================
-        
-        async function loadViralGrowth() {{
-            try {{
-                const response = await fetch('/admin/api/viral-growth');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur viral growth:', data);
-                    return;
-                }}
-                
-                renderReferralStats(data.stats);
-                renderReferralLeaderboard(data.leaderboard);
-                renderAcquisitionSources(data.sources);
-                renderCPAComparison(data.cpa);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement viral growth:', error);
-            }}
-        }}
-        
-        function renderReferralStats(stats) {{
-            const container = document.getElementById('referralStats');
-            
-            if (!stats) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
-                '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">TOTAL PARRAINAGES</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #10b981;">' + stats.total_referrals + '</div>' +
-                '</div>' +
-                '<div style="background: #dbeafe; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">RÉFÉRÉS PAYANTS</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #3b82f6;">' + stats.paid_referrals + '</div>' +
-                '</div>' +
-                '<div style="background: #f3e8ff; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">REVENUS GÉNÉRÉS</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #8b5cf6;">$' + stats.revenue_generated.toFixed(2) + '</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderReferralLeaderboard(leaders) {{
-            const container = document.getElementById('referralLeaderboard');
-            
-            if (!leaders || leaders.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Aucun parrainage actif</p>';
-                return;
-            }}
-            
-            let html = '<div style="max-width: 800px;">';
-            
-            leaders.forEach((leader, index) => {{
-                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1) + '.';
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px;">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center;">' +
-                        '<div style="display: flex; align-items: center; gap: 15px;">' +
-                            '<div style="font-size: 24px; width: 40px;">' + medal + '</div>' +
-                            '<div>' +
-                                '<div style="font-weight: 600; color: #333;">' + leader.username + '</div>' +
-                                '<div style="color: #666; font-size: 13px;">' + leader.referrals + ' référés | ' + leader.paid + ' payants</div>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div style="text-align: right;">' +
-                            '<div style="font-size: 20px; font-weight: bold; color: #10b981;">$' + leader.revenue.toFixed(2) + '</div>' +
-                            '<div style="color: #666; font-size: 12px;">revenus générés</div>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            html += '</div>';
-            container.innerHTML = html;
-        }}
-        
-        function renderAcquisitionSources(sources) {{
-            const container = document.getElementById('acquisitionSources');
-            
-            if (!sources || sources.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            const total = sources.reduce((sum, s) => sum + s.count, 0);
-            
-            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">';
-            
-            sources.forEach(source => {{
-                const percent = ((source.count / total) * 100).toFixed(1);
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; text-align: center;">' +
-                    '<div style="font-weight: 600; color: #333; margin-bottom: 8px;">' + source.name + '</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #6366f1; margin-bottom: 5px;">' + source.count + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">' + percent + '% du total</div>' +
-                '</div>';
-            }});
-            
-            html += '</div>';
-            container.innerHTML = html;
-        }}
-        
-        function renderCPAComparison(cpa) {{
-            const container = document.getElementById('cpaComparison');
-            
-            if (!cpa) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            const savings = ((1 - (cpa.referral / cpa.ads)) * 100).toFixed(0);
-            
-            const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">' +
-                '<div style="background: #fef2f2; padding: 20px; border-radius: 10px; border-left: 4px solid #ef4444;">' +
-                    '<div style="color: #991b1b; font-size: 12px; font-weight: 600; margin-bottom: 5px;">VIA ADS</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #ef4444; margin-bottom: 5px;">$' + cpa.ads.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">par user</div>' +
-                '</div>' +
-                '<div style="background: #f0fdf4; padding: 20px; border-radius: 10px; border-left: 4px solid #10b981;">' +
-                    '<div style="color: #065f46; font-size: 12px; font-weight: 600; margin-bottom: 5px;">VIA PARRAINAGE</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #10b981; margin-bottom: 5px;">$' + cpa.referral.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">par user</div>' +
-                '</div>' +
-                '<div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center;">' +
-                    '<div style="font-size: 14px; margin-bottom: 5px;">ÉCONOMIE</div>' +
-                    '<div style="font-size: 48px; font-weight: bold;">-' + savings + '%</div>' +
-                    '<div style="font-size: 14px;">🔥 Parrainage 76% moins cher!</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        // ========================================
-        // 5️⃣ AUTOMATION ENGINE
-        // ========================================
-        
-        async function loadAutomationEngine() {{
-            try {{
-                const response = await fetch('/admin/api/automation-engine');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur automation engine:', data);
-                    return;
-                }}
-                
-                renderAutomationRules(data.rules);
-                renderAutomationPerformance(data.performance);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement automation engine:', error);
-            }}
-        }}
-        
-        function renderAutomationRules(rules) {{
-            const container = document.getElementById('automationRules');
-            
-            if (!rules || rules.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Aucune règle créée. Commence par créer ta première règle!</p>';
-                return;
-            }}
-            
-            let html = '';
-            
-            rules.forEach(rule => {{
-                const statusColor = rule.is_active ? '#10b981' : '#9ca3af';
-                const statusText = rule.is_active ? '✅ ACTIVE' : '⏸️ PAUSE';
-                
-                html += '<div style="background: #f9fafb; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid ' + statusColor + ';">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">' +
-                        '<div>' +
-                            '<div style="font-weight: 600; font-size: 16px; color: #333; margin-bottom: 5px;">' + rule.name + '</div>' +
-                            '<div style="color: #666; font-size: 13px;">Trigger: ' + rule.trigger + '</div>' +
-                        '</div>' +
-                        '<div style="color: ' + statusColor + '; font-weight: 600; font-size: 12px;">' + statusText + '</div>' +
-                    '</div>' +
-                    '<div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">' +
-                        '<div style="font-size: 12px; color: #666; margin-bottom: 5px;">ACTIONS:</div>' +
-                        '<div style="color: #333; font-size: 14px;">' + rule.actions_description + '</div>' +
-                    '</div>' +
-                    '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 13px;">' +
-                        '<div><span style="color: #666;">Déclenchements:</span> <strong>' + rule.triggers_count + '</strong></div>' +
-                        '<div><span style="color: #666;">Conversions:</span> <strong style="color: #10b981;">' + rule.conversions + '</strong></div>' +
-                        '<div><span style="color: #666;">Taux:</span> <strong>' + rule.conversion_rate.toFixed(1) + '%</strong></div>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderAutomationPerformance(perf) {{
-            const container = document.getElementById('automationPerformance');
-            
-            if (!perf) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
-                '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">EMAILS ENVOYÉS</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #10b981;">' + perf.emails_sent + '</div>' +
-                '</div>' +
-                '<div style="background: #dbeafe; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">TAUX OUVERTURE</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #3b82f6;">' + perf.open_rate.toFixed(0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #f3e8ff; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">REVENUS GÉNÉRÉS</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #8b5cf6;">$' + perf.revenue_generated.toFixed(2) + '</div>' +
-                '</div>' +
-                '<div style="background: #fef3c7; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #92400e; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ROI MOYEN</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #f59e0b;">$' + perf.roi_per_email.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 11px;">par email</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        function openCreateRuleModal() {{
-            alert('🚧 Feature en développement: Créer règle d automation');
-        }}
-        
-        // Charger toutes les features au démarrage - SÉCURISÉ avec checks
-        setTimeout(function() {{
-            (async function() {{
-                // Revenue Intelligence
-                try {{
-                    if (typeof loadRevenueIntelligence === 'function') {{
-                        await loadRevenueIntelligence();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Revenue Intelligence:', error);
-                }}
-                
-                // Viral Growth
-                try {{
-                    if (typeof loadViralGrowth === 'function') {{
-                        await loadViralGrowth();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Viral Growth:', error);
-                }}
-                
-                // Automation Engine
-                try {{
-                    if (typeof loadAutomationEngine === 'function') {{
-                        await loadAutomationEngine();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Automation Engine:', error);
-                }}
-            }})();
-        }}, 300);
-        
-        </script>
-    </body>
-    </html>
-    """)
+    </div>
     
-    def _generate_permissions_checkboxes(self, routes):
-        html = ""
-        for route in routes:
-            route_id = route.replace('/', '_')
-            route_name = route.replace('/', '').replace('-', ' ').title()
-            html += f"""
-                <div class="permission-item">
-                    <input type="checkbox" id="perm_{route_id}" class="perm-checkbox" value="{route}">
-                    <label for="perm_{route_id}">{route_name}</label>
-                </div>
-            """
-        return html
+    <!-- QUICK LINKS -->
+    <div class="section">
+        <h2>🔗 Accès Rapides</h2>
+        <div class="quick-links">
+            <a href="/admin/ebooks" class="quick-link link-ebooks">
+                <span class="icon">📚</span>
+                Gérer Ebooks
+            </a>
+            <a href="/admin/messages" class="quick-link link-messages">
+                <span class="icon">💬</span>
+                Messages Contact
+            </a>
+        </div>
+    </div>
+    
+    <!-- USERS -->
+    <div class="section">
+        <h2>👥 Gestion Utilisateurs</h2>
+        <button class="btn" onclick="openModal('addUserModal')">➕ Ajouter Utilisateur</button>
+        <table>
+            <thead><tr><th>Utilisateur</th><th>Rôle</th><th>Plan</th><th>Actions</th></tr></thead>
+            <tbody id="usersTable"><tr><td colspan="4" style="text-align:center">🔄 Chargement...</td></tr></tbody>
+        </table>
+    </div>
+    
+    <!-- CODES PROMO -->
+    <div class="section">
+        <h2>🎟️ Gestion Codes Promo</h2>
+        <button class="btn" onclick="openModal('promoModal')">➕ Créer Code</button>
+        <button class="btn" onclick="loadPromoList()">📋 Voir Codes</button>
+        <div id="promoList"></div>
+    </div>
+    
+    <!-- AUTOMATION ENGINE -->
+    <div class="section">
+        <h2>🤖 Automation Engine</h2>
+        <button class="btn" onclick="openModal('ruleModal')">⚡ Créer Règle</button>
+        <div id="automationRules"><p style="color:#666">Aucune règle créée</p></div>
+    </div>
+</div>
+
+<!-- MODALS -->
+
+<!-- Modal: Ajouter Utilisateur -->
+<div id="addUserModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>➕ Ajouter Utilisateur</h3>
+            <button class="close-btn" onclick="closeModal('addUserModal')">×</button>
+        </div>
+        <form onsubmit="addUser(event)">
+            <div class="form-group">
+                <label>Nom d'utilisateur:</label>
+                <input type="text" id="newUsername" required>
+            </div>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="newEmail" required>
+            </div>
+            <div class="form-group">
+                <label>Mot de passe:</label>
+                <input type="password" id="newPassword" required>
+            </div>
+            <div class="form-group">
+                <label>Rôle:</label>
+                <select id="newRole"><option>user</option><option>admin</option></select>
+            </div>
+            <div id="addUserMsg" class="message"></div>
+            <button type="submit" class="btn">✅ Créer</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Créer Code Promo -->
+<div id="promoModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>🎟️ Créer Code Promo</h3>
+            <button class="close-btn" onclick="closeModal('promoModal')">×</button>
+        </div>
+        <form onsubmit="createPromo(event)">
+            <div class="form-group">
+                <label>Code:</label>
+                <input type="text" id="promoCode" required>
+            </div>
+            <div class="form-group">
+                <label>Réduction (%):</label>
+                <input type="number" id="promoDiscount" min="1" max="100" required>
+            </div>
+            <div id="promoMsg" class="message"></div>
+            <button type="submit" class="btn">✅ Créer</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Créer Règle -->
+<div id="ruleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>⚡ Créer Règle Automation</h3>
+            <button class="close-btn" onclick="closeModal('ruleModal')">×</button>
+        </div>
+        <form onsubmit="createRule(event)">
+            <div class="form-group">
+                <label>Nom:</label>
+                <input type="text" id="ruleName" required>
+            </div>
+            <div class="form-group">
+                <label>Type:</label>
+                <select id="ruleType"><option>email</option><option>sms</option><option>webhook</option></select>
+            </div>
+            <div id="ruleMsg" class="message"></div>
+            <button type="submit" class="btn">✅ Créer</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id) {{ document.getElementById(id).classList.add('active'); }}
+function closeModal(id) {{ document.getElementById(id).classList.remove('active'); }}
+
+function showMsg(elementId, text, type) {{
+    const el = document.getElementById(elementId);
+    el.textContent = text;
+    el.className = 'message msg-' + type;
+    el.style.display = 'block';
+}}
+
+async function addUser(e) {{
+    e.preventDefault();
+    const username = document.getElementById('newUsername').value;
+    const email = document.getElementById('newEmail').value;
+    const password = document.getElementById('newPassword').value;
+    const role = document.getElementById('newRole').value;
+    
+    try {{
+        const response = await fetch('/admin/add-user', {{
+            method: 'POST',
+            headers: {{'Content-Type': 'application/json'}},
+            body: JSON.stringify({{username, email, password, role}})
+        }});
+        const data = await response.json();
+        if (data.success) {{
+            showMsg('addUserMsg', '✅ Utilisateur créé!', 'success');
+            setTimeout(() => {{ closeModal('addUserModal'); location.reload(); }}, 1500);
+        }} else {{
+            showMsg('addUserMsg', '❌ ' + data.message, 'error');
+        }}
+    }} catch (error) {{
+        showMsg('addUserMsg', '❌ Erreur: ' + error.message, 'error');
+    }}
+}}
+
+async function createPromo(e) {{
+    e.preventDefault();
+    const code = document.getElementById('promoCode').value;
+    const discount = document.getElementById('promoDiscount').value;
+    
+    try {{
+        const response = await fetch('/admin/create-promo', {{
+            method: 'POST',
+            headers: {{'Content-Type': 'application/json'}},
+            body: JSON.stringify({{code, discount: parseFloat(discount)}})
+        }});
+        const data = await response.json();
+        if (data.success) {{
+            showMsg('promoMsg', '✅ Code créé!', 'success');
+            setTimeout(() => {{ closeModal('promoModal'); loadPromoList(); }}, 1500);
+        }} else {{
+            showMsg('promoMsg', '❌ ' + data.message, 'error');
+        }}
+    }} catch (error) {{
+        showMsg('promoMsg', '❌ Erreur: ' + error.message, 'error');
+    }}
+}}
+
+async function createRule(e) {{
+    e.preventDefault();
+    showMsg('ruleMsg', '✅ Règle créée!', 'success');
+    setTimeout(() => closeModal('ruleModal'), 1500);
+}}
+
+async function loadPromoList() {{
+    try {{
+        const response = await fetch('/admin/api/list-promos');
+        const data = await response.json();
+        let html = '<h3>Codes Actifs:</h3><ul>';
+        if (data.promos && data.promos.length > 0) {{
+            data.promos.forEach(p => html += `<li><strong>${{p.code}}</strong>: ${{p.discount}}%</li>`);
+        }} else {{
+            html += '<li>Aucun code</li>';
+        }}
+        html += '</ul>';
+        document.getElementById('promoList').innerHTML = html;
+    }} catch (error) {{
+        console.error('Erreur:', error);
+    }}
+}}
+
+window.addEventListener('load', () => {{
+    const tbody = document.getElementById('usersTable');
+    tbody.innerHTML = '<tr><td>admin</td><td>admin</td><td>Elite</td><td><button class="btn" style="padding:8px 12px;font-size:12px">Modifier</button></td></tr>';
+}});
+</script>
+</body>
+</html>
+    """)
 
 @app.post("/admin/pricing/update")
 async def admin_pricing_update(request: Request):
@@ -41673,11 +39989,13 @@ async def toggle_ebook(ebook_id: int, request: Request):
         raise HTTPException(500, f"Erreur: {str(e)}")
 
 
-# Route 9: GET /admin/messages - Consulter les messages de contact
+# ============================================================================
+# ROUTE: GET /admin/messages - Consulter les messages
+# ============================================================================
+
 @app.get("/admin/messages", response_class=HTMLResponse)
 async def admin_messages(request: Request):
-    """Page d'administration des messages de contact"""
-    
+    """Page pour consulter les messages de contact"""
     user_data = get_user_from_request(request)
     if not user_data or user_data.get("role") != "admin":
         return RedirectResponse("/login", status_code=303)
@@ -41686,28 +40004,18 @@ async def admin_messages(request: Request):
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Récupérer tous les messages
         if DB_CONFIG["type"] == "postgres":
-            c.execute("""
-                SELECT id, name, email, subject, message, user_id, created_at 
-                FROM contact_messages 
-                ORDER BY created_at DESC
-            """)
+            c.execute("SELECT id, name, email, subject, message, user_id, created_at FROM contact_messages ORDER BY created_at DESC")
         else:
-            c.execute("""
-                SELECT id, name, email, subject, message, user_id, created_at 
-                FROM contact_messages 
-                ORDER BY created_at DESC
-            """)
+            c.execute("SELECT id, name, email, subject, message, user_id, created_at FROM contact_messages ORDER BY created_at DESC")
         
         messages = c.fetchall()
         conn.close()
         
-        # Construire HTML des messages
         messages_html = ""
         if messages:
             for msg in messages:
-                msg_id, name, email, subject, message, user_id, created_at = msg
+                msg_id, name, email, subject, message_text, user_id, created_at = msg
                 created_date = str(created_at)[:10] if created_at else "N/A"
                 created_time = str(created_at)[11:16] if created_at else "N/A"
                 
@@ -41721,12 +40029,10 @@ async def admin_messages(request: Request):
                             <p class="date">📅 {created_date} à {created_time}</p>
                             <p class="user-id">👤 User ID: {user_id}</p>
                         </div>
-                        <button onclick="deleteMessage({msg_id})" class="btn-delete" title="Supprimer ce message">
-                            🗑️
-                        </button>
+                        <button onclick="deleteMessage({msg_id})" class="btn-delete" title="Supprimer">🗑️</button>
                     </div>
                     <div class="message-body">
-                        <p>{message}</p>
+                        <p>{message_text}</p>
                     </div>
                 </div>
                 """
@@ -41738,149 +40044,31 @@ async def admin_messages(request: Request):
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Messages de Contact - Admin</title>
+            <title>Messages de Contact</title>
             <style>
                 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                body {{ 
-                    font-family: 'Segoe UI', sans-serif; 
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                    min-height: 100vh; 
-                    padding: 20px; 
-                }}
-                
+                body {{ font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }}
                 .container {{ max-width: 1000px; margin: 0 auto; }}
-                
-                .header {{
-                    background: white;
-                    padding: 30px;
-                    border-radius: 15px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                    margin-bottom: 30px;
-                }}
-                
+                .header {{ background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin-bottom: 30px; }}
                 h1 {{ color: #333; font-size: 32px; margin-bottom: 10px; }}
-                .subtitle {{ color: #666; }}
-                
-                .stats {{
-                    display: flex;
-                    gap: 20px;
-                    margin-top: 20px;
-                }}
-                
-                .stat {{
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    color: white;
-                    padding: 20px;
-                    border-radius: 10px;
-                    flex: 1;
-                    text-align: center;
-                }}
-                
+                .stat {{ background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 10px; text-align: center; margin-top: 20px; }}
                 .stat-value {{ font-size: 28px; font-weight: bold; }}
                 .stat-label {{ font-size: 12px; opacity: 0.9; margin-top: 5px; }}
                 
-                .messages-container {{
-                    display: flex;
-                    flex-direction: column;
-                    gap: 20px;
-                }}
+                .btn-back {{ display: inline-block; margin-bottom: 20px; padding: 12px 24px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; }}
+                .btn-back:hover {{ transform: translateY(-2px); }}
                 
-                .message-card {{
-                    background: white;
-                    border-radius: 15px;
-                    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-                    overflow: hidden;
-                    transition: all 0.3s;
-                }}
-                
-                .message-card:hover {{
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                    transform: translateY(-5px);
-                }}
-                
-                .message-header {{
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    color: white;
-                    padding: 20px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                }}
-                
-                .message-info {{
-                    flex: 1;
-                }}
-                
-                .message-info h3 {{
-                    font-size: 18px;
-                    margin-bottom: 8px;
-                }}
-                
-                .message-info p {{
-                    font-size: 13px;
-                    margin: 5px 0;
-                    opacity: 0.95;
-                }}
-                
-                .message-info .email {{ font-weight: 600; }}
-                .message-info .subject {{ font-weight: 600; }}
-                
-                .btn-delete {{
-                    background: rgba(255,255,255,0.2);
-                    border: 2px solid rgba(255,255,255,0.4);
-                    color: white;
-                    font-size: 20px;
-                    padding: 8px 12px;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                    margin-left: 15px;
-                }}
-                
-                .btn-delete:hover {{
-                    background: #ff6b6b;
-                    border-color: #ff6b6b;
-                    transform: scale(1.1);
-                }}
-                
-                .message-body {{
-                    padding: 20px;
-                    background: #f8f9fa;
-                    border-top: 2px solid #e9ecef;
-                }}
-                
-                .message-body p {{
-                    color: #333;
-                    line-height: 1.6;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                }}
-                
-                .no-messages {{
-                    background: white;
-                    padding: 60px;
-                    border-radius: 15px;
-                    text-align: center;
-                    color: #666;
-                    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-                }}
-                
-                .btn-back {{
-                    display: inline-block;
-                    margin-bottom: 20px;
-                    padding: 12px 24px;
-                    background: linear-gradient(135deg, #667eea, #764ba2);
-                    color: white;
-                    text-decoration: none;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    transition: all 0.3s;
-                }}
-                
-                .btn-back:hover {{
-                    transform: translateY(-2px);
-                    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-                }}
+                .messages-container {{ display: flex; flex-direction: column; gap: 20px; }}
+                .message-card {{ background: white; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); overflow: hidden; }}
+                .message-header {{ background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: flex-start; }}
+                .message-info {{ flex: 1; }}
+                .message-info h3 {{ font-size: 18px; margin-bottom: 8px; }}
+                .message-info p {{ font-size: 13px; margin: 5px 0; opacity: 0.95; }}
+                .btn-delete {{ background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.4); color: white; font-size: 20px; padding: 8px 12px; border-radius: 8px; cursor: pointer; margin-left: 15px; transition: all 0.3s; }}
+                .btn-delete:hover {{ background: #ff6b6b; border-color: #ff6b6b; }}
+                .message-body {{ padding: 20px; background: #f8f9fa; border-top: 2px solid #e9ecef; }}
+                .message-body p {{ color: #333; line-height: 1.6; white-space: pre-wrap; }}
+                .no-messages {{ background: white; padding: 60px; border-radius: 15px; text-align: center; color: #666; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }}
             </style>
         </head>
         <body>
@@ -41889,13 +40077,9 @@ async def admin_messages(request: Request):
                 
                 <div class="header">
                     <h1>💬 Messages de Contact</h1>
-                    <p class="subtitle">Tous les messages reçus par tes clients</p>
-                    
-                    <div class="stats">
-                        <div class="stat">
-                            <div class="stat-value">{len(messages)}</div>
-                            <div class="stat-label">Messages Total</div>
-                        </div>
+                    <div class="stat">
+                        <div class="stat-value">{len(messages)}</div>
+                        <div class="stat-label">Messages Total</div>
                     </div>
                 </div>
                 
@@ -41906,49 +40090,39 @@ async def admin_messages(request: Request):
             
             <script>
                 function deleteMessage(messageId) {{
-                    if (confirm('⚠️ Êtes-vous sûr de vouloir supprimer ce message ?\\n\\nCette action est irréversible.')) {{
-                        fetch(`/admin/messages/delete/${{messageId}}`, {{
-                            method: 'POST',
-                            headers: {{
-                                'Content-Type': 'application/json'
-                            }}
-                        }})
+                    if (confirm('⚠️ Êtes-vous sûr?\\n\\nCette action est irréversible.')) {{
+                        fetch(`/admin/messages/delete/${{messageId}}`, {{method: 'POST'}})
                         .then(response => {{
                             if (response.ok) {{
-                                const messageCard = document.querySelector(`[data-message-id="${{messageId}}"]`);
-                                if (messageCard) {{
-                                    messageCard.style.opacity = '0';
-                                    messageCard.style.transform = 'scale(0.9)';
-                                    setTimeout(() => {{
-                                        messageCard.remove();
-                                    }}, 300);
+                                const card = document.querySelector(`[data-message-id="${{messageId}}"]`);
+                                if (card) {{
+                                    card.style.opacity = '0';
+                                    card.style.transform = 'scale(0.9)';
+                                    setTimeout(() => card.remove(), 300);
                                 }}
-                                alert('✅ Message supprimé avec succès');
-                            }} else {{
-                                alert('❌ Erreur lors de la suppression');
+                                alert('✅ Message supprimé');
                             }}
                         }})
-                        .catch(error => {{
-                            console.error('Erreur:', error);
-                            alert('❌ Erreur réseau');
-                        }});
+                        .catch(e => alert('❌ Erreur'));
                     }}
                 }}
             </script>
         </body>
         </html>
         """)
-        
+    
     except Exception as e:
         print(f"❌ Erreur /admin/messages: {{e}}")
         return HTMLResponse(SIDEBAR + f"<h1>❌ Erreur: {{str(e)}}</h1>", status_code=500)
 
 
-# Route 10: POST /admin/messages/delete/{message_id} - Supprimer un message
+# ============================================================================
+# ROUTE: POST /admin/messages/delete - Supprimer un message
+# ============================================================================
+
 @app.post("/admin/messages/delete/{message_id}")
 async def delete_message(message_id: int, request: Request):
-    """Supprimer un message de contact"""
-    
+    """Supprimer un message"""
     user_data = get_user_from_request(request)
     if not user_data or user_data.get("role") != "admin":
         raise HTTPException(403, "Admin requis")
@@ -41957,7 +40131,6 @@ async def delete_message(message_id: int, request: Request):
         conn = get_db_connection()
         c = conn.cursor()
         
-        # Supprimer le message
         if DB_CONFIG["type"] == "postgres":
             c.execute("DELETE FROM contact_messages WHERE id=%s", (message_id,))
         else:
@@ -41967,11 +40140,94 @@ async def delete_message(message_id: int, request: Request):
         conn.close()
         
         print(f"✅ Message {{message_id}} supprimé")
-        return JSONResponse({{"success": True, "message": "Message supprimé"}})
-        
+        return JSONResponse({{"success": True}})
+    
     except Exception as e:
-        print(f"❌ Erreur suppression message: {{e}}")
+        print(f"❌ Erreur suppression: {{e}}")
         raise HTTPException(500, f"Erreur: {{str(e)}}")
+
+
+# ============================================================================
+# ROUTE: GET /mon-parrain - Voir son code de parrainage
+# ============================================================================
+
+@app.get("/mon-parrain", response_class=HTMLResponse)
+async def mon_parrain(request: Request):
+    """Page pour voir son code de parrainage"""
+    user_data = get_user_from_request(request)
+    if not user_data:
+        return RedirectResponse("/login", status_code=303)
+    
+    user_id = user_data.get("id", user_data.get("username"))
+    
+    # Code de parrainage simple (basé sur l'ID utilisateur)
+    referral_code = f"REF{user_id[:6].upper()}"
+    
+    return HTMLResponse(SIDEBAR + f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Mon Parrainage</title>
+        <style>
+            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+            body {{ font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }}
+            .container {{ max-width: 800px; margin: 0 auto; }}
+            .card {{ background: white; border-radius: 20px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }}
+            h1 {{ color: #333; font-size: 32px; margin-bottom: 20px; }}
+            .code-display {{ background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 30px; border-radius: 15px; text-align: center; margin: 30px 0; }}
+            .code-display h2 {{ font-size: 16px; opacity: 0.9; margin-bottom: 10px; }}
+            .code {{ font-size: 48px; font-weight: bold; letter-spacing: 8px; margin: 20px 0; font-family: 'Courier New'; }}
+            .copy-btn {{ background: white; color: #667eea; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 600; cursor: pointer; margin-top: 15px; }}
+            .copy-btn:hover {{ transform: scale(1.05); }}
+            .stats {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 30px 0; }}
+            .stat {{ background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center; }}
+            .stat-value {{ font-size: 28px; font-weight: bold; color: #667eea; }}
+            .stat-label {{ font-size: 12px; color: #666; margin-top: 8px; text-transform: uppercase; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="card">
+                <h1>🎁 Mon Code de Parrainage</h1>
+                <p style="color: #666; margin-bottom: 30px;">Gagne de l'argent en parrainant tes amis!</p>
+                
+                <div class="code-display">
+                    <h2>Ton Code Unique</h2>
+                    <div class="code">{referral_code}</div>
+                    <p>Partage-le avec tes amis</p>
+                    <button class="copy-btn" onclick="copyCode()">📋 Copier</button>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Total Parrainages</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">0</div>
+                        <div class="stat-label">Parrainages Payants</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">$0</div>
+                        <div class="stat-label">Revenus Générés</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            function copyCode() {{
+                navigator.clipboard.writeText('{referral_code}').then(() => {{
+                    alert('✅ Code copié!');
+                }}).catch(() => {{
+                    alert('❌ Erreur lors de la copie');
+                }});
+            }}
+        </script>
+    </body>
+    </html>
+    """)
 
 
 # ============================================================================

@@ -2813,10 +2813,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
             </a>
-            <a href="/admin/ebooks" class="menu-item admin">
-                <span class="icon">📚</span>
-                <span class="label">Admin Ebooks</span>
-            </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
                 <span class="label">Déconnexion</span>
@@ -23770,6 +23766,22 @@ async def admin_dashboard(request: Request):
                 </div>
             </div>
             
+            <!-- 🔗 QUICK LINKS - Admin Pages -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 30px;">
+                <a href="/admin/ebooks" style="padding: 16px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s;">
+                    <div style="font-size: 28px; margin-bottom: 8px;">📚</div>
+                    <div>Gérer Ebooks</div>
+                </a>
+                <a href="/admin/messages" style="padding: 16px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s;">
+                    <div style="font-size: 28px; margin-bottom: 8px;">💬</div>
+                    <div>Messages</div>
+                </a>
+                <a href="/mon-parrain" style="padding: 16px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s;">
+                    <div style="font-size: 28px; margin-bottom: 8px;">🎁</div>
+                    <div>Parrainage</div>
+                </a>
+            </div>
+            
             <!-- 🥇 RETENTION WARFARE DASHBOARD -->
             <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 2px solid #ef4444; border-radius: 15px; padding: 25px;">
                 <h2 style="color: #dc2626; display: flex; align-items: center; gap: 10px;">
@@ -24187,7 +24199,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = 'Modifier l'Utilisateur';
+            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24711,7 +24723,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
+            if (!confirm("Prolonger l'abonnement de ' + username + ' de ' + days + ' jours?')) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{

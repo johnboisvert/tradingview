@@ -2809,13 +2809,13 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">💎</span>
                 <span class="label">Abonnements</span>
             </a>
-            <a href="/mon-parrain" class="menu-item">
-                <span class="icon">🎁</span>
-                <span class="label">Mon Parrainage</span>
-            </a>
             <a href="/admin-dashboard" class="menu-item admin">
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
+            </a>
+            <a href="/admin/ebooks" class="menu-item admin">
+                <span class="icon">📚</span>
+                <span class="label">Admin Ebooks</span>
             </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
@@ -23427,7 +23427,7 @@ async def admin_dashboard(request: Request):
         # Compte & Pricing
         "/mon-compte", "/pricing-complete", "/mon-parrain",
         
-        # Admin & Gestion
+        # Admin
         "/admin/messages"
     ]
     
@@ -24668,8 +24668,8 @@ async def admin_dashboard(request: Request):
                         '<div style="color: #6366f1; font-weight: 600;">Inactif depuis ' + user.days_inactive + ' jours</div>' +
                     '</div>' +
                     '<div style="display: flex; gap: 8px;">' +
-                        '<button onclick="sendEngagementEmail(' + "'" + user.username + "'" + ')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 On t&apos;a manqué!</button>' +
-                        '<button onclick="offerCoaching(' + "'" + user.username + "'" + ')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
+                        '<button onclick="sendEngagementEmail('' + user.username + '')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 On t&apos;a manqué!</button>' +
+                        '<button onclick="offerCoaching('' + user.username + '')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
                     '</div>' +
                 '</div>';
             }});
@@ -41663,12 +41663,12 @@ async def toggle_ebook(ebook_id: int, request: Request):
 
 
 # ============================================================================
-# ROUTE: GET /admin/messages - Consulter les messages de contact
+# ROUTE: GET /admin/messages - Voir les messages de contact
 # ============================================================================
 
 @app.get("/admin/messages", response_class=HTMLResponse)
 async def admin_messages(request: Request):
-    """Page pour consulter les messages de contact"""
+    """Page pour voir les messages de contact"""
     user_data = get_user_from_request(request)
     if not user_data or user_data.get("role") != "admin":
         return RedirectResponse("/login", status_code=303)
@@ -41734,15 +41734,13 @@ async def admin_messages(request: Request):
         </div>
         <script>
         function deleteMessage(id) {{
-            if (confirm('Supprimer ce message?')) {{
+            if (confirm('Supprimer?')) {{
                 fetch(`/admin/messages/delete/${{id}}`, {{method:'POST'}})
                 .then(r => {{
                     if(r.ok) {{
                         document.querySelector(`[data-message-id="${{id}}"]`).remove();
-                        alert('✅ Supprimé');
                     }}
                 }})
-                .catch(e => alert('❌ Erreur'));
             }}
         }}
         </script>
@@ -41751,7 +41749,6 @@ async def admin_messages(request: Request):
         """)
     
     except Exception as e:
-        print(f"❌ Erreur /admin/messages: {{e}}")
         return HTMLResponse(SIDEBAR + f"<h1>❌ Erreur</h1>", status_code=500)
 
 
@@ -41778,7 +41775,6 @@ async def delete_message(message_id: int, request: Request):
         conn.commit()
         conn.close()
         
-        print(f"✅ Message {{message_id}} supprimé")
         return JSONResponse({{"success": True}})
     
     except Exception as e:
@@ -41809,52 +41805,33 @@ async def mon_parrain(request: Request):
     h1{{color:#333;font-size:32px;margin-bottom:20px}}
     .code-display{{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:30px;border-radius:15px;text-align:center;margin:30px 0}}
     .code{{font-size:48px;font-weight:bold;letter-spacing:8px;margin:20px 0;font-family:'Courier New'}}
-    .copy-btn{{background:white;color:#667eea;border:none;padding:12px 30px;border-radius:8px;font-weight:600;cursor:pointer;margin-top:15px}}
+    .copy-btn{{background:white;color:#667eea;border:none;padding:12px 30px;border-radius:8px;font-weight:600;cursor:pointer}}
     .stats{{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin:30px 0}}
     .stat{{background:#f8f9fa;padding:20px;border-radius:12px;text-align:center}}
     .stat-value{{font-size:28px;font-weight:bold;color:#667eea}}
-    .stat-label{{font-size:12px;color:#666;margin-top:8px;text-transform:uppercase}}
     </style></head>
     <body>
     <div class="container">
         <div class="card">
             <h1>🎁 Mon Code de Parrainage</h1>
-            <p style="color:#666">Gagne de l'argent en parrainant tes amis!</p>
-            
             <div class="code-display">
-                <h2>Ton Code Unique</h2>
                 <div class="code">{referral_code}</div>
-                <button class="copy-btn" onclick="copyCode()">📋 Copier</button>
+                <button class="copy-btn" onclick="navigator.clipboard.writeText('{referral_code}').then(()=>alert('✅ Copié'))">📋 Copier</button>
             </div>
-            
             <div class="stats">
-                <div class="stat">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">Total</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">0</div>
-                    <div class="stat-label">Payants</div>
-                </div>
-                <div class="stat">
-                    <div class="stat-value">$0</div>
-                    <div class="stat-label">Revenus</div>
-                </div>
+                <div class="stat"><div class="stat-value">0</div><div>Total</div></div>
+                <div class="stat"><div class="stat-value">0</div><div>Payants</div></div>
+                <div class="stat"><div class="stat-value">$0</div><div>Revenus</div></div>
             </div>
         </div>
     </div>
-    <script>
-    function copyCode() {{
-        navigator.clipboard.writeText('{referral_code}').then(() => alert('✅ Copié!')).catch(() => alert('❌ Erreur'));
-    }}
-    </script>
     </body>
     </html>
     """)
 
 
 # ============================================================================
-# FIN DES ROUTES - TOUT EST PRÊT!
+# FIN - TOUT EST PRÊT
 # ============================================================================
 
 

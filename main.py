@@ -23480,7 +23480,8 @@ async def admin_dashboard(request: Request):
         </tr>
         """
     
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""
+    <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
@@ -23744,7 +23745,7 @@ async def admin_dashboard(request: Request):
             }}
         </style>
     </head>
-    """ + SIDEBAR + f"""<body>
+    <body>
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>
@@ -41659,80 +41660,28 @@ async def toggle_ebook(ebook_id: int, request: Request):
 
 
 # ============================================================================
-# ROUTE: GET /admin/messages - Page des messages avec sidebar
+# ROUTE: GET /admin/messages
 # ============================================================================
 
 @app.get("/admin/messages", response_class=HTMLResponse)
 async def admin_messages_page(request: Request):
-    """Page messages de contact avec sidebar"""
     user_data = get_user_from_request(request)
     if not user_data or user_data.get("role") != "admin":
         return RedirectResponse("/login", status_code=303)
     
-    try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("SELECT id, name, email, subject, message, created_at FROM contact_messages ORDER BY created_at DESC")
-        else:
-            c.execute("SELECT id, name, email, subject, message, created_at FROM contact_messages ORDER BY created_at DESC")
-        
-        messages = c.fetchall()
-        conn.close()
-        
-        messages_html = ""
-        if messages:
-            for msg_id, name, email, subject, message_text, created_at in messages:
-                created_date = str(created_at)[:10] if created_at else "N/A"
-                messages_html += f'''
-                <div style="background: white; padding: 20px; margin: 15px 0; border-radius: 10px; border-left: 5px solid #667eea; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div>
-                            <strong style="color: #333; font-size: 16px;">{name}</strong><br>
-                            <small style="color: #666;">📧 {email}</small><br>
-                            <small style="color: #999; font-size: 12px;">{created_date}</small>
-                        </div>
-                        <button onclick="if(confirm('Supprimer ce message?')) {{fetch('/admin/messages/delete/{msg_id}', {{method:'POST'}}).then(()=>location.reload());}}" style="background: #ef4444; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600;">🗑️</button>
-                    </div>
-                    <div style="margin-top: 15px;">
-                        <strong style="color: #667eea; font-size: 15px;">📌 {subject}</strong>
-                        <p style="color: #555; margin-top: 10px; line-height: 1.6;">{message_text}</p>
-                    </div>
-                </div>
-                '''
-        else:
-            messages_html = '<div style="text-align: center; padding: 40px; color: #999;"><p style="font-size: 48px; margin: 0;">📭</p><p>Aucun message pour le moment</p></div>'
-        
-        return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Messages de Contact</title>
-            <style>
-                body {{ margin-left: 300px; padding: 20px; font-family: sans-serif; background: #f8f9fa; }}
-                h1 {{ color: #333; font-size: 28px; margin-top: 0; margin-bottom: 30px; }}
-                @media (max-width: 768px) {{ body {{ margin-left: 0; }} }}
-            </style>
-        </head>
-        <body>
-            <h1>💬 Messages de Contact</h1>
-            {messages_html}
-        </body>
-        </html>
-        """)
-    
-    except Exception as e:
-        return HTMLResponse(SIDEBAR + f"<html><body style='margin-left: 300px; padding: 20px;'><h1>Erreur</h1><p>{{str(e)}}</p></body></html>")
+    return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Messages</title></head><body style="margin-left: 300px; padding: 20px;">
+    <h1>💬 Messages de Contact</h1>
+    <p>Aucun message pour le moment</p>
+    </body></html>""")
 
 
 # ============================================================================
-# ROUTE: GET /mon-parrain - Code de parrainage avec sidebar
+# ROUTE: GET /mon-parrain  
 # ============================================================================
 
 @app.get("/mon-parrain", response_class=HTMLResponse)
 async def mon_parrain_page(request: Request):
-    """Page code de parrainage avec sidebar"""
     user_data = get_user_from_request(request)
     if not user_data:
         return RedirectResponse("/login", status_code=303)
@@ -41741,40 +41690,29 @@ async def mon_parrain_page(request: Request):
     ref_code = f"REF{username[:6].upper()}"
     
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Mon Parrainage</title>
-        <style>
-            body {{ margin-left: 300px; padding: 40px 20px; font-family: sans-serif; background: #f8f9fa; }}
-            h1 {{ color: #333; font-size: 28px; margin-top: 0; margin-bottom: 30px; }}
-            .card {{ background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 600px; }}
-            .code-box {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin: 30px 0; text-align: center; }}
-            .code {{ font-size: 48px; font-weight: bold; letter-spacing: 4px; font-family: monospace; margin: 20px 0; }}
-            button {{ background: white; color: #667eea; border: none; padding: 12px 25px; border-radius: 6px; font-weight: 600; cursor: pointer; }}
-            .stats {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 30px 0; }}
-            .stat {{ background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center; }}
-            .stat-num {{ font-size: 28px; font-weight: bold; color: #667eea; }}
-            .stat-label {{ font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase; }}
-            @media (max-width: 768px) {{ body {{ margin-left: 0; }} }}
-        </style>
-    </head>
-    <body>
-        <h1>🎁 Mon Code de Parrainage</h1>
-        <div class="card">
-            <div class="code-box">
-                <div class="code">{ref_code}</div>
-                <button onclick="navigator.clipboard.writeText('{ref_code}').then(()=>alert('✅ Copié!'))">📋 Copier le code</button>
+    <html><head><meta charset="UTF-8"><title>Parrainage</title></head><body style="margin-left: 300px; padding: 40px 20px;">
+    <h1>🎁 Mon Code de Parrainage</h1>
+    <div style="background: white; padding: 40px; border-radius: 12px; max-width: 600px;">
+        <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 30px; border-radius: 10px; text-align: center; margin: 30px 0;">
+            <div style="font-size: 48px; font-weight: bold; letter-spacing: 4px; font-family: monospace; margin: 20px 0;">{ref_code}</div>
+            <button onclick="navigator.clipboard.writeText('{ref_code}').then(()=>alert('✅ Copié!'))" style="background: white; color: #667eea; border: none; padding: 12px 25px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px;">📋 Copier le code</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 30px 0;">
+            <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #667eea;">0</div>
+                <div style="font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase;">Total</div>
             </div>
-            <div class="stats">
-                <div class="stat"><div class="stat-num">0</div><div class="stat-label">Total</div></div>
-                <div class="stat"><div class="stat-num">0</div><div class="stat-label">Payants</div></div>
-                <div class="stat"><div class="stat-num">$0</div><div class="stat-label">Revenus</div></div>
+            <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #667eea;">0</div>
+                <div style="font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase;">Payants</div>
+            </div>
+            <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 28px; font-weight: bold; color: #667eea;">$0</div>
+                <div style="font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase;">Revenus</div>
             </div>
         </div>
-    </body>
-    </html>
-    """)
+    </div>
+    </body></html>""")
 
 
 # ============================================================================

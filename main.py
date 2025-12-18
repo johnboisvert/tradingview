@@ -16900,7 +16900,7 @@ async def trades_page():
                 load(); 
                 showAlert('✅ Trade démo ajouté avec succès!', 'success'); 
             } catch (error) { 
-                showAlert('❌ Erreur lors de l'ajout du trade', 'error'); 
+                showAlert('❌ Erreur lors de l\\'ajout du trade', 'error'); 
             } 
         }
         
@@ -22526,20 +22526,20 @@ async def calculatrice_trades():
             if (currentDirection === 'LONG') {
                 if (stopLoss >= entry) {
                     isValid = false;
-                    warningMsg = 'Pour un LONG, le Stop Loss doit être INFÉRIEUR au prix d'entrée!';
+                    warningMsg = 'Pour un LONG, le Stop Loss doit être INFÉRIEUR au prix d\\'entrée!';
                 }
                 if (tp1 <= entry || tp2 <= entry || tp3 <= entry) {
                     isValid = false;
-                    warningMsg = 'Pour un LONG, les Take Profits doivent être SUPÉRIEURS au prix d'entrée!';
+                    warningMsg = 'Pour un LONG, les Take Profits doivent être SUPÉRIEURS au prix d\\'entrée!';
                 }
             } else {
                 if (stopLoss <= entry) {
                     isValid = false;
-                    warningMsg = 'Pour un SHORT, le Stop Loss doit être SUPÉRIEUR au prix d'entrée!';
+                    warningMsg = 'Pour un SHORT, le Stop Loss doit être SUPÉRIEUR au prix d\\'entrée!';
                 }
                 if (tp1 >= entry || tp2 >= entry || tp3 >= entry) {
                     isValid = false;
-                    warningMsg = 'Pour un SHORT, les Take Profits doivent être INFÉRIEURS au prix d'entrée!';
+                    warningMsg = 'Pour un SHORT, les Take Profits doivent être INFÉRIEURS au prix d\\'entrée!';
                 }
             }
             
@@ -23460,7 +23460,7 @@ async def admin_dashboard(request: Request):
         # Construire le bouton delete en dehors du f-string (éviter backslash)
         delete_button = ""
         if username != "admin":
-            delete_button = f'<button onclick="deleteUser(\'{username}\')" class="btn btn-danger">🗑️ Supprimer</button>'
+            delete_button = f'<button onclick="deleteUser('{username}')" class="btn btn-danger">🗑️ Supprimer</button>'
         
         users_html += f"""
         <tr>
@@ -23766,20 +23766,11 @@ async def admin_dashboard(request: Request):
                 </div>
             </div>
             
-            <!-- 🔗 QUICK LINKS - Admin Pages -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 30px;">
-                <a href="/admin/ebooks" style="padding: 16px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s;">
-                    <div style="font-size: 28px; margin-bottom: 8px;">📚</div>
-                    <div>Gérer Ebooks</div>
-                </a>
-                <a href="/admin/messages" style="padding: 16px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s;">
-                    <div style="font-size: 28px; margin-bottom: 8px;">💬</div>
-                    <div>Messages</div>
-                </a>
-                <a href="/mon-parrain" style="padding: 16px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.3s;">
-                    <div style="font-size: 28px; margin-bottom: 8px;">🎁</div>
-                    <div>Parrainage</div>
-                </a>
+            <!-- 🔗 QUICK LINKS -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px;">
+                <a href="/admin/ebooks" style="padding: 12px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #f59e0b, #f97316); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">📚 Ebooks</a>
+                <a href="/admin/messages" style="padding: 12px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">💬 Messages</a>
+                <a href="/mon-parrain" style="padding: 12px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669); border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">🎁 Parrainage</a>
             </div>
             
             <!-- 🥇 RETENTION WARFARE DASHBOARD -->
@@ -24199,7 +24190,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
+            document.getElementById('modalTitle').textContent = 'Modifier l\'Utilisateur';
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24502,7 +24493,7 @@ async def admin_dashboard(request: Request):
                 
                 if (data.success && data.promos && data.promos.length > 0) {{
                     let html = '<table style="width: 100%; border-collapse: collapse;">';
-                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu'à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
+                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu\'à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
                     html += '<tbody>';
                     
                     data.promos.forEach(promo => {{
@@ -24646,9 +24637,9 @@ async def admin_dashboard(request: Request):
                         '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
                     '</div>' +
                     '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-                        '<button onclick="extendSubscription(\'' + user.username + '\', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
-                        '<button onclick="sendRenewalEmail(\'' + user.username + '\')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
-                        '<button onclick="offerDiscount(\'' + user.username + '\', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
+                        '<button onclick="extendSubscription('' + user.username + '', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
+                        '<button onclick="sendRenewalEmail('' + user.username + '')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
+                        '<button onclick="offerDiscount('' + user.username + '', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
                     '</div>' +
                 '</div>';
             }});
@@ -24723,7 +24714,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm("Prolonger l'abonnement de ' + username + ' de ' + days + ' jours?')) return;
+            if (!confirm('Prolonger l'abonnement de ' + username + ' de ' + days + ' jours?')) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{
@@ -34786,17 +34777,17 @@ formations[1] = {
         {
             title: "Module 1: Qu'est-ce que le Trading?",
             content: '<h4>📌 Introduction</h4>' +
-                '<p><strong>Le trading</strong> est l'acte d'acheter et de vendre des actifs financiers (actions, cryptos, devises, matières premières) dans le but de réaliser un profit. C'est différent de l'investissement traditionnel par sa fréquence et sa durée.</p>' +
-                '<div class="important"><strong>⚠️ Règle d'Or du Trading:</strong><br>' +
+                '<p><strong>Le trading</strong> est l\\'acte d\\'acheter et de vendre des actifs financiers (actions, cryptos, devises, matières premières) dans le but de réaliser un profit. C\\'est différent de l\\'investissement traditionnel par sa fréquence et sa durée.</p>' +
+                '<div class="important"><strong>⚠️ Règle d\\'Or du Trading:</strong><br>' +
                 'Acheter BAS + Vendre HAUT = PROFIT<br><br>' +
                 'Simple en théorie, difficile en pratique!</div>' +
                 '<h4>🎯 Les 4 Types de Marchés</h4>' +
                 '<table>' +
                 '<tr><th>Type</th><th>Description</th><th>Niveau de Risque</th></tr>' +
-                '<tr><td><strong>Spot</strong></td><td>Achat/vente immédiat, vous possédez l'actif</td><td>★★☆☆☆ Modéré</td></tr>' +
+                '<tr><td><strong>Spot</strong></td><td>Achat/vente immédiat, vous possédez l\\'actif</td><td>★★☆☆☆ Modéré</td></tr>' +
                 '<tr><td><strong>Futures</strong></td><td>Contrat à terme avec effet de levier possible</td><td>★★★★☆ Élevé</td></tr>' +
-                '<tr><td><strong>Options</strong></td><td>Droit (pas obligation) d'acheter/vendre à un prix fixé</td><td>★★★★★ Très élevé</td></tr>' +
-                '<tr><td><strong>Margin</strong></td><td>Trading avec de l'argent emprunté (levier)</td><td>★★★★★ Extrême</td></tr>' +
+                '<tr><td><strong>Options</strong></td><td>Droit (pas obligation) d\\'acheter/vendre à un prix fixé</td><td>★★★★★ Très élevé</td></tr>' +
+                '<tr><td><strong>Margin</strong></td><td>Trading avec de l\\'argent emprunté (levier)</td><td>★★★★★ Extrême</td></tr>' +
                 '</table>' +
                 '<div class="pro-tip"><strong>💡 Pro Tip:</strong><br>' +
                 'Débutants: TOUJOURS commencer avec le Spot Trading! Les autres marchés sont pour les traders expérimentés.</div>' +
@@ -34817,7 +34808,7 @@ formations[1] = {
                 '<li>Objectif: 0.5% à 2% de profit</li>' +
                 '<li>Fréquence: 10-50 trades/jour</li>' +
                 '<li>Difficulté: ★★★★★ Expert</li>' +
-                '<li>Temps: 6-12h/jour devant l'écran</li>' +
+                '<li>Temps: 6-12h/jour devant l\\'écran</li>' +
                 '</ul>' +
                 '<p><strong>2. Day Trading</strong> (Heures):</p>' +
                 '<ul>' +
@@ -34857,7 +34848,7 @@ formations[1] = {
                 '<tr><td>2024</td><td>Cryptos = $2.5 trillions market cap</td></tr>' +
                 '</table>' +
                 '<h4>🔑 Concepts Clés à Maîtriser</h4>' +
-                '<p><strong>Liquidité:</strong> Facilité d'acheter/vendre sans impact sur le prix. BTC/ETH = haute liquidité. Shitcoins = basse liquidité.</p>' +
+                '<p><strong>Liquidité:</strong> Facilité d\\'acheter/vendre sans impact sur le prix. BTC/ETH = haute liquidité. Shitcoins = basse liquidité.</p>' +
                 '<p><strong>Volatilité:</strong> Amplitude des mouvements de prix. Crypto = haute volatilité (±20%/jour possible). Actions = basse volatilité (±5%/jour max).</p>' +
                 '<p><strong>Volume:</strong> Quantité tradée sur 24h. Volume élevé = marché sain et liquide.</p>' +
                 '<p><strong>Bid/Ask:</strong> Prix achat (bid) vs prix vente (ask). Spread = différence entre les deux.</p>' +
@@ -34870,16 +34861,16 @@ formations[1] = {
                 '</ul>' +
                 '<div class="danger"><strong>⚠️ RÉALITÉ CHECK:</strong><br>' +
                 'Statistiques brutales:<br>' +
-                '• 90% des traders perdent de l'argent la première année<br>' +
+                '• 90% des traders perdent de l\\'argent la première année<br>' +
                 '• 5-10% deviennent profitables sur le long terme<br>' +
                 '• Il faut 1-3 ans pour maîtriser le trading<br><br>' +
-                'Le trading n'est PAS un "get rich quick". C'est un métier qui demande apprentissage et discipline!</div>'
+                'Le trading n\\'est PAS un "get rich quick". C\\'est un métier qui demande apprentissage et discipline!</div>'
         },
         
         {
             title: "Module 2: Comment Gagner de l'Argent",
             content: '<h4>💰 Méthode #1: Trading Actif</h4>' +
-                '<p>Acheter bas, vendre haut sur des mouvements courts/moyens. C'est la méthode la plus active mais aussi la plus lucrative si bien exécutée.</p>' +
+                '<p>Acheter bas, vendre haut sur des mouvements courts/moyens. C\\'est la méthode la plus active mais aussi la plus lucrative si bien exécutée.</p>' +
                 '<p><strong>Stratégie A: Breakout Trading</strong></p>' +
                 '<ul>' +
                 '<li>Principe: Acheter quand le prix "casse" une résistance</li>' +
@@ -34921,7 +34912,7 @@ formations[1] = {
                 '<tr><td>BNB</td><td>$15</td><td>$690</td><td>+4,500%</td></tr>' +
                 '</table>' +
                 '<p><strong>Dollar Cost Averaging (DCA):</strong></p>' +
-                '<p>Investir un montant fixe régulièrement (ex: $100/semaine) peu importe le prix. Réduit l'impact de la volatilité.</p>' +
+                '<p>Investir un montant fixe régulièrement (ex: $100/semaine) peu importe le prix. Réduit l\\'impact de la volatilité.</p>' +
                 '<div class="example-box"><strong>📊 Exemple DCA:</strong><br>' +
                 'Plan: $500/mois dans Bitcoin pendant 12 mois<br>' +
                 'Total investi: $6,000<br>' +
@@ -34981,7 +34972,7 @@ formations[1] = {
                 '<h4>💵 Profits Réalistes par Niveau</h4>' +
                 '<p><strong>Débutant (0-6 mois):</strong></p>' +
                 '<ul>' +
-                '<li>Objectif: Ne pas perdre d'argent (breakeven)</li>' +
+                '<li>Objectif: Ne pas perdre d\\'argent (breakeven)</li>' +
                 '<li>Profits: 0% à -20%</li>' +
                 '<li>Focus: Apprentissage, pas profits</li>' +
                 '</ul>' +
@@ -35009,7 +35000,7 @@ formations[1] = {
             content: '<h4>💀 Risque #1: Perte de Capital</h4>' +
                 '<p>Le risque le plus évident mais le plus sous-estimé!</p>' +
                 '<div class="danger"><strong>⚠️ Statistiques Brutales:</strong><br>' +
-                '• 90% des traders perdent de l'argent la première année<br>' +
+                '• 90% des traders perdent de l\\'argent la première année<br>' +
                 '• Perte moyenne: -50% à -80% du capital<br>' +
                 '• Seulement 5-10% deviennent profitables long terme</div>' +
                 '<h4>Causes Principales de Pertes</h4>' +
@@ -35068,10 +35059,10 @@ formations[1] = {
                 '5. Panique (vend au bottom)<br>' +
                 '6. Dépression (compte détruit)</div>' +
                 '<h4>🎭 Risque #4: Scams & Rug Pulls</h4>' +
-                '<p>L'industrie crypto est remplie d'arnaqueurs!</p>' +
+                '<p>L\\'industrie crypto est remplie d\\'arnaqueurs!</p>' +
                 '<p><strong>Types de Scams Communs:</strong></p>' +
                 '<ul>' +
-                '<li><strong>Pump & Dump:</strong> Groupes Telegram qui coordonnent pump d'une shitcoin</li>' +
+                '<li><strong>Pump & Dump:</strong> Groupes Telegram qui coordonnent pump d\\'une shitcoin</li>' +
                 '<li><strong>Rug Pull:</strong> Devs créent token, pompent le prix, volent liquidité</li>' +
                 '<li><strong>Phishing:</strong> Fake sites/emails qui volent tes seed phrases</li>' +
                 '<li><strong>Fake Giveaways:</strong> "Envoyez 1 ETH, recevez 2 ETH!" (jamais vrai)</li>' +
@@ -35107,7 +35098,7 @@ formations[1] = {
                 '<li><strong>SEC vs Ripple:</strong> XRP -70% en 1 jour</li>' +
                 '<li><strong>MiCA Europe (2024):</strong> Nouvelles régulations</li>' +
                 '</ul>' +
-                '<h4>🛡️ Les 7 Règles d'Or de Gestion des Risques</h4>' +
+                '<h4>🛡️ Les 7 Règles d\\'Or de Gestion des Risques</h4>' +
                 '<ol>' +
                 '<li><strong>Position Sizing:</strong> Jamais plus de 5% par trade</li>' +
                 '<li><strong>Stop Loss:</strong> TOUJOURS, sans exception</li>' +
@@ -35131,7 +35122,7 @@ formations[1] = {
                 '• Ta nourriture<br>' +
                 '• Tes factures<br>' +
                 '• Ta santé mentale<br><br>' +
-                '→ N'INVESTIS PAS!</div>'
+                '→ N\\'INVESTIS PAS!</div>'
         },
         {
             title: "Module 4: Capital de Départ Nécessaire",
@@ -35145,7 +35136,7 @@ formations[1] = {
                 '<tr><td><strong>Pro</strong></td><td>$100,000+</td><td>Temps plein</td><td>24+ mois</td></tr>' +
                 '</table>' +
                 '<h4>💡 La Vérité sur le Capital</h4>' +
-                '<p>Plus tu as de capital, plus c'est FACILE de faire des profits consistants!</p>' +
+                '<p>Plus tu as de capital, plus c\\'est FACILE de faire des profits consistants!</p>' +
                 '<div class="example-box"><strong>📊 Exemple Comparatif:</strong><br><br>' +
                 '<strong>Avec $100:</strong><br>' +
                 'Profit 20%/mois = $20<br>' +
@@ -35154,7 +35145,7 @@ formations[1] = {
                 '<strong>Avec $10,000:</strong><br>' +
                 'Profit 5%/mois = $500<br>' +
                 'Après frais = $480<br>' +
-                'Revenu d'appoint sérieux!<br><br>' +
+                'Revenu d\\'appoint sérieux!<br><br>' +
                 '<strong>Avec $100,000:</strong><br>' +
                 'Profit 3%/mois = $3,000<br>' +
                 'Après frais = $2,900<br>' +
@@ -35175,7 +35166,7 @@ formations[1] = {
                 '<p><strong>Phase 2: Break-Even ($500-2,000)</strong></p>' +
                 '<ul>' +
                 '<li>Durée: 6-12 mois</li>' +
-                '<li>Objectif: Ne pas perdre d'argent</li>' +
+                '<li>Objectif: Ne pas perdre d\\'argent</li>' +
                 '<li>Focus: Consistance</li>' +
                 '<li>Résultat attendu: -5% à +20%</li>' +
                 '</ul>' +
@@ -35209,10 +35200,10 @@ formations[1] = {
                 '3. Petit capital réel (3-6 mois)<br>' +
                 '4. Ajoute $500 tous les 3 mois SI profitable<br>' +
                 '5. Scaling uniquement quand consistant</div>' +
-                '<h4>❌ Ce qu'il NE FAUT JAMAIS Faire</h4>' +
+                '<h4>❌ Ce qu\\'il NE FAUT JAMAIS Faire</h4>' +
                 '<div class="danger"><strong>⚠️ INTERDIT:</strong><br><br>' +
-                '❌ Emprunter de l'argent pour trader<br>' +
-                '❌ Utiliser l'argent du loyer<br>' +
+                '❌ Emprunter de l\\'argent pour trader<br>' +
+                '❌ Utiliser l\\'argent du loyer<br>' +
                 '❌ Vendre des actifs importants<br>' +
                 '❌ Promettre des retours à famille/amis<br>' +
                 '❌ Commencer avec plus que tu peux perdre<br>' +
@@ -35247,7 +35238,7 @@ formations[1] = {
                 '<li>Prêts bancaires</li>' +
                 '<li>Cartes de crédit</li>' +
                 '<li>Argent emprunté</li>' +
-                '<li>Fonds d'urgence</li>' +
+                '<li>Fonds d\\'urgence</li>' +
                 '<li>Argent du loyer/factures</li>' +
                 '</ul>' +
                 '<div class="pro-tip"><strong>💡 Pro Tip:</strong><br>' +
@@ -35258,7 +35249,7 @@ formations[1] = {
         },
         {
             title: "Module 5: Outils Essentiels du Trader",
-            content: '<h4>🏢 Les Exchanges (Plateformes d'Échange)</h4>' +
+            content: '<h4>🏢 Les Exchanges (Plateformes d\\'Échange)</h4>' +
                 '<table>' +
                 '<tr><th>Exchange</th><th>Frais</th><th>Pour/Contre</th><th>Meilleur Pour</th></tr>' +
                 '<tr><td><strong>Binance</strong></td><td>0.1%</td><td>✅ #1 mondial, liquidité<br>❌ Réglementation</td><td>Trading actif</td></tr>' +
@@ -35300,9 +35291,9 @@ formations[1] = {
                 '<li><strong>Blockfolio (FTX):</strong> RIP après FTX collapse</li>' +
                 '</ul>' +
                 '<div class="important"><strong>⚠️ Sécurité:</strong><br>' +
-                'N'utilise QUE le tracking manuel (pas API keys)!<br>' +
+                'N\\'utilise QUE le tracking manuel (pas API keys)!<br>' +
                 'Donner API keys = risque de hack.</div>' +
-                '<h4>📰 Sources d'Information</h4>' +
+                '<h4>📰 Sources d\\'Information</h4>' +
                 '<p><strong>News Sites (Visite quotidiennement):</strong></p>' +
                 '<ul>' +
                 '<li><strong>CoinDesk:</strong> News #1 crypto</li>' +
@@ -35318,7 +35309,7 @@ formations[1] = {
                 '<li><strong>Telegram:</strong> Groupes communautés (attention scams!)</li>' +
                 '</ul>' +
                 '<div class="danger"><strong>⚠️ Warning Influencers:</strong><br>' +
-                'Beaucoup d'influencers crypto sont payés pour shiller!<br>' +
+                'Beaucoup d\\'influencers crypto sont payés pour shiller!<br>' +
                 'TOUJOURS faire ta propre recherche (DYOR).</div>' +
                 '<h4>💻 Setup Physique Recommandé</h4>' +
                 '<p><strong>Minimum (Débutant):</strong></p>' +
@@ -35352,7 +35343,7 @@ formations[1] = {
                 '• Clavier/Souris: $100<br>' +
                 '• Chaise: $200<br><br>' +
                 'Parfait pour trader sérieusement!</div>' +
-                '<h4>📚 Outils d'Éducation</h4>' +
+                '<h4>📚 Outils d\\'Éducation</h4>' +
                 '<p><strong>Gratuit:</strong></p>' +
                 '<ul>' +
                 '<li>Binance Academy (cours gratuits)</li>' +
@@ -35379,7 +35370,7 @@ formations[1] = {
         {
             title: "Module 6: Premiers Pas Pratiques - Plan d'Action 7 Jours",
             content: '<h4>🎯 Objectif: Setup Complet + Premières Bases</h4>' +
-                '<p>Ce module te donne un plan d'action concret, jour par jour, pour tes 7 premiers jours!</p>' +
+                '<p>Ce module te donne un plan d\\'action concret, jour par jour, pour tes 7 premiers jours!</p>' +
                 '<h4>📅 JOUR 1-2: Setup & Sécurité</h4>' +
                 '<div class="important"><strong>🔐 Checklist Jour 1-2:</strong><br><br>' +
                 '□ <strong>Binance Account:</strong><br>' +
@@ -35400,7 +35391,7 @@ formations[1] = {
                 '&nbsp;&nbsp;• Mots de passe uniques (20+ caractères)<br>' +
                 '&nbsp;&nbsp;• Email dédié crypto (recommandé)</div>' +
                 '<div class="danger"><strong>⚠️ CRUCIAL Jour 1-2:</strong><br>' +
-                'NE PAS DÉPOSER D'ARGENT ENCORE!<br>' +
+                'NE PAS DÉPOSER D\\'ARGENT ENCORE!<br>' +
                 'Ces 2 jours = setup seulement.</div>' +
                 '<h4>📅 JOUR 3-4: Observation & Learning</h4>' +
                 '<p><strong>Mission: Observer sans trader!</strong></p>' +
@@ -35494,8 +35485,8 @@ formations[1] = {
                 '<p><strong>5. Après Trade:</strong></p>' +
                 '<ul>' +
                 '<li>Win ou loss, analyser POURQUOI</li>' +
-                '<li>Qu'as-tu bien fait?</li>' +
-                '<li>Qu'aurais-tu pu améliorer?</li>' +
+                '<li>Qu\\'as-tu bien fait?</li>' +
+                '<li>Qu\\'aurais-tu pu améliorer?</li>' +
                 '<li>Émotions ressenties?</li>' +
                 '</ul>' +
                 '<div class="success"><strong>✅ Objectifs Semaine 1:</strong><br><br>' +
@@ -35512,7 +35503,7 @@ formations[1] = {
                 '2. <strong>Trader shitcoins:</strong> Stick to BTC/ETH<br>' +
                 '3. <strong>Pas de stop loss:</strong> TOUJOURS mettre SL<br>' +
                 '4. <strong>Over-trading:</strong> Max 1 trade/jour<br>' +
-                '5. <strong>FOMO:</strong> "J'ai raté 20% pump!" → Patience<br>' +
+                '5. <strong>FOMO:</strong> "J\\'ai raté 20% pump!" → Patience<br>' +
                 '6. <strong>Revenge trading:</strong> Perte → Pause forcée<br>' +
                 '7. <strong>Ignorer journal:</strong> NOTER tous les trades</div>' +
                 '<h4>📊 Semaines 2-4: Consolidation</h4>' +
@@ -35535,9 +35526,9 @@ formations[1] = {
                 '"Les 3 premiers mois = Mon MBA en trading"<br><br>' +
                 'Considère tes pertes comme frais de scolarité.<br>' +
                 'Perdre $100-200 en apprenant = NORMAL.<br>' +
-                'C'est un investissement dans ton éducation!<br><br>' +
-                'Objectif n'est PAS de devenir riche en 1 mois.<br>' +
-                'Objectif est d'apprendre et NE PAS tout perdre.</div>' +
+                'C\\'est un investissement dans ton éducation!<br><br>' +
+                'Objectif n\\'est PAS de devenir riche en 1 mois.<br>' +
+                'Objectif est d\\'apprendre et NE PAS tout perdre.</div>' +
                 '<h4>🎯 Checklist Complète Premier Mois</h4>' +
                 '<table>' +
                 '<tr><th>Semaine</th><th>Focus</th><th>Objectif</th></tr>' +
@@ -35585,7 +35576,7 @@ formations[2] = {
                 '<ul><li><strong>Supply Fixe:</strong> 21 millions maximum (actuellement ~19.5M en circulation)</li>' +
                 '<li><strong>Décentralisé:</strong> Pas de banque centrale, pas de gouvernement</li>' +
                 '<li><strong>Transparent:</strong> Toutes les transactions publiques sur la blockchain</li>' +
-                '<li><strong>Immuable:</strong> Impossible de modifier l'historique</li></ul>' +
+                '<li><strong>Immuable:</strong> Impossible de modifier l\\'historique</li></ul>' +
                 '<h4>Bitcoin vs Or vs Dollar</h4><table>' +
                 '<tr><th>Critère</th><th>Bitcoin</th><th>Or</th><th>Dollar</th></tr>' +
                 '<tr><td>Supply</td><td>21M max</td><td>~200k tonnes</td><td>Illimité</td></tr>' +
@@ -35596,9 +35587,9 @@ formations[2] = {
                 '<ul><li>2012: 50 → 25 BTC</li><li>2016: 25 → 12.5 BTC</li>' +
                 '<li>2020: 12.5 → 6.25 BTC</li><li>2024: 6.25 → 3.125 BTC</li></ul>' +
                 '<div class="important"><strong>Impact du Halving:</strong><br>' +
-                '2012 Halving: +8,000% l'année suivante<br>' +
-                '2016 Halving: +2,800% l'année suivante<br>' +
-                '2020 Halving: +600% l'année suivante</div>' +
+                '2012 Halving: +8,000% l\\'année suivante<br>' +
+                '2016 Halving: +2,800% l\\'année suivante<br>' +
+                '2020 Halving: +600% l\\'année suivante</div>' +
                 '<h4>Performance Historique</h4><table>' +
                 '<tr><th>Année</th><th>Prix BTC</th><th>Gain depuis 2009</th></tr>' +
                 '<tr><td>2009</td><td>$0.01</td><td>-</td></tr>' +
@@ -35612,9 +35603,9 @@ formations[2] = {
         {
             title: "Module 2: Ethereum - Smart Contract King",
             content: '<p><strong>Ethereum (ETH)</strong> est la 2ème plus grosse crypto. Lancé en 2015 par Vitalik Buterin.</p>' +
-                '<h4>Innovation: Smart Contracts</h4><p>Programmes auto-exécutables sur la blockchain. Pas besoin d'intermédiaire!</p>' +
+                '<h4>Innovation: Smart Contracts</h4><p>Programmes auto-exécutables sur la blockchain. Pas besoin d\\'intermédiaire!</p>' +
                 '<div class="example-box"><strong>Exemple Concret:</strong><br>' +
-                'Achat d'une maison traditionnel: Banque + Notaire + Avocat = 30 jours + frais<br>' +
+                'Achat d\\'une maison traditionnel: Banque + Notaire + Avocat = 30 jours + frais<br>' +
                 'Achat avec smart contract: Automatique + instantané + frais minimaux</div>' +
                 '<h4>Applications Ethereum</h4><table>' +
                 '<tr><th>Secteur</th><th>Exemples</th><th>Valeur</th></tr>' +
@@ -35624,12 +35615,12 @@ formations[2] = {
                 '<tr><td><strong>DAOs</strong></td><td>MakerDAO, Uniswap</td><td>$15B</td></tr></table>' +
                 '<h4>Ethereum 2.0 (The Merge)</h4><p>En 2022, Ethereum est passé de Proof of Work (PoW) à Proof of Stake (PoS).</p>' +
                 '<p><strong>Avantages:</strong></p><ul>' +
-                '<li>99.95% moins d'énergie consommée</li>' +
+                '<li>99.95% moins d\\'énergie consommée</li>' +
                 '<li>Déflationnaire (supply diminue!)</li>' +
                 '<li>Staking 4-6% APY</li>' +
                 '<li>Plus sécurisé</li></ul>' +
                 '<div class="success"><strong>Pourquoi investir ETH:</strong><br>' +
-                'Ethereum = L'App Store de la crypto. Toutes les applications construites dessus!</div>'
+                'Ethereum = L\\'App Store de la crypto. Toutes les applications construites dessus!</div>'
         },
         {
             title: "Module 3: Altcoins - L'Écosystème",
@@ -35692,7 +35683,7 @@ formations[3] = {
                 '<li>MetaMask (browser)</li><li>Trust Wallet (mobile)</li><li>Phantom (Solana)</li></ul>' +
                 '<p><strong>Cold Wallets:</strong></p><ul>' +
                 '<li>Ledger Nano X ($150)</li><li>Trezor Model T ($200)</li></ul>' +
-                '<div class="important"><strong>Règle d'Or:</strong><br>' +
+                '<div class="important"><strong>Règle d\\'Or:</strong><br>' +
                 '10-30% en hot wallet (trading)<br>70-90% en cold wallet (sécurité)</div>'
         },
         {
@@ -35729,8 +35720,8 @@ formations[3] = {
                 '<li><strong>Promesses garanties:</strong> "100% profit garanti!"</li>' +
                 '<li><strong>Urgence artificielle:</strong> "Seulement 24h!"</li>' +
                 '<li><strong>Pas de HTTPS:</strong> Site web non sécurisé</li>' +
-                '<li><strong>Whitepaper copié:</strong> Plagiat d'autres projets</li>' +
-                '<li><strong>Pas d'audit:</strong> Smart contract non audité</li>' +
+                '<li><strong>Whitepaper copié:</strong> Plagiat d\\'autres projets</li>' +
+                '<li><strong>Pas d\\'audit:</strong> Smart contract non audité</li>' +
                 '<li><strong>Liquidity unlocked:</strong> Team peut rug pull</li>' +
                 '<li><strong>APY irréaliste:</strong> 10,000% APY = scam</li>' +
                 '<li><strong>Pump groups:</strong> Telegram "signals"</li>' +
@@ -35829,7 +35820,7 @@ formations[4] = {
                 '<h4>7 Règles de Discipline</h4><ol>' +
                 '<li>Plan écrit AVANT de trader</li>' +
                 '<li>Position sizing: 2-5% max</li>' +
-                '<li>Stop loss AVANT d'entrer</li>' +
+                '<li>Stop loss AVANT d\\'entrer</li>' +
                 '<li>Max 3-5 trades/jour</li>' +
                 '<li>Pas de revenge trading</li>' +
                 '<li>Journal tous les trades</li>' +
@@ -35866,7 +35857,7 @@ formations[4] = {
                 '<li><strong>Process > Results:</strong> Focus sur bon process, pas juste P&L</li>' +
                 '<li><strong>Accepter les pertes:</strong> Pertes = coût du business</li>' +
                 '<li><strong>Penser long terme:</strong> 100+ trades, pas 1 trade</li>' +
-                '<li><strong>Apprentissage constant:</strong> Toujours s'améliorer</li>' +
+                '<li><strong>Apprentissage constant:</strong> Toujours s\\'améliorer</li>' +
                 '<li><strong>Humilité:</strong> Marché peut te ruiner</li>' +
                 '<li><strong>Patience:</strong> Attendre LE setup parfait</li>' +
                 '<li><strong>Discipline > Intelligence:</strong> Suivre le plan</li>' +
@@ -35875,7 +35866,7 @@ formations[4] = {
                 '<li><strong>Santé:</strong> Corps sain = esprit sain</li></ol>' +
                 '<div class="success"><strong>Affirmations Quotidiennes:</strong><br>' +
                 '"Je trade mon plan, pas mes émotions"<br>' +
-                '"Pertes = opportunités d'apprentissage"<br>' +
+                '"Pertes = opportunités d\\'apprentissage"<br>' +
                 '"Je suis un trader discipliné"<br>' +
                 '"Patience = profit"<br>' +
                 '"Je respecte le marché"</div>'
@@ -36003,7 +35994,7 @@ function checkQuiz(formationId) {
             '<p style="font-size:1.4em;font-weight:bold;margin:20px 0;">' + formation.title + '</p>' +
             '<p>Score: ' + Math.round(percentage) + '%</p>' +
             '<p>Date: ' + new Date().toLocaleDateString('fr-FR') + '</p>' +
-            '<p style="margin-top:30px;opacity:0.8;">Continuez votre apprentissage vers l'excellence!</p>' +
+            '<p style="margin-top:30px;opacity:0.8;">Continuez votre apprentissage vers l\\'excellence!</p>' +
             '</div>';
         
         saveCompletion(formationId);
@@ -36083,7 +36074,7 @@ formations[5] = {
             title: "Module 1: Chandelles Japonaises - Guide Complet",
             content: '<h4>🕯️ Introduction aux Chandelles Japonaises</h4>' +
                 '<p>Les <strong>chandelles japonaises</strong> (Japanese Candlesticks) sont LA méthode de visualisation des prix la plus utilisée en trading. Créées au Japon au 18ème siècle pour le trading du riz, elles sont maintenant universelles.</p>' +
-                '<h4>📐 Anatomie d'une Chandelle</h4>' +
+                '<h4>📐 Anatomie d\\'une Chandelle</h4>' +
                 '<div class="diagram"><pre>' +
 '           ┃  ← Mèche Haute (High Wick/Shadow)\\n' +
 '           ┃     Représente le prix le PLUS HAUT atteint\\n' +
@@ -36100,7 +36091,7 @@ formations[5] = {
 '</pre></div>' +
                 '<p><strong>4 Prix Essentiels par Chandelle:</strong></p>' +
                 '<ul>' +
-                '<li><strong>OPEN:</strong> Prix d'ouverture de la période</li>' +
+                '<li><strong>OPEN:</strong> Prix d\\'ouverture de la période</li>' +
                 '<li><strong>CLOSE:</strong> Prix de fermeture de la période</li>' +
                 '<li><strong>HIGH:</strong> Prix maximum atteint</li>' +
                 '<li><strong>LOW:</strong> Prix minimum atteint</li>' +
@@ -36235,9 +36226,9 @@ formations[5] = {
                 '<tr><td>1 jour</td><td>24h</td><td>★★★★★ Très élevé</td><td>Swing/Position</td></tr>' +
                 '<tr><td>1 semaine</td><td>7 jours</td><td>★★★★★ Très élevé</td><td>Position Trading</td></tr>' +
                 '</table>' +
-                '<div class="pro-tip"><strong>💡 Règle d'Or Timeframes:</strong><br>' +
+                '<div class="pro-tip"><strong>💡 Règle d\\'Or Timeframes:</strong><br>' +
                 'PLUS le timeframe est élevé, PLUS le signal est fiable!<br><br>' +
-                'Un Hammer sur daily (1 jour) est 10x plus puissant qu'un Hammer sur 1 minute.<br><br>' +
+                'Un Hammer sur daily (1 jour) est 10x plus puissant qu\\'un Hammer sur 1 minute.<br><br>' +
                 'Débutants: Focusez sur 4H et Daily uniquement!</div>' +
                 '<h4>🎯 Exemples Concrets de Trading</h4>' +
                 '<div class="example-box"><strong>📊 Exemple 1: Hammer Bitcoin</strong><br><br>' +
@@ -36305,7 +36296,7 @@ formations[5] = {
             title: "Module 2: Support et Résistance - Comment Tracer",
             content: '<h4>🎯 Support et Résistance: Fondamentaux</h4>' +
                 '<p><strong>Support:</strong> Niveau de prix où la demande (acheteurs) est suffisamment forte pour empêcher le prix de descendre plus bas.</p>' +
-                '<p><strong>Résistance:</strong> Niveau de prix où l'offre (vendeurs) est suffisamment forte pour empêcher le prix de monter plus haut.</p>' +
+                '<p><strong>Résistance:</strong> Niveau de prix où l\\'offre (vendeurs) est suffisamment forte pour empêcher le prix de monter plus haut.</p>' +
                 '<div class="diagram"><pre>' +
 '                     Résistance $52,000\\n' +
 '         ─────────────────────────────────\\n' +
@@ -36322,7 +36313,7 @@ formations[5] = {
                 '<p><strong>Psychologie derrière S/R:</strong></p>' +
                 '<ul>' +
                 '<li><strong>Support:</strong> Acheteurs se souviennent "prix était bon ici avant"</li>' +
-                '<li><strong>Résistance:</strong> Vendeurs se souviennent "j'ai raté vendre ici avant"</li>' +
+                '<li><strong>Résistance:</strong> Vendeurs se souviennent "j\\'ai raté vendre ici avant"</li>' +
                 '<li>Niveaux deviennent <strong>self-fulfilling prophecy</strong></li>' +
                 '</ul>' +
                 '<h4>📏 Comment Tracer Support/Résistance</h4>' +
@@ -36359,7 +36350,7 @@ formations[5] = {
     ],
     quiz: [
         {question: "Chandelle verte signifie:", options: ["Prix baisse", "Prix monte", "Indécision"], correct: 1},
-        {question: "Hammer apparaît:", options: ["En haut", "En bas", "N'importe où"], correct: 1},
+        {question: "Hammer apparaît:", options: ["En haut", "En bas", "N\\'importe où"], correct: 1},
         {question: "Doji indique:", options: ["Forte hausse", "Indécision", "Forte baisse"], correct: 1},
         {question: "Meilleur timeframe débutant:", options: ["1 minute", "4H/Daily", "1 semaine"], correct: 1},
         {question: "Support est:", options: ["Prix monte", "Prix rejette baisse", "Prix baisse"], correct: 1},
@@ -37491,7 +37482,7 @@ async function scanNow() {
         
     } catch (error) {
         console.error('Erreur:', error);
-        container.innerHTML = '<div class="error-box"><div class="icon">❌</div><div class="title">Erreur de connexion</div><div class="message">Impossible de contacter l'API. Vérifiez votre connexion.</div></div>';
+        container.innerHTML = '<div class="error-box"><div class="icon">❌</div><div class="title">Erreur de connexion</div><div class="message">Impossible de contacter l\\'API. Vérifiez votre connexion.</div></div>';
     } finally {
         setTimeout(function() {
             btn.classList.remove('loading');
@@ -37862,11 +37853,11 @@ async def ai_crypto_coach_page(request: Request):
                         Bonjour ! Je suis votre coach crypto personnel propulsé par Claude AI. Posez-moi n'importe quelle question sur le trading, la DeFi, les NFTs, ou choisissez un parcours d'apprentissage pour une formation guidée ! 🚀
                     </div>
                     <div class="suggestion-buttons">
-                        <button class="suggestion-btn" onclick="askQuestion('C'est quoi Bitcoin ?')">C'est quoi Bitcoin ?</button>
+                        <button class="suggestion-btn" onclick="askQuestion('C\\'est quoi Bitcoin ?')">C'est quoi Bitcoin ?</button>
                         <button class="suggestion-btn" onclick="askQuestion('Comment acheter ma première crypto ?')">Comment acheter ma première crypto ?</button>
-                        <button class="suggestion-btn" onclick="askQuestion('C'est quoi un wallet ?')">C'est quoi un wallet ?</button>
+                        <button class="suggestion-btn" onclick="askQuestion('C\\'est quoi un wallet ?')">C'est quoi un wallet ?</button>
                         <button class="suggestion-btn" onclick="askQuestion('Comment lire un graphique ?')">Comment lire un graphique ?</button>
-                        <button class="suggestion-btn" onclick="askQuestion('C'est quoi le trading ?')">C'est quoi le trading ?</button>
+                        <button class="suggestion-btn" onclick="askQuestion('C\\'est quoi le trading ?')">C'est quoi le trading ?</button>
                     </div>
                 </div>
             </div>
@@ -38072,7 +38063,7 @@ async function analyzeProfile() {
                     <span>AI Coach</span>
                 </div>
                 <div class="message-content">
-                    ${data.message || 'Pas assez de trades pour l'analyse. Il te faut minimum 5 trades dans ton historique.'}
+                    ${data.message || 'Pas assez de trades pour l\\'analyse. Il te faut minimum 5 trades dans ton historique.'}
                     <br><br>
                     💡 Va faire quelques trades et reviens pour une analyse complète !
                 </div>

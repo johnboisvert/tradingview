@@ -2832,10 +2832,14 @@ body.sidebar-open{margin-left:280px}
     </script>
 """
 
-# Diviser SIDEBAR - CSS et HTML séparés
-_split_pos = SIDEBAR.find('</style>') + len('</style>')
-SIDEBAR_CSS = SIDEBAR[:_split_pos]
-SIDEBAR_HTML = SIDEBAR[_split_pos:]
+# Préparer SIDEBAR pour utilisation dans f-strings (échapper les accolades)
+_css_end = SIDEBAR.find('</style>') + 8
+SIDEBAR_CSS_RAW = SIDEBAR[:_css_end]
+SIDEBAR_HTML_RAW = SIDEBAR[_css_end:]
+
+# Échapper les accolades pour les f-strings
+SIDEBAR_CSS_ESCAPED = SIDEBAR_CSS_RAW.replace('{', '{{').replace('}', '}}')
+SIDEBAR_HTML_ESCAPED = SIDEBAR_HTML_RAW.replace('{', '{{').replace('}', '}}')
 
 # ==================================
 
@@ -23749,10 +23753,10 @@ async def admin_dashboard(request: Request):
                 display: block;
             }}
         </style>
-        """ + SIDEBAR_CSS + f"""
+        {SIDEBAR_CSS_ESCAPED}
     </head>
     <body>
-        """ + SIDEBAR_HTML + f"""
+    {SIDEBAR_HTML_ESCAPED}
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>

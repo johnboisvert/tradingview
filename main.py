@@ -41785,7 +41785,7 @@ async def delete_message(message_id: int, request: Request):
 
 @app.get("/mon-parrain", response_class=HTMLResponse)
 async def mon_parrain_page(request: Request):
-    """Page code de parrainage"""
+    """Page code de parrainage avec sidebar"""
     user_data = get_user_from_request(request)
     if not user_data:
         return RedirectResponse("/login", status_code=303)
@@ -41793,11 +41793,12 @@ async def mon_parrain_page(request: Request):
     username = user_data.get("username", "user")
     ref_code = f"REF{username[:6].upper()}"
     
-    return HTMLResponse(f"""<!DOCTYPE html>
+    html = f"""<!DOCTYPE html>
     <html><head><meta charset="UTF-8"><title>Parrainage</title><style>
-    body {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }}
-    .card {{ background: white; padding: 50px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); text-align: center; max-width: 500px; width: 100%; }}
-    h1 {{ color: #333; margin-top: 0; }}
+    body {{ margin: 0; padding: 0; font-family: sans-serif; background: #f8f9fa; }}
+    .main-content {{ margin-left: 260px; padding: 40px 20px; }}
+    .page-title {{ color: #333; font-size: 28px; margin-top: 0; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; }}
+    .card {{ background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 600px; text-align: center; }}
     .code-box {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin: 30px 0; }}
     .code {{ font-size: 48px; font-weight: bold; letter-spacing: 4px; font-family: monospace; margin: 20px 0; }}
     button {{ background: white; color: #667eea; border: none; padding: 12px 25px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px; }}
@@ -41805,18 +41806,25 @@ async def mon_parrain_page(request: Request):
     .stat {{ background: #f5f5f5; padding: 20px; border-radius: 8px; }}
     .stat-num {{ font-size: 28px; font-weight: bold; color: #667eea; }}
     .stat-label {{ font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase; }}
-    a {{ display: inline-block; margin-top: 20px; padding: 12px 25px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; }}
+    @media (max-width: 768px) {{
+        .main-content {{ margin-left: 0; padding: 20px; }}
+    }}
     </style></head><body>
-    <div class="card">
-    <h1>🎁 Mon Code de Parrainage</h1>
-    <div class="code-box">
-    <div class="code">{ref_code}</div>
-    <button onclick="navigator.clipboard.writeText('{ref_code}').then(()=>alert('✅ Copié!'))">📋 Copier le code</button>
+    <div class="main-content">
+        <h1 class="page-title">🎁 Mon Code de Parrainage</h1>
+        <div class="card">
+            <div class="code-box">
+                <div class="code">{ref_code}</div>
+                <button onclick="navigator.clipboard.writeText('{ref_code}').then(()=>alert('✅ Copié!'))">📋 Copier le code</button>
+            </div>
+            <div class="stats">
+                <div class="stat"><div class="stat-num">0</div><div class="stat-label">Total</div></div>
+                <div class="stat"><div class="stat-num">0</div><div class="stat-label">Payants</div></div>
+                <div class="stat"><div class="stat-num">$0</div><div class="stat-label">Revenus</div></div>
+            </div>
+        </div>
     </div>
-    <div class="stats">
-    <div class="stat"><div class="stat-num">0</div><div class="stat-label">Total</div></div>
-    <div class="stat"><div class="stat-num">0</div><div class="stat-label">Payants</div></div>
-    <div class="stat"><div class="stat-num">$0</div><div class="stat-label">Revenus</div></div>
-    </div>
-    <a href="/admin-dashboard">← Retour au Dashboard</a>
-    </div></body></html>""")
+    </body></html>
+    """
+    
+    return HTMLResponse(SIDEBAR + html)

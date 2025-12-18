@@ -2831,12 +2831,6 @@ body.sidebar-open{margin-left:280px}
     }
     </script>
 """
-
-# Diviser SIDEBAR en CSS et HTML
-_sidebar_css_end = SIDEBAR.find('</style>') + len('</style>')
-SIDEBAR_CSS = SIDEBAR[:_sidebar_css_end]
-SIDEBAR_HTML = SIDEBAR[_sidebar_css_end:]
-
 # ==================================
 
 # ============================================================================
@@ -23486,7 +23480,8 @@ async def admin_dashboard(request: Request):
         </tr>
         """
     
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""
+    <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
@@ -23748,11 +23743,9 @@ async def admin_dashboard(request: Request):
                 border: 1px solid #f5c6cb;
                 display: block;
             }}
-        </style>        """ + SIDEBAR_CSS + f"""
-
+        </style>
     </head>
     <body>
-    """ + SIDEBAR_HTML + f"""
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>
@@ -24194,7 +24187,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
+            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24718,7 +24711,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
+            if (!confirm("Prolonger l'abonnement de " + username + ' de ' + days + ' jours?')) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{
@@ -41667,62 +41660,6 @@ async def toggle_ebook(ebook_id: int, request: Request):
 
 
 # ============================================================================
-# ROUTE: GET /admin/messages
-# ============================================================================
-
-@app.get("/admin/messages", response_class=HTMLResponse)
-async def admin_messages_page(request: Request):
-    user_data = get_user_from_request(request)
-    if not user_data or user_data.get("role") != "admin":
-        return RedirectResponse("/login", status_code=303)
-    
-    return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Messages</title></head><body style="margin-left: 300px; padding: 20px;">
-    <h1>💬 Messages de Contact</h1>
-    <p>Aucun message pour le moment</p>
-    </body></html>""")
-
-
-# ============================================================================
-# ROUTE: GET /mon-parrain  
-# ============================================================================
-
-@app.get("/mon-parrain", response_class=HTMLResponse)
-async def mon_parrain_page(request: Request):
-    user_data = get_user_from_request(request)
-    if not user_data:
-        return RedirectResponse("/login", status_code=303)
-    
-    username = user_data.get("username", "user")
-    ref_code = f"REF{username[:6].upper()}"
-    
-    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Parrainage</title></head><body style="margin-left: 300px; padding: 40px 20px;">
-    <h1>🎁 Mon Code de Parrainage</h1>
-    <div style="background: white; padding: 40px; border-radius: 12px; max-width: 600px;">
-        <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 30px; border-radius: 10px; text-align: center; margin: 30px 0;">
-            <div style="font-size: 48px; font-weight: bold; letter-spacing: 4px; font-family: monospace; margin: 20px 0;">{ref_code}</div>
-            <button onclick="navigator.clipboard.writeText('{ref_code}').then(()=>alert('✅ Copié!'))" style="background: white; color: #667eea; border: none; padding: 12px 25px; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 10px;">📋 Copier le code</button>
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 30px 0;">
-            <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 28px; font-weight: bold; color: #667eea;">0</div>
-                <div style="font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase;">Total</div>
-            </div>
-            <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 28px; font-weight: bold; color: #667eea;">0</div>
-                <div style="font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase;">Payants</div>
-            </div>
-            <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center;">
-                <div style="font-size: 28px; font-weight: bold; color: #667eea;">$0</div>
-                <div style="font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase;">Revenus</div>
-            </div>
-        </div>
-    </div>
-    </body></html>""")
-
-
-# ============================================================================
 # ROUTE: /admin/messages
 # ============================================================================
 
@@ -41731,8 +41668,8 @@ async def admin_messages_page(request: Request):
     user_data = get_user_from_request(request)
     if not user_data or user_data.get("role") != "admin":
         return RedirectResponse("/login", status_code=303)
-    return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Messages</title></head><body style="margin-left: 300px; padding: 20px;"><h1>💬 Messages</h1></body></html>""")
+    return HTMLResponse(SIDEBAR + '''<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Messages</title></head><body style="margin-left: 300px; padding: 20px;"><h1>💬 Messages</h1></body></html>''')
 
 
 # ============================================================================
@@ -41746,8 +41683,8 @@ async def mon_parrain_page(request: Request):
         return RedirectResponse("/login", status_code=303)
     username = user_data.get("username", "user")
     ref_code = f"REF{username[:6].upper()}"
-    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Parrainage</title></head><body style="margin-left: 300px; padding: 40px;"><h1>🎁 Code: {ref_code}</h1></body></html>""")
+    return HTMLResponse(SIDEBAR + f'''<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Parrainage</title></head><body style="margin-left: 300px; padding: 40px;"><h1>🎁 Code: {ref_code}</h1></body></html>''')
 
 
 # ============================================================================

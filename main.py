@@ -2813,6 +2813,10 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
             </a>
+            <a href="/admin/ebooks" class="menu-item admin">
+                <span class="icon">📚</span>
+                <span class="label">Admin Ebooks</span>
+            </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
                 <span class="label">Déconnexion</span>
@@ -23740,8 +23744,7 @@ async def admin_dashboard(request: Request):
             }}
         </style>
     </head>
-    <body>
-    """ + SIDEBAR + f"""
+    """ + SIDEBAR + f"""<body>
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>
@@ -23764,22 +23767,6 @@ async def admin_dashboard(request: Request):
                     <div class="stat-label">Revenus Totaux</div>
                     <div class="stat-value">${total_revenue:.2f}</div>
                 </div>
-            </div>
-            
-            <!-- 🔗 QUICK LINKS - Admin Pages -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 30px;">
-                <a href="/admin/ebooks" style="padding: 15px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #f59e0b, #f97316); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;">
-                    <div style="font-size: 32px; margin-bottom: 8px;">📚</div>
-                    <div>Gérer Ebooks</div>
-                </a>
-                <a href="/admin/messages" style="padding: 15px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;">
-                    <div style="font-size: 32px; margin-bottom: 8px;">💬</div>
-                    <div>Messages</div>
-                </a>
-                <a href="/mon-parrain" style="padding: 15px; text-align: center; text-decoration: none; color: white; font-weight: 600; background: linear-gradient(135deg, #10b981, #059669); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: block;">
-                    <div style="font-size: 32px; margin-bottom: 8px;">🎁</div>
-                    <div>Parrainage</div>
-                </a>
             </div>
             
             <!-- 🥇 RETENTION WARFARE DASHBOARD -->
@@ -24199,7 +24186,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
+            document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24723,7 +24710,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm("Prolonger l'abonnement de " + username + " de " + days + " jours?")) return;
+            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{
@@ -41672,12 +41659,7 @@ async def toggle_ebook(ebook_id: int, request: Request):
 
 
 # ============================================================================
-# FIN DES ROUTES EBOOKS/CONTACT - TOUT EST PRÊT!
-# ============================================================================
-
-
-# ============================================================================
-# ROUTES SIMPLES: /admin/messages et /mon-parrain
+# ROUTE: GET /admin/messages - Page des messages avec sidebar
 # ============================================================================
 
 @app.get("/admin/messages", response_class=HTMLResponse)
@@ -41699,12 +41681,11 @@ async def admin_messages_page(request: Request):
         messages = c.fetchall()
         conn.close()
         
-        # Construire le HTML des messages
         messages_html = ""
         if messages:
             for msg_id, name, email, subject, message_text, created_at in messages:
                 created_date = str(created_at)[:10] if created_at else "N/A"
-                messages_html += f"""
+                messages_html += f'''
                 <div style="background: white; padding: 20px; margin: 15px 0; border-radius: 10px; border-left: 5px solid #667eea; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <div style="display: flex; justify-content: space-between; align-items: start;">
                         <div>
@@ -41719,69 +41700,35 @@ async def admin_messages_page(request: Request):
                         <p style="color: #555; margin-top: 10px; line-height: 1.6;">{message_text}</p>
                     </div>
                 </div>
-                """
+                '''
         else:
             messages_html = '<div style="text-align: center; padding: 40px; color: #999;"><p style="font-size: 48px; margin: 0;">📭</p><p>Aucun message pour le moment</p></div>'
         
-        html = f"""<!DOCTYPE html>
+        return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
         <html>
         <head>
             <meta charset="UTF-8">
             <title>Messages de Contact</title>
             <style>
-                .main-content {{ margin-left: 260px; padding: 20px; }}
-                .page-title {{ color: #333; font-size: 28px; margin-top: 0; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; }}
-                .messages-container {{ max-width: 1000px; }}
-                @media (max-width: 768px) {{
-                    .main-content {{ margin-left: 0; padding: 15px; }}
-                }}
+                body {{ margin-left: 300px; padding: 20px; font-family: sans-serif; background: #f8f9fa; }}
+                h1 {{ color: #333; font-size: 28px; margin-top: 0; margin-bottom: 30px; }}
+                @media (max-width: 768px) {{ body {{ margin-left: 0; }} }}
             </style>
         </head>
         <body>
-            <div class="main-content">
-                <h1 class="page-title">💬 Messages de Contact</h1>
-                <div class="messages-container">
-                    {messages_html}
-                </div>
-            </div>
+            <h1>💬 Messages de Contact</h1>
+            {messages_html}
         </body>
         </html>
-        """
-        
-        return HTMLResponse(SIDEBAR + html)
-    
-    except Exception as e:
-        print(f"❌ Error /admin/messages: {e}")
-        return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-        <html><body style="margin-left: 260px; padding: 20px;"><h1>Erreur</h1><p>{str(e)}</p></body></html>
         """)
-
-
-@app.post("/admin/messages/delete/{message_id}")
-async def delete_message(message_id: int, request: Request):
-    """Supprimer un message de contact"""
-    user_data = get_user_from_request(request)
-    if not user_data or user_data.get("role") != "admin":
-        raise HTTPException(403, "Admin requis")
-    
-    try:
-        conn = get_db_connection()
-        c = conn.cursor()
-        
-        if DB_CONFIG["type"] == "postgres":
-            c.execute("DELETE FROM contact_messages WHERE id=%s", (message_id,))
-        else:
-            c.execute("DELETE FROM contact_messages WHERE id=?", (message_id,))
-        
-        conn.commit()
-        conn.close()
-        
-        return JSONResponse({"success": True})
     
     except Exception as e:
-        print(f"❌ Error deleting message: {e}")
-        raise HTTPException(500, str(e))
+        return HTMLResponse(SIDEBAR + f"<html><body style='margin-left: 300px; padding: 20px;'><h1>Erreur</h1><p>{{str(e)}}</p></body></html>")
 
+
+# ============================================================================
+# ROUTE: GET /mon-parrain - Code de parrainage avec sidebar
+# ============================================================================
 
 @app.get("/mon-parrain", response_class=HTMLResponse)
 async def mon_parrain_page(request: Request):
@@ -41799,14 +41746,8 @@ async def mon_parrain_page(request: Request):
         <meta charset="UTF-8">
         <title>Mon Parrainage</title>
         <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{ 
-                font-family: 'Segoe UI', sans-serif; 
-                background: #f8f9fa; 
-                padding: 20px;
-                padding-left: 300px;
-            }}
-            .page-title {{ color: #333; font-size: 28px; margin-bottom: 30px; display: flex; align-items: center; gap: 15px; }}
+            body {{ margin-left: 300px; padding: 40px 20px; font-family: sans-serif; background: #f8f9fa; }}
+            h1 {{ color: #333; font-size: 28px; margin-top: 0; margin-bottom: 30px; }}
             .card {{ background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 600px; }}
             .code-box {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin: 30px 0; text-align: center; }}
             .code {{ font-size: 48px; font-weight: bold; letter-spacing: 4px; font-family: monospace; margin: 20px 0; }}
@@ -41815,13 +41756,11 @@ async def mon_parrain_page(request: Request):
             .stat {{ background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center; }}
             .stat-num {{ font-size: 28px; font-weight: bold; color: #667eea; }}
             .stat-label {{ font-size: 12px; color: #999; margin-top: 10px; text-transform: uppercase; }}
-            @media (max-width: 768px) {{
-                body {{ padding-left: 20px; }}
-            }}
+            @media (max-width: 768px) {{ body {{ margin-left: 0; }} }}
         </style>
     </head>
     <body>
-        <h1 class="page-title">🎁 Mon Code de Parrainage</h1>
+        <h1>🎁 Mon Code de Parrainage</h1>
         <div class="card">
             <div class="code-box">
                 <div class="code">{ref_code}</div>
@@ -41836,3 +41775,8 @@ async def mon_parrain_page(request: Request):
     </body>
     </html>
     """)
+
+
+# ============================================================================
+# FIN DES ROUTES EBOOKS/CONTACT - TOUT EST PRÊT!
+# ============================================================================

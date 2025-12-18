@@ -2831,6 +2831,12 @@ body.sidebar-open{margin-left:280px}
     }
     </script>
 """
+
+# Diviser SIDEBAR - CSS et HTML séparés
+_split_pos = SIDEBAR.find('</style>') + len('</style>')
+SIDEBAR_CSS = SIDEBAR[:_split_pos]
+SIDEBAR_HTML = SIDEBAR[_split_pos:]
+
 # ==================================
 
 # ============================================================================
@@ -23480,8 +23486,7 @@ async def admin_dashboard(request: Request):
         </tr>
         """
     
-    return HTMLResponse(SIDEBAR + f"""
-    <!DOCTYPE html>
+    return HTMLResponse(f"""<!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
@@ -23744,8 +23749,10 @@ async def admin_dashboard(request: Request):
                 display: block;
             }}
         </style>
+        """ + SIDEBAR_CSS + f"""
     </head>
     <body>
+        """ + SIDEBAR_HTML + f"""
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>
@@ -24187,7 +24194,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
+            document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24711,7 +24718,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm("Prolonger l'abonnement de " + username + ' de ' + days + ' jours?')) return;
+            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{
@@ -41668,8 +41675,8 @@ async def admin_messages_page(request: Request):
     user_data = get_user_from_request(request)
     if not user_data or user_data.get("role") != "admin":
         return RedirectResponse("/login", status_code=303)
-    return HTMLResponse(SIDEBAR + '''<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Messages</title></head><body style="margin-left: 300px; padding: 20px;"><h1>💬 Messages</h1></body></html>''')
+    return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Messages</title></head><body style="margin-left: 300px; padding: 20px;"><h1>💬 Messages</h1></body></html>""")
 
 
 # ============================================================================
@@ -41683,8 +41690,8 @@ async def mon_parrain_page(request: Request):
         return RedirectResponse("/login", status_code=303)
     username = user_data.get("username", "user")
     ref_code = f"REF{username[:6].upper()}"
-    return HTMLResponse(SIDEBAR + f'''<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Parrainage</title></head><body style="margin-left: 300px; padding: 40px;"><h1>🎁 Code: {ref_code}</h1></body></html>''')
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
+    <html><head><meta charset="UTF-8"><title>Parrainage</title></head><body style="margin-left: 300px; padding: 40px;"><h1>🎁 Code: {ref_code}</h1></body></html>""")
 
 
 # ============================================================================

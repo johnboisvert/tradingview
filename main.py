@@ -4419,6 +4419,42 @@ async def admin_panel():
         .form-inline > div {{
             flex: 1;
         }}
+        .plan-buttons {{
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }}
+        .plan-btn {{
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s;
+        }}
+        .plan-btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }}
+        .promo-buttons {{
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }}
+        .promo-btn {{
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s;
+        }}
+        .promo-btn:hover {{
+            transform: translateY(-2px);
+        }}
     </style>
 </head>
 <body>
@@ -4428,8 +4464,23 @@ async def admin_panel():
             <p>Gérez les accès au dashboard</p>
         </div>
         
+        <!-- STATS CARDS -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
+            <div class="stat-box">
+                <div class="label">Total Utilisateurs</div>
+                <div class="value">{len(users)}</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">Abonnements Actifs</div>
+                <div class="value">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">Revenus Totaux</div>
+                <div class="value">$0.00</div>
+            </div>
+        </div>
         
-        
+        <!-- AJOUTER UN UTILISATEUR -->
         <div class="card">
             <h2>➕ Ajouter un utilisateur</h2>
             <form id="addUserForm" class="form-inline">
@@ -4454,6 +4505,45 @@ async def admin_panel():
             </form>
         </div>
         
+        <!-- GESTION DES ACCÈS PAR FORFAIT -->
+        <div class="card">
+            <h2>🆓 Gestion des Accès par Forfait</h2>
+            <p style="color: #94a3b8; margin-bottom: 15px;">Cliquez sur un forfait pour gérer les accès</p>
+            <div class="plan-buttons">
+                <button class="plan-btn" style="background: #3b82f6;" onclick="managePlanAccess(\'free\')">🆓 Free</button>
+                <button class="plan-btn" style="background: #8b5cf6;" onclick="managePlanAccess(\'premium\')">💎 Premium</button>
+                <button class="plan-btn" style="background: #f59e0b;" onclick="managePlanAccess(\'advanced\')">🚀 Advanced</button>
+                <button class="plan-btn" style="background: #ef4444;" onclick="managePlanAccess(\'pro\')">⭐ Pro</button>
+                <button class="plan-btn" style="background: #10b981;" onclick="managePlanAccess(\'elite\')">👑 Elite</button>
+            </div>
+        </div>
+        
+        <!-- GESTION DES CODES PROMO -->
+        <div class="card">
+            <h2>🎟️ Gestion des Codes Promo</h2>
+            <p style="color: #94a3b8; margin-bottom: 15px;">Créer et gérer les codes de réduction</p>
+            <div class="promo-buttons">
+                <button class="promo-btn" style="background: #ec4899;" onclick="openPromoModal()">➕ Créer un Code</button>
+                <button class="promo-btn" style="background: #06b6d4;" onclick="loadPromoList()">📋 Liste des Codes</button>
+                <button class="promo-btn" style="background: #f97316;" onclick="createLaunchPromos()">🚀 Codes Lancement (AUTO)</button>
+            </div>
+        </div>
+        
+        <!-- MESSAGES -->
+        <div class="card">
+            <h2>💬 Messages Reçus</h2>
+            <p style="color: #94a3b8; margin-bottom: 15px;">Consultez les messages de contact</p>
+            <button onclick="loadMessages()" class="plan-btn" style="background: #06b6d4; padding: 10px 20px;">📨 Voir les Messages</button>
+        </div>
+        
+        <!-- EBOOKS -->
+        <div class="card">
+            <h2>📚 Gestion des Ebooks</h2>
+            <p style="color: #94a3b8; margin-bottom: 15px;">Gérer les ebooks disponibles</p>
+            <button onclick="window.location.href=\'/admin/ebooks\'" class="plan-btn" style="background: #8b5cf6; padding: 10px 20px;">📖 Gérer Ebooks</button>
+        </div>
+        
+        <!-- LISTE DES UTILISATEURS -->
         <div class="card">
             <h2>👥 Utilisateurs ({len(users)})</h2>
             <table>
@@ -4471,6 +4561,7 @@ async def admin_panel():
             </table>
         </div>
         
+        <!-- CHANGER MOT DE PASSE -->
         <div class="card">
             <h2>🔑 Changer mon mot de passe</h2>
             <form id="changePasswordForm" class="form-inline">
@@ -4542,7 +4633,11 @@ async def admin_panel():
     }}
     
     function managePlanAccess(plan) {{
-        alert(`Gérer l'accès pour le plan: ${{plan}}`);
+        alert(`Gérer l\'accès pour le plan: ${{plan}}`);
+    }}
+    
+    function loadMessages() {{
+        alert('Charger les messages');
     }}
     
     // Form submission

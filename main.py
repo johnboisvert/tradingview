@@ -4376,8 +4376,8 @@ async def admin_panel():
         else:
             created_date = user[2].strftime('%Y-%m-%d')
         
-        # Échapper les guillemets simples pour JavaScript
-        escaped_username = user[0].replace("'", "\\'")
+        # Utiliser le username directement - pas de guillemets dedans normalement
+        username_for_onclick = user[0]
         
         users_html += f"""
         <tr>
@@ -4385,7 +4385,7 @@ async def admin_panel():
             <td><span class="badge badge-{user[1]}">{user[1].upper()}</span></td>
             <td>{created_date}</td>
             <td>
-                <button class="btn-danger btn-sm" onclick="deleteUser('{escaped_username}')">🗑️ Supprimer</button>
+                <button class="btn-danger btn-sm" onclick="deleteUser('{username_for_onclick}')">🗑️ Supprimer</button>
             </td>
         </tr>
         """
@@ -23634,15 +23634,15 @@ async def admin_dashboard(request: Request):
         role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
         plan_badge = f'<span class="badge badge-premium">{plan}</span>'
         
-        # Construire les boutons sans f-string pour éviter les problèmes d'escaping
-        escaped_username = username.replace('"', '&quot;').replace("'", "&#39;")
+        # Construire les boutons sans backslashes
+        escaped_username = username.replace('"', '&quot;')
         
-        edit_button = '<button onclick="editUser(\'' + escaped_username + '\')" class="btn btn-edit">✏️ Modifier</button>'
-        perm_button = '<button onclick="managePermissions(\'' + escaped_username + '\')" class="btn btn-permissions">🔐 Permissions</button>'
+        edit_button = '<button onclick="editUser(' + "'" + escaped_username + "'" + ')" class="btn btn-edit">✏️ Modifier</button>'
+        perm_button = '<button onclick="managePermissions(' + "'" + escaped_username + "'" + ')" class="btn btn-permissions">🔐 Permissions</button>'
         
         delete_button = ""
         if username != "admin":
-            delete_button = '<button onclick="deleteUser(\'' + escaped_username + '\')" class="btn btn-danger">🗑️ Supprimer</button>'
+            delete_button = '<button onclick="deleteUser(' + "'" + escaped_username + "'" + ')" class="btn btn-danger">🗑️ Supprimer</button>'
         
         users_html += f"""
         <tr>

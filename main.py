@@ -3053,7 +3053,15 @@ def get_data_directory():
     
     # Option 2: Railway Volume monté sur /data
     if os.path.exists("/data"):
-        return "/data"
+        # ⚠️ /data peut exister mais être en lecture seule selon l'hébergeur.
+        try:
+            test_path = "/data/.write_test"
+            with open(test_path, "w", encoding="utf-8") as _f:
+                _f.write("ok")
+            os.remove(test_path)
+            return "/data"
+        except Exception as _e:
+            print(f"⚠️ /data présent mais non inscriptible ({_e}). Fallback vers /tmp")
     
     # Option 3: Essayer de créer /data si possible
     try:
@@ -6174,21 +6182,33 @@ async def send_telegram_advanced(trade: TradeWebhook):
         timeframe = trade.tf if trade.tf else "15m"
         leverage_text = trade.leverage if trade.leverage else "10x"
         
+        # --- Safe formatting (évite crash si None) ---
+        
+        entry_txt = f"{entry_txt}" if trade.entry is not None else "N/A"
+        
+        sl_txt    = f"{sl_txt}" if trade.sl is not None else "N/A"
+        
+        tp1_txt   = f"${trade.tp1:.4f}" if trade.tp1 is not None else None
+        
+        tp2_txt   = f"${trade.tp2:.4f}" if trade.tp2 is not None else None
+        
+        tp3_txt   = f"${trade.tp3:.4f}" if trade.tp3 is not None else None
+        
         msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}
 ⏰ Heure : {heure}
 🎯 Direction : <b>{trade.side}</b> {direction_emoji}
 
-<b>ENTRY:</b> ${trade.entry:.4f}{rr_text}
-❌ <b>Stop-Loss:</b> ${trade.sl:.4f}
+<b>ENTRY:</b> {entry_txt}{rr_text}
+❌ <b>Stop-Loss:</b> {sl_txt}
 💡 <b>Leverage:</b> {leverage_text} Isolée
 """
         
         if trade.tp1:
-            msg += f"✅ <b>Target 1:</b> ${trade.tp1:.4f}\n"
+            msg += f"✅ <b>Target 1:</b> {tp1_txt}\n"
         if trade.tp2:
-            msg += f"✅ <b>Target 2:</b> ${trade.tp2:.4f}\n"
+            msg += f"✅ <b>Target 2:</b> {tp2_txt}\n"
         if trade.tp3:
-            msg += f"✅ <b>Target 3:</b> ${trade.tp3:.4f}\n"
+            msg += f"✅ <b>Target 3:</b> {tp3_txt}\n"
         
         msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
@@ -6247,7 +6267,7 @@ async def send_telegram_advanced(trade: TradeWebhook):
                 if response.status_code == 200:
                     last_telegram_message_time = time.time()
                     print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
-                    print(f"   Entry: ${trade.entry:.4f} | SL: ${trade.sl:.4f}")
+                    print(f"   Entry: {entry_txt} | SL: {sl_txt}")
                     print(f"   Confiance IA: {confidence_score}%")
                     print(f"   Heure: {heure}")
                     break
@@ -6295,39 +6315,39 @@ async def webhook(trade: TradeWebhook):
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
     try:
-        # --- Normalisation / fallback pour TradingView ---
-        # Si l'indicateur ne fournit pas la direction, on la déduit via Entry/SL
-        if trade.side is None and trade.entry is not None and trade.sl is not None:
-            trade.side = "LONG" if trade.sl < trade.entry else "SHORT"
-
-        # Si TP manquants, on les calcule à partir de la distance Entry↔SL (R)
-        # (valeurs par défaut: TP1=2.5R, TP2=5.0R, TP3=8.0R)
-        if trade.entry is not None and trade.sl is not None:
-            _risk = abs(trade.entry - trade.sl)
-            if _risk and _risk > 0:
-                if trade.side == "LONG":
-                    trade.tp1 = trade.tp1 if trade.tp1 is not None else trade.entry + (_risk * 2.5)
-                    trade.tp2 = trade.tp2 if trade.tp2 is not None else trade.entry + (_risk * 5.0)
-                    trade.tp3 = trade.tp3 if trade.tp3 is not None else trade.entry + (_risk * 8.0)
-                elif trade.side == "SHORT":
-                    trade.tp1 = trade.tp1 if trade.tp1 is not None else trade.entry - (_risk * 2.5)
-                    trade.tp2 = trade.tp2 if trade.tp2 is not None else trade.entry - (_risk * 5.0)
-                    trade.tp3 = trade.tp3 if trade.tp3 is not None else trade.entry - (_risk * 8.0)
-
-        def _fmt_money(v):
-            return "null" if v is None else f"${v:.6f}"
-
         print(f"\n{'='*60}")
         print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: {_fmt_money(trade.entry)}")
-        print(f"   SL: {_fmt_money(trade.sl)} | TP1: {_fmt_money(trade.tp1)} | TP2: {_fmt_money(trade.tp2)} | TP3: {_fmt_money(trade.tp3)}")
+        print(f"   Entry: {trade.entry}")
+        print(f"   SL: {trade.sl} | TP1: {trade.tp1}")
         print(f"{'='*60}\n")
         
         symbol = trade.symbol
         new_side = trade.side
+
+        # ✅ Validation minimale: ne pas créer de trade incomplet
+        if not symbol:
+            print("⚠️ Webhook ignoré: symbol manquant")
+            return {"status": "ignored", "reason": "missing_symbol"}
+        if trade.entry is None or trade.sl is None:
+            print("⚠️ Webhook ignoré: entry/sl manquants (souvent quand l'alerte n'envoie pas les bons plot_x)")
+            return {"status": "ignored", "reason": "missing_entry_or_sl"}
+
+        # 🧭 Si l'indicateur n'envoie pas side, on l'infère de SL vs Entry
+        if not new_side:
+            try:
+                if float(trade.sl) < float(trade.entry):
+                    new_side = "LONG"
+                elif float(trade.sl) > float(trade.entry):
+                    new_side = "SHORT"
+            except Exception:
+                new_side = None
+        trade.side = new_side
+        if not new_side:
+            print("⚠️ Webhook ignoré: impossible de déterminer LONG/SHORT")
+            return {"status": "ignored", "reason": "missing_side"}
         
         # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
         inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'

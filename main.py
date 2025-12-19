@@ -23831,36 +23831,7 @@ async def admin_dashboard(request: Request):
             
             
             
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border: 2px solid #8b5cf6; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #6d28d9; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">🤖</span>
-                    Automation Engine
-                </h2>
-                <p style="color: #5b21b6; margin-bottom: 20px; font-weight: 600;">
-                    ⚡ Robot marketing 24/7 qui travaille pour toi
-                </p>
-                
-                <!-- Règles Actives -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="color: #333; margin: 0;">⚙️ Règles d'Automation</h3>
-                        <button onclick="openCreateRuleModal()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                            ➕ Créer Règle
-                        </button>
-                    </div>
-                    <div id="automationRules">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Performance Globale -->
-                <div style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Performance Globale</h3>
-                    <div id="automationPerformance">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
+            
             
             <!-- SECTION GESTION DES CODES PROMO -->
             <div class="users-section" style="margin-bottom: 30px;">
@@ -26462,7 +26433,7 @@ async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
 
 @app.get("/admin/api/automation-engine")
 async def admin_automation_engine(session_token: Optional[str] = Cookie(None)):
-    """API pour Automation Engine - Règles actives, performance"""
+
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)

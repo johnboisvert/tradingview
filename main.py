@@ -6295,13 +6295,35 @@ async def webhook(trade: TradeWebhook):
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
     try:
+        # --- Normalisation / fallback pour TradingView ---
+        # Si l'indicateur ne fournit pas la direction, on la déduit via Entry/SL
+        if trade.side is None and trade.entry is not None and trade.sl is not None:
+            trade.side = "LONG" if trade.sl < trade.entry else "SHORT"
+
+        # Si TP manquants, on les calcule à partir de la distance Entry↔SL (R)
+        # (valeurs par défaut: TP1=2.5R, TP2=5.0R, TP3=8.0R)
+        if trade.entry is not None and trade.sl is not None:
+            _risk = abs(trade.entry - trade.sl)
+            if _risk and _risk > 0:
+                if trade.side == "LONG":
+                    trade.tp1 = trade.tp1 if trade.tp1 is not None else trade.entry + (_risk * 2.5)
+                    trade.tp2 = trade.tp2 if trade.tp2 is not None else trade.entry + (_risk * 5.0)
+                    trade.tp3 = trade.tp3 if trade.tp3 is not None else trade.entry + (_risk * 8.0)
+                elif trade.side == "SHORT":
+                    trade.tp1 = trade.tp1 if trade.tp1 is not None else trade.entry - (_risk * 2.5)
+                    trade.tp2 = trade.tp2 if trade.tp2 is not None else trade.entry - (_risk * 5.0)
+                    trade.tp3 = trade.tp3 if trade.tp3 is not None else trade.entry - (_risk * 8.0)
+
+        def _fmt_money(v):
+            return "null" if v is None else f"${v:.6f}"
+
         print(f"\n{'='*60}")
         print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: ${trade.entry:.6f}")
-        print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
+        print(f"   Entry: {_fmt_money(trade.entry)}")
+        print(f"   SL: {_fmt_money(trade.sl)} | TP1: {_fmt_money(trade.tp1)} | TP2: {_fmt_money(trade.tp2)} | TP3: {_fmt_money(trade.tp3)}")
         print(f"{'='*60}\n")
         
         symbol = trade.symbol

@@ -11591,7 +11591,7 @@ async def news_page():
             'nft': '🎨', 
             'regulation': '⚖️', 
             'market': '📊', 
-            'trending': '🔥' 
+            'trending': '[FIRE]' 
         };
         
         function detectCategory(title, desc) {
@@ -15029,7 +15029,7 @@ async def bullrun_page():
                 const icons = {
                     'bullish_btc': '🟠',
                     'bullish_alt': '🌈',
-                    'warning': '⚠️',
+                    'warning': '[WARN]',
                     'opportunity': '💎',
                     'altcoin_season': '🚀',
                     'neutral': 'ℹ️'
@@ -21675,7 +21675,7 @@ async function loadWatchlist() {{
     data.watchlist.forEach(item => {{
         const date = new Date(item.created_at).toLocaleString('fr-FR');
         const target = item.target_price ? '$' + item.target_price.toLocaleString() : '-';
-        const alertIcon = item.alert_triggered ? '✅' : '';
+        const alertIcon = item.alert_triggered ? '[OK]' : '';
         
         html += `<tr>
             <td><strong>${{item.symbol}}</strong> ${{alertIcon}}</td>
@@ -24848,8 +24848,8 @@ async def admin_dashboard(request: Request):
             
             insights.forEach(insight => {{
                 const iconMap = {{
-                    'warning': '⚠️',
-                    'success': '✅',
+                    'warning': '[WARN]',
+                    'success': '[OK]',
                     'info': '💡'
                 }};
                 const colorMap = {{
@@ -25047,7 +25047,7 @@ async def admin_dashboard(request: Request):
             
             promos.forEach(promo => {{
                 const roiColor = promo.roi > 200 ? '#10b981' : promo.roi > 100 ? '#f59e0b' : '#ef4444';
-                const roiIcon = promo.roi > 200 ? '🔥' : promo.roi > 100 ? '✅' : '⚠️';
+                const roiIcon = promo.roi > 200 ? '[FIRE]' : promo.roi > 100 ? '[OK]' : '[WARN]';
                 
                 html += '<tr style="border-bottom: 1px solid #e5e7eb;">' +
                     '<td style="padding: 12px; font-weight: 600;">' + promo.code + '</td>' +
@@ -37527,7 +37527,7 @@ function displayNarratives(narrativesData) {
 function getStatus(mentions) {
     if (mentions === 0) return {emoji: '😴', text: 'QUIET', class: 'quiet'};
     if (mentions < 5) return {emoji: '🟢', text: 'EMERGING', class: 'emerging'};
-    if (mentions < 15) return {emoji: '🔥', text: 'HOT', class: 'hot'};
+    if (mentions < 15) return {emoji: '[FIRE]', text: 'HOT', class: 'hot'};
     return {emoji: '🚀', text: 'TRENDING', class: 'trending'};
 }
 
@@ -39315,7 +39315,7 @@ async function analyzeContract() {
 function displayResults(data) {
     const resultsDiv = document.getElementById('results');
     const scoreClass = data.score >= 70 ? 'score-high' : (data.score >= 40 ? 'score-medium' : 'score-low');
-    const scoreEmoji = data.score >= 70 ? '✅' : (data.score >= 40 ? '⚠️' : '🚨');
+    const scoreEmoji = data.score >= 70 ? '[OK]' : (data.score >= 40 ? '[WARN]' : '🚨');
     
     let html = `
         <div class="result-card">
@@ -39389,7 +39389,7 @@ function displayResults(data) {
         
         data.flags.forEach(flag => {
             const flagClass = flag.severity === 'critical' ? 'flag-critical' : (flag.severity === 'warning' ? 'flag-warning' : 'flag-safe');
-            const flagIcon = flag.severity === 'critical' ? '🚨' : (flag.severity === 'warning' ? '⚠️' : '✅');
+            const flagIcon = flag.severity === 'critical' ? '🚨' : (flag.severity === 'warning' ? '[WARN]' : '[OK]');
             
             html += `
                 <div class="${flagClass} flag-item">

@@ -23480,7 +23480,7 @@ async def admin_dashboard(request: Request):
         </tr>
         """
     
-    return HTMLResponse(f"""
+    return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -23746,7 +23746,6 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
-    """ + SIDEBAR + f"""
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>
@@ -24635,7 +24634,7 @@ async def admin_dashboard(request: Request):
                         '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
                     '</div>' +
                     '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-                        '<button onclick="extendSubscription(' + "'" + '" + user.username + "'" + ', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
+                        '<button onclick="extendSubscription(" + "'" + "" + user.username + "'" + ", 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
                         '<button onclick="sendRenewalEmail(\'' + user.username + '\')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
                         '<button onclick="offerDiscount(\'' + user.username + '\', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
                     '</div>' +
@@ -24712,7 +24711,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm("Prolonger l'abonnement de " + username + " de " + days + " jours?")) return;
+            if (!confirm("Prolonger l'abonnement de " + username + ' de ' + days + ' jours?')) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{
@@ -41685,7 +41684,7 @@ async def mon_parrain_page(request: Request):
     username = user_data.get("username", "user")
     ref_code = f"REF{username[:6].upper()}"
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Parrainage</title></head><body style="margin-left: 300px; padding: 40px;"><h1>🎁 Code: {ref_code}</h1></body></html>""")
+    <html><head><meta charset="UTF-8"><title>Parrainage</title></head><body style="margin-left: 300px; padding: 40px;"><h1>Code: {ref_code}</h1></body></html>""")
 
 
 # ============================================================================

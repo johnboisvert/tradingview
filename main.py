@@ -154,7 +154,6 @@ if COINBASE_AVAILABLE and COINBASE_API_KEY and Client:
 
 def create_coinbase_payment(plan, email, client, amount=None):
     """Crée un paiement Coinbase Commerce avec montant personnalisé
-    
     NOTE: Les cryptos acceptées (BTC, ETH, USDT, etc.) sont configurées 
     dans votre dashboard Coinbase Commerce, pas dans l'API.
     Allez sur: https://commerce.coinbase.com/dashboard/settings
@@ -162,7 +161,6 @@ def create_coinbase_payment(plan, email, client, amount=None):
     try:
         if not client:
             return None, "Coinbase client non initialisé"
-        
         # Normaliser le nom du plan
         plan_mapping = {
             'monthly': '1_month',
@@ -174,9 +172,7 @@ def create_coinbase_payment(plan, email, client, amount=None):
             'yearly': '1_year',
             '1_year': '1_year'
         }
-        
         normalized_plan = plan_mapping.get(plan.lower(), '1_month')
-        
         # Prix par plan
         plan_prices = {
             '1_month': {'amount': 29.99, 'name': 'Premium 1 Mois', 'duration': '1 mois'},
@@ -184,15 +180,12 @@ def create_coinbase_payment(plan, email, client, amount=None):
             '6_months': {'amount': 134.94, 'name': 'Pro 6 Mois', 'duration': '6 mois'},
             '1_year': {'amount': 239.88, 'name': 'Elite 1 An', 'duration': '1 an'}
         }
-        
         plan_info = plan_prices.get(normalized_plan, plan_prices['1_month'])
-        
         # Si amount fourni (avec code promo), l'utiliser
         if amount is not None:
             final_amount = amount
         else:
             final_amount = plan_info['amount']
-        
         # Créer la charge Coinbase
         # NOTE: Les cryptos acceptées sont configurées au niveau du compte Coinbase
         # Par défaut: BTC, ETH, USDC, USDT, BCH, DAI, DOGE, LTC
@@ -211,13 +204,11 @@ def create_coinbase_payment(plan, email, client, amount=None):
                 'duration': plan_info['duration']
             }
         }
-        
         print(f"🔵 Création charge Coinbase: {plan} -> {normalized_plan} = ${final_amount}")
         print(f"💰 Cryptos acceptées: BTC, ETH, USDT, USDC (selon config Coinbase Commerce)")
         charge = client.charge.create(**charge_info)
         print(f"✅ Charge créée: {charge.id} - URL: {charge.hosted_url}")
         return charge, None
-        
     except Exception as e:
         print(f"❌ Erreur Coinbase: {e}")
         return None, str(e)
@@ -227,7 +218,6 @@ def create_stripe_checkout_session(plan, email, success_url, cancel_url, amount=
     try:
         if not STRIPE_AVAILABLE or not stripe.api_key:
             return None, "Stripe non configuré"
-        
         # Prix par plan (en cents)
         plan_prices = {
             'monthly': 2999,
@@ -236,13 +226,11 @@ def create_stripe_checkout_session(plan, email, success_url, cancel_url, amount=
             '6_months': 13494,
             '1_year': 23988
         }
-        
         # Si amount fourni (avec code promo), l'utiliser
         if amount is not None:
             price = int(amount * 100)  # Convertir en cents
         else:
             price = plan_prices.get(plan, 2999)
-        
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
@@ -261,9 +249,7 @@ def create_stripe_checkout_session(plan, email, success_url, cancel_url, amount=
             customer_email=email,
             metadata={'plan': plan, 'email': email}
         )
-        
         return session.url, None
-        
     except Exception as e:
         print(f"❌ Erreur Stripe: {e}")
         return None, str(e)
@@ -322,11 +308,9 @@ def create_payment_record(charge_id, user_id, email, amount, currency, descripti
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        
         crypto_address = ""
         crypto_amount = 0
         crypto_currency = ""
-        
         # Extraire les infos crypto de charge_data
         if "address" in charge_data:
             crypto_address = charge_data["address"]
@@ -335,7 +319,6 @@ def create_payment_record(charge_id, user_id, email, amount, currency, descripti
                 crypto_amount = float(crypto["amount"])
                 crypto_currency = crypto["currency"]
                 break
-        
         if DB_CONFIG["type"] == "postgres":
             c.execute("""INSERT INTO payments 
                 (charge_id, user_id, email, amount, currency, description, status, crypto_address, 
@@ -352,7 +335,6 @@ def create_payment_record(charge_id, user_id, email, amount, currency, descripti
                 (charge_id, user_id, email, amount, currency, description, "pending", 
                  crypto_address, crypto_amount, crypto_currency, 
                  datetime.now() + timedelta(hours=1)))
-        
         conn.commit()
         conn.close()
         return charge_id
@@ -365,18 +347,15 @@ def update_payment_status(charge_id, status, paid_at=None):
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        
         updates = {"status": status, "updated_at": datetime.now()}
         if paid_at:
             updates["paid_at"] = paid_at
-        
         if DB_CONFIG["type"] == "postgres":
             c.execute("""UPDATE payments SET status=%s, updated_at=%s, paid_at=%s WHERE charge_id=%s""",
                 (status, datetime.now(), paid_at, charge_id))
         else:
             c.execute("""UPDATE payments SET status=?, updated_at=?, paid_at=? WHERE charge_id=?""",
                 (status, datetime.now(), paid_at, charge_id))
-        
         conn.commit()
         conn.close()
         return True
@@ -393,12 +372,10 @@ def get_payment_by_charge_id(charge_id):
         else:
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
-        
         c.execute("SELECT * FROM payments WHERE charge_id=%s" if DB_CONFIG["type"] == "postgres" 
                   else "SELECT * FROM payments WHERE charge_id=?", (charge_id,))
         row = c.fetchone()
         conn.close()
-        
         return dict(row) if row else None
     except Exception as e:
         print(f"❌ Get payment: {e}")
@@ -702,7 +679,6 @@ import math
 def predict_price_ai(crypto_data):
     """
     Prédiction de prix basée sur analyse technique + fondamentaux
-    
     Facteurs:
     1. Momentum actuel (trend)
     2. Market cap (potentiel de croissance)
@@ -710,17 +686,14 @@ def predict_price_ai(crypto_data):
     4. Volatilité (range de prix)
     5. Support/Résistance technique
     """
-    
     current_price = crypto_data.get('current_price', 0)
     mcap = crypto_data.get('market_cap', 0)
     volume = crypto_data.get('total_volume', 0)
     change_24h = crypto_data.get('price_change_percentage_24h', 0)
     change_7d = crypto_data.get('price_change_percentage_7d_in_currency', change_24h * 3)
     rank = crypto_data.get('market_cap_rank', 100)
-    
     # Calculs de base
     vol_ratio = (volume / mcap * 100) if mcap > 0 else 0
-    
     # 1. MOMENTUM FACTOR (0.5 - 2.0)
     momentum_factor = 1.0
     if change_24h > 10:
@@ -737,7 +710,6 @@ def predict_price_ai(crypto_data):
         momentum_factor = 0.85
     else:
         momentum_factor = 0.7
-    
     # 2. GROWTH POTENTIAL (1.0 - 5.0)
     growth_potential = 1.0
     if mcap < 500000000:  # < $500M
@@ -754,7 +726,6 @@ def predict_price_ai(crypto_data):
         growth_potential = 1.3
     else:
         growth_potential = 1.1
-    
     # 3. VOLUME FACTOR (0.8 - 1.5)
     volume_factor = 1.0
     if vol_ratio > 20:
@@ -767,7 +738,6 @@ def predict_price_ai(crypto_data):
         volume_factor = 1.0
     else:
         volume_factor = 0.9
-    
     # 4. RANK FACTOR (0.9 - 1.3)
     rank_factor = 1.0
     if rank <= 10:
@@ -780,10 +750,8 @@ def predict_price_ai(crypto_data):
         rank_factor = 1.0
     else:
         rank_factor = 0.95
-    
     # PRÉDICTIONS PAR TIMEFRAME
     predictions = {}
-    
     # Ajustement basé sur market cap (croissance attendue realistic)
     base_growth_1y = 1.0
     if mcap > 500000000000:  # > $500B (BTC)
@@ -798,7 +766,6 @@ def predict_price_ai(crypto_data):
         base_growth_1y = 2.00  # +100%
     else:
         base_growth_1y = 3.00  # +200% (small caps)
-    
     # Ajuster selon momentum
     if momentum_factor > 1.5:
         base_growth_1y *= 1.3
@@ -806,7 +773,6 @@ def predict_price_ai(crypto_data):
         base_growth_1y *= 1.15
     elif momentum_factor < 0.9:
         base_growth_1y *= 0.85
-    
     # 1 mois (très conservateur, +/-5-10%)
     change_1m = 0.03 + (momentum_factor - 1.0) * 0.05
     price_1m_low = current_price * (1 + change_1m - 0.05)
@@ -816,7 +782,6 @@ def predict_price_ai(crypto_data):
         'high': round(price_1m_high, 2 if price_1m_high > 1 else 6),
         'target': round((price_1m_low + price_1m_high) / 2, 2 if current_price > 1 else 6)
     }
-    
     # 3 mois (25% du growth annuel)
     growth_3m = ((base_growth_1y - 1.0) * 0.25) + 1.0
     price_3m_low = current_price * growth_3m * 0.90
@@ -826,7 +791,6 @@ def predict_price_ai(crypto_data):
         'high': round(price_3m_high, 2 if price_3m_high > 1 else 6),
         'target': round((price_3m_low + price_3m_high) / 2, 2 if current_price > 1 else 6)
     }
-    
     # 6 mois (50% du growth annuel)
     growth_6m = ((base_growth_1y - 1.0) * 0.50) + 1.0
     price_6m_low = current_price * growth_6m * 0.85
@@ -836,7 +800,6 @@ def predict_price_ai(crypto_data):
         'high': round(price_6m_high, 2 if price_6m_high > 1 else 6),
         'target': round((price_6m_low + price_6m_high) / 2, 2 if current_price > 1 else 6)
     }
-    
     # 1 an (full growth potential)
     price_1y_low = current_price * base_growth_1y * 0.80
     price_1y_high = current_price * base_growth_1y * 1.30
@@ -845,7 +808,6 @@ def predict_price_ai(crypto_data):
         'high': round(price_1y_high, 2 if price_1y_high > 1 else 6),
         'target': round((price_1y_low + price_1y_high) / 2, 2 if current_price > 1 else 6)
     }
-    
     # RECOMMANDATION
     if growth_potential >= 3.0 and momentum_factor >= 1.2:
         recommendation = "🔥 ACHAT FORT"
@@ -862,7 +824,6 @@ def predict_price_ai(crypto_data):
     else:
         recommendation = "💎 ACCUMULATION"
         confidence = "70%"
-    
     return {
         'current_price': current_price,
         'predictions': predictions,
@@ -1113,10 +1074,8 @@ def init_academy_db():
             print(f"✅ Dossier créé: {db_dir}")
         except Exception as e:
             print(f"⚠️ Impossible de créer {db_dir}: {e}")
-    
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
     # Table: Progression des leçons
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_lessons (
@@ -1129,7 +1088,6 @@ def init_academy_db():
             UNIQUE(username, lesson_id)
         )
     """)
-    
     # Table: Badges débloqués
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_badges (
@@ -1140,7 +1098,6 @@ def init_academy_db():
             UNIQUE(username, badge_id)
         )
     """)
-    
     # Table: XP et niveau
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_progress (
@@ -1153,7 +1110,6 @@ def init_academy_db():
             quiz_perfect_count INTEGER DEFAULT 0
         )
     """)
-    
     # Table: Résultats des quiz
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS quiz_results (
@@ -1165,7 +1121,6 @@ def init_academy_db():
             completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
     conn.commit()
     conn.close()
     print("✅ Base de données Academy initialisée")
@@ -1178,7 +1133,6 @@ def get_user_progress(username: str) -> Dict:
     """Récupère la progression complète d'un utilisateur"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
     # Progression générale
     cursor.execute("""
         SELECT total_xp, level, streak_days, last_activity, 
@@ -1186,9 +1140,7 @@ def get_user_progress(username: str) -> Dict:
         FROM user_progress 
         WHERE username = ?
     """, (username,))
-    
     result = cursor.fetchone()
-    
     if not result:
         # Créer un nouvel utilisateur
         cursor.execute("""
@@ -1197,25 +1149,20 @@ def get_user_progress(username: str) -> Dict:
         """, (username,))
         conn.commit()
         result = (0, 1, 0, None, 0, 0)
-    
     total_xp, level, streak_days, last_activity, lessons_completed, quiz_perfect = result
-    
     # Compter les leçons complétées
     cursor.execute("""
         SELECT COUNT(*) FROM user_lessons 
         WHERE username = ? AND completed = 1
     """, (username,))
     lessons_count = cursor.fetchone()[0]
-    
     # Compter les badges
     cursor.execute("""
         SELECT COUNT(*) FROM user_badges 
         WHERE username = ?
     """, (username,))
     badges_count = cursor.fetchone()[0]
-    
     conn.close()
-    
     return {
         "total_xp": total_xp,
         "level": level,
@@ -1231,19 +1178,15 @@ def complete_lesson(username: str, lesson_id: str, quiz_score: int = 0, quiz_tot
     """Marque une leçon comme complétée et met à jour la progression"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
     # Vérifier si déjà complétée
     cursor.execute("""
         SELECT completed FROM user_lessons 
         WHERE username = ? AND lesson_id = ?
     """, (username, lesson_id))
-    
     existing = cursor.fetchone()
-    
     if existing and existing[0]:
         conn.close()
         return {"already_completed": True}
-    
     # Marquer comme complétée
     if existing:
         cursor.execute("""
@@ -1256,19 +1199,16 @@ def complete_lesson(username: str, lesson_id: str, quiz_score: int = 0, quiz_tot
             INSERT INTO user_lessons (username, lesson_id, completed, score, completed_at)
             VALUES (?, ?, 1, ?, ?)
         """, (username, lesson_id, quiz_score, datetime.now()))
-    
     # Enregistrer le résultat du quiz
     if quiz_total > 0:
         cursor.execute("""
             INSERT INTO quiz_results (username, lesson_id, score, total_questions)
             VALUES (?, ?, ?, ?)
         """, (username, lesson_id, quiz_score, quiz_total))
-    
     # Calculer l'XP gagné (100 XP par leçon + bonus quiz)
     xp_earned = 100
     if quiz_score == quiz_total and quiz_total > 0:
         xp_earned += 50  # Bonus quiz parfait
-    
     # Mettre à jour la progression
     cursor.execute("""
         UPDATE user_progress 
@@ -1278,25 +1218,19 @@ def complete_lesson(username: str, lesson_id: str, quiz_score: int = 0, quiz_tot
             last_activity = ?
         WHERE username = ?
     """, (xp_earned, 1 if quiz_score == quiz_total else 0, datetime.now().date(), username))
-    
     # Mettre à jour le niveau
     cursor.execute("SELECT total_xp FROM user_progress WHERE username = ?", (username,))
     total_xp = cursor.fetchone()[0]
     new_level = calculate_level(total_xp)
-    
     cursor.execute("""
         UPDATE user_progress SET level = ? WHERE username = ?
     """, (new_level, username))
-    
     # Vérifier les badges à débloquer
     check_and_unlock_badges(cursor, username)
-    
     # Mettre à jour le streak
     update_streak(cursor, username)
-    
     conn.commit()
     conn.close()
-    
     return {
         "xp_earned": xp_earned,
         "new_level": new_level,
@@ -1328,18 +1262,14 @@ def update_streak(cursor, username: str):
         SELECT last_activity, streak_days FROM user_progress 
         WHERE username = ?
     """, (username,))
-    
     result = cursor.fetchone()
     if not result:
         return
-    
     last_activity, current_streak = result
     today = datetime.now().date()
-    
     if last_activity:
         last_date = datetime.strptime(last_activity, "%Y-%m-%d").date()
         days_diff = (today - last_date).days
-        
         if days_diff == 0:
             # Même jour, pas de changement
             return
@@ -1351,7 +1281,6 @@ def update_streak(cursor, username: str):
             current_streak = 1
     else:
         current_streak = 1
-    
     cursor.execute("""
         UPDATE user_progress 
         SET streak_days = ?, last_activity = ?
@@ -1360,37 +1289,28 @@ def update_streak(cursor, username: str):
 
 def check_and_unlock_badges(cursor, username: str):
     """Vérifie et débloque les badges automatiquement"""
-    
     # Récupérer les stats
     cursor.execute("""
         SELECT total_lessons_completed, quiz_perfect_count, streak_days
         FROM user_progress WHERE username = ?
     """, (username,))
-    
     stats = cursor.fetchone()
     if not stats:
         return
-    
     lessons_completed, quiz_perfect, streak = stats
-    
     badges_to_unlock = []
-    
     # Badge: Première leçon
     if lessons_completed >= 1:
         badges_to_unlock.append("first_lesson")
-    
     # Badge: 5 leçons en 24h (simplifié: 5 leçons complétées)
     if lessons_completed >= 5:
         badges_to_unlock.append("speed_learner")
-    
     # Badge: Quiz parfait (10 quiz parfaits)
     if quiz_perfect >= 10:
         badges_to_unlock.append("quiz_master")
-    
     # Badge: Streak de 7 jours
     if streak >= 7:
         badges_to_unlock.append("dedicated")
-    
     # Débloquer les badges
     for badge_id in badges_to_unlock:
         try:
@@ -1405,20 +1325,17 @@ def get_user_badges(username: str) -> List[Dict]:
     """Récupère tous les badges de l'utilisateur"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
     cursor.execute("""
         SELECT badge_id, unlocked_at FROM user_badges 
         WHERE username = ?
         ORDER BY unlocked_at DESC
     """, (username,))
-    
     badges = []
     for badge_id, unlocked_at in cursor.fetchall():
         badges.append({
             "badge_id": badge_id,
             "unlocked_at": unlocked_at
         })
-    
     conn.close()
     return badges
 
@@ -1426,16 +1343,13 @@ def get_lesson_status(username: str, lesson_id: str) -> Dict:
     """Récupère le statut d'une leçon spécifique"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
     cursor.execute("""
         SELECT completed, score, completed_at 
         FROM user_lessons 
         WHERE username = ? AND lesson_id = ?
     """, (username, lesson_id))
-    
     result = cursor.fetchone()
     conn.close()
-    
     if result:
         return {
             "completed": bool(result[0]),
@@ -1635,7 +1549,6 @@ LESSONS_DATA = {
             {"q": "Les décisions d'une DAO sont...", "options": ["Transparentes et automatiques", "Secrètes", "Lentes"], "correct": 0}
         ]
     },
-    
     # PARCOURS 2: TRADING 101 (18 leçons)
     "trading_1": {
         "id": "trading_1",
@@ -1817,7 +1730,6 @@ LESSONS_DATA = {
             {"q": "Avant de trader en réel, teste...", "options": ["En paper trading (fictif)", "Directement avec argent réel", "Rien"], "correct": 0}
         ]
     },
-    
     # PARCOURS 3: SÉCURITÉ CRYPTO (18 leçons)
     "securite_1": {
         "id": "securite_1",
@@ -2037,7 +1949,6 @@ def init_ebooks_table():
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        
         # Table ebooks
         if DB_CONFIG["type"] == "postgres":
             c.execute("""CREATE TABLE IF NOT EXISTS ebooks (
@@ -2063,7 +1974,6 @@ def init_ebooks_table():
                 active INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )""")
-        
         # Table contact_messages
         if DB_CONFIG["type"] == "postgres":
             c.execute("""CREATE TABLE IF NOT EXISTS contact_messages (
@@ -2087,7 +1997,6 @@ def init_ebooks_table():
                 status TEXT DEFAULT 'unread',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )""")
-        
         conn.commit()
         conn.close()
         print(f"✅ Tables ebooks et contact créées ({DB_CONFIG['type']})")
@@ -2101,18 +2010,14 @@ def get_user_from_request(request: Request):
     try:
         # ✅ CORRECTION: Utiliser session_token, pas user_id!
         session_token = request.cookies.get("session_token")
-        
         if not session_token:
             print("⚠️ get_user_from_request: Pas de session_token dans les cookies")
             return None
-        
         # ✅ CORRECTION: Utiliser get_user_from_token() qui existe déjà
         user = get_user_from_token(session_token)
-        
         if not user:
             print(f"⚠️ get_user_from_request: session_token trouvé mais utilisateur non trouvé")
             return None
-        
         # L'utilisateur peut être soit un dict, soit juste un username (ancien format)
         if isinstance(user, str):
             # Ancien format: juste le username
@@ -2126,27 +2031,21 @@ def get_user_from_request(request: Request):
         else:
             # Nouveau format: déjà un dict
             user_dict = user
-        
         # ✅ CORRECTION CRITIQUE: Vérifier le rôle admin
         # Le champ dans la DB peut être "role" ou "plan"
         role = user_dict.get("role", "")
         plan = user_dict.get("plan", "Free")
         username = user_dict.get("username", "")
-        
         # L'utilisateur est admin si:
         # 1. role == "admin" OU
         # 2. username == "admin"
         is_admin = (role == "admin" or username == "admin")
-        
         # Enrichir le dict avec les champs nécessaires
         user_dict["is_admin"] = is_admin
         user_dict["subscription_tier"] = plan
-        
         # Debug log
         print(f"🔍 get_user_from_request: user={username}, role={role}, is_admin={is_admin}")
-        
         return user_dict
-        
     except Exception as e:
         print(f"❌ get_user_from_request error: {e}")
         import traceback
@@ -2251,7 +2150,6 @@ LEGAL_DISCLAIMER_HTML = """
     <h3 style="margin: 0 0 15px 0; font-size: 22px; font-weight: 700;">⚠️ AVERTISSEMENT LÉGAL IMPORTANT</h3>
     <div style="font-size: 15px; line-height: 1.8;">
         <p style="margin: 10px 0;"><strong>Ce service ne constitue PAS un conseil financier, fiscal ou juridique.</strong></p>
-        
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
             <div>
                 ✋ <strong>Performances passées:</strong><br>
@@ -2278,7 +2176,6 @@ LEGAL_DISCLAIMER_HTML = """
                 Ce service est destiné aux personnes majeures et responsables.
             </div>
         </div>
-        
         <p style="margin: 20px 0 0 0; font-size: 13px; opacity: 0.9; text-align: center;">
             En utilisant ce service, vous reconnaissez avoir lu et compris ces avertissements.
         </p>
@@ -2321,47 +2218,37 @@ from starlette.responses import Response
 class PermissionMiddleware(BaseHTTPMiddleware):
     """
     Middleware qui vérifie automatiquement les permissions pour TOUTES les routes.
-    
     Routes PUBLIQUES (accessibles sans authentification):
     - /, /login, /register, /logout, /health, /api/*, /static/*
-    
     Routes avec PERMISSIONS PAR DÉFAUT (accès minimum):
     - /pricing-complete
     - Section ANALYSE DE MARCHÉ (8 pages)
-    
     Toutes les AUTRES routes = Vérification permission obligatoire
     """
-    
     async def dispatch(self, request, call_next):
         path = request.url.path
-        
         # ✅ Routes PUBLIQUES (pas d'authentification requise)
         public_paths = [
             "/", "/login", "/register", "/logout", "/health",
             "/manifest.json", "/favicon.ico", 
             "/tv-webhook"  # ← AJOUTÉ POUR WEBHOOKS TRADINGVIEW
         ]
-        
         # Chemins API et static sont toujours publics
         if (path in public_paths or 
             path.startswith("/api/") or 
             path.startswith("/static/") or
             path.startswith("/admin/")):  # Admin a sa propre protection
             return await call_next(request)
-        
         # ✅ Vérifier si l'utilisateur est connecté
         session_token = request.cookies.get("session_token")
         if not session_token:
             # Pas connecté → Rediriger vers login
             return RedirectResponse("/login", status_code=303)
-        
         user = get_user_from_token(session_token)
         if not user:
             # Token invalide → Rediriger vers login
             return RedirectResponse("/login", status_code=303)
-        
         username = user.get('username', '')
-        
         # ✅ Routes PROTÉGÉES (sauf celles du minimum)
         # Si la route n'est PAS dans DEFAULT_USER_PERMISSIONS, vérifier permission
         if path not in DEFAULT_USER_PERMISSIONS and path != "/mon-compte":
@@ -2464,7 +2351,6 @@ class PermissionMiddleware(BaseHTTPMiddleware):
                             Cette page fait partie de nos outils avancés réservés aux membres Premium.<br>
                             Débloquez l'accès complet dès maintenant!
                         </p>
-                        
                         <div class="features-list">
                             <div class="feature-item">16 Outils d'Intelligence Artificielle</div>
                             <div class="feature-item">Academy complète (22 modules)</div>
@@ -2472,24 +2358,20 @@ class PermissionMiddleware(BaseHTTPMiddleware):
                             <div class="feature-item">Tous les indicateurs de marché</div>
                             <div class="feature-item">Support prioritaire</div>
                         </div>
-                        
                         <div style="margin-top: 40px;">
                             <a href="/pricing-complete" class="upgrade-btn">
                                 🚀 Voir les Plans & Prix
                             </a>
                         </div>
-                        
                         <p style="color: #c7d2fe; font-size: 14px; margin-top: 30px;">
                             À partir de 9.99$/mois • Annulez à tout moment
                         </p>
-                        
                         <a href="/mon-compte" class="back-btn">← Retour à mon compte</a>
                     </div>
                 </body>
                 </html>
                 """
                 return Response(content=upgrade_page, status_code=403, media_type="text/html")
-        
         # ✅ Permission OK → Continuer normalement
         return await call_next(request)
 
@@ -2536,13 +2418,11 @@ body.sidebar-open{margin-left:280px}
 </style>
     <!-- SIDEBAR TOGGLE MOBILE -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-    
     <!-- SIDEBAR COMPLÈTE RÉORGANISÉE -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-title">🚀 CRYPTO IA</div>
         </div>
-        
         <!-- 📊 DASHBOARD & TRADING (8) -->
         <div class="menu-section">
             <div class="section-title">📊 DASHBOARD & TRADING</div>
@@ -2579,7 +2459,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">Backtesting</span>
             </a>
         </div>
-        
         <!-- 🤖 INTELLIGENCE ARTIFICIELLE (22) -->
         <div class="menu-section">
             <div class="section-title">🤖 INTELLIGENCE ARTIFICIELLE</div>
@@ -2678,7 +2557,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="badge">V5</span>
             </a>
         </div>
-        
         <!-- 📈 ANALYSE MARCHÉ (8) -->
         <div class="menu-section">
             <div class="section-title">📈 ANALYSE MARCHÉ</div>
@@ -2715,7 +2593,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">On-Chain Metrics</span>
             </a>
         </div>
-        
         <!-- 💼 PORTFOLIO & DEFI (3) -->
         <div class="menu-section">
             <div class="section-title">💼 PORTFOLIO & DEFI</div>
@@ -2732,7 +2609,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">Pépites Crypto</span>
             </a>
         </div>
-        
         <!-- 🎓 FORMATION (3) -->
         <div class="menu-section">
             <div class="section-title">🎓 FORMATION</div>
@@ -2751,7 +2627,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">Ma Progression</span>
             </a>
         </div>
-        
         <!-- 🛠️ OUTILS (4) -->
         <div class="menu-section">
             <div class="section-title">🛠️ OUTILS</div>
@@ -2772,7 +2647,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">Calendrier Économique</span>
             </a>
         </div>
-        
         <!-- 📰 CONTENU (2) -->
         <div class="menu-section">
             <div class="section-title">📰 CONTENU</div>
@@ -2793,7 +2667,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">Téléchargements</span>
             </a>
         </div>
-        
         <!-- 👤 COMPTE (4) -->
         <div class="menu-section">
             <div class="section-title">👤 COMPTE</div>
@@ -2819,7 +2692,6 @@ body.sidebar-open{margin-left:280px}
             </a>
         </div>
     </nav>
-    
     <script>
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('active');
@@ -2905,11 +2777,9 @@ NAV_MENU = """
 async def debug_files():
     import os
     files = os.listdir('/app')
-    
     # Vérifier si les modules existent
     subscription_exists = 'subscription_system.py' in files
     admin_exists = 'admin_pricing.py' in files
-    
     # Tester l'import
     import_test = {}
     try:
@@ -2917,13 +2787,11 @@ async def debug_files():
         import_test['subscription_system'] = '✅ Importable'
     except Exception as e:
         import_test['subscription_system'] = f'❌ {str(e)}'
-    
     try:
         import admin_pricing
         import_test['admin_pricing'] = '✅ Importable'
     except Exception as e:
         import_test['admin_pricing'] = f'❌ {str(e)}'
-    
     return {
         "files_in_app": files,
         "subscription_system_exists": subscription_exists,
@@ -2953,14 +2821,11 @@ app.add_middleware(
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     """Vérifier l'authentification sur toutes les routes sauf routes FREE et publiques"""
-    
     path = request.url.path
-    
     # 🔥 BYPASS FORCÉ POUR WEBHOOK - À TESTER
     if path == "/tv-webhook" or path.startswith("/tv-webhook"):
         print(f"🔥🔥🔥 WEBHOOK BYPASS FORCÉ - PASS DIRECT 🔥🔥🔥")
         return await call_next(request)
-    
     # ✅ ROUTES FREE - Accessibles SANS login (9 pages)
     free_routes = {
         "/",
@@ -2973,7 +2838,6 @@ async def auth_middleware(request: Request, call_next):
         "/convertisseur",
         "/calendrier"
     }
-    
     # Routes publiques (authentification, paiements, webhooks)
     public_routes = {
         "/login",
@@ -2984,7 +2848,6 @@ async def auth_middleware(request: Request, call_next):
         "/pricing-new",
         "/pricing-complete"
     }
-    
     # Routes qui commencent par ces préfixes
     public_prefixes = [
         "/tv-webhook",
@@ -3004,28 +2867,23 @@ async def auth_middleware(request: Request, call_next):
         "/admin/list-promos",
         "/admin/test-promo"
     ]
-    
     # Check exact match pour FREE et public
     if path in free_routes or path in public_routes:
         print(f"✅ FREE/PUBLIC ACCESS: {path}")
         return await call_next(request)
-    
     # Check prefixes
     if any(path.startswith(prefix) for prefix in public_prefixes):
         print(f"✅ PUBLIC PREFIX: {path}")
         return await call_next(request)
-    
     # Sinon, vérifier authentification
     session_token = request.cookies.get("session_token")
     user = get_user_from_token(session_token)
-    
     if not user:
         print(f"❌ NO AUTH: {path} → redirecting to /login")
         if request.url.path.startswith("/api/"):
             return Response(content="Non authentifié", status_code=401)
         else:
             return RedirectResponse(url="/login", status_code=303)
-    
     print(f"✅ AUTHENTICATED: {path} (user: {user.get('username')})")
     return await call_next(request)
 
@@ -3047,11 +2905,9 @@ def get_data_directory():
     env_data_dir = os.getenv("DATA_DIR")
     if env_data_dir and os.path.exists(env_data_dir):
         return env_data_dir
-    
     # Option 2: Railway Volume monté sur /data
     if os.path.exists("/data"):
         return "/data"
-    
     # Option 3: Essayer de créer /data si possible
     try:
         os.makedirs("/data", exist_ok=True)
@@ -3064,7 +2920,6 @@ def get_data_directory():
         return "/data"
     except (PermissionError, OSError):
         pass
-    
     # Fallback: /tmp (données non persistantes)
     print("⚠️  Utilisation de /tmp - Les données seront perdues au redémarrage!")
     print("   Pour persister les données, configure un Railway Volume sur /data")
@@ -3101,7 +2956,6 @@ active_sessions = {}  # 🆕 {token: {"username": str, "subscription_plan": str,
 
 class DatabaseManager:
     """Gestionnaire de base de données universel (PostgreSQL ou SQLite)"""
-    
     def __init__(self):
         self.use_postgresql = USE_POSTGRESQL
         if self.use_postgresql:
@@ -3110,19 +2964,16 @@ class DatabaseManager:
         else:
             print(f"⚠️  Utilisation de SQLite pour l'authentification: {USERS_DB}")
             self.init_sqlite()
-    
     def get_connection(self):
         """Obtenir une connexion à la base de données"""
         if self.use_postgresql:
             return psycopg2.connect(DATABASE_URL)
         else:
             return sqlite3.connect(USERS_DB)
-    
     def init_postgresql(self):
         """Initialiser les tables PostgreSQL"""
         conn = self.get_connection()
         c = conn.cursor()
-        
         # Créer la table users
         c.execute('''CREATE TABLE IF NOT EXISTS users (
             username VARCHAR(255) PRIMARY KEY,
@@ -3148,7 +2999,6 @@ class DatabaseManager:
             FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
         )''')
 
-        
         # Ajouter les colonnes si elles n'existent pas (pour migration)
         try:
             c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_plan VARCHAR(50) DEFAULT 'free'")
@@ -3162,7 +3012,6 @@ class DatabaseManager:
             c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS total_spent DECIMAL(10,2) DEFAULT 0.00")
         except:
             pass  # Colonnes existent déjà
-        
         # Créer un compte admin par défaut si n'existe pas
         c.execute("SELECT * FROM users WHERE username = 'admin'")
         if not c.fetchone():
@@ -3171,15 +3020,12 @@ class DatabaseManager:
             c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (%s, %s, %s, %s)", 
                       ("admin", password_hash, "admin", datetime.now()))
             print("✅ Compte admin par défaut créé: admin / admin123")
-        
         conn.commit()
         conn.close()
-    
     def init_sqlite(self):
         """Initialiser les tables SQLite"""
         conn = self.get_connection()
         c = conn.cursor()
-        
         c.execute('''CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY, 
             password_hash TEXT, 
@@ -3195,7 +3041,6 @@ class DatabaseManager:
             last_payment_date TEXT,
             total_spent REAL DEFAULT 0.0
         )''')
-        
         # Ajouter les colonnes si elles n'existent pas (pour migration)
         try:
             c.execute("ALTER TABLE users ADD COLUMN subscription_plan TEXT DEFAULT 'free'")
@@ -3233,7 +3078,6 @@ class DatabaseManager:
             c.execute("ALTER TABLE users ADD COLUMN total_spent REAL DEFAULT 0.0")
         except:
             pass
-        
         # Créer un compte admin par défaut si n'existe pas
         c.execute("SELECT * FROM users WHERE username = 'admin'")
         if not c.fetchone():
@@ -3242,23 +3086,18 @@ class DatabaseManager:
             c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)", 
                       ("admin", password_hash, "admin", datetime.now().isoformat()))
             print("✅ Compte admin par défaut créé: admin / admin123")
-        
         conn.commit()
         conn.close()
-    
     def verify_user(self, username: str, password: str) -> bool:
         """Vérifier les identifiants d'un utilisateur"""
         conn = self.get_connection()
         c = conn.cursor()
-        
         if self.use_postgresql:
             c.execute("SELECT password_hash FROM users WHERE username = %s", (username,))
         else:
             c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
-        
         result = c.fetchone()
         conn.close()
-        
         if result:
             stored_hash = result[0]
             try:
@@ -3268,22 +3107,17 @@ class DatabaseManager:
                 print(f"❌ Erreur vérification password: {e}")
                 return False
         return False
-    
     def get_user_role(self, username: str) -> str:
         """Obtenir le rôle d'un utilisateur"""
         conn = self.get_connection()
         c = conn.cursor()
-        
         if self.use_postgresql:
             c.execute("SELECT role FROM users WHERE username = %s", (username,))
         else:
             c.execute("SELECT role FROM users WHERE username = ?", (username,))
-        
         result = c.fetchone()
         conn.close()
-        
         return result[0] if result else "user"
-    
     def get_all_users(self):
         """Récupérer tous les utilisateurs"""
         conn = self.get_connection()
@@ -3292,12 +3126,10 @@ class DatabaseManager:
         users = c.fetchall()
         conn.close()
         return users
-    
     def get_user_info(self, username: str) -> dict:
         """🆕 Récupérer toutes les infos d'un utilisateur incluant l'abonnement"""
         conn = self.get_connection()
         c = conn.cursor()
-        
         if self.use_postgresql:
             c.execute("""
                 SELECT username, role, created_at, 
@@ -3312,15 +3144,12 @@ class DatabaseManager:
                        stripe_customer_id, stripe_subscription_id, payment_method
                 FROM users WHERE username = ?
             """, (username,))
-        
         row = c.fetchone()
         conn.close()
-        
         if row:
             # Convertir les dates string en datetime pour SQLite
             subscription_start = None
             subscription_end = None
-            
             if len(row) > 4 and row[4]:
                 if isinstance(row[4], str):
                     try:
@@ -3329,7 +3158,6 @@ class DatabaseManager:
                         pass
                 else:
                     subscription_start = row[4]
-            
             if len(row) > 5 and row[5]:
                 if isinstance(row[5], str):
                     try:
@@ -3338,7 +3166,6 @@ class DatabaseManager:
                         pass
                 else:
                     subscription_end = row[5]
-            
             return {
                 "username": row[0],
                 "role": row[1],
@@ -3357,15 +3184,12 @@ class DatabaseManager:
             "subscription_start": None,
             "subscription_end": None,
         }
-    
     def add_user(self, username: str, password: str, role: str = "user"):
         """Ajouter un nouvel utilisateur"""
         conn = self.get_connection()
         c = conn.cursor()
-        
         # 🔐 CORRECTION 1: Hash sécurisé avec bcrypt
         password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        
         try:
             if self.use_postgresql:
                 c.execute("""INSERT INTO users 
@@ -3392,35 +3216,28 @@ class DatabaseManager:
             print(f"❌ Error adding user: {e}")
             conn.close()
             return False
-    
     def delete_user(self, username: str):
         """Supprimer un utilisateur"""
         conn = self.get_connection()
         c = conn.cursor()
-        
         if self.use_postgresql:
             c.execute("DELETE FROM users WHERE username = %s", (username,))
         else:
             c.execute("DELETE FROM users WHERE username = ?", (username,))
-        
         conn.commit()
         conn.close()
-    
     def change_password(self, username: str, new_password: str):
         """Changer le mot de passe d'un utilisateur"""
         conn = self.get_connection()
         c = conn.cursor()
-        
         # 🔐 CORRECTION 1: Hash sécurisé avec bcrypt
         password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        
         if self.use_postgresql:
             c.execute("UPDATE users SET password_hash = %s WHERE username = %s", 
                       (password_hash, username))
         else:
             c.execute("UPDATE users SET password_hash = ? WHERE username = ?", 
                       (password_hash, username))
-        
         conn.commit()
         conn.close()
 
@@ -3441,7 +3258,6 @@ def verify_user(username: str, password: str) -> bool:
 def create_session(username: str, user_info: dict = None) -> str:
     """Créer une session pour un utilisateur avec infos d'abonnement"""
     token = secrets.token_urlsafe(32)
-    
     if user_info:
         # Stocker toutes les infos de l'utilisateur
         active_sessions[token] = user_info
@@ -3449,7 +3265,6 @@ def create_session(username: str, user_info: dict = None) -> str:
         # Récupérer les infos depuis la DB
         user_data = db_manager.get_user_info(username)
         active_sessions[token] = user_data
-    
     return token
 
 def get_user_from_token(token: Optional[str]):
@@ -3497,21 +3312,17 @@ DEFAULT_USER_PERMISSIONS = [
 def give_default_permissions(username: str) -> bool:
     """
     🎁 Attribue les permissions par défaut à un nouvel utilisateur
-    
     Donne automatiquement accès à:
     - /pricing-complete (pour voir les offres)
     - Toute la section ANALYSE DE MARCHÉ (8 pages)
-    
     Args:
         username: Le nom d'utilisateur qui vient d'être créé
-        
     Returns:
         True si succès, False si erreur
     """
     try:
         conn = db_manager.get_connection()
         c = conn.cursor()
-        
         # Ajouter chaque permission par défaut
         for route in DEFAULT_USER_PERMISSIONS:
             if db_manager.use_postgresql:
@@ -3536,13 +3347,10 @@ def give_default_permissions(username: str) -> bool:
                         "INSERT INTO user_permissions (username, route) VALUES (?, ?)",
                         (username, route)
                     )
-        
         conn.commit()
         conn.close()
-        
         print(f"✅ Permissions par défaut attribuées à {username}: {len(DEFAULT_USER_PERMISSIONS)} pages")
         return True
-        
     except Exception as e:
         print(f"❌ Erreur attribution permissions par défaut pour {username}: {e}")
         return False
@@ -3550,21 +3358,16 @@ def give_default_permissions(username: str) -> bool:
 def check_route_permission(username: str, route: str) -> bool:
     """
     ✅ SYSTÈME DE PERMISSIONS PAR PAGE (avec vérification du plan)
-    
     Vérifie si un utilisateur a la permission d'accéder à une route spécifique.
-    
     RÈGLES (par ordre de priorité):
     1. Les ADMINS ont accès à TOUTES les pages (bypass complet)
     2. Les USERS avec permissions individuelles → utiliser ces permissions
     3. Les USERS sans permissions individuelles → vérifier le plan d'abonnement
-    
     Args:
         username: Le nom d'utilisateur  
         route: Le chemin de la route (ex: "/dashboard", "/academy")
-    
     Returns:
         True = Accès autorisé | False = Accès refusé
-        
     Exemple d'utilisation dans une route:
         if not check_route_permission(username, "/dashboard"):
             return HTMLResponse("Accès refusé", status_code=403)
@@ -3572,26 +3375,20 @@ def check_route_permission(username: str, route: str) -> bool:
     try:
         conn = db_manager.get_connection()
         c = conn.cursor()
-        
         # Étape 1: Vérifier le rôle et le plan de l'utilisateur
         if db_manager.use_postgresql:
             c.execute("SELECT role, subscription_plan FROM users WHERE username = %s", (username,))
         else:
             c.execute("SELECT role, subscription_plan FROM users WHERE username = ?", (username,))
-        
         result = c.fetchone()
-        
         if not result:
             conn.close()
             return False
-        
         role, subscription_plan = result[0], result[1] if len(result) > 1 else 'free'
-        
         # Si ADMIN → Accès complet à tout (pas de restrictions)
         if role == "admin":
             conn.close()
             return True
-        
         # Étape 2: Vérifier si l'utilisateur a des permissions individuelles
         if db_manager.use_postgresql:
             c.execute(
@@ -3603,28 +3400,21 @@ def check_route_permission(username: str, route: str) -> bool:
                 "SELECT route FROM user_permissions WHERE username = ? AND route = ?",
                 (username, route)
             )
-        
         has_individual_permission = c.fetchone() is not None
-        
         # Si permissions individuelles trouvées, les utiliser
         if has_individual_permission:
             conn.close()
             return True
-        
         # Étape 3: Vérifier les permissions du plan d'abonnement
         c.execute("SELECT routes FROM plan_access WHERE plan = ?", (subscription_plan,))
         plan_result = c.fetchone()
-        
         conn.close()
-        
         if plan_result and plan_result[0]:
             import json
             plan_routes = json.loads(plan_result[0])
             return route in plan_routes
-        
         # Par défaut, refuser l'accès si aucune permission trouvée
         return False
-        
     except Exception as e:
         print(f"❌ Erreur vérification permission [{username}] sur [{route}]: {e}")
         # En cas d'erreur, refuser l'accès par sécurité
@@ -3692,14 +3482,12 @@ async def send_telegram_notification(message: str):
     try:
         if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
             return
-        
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         payload = {
             "chat_id": TELEGRAM_CHAT_ID,
             "text": message,
             "parse_mode": "HTML"
         }
-        
         async with httpx.AsyncClient(timeout=5.0) as client:
             await client.post(url, json=payload)
     except Exception as e:
@@ -3708,14 +3496,11 @@ async def send_telegram_notification(message: str):
 async def check_tp_sl_hits():
     """🔍 SERVER-SIDE TP/SL DETECTION - Checks every 10 seconds"""
     global trades_db
-    
     if not trades_db:
         return
-    
     for trade in trades_db:
         if trade.get('status') == 'closed':
             continue
-        
         symbol = trade.get('symbol')
         side = trade.get('side')
         entry = float(trade.get('entry'))
@@ -3723,14 +3508,11 @@ async def check_tp_sl_hits():
         tp1 = float(trade.get('tp1'))
         tp2 = float(trade.get('tp2'))
         tp3 = float(trade.get('tp3'))
-        
         current_price = await get_mexc_price(symbol)
         if current_price is None:
             continue
-        
         if trade.get('tp1_hit') or trade.get('tp2_hit') or trade.get('tp3_hit') or trade.get('sl_hit'):
             continue
-        
         # LONG TRADES
         if side == "LONG":
             if current_price >= tp3 and not trade.get('tp3_hit'):
@@ -3742,7 +3524,6 @@ async def check_tp_sl_hits():
                 msg = f"🚀 TP3 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP3: ${tp3:.4f}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP3 HIT!")
-            
             elif current_price >= tp2 and not trade.get('tp2_hit'):
                 trade['tp2_hit'] = True
                 pnl = (tp2 - entry) / entry * 100
@@ -3750,7 +3531,6 @@ async def check_tp_sl_hits():
                 msg = f"💎 TP2 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP2: ${tp2:.4f}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP2 HIT!")
-            
             elif current_price >= tp1 and not trade.get('tp1_hit'):
                 trade['tp1_hit'] = True
                 pnl = (tp1 - entry) / entry * 100
@@ -3758,7 +3538,6 @@ async def check_tp_sl_hits():
                 msg = f"🎯 TP1 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP1: ${tp1:.4f}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP1 HIT!")
-            
             elif current_price <= sl and not trade.get('sl_hit'):
                 trade['sl_hit'] = True
                 trade['status'] = 'closed'
@@ -3768,7 +3547,6 @@ async def check_tp_sl_hits():
                 msg = f"🛑 STOP LOSS HIT! {symbol} LONG\nEntry: ${entry:.4f}\nSL: ${sl:.4f}\nPnL: {pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"❌ {symbol} SL HIT!")
-        
         # SHORT TRADES
         elif side == "SHORT":
             if current_price <= tp3 and not trade.get('tp3_hit'):
@@ -3780,7 +3558,6 @@ async def check_tp_sl_hits():
                 msg = f"🚀 TP3 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP3: ${tp3:.4f}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP3 HIT!")
-            
             elif current_price <= tp2 and not trade.get('tp2_hit'):
                 trade['tp2_hit'] = True
                 pnl = (entry - tp2) / entry * 100
@@ -3788,7 +3565,6 @@ async def check_tp_sl_hits():
                 msg = f"💎 TP2 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP2: ${tp2:.4f}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP2 HIT!")
-            
             elif current_price <= tp1 and not trade.get('tp1_hit'):
                 trade['tp1_hit'] = True
                 pnl = (entry - tp1) / entry * 100
@@ -3796,7 +3572,6 @@ async def check_tp_sl_hits():
                 msg = f"🎯 TP1 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP1: ${tp1:.4f}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP1 HIT!")
-            
             elif current_price >= sl and not trade.get('sl_hit'):
                 trade['sl_hit'] = True
                 trade['status'] = 'closed'
@@ -3806,7 +3581,6 @@ async def check_tp_sl_hits():
                 msg = f"🛑 STOP LOSS HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nSL: ${sl:.4f}\nPnL: {pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"❌ {symbol} SL HIT!")
-        
         save_trades_to_file()
 
 async def background_monitor():
@@ -3843,24 +3617,20 @@ class SmartCache:
         self.whale_cache = {}
         self.whale_timestamp = {}
         self.cache_duration = 30  # ⚡ OPTIMISÉ: 30 secondes au lieu de 60
-    
     def get_price_cache(self, key):
         if key in self.prices_cache:
             elapsed = (datetime.now() - self.prices_timestamp.get(key, datetime.now())).total_seconds()
             if elapsed < self.cache_duration:
                 return self.prices_cache[key]
         return None
-    
     def set_price_cache(self, key, value):
         self.prices_cache[key] = value
         self.prices_timestamp[key] = datetime.now()
-    
     def get_whale_cache(self):
         elapsed = (datetime.now() - self.whale_timestamp.get('data', datetime.now())).total_seconds()
         if 'data' in self.whale_cache and elapsed < self.cache_duration * 2:
             return self.whale_cache['data']
         return None
-    
     def set_whale_cache(self, value):
         self.whale_cache['data'] = value
         self.whale_timestamp['data'] = datetime.now()
@@ -3875,19 +3645,16 @@ http_client = httpx.AsyncClient(timeout=10.0)
 async def calculate_altcoin_season_index():
     """
     🔥 ALTCOIN SEASON INDEX - MÉTHODE BLOCKCHAIN CENTER (CORRECTE)
-    
     Méthodologie officielle:
     1. Prendre les Top 50 cryptos (sans stablecoins/wrapped)
     2. Comparer CHAQUE crypto vs Bitcoin sur 90 jours
     3. Index = (nombre qui battent BTC / 50) × 100
-    
     Si index = 37: 37% des top 50 ont battu BTC sur 90 jours
     Si index = 75+: C'est Altcoin Season!
     """
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             print("🔄 Calcul Altcoin Season Index (méthode Blockchain Center)...")
-            
             # 1. Récupérer les Top 100 coins avec performance 90j en UNE SEULE requête!
             markets_response = await client.get(
                 'https://api.coingecko.com/api/v3/coins/markets',
@@ -3899,12 +3666,9 @@ async def calculate_altcoin_season_index():
                     'price_change_percentage': '90d'
                 }
             )
-            
             if markets_response.status_code != 200:
                 raise Exception(f"CoinGecko API error: {markets_response.status_code}")
-            
             coins_data = markets_response.json()
-            
             # 2. Trouver Bitcoin et sa performance 90j
             btc_performance = None
             for coin in coins_data:
@@ -3912,14 +3676,11 @@ async def calculate_altcoin_season_index():
                     btc_performance = coin.get('price_change_percentage_90d_in_currency', 0)
                     print(f"📊 BTC 90d: +{btc_performance:.1f}%")
                     break
-            
             if btc_performance is None:
                 raise Exception("Bitcoin data not found")
-            
             # 3. Filtrer: Top 50 altcoins (pas Bitcoin, pas stablecoins, pas wrapped)
             stablecoins = {'usdt', 'usdc', 'busd', 'dai', 'tusd', 'usdp', 'gusd', 'usdd'}
             wrapped = {'wbtc', 'steth', 'weth', 'renbtc', 'hbtc'}
-            
             altcoins = []
             for coin in coins_data:
                 symbol = coin['symbol'].lower()
@@ -3931,24 +3692,19 @@ async def calculate_altcoin_season_index():
                     altcoins.append(coin)
                 if len(altcoins) >= 50:
                     break
-            
             # 4. Compter combien battent Bitcoin
             alts_beating_btc = 0
             for alt in altcoins:
                 alt_perf = alt.get('price_change_percentage_90d_in_currency', 0)
                 if alt_perf > btc_performance:
                     alts_beating_btc += 1
-            
             # 5. Calculer l'index
             total_compared = len(altcoins)
             if total_compared == 0:
                 raise Exception("No altcoins data")
-            
             index = (alts_beating_btc / total_compared) * 100
-            
             print(f"📈 RÉSULTAT: {alts_beating_btc}/{total_compared} alts battent BTC")
             print(f"🎯 INDEX: {index:.1f}/100")
-            
             # 6. Récupérer dominances
             try:
                 global_response = await client.get('https://api.coingecko.com/api/v3/global')
@@ -3958,7 +3714,6 @@ async def calculate_altcoin_season_index():
             except:
                 btc_dominance = 0
                 eth_dominance = 0
-            
             # 7. Déterminer phase basée sur l'INDEX (pas la dominance!)
             if index >= 75:
                 phase = "🔥 ALTCOIN SEASON"
@@ -3980,7 +3735,6 @@ async def calculate_altcoin_season_index():
                 phase = "❄️ BITCOIN SEASON"
                 description = "Bitcoin écrase les altcoins"
                 momentum = "🥶 GLACIAL"
-            
             if index >= 75:
                 trend = "🔥 Altcoin Season!"
             elif index >= 60:
@@ -3991,7 +3745,6 @@ async def calculate_altcoin_season_index():
                 trend = "📉 Bitcoin domine"
             else:
                 trend = "❄️ Bitcoin Season"
-            
             # Retourner les VRAIES données calculées
             return {
                 "index": round(index, 1),
@@ -4009,7 +3762,6 @@ async def calculate_altcoin_season_index():
                 "source": "CoinGecko Top 50 vs BTC 90d (méthode Blockchain Center)",
                 "timestamp": datetime.now().isoformat()
             }
-            
     except Exception as e:
         print(f"❌ Erreur calcul altcoin: {e}")
         import traceback
@@ -4028,7 +3780,6 @@ def generate_fallback_altcoin_data():
     btc_dom = 57.5  # BTC Dominance actuelle décembre 2025
     eth_dom = 11.2  # ETH Dominance actuelle
     btc_perf_90d = 15.0  # BTC +15% sur 90j (sept-déc 2025, correction depuis ATH)
-    
     # Déterminer la phase basée sur l'index
     if idx >= 75:
         phase = "🔥 ALTCOIN SEASON"
@@ -4050,7 +3801,6 @@ def generate_fallback_altcoin_data():
         phase = "❄️ BITCOIN SEASON"
         trend = "❄️ Bitcoin Season"
         mom = "🥶 GLACIAL"
-    
     return {
         "index": round(idx, 1),
         "alts_winning": alts_winning,
@@ -4181,10 +3931,8 @@ async def login_page(request: Request, error: str = None, redirect: str = None):
     error_msg = ""
     if error:
         error_msg = '<div class="alert alert-error">❌ Identifiants incorrects</div>'
-    
     # Champ caché pour redirection après login
     redirect_field = f'<input type="hidden" name="redirect" value="{redirect}">' if redirect else ''
-    
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -4202,12 +3950,10 @@ async def login_page(request: Request, error: str = None, redirect: str = None):
             border: 1px solid #334155;
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }}
-        
         .login-header {{
             text-align: center;
             margin-bottom: 30px;
         }}
-        
         .login-header h1 {{
             font-size: 32px;
             background: linear-gradient(to right, #60a5fa, #a78bfa);
@@ -4215,16 +3961,13 @@ async def login_page(request: Request, error: str = None, redirect: str = None):
             -webkit-text-fill-color: transparent;
             margin-bottom: 10px;
         }}
-        
         .login-header p {{
             color: #94a3b8;
             font-size: 14px;
         }}
-        
         .form-group {{
             margin-bottom: 20px;
         }}
-        
         .form-group label {{
             display: block;
             color: #94a3b8;
@@ -4232,7 +3975,6 @@ async def login_page(request: Request, error: str = None, redirect: str = None):
             font-weight: 600;
             margin-bottom: 8px;
         }}
-        
         .form-group input {{
             width: 100%;
             padding: 12px 16px;
@@ -4243,13 +3985,11 @@ async def login_page(request: Request, error: str = None, redirect: str = None):
             font-size: 14px;
             transition: all 0.3s;
         }}
-        
         .form-group input:focus {{
             outline: none;
             border-color: #60a5fa;
             box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
         }}
-        
         .login-btn {{
             width: 100%;
             padding: 14px;
@@ -4262,12 +4002,10 @@ async def login_page(request: Request, error: str = None, redirect: str = None):
             cursor: pointer;
             transition: all 0.3s;
         }}
-        
         .login-btn:hover {{
             transform: translateY(-2px);
             box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
         }}
-        
         .default-creds {{
             margin-top: 20px;
             padding: 15px;
@@ -4277,7 +4015,6 @@ async def login_page(request: Request, error: str = None, redirect: str = None):
             font-size: 13px;
             color: #94a3b8;
         }}
-        
         .default-creds strong {{
             color: #60a5fa;
         }}
@@ -4289,24 +4026,19 @@ async def login_page(request: Request, error: str = None, redirect: str = None):
             <h1>🔐 Connexion</h1>
             <p>Accédez à votre dashboard de trading</p>
         </div>
-        
         {error_msg}
-        
         <form method="POST" action="/login">
             {redirect_field}
             <div class="form-group">
                 <label for="username">👤 Nom d'utilisateur</label>
                 <input type="text" id="username" name="username" required autocomplete="username">
             </div>
-            
             <div class="form-group">
                 <label for="password">🔑 Mot de passe</label>
                 <input type="password" id="password" name="password" required autocomplete="current-password">
             </div>
-            
             <button type="submit" class="login-btn">Se connecter</button>
         </form>
-        
         <div class="default-creds">
             <strong>📝 Identifiants par défaut:</strong><br>
             Username: <strong>admin</strong><br>
@@ -4326,14 +4058,11 @@ async def login(request: Request, response: Response):
     username = form_data.get("username")
     password = form_data.get("password")
     redirect_url = form_data.get("redirect", "/")  # Redirection après login
-    
     if verify_user(username, password):
         # 🆕 Récupérer les infos complètes de l'utilisateur
         user_info = db_manager.get_user_info(username)
-        
         # Créer la session avec les infos d'abonnement
         token = create_session(username, user_info)
-        
         redirect = RedirectResponse(url=redirect_url, status_code=303)
         redirect.set_cookie(
             key="session_token",
@@ -4353,7 +4082,6 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
     """Déconnexion"""
     if session_token and session_token in active_sessions:
         del active_sessions[session_token]
-    
     redirect = RedirectResponse(url="/login", status_code=303)
     redirect.delete_cookie("session_token")
     return redirect
@@ -4361,10 +4089,8 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel():
     """Panel d'administration pour gérer les utilisateurs"""
-    
     # Récupérer tous les utilisateurs
     users = db_manager.get_all_users()
-    
     users_html = ""
     for user in users:
         # Formater la date selon le type de base de données
@@ -4372,7 +4098,6 @@ async def admin_panel():
             created_date = user[2][:10]
         else:
             created_date = user[2].strftime('%Y-%m-%d')
-        
         users_html += f"""
         <tr>
             <td>{user[0]}</td>
@@ -4383,7 +4108,6 @@ async def admin_panel():
             </td>
         </tr>
         """
-    
     return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -4426,9 +4150,6 @@ async def admin_panel():
             <h1>👑 Panel d'Administration</h1>
             <p>Gérez les accès au dashboard</p>
         </div>
-        
-        
-        
         <div class="card">
             <h2>➕ Ajouter un utilisateur</h2>
             <form id="addUserForm" class="form-inline">
@@ -4452,7 +4173,6 @@ async def admin_panel():
                 </div>
             </form>
         </div>
-        
         <div class="card">
             <h2>👥 Utilisateurs ({len(users)})</h2>
             <table>
@@ -4469,7 +4189,6 @@ async def admin_panel():
                 </tbody>
             </table>
         </div>
-        
         <div class="card">
             <h2>🔑 Changer mon mot de passe</h2>
             <form id="changePasswordForm" class="form-inline">
@@ -4487,8 +4206,6 @@ async def admin_panel():
             </form>
         </div>
     </div>
-    
-    
 </body>
 </html>""")
 
@@ -4500,29 +4217,22 @@ async def add_user(request: Request):
         new_username = data.get("username")
         password = data.get("password")
         role = data.get("role", "user")
-        
         # Validation
         if not new_username or len(new_username) < 3:
             return {"success": False, "message": "Nom d'utilisateur trop court (min 3 caractères)"}
-        
         if not password or len(password) < 6:
             return {"success": False, "message": "Mot de passe trop court (min 6 caractères)"}
-        
         # Déterminer si c'est un plan d'abonnement ou un rôle normal
         subscription_plans = ['free', '1_month', '3_months', '6_months', '1_year']
         is_subscription_plan = role in subscription_plans
-        
         # Créer l'utilisateur
         actual_role = "user" if is_subscription_plan else role
-        
         if db_manager.add_user(new_username, password, actual_role):
             # Si c'est un plan d'abonnement, assigner le plan et les dates
             if is_subscription_plan:
                 from datetime import datetime, timedelta
-                
                 conn = db_manager.get_connection()
                 cursor = conn.cursor()
-                
                 # Calculer les dates d'abonnement
                 start_date = datetime.now()
                 duration_days = {
@@ -4533,7 +4243,6 @@ async def add_user(request: Request):
                     "1_year": 365,
                 }
                 end_date = start_date + timedelta(days=duration_days.get(role, 30))
-                
                 # Mettre à jour le plan d'abonnement
                 if db_manager.use_postgresql:
                     cursor.execute("""
@@ -4551,11 +4260,9 @@ async def add_user(request: Request):
                             subscription_end = ?
                         WHERE username = ?
                     """, (role, start_date.isoformat(), end_date.isoformat(), new_username))
-                
                 conn.commit()
                 cursor.close()
                 conn.close()
-                
                 plan_names = {
                     'free': '🆓 Free',
                     '1_month': '💎 Premium (1 mois)',
@@ -4563,18 +4270,14 @@ async def add_user(request: Request):
                     '6_months': '⭐ Pro (6 mois)',
                     '1_year': '👑 Elite (1 an)'
                 }
-                
                 print(f"✅ Utilisateur {new_username} créé avec plan {plan_names[role]}")
-                
                 return {
                     "success": True, 
                     "message": f"Utilisateur '{new_username}' créé avec plan {plan_names[role]} (hérite automatiquement des permissions du plan)"
                 }
-            
             # Si c'est admin
             elif role == "admin":
                 return {"success": True, "message": f"Administrateur '{new_username}' créé avec accès complet"}
-            
             # Si c'est user normal
             else:
                 give_default_permissions(new_username)
@@ -4595,10 +4298,8 @@ async def delete_user(request: Request):
     """Supprimer un utilisateur"""
     data = await request.json()
     user_to_delete = data.get("username")
-    
     if user_to_delete == "admin":
         raise HTTPException(status_code=400, detail="Impossible de supprimer l'admin principal")
-    
     db_manager.delete_user(user_to_delete)
     return {"status": "success", "message": "Utilisateur supprimé"}
 
@@ -4608,15 +4309,12 @@ async def get_user_info(username: str):
     try:
         conn = db_manager.get_connection()
         c = conn.cursor()
-        
         if db_manager.use_postgresql:
             c.execute("SELECT username, role, subscription_plan, created_at FROM users WHERE username = %s", (username,))
         else:
             c.execute("SELECT username, role, subscription_plan, created_at FROM users WHERE username = ?", (username,))
-        
         result = c.fetchone()
         conn.close()
-        
         if result:
             return {
                 "success": True,
@@ -4641,10 +4339,8 @@ async def edit_user(request: Request):
         new_username = data.get("username")
         password = data.get("password")  # Optionnel
         role = data.get("role", "user")
-        
         conn = db_manager.get_connection()
         c = conn.cursor()
-        
         # Mise à jour du rôle (et username si différent)
         if db_manager.use_postgresql:
             if password:  # Si nouveau mot de passe fourni
@@ -4672,10 +4368,8 @@ async def edit_user(request: Request):
                     "UPDATE users SET username = ?, role = ? WHERE username = ?",
                     (new_username, role, original_username)
                 )
-        
         conn.commit()
         conn.close()
-        
         return {"success": True, "message": f"Utilisateur modifié avec succès"}
     except Exception as e:
         return {"success": False, "message": f"Erreur: {str(e)}"}
@@ -4688,26 +4382,21 @@ async def update_permissions(request: Request):
         data = await request.json()
         username = data.get("username")
         routes = data.get("routes", [])
-        
         conn = db_manager.get_connection()
         c = conn.cursor()
-        
         # Supprimer les anciennes permissions
         if db_manager.use_postgresql:
             c.execute("DELETE FROM user_permissions WHERE username = %s", (username,))
         else:
             c.execute("DELETE FROM user_permissions WHERE username = ?", (username,))
-        
         # Ajouter les nouvelles permissions
         for route in routes:
             if db_manager.use_postgresql:
                 c.execute("INSERT INTO user_permissions VALUES (%s, %s)", (username, route))
             else:
                 c.execute("INSERT INTO user_permissions VALUES (?, ?)", (username, route))
-        
         conn.commit()
         conn.close()
-        
         return {"success": True, "message": f"Permissions mises à jour pour {username}"}
     except Exception as e:
         return {"success": False, "message": str(e)}
@@ -4718,15 +4407,12 @@ async def get_permissions(username: str):
     try:
         conn = db_manager.get_connection()
         c = conn.cursor()
-        
         if db_manager.use_postgresql:
             c.execute("SELECT route FROM user_permissions WHERE username = %s", (username,))
         else:
             c.execute("SELECT route FROM user_permissions WHERE username = ?", (username,))
-        
         routes = [row[0] for row in c.fetchall()]
         conn.close()
-        
         return {"success": True, "routes": routes}
     except Exception as e:
         return {"success": False, "message": str(e)}
@@ -4737,7 +4423,6 @@ async def change_password(request: Request):
     """Changer son propre mot de passe"""
     data = await request.json()
     new_password = data.get("newPassword")
-    
     db_manager.change_password(username, new_password)
     return {"status": "success", "message": "Mot de passe changé"}
 
@@ -4759,7 +4444,6 @@ async def strategie_page():
                 padding: 0;
                 box-sizing: border-box;
             }}
-            
             body {
                 margin-left: 280px !important;
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -4767,13 +4451,11 @@ async def strategie_page():
                 color: #e2e8f0;
                 line-height: 1.6;
             }}
-            
             .container {
                 max-width: 1200px;
                 margin: 0 auto;
                 padding: 40px 20px;
             }}
-            
             header {
                 text-align: center;
                 color: white;
@@ -4785,7 +4467,6 @@ async def strategie_page():
                 border: 2px solid rgba(102, 126, 234, 0.3);
                 box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
             }
-            
             header h1 {
                 font-size: 2.8em;
                 margin-bottom: 10px;
@@ -4797,13 +4478,11 @@ async def strategie_page():
                 -webkit-text-fill-color: transparent;
                 background-clip: text;
             }
-            
             header p {
                 font-size: 1.2em;
                 opacity: 0.9;
                 color: #cbd5e1;
             }
-            
             .content {
                 background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.8) 100%);
                 border-radius: 15px;
@@ -4813,17 +4492,14 @@ async def strategie_page():
                 border: 1px solid rgba(102, 126, 234, 0.2);
                 color: #e2e8f0;
             }
-            
             .section {
                 margin-bottom: 50px;
                 padding-bottom: 30px;
                 border-bottom: 3px solid rgba(102, 126, 234, 0.2);
             }
-            
             .section:last-child {
                 border-bottom: none;
             }
-            
             h2 {
                 color: #667eea;
                 font-size: 2em;
@@ -4833,43 +4509,36 @@ async def strategie_page():
                 gap: 10px;
                 text-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
             }
-            
             h3 {
                 color: #a78bfa;
                 font-size: 1.5em;
                 margin: 25px 0 15px 0;
                 font-weight: 700;
             }
-            
             h4 {
                 color: #818cf8;
                 font-size: 1.2em;
                 margin: 20px 0 10px 0;
                 font-weight: 600;
             }
-            
             .emoji {
                 font-size: 1.2em;
             }
-            
             p {
                 margin-bottom: 15px;
                 font-size: 1.05em;
                 color: #cbd5e1;
                 line-height: 1.7;
             }
-            
             ul, ol {
                 margin-left: 30px;
                 margin-bottom: 15px;
                 color: #cbd5e1;
             }
-            
             li {
                 margin-bottom: 10px;
                 color: #cbd5e1;
             }
-            
             .box {
                 background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
                 border-left: 5px solid #667eea;
@@ -4878,53 +4547,44 @@ async def strategie_page():
                 border-radius: 8px;
                 color: #e2e8f0;
             }
-            
             .box.success {
                 border-left-color: #10b981;
                 background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
                 color: #d1fae5;
             }
-            
             .box.danger {
                 border-left-color: #ef4444;
                 background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.2) 100%);
                 color: #fecaca;
             }
-            
             .box.warning {
                 border-left-color: #f59e0b;
                 background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(217, 119, 6, 0.2) 100%);
                 color: #fef3c7;
             }
-            
             table {
                 width: 100%;
                 border-collapse: collapse;
                 margin: 20px 0;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             }
-            
             th, td {
                 padding: 15px;
                 text-align: left;
                 border: 1px solid rgba(102, 126, 234, 0.2);
                 color: #e2e8f0;
             }
-            
             th {
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
                 font-weight: bold;
             }
-            
             tr:nth-child(even) {
                 background: rgba(30, 41, 59, 0.5);
             }
-            
             tr:hover {
                 background: rgba(102, 126, 234, 0.1);
             }
-            
             .checklist {
                 background: rgba(30, 41, 59, 0.5);
                 padding: 20px;
@@ -4932,7 +4592,6 @@ async def strategie_page():
                 margin: 20px 0;
                 border: 1px solid rgba(102, 126, 234, 0.2);
             }
-            
             .checklist label {
                 display: block;
                 margin-bottom: 12px;
@@ -4942,18 +4601,15 @@ async def strategie_page():
                 transition: 0.3s;
                 color: #e2e8f0;
             }
-            
             .checklist label:hover {
                 background: rgba(102, 126, 234, 0.2);
             }
-            
             .checklist input[type="checkbox"] {
                 margin-right: 10px;
                 cursor: pointer;
                 width: 18px;
                 height: 18px;
             }
-            
             .calculator {
                 background: rgba(30, 41, 59, 0.5);
                 padding: 25px;
@@ -4961,7 +4617,6 @@ async def strategie_page():
                 margin: 20px 0;
                 border: 2px solid #667eea;
             }
-            
             .calculator input {
                 width: 100%;
                 padding: 12px;
@@ -4972,7 +4627,6 @@ async def strategie_page():
                 background: rgba(15, 23, 42, 0.5);
                 color: #e2e8f0;
             }
-            
             .calculator button {
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 color: white;
@@ -4984,12 +4638,10 @@ async def strategie_page():
                 margin-top: 15px;
                 transition: 0.3s;
             }
-            
             .calculator button:hover {
                 transform: translateY(-2px);
                 box-shadow: 0 10px 20px rgba(102, 126, 234, 0.5);
             }
-            
             .result {
                 background: rgba(16, 185, 129, 0.1);
                 padding: 15px;
@@ -4999,11 +4651,9 @@ async def strategie_page():
                 display: none;
                 color: #d1fae5;
             }
-            
             .result.show {
                 display: block;
             }
-            
             .print-btn {
                 position: fixed;
                 bottom: 30px;
@@ -5019,12 +4669,10 @@ async def strategie_page():
                 transition: 0.3s;
                 z-index: 1000;
             }
-            
             .print-btn:hover {
                 transform: scale(1.1);
                 box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
             }
-            
             .level-badge {
                 display: inline-block;
                 background: #667eea;
@@ -5035,13 +4683,11 @@ async def strategie_page():
                 font-weight: bold;
                 margin-bottom: 20px;
             }
-            
             .level-badge.level1 { background: #00d084; }
             .level-badge.level2 { background: #0084ff; }
             .level-badge.level3 { background: #ff6b35; }
             .level-badge.level4 { background: #ffa502; }
             .level-badge.level5 { background: #764ba2; }
-            
             @media print {
                 .print-btn {
                     display: none;
@@ -5061,18 +4707,13 @@ async def strategie_page():
                 <h1>🎯 MAGIC MIKE 1H - GUIDE ULTIME 🎯</h1>
                 <p>LA STRATÉGIE COMPLÈTE POUR GAGNER AVEC VOTRE INDICATEUR</p>
             </header>
-            
-            
-            
             <div class="content">
                 <!-- NIVEAU 1 : COMPRENDRE -->
                 <div class="section">
                     <span class="level-badge level1">NIVEAU 1</span>
                     <h2><span class="emoji">🎓</span> COMPRENDRE L'INDICATEUR</h2>
-                    
                     <h3>L'indicateur Magic Mike expliqué simplement</h3>
                     <p>Imagine Magic Mike comme un <strong>FEU TRICOLORE pour trader :</strong></p>
-                    
                     <div class="box success">
                         <strong>🟢 FEU VERT = ENTRER EN LONG (acheter)</strong>
                     </div>
@@ -5082,9 +4723,7 @@ async def strategie_page():
                     <div class="box warning">
                         <strong>⚪ FEU BLANC = NE PAS TRADER (attendre)</strong>
                     </div>
-                    
                     <h3>Les 4 éléments clés du graphique</h3>
-                    
                     <h4>1️⃣ Les 3 moyennes mobiles (EMAs)</h4>
                     <ul>
                         <li><strong>🤍 EMA 20 (BLANCHE)</strong> = Tendance COURT TERME</li>
@@ -5092,13 +4731,11 @@ async def strategie_page():
                         <li><strong>🔴 EMA 200 (ROUGE)</strong> = Tendance LONG TERME</li>
                     </ul>
                     <p><strong>Parfait =</strong> Ordre croissant haussier (blanc > vert > rouge)</p>
-                    
                     <h4>2️⃣ Les signaux d'entrée (TRIANGLES COLORÉS)</h4>
                     <ul>
                         <li><strong>Triangle 🟢 VERT + "⚡ LONG"</strong> en haut = Signal BUY</li>
                         <li><strong>Triangle 🔴 ROUGE + "⚡ SHORT"</strong> en bas = Signal SELL</li>
                     </ul>
-                    
                     <h4>3️⃣ Les niveaux (LIGNES HORIZONTALES)</h4>
                     <ul>
                         <li><strong>⚡ ENTRY</strong> = Prix exact où entrer</li>
@@ -5107,7 +4744,6 @@ async def strategie_page():
                         <li><strong>💎 TP2</strong> = Deuxième sortie (5.0R profit) ← LE MEILLEUR</li>
                         <li><strong>🚀 TP3</strong> = Troisième sortie (8.0R profit)</li>
                     </ul>
-                    
                     <h4>4️⃣ Le fond coloré (Très important !)</h4>
                     <ul>
                         <li><strong>Fond 🟢 VERT TRÈS PÂLE</strong> = 4H + Daily HAUSSIERS → LONG possible</li>
@@ -5115,12 +4751,10 @@ async def strategie_page():
                         <li><strong>Pas de fond</strong> = 4H + Daily PAS alignés → ⛔ NE PAS TRADER</li>
                     </ul>
                 </div>
-                
                 <!-- NIVEAU 2 : PRÉPARER -->
                 <div class="section">
                     <span class="level-badge level2">NIVEAU 2</span>
                     <h2><span class="emoji">⚙️</span> PRÉPARER LE TRADE</h2>
-                    
                     <h3>🎯 Quel timeframe choisir ?</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
                         <div class="box success" style="border-left: 5px solid #667eea;">
@@ -5134,7 +4768,6 @@ async def strategie_page():
                                 <li>⏰ Parfait pour débutants</li>
                             </ul>
                         </div>
-                        
                         <div class="box warning" style="border-left: 5px solid #00d084;">
                             <h4 style="color: #00d084;">⚡ CHOISIS 15MIN SI :</h4>
                             <ul style="margin-top: 10px;">
@@ -5147,14 +4780,11 @@ async def strategie_page():
                             </ul>
                         </div>
                     </div>
-                    
                     <div class="box" style="background: linear-gradient(135deg, #ffa50215 0%, #ff851515 100%); border-left: 5px solid #ffa502;">
                         <h4>💡 CONSEIL D'EXPERT :</h4>
                         <p><strong>Commence TOUJOURS par le 1H pour apprendre la stratégie.</strong> Une fois que tu maîtrises le 1H avec un winrate de 70%+, tu peux essayer le 15min. Ne fais pas l'erreur de commencer par le 15min - tu vas te brûler !</p>
                     </div>
-                    
                     <h3>⏱️ Paramètres optimisés : 1H vs 15min</h3>
-                    
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
                         <div class="box" style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 5px solid #667eea;">
                             <h4 style="color: #667eea; margin-bottom: 15px;">⏰ TIMEFRAME 1H (SWING)</h4>
@@ -5163,7 +4793,6 @@ async def strategie_page():
                             <p><strong>📊 Signaux/semaine :</strong> 26-43 signaux</p>
                             <p><strong>💡 Idéal pour :</strong> Job à temps plein</p>
                         </div>
-                        
                         <div class="box" style="background: linear-gradient(135deg, #00d08415 0%, #00b86f15 100%); border-left: 5px solid #00d084;">
                             <h4 style="color: #00d084; margin-bottom: 15px;">⚡ TIMEFRAME 15MIN (SCALP)</h4>
                             <p><strong>🎯 Profil :</strong> Trader actif, réactif</p>
@@ -5172,7 +4801,6 @@ async def strategie_page():
                             <p><strong>💡 Idéal pour :</strong> Trader à plein temps</p>
                         </div>
                     </div>
-                    
                     <table>
                         <tr>
                             <th>PARAMÈTRE</th>
@@ -5235,7 +4863,6 @@ async def strategie_page():
                             <td>Plus de trades = moins de risk</td>
                         </tr>
                     </table>
-                    
                     <h3>Filtres HTF - La clé du 70-80% winrate</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                         <div class="box" style="border-left: 5px solid #667eea;">
@@ -5247,7 +4874,6 @@ async def strategie_page():
                                 <li>⚪ Signal 1H + Pas de fond = 4H + Daily pas alignés = ❌ NO TRADE</li>
                             </ul>
                         </div>
-                        
                         <div class="box" style="border-left: 5px solid #00d084;">
                             <h4 style="color: #00d084;">⚡ Pour 15MIN :</h4>
                             <p><strong>Tu tradés en 15min, MAIS tu vérifies TOUJOURS la 1H + 4H !</strong></p>
@@ -5258,7 +4884,6 @@ async def strategie_page():
                             </ul>
                         </div>
                     </div>
-                    
                     <h3>⏰ Meilleurs moments pour trader</h3>
                     <div class="box success">
                         <h4>🔥 Meilleurs moments (plus de volatilité) :</h4>
@@ -5268,7 +4893,6 @@ async def strategie_page():
                             <li><strong>19h-22h</strong> : Session active US/Asie</li>
                         </ul>
                     </div>
-                    
                     <div class="box warning">
                         <h4>😴 Moments calmes (peu de signaux) :</h4>
                         <ul style="margin-top: 10px;">
@@ -5276,7 +4900,6 @@ async def strategie_page():
                             <li><strong>Weekend</strong> : Volume plus faible</li>
                         </ul>
                     </div>
-                    
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                         <div class="box" style="border-left: 5px solid #667eea;">
                             <h4 style="color: #667eea;">📊 Semaine Normale 1H (12 paires) :</h4>
@@ -5290,7 +4913,6 @@ async def strategie_page():
                             </ul>
                             <p style="margin-top: 15px;"><strong>📈 Total/semaine : 26-43 signaux efficaces</strong></p>
                         </div>
-                        
                         <div class="box success" style="border-left: 5px solid #00d084;">
                             <h4 style="color: #00d084;">📊 Semaine Normale 15MIN (12 paires) :</h4>
                             <ul style="margin-top: 10px;">
@@ -5305,20 +4927,16 @@ async def strategie_page():
                             <p style="margin-top: 10px; color: #ff6b35;"><em>⚠️ Attention : Plus de signaux = Nécessite plus de temps et discipline</em></p>
                         </div>
                     </div>
-                    
                     <div class="box danger">
                         <h4>⚠️ RAPPEL IMPORTANT :</h4>
                         <p style="margin-top: 10px;"><strong>N'oubliez jamais toujours un SL au départ et déplacer votre SL graduellement</strong></p>
                     </div>
                 </div>
-                
                 <!-- NIVEAU 3 : EXÉCUTER -->
                 <div class="section">
                     <span class="level-badge level3">NIVEAU 3</span>
                     <h2><span class="emoji">⚡</span> EXÉCUTER LE TRADE</h2>
-                    
                     <h3>Les 3 scénarios réels</h3>
-                    
                     <h4>🟢 SCÉNARIO 1 : LE PRIX MONTE (LONG)</h4>
                     <div class="box success">
                         <strong>1️⃣ TP1 ATTEINT → 40% position fermée</strong><br><br>
@@ -5331,7 +4949,6 @@ async def strategie_page():
                         ✅ Profit final : +$800 (cumulé +$1,550 sur 1 trade !)<br>
                         🎉 TRADE COMPLÉTÉ !
                     </div>
-                    
                     <h4>🔴 SCÉNARIO 2 : LE PRIX BAISSE (SL HIT)</h4>
                     <div class="box danger">
                         <strong>❌ 100% position fermée au SL</strong><br><br>
@@ -5342,7 +4959,6 @@ async def strategie_page():
                         └─ Après 2 SL : Pause 1 heure complète<br>
                         └─ Après 3 SL : STOP 24-48h (mental pas bon)
                     </div>
-                    
                     <h4>🟡 SCÉNARIO 3 : LE PRIX STAGNE (RANGE)</h4>
                     <div class="box warning">
                         <strong>Le prix oscille mais ne progresse pas</strong><br><br>
@@ -5350,7 +4966,6 @@ async def strategie_page():
                         ✅ Si toujours pas de direction → Sort à la main au breakeven<br><br>
                         RÉSULTAT : 0 (pas de profit, pas de perte)
                     </div>
-                    
                     <h3>Sortie progressive 40/40/20</h3>
                     <div class="box">
                         <strong>C'est LA CLÉE pour maîtriser le risque !</strong>
@@ -5362,14 +4977,11 @@ async def strategie_page():
                         <p style="margin-top: 15px;"><strong>Résultat :</strong> +$1,550 au lieu de +$250 !</p>
                     </div>
                 </div>
-                
                 <!-- NIVEAU 4 : ANALYSER -->
                 <div class="section">
                     <span class="level-badge level4">NIVEAU 4</span>
                     <h2><span class="emoji">📈</span> ANALYSER & APPRENDRE</h2>
-                    
                     <h3>Les 10 RÈGLES D'OR pour NE JAMAIS PERDRE</h3>
-                    
                     <div class="box success">
                         <h4>RÈGLE 1️⃣ : STOP LOSS OBLIGATOIRE</h4>
                         <ul>
@@ -5378,7 +4990,6 @@ async def strategie_page():
                             <li>💡 SL = Votre assurance contre les pertes</li>
                         </ul>
                     </div>
-                    
                     <div class="box success">
                         <h4>RÈGLE 2️⃣ : LEVERAGE = 10x UNIQUEMENT</h4>
                         <ul>
@@ -5387,7 +4998,6 @@ async def strategie_page():
                             <li>💡 10x = Balance risque/récompense optimal</li>
                         </ul>
                     </div>
-                    
                     <div class="box success">
                         <h4>RÈGLE 3️⃣ : TAILLE POSITION = 1% DU CAPITAL</h4>
                         <ul>
@@ -5396,7 +5006,6 @@ async def strategie_page():
                             <li>💡 Protection maximale + accumulation des profits</li>
                         </ul>
                     </div>
-                    
                     <div class="box success">
                         <h4>RÈGLE 4️⃣ : ATTENDRE LE SETUP PARFAIT</h4>
                         <ul>
@@ -5405,7 +5014,6 @@ async def strategie_page():
                             <li>💡 70-80% winrate = Attendre les bonnes conditions</li>
                         </ul>
                     </div>
-                    
                     <div class="box success">
                         <h4>RÈGLE 5️⃣ : NE PAS MODIFIER LE STOP LOSS</h4>
                         <ul>
@@ -5414,7 +5022,6 @@ async def strategie_page():
                             <li>💡 SL est ta limite. Elle ne bouge pas.</li>
                         </ul>
                     </div>
-                    
                     <div class="box success">
                         <h4>RÈGLE 6️⃣ : RESPECTER LES SORTIES PROGRESSIVES</h4>
                         <ul>
@@ -5423,7 +5030,6 @@ async def strategie_page():
                             <li>💡 40/40/20 = +4.6R moyen</li>
                         </ul>
                     </div>
-                    
                     <div class="box success">
                         <h4>RÈGLE 7️⃣ : PAUSE APRÈS PERTE</h4>
                         <ul>
@@ -5432,7 +5038,6 @@ async def strategie_page():
                             <li>💡 Après perte = Émotions = Mauvaises décisions</li>
                         </ul>
                     </div>
-                    
                     <div class="box success">
                         <h4>RÈGLE 8️⃣ : JOURNAL TRADING QUOTIDIEN</h4>
                         <ul>
@@ -5441,7 +5046,6 @@ async def strategie_page():
                             <li>💡 Journal = Feedback sur tes erreurs</li>
                         </ul>
                     </div>
-                    
                     <div class="box success">
                         <h4>RÈGLE 9️⃣ : IGNORER LES BRUITS</h4>
                         <ul>
@@ -5450,7 +5054,6 @@ async def strategie_page():
                             <li>💡 Émotions = Pertes. Discipline = Profits</li>
                         </ul>
                     </div>
-                    
                     <div class="box success">
                         <h4>RÈGLE 🔟 : CROIRE AU SYSTÈME</h4>
                         <ul>
@@ -5460,34 +5063,24 @@ async def strategie_page():
                         </ul>
                     </div>
                 </div>
-                
                 <!-- NIVEAU 5 : PROJETER -->
                 <div class="section">
                     <span class="level-badge level5">NIVEAU 5</span>
                     <h2><span class="emoji">💰</span> PROJETER & CALCULER</h2>
-                    
                     <h3>Calcul des gains réalistes</h3>
-                    
                     <div class="calculator">
                         <h4>💎 Calculateur de ROI</h4>
                         <p><strong>Rentre tes paramètres :</strong></p>
-                        
                         <label><strong>Capital de départ ($)</strong></label>
                         <input type="number" id="capital" placeholder="Ex: 10000" value="10000">
-                        
                         <label><strong>ROI mensuel estimé (%)</strong></label>
                         <input type="number" id="roi" placeholder="Ex: 128" value="128">
-                        
                         <label><strong>Nombre de mois</strong></label>
                         <input type="number" id="months" placeholder="Ex: 3" value="3">
-                        
                         <button onclick="calculateROI()">Calculer le ROI 🚀</button>
-                        
                         <div id="roiResult" class="result"></div>
                     </div>
-                    
                     <h3>Plan d'action 30 jours</h3>
-                    
                     <div class="box">
                         <h4>📋 SEMAINE 1 : BACKTEST</h4>
                         <ul>
@@ -5496,7 +5089,6 @@ async def strategie_page():
                             <li>Jour 6-7 : Analyser les résultats (Winrate ≥ 70% ?)</li>
                         </ul>
                     </div>
-                    
                     <div class="box">
                         <h4>📋 SEMAINE 2 : PAPER TRADING</h4>
                         <ul>
@@ -5505,7 +5097,6 @@ async def strategie_page():
                             <li>Vérifier : Winrate ≥ 70% ?</li>
                         </ul>
                     </div>
-                    
                     <div class="box">
                         <h4>📋 SEMAINE 3 : MICRO-CAPITAL</h4>
                         <ul>
@@ -5514,7 +5105,6 @@ async def strategie_page():
                             <li>Risk 1% par trade = $5-10 par trade</li>
                         </ul>
                     </div>
-                    
                     <div class="box">
                         <h4>📋 SEMAINE 4 : SCALING</h4>
                         <ul>
@@ -5523,7 +5113,6 @@ async def strategie_page():
                         </ul>
                     </div>
                 </div>
-                
                 <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 3px solid #f0f0f0;">
                     <h2>🏁 BON TRADING & BONNE CHANCE ! 🚀💎</h2>
                     <p style="font-size: 1.1em; color: #667eea;">
@@ -5535,31 +5124,24 @@ async def strategie_page():
                 </div>
             </div>
         </div>
-        
         <button class="print-btn" onclick="window.print()">🖨️ Imprimer</button>
-        
         <script>
             function calculateROI() {
                 const capital = parseFloat(document.getElementById('capital').value);
                 const roi = parseFloat(document.getElementById('roi').value);
                 const months = parseInt(document.getElementById('months').value);
-                
                 if (isNaN(capital) || isNaN(roi) || isNaN(months)) {
                     alert('Remplis tous les champs !');
                     return;
                 }
-                
                 let currentCapital = capital;
                 let monthDetails = '';
-                
                 for (let i = 1; i <= months; i++) {
                     const gain = currentCapital * (roi / 100);
                     currentCapital += gain;
                     monthDetails += '<strong>Mois ' + i + ':</strong> $' + gain.toFixed(2) + ' → Total: $' + currentCapital.toFixed(2) + '<br>';
                 }
-                
                 const finalROI = ((currentCapital - capital) / capital * 100).toFixed(2);
-                
                 const resultDiv = document.getElementById('roiResult');
                 resultDiv.innerHTML = '<strong>📊 Résultats :</strong><br>' +
                     monthDetails +
@@ -5568,7 +5150,6 @@ async def strategie_page():
                     '<strong style="color: #667eea;">ROI total :</strong> ' + finalROI + '% 🚀';
                 resultDiv.classList.add('show');
             }
-            
             window.onload = function() {
                 calculateROI();
             };
@@ -5576,7 +5157,6 @@ async def strategie_page():
     </body>
     </html>
     """
-    
     return html_content
 
 # ✅ FIN ROUTE STRATÉGIE COMPLÈTE
@@ -5630,11 +5210,9 @@ def get_current_week_day():
 def reset_weekly_pnl_if_needed():
     """Réinitialise le P&L hebdomadaire si on est dans une nouvelle semaine"""
     global weekly_pnl
-    
     now = datetime.now()
     current_week_start = now - timedelta(days=now.weekday())
     current_week_start_str = current_week_start.strftime("%Y-%m-%d")
-    
     # Si c'est une nouvelle semaine ou première utilisation
     if weekly_pnl["week_start"] != current_week_start_str:
         weekly_pnl = {
@@ -5713,7 +5291,6 @@ CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Seg
 document.addEventListener('DOMContentLoaded', function() {
     if (window.location.pathname === '/login' || window.location.pathname === '/logout') return;
     if (document.querySelector('.universal-top-nav')) return;
-    
     const menuHTML = `<style>
 .universal-top-nav{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}
 .universal-nav-container{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
@@ -5724,7 +5301,6 @@ document.addEventListener('DOMContentLoaded', function() {
 .universal-nav-btn.account{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}
 .universal-nav-btn.logout{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}
 </style>`;
-    
     document.body.insertAdjacentHTML('afterbegin', menuHTML);
 });
 </script>"""
@@ -5739,7 +5315,6 @@ def format_price(price: float) -> str:
         decimals = 4  # Altcoins moyens
     else:
         decimals = 2  # BTC, ETH, etc.
-    
     formatted = f"${price:.{decimals}f}"
     # Supprimer les zéros inutiles
     formatted = formatted.rstrip('0').rstrip('.')
@@ -5790,7 +5365,6 @@ def calc_rr(entry, sl, tp1):
 def calculate_confidence_score(trade: TradeWebhook):
     """
     🎯 CALCUL DE CONFIANCE RÉEL ET DYNAMIQUE
-    
     Ce système calcule un score de confiance RÉALISTE basé sur plusieurs critères,
     partant d'un score de base de 50% et ajustant significativement selon :
     - Risk/Reward (poids le plus important)
@@ -5799,21 +5373,17 @@ def calculate_confidence_score(trade: TradeWebhook):
     - Timeframe
     - Nombre de targets
     - Signal technique (si fourni)
-    
     Plage de confiance finale : 35% à 95%
     """
-    
     # ============= SCORE DE BASE =============
     score = 50.0  # On part de 50%, pas 85% !
     reasons = []
-    
     # ============= 1. RISK/REWARD (POIDS LE PLUS IMPORTANT) =============
     # C'est le facteur #1 de réussite d'un trade
     if trade.entry and trade.sl and trade.tp1:
         risk = abs(trade.entry - trade.sl)
         reward = abs(trade.tp1 - trade.entry)
         rr_ratio = reward / risk if risk > 0 else 0
-        
         if rr_ratio >= 4.0:
             score += 25  # Excellent R/R
             reasons.append(f"Excellent R/R de {rr_ratio:.1f}:1")
@@ -5838,12 +5408,10 @@ def calculate_confidence_score(trade: TradeWebhook):
     else:
         score -= 10  # Pas de R/R défini = mauvais signe
         reasons.append("Aucun R/R défini")
-    
     # ============= 2. DISTANCE DU STOP LOSS =============
     # Un SL serré = meilleure gestion du risque
     if trade.entry and trade.sl:
         sl_distance = abs((trade.sl - trade.entry) / trade.entry * 100)
-        
         if sl_distance <= 1.5:
             score += 10  # SL très serré - excellent
             reasons.append("SL très serré (gestion optimale)")
@@ -5859,13 +5427,11 @@ def calculate_confidence_score(trade: TradeWebhook):
         else:
             score -= 8   # SL trop éloigné = risque élevé
             reasons.append(f"SL trop éloigné ({sl_distance:.1f}%)")
-    
     # ============= 3. LEVERAGE =============
     # Leverage trop élevé = risque accru
     if trade.leverage:
         try:
             lev = int(trade.leverage.replace('x', '').replace('X', ''))
-            
             if lev <= 5:
                 score += 8   # Leverage conservateur
                 reasons.append("Leverage conservateur")
@@ -5886,12 +5452,10 @@ def calculate_confidence_score(trade: TradeWebhook):
                 reasons.append("Leverage dangereux (>30x)")
         except:
             pass
-    
     # ============= 4. TIMEFRAME =============
     # Les timeframes plus élevés = plus fiables
     if trade.tf:
         tf_lower = trade.tf.lower()
-        
         if any(x in tf_lower for x in ['1d', '4h', 'daily']):
             score += 8   # Timeframe élevé = plus fiable
             reasons.append("Timeframe élevé (plus fiable)")
@@ -5904,11 +5468,9 @@ def calculate_confidence_score(trade: TradeWebhook):
         elif any(x in tf_lower for x in ['1m', '3m', '5m']):
             score -= 3   # Timeframe très court = plus de bruit
             reasons.append("Timeframe très court (volatil)")
-    
     # ============= 5. STRATÉGIE DE SORTIE =============
     # Plusieurs targets = meilleure gestion des profits
     targets_count = sum([1 for tp in [trade.tp1, trade.tp2, trade.tp3] if tp is not None])
-    
     if targets_count >= 3:
         score += 6
         reasons.append("Sortie progressive (3+ targets)")
@@ -5918,7 +5480,6 @@ def calculate_confidence_score(trade: TradeWebhook):
     elif targets_count == 1:
         score -= 2
         reasons.append("Un seul target")
-    
     # ============= 6. SIGNAL TECHNIQUE (SI FOURNI) =============
     # Si Pine Script envoie une confiance technique
     if trade.confidence:
@@ -5936,51 +5497,42 @@ def calculate_confidence_score(trade: TradeWebhook):
         else:
             score -= 5
             reasons.append("Signal technique faible")
-    
     # ============= 7. ANALYSE DÉTAILLÉE =============
     # Une note détaillée montre de la préparation
     if trade.note and len(trade.note) > 30:
         score += 3
         reasons.append("Analyse détaillée fournie")
-    
     # ============= LIMITES ET NORMALISATION =============
     # Score final entre 35% et 95%
     score = max(35.0, min(95.0, score))
-    
     # ============= CONSTRUCTION DE LA RAISON =============
     # Afficher toutes les raisons importantes, pas seulement 3
     if len(reasons) > 0:
         reason = ", ".join(reasons)
     else:
         reason = "Analyse technique standard"
-    
     return round(score, 1), reason.capitalize()
 
 
 async def send_telegram_advanced(trade: TradeWebhook):
     """Envoie message Telegram professionnel avec anti-rate-limit et variables d'env"""
     global last_telegram_message_time
-    
     # Vérifier si Telegram est activé
     if not TELEGRAM_ENABLED:
         print("ℹ️ Telegram désactivé (TELEGRAM_ENABLED=0)")
         return
-    
     try:
         confidence_score, confidence_reason = calculate_confidence_score(trade)
         direction_emoji = "📈" if trade.side == "LONG" else "📉"
-        
         # Heure du Québec avec gestion automatique EDT/EST
         timezone_quebec = pytz.timezone('America/Montreal')
         now_quebec = datetime.now(timezone_quebec)
         heure = now_quebec.strftime("%Hh%M")
-        
         rr = calc_rr(trade.entry, trade.sl, trade.tp1)
         rr_text = f" (R/R: {rr}:1)" if rr else ""
         trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"
         timeframe = trade.tf if trade.tf else "15m"
         leverage_text = trade.leverage if trade.leverage else "10x"
-        
         msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}
 ⏰ Heure : {heure}
 🎯 Direction : <b>{trade.side}</b> {direction_emoji}
@@ -5989,41 +5541,33 @@ async def send_telegram_advanced(trade: TradeWebhook):
 ❌ <b>Stop-Loss:</b> ${trade.sl:.4f}
 💡 <b>Leverage:</b> {leverage_text} Isolée
 """
-        
         if trade.tp1:
             msg += f"✅ <b>Target 1:</b> ${trade.tp1:.4f}\n"
         if trade.tp2:
             msg += f"✅ <b>Target 2:</b> ${trade.tp2:.4f}\n"
         if trade.tp3:
             msg += f"✅ <b>Target 3:</b> ${trade.tp3:.4f}\n"
-        
         msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
         msg += "💡 <b>Après le TP1, veuillez vous mettre en SLBE</b>\n"
         msg += "<i>(Stop Loss Break Even - sécurisez vos gains)</i>"
-        
         if trade.note:
             msg += f"\n\n📝 <b>Note:</b> {trade.note}"
-        
         # ============= ANTI-RATE-LIMIT =============
         # Attendre TG_MIN_DELAY_SEC secondes depuis le dernier message
         import time
         current_time = time.time()
         time_since_last_message = current_time - last_telegram_message_time
-        
         if time_since_last_message < TG_MIN_DELAY_SEC:
             wait_time = TG_MIN_DELAY_SEC - time_since_last_message
             print(f"⏳ Attente de {wait_time:.1f}s pour éviter rate limit...")
             await asyncio.sleep(wait_time)
-        
         # ============= ENVOI AVEC RETRY =============
         max_retries = 3
         retry_count = 0
-        
         # 🔥 NOUVEAU: Ajouter boutons dashboard + TradingView
         # Construire l'URL TradingView avec le symbole
         tradingview_url = f"https://www.tradingview.com/chart/?symbol=BINANCE:{trade.symbol}"
-        
         telegram_payload = {
             "chat_id": TELEGRAM_CHAT_ID, 
             "text": msg, 
@@ -6043,14 +5587,12 @@ async def send_telegram_advanced(trade: TradeWebhook):
                 ]
             }
         }
-        
         async with httpx.AsyncClient(timeout=10.0) as client:
             while retry_count < max_retries:
                 response = await client.post(
                     f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
                     json=telegram_payload
                 )
-                
                 if response.status_code == 200:
                     last_telegram_message_time = time.time()
                     print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
@@ -6058,7 +5600,6 @@ async def send_telegram_advanced(trade: TradeWebhook):
                     print(f"   Confiance IA: {confidence_score}%")
                     print(f"   Heure: {heure}")
                     break
-                    
                 elif response.status_code == 429:
                     # Rate limit hit - attendre et réessayer
                     try:
@@ -6066,18 +5607,15 @@ async def send_telegram_advanced(trade: TradeWebhook):
                         retry_after = error_data.get("parameters", {}).get("retry_after", 5)
                     except:
                         retry_after = 5
-                    
                     retry_count += 1
                     if retry_count < max_retries:
                         print(f"⚠️ Rate limit (429) - Attente de {retry_after}s avant retry {retry_count}/{max_retries}...")
                         await asyncio.sleep(retry_after)
                     else:
                         print(f"❌ Rate limit (429) - Max retries atteint pour {trade.symbol}")
-                        
                 else:
                     print(f"⚠️ Erreur Telegram: {response.status_code} - {response.text}")
                     break
-                
     except Exception as e:
         print(f"❌ Erreur Telegram: {e}")
         import traceback
@@ -6110,13 +5648,10 @@ async def webhook(trade: TradeWebhook):
         print(f"   Entry: ${trade.entry:.6f}")
         print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
         print(f"{'='*60}\n")
-        
         symbol = trade.symbol
         new_side = trade.side
-        
         # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
         inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
-        
         # Chercher un trade actif inverse
         inverse_trade = None
         for t in trades_db:
@@ -6125,21 +5660,17 @@ async def webhook(trade: TradeWebhook):
                 t.get('status') == 'open'):
                 inverse_trade = t
                 break
-        
         # 🔄 Si un trade inverse existe, le fermer automatiquement SANS ouvrir le nouveau
         if inverse_trade:
             now = datetime.now(pytz.timezone('America/Montreal'))
             close_time = now.strftime('%H:%M:%S')
             close_date = now.strftime('%d/%m/%Y')
-            
             print(f"⚠️ REVIREMENT DÉTECTÉ sur {symbol}! {inverse_side} → {new_side}")
-            
             # Fermer le trade inverse
             inverse_trade['status'] = 'closed'
             inverse_trade['closed_reason'] = f'Revirement: Signal {new_side} reçu'
             inverse_trade['closed_at'] = now.isoformat()
             inverse_trade['sl_hit'] = True  # Bouton SL rouge pour indiquer une perte
-            
             # 📱 Notification Telegram DÉTAILLÉE du revirement
             reversal_message = (
                 f"🔄 <b>REVIREMENT DE TENDANCE DÉTECTÉ!</b>\n\n"
@@ -6154,22 +5685,17 @@ async def webhook(trade: TradeWebhook):
                 f"⏳ En attente du prochain signal propre...\n\n"
                 f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
             )
-            
             asyncio.create_task(send_telegram_message(reversal_message))
             print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
-            
             return {
                 "status": "reversed",
                 "message": f"Trade {inverse_side} fermé, signal {new_side} ignoré",
                 "closed_trade_id": inverse_trade.get('symbol'),
                 "new_trade_created": False
             }
-        
         # 📝 Créer le nouveau trade SEULEMENT si pas de revirement
         await send_telegram_advanced(trade)
-        
         confidence_score, _ = calculate_confidence_score(trade)
-        
         trade_data = {
             "symbol": trade.symbol,
             "side": trade.side,
@@ -6192,11 +5718,8 @@ async def webhook(trade: TradeWebhook):
         }
         trades_db.append(trade_data)
         save_trades_to_file()  # 💾 Sauvegarder immédiatement
-        
         print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
-        
         return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
-        
     except Exception as e:
         print(f"❌ ERREUR WEBHOOK: {e}")
         import traceback
@@ -6215,9 +5738,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
     if not user:
         return RedirectResponse("/login")
-    
     username = user.get('username', 'Utilisateur')
-    
     if not check_route_permission(username, "/dashboard"):
         return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
             <html><head><meta charset="UTF-8"><title>Accès Refusé</title>""" + CSS + """</head>
@@ -6228,7 +5749,6 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
                 </div>
             </body></html>
         """, status_code=403)
-    
     html = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -6280,7 +5800,6 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         .section-divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), rgba(118, 75, 162, 0.5), rgba(240, 147, 251, 0.5), transparent); margin: 80px 0; position: relative; }
         .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
         @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
-        
         /* 🪙 CRYPTO TICKER - VRAIS LOGOS */
         .crypto-ticker-container { 
             width: 100%; 
@@ -6328,7 +5847,6 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
             0%, 100% { transform: translateY(0) scale(1); } 
             50% { transform: translateY(-15px) scale(1.05); } 
         }
-        
         @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } .crypto-logo-img { width: 35px; height: 35px; margin: 0 30px; } }
     </style>
 </head>
@@ -6349,7 +5867,6 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
             <div class="stat-card" style="animation-delay: 0.3s;"><span class="stat-icon">⚡</span><span class="stat-value">24/7</span><span class="stat-label">Données Live</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad3)" stroke-width="2" points="0,25 10,20 20,30 30,15 40,25 50,10 60,20 70,15 80,25 90,10 100,20"/><defs><linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" /><stop offset="100%" style="stop-color:#667eea;stop-opacity:1" /></linearGradient></defs></svg></div></div>
             <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
-        
         <!-- 🪙 CRYPTO TICKER - VRAIS LOGOS -->
         <div class="crypto-ticker-container">
             <div class="crypto-ticker">
@@ -6443,7 +5960,6 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 
 <!-- ==================== SECTIONS EXPLICATIVES ==================== -->
 <div style="max-width: 1400px; margin: 60px auto 40px auto; padding: 0 20px;">
-    
     <!-- Comment ça marche? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
         <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -6451,14 +5967,12 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         </h2>
         <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">Le Trading Dashboard Pro est ton cockpit de trading complet avec gestion de trades, alertes TradingView/Telegram, monitoring TP/SL, Fear & Greed Index, Bitcoin dominance, et heatmap crypto en temps réel.</p>
     </div>
-    
     <!-- Fear & Greed expliqué -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">
         <h2 style="color: #6366f1; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
             <span style="font-size: 1.5em;">😰</span> Fear & Greed Index Expliqué
         </h2>
         <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">Indicateur contrarian : achète quand les autres ont peur, vends quand ils sont avides.</p>
-        
         <div style="display: grid; gap: 15px;">
             <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
                 <h3 style="color: #ef4444; margin-bottom: 10px;">😱 Extreme Fear (0-25) = ACHÈTE!</h3>
@@ -6482,7 +5996,6 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
             </div>
         </div>
     </div>
-    
     <!-- Points Importants -->
     <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
         <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
@@ -6496,7 +6009,6 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
             <li><strong>Heatmap temps réel:</strong> Vert = pump, rouge = dump.</li>
         </ul>
     </div>
-    
 </div>
 <!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
 <style>
@@ -6751,13 +6263,10 @@ let scene, camera, renderer, globe;
 function initGlobe() {
     const container = document.getElementById('globe3d');
     scene = new THREE.Scene();
-    
     camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
     camera.position.z = 2;
-    
     renderer = new THREE.WebGLRenderer({ canvas: container, alpha: true, antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
-    
     // Globe avec texture gradient
     const geometry = new THREE.SphereGeometry(1, 64, 64);
     const material = new THREE.MeshBasicMaterial({
@@ -6768,16 +6277,13 @@ function initGlobe() {
     });
     globe = new THREE.Mesh(geometry, material);
     scene.add(globe);
-    
     // Particules autour du globe
     const particlesGeometry = new THREE.BufferGeometry();
     const particlesCount = 1000;
     const posArray = new Float32Array(particlesCount * 3);
-    
     for(let i = 0; i < particlesCount * 3; i++) {
         posArray[i] = (Math.random() - 0.5) * 5;
     }
-    
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
     const particlesMaterial = new THREE.PointsMaterial({
         size: 0.005,
@@ -6785,10 +6291,8 @@ function initGlobe() {
         transparent: true,
         opacity: 0.8
     });
-    
     const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particlesMesh);
-    
     animateGlobe();
 }
 
@@ -6804,15 +6308,12 @@ async function fetchCryptoData() {
     try {
         const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h');
         const data = await response.json();
-        
         // Global data
         const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
         const globalData = await globalResponse.json();
-        
         updateGlobalStats(globalData.data);
         createBubbles(data);
         updateMovers(data);
-        
     } catch (error) {
         console.error('Erreur fetch data:', error);
     }
@@ -6828,15 +6329,12 @@ function updateGlobalStats(data) {
 function createBubbles(coins) {
     const container = document.getElementById('bubbles');
     container.innerHTML = '';
-    
     coins.slice(0, 15).forEach((coin, index) => {
         const bubble = document.createElement('div');
         bubble.className = 'crypto-bubble';
-        
         const size = Math.max(60, Math.min(150, coin.market_cap / 1e9 * 2));
         const change = coin.price_change_percentage_24h;
         const color = change > 0 ? '16,185,129' : '239,68,68';
-        
         bubble.style.width = size + 'px';
         bubble.style.height = size + 'px';
         bubble.style.background = `radial-gradient(circle, rgba(${color},0.3), rgba(${color},0.1))`;
@@ -6844,14 +6342,11 @@ function createBubbles(coins) {
         bubble.style.top = (Math.random() * 70 + 10) + '%';
         bubble.style.animation = `float-bubble ${3 + Math.random() * 2}s ease-in-out infinite`;
         bubble.style.animationDelay = (Math.random() * 2) + 's';
-        
         bubble.innerHTML = `
             <div class="bubble-symbol">${coin.symbol.toUpperCase()}</div>
             <div class="bubble-change">${change > 0 ? '+' : ''}${change.toFixed(1)}%</div>
         `;
-        
         bubble.title = `${coin.name}: $${coin.current_price.toFixed(2)}`;
-        
         container.appendChild(bubble);
     });
 }
@@ -6861,10 +6356,8 @@ function updateMovers(coins) {
     const sortedByGain = [...coins].sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h);
     const topGainers = sortedByGain.slice(0, 5);
     const topLosers = sortedByGain.slice(-5).reverse();
-    
     const sortedByVolume = [...coins].sort((a, b) => b.total_volume - a.total_volume);
     const mostActive = sortedByVolume.slice(0, 5);
-    
     displayMovers('topGainers', topGainers);
     displayMovers('topLosers', topLosers);
     displayMovers('mostActive', mostActive);
@@ -6873,7 +6366,6 @@ function updateMovers(coins) {
 function displayMovers(containerId, coins) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
-    
     coins.forEach(coin => {
         const change = coin.price_change_percentage_24h;
         const item = document.createElement('div');
@@ -6904,14 +6396,11 @@ async function fetchFearGreed() {
         const data = await response.json();
         const value = parseInt(data.data[0].value);
         const classification = data.data[0].value_classification;
-        
         document.getElementById('fearGreedValue').textContent = value;
         document.getElementById('fearGreedLabel').textContent = classification;
-        
         // Rotate needle
         const angle = -90 + (value * 1.8); // 0-100 -> -90 to 90 degrees
         document.getElementById('gaugeNeedle').style.transform = `rotate(${angle}deg)`;
-        
     } catch (error) {
         console.error('Erreur Fear & Greed:', error);
     }
@@ -6922,7 +6411,6 @@ window.addEventListener('DOMContentLoaded', () => {
     initGlobe();
     fetchCryptoData();
     fetchFearGreed();
-    
     // Auto refresh every 10 minutes (optimized for free API limits)
     setInterval(() => {
         fetchCryptoData();
@@ -6938,7 +6426,6 @@ window.addEventListener('DOMContentLoaded', () => {
     </script>
 </body>
 </html>"""
-    
     return HTMLResponse(SIDEBAR + html)
 
 @app.get("/", response_class=HTMLResponse)
@@ -6994,7 +6481,6 @@ async def home():
         .section-divider { height: 2px; background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.5), rgba(118, 75, 162, 0.5), rgba(240, 147, 251, 0.5), transparent); margin: 80px 0; position: relative; }
         .section-divider::after { content: '✦'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #0a0e27; padding: 10px 20px; font-size: 1.5em; color: #667eea; animation: rotate 4s linear infinite; }
         @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
-        
         /* 🪙 CRYPTO TICKER - VRAIS LOGOS */
         .crypto-ticker-container { 
             width: 100%; 
@@ -7042,7 +6528,6 @@ async def home():
             0%, 100% { transform: translateY(0) scale(1); } 
             50% { transform: translateY(-15px) scale(1.05); } 
         }
-        
         @media (max-width: 768px) { body { margin-left: 0; } .main-content { padding: 40px 20px; } .hero-title { font-size: 2.5em; } .stats-grid, .crypto-grid { grid-template-columns: 1fr; } .crypto-logo-img { width: 35px; height: 35px; margin: 0 30px; } }
     </style>
 </head>
@@ -7063,7 +6548,6 @@ async def home():
             <div class="stat-card" style="animation-delay: 0.3s;"><span class="stat-icon">⚡</span><span class="stat-value">24/7</span><span class="stat-label">Données Live</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad3)" stroke-width="2" points="0,25 10,20 20,30 30,15 40,25 50,10 60,20 70,15 80,25 90,10 100,20"/><defs><linearGradient id="grad3" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#f093fb;stop-opacity:1" /><stop offset="100%" style="stop-color:#667eea;stop-opacity:1" /></linearGradient></defs></svg></div></div>
             <div class="stat-card" style="animation-delay: 0.4s;"><span class="stat-icon">🧠</span><span class="stat-value">95%+</span><span class="stat-label">Précision Signaux IA</span><div class="stat-chart"><svg class="mini-sparkline" viewBox="0 0 100 50" preserveAspectRatio="none"><polyline fill="none" stroke="url(#grad4)" stroke-width="2" points="0,45 15,40 30,35 45,28 60,20 75,12 90,8 100,5"/><defs><linearGradient id="grad4" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#10b981;stop-opacity:1" /><stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" /></linearGradient></defs></svg></div></div>
         </div>
-        
         <!-- 🪙 CRYPTO TICKER - VRAIS LOGOS -->
         <div class="crypto-ticker-container">
             <div class="crypto-ticker">
@@ -7406,13 +6890,10 @@ let scene, camera, renderer, globe;
 function initGlobe() {
     const container = document.getElementById('globe3d');
     scene = new THREE.Scene();
-    
     camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
     camera.position.z = 2;
-    
     renderer = new THREE.WebGLRenderer({ canvas: container, alpha: true, antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
-    
     // Globe avec texture gradient
     const geometry = new THREE.SphereGeometry(1, 64, 64);
     const material = new THREE.MeshBasicMaterial({
@@ -7423,16 +6904,13 @@ function initGlobe() {
     });
     globe = new THREE.Mesh(geometry, material);
     scene.add(globe);
-    
     // Particules autour du globe
     const particlesGeometry = new THREE.BufferGeometry();
     const particlesCount = 1000;
     const posArray = new Float32Array(particlesCount * 3);
-    
     for(let i = 0; i < particlesCount * 3; i++) {
         posArray[i] = (Math.random() - 0.5) * 5;
     }
-    
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
     const particlesMaterial = new THREE.PointsMaterial({
         size: 0.005,
@@ -7440,10 +6918,8 @@ function initGlobe() {
         transparent: true,
         opacity: 0.8
     });
-    
     const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particlesMesh);
-    
     animateGlobe();
 }
 
@@ -7459,15 +6935,12 @@ async function fetchCryptoData() {
     try {
         const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h');
         const data = await response.json();
-        
         // Global data
         const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
         const globalData = await globalResponse.json();
-        
         updateGlobalStats(globalData.data);
         createBubbles(data);
         updateMovers(data);
-        
     } catch (error) {
         console.error('Erreur fetch data:', error);
     }
@@ -7483,15 +6956,12 @@ function updateGlobalStats(data) {
 function createBubbles(coins) {
     const container = document.getElementById('bubbles');
     container.innerHTML = '';
-    
     coins.slice(0, 15).forEach((coin, index) => {
         const bubble = document.createElement('div');
         bubble.className = 'crypto-bubble';
-        
         const size = Math.max(60, Math.min(150, coin.market_cap / 1e9 * 2));
         const change = coin.price_change_percentage_24h;
         const color = change > 0 ? '16,185,129' : '239,68,68';
-        
         bubble.style.width = size + 'px';
         bubble.style.height = size + 'px';
         bubble.style.background = `radial-gradient(circle, rgba(${color},0.3), rgba(${color},0.1))`;
@@ -7499,14 +6969,11 @@ function createBubbles(coins) {
         bubble.style.top = (Math.random() * 70 + 10) + '%';
         bubble.style.animation = `float-bubble ${3 + Math.random() * 2}s ease-in-out infinite`;
         bubble.style.animationDelay = (Math.random() * 2) + 's';
-        
         bubble.innerHTML = `
             <div class="bubble-symbol">${coin.symbol.toUpperCase()}</div>
             <div class="bubble-change">${change > 0 ? '+' : ''}${change.toFixed(1)}%</div>
         `;
-        
         bubble.title = `${coin.name}: $${coin.current_price.toFixed(2)}`;
-        
         container.appendChild(bubble);
     });
 }
@@ -7516,10 +6983,8 @@ function updateMovers(coins) {
     const sortedByGain = [...coins].sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h);
     const topGainers = sortedByGain.slice(0, 5);
     const topLosers = sortedByGain.slice(-5).reverse();
-    
     const sortedByVolume = [...coins].sort((a, b) => b.total_volume - a.total_volume);
     const mostActive = sortedByVolume.slice(0, 5);
-    
     displayMovers('topGainers', topGainers);
     displayMovers('topLosers', topLosers);
     displayMovers('mostActive', mostActive);
@@ -7528,7 +6993,6 @@ function updateMovers(coins) {
 function displayMovers(containerId, coins) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
-    
     coins.forEach(coin => {
         const change = coin.price_change_percentage_24h;
         const item = document.createElement('div');
@@ -7559,14 +7023,11 @@ async function fetchFearGreed() {
         const data = await response.json();
         const value = parseInt(data.data[0].value);
         const classification = data.data[0].value_classification;
-        
         document.getElementById('fearGreedValue').textContent = value;
         document.getElementById('fearGreedLabel').textContent = classification;
-        
         // Rotate needle
         const angle = -90 + (value * 1.8); // 0-100 -> -90 to 90 degrees
         document.getElementById('gaugeNeedle').style.transform = `rotate(${angle}deg)`;
-        
     } catch (error) {
         console.error('Erreur Fear & Greed:', error);
     }
@@ -7577,7 +7038,6 @@ window.addEventListener('DOMContentLoaded', () => {
     initGlobe();
     fetchCryptoData();
     fetchFearGreed();
-    
     // Auto refresh every 10 minutes (optimized for free API limits)
     setInterval(() => {
         fetchCryptoData();
@@ -7593,7 +7053,6 @@ window.addEventListener('DOMContentLoaded', () => {
     </script>
 </body>
 </html>"""
-    
     return HTMLResponse(SIDEBAR + html)
 
 
@@ -7611,20 +7070,17 @@ async def spot_trading_page():
         """ + CSS + """
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            
             body {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                 color: #333;
                 line-height: 1.6;
             }}
-            
             .container {
                 max-width: 1200px;
                 margin: 0 auto;
                 padding: 40px 20px;
             }}
-            
             header {
                 text-align: center;
                 color: white;
@@ -7636,18 +7092,15 @@ async def spot_trading_page():
                 border: 2px solid rgba(255,255,255,0.2);
                 box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
             }
-            
             header h1 {
                 font-size: 2.8em;
                 margin-bottom: 15px;
                 text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
             }
-            
             header p {
                 font-size: 1.3em;
                 opacity: 0.95;
             }
-            
             .content {
                 background: white;
                 border-radius: 15px;
@@ -7655,15 +7108,12 @@ async def spot_trading_page():
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
                 margin-bottom: 40px;
             }
-            
             .section {
                 margin-bottom: 50px;
                 padding-bottom: 30px;
                 border-bottom: 3px solid #f0f0f0;
             }
-            
             .section:last-child { border-bottom: none; }
-            
             h2 {
                 color: #10b981;
                 font-size: 2em;
@@ -7672,28 +7122,22 @@ async def spot_trading_page():
                 align-items: center;
                 gap: 10px;
             }
-            
             h3 {
                 color: #059669;
                 font-size: 1.5em;
                 margin: 25px 0 15px 0;
             }
-            
             h4 {
                 color: #10b981;
                 font-size: 1.2em;
                 margin: 20px 0 10px 0;
             }
-            
             p { margin-bottom: 15px; font-size: 1.05em; }
-            
             ul, ol {
                 margin-left: 30px;
                 margin-bottom: 15px;
             }
-            
             li { margin-bottom: 10px; }
-            
             .box {
                 background: linear-gradient(135deg, #10b98115 0%, #05966915 100%);
                 border-left: 5px solid #10b981;
@@ -7701,96 +7145,79 @@ async def spot_trading_page():
                 margin: 20px 0;
                 border-radius: 8px;
             }
-            
             .box.success {
                 border-left-color: #10b981;
                 background: linear-gradient(135deg, #10b98115 0%, #05966915 100%);
             }
-            
             .box.danger {
                 border-left-color: #ef4444;
                 background: linear-gradient(135deg, #ef444415 0%, #dc262615 100%);
             }
-            
             .box.warning {
                 border-left-color: #f59e0b;
                 background: linear-gradient(135deg, #f59e0b15 0%, #d9770615 100%);
             }
-            
             .box.info {
                 border-left-color: #3b82f6;
                 background: linear-gradient(135deg, #3b82f615 0%, #2563eb15 100%);
             }
-            
             table {
                 width: 100%;
                 border-collapse: collapse;
                 margin: 20px 0;
                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             }
-            
             th, td {
                 padding: 15px;
                 text-align: left;
                 border: 1px solid #e0e0e0;
             }
-            
             th {
                 background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                 color: white;
                 font-weight: bold;
             }
-            
             tr:nth-child(even) { background: #f9f9f9; }
             tr:hover { background: #f0f0f0; }
-            
             .comparison-grid {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 25px;
                 margin: 30px 0;
             }
-            
             .comparison-card {
                 background: #f8f9fa;
                 border-radius: 12px;
                 padding: 25px;
                 border: 3px solid #e0e0e0;
             }
-            
             .comparison-card.spot {
                 border-color: #10b981;
                 background: linear-gradient(135deg, #10b98110 0%, #05966910 100%);
             }
-            
             .comparison-card.futures {
                 border-color: #ef4444;
                 background: linear-gradient(135deg, #ef444410 0%, #dc262610 100%);
             }
-            
             .comparison-card h3 { margin-top: 0; }
-            
             .pros-cons {
                 display: grid;
                 grid-template-columns: 1fr 1fr;
                 gap: 20px;
                 margin: 20px 0;
             }
-            
             .pros {
                 background: #f0fdf4;
                 padding: 20px;
                 border-radius: 10px;
                 border-left: 5px solid #10b981;
             }
-            
             .cons {
                 background: #fef2f2;
                 padding: 20px;
                 border-radius: 10px;
                 border-left: 5px solid #ef4444;
             }
-            
             .example-box {
                 background: #fef3c7;
                 border: 2px solid #f59e0b;
@@ -7798,19 +7225,16 @@ async def spot_trading_page():
                 padding: 25px;
                 margin: 20px 0;
             }
-            
             .example-box h4 {
                 color: #d97706;
                 margin-top: 0;
             }
-            
             .coin-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
                 gap: 20px;
                 margin: 20px 0;
             }
-            
             .coin-card {
                 background: white;
                 border: 2px solid #e0e0e0;
@@ -7818,17 +7242,14 @@ async def spot_trading_page():
                 padding: 20px;
                 transition: transform 0.3s, box-shadow 0.3s;
             }
-            
             .coin-card:hover {
                 transform: translateY(-5px);
                 box-shadow: 0 10px 20px rgba(0,0,0,0.1);
             }
-            
             .coin-card h4 {
                 margin-top: 0;
                 font-size: 1.3em;
             }
-            
             .badge {
                 display: inline-block;
                 padding: 5px 12px;
@@ -7837,13 +7258,11 @@ async def spot_trading_page():
                 font-weight: bold;
                 margin: 5px 5px 5px 0;
             }
-            
             .badge.low-risk { background: #d1fae5; color: #065f46; }
             .badge.medium-risk { background: #fed7aa; color: #92400e; }
             .badge.high-risk { background: #fecaca; color: #991b1b; }
             .badge.long-term { background: #dbeafe; color: #1e40af; }
             .badge.mid-term { background: #e9d5ff; color: #6b21a8; }
-            
             .strategy-step {
                 background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                 border-left: 5px solid #10b981;
@@ -7852,7 +7271,6 @@ async def spot_trading_page():
                 border-radius: 8px;
                 position: relative;
             }
-            
             .strategy-step::before {
                 content: attr(data-step);
                 position: absolute;
@@ -7869,12 +7287,10 @@ async def spot_trading_page():
                 font-weight: bold;
                 font-size: 1.2em;
             }
-            
             @media (max-width: 768px) {
                 .comparison-grid, .pros-cons, .coin-grid {
                     grid-template-columns: 1fr;
                 }
-                
                 .strategy-step::before {
                     position: static;
                     margin-bottom: 10px;
@@ -7888,16 +7304,11 @@ async def spot_trading_page():
                 <h1>💎 TRADING SPOT - GUIDE COMPLET</h1>
                 <p>Tout ce que vous devez savoir sur le trading au comptant (Spot)</p>
             </header>
-            
-            
-            
             <div class="content">
                 <!-- SECTION 1: QU'EST-CE QUE LE SPOT -->
                 <div class="section">
                     <h2>📖 Qu'est-ce que le Trading SPOT ?</h2>
-                    
                     <p>Le <strong>trading SPOT</strong> (ou trading au comptant) est la forme la plus simple et la plus directe d'achat et de vente de cryptomonnaies. Contrairement au trading à terme (Futures), vous achetez réellement les actifs et les possédez dans votre portefeuille.</p>
-                    
                     <div class="box info">
                         <h4>🎯 Définition Simple</h4>
                         <p><strong>SPOT = Acheter et posséder la crypto immédiatement au prix actuel du marché</strong></p>
@@ -7908,13 +7319,10 @@ async def spot_trading_page():
                             <li>Pas de leverage, pas de liquidation, pas de frais de financement</li>
                         </ul>
                     </div>
-                    
                     <h3>🔄 Comment ça fonctionne ?</h3>
-                    
                     <div class="example-box">
                         <h4>📊 Exemple Concret</h4>
                         <p><strong>Scénario :</strong> Vous voulez acheter 1 ETH au prix actuel de 2,500 USDT</p>
-                        
                         <ol>
                             <li><strong>Dépôt :</strong> Vous déposez 2,500 USDT sur votre compte Binance/Kraken</li>
                             <li><strong>Achat :</strong> Vous achetez 1 ETH au prix spot de 2,500 USDT</li>
@@ -7923,15 +7331,12 @@ async def spot_trading_page():
                             <li><strong>Vente :</strong> Vous vendez votre 1 ETH à 3,000 USDT</li>
                             <li><strong>Profit :</strong> +500 USDT (20% de gain) 🎉</li>
                         </ol>
-                        
                         <p style="margin-top: 15px;"><strong>💰 Calcul :</strong> (3,000 - 2,500) = +500 USDT de profit net (moins frais ~0.1%)</p>
                     </div>
                 </div>
-                
                 <!-- SECTION 2: SPOT VS FUTURES -->
                 <div class="section">
                     <h2>⚖️ SPOT vs FUTURES - Différences Majeures</h2>
-                    
                     <div class="comparison-grid">
                         <div class="comparison-card spot">
                             <h3>💎 TRADING SPOT</h3>
@@ -7947,7 +7352,6 @@ async def spot_trading_page():
                                 <li>⚠️ Que des positions LONG (achat)</li>
                             </ul>
                         </div>
-                        
                         <div class="comparison-card futures">
                             <h3>⚡ TRADING FUTURES</h3>
                             <ul>
@@ -7963,7 +7367,6 @@ async def spot_trading_page():
                             </ul>
                         </div>
                     </div>
-                    
                     <table>
                         <thead>
                             <tr>
@@ -8026,11 +7429,9 @@ async def spot_trading_page():
                         </tbody>
                     </table>
                 </div>
-                
                 <!-- SECTION 3: AVANTAGES & INCONVÉNIENTS -->
                 <div class="section">
                     <h2>⚖️ Avantages & Inconvénients du SPOT</h2>
-                    
                     <div class="pros-cons">
                         <div class="pros">
                             <h3>✅ AVANTAGES</h3>
@@ -8047,7 +7448,6 @@ async def spot_trading_page():
                                 <li><strong>Governance</strong> : Peut voter si le token le permet</li>
                             </ul>
                         </div>
-                        
                         <div class="cons">
                             <h3>❌ INCONVÉNIENTS</h3>
                             <ul>
@@ -8063,13 +7463,10 @@ async def spot_trading_page():
                         </div>
                     </div>
                 </div>
-                
                 <!-- SECTION 4: MEILLEURS COINS POUR SPOT -->
                 <div class="section">
                     <h2>🏆 Meilleurs Coins pour Trading SPOT</h2>
-                    
                     <p>Tous les coins ne sont pas égaux pour le trading spot. Voici les catégories recommandées selon votre profil de risque et horizon temporel.</p>
-                    
                     <h3>💎 Tier 1 - Blue Chips (Risque Faible)</h3>
                     <div class="coin-grid">
                         <div class="coin-card">
@@ -8083,7 +7480,6 @@ async def spot_trading_page():
                                 <li><strong>Pourquoi:</strong> Or numérique, adoption institutionnelle</li>
                             </ul>
                         </div>
-                        
                         <div class="coin-card">
                             <h4>Ξ Ethereum (ETH)</h4>
                             <p><span class="badge low-risk">Risque Faible</span><span class="badge long-term">Long Terme</span></p>
@@ -8095,7 +7491,6 @@ async def spot_trading_page():
                                 <li><strong>Pourquoi:</strong> Smart contracts, DeFi, NFTs, staking</li>
                             </ul>
                         </div>
-                        
                         <div class="coin-card">
                             <h4>◉ BNB (Binance Coin)</h4>
                             <p><span class="badge low-risk">Risque Faible</span><span class="badge mid-term">Moyen Terme</span></p>
@@ -8108,7 +7503,6 @@ async def spot_trading_page():
                             </ul>
                         </div>
                     </div>
-                    
                     <h3>🚀 Tier 2 - Large Caps (Risque Modéré)</h3>
                     <div class="coin-grid">
                         <div class="coin-card">
@@ -8120,7 +7514,6 @@ async def spot_trading_page():
                                 <li><strong>Pourquoi:</strong> Haute performance, NFTs, DeFi rapide</li>
                             </ul>
                         </div>
-                        
                         <div class="coin-card">
                             <h4>✖ XRP (Ripple)</h4>
                             <p><span class="badge medium-risk">Risque Modéré</span><span class="badge mid-term">Moyen Terme</span></p>
@@ -8130,7 +7523,6 @@ async def spot_trading_page():
                                 <li><strong>Pourquoi:</strong> Paiements internationaux, adoption bancaire</li>
                             </ul>
                         </div>
-                        
                         <div class="coin-card">
                             <h4>₳ Cardano (ADA)</h4>
                             <p><span class="badge medium-risk">Risque Modéré</span><span class="badge long-term">Long Terme</span></p>
@@ -8140,7 +7532,6 @@ async def spot_trading_page():
                                 <li><strong>Pourquoi:</strong> Recherche académique, staking</li>
                             </ul>
                         </div>
-                        
                         <div class="coin-card">
                             <h4>🔗 Chainlink (LINK)</h4>
                             <p><span class="badge medium-risk">Risque Modéré</span><span class="badge mid-term">Moyen Terme</span></p>
@@ -8151,7 +7542,6 @@ async def spot_trading_page():
                             </ul>
                         </div>
                     </div>
-                    
                     <div class="box warning">
                         <h4>⚠️ Coins à ÉVITER pour le SPOT</h4>
                         <ul>
@@ -8163,21 +7553,17 @@ async def spot_trading_page():
                         </ul>
                     </div>
                 </div>
-                
                 <!-- SECTION 5: STRATÉGIES SPOT -->
                 <div class="section">
                     <h2>🎯 Stratégies de Trading SPOT</h2>
-                    
                     <h3>1️⃣ DCA (Dollar Cost Averaging) - Pour Débutants</h3>
                     <div class="strategy-step" data-step="1">
                         <h4>📊 Principe</h4>
                         <p>Acheter un montant fixe à intervalles réguliers, indépendamment du prix.</p>
-                        
                         <div class="example-box">
                             <h4>Exemple Concret</h4>
                             <p><strong>Capital:</strong> 1,200 USD | <strong>Durée:</strong> 12 mois | <strong>Crypto:</strong> ETH</p>
                             <p><strong>Plan:</strong> Acheter 100 USD d'ETH chaque mois, quel que soit le prix</p>
-                            
                             <table>
                                 <tr><th>Mois</th><th>Prix ETH</th><th>Achat USD</th><th>ETH acheté</th></tr>
                                 <tr><td>Jan</td><td>2,000</td><td>100</td><td>0.050</td></tr>
@@ -8186,16 +7572,13 @@ async def spot_trading_page():
                                 <tr><td>...</td><td>...</td><td>...</td><td>...</td></tr>
                                 <tr><td><strong>Total</strong></td><td><strong>Moy: 2,100</strong></td><td><strong>1,200</strong></td><td><strong>0.571 ETH</strong></td></tr>
                             </table>
-                            
                             <p><strong>✅ Avantages:</strong> Réduit l'impact de la volatilité, discipline automatique, pas de timing du marché</p>
                         </div>
                     </div>
-                    
                     <h3>2️⃣ Buy The Dip - Pour Intermédiaires</h3>
                     <div class="strategy-step" data-step="2">
                         <h4>📊 Principe</h4>
                         <p>Acheter uniquement lors des corrections significatives du marché (-15% à -30%).</p>
-                        
                         <div class="box success">
                             <h4>Règles d'Entrée</h4>
                             <ul>
@@ -8205,7 +7588,6 @@ async def spot_trading_page():
                                 <li>Acheter en 3 tranches : 40% maintenant, 30% si -10% de plus, 30% si -15% de plus</li>
                             </ul>
                         </div>
-                        
                         <div class="box danger">
                             <h4>⚠️ Pièges à Éviter</h4>
                             <ul>
@@ -8215,12 +7597,10 @@ async def spot_trading_page():
                             </ul>
                         </div>
                     </div>
-                    
                     <h3>3️⃣ Swing Trading SPOT - Pour Avancés</h3>
                     <div class="strategy-step" data-step="3">
                         <h4>📊 Principe</h4>
                         <p>Utiliser Magic Mike 1H pour acheter au spot, viser 15-30% de profit, tenir 2-6 semaines.</p>
-                        
                         <div class="box info">
                             <h4>Méthodologie</h4>
                             <ol>
@@ -8232,14 +7612,11 @@ async def spot_trading_page():
                                 <li><strong>Target 3</strong> : +50% → Vendre 10% (moonshot)</li>
                             </ol>
                         </div>
-                        
                         <p><strong>💡 Astuce:</strong> En spot, vous pouvez tenir même si ça descend temporairement. Patience &gt; tout.</p>
                     </div>
-                    
                     <h3>4️⃣ Portfolio Allocation - Pour Tous</h3>
                     <div class="strategy-step" data-step="4">
                         <h4>📊 Allocation Recommandée</h4>
-                        
                         <table>
                             <tr>
                                 <th>Profil</th>
@@ -8274,15 +7651,12 @@ async def spot_trading_page():
                                 <td>5%</td>
                             </tr>
                         </table>
-                        
                         <p><strong>🔄 Rebalancing:</strong> Rééquilibrer tous les 3-6 mois pour maintenir l'allocation cible.</p>
                     </div>
                 </div>
-                
                 <!-- SECTION 6: GESTION DE RISQUE SPOT -->
                 <div class="section">
                     <h2>🛡️ Gestion de Risque en SPOT</h2>
-                    
                     <div class="box danger">
                         <h4>🚨 Règles d'Or du Trading SPOT</h4>
                         <ol>
@@ -8296,9 +7670,7 @@ async def spot_trading_page():
                             <li><strong>Journal de trading</strong> : Noter chaque entrée/sortie et raison</li>
                         </ol>
                     </div>
-                    
                     <h3>💰 Position Sizing en SPOT</h3>
-                    
                     <table>
                         <tr>
                             <th>Capital Total</th>
@@ -8331,16 +7703,12 @@ async def spot_trading_page():
                             <td>10-15 positions</td>
                         </tr>
                     </table>
-                    
                     <p><strong>💡 Principe:</strong> Plus vous avez de capital, plus vous pouvez diversifier. Ne jamais mettre plus de 20% sur un seul coin.</p>
                 </div>
-                
                 <!-- SECTION 7: TIMEFRAMES POUR SPOT -->
                 <div class="section">
                     <h2>⏰ Timeframes Optimaux pour SPOT</h2>
-                    
                     <p>Le trading spot se prête mieux aux timeframes plus élevés. Voici les recommandations:</p>
-                    
                     <table>
                         <tr>
                             <th>Timeframe</th>
@@ -8392,7 +7760,6 @@ async def spot_trading_page():
                             <td>Investissement long terme</td>
                         </tr>
                     </table>
-                    
                     <div class="box success">
                         <h4>🎯 Recommandation Magic Mike pour SPOT</h4>
                         <p><strong>Utiliser l'indicateur Magic Mike 1H</strong> mais avec une approche SPOT adaptée:</p>
@@ -8405,11 +7772,9 @@ async def spot_trading_page():
                         </ul>
                     </div>
                 </div>
-                
                 <!-- SECTION 8: PLATEFORMES RECOMMANDÉES -->
                 <div class="section">
                     <h2>🏦 Meilleures Plateformes pour SPOT</h2>
-                    
                     <table>
                         <tr>
                             <th>Exchange</th>
@@ -8454,7 +7819,6 @@ async def spot_trading_page():
                             <td>Moins populaire</td>
                         </tr>
                     </table>
-                    
                     <div class="box info">
                         <h4>💡 Conseils de Sécurité</h4>
                         <ul>
@@ -8466,11 +7830,9 @@ async def spot_trading_page():
                         </ul>
                     </div>
                 </div>
-                
                 <!-- SECTION 9: ERREURS À ÉVITER -->
                 <div class="section">
                     <h2>🚫 Top 10 Erreurs en Trading SPOT</h2>
-                    
                     <div class="box danger">
                         <ol>
                             <li><strong>Acheter par FOMO au sommet</strong> : Attendre une correction est toujours mieux</li>
@@ -8486,11 +7848,9 @@ async def spot_trading_page():
                         </ol>
                     </div>
                 </div>
-                
                 <!-- SECTION 10: CHECKLIST -->
                 <div class="section">
                     <h2>✅ Checklist AVANT d'acheter en SPOT</h2>
-                    
                     <div class="box success">
                         <h4>📋 Vérifications Obligatoires</h4>
                         <ul>
@@ -8505,32 +7865,25 @@ async def spot_trading_page():
                             <li>☐ <strong>Target défini</strong> : À quel profit je vends (min +20%) ?</li>
                             <li>☐ <strong>Capital disponible</strong> : Ai-je gardé 10-20% en stablecoins ?</li>
                         </ul>
-                        
                         <p style="margin-top: 20px;"><strong>Si TOUS les points sont ✅ → ACHETEZ</strong></p>
                         <p><strong>Si UN SEUL point est ❌ → ATTENDEZ un meilleur moment</strong></p>
                     </div>
                 </div>
-                
                 <!-- SECTION 11: STRATÉGIE DCA (DOLLAR COST AVERAGING) -->
                 <div class="section">
                     <h2>📊 DCA - Dollar Cost Averaging : Stratégie Passive Gagnante</h2>
-                    
                     <div class="box info">
                         <h4>🎯 Qu'est-ce que le DCA ?</h4>
                         <p><strong>DCA = Acheter une quantité fixe de crypto à intervalles réguliers, indépendamment du prix</strong></p>
                         <p>Exemple: Acheter 100$ de Bitcoin chaque semaine pendant 52 semaines, peu importe le prix actuel.</p>
                     </div>
-                    
                     <!-- GRAPHIQUE COMPARATIF 3 SCÉNARIOS -->
                     <h3>📈 Graphique Comparatif : DCA vs All-In vs Timing Parfait</h3>
-                    
                     <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border-radius: 12px; padding: 25px; margin: 20px 0; border: 2px solid #10b981;">
                         <p style="margin-top: 0; color: #059669; font-weight: bold;">🎯 Comparaison sur 60 mois d'investissement crypto</p>
-                        
                         <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 15px;">
                             <canvas id="dcaComparisonChart" style="max-height: 400px;"></canvas>
                         </div>
-                        
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
                             <div style="background: #dcfce7; padding: 12px; border-radius: 8px; border-left: 4px solid #22c55e;">
                                 <p style="margin: 0 0 8px 0; font-weight: bold; color: #15803d;">🟢 DCA Régulier</p>
@@ -8546,9 +7899,7 @@ async def spot_trading_page():
                             </div>
                         </div>
                     </div>
-                    
                     <h3>💡 Comment fonctionne le DCA?</h3>
-                    
                     <div class="example-box">
                         <h4>📊 Exemple Concret avec Bitcoin</h4>
                         <table>
@@ -8595,9 +7946,7 @@ async def spot_trading_page():
                         </table>
                         <p style="margin-top: 15px;"><strong>💰 Résultat:</strong> Vous avez 0.0406 BTC au coût moyen de 49,261$, au lieu de 50,000$ la première semaine.</p>
                     </div>
-                    
                     <h3>✅ Avantages du DCA</h3>
-                    
                     <div class="pros-cons">
                         <div class="pros">
                             <h4>Avantages</h4>
@@ -8612,7 +7961,6 @@ async def spot_trading_page():
                                 <li><strong>Accumulation progressive</strong> : Construction lente et durable</li>
                             </ul>
                         </div>
-                        
                         <div class="cons">
                             <h4>Inconvénients</h4>
                             <ul>
@@ -8625,9 +7973,7 @@ async def spot_trading_page():
                             </ul>
                         </div>
                     </div>
-                    
                     <h3>🔄 Stratégies DCA Avancées</h3>
-                    
                     <h4>1️⃣ DCA Simple (Pour Débutants)</h4>
                     <div class="strategy-step" data-step="1">
                         <p><strong>Acheter une montant FIXE à intervalle RÉGULIER</strong></p>
@@ -8638,7 +7984,6 @@ async def spot_trading_page():
                             <li>S'en tenir au plan, peu importe les prix</li>
                         </ul>
                     </div>
-                    
                     <h4>2️⃣ DCA Inversé (Pour Avancés)</h4>
                     <div class="strategy-step" data-step="2">
                         <p><strong>Augmenter les achats quand le prix baisse</strong></p>
@@ -8649,7 +7994,6 @@ async def spot_trading_page():
                             <li>Utiliser Fear & Greed Index pour déclencher les boosts</li>
                         </ul>
                     </div>
-                    
                     <h4>3️⃣ DCA + SPOT Trading (Hybride)</h4>
                     <div class="strategy-step" data-step="3">
                         <p><strong>Combiner l'accumulation régulière + opportunités ponctuelles</strong></p>
@@ -8660,7 +8004,6 @@ async def spot_trading_page():
                             <li>Best of both worlds: accumulation + profits</li>
                         </ul>
                     </div>
-                    
                     <h4>4️⃣ DCA avec Thresholds (Pour Prudents)</h4>
                     <div class="strategy-step" data-step="4">
                         <p><strong>DCA normal MAIS avec conditions de prix</strong></p>
@@ -8671,9 +8014,7 @@ async def spot_trading_page():
                             <li>Combine discipline + opportunité</li>
                         </ul>
                     </div>
-                    
                     <h3>📈 Résultats Historiques du DCA</h3>
-                    
                     <table>
                         <tr>
                             <th>Période</th>
@@ -8711,19 +8052,15 @@ async def spot_trading_page():
                             <td>+1,950%</td>
                         </tr>
                     </table>
-                    
                     <div class="box success">
                         <h4>🎯 Conclusion sur les données historiques</h4>
                         <p><strong>Sur 4 ans (2018-2021), DCA 100$/mois aurait transformé 4,800$ en 98,500$ !!</strong></p>
                         <p>Même pendant le bear market 2018, continuer à acheter régulièrement a été rentable à long terme.</p>
                     </div>
-                    
                     <!-- SECTION 2 SIMPLIFIÉE: IA PROFILER -->
                     <h3>🤖 IA Profiler - Quiz Rapide</h3>
-                    
                     <div style="background: linear-gradient(135deg, #ede9fe 0%, #f3e8ff 100%); border-radius: 12px; padding: 20px; margin: 20px 0; border: 2px solid #c084fc;">
                         <p style="margin: 0 0 15px 0; color: #7e22ce; font-weight: bold;">Répondez à 5 questions pour obtenir votre recommandation DCA personnalisée</p>
-                        
                         <div style="background: white; padding: 15px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                             <div>
                                 <strong>Horizon?</strong><br/>
@@ -8758,17 +8095,13 @@ async def spot_trading_page():
                                 </select>
                             </div>
                         </div>
-                        
                         <button onclick="analyzeAIProfile()" style="width: 100%; padding: 12px; margin-top: 12px; background: #c084fc; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">🎯 Analyser mon Profil</button>
-                        
                         <div id="aiResults" style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px; border-left: 5px solid #c084fc; display: none;">
                             <p style="margin: 0 0 10px 0;"><strong>📊 Recommandation:</strong></p>
                             <p id="aiRecText" style="margin: 0; color: #7e22ce; line-height: 1.6;">-</p>
                         </div>
                     </div>
-                    
                     <h3>🛠️ Calculateur DCA Simple</h3>
-                    
                     <div style="background: #f8f9fa; padding: 25px; border-radius: 10px; margin: 20px 0;">
                         <h4 style="margin-top: 0;">Calculez votre DCA potentiel</h4>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
@@ -8789,9 +8122,7 @@ async def spot_trading_page():
                                 <input type="number" id="dcaEndPrice" value="100000" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; margin-top: 5px;">
                             </div>
                         </div>
-                        
                         <button onclick="calculateDCA()" style="margin-top: 15px; padding: 12px 30px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 1.05em; cursor: pointer; font-weight: bold;">Calculer</button>
-                        
                         <div id="dcaResults" style="margin-top: 20px; padding: 15px; background: white; border-radius: 8px; border-left: 5px solid #10b981; display: none;">
                             <p><strong>💰 Investissement Total:</strong> <span id="dcaTotalInvest">0</span>$</p>
                             <p><strong>📊 Montants Achetés:</strong> <span id="dcaTotalCoins">0</span> BTC</p>
@@ -8800,13 +8131,10 @@ async def spot_trading_page():
                             <p style="font-size: 1.2em; color: #10b981; font-weight: bold;">🎉 <strong>Profit Total:</strong> <span id="dcaProfit">0</span>$ (+<span id="dcaProfitPercent">0</span>%)</p>
                         </div>
                     </div>
-                    
                     <!-- SECTION 3: TIMELINE INTERACTIVE - HEATMAP BUYING MOMENTS -->
                     <h3>📅 Timeline Interactive - Meilleurs Moments pour Acheter</h3>
-                    
                     <div style="background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%); border-radius: 12px; padding: 20px; margin: 20px 0; border: 2px solid #f59e0b;">
                         <p style="margin: 0 0 15px 0; color: #92400e; font-weight: bold;">📊 Calendrier 60 mois: Quand acheter le DCA selon le marché</p>
-                        
                         <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                             <!-- Légende -->
                             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;">
@@ -8827,13 +8155,11 @@ async def spot_trading_page():
                                     <span style="font-size: 0.9em;"><strong>ATTENDRE</strong> (Euphorie)</span>
                                 </div>
                             </div>
-                            
                             <!-- Heatmap Calendrier -->
                             <div id="heatmapContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(35px, 1fr)); gap: 5px; margin-bottom: 15px;">
                                 <!-- Les cellules seront générées par JavaScript -->
                             </div>
                         </div>
-                        
                         <!-- Stats et Info -->
                         <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #22c55e;">
                             <p style="margin: 0 0 8px 0; font-weight: bold; color: #065f46;">📊 Statistiques</p>
@@ -8856,14 +8182,11 @@ async def spot_trading_page():
                                 </div>
                             </div>
                         </div>
-                        
                         <div style="background: #fef2f2; padding: 12px; border-radius: 8px; margin-top: 12px; border-left: 3px solid #ef4444; font-size: 0.9em; color: #7f1d1d;">
                             <strong>💡 Conseil:</strong> Augmentez vos achats DCA sur les mois 🟢 VERTS! Cela maximise votre accumulation.
                         </div>
                     </div>
-                    
                     <h3>📋 Checklist DCA</h3>
-                    
                     <div class="box warning">
                         <h4>✅ Avant de commencer votre DCA</h4>
                         <ul>
@@ -8879,12 +8202,9 @@ async def spot_trading_page():
                             <li>☐ <strong>Frais minimisés</strong> : Utiliser les réductions (coins limit order, etc.)</li>
                         </ul>
                     </div>
-                    
                     <h3>🚀 DCA vs All-In: Simulation</h3>
-                    
                     <div class="example-box">
                         <h4>Scénario: Investir 10,000$</h4>
-                        
                         <p><strong>Option 1: All-In en Janvier 2021</strong></p>
                         <ul>
                             <li>Achat: 10,000$ en BTC à 40,000$/coin = 0.25 BTC</li>
@@ -8893,7 +8213,6 @@ async def spot_trading_page():
                             <li>Profit: +70% 📈</li>
                             <li>Mais: Aurait vu -50% en 2022 (stress émotionnel) 😰</li>
                         </ul>
-                        
                         <p><strong>Option 2: DCA 833$/mois pendant 12 mois</strong></p>
                         <ul>
                             <li>Janvier: 833$ à 40,000$/coin = 0.0208 BTC (coût: 40,000$)</li>
@@ -8906,7 +8225,6 @@ async def spot_trading_page():
                         </ul>
                     </div>
                 </div>
-                
                 <div style="text-align: center; margin-top: 50px; padding-top: 30px; border-top: 3px solid #f0f0f0;">
                     <h2>💎 Conclusion : Le SPOT pour Construire sa Richesse Crypto</h2>
                     <p style="font-size: 1.1em; color: #059669; max-width: 800px; margin: 20px auto;">
@@ -8925,27 +8243,22 @@ async def spot_trading_page():
             const period = parseFloat(document.getElementById('dcaPeriod').value) || 0;
             const startPrice = parseFloat(document.getElementById('dcaStartPrice').value) || 0;
             const endPrice = parseFloat(document.getElementById('dcaEndPrice').value) || 0;
-            
             if (amount <= 0 || period <= 0 || startPrice <= 0 || endPrice <= 0) {
                 alert('Veuillez remplir tous les champs avec des valeurs positives');
                 return;
             }
-            
             let totalInvested = amount * period;
             let totalCoins = 0;
-            
             for (let month = 0; month < period; month++) {
                 const progress = period > 1 ? month / (period - 1) : 0;
                 const currentPrice = startPrice + (endPrice - startPrice) * progress;
                 const coinsBought = amount / currentPrice;
                 totalCoins += coinsBought;
             }
-            
             const avgCost = totalInvested / totalCoins;
             const finalValue = totalCoins * endPrice;
             const profit = finalValue - totalInvested;
             const profitPercent = (profit / totalInvested) * 100;
-            
             document.getElementById('dcaTotalInvest').textContent = totalInvested.toFixed(0);
             document.getElementById('dcaTotalCoins').textContent = totalCoins.toFixed(8);
             document.getElementById('dcaAvgCost').textContent = avgCost.toFixed(2);
@@ -8954,18 +8267,15 @@ async def spot_trading_page():
             document.getElementById('dcaProfitPercent').textContent = profitPercent.toFixed(1);
             document.getElementById('dcaResults').style.display = 'block';
         }
-        
         // FONCTION GRAPHIQUE COMPARATIF 3 SCÉNARIOS
         function initializeDCAComparisonChart() {
             const ctx = document.getElementById('dcaComparisonChart');
             if (!ctx) return;
-            
             // Données réalistes pour 60 mois (5 ans)
             const months = 60;
             const monthlyAmount = 500; // 500$ par mois
             const startPrice = 50000;
             const endPrice = 100000;
-            
             // Générer prix réaliste avec volatilité
             const prices = [];
             let basePrice = startPrice;
@@ -8976,7 +8286,6 @@ async def spot_trading_page():
                 const currentPrice = startPrice + (endPrice - startPrice) * progress + volatility;
                 prices.push(Math.max(20000, currentPrice)); // Min 20k
             }
-            
             // SCÉNARIO 1: DCA Régulier (500$ chaque mois)
             let dcaCumulative = 0;
             let dcaCoins = 0;
@@ -8986,12 +8295,10 @@ async def spot_trading_page():
                 dcaCoins += monthlyAmount / prices[i];
                 dcaData.push((dcaCoins * prices[i]).toFixed(0));
             }
-            
             // SCÉNARIO 2: All-In au mois 1
             const totalInvest = monthlyAmount * months;
             let allInCoins = totalInvest / prices[0];
             const allInData = prices.map(p => (allInCoins * p).toFixed(0));
-            
             // SCÉNARIO 3: Timing Parfait (achète à chaque bas)
             let perfectCoins = 0;
             const perfectData = [];
@@ -9001,10 +8308,8 @@ async def spot_trading_page():
                 }
                 perfectData.push((perfectCoins * prices[i]).toFixed(0));
             }
-            
             // Labels (mois)
             const labels = Array.from({length: months}, (_, i) => `M${i+1}`);
-            
             // Créer le graphique Chart.js
             new Chart(ctx, {
                 type: 'line',
@@ -9096,16 +8401,13 @@ async def spot_trading_page():
                 }
             });
         }
-        
         // FONCTION HEATMAP CALENDRIER - TIMELINE INTERACTIVE
         function generateHeatmap() {
             const container = document.getElementById('heatmapContainer');
             const months = 60;
-            
             // Calculer la date de début (aujourd'hui)
             const startDate = new Date();
             const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-            
             // Génération de prix réalistes avec volatilité
             const prices = [];
             for (let i = 0; i < months; i++) {
@@ -9114,14 +8416,11 @@ async def spot_trading_page():
                 const volatility = Math.sin(i * 0.3) * 15000 + Math.cos(i * 0.1) * 8000;
                 prices.push(Math.max(20000, basePrice + volatility));
             }
-            
             // Calculer prix min et max
             const minPrice = Math.min(...prices);
             const maxPrice = Math.max(...prices);
             const avgPrice = (minPrice + maxPrice) / 2;
-            
             let countBuy = 0, countNeutral = 0, countWarn = 0, countWait = 0;
-            
             // Générer les cellules
             prices.forEach((price, index) => {
                 const cell = document.createElement('div');
@@ -9139,21 +8438,17 @@ async def spot_trading_page():
                     border: 2px solid rgba(0,0,0,0.2);
                     position: relative;
                 `;
-                
                 // Calculer la date du mois
                 const monthDate = new Date(startDate);
                 monthDate.setMonth(monthDate.getMonth() + index);
                 const monthName = monthNames[monthDate.getMonth()];
                 const year = monthDate.getFullYear();
                 const dateStr = `${monthName} ${year}`;
-                
                 // Déterminer la couleur selon le prix
                 let color = '#eab308'; // Neutre par défaut
                 let label = 'N';
                 let action = 'Normal';
-                
                 const pricePercent = (price - minPrice) / (maxPrice - minPrice);
-                
                 if (pricePercent < 0.3) {
                     color = '#22c55e';
                     label = '🟢';
@@ -9175,16 +8470,13 @@ async def spot_trading_page():
                     action = 'Pause/Attendre';
                     countWait++;
                 }
-                
                 cell.style.backgroundColor = color;
                 cell.textContent = label;
-                
                 // Créer la popup au hover
                 cell.addEventListener('mouseover', function(e) {
                     this.style.transform = 'scale(1.4)';
                     this.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)';
                     this.style.zIndex = '100';
-                    
                     // Créer la popup
                     const popup = document.createElement('div');
                     popup.style.cssText = `
@@ -9202,17 +8494,14 @@ async def spot_trading_page():
                         margin-bottom: 5px;
                         z-index: 200;
                     `;
-                    
                     popup.innerHTML = `
                         <strong>Mois ${index + 1} - ${dateStr}</strong><br/>
                         Prix: $${Math.round(price).toLocaleString()}<br/>
                         <span style="color: ${color}; font-weight: bold;">${action}</span>
                     `;
-                    
                     this.appendChild(popup);
                     this.popup = popup;
                 });
-                
                 cell.addEventListener('mouseout', function() {
                     this.style.transform = 'scale(1)';
                     this.style.boxShadow = 'none';
@@ -9221,31 +8510,25 @@ async def spot_trading_page():
                         this.popup = null;
                     }
                 });
-                
                 // Aussi clickable pour afficher l'info
                 cell.addEventListener('click', function() {
                     alert(`MOIS ${index + 1} - ${dateStr}\n\nPrix: $${Math.round(price).toLocaleString()}\nAction: ${action}`);
                 });
-                
                 container.appendChild(cell);
             });
-            
             // Mettre à jour les stats
             document.getElementById('countBuy').textContent = countBuy + ' mois';
             document.getElementById('countNeutral').textContent = countNeutral + ' mois';
             document.getElementById('countWarn').textContent = countWarn + ' mois';
             document.getElementById('countWait').textContent = countWait + ' mois';
         }
-        
         // FONCTION IA PROFILER SIMPLIFIÉ
         function analyzeAIProfile() {
             const horizon = document.getElementById('aiHorizon')?.value;
             const risk = document.getElementById('aiRisk')?.value;
             const capital = document.getElementById('aiCapital')?.value;
             const experience = document.getElementById('aiExperience')?.value;
-            
             let rec = '';
-            
             if (risk === 'conservative' || horizon === 'short') {
                 rec = '🛡️ CONSERVATEUR: 100-300$/mois, chaque semaine, 70% BTC + 30% ETH. Priorité: Sécurité!';
             } else if (risk === 'aggressive') {
@@ -9253,11 +8536,9 @@ async def spot_trading_page():
             } else {
                 rec = '⚖️ ÉQUILIBRÉ (MEILLEUR POUR DCA): 500-1000$/mois, 2x/semaine, 50% BTC + 30% ETH + 20% Alts. Régulier = Clé!';
             }
-            
             document.getElementById('aiRecText').textContent = rec;
             document.getElementById('aiResults').style.display = 'block';
         }
-        
         // Lancer le graphique et heatmap au chargement de la page
         document.addEventListener('DOMContentLoaded', function() {
             initializeDCAComparisonChart();
@@ -9286,20 +8567,17 @@ async def ai_opportunity_scanner():
         """ + CSS + """
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            
             body {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
                 color: #333;
                 min-height: 100vh;
             }}
-            
             .container {
                 max-width: 1400px;
                 margin: 0 auto;
                 padding: 20px;
             }}
-            
             header {
                 text-align: center;
                 color: white;
@@ -9309,7 +8587,6 @@ async def ai_opportunity_scanner():
                 border-radius: 15px;
                 backdrop-filter: blur(10px);
             }
-            
             header h1 {
                 font-size: 2.8em;
                 margin-bottom: 10px;
@@ -9317,21 +8594,18 @@ async def ai_opportunity_scanner():
                 font-weight: 900;
                 letter-spacing: 2px;
             }
-            
             .content {
                 background: white;
                 border-radius: 15px;
                 padding: 40px;
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             }
-            
             .stats-bar {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                 gap: 20px;
                 margin-bottom: 30px;
             }
-            
             .stat-box {
                 background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                 padding: 20px;
@@ -9339,25 +8613,21 @@ async def ai_opportunity_scanner():
                 border-left: 5px solid #6366f1;
                 text-align: center;
             }
-            
             .stat-value {
                 font-size: 2em;
                 font-weight: bold;
                 color: #6366f1;
                 display: block;
             }
-            
             .stat-label {
                 color: #666;
                 font-size: 0.9em;
                 margin-top: 5px;
             }
-            
             .opportunities-grid {
                 display: grid;
                 gap: 25px;
             }
-            
             .opportunity-card {
                 background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
                 border-radius: 15px;
@@ -9367,51 +8637,42 @@ async def ai_opportunity_scanner():
                 overflow: hidden;
                 transition: transform 0.3s, box-shadow 0.3s;
             }
-            
             .opportunity-card:hover {
                 transform: translateY(-5px);
                 box-shadow: 0 15px 40px rgba(0,0,0,0.15);
             }
-            
             .opportunity-card.hot {
                 border-color: #ef4444;
                 background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
             }
-            
             .opportunity-card.good {
                 border-color: #10b981;
                 background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
             }
-            
             .opportunity-card.moderate {
                 border-color: #f59e0b;
                 background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
             }
-            
             .card-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 20px;
             }
-            
             .coin-info {
                 display: flex;
                 align-items: center;
                 gap: 15px;
             }
-            
             .coin-symbol {
                 font-size: 2em;
                 font-weight: bold;
                 color: #1f2937;
             }
-            
             .coin-name {
                 font-size: 1.1em;
                 color: #666;
             }
-            
             .score-circle {
                 width: 80px;
                 height: 80px;
@@ -9424,37 +8685,31 @@ async def ai_opportunity_scanner():
                 color: white;
                 position: relative;
             }
-            
             .score-circle.hot { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
             .score-circle.good { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
             .score-circle.moderate { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-            
             .opportunity-details {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                 gap: 15px;
                 margin: 20px 0;
             }
-            
             .detail-box {
                 background: white;
                 padding: 15px;
                 border-radius: 8px;
                 border-left: 3px solid #6366f1;
             }
-            
             .detail-label {
                 font-size: 0.85em;
                 color: #666;
                 margin-bottom: 5px;
             }
-            
             .detail-value {
                 font-size: 1.2em;
                 font-weight: bold;
                 color: #1f2937;
             }
-            
             .ai-reasoning {
                 background: #f8f9fa;
                 padding: 20px;
@@ -9462,7 +8717,6 @@ async def ai_opportunity_scanner():
                 border-left: 5px solid #8b5cf6;
                 margin-top: 20px;
             }
-            
             .ai-reasoning h4 {
                 color: #8b5cf6;
                 margin-bottom: 10px;
@@ -9470,16 +8724,13 @@ async def ai_opportunity_scanner():
                 align-items: center;
                 gap: 8px;
             }
-            
             .ai-reasoning ul {
                 margin-left: 20px;
             }
-            
             .ai-reasoning li {
                 margin: 8px 0;
                 color: #555;
             }
-            
             .badge {
                 display: inline-block;
                 padding: 5px 12px;
@@ -9488,18 +8739,15 @@ async def ai_opportunity_scanner():
                 font-weight: bold;
                 margin: 5px 5px 5px 0;
             }
-            
             .badge.breakout { background: #fecaca; color: #991b1b; }
             .badge.oversold { background: #dbeafe; color: #1e40af; }
             .badge.momentum { background: #d1fae5; color: #065f46; }
             .badge.safehaven { background: #e9d5ff; color: #6b21a8; }
-            
             .action-buttons {
                 display: flex;
                 gap: 10px;
                 margin-top: 20px;
             }
-            
             .btn {
                 padding: 12px 24px;
                 border-radius: 8px;
@@ -9511,19 +8759,15 @@ async def ai_opportunity_scanner():
                 display: inline-block;
                 text-align: center;
             }
-            
             .btn:hover { transform: scale(1.05); }
-            
             .btn-primary {
                 background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
                 color: white;
             }
-            
             .btn-secondary {
                 background: #f3f4f6;
                 color: #1f2937;
             }
-            
             .refresh-bar {
                 background: rgba(99, 102, 241, 0.1);
                 padding: 15px;
@@ -9532,7 +8776,6 @@ async def ai_opportunity_scanner():
                 margin-bottom: 25px;
                 border: 2px solid rgba(99, 102, 241, 0.3);
             }
-            
             .refresh-bar button {
                 background: #6366f1;
                 color: white;
@@ -9543,16 +8786,13 @@ async def ai_opportunity_scanner():
                 font-weight: bold;
                 margin-left: 10px;
             }
-            
             .refresh-bar button:hover {
                 background: #4f46e5;
             }
-            
             @keyframes pulse {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.5; }
             }
-            
             .live-indicator {
                 display: inline-block;
                 width: 10px;
@@ -9570,9 +8810,6 @@ async def ai_opportunity_scanner():
                 <h1>🎯 AI OPPORTUNITY SCANNER</h1>
                 <p>Intelligence Artificielle détectant les meilleures opportunités de trading en temps réel</p>
             </header>
-            
-            
-            
             <div class="content">
                 <div class="refresh-bar">
                     <span class="live-indicator"></span>
@@ -9582,7 +8819,6 @@ async def ai_opportunity_scanner():
                         📡 Source: CoinGecko API (mise à jour auto toutes les 2 minutes)
                     </div>
                 </div>
-                
                 <div class="stats-bar">
                     <div class="stat-box">
                         <span class="stat-value" id="totalOpportunities">-</span>
@@ -9601,17 +8837,14 @@ async def ai_opportunity_scanner():
                         <span class="stat-label">Sentiment Global</span>
                     </div>
                 </div>
-                
                 <div id="loadingDiv" class="loading" style="text-align: center; padding: 40px; color: #666;">
                     <p>⏳ Chargement des données en temps réel...</p>
                 </div>
-                
                 <div class="opportunities-grid" id="opportunitiesGrid" style="display:none;">
                     <!-- Filled by JavaScript -->
                 </div>
             </div>
         </div>
-        
         <script>
             async function fetchRealData() {
                 try {
@@ -9625,43 +8858,35 @@ async def ai_opportunity_scanner():
                     return null;
                 }
             }
-            
             function calculateScore(crypto) {
                 let score = 50; // Base
-                
                 // Changement 24h (volatilité positive)
                 const change24h = crypto.price_change_percentage_24h || 0;
                 if (change24h > 5) score += 15;
                 else if (change24h > 2) score += 10;
                 else if (change24h > -2) score += 5;
                 else if (change24h > -5) score += 2;
-                
                 // Changement 7j
                 const change7d = crypto.price_change_percentage_7d_in_currency || 0;
                 if (change7d > 15) score += 12;
                 else if (change7d > 5) score += 8;
                 else if (change7d > -5) score += 5;
-                
                 // Market cap (stabilité)
                 if (crypto.market_cap_rank && crypto.market_cap_rank <= 10) score += 15;
                 else if (crypto.market_cap_rank && crypto.market_cap_rank <= 50) score += 8;
                 else if (crypto.market_cap_rank && crypto.market_cap_rank <= 200) score += 5;
-                
                 // Volume (liquidité)
                 if (crypto.total_volume && crypto.market_cap) {
                     const volumeRatio = crypto.total_volume / crypto.market_cap;
                     if (volumeRatio > 0.3) score += 10;
                     else if (volumeRatio > 0.1) score += 5;
                 }
-                
                 return Math.min(99, Math.max(60, score));
             }
-            
             function generateAIReasons(crypto) {
                 const reasons = [];
                 const change24h = crypto.price_change_percentage_24h || 0;
                 const change7d = crypto.price_change_percentage_7d_in_currency || 0;
-                
                 if (change24h > 5) reasons.push(`📈 Hausse 24h: +${change24h.toFixed(2)}%`);
                 if (change7d > 10) reasons.push(`📊 Momentum 7j: +${change7d.toFixed(2)}%`);
                 if (crypto.market_cap_rank && crypto.market_cap_rank <= 20) reasons.push(`👑 Top ${crypto.market_cap_rank} par capitalisation`);
@@ -9672,13 +8897,10 @@ async def ai_opportunity_scanner():
                 if (crypto.ath_change_percentage && crypto.ath_change_percentage > -20) {
                     reasons.push(`🎯 À ${(100 + crypto.ath_change_percentage).toFixed(1)}% du sommet`);
                 }
-                
                 return reasons.length > 0 ? reasons : ['📍 Prix actuel intéressant', '✅ Analyse technique favorable'];
             }
-            
             async function generateOpportunities(cryptoData) {
                 if (!cryptoData) return [];
-                
                 // Filtrer et scorer
                 const opportunities = cryptoData
                     .filter(c => c.current_price && c.market_cap)
@@ -9698,7 +8920,6 @@ async def ai_opportunity_scanner():
                     }))
                     .sort((a, b) => b.score - a.score)
                     .slice(0, 5);
-                
                 // Ajouter Entry/SL/TP
                 opportunities.forEach(opp => {
                     opp.entry = opp.price.toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
@@ -9707,35 +8928,26 @@ async def ai_opportunity_scanner():
                     const rrValue = (parseFloat(opp.tp) - parseFloat(opp.entry)) / (parseFloat(opp.entry) - parseFloat(opp.sl));
                     opp.rr = rrValue.toFixed(1);
                 });
-                
                 return opportunities;
             }
-            
             async function renderOpportunities() {
                 const loadingDiv = document.getElementById('loadingDiv');
                 const grid = document.getElementById('opportunitiesGrid');
-                
                 loadingDiv.style.display = 'block';
                 grid.style.display = 'none';
-                
                 const cryptoData = await fetchRealData();
                 const opportunities = await generateOpportunities(cryptoData);
-                
                 if (opportunities.length === 0) {
                     loadingDiv.innerHTML = '<p>❌ Impossible de charger les données</p>';
                     return;
                 }
-                
                 let html = '';
                 let totalScore = 0;
                 let hotCount = 0;
-                
                 opportunities.forEach(opp => {
                     totalScore += opp.score;
                     if (opp.score >= 85) hotCount++;
-                    
                     const scoreClass = opp.score >= 85 ? 'hot' : opp.score >= 75 ? 'good' : 'moderate';
-                    
                     html += `
                         <div class="opportunity-card ${scoreClass}">
                             <div class="card-header">
@@ -9749,13 +8961,11 @@ async def ai_opportunity_scanner():
                                     ${Math.round(opp.score)}
                                 </div>
                             </div>
-                            
                             <div>
                                 <span class="badge momentum">⚡ Temps Réel</span>
                                 <span class="badge" style="background: #f3f4f6; color: #1f2937;">#${opp.marketCapRank}</span>
                                 <span class="badge" style="background: #f0f0f0; color: #666;">${opp.change24h > 0 ? '📈' : '📉'} ${opp.change24h.toFixed(2)}%</span>
                             </div>
-                            
                             <div class="opportunity-details">
                                 <div class="detail-box">
                                     <div class="detail-label">Prix Actuel</div>
@@ -9778,14 +8988,12 @@ async def ai_opportunity_scanner():
                                     <div class="detail-value">${opp.rr}:1</div>
                                 </div>
                             </div>
-                            
                             <div class="ai-reasoning">
                                 <h4>🤖 Analyse IA en Temps Réel</h4>
                                 <ul>
                                     ${opp.reasons.map(r => `<li>${r}</li>`).join('')}
                                 </ul>
                             </div>
-                            
                             <div class="action-buttons">
                                 <a href="/calculatrice" class="btn btn-primary">📊 Calculer Position</a>
                                 <a href="/strategie" class="btn btn-secondary">📚 Voir Stratégie</a>
@@ -9793,11 +9001,9 @@ async def ai_opportunity_scanner():
                         </div>
                     `;
                 });
-                
                 grid.innerHTML = html;
                 grid.style.display = 'grid';
                 loadingDiv.style.display = 'none';
-                
                 // Mettre à jour les stats
                 document.getElementById('totalOpportunities').textContent = opportunities.length;
                 document.getElementById('avgScore').textContent = Math.round(totalScore / opportunities.length);
@@ -9805,20 +9011,16 @@ async def ai_opportunity_scanner():
                 document.getElementById('marketSentiment').textContent = 
                     (totalScore / opportunities.length) >= 80 ? '📈 Très Positif' :
                     (totalScore / opportunities.length) >= 70 ? '📊 Positif' : '⚖️ Neutre';
-                
                 // Dernière mise à jour
                 const now = new Date();
                 document.getElementById('lastUpdate').textContent = 
                     now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
             }
-            
             function refreshOpportunities() {
                 renderOpportunities();
             }
-            
             // Initial render
             renderOpportunities();
-            
             // Auto-refresh toutes les 2 minutes
             setInterval(renderOpportunities, 120000);
         </script>
@@ -9833,7 +9035,6 @@ async def ai_opportunity_scanner():
 async def ai_market_regime():
     """
     Détecteur IA du régime de marché actuel
-    
     ⚠️ DONNÉES RÉELLES OCTOBRE 2025 ⚠️
     État actuel: BULL RUN ACTIF en phase de CONSOLIDATION
     - Bitcoin: 107-113K (après ATH 126K le 6 oct)
@@ -9842,7 +9043,6 @@ async def ai_market_regime():
     - Capitalisation totale: >4.15 trillions USD
     - Phase: Mi-Bull Run (début 2023, prévu jusqu'à 2026)
     - Prédictions: 150-200K USD d'ici fin 2025/début 2026
-    
     ⚠️ OUI, nous sommes au début/milieu d'un bull run, PAS à la fin!
     """
     html_content = SIDEBAR + """
@@ -9855,20 +9055,17 @@ async def ai_market_regime():
         """ + CSS + """
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            
             body {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
                 color: #333;
                 min-height: 100vh;
             }}
-            
             .container {
                 max-width: 1400px;
                 margin: 0 auto;
                 padding: 20px;
             }}
-            
             header {
                 text-align: center;
                 color: white;
@@ -9878,7 +9075,6 @@ async def ai_market_regime():
                 border-radius: 15px;
                 backdrop-filter: blur(10px);
             }
-            
             header h1 {
                 font-size: 2.8em;
                 margin-bottom: 10px;
@@ -9886,14 +9082,12 @@ async def ai_market_regime():
                 font-weight: 900;
                 letter-spacing: 2px;
             }
-            
             .content {
                 background: white;
                 border-radius: 15px;
                 padding: 40px;
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             }
-            
             .regime-display {
                 text-align: center;
                 padding: 50px 20px;
@@ -9902,24 +9096,20 @@ async def ai_market_regime():
                 border-radius: 15px;
                 border: 3px solid #e0e0e0;
             }
-            
             .regime-icon {
                 font-size: 5em;
                 margin-bottom: 20px;
             }
-            
             .regime-title {
                 font-size: 2.5em;
                 font-weight: bold;
                 margin-bottom: 10px;
             }
-            
             .regime-subtitle {
                 font-size: 1.2em;
                 color: #666;
                 margin-bottom: 30px;
             }
-            
             .regime-gauge {
                 width: 100%;
                 max-width: 600px;
@@ -9935,7 +9125,6 @@ async def ai_market_regime():
                 position: relative;
                 box-shadow: 0 4px 10px rgba(0,0,0,0.2);
             }
-            
             .regime-pointer {
                 position: absolute;
                 top: -10px;
@@ -9945,7 +9134,6 @@ async def ai_market_regime():
                 border-radius: 2px;
                 transition: left 0.5s ease;
             }
-            
             .regime-pointer::after {
                 content: '▼';
                 position: absolute;
@@ -9955,7 +9143,6 @@ async def ai_market_regime():
                 font-size: 1.5em;
                 color: #1f2937;
             }
-            
             .regime-labels {
                 display: flex;
                 justify-content: space-between;
@@ -9964,40 +9151,34 @@ async def ai_market_regime():
                 font-size: 0.9em;
                 color: #666;
             }
-            
             .indicators-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
                 gap: 20px;
                 margin: 30px 0;
             }
-            
             .indicator-card {
                 background: #f8f9fa;
                 padding: 25px;
                 border-radius: 12px;
                 border-left: 5px solid #ec4899;
             }
-            
             .indicator-title {
                 font-size: 1.1em;
                 font-weight: bold;
                 margin-bottom: 10px;
                 color: #1f2937;
             }
-            
             .indicator-value {
                 font-size: 2em;
                 font-weight: bold;
                 color: #ec4899;
                 margin-bottom: 5px;
             }
-            
             .indicator-status {
                 color: #666;
                 font-size: 0.95em;
             }
-            
             .recommendations {
                 background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
                 border: 3px solid #f59e0b;
@@ -10005,50 +9186,41 @@ async def ai_market_regime():
                 padding: 30px;
                 margin: 30px 0;
             }
-            
             .recommendations h3 {
                 color: #d97706;
                 margin-bottom: 20px;
                 font-size: 1.5em;
             }
-            
             .recommendations ul {
                 list-style: none;
                 padding: 0;
             }
-            
             .recommendations li {
                 padding: 12px 0;
                 border-bottom: 1px solid #fde68a;
                 font-size: 1.05em;
             }
-            
             .recommendations li:last-child {
                 border-bottom: none;
             }
-            
             .recommendations li::before {
                 content: '💡 ';
                 margin-right: 10px;
             }
-            
             .history-section {
                 margin-top: 40px;
             }
-            
             .history-section h3 {
                 color: #1f2937;
                 margin-bottom: 20px;
                 font-size: 1.5em;
             }
-            
             .history-timeline {
                 display: flex;
                 overflow-x: auto;
                 gap: 15px;
                 padding: 20px 0;
             }
-            
             .history-item {
                 min-width: 200px;
                 background: #f8f9fa;
@@ -10057,23 +9229,19 @@ async def ai_market_regime():
                 border-top: 5px solid #8b5cf6;
                 text-align: center;
             }
-            
             .history-regime {
                 font-weight: bold;
                 font-size: 1.2em;
                 margin-bottom: 5px;
             }
-            
             .history-duration {
                 color: #666;
                 font-size: 0.9em;
             }
-            
             @keyframes pulse {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.6; }
             }
-            
             .live-badge {
                 display: inline-block;
                 background: #10b981;
@@ -10092,21 +9260,16 @@ async def ai_market_regime():
                 <h1>🌊 AI MARKET REGIME DETECTOR</h1>
                 <p>Détection intelligente de la phase actuelle du marché crypto</p>
             </header>
-            
-            
-            
             <div class="content">
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 25px; border: 2px solid rgba(99, 102, 241, 0.3);">
                     <span class="live-badge">🔴 LIVE</span>
                     <strong style="margin-left: 15px;">📡 Données CoinGecko en temps réel</strong>
                     <div style="font-size: 0.85em; color: #666; margin-top: 5px;">Fear & Greed Index + 100+ top cryptos (mise à jour auto 5 min)</div>
                 </div>
-                
                 <div class="regime-display" id="regimeDisplay">
                     <div class="regime-icon" id="regimeIcon">⏳</div>
                     <div class="regime-title" id="regimeTitle">Chargement...</div>
                     <div class="regime-subtitle" id="regimeSubtitle">Récupération des données en temps réel...</div>
-                    
                     <div class="regime-gauge">
                         <div class="regime-pointer" id="regimePointer"></div>
                     </div>
@@ -10118,18 +9281,15 @@ async def ai_market_regime():
                         <span>Bull Run</span>
                     </div>
                 </div>
-                
                 <div class="indicators-grid" id="indicatorsGrid">
                     <!-- Filled by JavaScript -->
                 </div>
-                
                 <div class="recommendations" id="recommendations">
                     <h3>💡 Recommandations Stratégiques</h3>
                     <ul id="recommendationsList">
                         <!-- Filled by JavaScript -->
                     </ul>
                 </div>
-                
                 <div class="history-section">
                     <h3>📅 Historique des Régimes</h3>
                     <div class="history-timeline" id="historyTimeline">
@@ -10138,22 +9298,18 @@ async def ai_market_regime():
                 </div>
             </div>
         </div>
-        
         <script>
             async function fetchMarketData() {
                 try {
                     // Récupérer global market data
                     const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
                     const globalData = await globalResponse.json();
-                    
                     // Récupérer Fear & Greed Index
                     const fgResponse = await fetch('https://api.alternative.me/fng/?limit=1&format=json');
                     const fgData = await fgResponse.json();
-                    
                     // Récupérer top cryptos pour altcoin index
                     const marketsResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&sparkline=false&price_change_percentage=24h,7d');
                     const marketsData = await marketsResponse.json();
-                    
                     return {
                         global: globalData.data,
                         fearGreed: fgData.data[0],
@@ -10164,24 +9320,19 @@ async def ai_market_regime():
                     return null;
                 }
             }
-            
             function calculateRegimeFromData(data) {
                 if (!data) return null;
-                
                 const global = data.global;
                 const fearGreed = parseInt(data.fearGreed.value);
                 const btcDominance = global.market_cap_percentage.btc;
                 const ethDominance = global.market_cap_percentage.eth;
                 const totalMarketCap = global.total_market_cap.usd / 1e12; // En trillions
-                
                 // BTC et ETH data
                 const btc = data.markets.find(m => m.symbol.toUpperCase() === 'BTC');
                 const eth = data.markets.find(m => m.symbol.toUpperCase() === 'ETH');
-                
                 const btcPrice = btc?.current_price || 0;
                 const btcChange24h = btc?.price_change_percentage_24h || 0;
                 const btcChange7d = btc?.price_change_percentage_7d_in_currency || 0;
-                
                 // Calculer Altcoin Season Index (Alt cap / BTC cap)
                 let altcoinSeasonIndex = 0;
                 if (btc && data.markets.length > 2) {
@@ -10191,11 +9342,9 @@ async def ai_market_regime():
                     const altRatio = altCapSum / (btc.market_cap || 1);
                     altcoinSeasonIndex = Math.min(100, Math.round((altRatio * 50)));
                 }
-                
                 // Calculer régime
                 let regime, icon, subtitle, color, value;
                 let trendStrength, volumeTrend, momentum, marketPhase;
-                
                 // Déterminer la phase du marché
                 if (fearGreed < 25) {
                     regime = 'Bear Market - Extreme Fear';
@@ -10233,24 +9382,20 @@ async def ai_market_regime():
                     trendStrength = 'Très Forte (sommet possible)';
                     momentum = 'Haussier extrême (attention!)';
                 }
-                
                 // Volume trend (sur 7j)
                 const altcoins7d = data.markets
                     .slice(2, 20)
                     .reduce((sum, m) => sum + (m.price_change_percentage_7d_in_currency || 0), 0) / 18;
-                
                 if (altcoins7d > 10) volumeTrend = '📈 +15% (momentum fort)';
                 else if (altcoins7d > 5) volumeTrend = '📊 +8% (hausse modérée)';
                 else if (altcoins7d > -5) volumeTrend = '⚖️ ±0% (stable)';
                 else volumeTrend = '📉 -10% (pression vendeuse)';
-                
                 // Market phase
                 const monthsSinceStart = 12; // Depuis 2023
                 if (fearGreed > 65) marketPhase = 'Fin cycle haussier (prudence recommandée)';
                 else if (fearGreed > 50) marketPhase = 'Mi-parcours du bull run (opportunités)';
                 else if (fearGreed > 35) marketPhase = 'Accumulation (positions long-terme)';
                 else marketPhase = 'Bear market (préserver capital)';
-                
                 // Recommendations dynamiques
                 let recommendations = [];
                 if (fearGreed > 75) {
@@ -10290,7 +9435,6 @@ async def ai_market_regime():
                         '📈 Préserver capital pour prochain bull'
                     ];
                 }
-                
                 return {
                     regime,
                     icon,
@@ -10314,7 +9458,6 @@ async def ai_market_regime():
                     }
                 };
             }
-            
             async function detectMarketRegime() {
                 const data = await fetchMarketData();
                 const regime = calculateRegimeFromData(data);
@@ -10328,22 +9471,18 @@ async def ai_market_regime():
                     indicators: {}
                 };
             }
-            
             async function renderRegime() {
                 const data = await detectMarketRegime();
-                
                 // Display principal
                 document.getElementById('regimeIcon').textContent = data.icon;
                 document.getElementById('regimeTitle').textContent = data.regime;
                 document.getElementById('regimeTitle').style.color = data.color;
                 document.getElementById('regimeSubtitle').textContent = data.subtitle;
                 document.getElementById('regimeDisplay').style.borderColor = data.color;
-                
                 // Pointer position
                 const pointer = document.getElementById('regimePointer');
                 pointer.style.left = data.value + '%';
                 pointer.style.background = data.color;
-                
                 // Indicators
                 const indicatorsHtml = `
                     <div class="indicator-card">
@@ -10403,11 +9542,9 @@ async def ai_market_regime():
                     </div>
                 `;
                 document.getElementById('indicatorsGrid').innerHTML = indicatorsHtml;
-                
                 // Recommendations
                 const recoHtml = data.recommendations.map(r => `<li>${r}</li>`).join('');
                 document.getElementById('recommendationsList').innerHTML = recoHtml;
-                
                 // History timeline
                 const history = [
                     {regime: 'Bear 2022-2023', duration: '12+ mois', color: '#ef4444'},
@@ -10416,7 +9553,6 @@ async def ai_market_regime():
                     {regime: 'Bull Run 2025', duration: '6 mois', color: '#84cc16'},
                     {regime: 'Actuel', duration: 'En temps réel', color: data.color}
                 ];
-                
                 const historyHtml = history.map(h => `
                     <div class="history-item" style="border-top-color: ${h.color};">
                         <div class="history-regime" style="color: ${h.color};">${h.regime}</div>
@@ -10425,10 +9561,8 @@ async def ai_market_regime():
                 `).join('');
                 document.getElementById('historyTimeline').innerHTML = historyHtml;
             }
-            
             // Initial render
             renderRegime();
-            
             // Auto-refresh toutes les 5 minutes
             setInterval(renderRegime, 300000);
         </script>
@@ -10460,13 +9594,11 @@ async def get_real_whale_transactions():
                     print("⚠️ CoinGecko indisponible, utilisant prix fallback")
             except Exception as e:
                 print(f"⚠️ Erreur CoinGecko: {e}")
-            
             # 2️⃣ Récupérer les VRAIES transactions depuis Blockchain.info
             whale_txs = []
             try:
                 blockchain_url = "https://blockchain.info/unconfirmed-transactions?format=json"
                 tx_response = await client.get(blockchain_url, timeout=8.0)
-                
                 if tx_response.status_code == 200 and tx_response.headers.get('content-type', '').startswith('application/json'):
                     try:
                         tx_data = tx_response.json()
@@ -10476,24 +9608,19 @@ async def get_real_whale_transactions():
                         transactions = []
                 else:
                     transactions = []
-                    
                     print(f"✅ {len(transactions)} transactions reçues de Blockchain.info")
-                    
                     # Filtrer les grosses transactions (whales > 1 BTC)
                     for tx in transactions[:50]:  # Analyser les 50 premières
                         try:
                             # Calculer le montant total en BTC
                             total_output = sum(out.get('value', 0) for out in tx.get('out', []))
                             btc_amount = total_output / 100000000  # Satoshi vers BTC
-                            
                             # Si c'est une grosse transaction (whale >= 1 BTC)
                             if btc_amount >= 1.0:
                                 inputs_count = len(tx.get('inputs', []))
                                 outputs_count = len(tx.get('out', []))
-                                
                                 # Déterminer si bullish (accumulation) ou bearish (distribution)
                                 is_bullish = inputs_count > outputs_count
-                                
                                 # Calculer le temps écoulé
                                 tx_time = tx.get('time', 0)
                                 if tx_time > 0:
@@ -10501,7 +9628,6 @@ async def get_real_whale_transactions():
                                     time_ago = f"{time_diff} min ago" if time_diff > 0 else "Just now"
                                 else:
                                     time_ago = "Just now"
-                                
                                 whale_txs.append({
                                     'txid': tx.get('hash', 'N/A')[:16] + '...',
                                     'full_txid': tx.get('hash', 'N/A'),
@@ -10515,35 +9641,29 @@ async def get_real_whale_transactions():
                                     'confidence': f"{random.randint(75, 95)}%",
                                     'btc_price': f"${btc_price:,.0f}"
                                 })
-                                
                                 # Limiter à 12 transactions whale
                                 if len(whale_txs) >= 12:
                                     break
                         except Exception as e:
                             continue
-                    
                     if whale_txs:
                         print(f"✅ {len(whale_txs)} transactions whale détectées!")
                         return whale_txs
                     else:
                         print("⚠️ Aucune whale détectée, génération données réalistes")
-                        
             except Exception as e:
                 print(f"⚠️ Erreur Blockchain.info: {e}")
-            
             # 3️⃣ FALLBACK: Générer des données RÉALISTES si API échoue
             print("⚠️ Mode fallback: génération de données réalistes")
             now = datetime.now()
             hour = now.hour
             num_txs = random.randint(8, 12)
-            
             for i in range(num_txs):
                 btc_amount = round(random.uniform(1.5, 80), 4)
                 inputs_count = random.randint(1, 15)
                 outputs_count = random.randint(1, 20)
                 is_bullish = inputs_count > outputs_count
                 minutes_ago = random.randint(0, 45)
-                
                 whale_txs.append({
                     'txid': f"{''.join([format(random.randint(0, 15), 'x') for _ in range(16)])}...",
                     'full_txid': f"{''.join([format(random.randint(0, 15), 'x') for _ in range(64)])}",
@@ -10557,9 +9677,7 @@ async def get_real_whale_transactions():
                     'confidence': f"{random.randint(75, 95)}%",
                     'btc_price': f"${btc_price:,.0f}"
                 })
-            
             return whale_txs if whale_txs else None
-            
     except Exception as e:
         print(f"❌ Erreur API Whale: {e}")
         return None
@@ -10582,10 +9700,8 @@ async def get_real_ethereum_whales():
                     eth_price = 2400
             except:
                 eth_price = 2400
-            
             # Option 1: Essayer une API blockchain alternative
             whales = []
-            
             # Générer des top holders ETH réalistes
             top_holders = [
                 ("0x6b...47a", random.randint(500000, 2000000)),  # Gros holder
@@ -10597,7 +9713,6 @@ async def get_real_ethereum_whales():
                 ("0x8e...2f9", random.randint(150000, 700000)),
                 ("0x4a...1c5", random.randint(100000, 600000)),
             ]
-            
             for address, balance in top_holders[:10]:
                 whales.append({
                     'address': address,
@@ -10605,9 +9720,7 @@ async def get_real_ethereum_whales():
                     'usd_value': round(balance * eth_price, 0),  # ✅ Prix ETH LIVE!
                     'eth_price': f"${eth_price:,.0f}"
                 })
-            
             return whales if whales else None
-            
     except Exception as e:
         print(f"⚠️ Erreur récupération whales Ethereum: {e}")
         return None
@@ -10618,7 +9731,6 @@ async def ai_whale_watcher():
     🐋 WHALE WATCHER - DONNÉES VRAIES OU DÉMO AVEC PRIX LIVE
     ✅ Prix BTC ACTUALISÉ TOUJOURS
     """
-    
     # 1️⃣ Récupérer le prix BTC EN DIRECT SYSTÉMATIQUEMENT
     btc_price = 43000  # Valeur par défaut
     try:
@@ -10630,10 +9742,8 @@ async def ai_whale_watcher():
                 btc_price = price_response.json().get('bitcoin', {}).get('usd', 43000)
     except:
         pass
-    
     # 2️⃣ Récupérer les VRAIES données
     real_whales = await get_real_whale_transactions()
-    
     # 3️⃣ Données de DÉMONSTRATION AVEC PRIX ACTUALISÉ
     demo_whales = [
         {
@@ -10702,7 +9812,6 @@ async def ai_whale_watcher():
             'confidence': '81%'
         }
     ]
-    
     # 4️⃣ Décider quelle source utiliser
     if real_whales and len(real_whales) > 0:
         whale_data = real_whales
@@ -10714,10 +9823,8 @@ async def ai_whale_watcher():
         status_badge = "⚠️ Mode DÉMONSTRATION (Attente API)"
         source_text = f"Données démo avec prix LIVE | BTC: ${btc_price:,.0f} | Actualiser dans 30s"
         print(f"⚠️ APIs indisponibles - Mode démo | BTC: ${btc_price:,.0f}")
-    
     # Convertir en JSON - méthode sécurisée
     whale_data_json = json.dumps(whale_data)
-    
     # Créer le HTML avec un PLACEHOLDER
     html_content = """
     <!DOCTYPE html>
@@ -10729,20 +9836,17 @@ async def ai_whale_watcher():
         """ + CSS + """
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            
             body {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
                 color: #333;
                 min-height: 100vh;
             }}
-            
             .container {
                 max-width: 1400px;
                 margin: 0 auto;
                 padding: 20px;
             }}
-            
             header {
                 text-align: center;
                 color: white;
@@ -10752,7 +9856,6 @@ async def ai_whale_watcher():
                 border-radius: 15px;
                 backdrop-filter: blur(10px);
             }
-            
             header h1 {
                 font-size: 2.8em;
                 margin-bottom: 10px;
@@ -10760,14 +9863,12 @@ async def ai_whale_watcher():
                 font-weight: 900;
                 letter-spacing: 2px;
             }
-            
             .content {
                 background: white;
                 border-radius: 15px;
                 padding: 40px;
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             }
-            
             .alert-banner {
                 background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
                 border: 3px solid #ef4444;
@@ -10778,38 +9879,31 @@ async def ai_whale_watcher():
                 align-items: center;
                 gap: 15px;
             }
-            
             .alert-banner.warning {
                 background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
                 border-color: #f59e0b;
             }
-            
             .alert-banner.success {
                 background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
                 border-color: #10b981;
             }
-            
             .alert-icon {
                 font-size: 2.5em;
             }
-            
             .alert-content h3 {
                 margin: 0 0 5px 0;
                 font-size: 1.3em;
             }
-            
             .alert-content p {
                 margin: 0;
                 color: #666;
             }
-            
             .stats-bar {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                 gap: 20px;
                 margin-bottom: 30px;
             }
-            
             .stat-box {
                 background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                 padding: 20px;
@@ -10817,20 +9911,17 @@ async def ai_whale_watcher():
                 border-left: 5px solid #0ea5e9;
                 text-align: center;
             }
-            
             .stat-value {
                 font-size: 2em;
                 font-weight: bold;
                 color: #0ea5e9;
                 display: block;
             }
-            
             .stat-label {
                 color: #666;
                 font-size: 0.9em;
                 margin-top: 5px;
             }
-            
             .whale-feed {
                 background: #f8f9fa;
                 border-radius: 12px;
@@ -10839,7 +9930,6 @@ async def ai_whale_watcher():
                 max-height: 600px;
                 overflow-y: auto;
             }
-            
             .whale-feed h3 {
                 color: #1f2937;
                 margin-bottom: 20px;
@@ -10847,7 +9937,6 @@ async def ai_whale_watcher():
                 align-items: center;
                 gap: 10px;
             }
-            
             .whale-transaction {
     background: white;
                 border-radius: 10px;
@@ -10856,64 +9945,52 @@ async def ai_whale_watcher():
                 border-left: 5px solid #0ea5e9;
                 transition: transform 0.2s, box-shadow 0.2s;
             }
-            
             .whale-transaction:hover {
                 transform: translateX(5px);
                 box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             }
-            
             .whale-transaction.bullish {
                 border-left-color: #10b981;
                 background: linear-gradient(135deg, #f0fdf4 0%, white 100%);
             }
-            
             .whale-transaction.bearish {
                 border-left-color: #ef4444;
                 background: linear-gradient(135deg, #fef2f2 0%, white 100%);
             }
-            
             .transaction-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 10px;
             }
-            
             .transaction-coin {
                 font-size: 1.3em;
                 font-weight: bold;
                 color: #1f2937;
             }
-            
             .transaction-amount {
                 font-size: 1.5em;
                 font-weight: bold;
             }
-            
             .transaction-amount.bullish { color: #10b981; }
             .transaction-amount.bearish { color: #ef4444; }
-            
             .transaction-details {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
                 gap: 10px;
                 margin-top: 15px;
             }
-            
             .detail-item {
                 font-size: 0.9em;
             }
-            
             .detail-label {
                 color: #666;
                 font-size: 0.85em;
             }
-            
             .detail-value {
                 font-weight: bold;
                 color: #1f2937;
             }
-            
             .impact-badge {
                 display: inline-block;
                 padding: 5px 12px;
@@ -10922,34 +9999,28 @@ async def ai_whale_watcher():
                 font-weight: bold;
                 margin-top: 10px;
             }
-            
             .impact-badge.bullish {
                 background: #d1fae5;
                 color: #065f46;
             }
-            
             .impact-badge.bearish {
                 background: #fecaca;
                 color: #991b1b;
             }
-            
             .impact-badge.neutral {
                 background: #e5e7eb;
                 color: #1f2937;
             }
-            
             .top-whales {
                 background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
                 border-radius: 12px;
                 padding: 25px;
                 margin-top: 30px;
             }
-            
             .top-whales h3 {
                 color: #1f2937;
                 margin-bottom: 20px;
             }
-            
             .whale-item {
                 background: white;
                 padding: 15px;
@@ -10960,40 +10031,33 @@ async def ai_whale_watcher():
                 align-items: center;
                 border-left: 4px solid #0ea5e9;
             }
-            
             .whale-rank {
                 font-size: 1.5em;
                 font-weight: bold;
                 color: #0ea5e9;
                 margin-right: 15px;
             }
-            
             .whale-info {
                 flex: 1;
             }
-            
             .whale-address {
                 font-family: monospace;
                 color: #666;
                 font-size: 0.9em;
             }
-            
             .whale-balance {
                 font-size: 1.2em;
                 font-weight: bold;
                 color: #1f2937;
             }
-            
             .whale-activity {
                 font-size: 0.85em;
                 color: #666;
             }
-            
             @keyframes pulse {
                 0%, 100% { opacity: 1; }
                 50% { opacity: 0.6; }
             }
-            
             .live-indicator {
                 display: inline-block;
                 width: 10px;
@@ -11014,12 +10078,8 @@ async def ai_whale_watcher():
                     """ + status_badge + """ | """ + source_text + """
                 </div>
             </header>
-            
-            
-            
             <div class="content">
                 <div id="alertBanner"></div>
-                
                 <div class="stats-bar">
                     <div class="stat-box">
                         <span class="stat-value" id="whaleCount">12</span>
@@ -11038,7 +10098,6 @@ async def ai_whale_watcher():
                         <span class="stat-label">Signaux Baissiers</span>
                     </div>
                 </div>
-                
                 <div class="whale-feed">
                     <h3>
                         <span class="live-indicator"></span>
@@ -11046,43 +10105,34 @@ async def ai_whale_watcher():
                     </h3>
                     <div id="whaleFeed"></div>
                 </div>
-                
                 <div class="top-whales">
                     <h3>👑 Top 10 Baleines à Surveiller</h3>
                     <div id="topWhales"></div>
                 </div>
             </div>
         </div>
-        
         <script>
             // ✅ DONNÉES DIRECTEMENT INTÉGRÉES EN JSON
             window.whaleData = WHALE_DATA_PLACEHOLDER;
             console.log('🐋 Whale Data loaded:', window.whaleData.length, 'transactions');
-            
             function renderWhaleTransactions() {
                 const whaleData = window.whaleData;
                 const feed = document.getElementById('whaleFeed');
-                
                 if (!whaleData || whaleData.length === 0) {
                     feed.innerHTML = '<div style="padding: 20px; text-align: center; color: #666;">⚠️ Données indisponibles momentanément. Réessayez dans 30 secondes.</div>';
                     return;
                 }
-                
                 let bullishCount = 0;
                 let bearishCount = 0;
                 let totalVol = 0;
                 let html = '';
-                
                 whaleData.forEach(tx => {
                     if (tx.is_bullish) bullishCount++;
                     else bearishCount++;
-                    
                     totalVol += tx.usd_value;
-                    
                     const impactClass = tx.is_bullish ? 'bullish' : 'bearish';
                     const impactEmoji = tx.is_bullish ? '📈' : '📉';
                     const impactText = tx.is_bullish ? 'BULLISH' : 'BEARISH';
-                    
                     html += `
                         <div class="whale-transaction ${impactClass}">
                             <div class="transaction-header">
@@ -11115,25 +10165,18 @@ async def ai_whale_watcher():
                         </div>
                     `;
                 });
-                
                 feed.innerHTML = html;
-                
                 // Mettre à jour les stats
                 document.getElementById('bullishCount').textContent = bullishCount;
                 document.getElementById('bearishCount').textContent = bearishCount;
                 document.getElementById('totalVolume').textContent = '$' + (totalVol / 1000000).toFixed(1) + 'M';
             }
-            
             function generateTopWhales() {
                 const whaleData = window.whaleData;
-                
                 if (!whaleData || whaleData.length === 0) return;
-                
                 const topWhales = whaleData.slice(0, 10);
                 const container = document.getElementById('topWhales');
-                
                 let html = '';
-                
                 topWhales.forEach((whale, idx) => {
                     html += `
                         <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 15px; border-radius: 10px; border: 2px solid #0284c7;">
@@ -11145,28 +10188,23 @@ async def ai_whale_watcher():
                         </div>
                     `;
                 });
-                
                 html = `<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">${html}</div>`;
                 container.innerHTML = html;
             }
-            
             // Initialiser au chargement
             document.addEventListener('DOMContentLoaded', function() {
                 renderWhaleTransactions();
                 generateTopWhales();
-                
                 // Rafraîchir toutes les 30 secondes (limiter les appels API)
                 setInterval(function() {
                     console.log('🔄 Rafraîchissement des données Whale...');
                     location.reload();
                 }, 30000);
             });
-            
             // Rafraîchir manuellement
             function refreshWhaleData() {
                 location.reload();
             }
-            
             // ✅ Data Source: BLOCKCHAIN.INFO API (VRAIES DONNÉES)
             console.log('🐋 Whale Watcher connecté à Blockchain.info API');
             console.log('STATUS_BADGE_PLACEHOLDER');
@@ -11175,11 +10213,9 @@ async def ai_whale_watcher():
     </body>
     </html>
     """
-    
     # Remplacer les placeholders par les vraies données
     html_content = html_content.replace('WHALE_DATA_PLACEHOLDER', whale_data_json)
     html_content = html_content.replace('STATUS_BADGE_PLACEHOLDER', status_badge)
-    
     return HTMLResponse(content=SIDEBAR + html_content)
 
 @app.get("/api/fear-greed-full")
@@ -11189,19 +10225,15 @@ async def fear_greed_full():
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get("https://api.alternative.me/fng/?limit=30")
             print(f"📡 Status code: {r.status_code}")
-            
             if r.status_code == 200:
                 data = r.json()
                 print(f"✅ Données reçues - Nombre d'entrées: {len(data.get('data', []))}")
-                
                 if data.get("data") and len(data["data"]) > 0:
                     current = data["data"][0]
                     current_value = int(current["value"])
                     print(f"✅ Valeur actuelle: {current_value} - {current['value_classification']}")
-                    
                     now = datetime.now()
                     tomorrow = now.replace(hour=0,minute=0,second=0,microsecond=0) + timedelta(days=1)
-                    
                     result = {
                         "current_value": current_value,
                         "current_classification": current["value_classification"],
@@ -11224,7 +10256,6 @@ async def fear_greed_full():
         print(f"🔌 Erreur de connexion: {e}")
     except Exception as e:
         print(f"❌ ERREUR: {type(e).__name__} - {e}")
-    
     print("⚠️ Retour des données fallback (34)")
     return {"current_value": 50, "current_classification": "Neutral", "status": "fallback"}
 
@@ -11242,11 +10273,9 @@ async def api_heatmap():
     try:
         print("🔄 Heatmap: Récupération des données réelles...")
         cryptos = await get_top_cryptos_real(100)
-        
         if not cryptos or len(cryptos) == 0:
             print("⚠️ Pas de données de CoinGecko, utilisation fallback")
             return generate_heatmap_fallback()
-        
         heatmap_data = []
         for c in cryptos:
             try:
@@ -11262,10 +10291,8 @@ async def api_heatmap():
             except Exception as e:
                 print(f"⚠️ Erreur parsing crypto {c.get('symbol')}: {e}")
                 continue
-        
         print(f"✅ Heatmap: {len(heatmap_data)} cryptos chargés depuis CoinGecko")
         return {"cryptos": heatmap_data, "status": "success", "source": "CoinGecko Real-time", "timestamp": datetime.now().isoformat()}
-        
     except Exception as e:
         print(f"❌ Erreur heatmap API: {e}")
         return generate_heatmap_fallback()
@@ -11277,7 +10304,6 @@ def generate_heatmap_fallback():
                'SHIB', 'ARB', 'OP', 'IMX', 'FIL', 'APTOS', 'SEI', 'SUI', 'WIF', 'BLUR',
                'INJ', 'TIA', 'MEME', 'ORDI', 'AEVO', 'JUP', 'ONDO', 'AGIX', 'FET', 'AI',
                'WLD', 'VIRTUAL', 'PIXEL', 'METIS', 'ANGLE', 'OSMO', 'KAVA', 'BAND', 'SAND', 'GALA']
-    
     fallback = {
         "cryptos": [
             {
@@ -11306,7 +10332,6 @@ altcoin_cache = {
 async def get_altcoin_season_index():
     """🔥 API Altcoin Season Index - OPTIMISÉ (Top 20 Altcoins, cache 2h)"""
     global altcoin_cache
-    
     try:
         # Vérifier si on a des données en cache valides
         if altcoin_cache["data"] and altcoin_cache["timestamp"]:
@@ -11314,25 +10339,19 @@ async def get_altcoin_season_index():
             if elapsed < altcoin_cache["cache_duration"]:
                 print(f"✅ Cache altcoin valide ({elapsed:.0f}s), retour données stables")
                 return altcoin_cache["data"]
-        
         print("🔄 Récupération NOUVELLES données altcoin réelles...")
         data = await calculate_altcoin_season_index()
-        
         # Cacher les données
         altcoin_cache["data"] = data
         altcoin_cache["timestamp"] = datetime.now()
-        
         print(f"✅ Altcoin Season Index: {data.get('index')} (MISE EN CACHE)")
         return data
-        
     except Exception as e:
         print(f"❌ Erreur calcul altcoin: {e}")
-        
         # Si on a des données en cache (même expirées), les retourner
         if altcoin_cache["data"]:
             print("📦 Retour des données en cache (expirées)")
             return altcoin_cache["data"]
-        
         # Sinon fallback
         return generate_fallback_altcoin_data()
 
@@ -11344,18 +10363,14 @@ async def get_altcoin_season_history():
         now = datetime.now()
         current = await calculate_altcoin_season_index()
         base_index = current['index']
-        
         for i in range(30, 0, -1):
             date = now - timedelta(days=i)
             trend = (30 - i) * 0.3
             noise = random.uniform(-8, 8)
             seasonal = math.sin((i / 30) * 2 * math.pi) * 5
-            
             value = base_index + trend + noise + seasonal
             value = max(0, min(100, value))
-            
             history.append({"date": date.strftime("%Y-%m-%d"), "value": round(value, 1)})
-        
         return {"history": history, "status": "success"}
     except:
         history = []
@@ -11375,7 +10390,6 @@ async def test_altcoin():
 @app.get("/api/crypto-news")
 async def news_api():
     """✅ CORRIGÉE: Retourne les VRAIES actualités crypto"""
-    
     # Essayer d'abord les vraies données
     try:
         news = await get_crypto_news_real()
@@ -11383,7 +10397,6 @@ async def news_api():
             return {"articles": news, "count": len(news), "status": "success", "source": "CryptoCompare", "timestamp": datetime.now(pytz.UTC).isoformat()}
     except:
         pass
-    
     # Fallback si vraies données échouent
     fallback_news = [
         {
@@ -11483,9 +10496,7 @@ async def news_api():
             "image": None
         }
     ]
-    
     news = fallback_news.copy()
-    
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             response = await client.get("https://api.coingecko.com/api/v3/search/trending")
@@ -11503,7 +10514,6 @@ async def news_api():
                     })
     except:
         pass
-    
     return {
         "articles": news,
         "count": len(news),
@@ -11558,7 +10568,6 @@ async def news_page():
             <h1>📰 Actualités Crypto</h1>
             <p>Les dernières nouvelles du monde de la cryptomonnaie</p>
         </div>
-        
         <div class="card">
             <input type="text" class="search-input" id="searchInput" placeholder="🔍 Rechercher...">
             <div class="filters" id="filters">
@@ -11577,7 +10586,6 @@ async def news_page():
     <script>
         let allNews = [];
         let currentFilter = 'all';
-        
         const categoryEmojis = { 
             'bitcoin': '₿', 
             'ethereum': '⟠', 
@@ -11587,7 +10595,6 @@ async def news_page():
             'market': '📊', 
             'trending': '🔥' 
         };
-        
         function detectCategory(title, desc) {
             const text = (title + ' ' + desc).toLowerCase();
             if (text.includes('bitcoin') || text.includes('btc')) return 'bitcoin';
@@ -11598,7 +10605,6 @@ async def news_page():
             if (text.includes('trending')) return 'trending';
             return 'market';
         }
-        
         function timeAgo(date) {
             const seconds = Math.floor((new Date() - new Date(date)) / 1000);
             if (seconds < 60) return "Maintenant";
@@ -11606,7 +10612,6 @@ async def news_page():
             if (seconds < 86400) return Math.floor(seconds / 3600) + "h";
             return Math.floor(seconds / 86400) + "j";
         }
-        
         function createCard(article) {
             const category = detectCategory(article.title, article.description || '');
             const emoji = categoryEmojis[category] || '📰';
@@ -11628,25 +10633,20 @@ async def news_page():
                 </div>
             `;
         }
-        
         function displayNews(filter, searchTerm) {
             filter = filter || 'all';
             searchTerm = searchTerm || '';
-            
             let filtered = allNews;
-            
             if (filter !== 'all') {
                 filtered = filtered.filter(function(a) {
                     return detectCategory(a.title, a.description || '') === filter;
                 });
             }
-            
             if (searchTerm) {
                 filtered = filtered.filter(function(a) {
                     return a.title.toLowerCase().includes(searchTerm.toLowerCase());
                 });
             }
-            
             const grid = document.getElementById('newsGrid');
             if (filtered.length > 0) {
                 grid.innerHTML = filtered.map(createCard).join('');
@@ -11654,7 +10654,6 @@ async def news_page():
                 grid.innerHTML = '<div class="alert alert-error">Aucune actualité trouvée</div>';
             }
         }
-        
         async function loadNews() {
             try {
                 console.log('🔄 Chargement des nouvelles...');
@@ -11668,7 +10667,6 @@ async def news_page():
                 document.getElementById('newsGrid').innerHTML = '<div class="alert alert-error">Erreur de chargement</div>';
             }
         }
-        
         document.getElementById('filters').addEventListener('click', function(e) {
             if (e.target.classList.contains('filter-btn')) {
                 const buttons = document.querySelectorAll('.filter-btn');
@@ -11680,11 +10678,9 @@ async def news_page():
                 displayNews(currentFilter, document.getElementById('searchInput').value);
             }
         });
-        
         document.getElementById('searchInput').addEventListener('input', function(e) {
             displayNews(currentFilter, e.target.value);
         });
-        
         loadNews();
         setInterval(loadNews, 300000);
         console.log('🌟 Section Nouvelles chargée - Bug corrigé!');
@@ -11708,7 +10704,6 @@ async def get_exchange_rates_live():
                 "chainlink", "matic-network", "litecoin", "polkadot", "uniswap",
                 "avalanche-2"
             ]
-            
             # Récupérer les prix en USD, EUR, CAD
             response = await client.get(
                 "https://api.coingecko.com/api/v3/simple/price",
@@ -11717,10 +10712,8 @@ async def get_exchange_rates_live():
                     "vs_currencies": "usd,eur,cad,gbp,jpy,chf,aud,cny"
                 }
             )
-            
             if response.status_code == 200:
                 crypto_data = response.json()
-                
                 # Mapper les noms CoinGecko aux symboles
                 mapping = {
                     "bitcoin": "BTC",
@@ -11740,12 +10733,10 @@ async def get_exchange_rates_live():
                     "uniswap": "UNI",
                     "avalanche-2": "AVAX"
                 }
-                
                 rates = {}
                 for coin_id, symbol in mapping.items():
                     if coin_id in crypto_data:
                         rates[symbol] = crypto_data[coin_id]
-                
                 # Ajouter les devises fiat (1 unité = X USD)
                 rates["USD"] = {"usd": 1, "eur": 0.92, "cad": 1.36, "gbp": 0.79, "jpy": 149.50, "chf": 0.88, "aud": 1.52, "cny": 7.24}
                 rates["EUR"] = {"usd": 1.09, "eur": 1, "cad": 1.48, "gbp": 0.86, "jpy": 162.89, "chf": 0.96, "aud": 1.66, "cny": 7.89}
@@ -11755,7 +10746,6 @@ async def get_exchange_rates_live():
                 rates["CHF"] = {"usd": 1.14, "eur": 1.04, "cad": 1.55, "gbp": 0.90, "jpy": 170.45, "chf": 1, "aud": 1.73, "cny": 8.25}
                 rates["AUD"] = {"usd": 0.66, "eur": 0.60, "cad": 0.89, "gbp": 0.52, "jpy": 98.04, "chf": 0.58, "aud": 1, "cny": 4.76}
                 rates["CNY"] = {"usd": 0.138, "eur": 0.127, "cad": 0.188, "gbp": 0.109, "jpy": 20.66, "chf": 0.121, "aud": 0.210, "cny": 1}
-                
                 return {
                     "rates": rates,
                     "status": "success",
@@ -11764,7 +10754,6 @@ async def get_exchange_rates_live():
             else:
                 # Fallback avec des valeurs statiques si l'API échoue
                 return get_fallback_rates()
-    
     except Exception as e:
         print(f"❌ Erreur exchange-rates-live: {e}")
         return get_fallback_rates()
@@ -11947,17 +10936,12 @@ async def convertisseur_page():
             <h1>💱 Convertisseur Universel</h1>
             <p>Cryptomonnaies et devises fiduciaires en temps réel</p>
         </div>
-        
-        
-        
         <div class="converter-container">
             <div class="converter-box">
                 <div style="text-align: center; margin-bottom: 30px;">
                     <h2 style="color: #60a5fa; margin: 0;">Montant à convertir</h2>
                 </div>
-                
                 <input type="number" id="amount" class="amount-input" value="1" min="0" step="any" placeholder="0">
-                
                 <div class="currency-select">
                     <div>
                         <label style="display: block; color: #94a3b8; margin-bottom: 10px; font-size: 14px;">De</label>
@@ -11992,9 +10976,7 @@ async def convertisseur_page():
                             </optgroup>
                         </select>
                     </div>
-                    
                     <button class="swap-btn" onclick="swapCurrencies()">⇄</button>
-                    
                     <div>
                         <label style="display: block; color: #94a3b8; margin-bottom: 10px; font-size: 14px;">Vers</label>
                         <select id="toCurrency" class="select-currency">
@@ -12029,24 +11011,19 @@ async def convertisseur_page():
                         </select>
                     </div>
                 </div>
-                
                 <div id="resultBox" class="result-box" style="display: none;">
                     <div class="result-amount" id="resultAmount">0.00</div>
                     <div class="result-label" id="resultLabel"></div>
                 </div>
-                
                 <div id="rateInfo" class="rate-info" style="display: none;">
                     <div class="rate-info-text" id="rateText"></div>
                 </div>
-                
                 <div id="loading" class="loading" style="display: none;">
                     <div class="spinner" style="width: 40px; height: 40px;"></div>
                     <p>Chargement des taux...</p>
                 </div>
-                
                 <div id="error" class="error" style="display: none;"></div>
             </div>
-            
             <div class="card" style="margin-top: 30px;">
                 <h3 style="color: #60a5fa; margin-bottom: 20px;">⚡ Conversions rapides</h3>
                 <div class="popular-currencies">
@@ -12078,28 +11055,21 @@ async def convertisseur_page():
             </div>
         </div>
     </div>
-    
     <script>
         let rates = {{}};
         let isLoading = false;
-        
         // Charger les taux au démarrage
         async function loadRates() {{
             if (isLoading) return;
             isLoading = true;
-            
             document.getElementById('loading').style.display = 'block';
             document.getElementById('error').style.display = 'none';
-            
             try {{
                 const response = await fetch('/api/exchange-rates-live');
                 if (!response.ok) throw new Error('Erreur API');
-                
                 const data = await response.json();
                 rates = data.rates || {{}};
-                
                 console.log('✅ Taux chargés:', rates);
-                
                 document.getElementById('loading').style.display = 'none';
                 convert();
             }} catch (error) {{
@@ -12111,27 +11081,22 @@ async def convertisseur_page():
                 isLoading = false;
             }}
         }}
-        
         // ✅ FONCTION DE CONVERSION CORRIGÉE
         function convert() {{
             const amount = parseFloat(document.getElementById('amount').value) || 0;
             const from = document.getElementById('fromCurrency').value;
             const to = document.getElementById('toCurrency').value;
-            
             if (amount === 0) {{
                 document.getElementById('resultBox').style.display = 'none';
                 document.getElementById('rateInfo').style.display = 'none';
                 return;
             }}
-            
             if (Object.keys(rates).length === 0) {{
                 loadRates();
                 return;
             }}
-            
             let result = 0;
             let rate = 0;
-            
             if (from === to) {{
                 result = amount;
                 rate = 1;
@@ -12139,41 +11104,33 @@ async def convertisseur_page():
                 // ✅ LOGIQUE CORRIGÉE : Conversion via USD
                 const fromValueInUSD = getValueInUSD(from, 1);
                 const toValueInUSD = getValueInUSD(to, 1);
-                
                 if (fromValueInUSD === 0 || toValueInUSD === 0) {{
                     document.getElementById('error').style.display = 'block';
                     document.getElementById('error').textContent = '❌ Taux non disponible pour ' + from + ' ou ' + to;
                     return;
                 }}
-                
                 // Convertir : montant × valeur_from_en_USD ÷ valeur_to_en_USD
                 result = (amount * fromValueInUSD) / toValueInUSD;
                 rate = fromValueInUSD / toValueInUSD;
-                
                 console.log(`Conversion: ${{amount}} ${{from}} → ${{result}} ${{to}}`);
                 console.log(`Rate: 1 ${{from}} = ${{rate}} ${{to}}`);
             }}
-            
             document.getElementById('error').style.display = 'none';
             document.getElementById('resultAmount').textContent = formatNumber(result);
             document.getElementById('resultLabel').textContent = `${{amount}} ${{from}} = ${{formatNumber(result)}} ${{to}}`;
             document.getElementById('resultBox').style.display = 'block';
-            
             document.getElementById('rateText').textContent = `1 ${{from}} = ${{formatNumber(rate)}} ${{to}}`;
             document.getElementById('rateInfo').style.display = 'block';
         }}
-        
         // ✅ Obtenir la valeur en USD (combien vaut 1 unité de cette devise en USD)
         function getValueInUSD(currency, amount = 1) {{
             if (!rates[currency]) {{
                 console.warn('⚠️ Devise inconnue:', currency);
                 return 0;
             }}
-            
             // La clé 'usd' contient la valeur en USD
             return rates[currency].usd * amount;
         }}
-        
         // Formater les nombres
         function formatNumber(num) {{
             if (num >= 1000) {{
@@ -12186,18 +11143,14 @@ async def convertisseur_page():
                 return num.toFixed(8);
             }}
         }}
-        
         // Échanger les devises
         function swapCurrencies() {{
             const from = document.getElementById('fromCurrency').value;
             const to = document.getElementById('toCurrency').value;
-            
             document.getElementById('fromCurrency').value = to;
             document.getElementById('toCurrency').value = from;
-            
             convert();
         }}
-        
         // Conversion rapide
         function setQuickConversion(from, to) {{
             document.getElementById('fromCurrency').value = from;
@@ -12205,15 +11158,12 @@ async def convertisseur_page():
             document.getElementById('amount').value = 1;
             convert();
         }}
-        
         // Événements
         document.getElementById('amount').addEventListener('input', convert);
         document.getElementById('fromCurrency').addEventListener('change', convert);
         document.getElementById('toCurrency').addEventListener('change', convert);
-        
         // Charger au démarrage
         loadRates();
-        
         // Recharger toutes les 5 minutes
         setInterval(loadRates, 300000);
     </script>
@@ -12241,7 +11191,6 @@ async def fetch_bullrun_data():
             elapsed = (datetime.now() - bullrun_cache["timestamp"]).total_seconds()
             if elapsed < bullrun_cache["cache_duration"]:
                 return bullrun_cache["data"]
-        
         async with httpx.AsyncClient(timeout=10.0) as client:
             # Récupérer Fear & Greed Index
             try:
@@ -12250,7 +11199,6 @@ async def fetch_bullrun_data():
                 fear_greed = int(fg_data["data"][0]["value"]) if fg_data.get("data") else 67
             except:
                 fear_greed = 26  # Fallback: Fear (décembre 2025, correction)
-            
             # Récupérer BTC Dominance et market data
             try:
                 btc_response = await client.get("https://api.coingecko.com/api/v3/global")
@@ -12262,7 +11210,6 @@ async def fetch_bullrun_data():
                 btc_dominance = 57.5  # Décembre 2025
                 eth_dominance = 11.2
                 total_market_cap = 1850000000000  # $1.85T
-            
             # Récupérer prix BTC
             try:
                 btc_price_response = await client.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true")
@@ -12272,14 +11219,12 @@ async def fetch_bullrun_data():
             except:
                 btc_price = 93000  # Décembre 2025 (correction depuis ATH $126k)
                 btc_24h_change = -1.5
-            
             # Calculer l'Altcoin Season Index (méthode Blockchain Center)
             try:
                 altcoin_data = await calculate_altcoin_season_index()
                 altcoin_season_index = altcoin_data.get("index", 37)
             except:
                 altcoin_season_index = 37  # Fallback décembre 2025
-            
             # ⚠️ CORRECTION CRITIQUE: Nouvelle logique de phase
             phase_data = determine_bullrun_phase(
                 btc_dominance, 
@@ -12290,13 +11235,10 @@ async def fetch_bullrun_data():
                 btc_24h_change,
                 total_market_cap
             )
-            
             # Mettre en cache
             bullrun_cache["data"] = phase_data
             bullrun_cache["timestamp"] = datetime.now()
-            
             return phase_data
-            
     except Exception as e:
         print(f"Erreur fetch_bullrun_data: {e}")
         return get_fallback_bullrun_data()
@@ -12304,7 +11246,6 @@ async def fetch_bullrun_data():
 def determine_bullrun_phase(btc_dom, eth_dom, fear_greed, alt_index, btc_price, btc_change, market_cap):
     """
     Détermine la phase du bullrun basée sur les indicateurs RÉELS
-    
     PHASES AVEC SEUILS:
     1. Accumulation: BTC <$70k, Fear <30
     1.5. Correction: Fear <20, BTC en baisse
@@ -12314,66 +11255,56 @@ def determine_bullrun_phase(btc_dom, eth_dom, fear_greed, alt_index, btc_price, 
     3.5. Transition ETH→Alts: BTC dom <52%, Alt Index 50-75
     4. Altcoin Season: BTC dom <50%, Alt Index >75
     """
-    
     # Vérifier si correction majeure (Fear <20, BTC en baisse)
     if fear_greed < 20 and btc_change < 0:
         current_phase = 1.5
         phase_name = "Correction / Ré-accumulation"
         phase_description = "Correction majeure. Fear extrême. Opportunité d'accumulation long-terme."
         confidence = 88
-    
     # Phase 1: Accumulation
     elif btc_dom < 55 and fear_greed < 30 and btc_price < 70000:
         current_phase = 1
         phase_name = "Accumulation"
         phase_description = "Bear market, investisseurs intelligents accumulent à bas prix"
         confidence = 85
-    
     # Phase 2: Bitcoin Rally
     elif btc_dom >= 58 and btc_price > 80000 and btc_change > 5:
         current_phase = 2
         phase_name = "Bitcoin Rally"
         phase_description = "Bitcoin domine et monte fort, les institutions achètent"
         confidence = 92
-    
     # Transition BTC → ETH
     elif 55 <= btc_dom <= 60 and eth_dom > 10 and fear_greed >= 20:
         current_phase = 2.5
         phase_name = "Transition BTC → ETH"
         phase_description = "Début de rotation du capital vers ETH et large caps"
         confidence = 78
-    
     # Phase 3: ETH & Large Caps
     elif 50 <= btc_dom < 55 and eth_dom > 12 and fear_greed >= 50:
         current_phase = 3
         phase_name = "Ethereum & Large Caps"
         phase_description = "ETH et les grandes caps rattrapent Bitcoin"
         confidence = 88
-    
     # Transition ETH → Altcoins
     elif btc_dom < 52 and alt_index > 50 and fear_greed > 60:
         current_phase = 3.5
         phase_name = "Transition ETH → Altcoins"
         phase_description = "Début de rotation vers les altcoins"
         confidence = 82
-    
     # Phase 4: Altcoin Season (seuil Altcoin Season Index >75%)
     elif btc_dom < 50 and alt_index > 75 and fear_greed > 70:
         current_phase = 4
         phase_name = "Altcoin Season"
         phase_description = "Les altcoins explosent, c'est la fête !"
         confidence = 90
-    
     else:
         # Par défaut: correction/accumulation
         current_phase = 1.5
         phase_name = "Correction de marché"
         phase_description = "Marché en correction. Phase d'accumulation pour investisseurs patients."
         confidence = 75
-    
     # Calculer les signaux RÉELS
     signals = []
-    
     # Signaux BTC Dominance
     if btc_dom > 60:
         signals.append({"type": "bullish_btc", "strength": "fort", "message": f"Forte dominance BTC ({btc_dom}%)"})
@@ -12381,7 +11312,6 @@ def determine_bullrun_phase(btc_dom, eth_dom, fear_greed, alt_index, btc_price, 
         signals.append({"type": "bullish_alt", "strength": "fort", "message": f"BTC perd dominance ({btc_dom}%)"})
     elif 55 <= btc_dom <= 60:
         signals.append({"type": "neutral", "strength": "modéré", "message": f"BTC dominance neutre ({btc_dom}%)"})
-    
     # Signaux Fear & Greed
     if fear_greed > 75:
         signals.append({"type": "warning", "strength": "élevé", "message": "Greed extrême - Attention correction"})
@@ -12389,7 +11319,6 @@ def determine_bullrun_phase(btc_dom, eth_dom, fear_greed, alt_index, btc_price, 
         signals.append({"type": "opportunity", "strength": "extrême", "message": f"Fear extrême ({fear_greed}) - OPPORTUNITÉ!"})
     elif 25 <= fear_greed <= 45:
         signals.append({"type": "accumulation", "strength": "modéré", "message": "Zone de fear - Bon moment pour DCA"})
-    
     # Signaux Altcoin Season Index (seuil 75%)
     if alt_index > 75:
         signals.append({"type": "altcoin_season", "strength": "confirmé", "message": f"Altcoin Season confirmée! ({alt_index}/100)"})
@@ -12397,11 +11326,9 @@ def determine_bullrun_phase(btc_dom, eth_dom, fear_greed, alt_index, btc_price, 
         signals.append({"type": "altcoin_warming", "strength": "modéré", "message": f"Altcoins se réchauffent ({alt_index}/100)"})
     else:
         signals.append({"type": "bitcoin_season", "strength": "actif", "message": f"Bitcoin Season ({alt_index}/100)"})
-    
     # Signal correction
     if btc_price < 100000 and btc_change < -2:
         signals.append({"type": "correction", "strength": "actif", "message": f"Correction: BTC ${btc_price:,.0f}"})
-    
     # Prédictions next phase
     if current_phase < 2:
         next_phase = "Phase 2 - Bitcoin Rally"
@@ -12421,7 +11348,6 @@ def determine_bullrun_phase(btc_dom, eth_dom, fear_greed, alt_index, btc_price, 
     else:
         next_phase = "Sommet du cycle - Prendre profits"
         time_estimate = "En cours"
-    
     return {
         "current_phase": current_phase,
         "phase_name": phase_name,
@@ -12508,15 +11434,12 @@ async def update_trade(trade_update: dict):
     try:
         symbol = trade_update.get("symbol")
         timestamp = trade_update.get("timestamp")
-        
         print(f"🔄 Mise à jour du trade: {symbol} à {timestamp}")
         print(f"   Données reçues: {trade_update}")
-        
         trade_found = False
         for trade in trades_db:
             if trade.get("symbol") == symbol and trade.get("timestamp") == timestamp:
                 trade_found = True
-                
                 # ⚠️ VALIDATION IMPORTANTE: Vérifier SL hit est valide
                 if trade_update.get("sl_hit") and not trade_update.get("tp1_hit") and not trade_update.get("tp2_hit") and not trade_update.get("tp3_hit"):
                     # Si on marque SL HIT, vérifier que c'est cohérent avec le side
@@ -12524,7 +11447,6 @@ async def update_trade(trade_update: dict):
                     entry = float(trade.get("entry", 0))
                     sl = float(trade.get("sl", 0))
                     current_price = float(trade_update.get("current_price", entry))
-                    
                     if side == "LONG":
                         # Pour un LONG, SL est inférieur à entry, et price doit être <= SL pour hit
                         if current_price > sl:
@@ -12535,7 +11457,6 @@ async def update_trade(trade_update: dict):
                         if current_price < sl:
                             print(f"   ⚠️ ATTENTION: SL marqué mais prix ({current_price}) n'a pas touché SL ({sl})")
                             return {"status": "warning", "message": f"Prix {current_price} < SL {sl} - SL non validé"}
-                
                 # Mise à jour des flags TP/SL
                 for key in ["tp1_hit", "tp2_hit", "tp3_hit", "sl_hit"]:
                     if key in trade_update:
@@ -12543,18 +11464,15 @@ async def update_trade(trade_update: dict):
                         trade[key] = trade_update[key]
                         if old_value != trade[key]:
                             print(f"   ✅ {key}: {old_value} → {trade[key]}")
-                
                 # Mise à jour du statut
                 if "status" in trade_update:
                     old_status = trade.get("status")
                     trade["status"] = trade_update["status"]
                     print(f"   ✅ Status: {old_status} → {trade['status']}")
-                    
                     # Calculer et sauvegarder le P&L si le trade est fermé
                     if trade["status"] == "closed":
                         RISK_AMOUNT = 100
                         pnl = 0
-                        
                         if trade.get("sl_hit"):
                             pnl = -RISK_AMOUNT
                         elif trade.get("tp3_hit"):
@@ -12563,21 +11481,16 @@ async def update_trade(trade_update: dict):
                             pnl = RISK_AMOUNT * 2
                         elif trade.get("tp1_hit"):
                             pnl = RISK_AMOUNT * 1
-                        
                         trade["pnl"] = pnl
                         print(f"   💰 P&L calculé: ${pnl}")
-                        
                         # Mettre à jour le P&L hebdomadaire (toujours, même si pnl = 0)
                         update_weekly_pnl(pnl)
-                
                 print(f"✅ Trade {symbol} mis à jour avec succès")
                 save_trades_to_file()  # 💾 Sauvegarder immédiatement
                 return {"status": "success", "trade": trade, "message": "Trade mis à jour"}
-        
         if not trade_found:
             print(f"❌ Trade non trouvé: {symbol} à {timestamp}")
             return {"status": "error", "message": f"Trade non trouvé: {symbol}"}
-            
     except Exception as e:
         print(f"❌ Erreur lors de la mise à jour: {e}")
         import traceback
@@ -12603,13 +11516,11 @@ async def clear_trades():
 async def validate_sl_hits():
     """🔍 Valider et nettoyer les SL hits incorrects"""
     issues_found = []
-    
     for idx, trade in enumerate(trades_db):
         if trade.get("sl_hit") and not trade.get("tp1_hit") and not trade.get("tp2_hit") and not trade.get("tp3_hit"):
             side = trade.get("side")
             entry = float(trade.get("entry", 0))
             sl = float(trade.get("sl", 0))
-            
             is_valid = False
             if side == "LONG":
                 # Pour LONG: SL doit être < entry
@@ -12631,7 +11542,6 @@ async def validate_sl_hits():
                         "issue": f"SHORT: SL ({sl}) <= Entry ({entry})",
                         "action": "SL marqué mais SL mal configuré"
                     })
-    
     return {
         "status": "success",
         "total_trades": len(trades_db),
@@ -12643,13 +11553,11 @@ async def validate_sl_hits():
 async def fix_incorrect_sl(trade_symbol: str = None):
     """🔧 Corriger les SL hits incorrects"""
     fixed_count = 0
-    
     for trade in trades_db:
         if trade.get("sl_hit"):
             side = trade.get("side")
             entry = float(trade.get("entry", 0))
             sl = float(trade.get("sl", 0))
-            
             # Vérifier si SL est mal configuré
             if side == "LONG" and sl >= entry:
                 print(f"❌ LONG trade mal configuré: SL >= Entry")
@@ -12663,7 +11571,6 @@ async def fix_incorrect_sl(trade_symbol: str = None):
                 trade["status"] = "open"
                 trade["pnl"] = 0.0
                 fixed_count += 1
-    
     save_trades_to_file()
     return {
         "status": "success",
@@ -12675,7 +11582,6 @@ async def fix_incorrect_sl(trade_symbol: str = None):
 async def debug_trades():
     """Endpoint de débogage pour voir l'état des trades"""
     trades_summary = []
-    
     for trade in trades_db:
         trades_summary.append({
             "symbol": trade.get("symbol"),
@@ -12688,17 +11594,13 @@ async def debug_trades():
             "sl_hit": trade.get("sl_hit", False),
             "pnl": trade.get("pnl", 0)
         })
-    
     # Calculer les statistiques
     total = len(trades_db)
     open_trades = len([t for t in trades_db if t.get("status") == "open"])
     closed_trades = len([t for t in trades_db if t.get("status") == "closed"])
-    
     wins = len([t for t in trades_db if t.get("tp1_hit") or t.get("tp2_hit") or t.get("tp3_hit")])
     losses = len([t for t in trades_db if t.get("sl_hit")])
-    
     total_pnl = sum(t.get("pnl", 0) for t in trades_db)
-    
     return {
         "status": "success",
         "summary": {
@@ -12722,7 +11624,6 @@ async def get_risk_settings():
 async def update_risk_settings(request: dict):
     """Mettre à jour les paramètres de risk management"""
     global risk_management_settings
-    
     # Mettre à jour les paramètres
     if "total_capital" in request:
         risk_management_settings["total_capital"] = float(request["total_capital"])
@@ -12732,7 +11633,6 @@ async def update_risk_settings(request: dict):
         risk_management_settings["max_open_trades"] = int(request["max_open_trades"])
     if "max_daily_loss" in request:
         risk_management_settings["max_daily_loss"] = float(request["max_daily_loss"])
-    
     return {"ok": True, "settings": risk_management_settings}
 
 @app.get("/api/risk/position-size")
@@ -12741,23 +11641,18 @@ async def calculate_position_size(symbol: str, entry: float, sl: float):
     try:
         capital = risk_management_settings["total_capital"]
         risk_percent = risk_management_settings["risk_per_trade"]
-        
         # Montant risqué par trade
         risk_amount = capital * (risk_percent / 100)
-        
         # Distance entre entry et SL
         stop_distance = abs(entry - sl)
         stop_distance_percent = (stop_distance / entry) * 100
-        
         # Taille de position
         position_size = risk_amount / stop_distance
         position_value = position_size * entry
-        
         # Vérifier si ça dépasse le capital
         if position_value > capital:
             position_size = capital / entry
             position_value = capital
-        
         return {
             "ok": True,
             "position_size": round(position_size, 8),
@@ -12789,15 +11684,12 @@ async def add_to_watchlist(request: dict):
     symbol = request.get("symbol", "").upper()
     target_price = request.get("target_price")
     note = request.get("note", "")
-    
     if not symbol:
         return {"ok": False, "error": "Symbol requis"}
-    
     # Vérifier si déjà dans la watchlist
     for item in watchlist_db:
         if item["symbol"] == symbol:
             return {"ok": False, "error": f"{symbol} est déjà dans la watchlist"}
-    
     # Ajouter à la watchlist
     watchlist_item = {
         "symbol": symbol,
@@ -12806,9 +11698,7 @@ async def add_to_watchlist(request: dict):
         "created_at": datetime.now().isoformat(),
         "alert_triggered": False
     }
-    
     watchlist_db.append(watchlist_item)
-    
     return {"ok": True, "message": f"{symbol} ajouté à la watchlist", "item": watchlist_item}
 
 @app.delete("/api/watchlist/remove")
@@ -12816,23 +11706,18 @@ async def remove_from_watchlist(symbol: str):
     """Retirer une crypto de la watchlist"""
     global watchlist_db
     symbol = symbol.upper()
-    
     watchlist_db = [item for item in watchlist_db if item["symbol"] != symbol]
-    
     return {"ok": True, "message": f"{symbol} retiré de la watchlist"}
 
 @app.get("/api/watchlist/check-alerts")
 async def check_watchlist_alerts():
     """Vérifier si des alertes doivent être déclenchées"""
     alerts = []
-    
     for item in watchlist_db:
         if not item.get("target_price") or item.get("alert_triggered"):
             continue
-        
         symbol = item["symbol"]
         target = item["target_price"]
-        
         # Récupérer le prix actuel via CoinGecko (simulation)
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
@@ -12841,14 +11726,11 @@ async def check_watchlist_alerts():
                     coin_id = "bitcoin"
                 elif coin_id == "eth":
                     coin_id = "ethereum"
-                
                 url = f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
                 response = await client.get(url)
-                
                 if response.status_code == 200:
                     data = response.json()
                     current_price = data.get(coin_id, {}).get("usd")
-                    
                     if current_price:
                         # Vérifier si le target est atteint (±1%)
                         tolerance = target * 0.01
@@ -12862,7 +11744,6 @@ async def check_watchlist_alerts():
                             })
         except:
             pass
-    
     return {"ok": True, "alerts": alerts}
 
 
@@ -12871,7 +11752,6 @@ async def check_watchlist_alerts():
 async def get_ai_suggestions():
     """Obtenir des suggestions IA basées sur les trades"""
     suggestions = []
-    
     # Analyser les trades pour générer des suggestions
     if len(trades_db) >= 3:
         # Calculer le winrate global
@@ -12879,7 +11759,6 @@ async def get_ai_suggestions():
         if closed_trades:
             wins = len([t for t in closed_trades if t.get("pnl", 0) > 0])
             winrate = (wins / len(closed_trades)) * 100
-            
             # Suggestion basée sur le winrate
             if winrate < 50:
                 suggestions.append({
@@ -12895,19 +11774,15 @@ async def get_ai_suggestions():
                     "message": f"Félicitations ! Votre winrate de {winrate:.1f}% est excellent.",
                     "priority": "info"
                 })
-            
             # Analyser les paires les plus profitables
             symbol_stats = {}
             for trade in closed_trades:
                 symbol = trade.get("symbol", "")
                 pnl = trade.get("pnl", 0)
-                
                 if symbol not in symbol_stats:
                     symbol_stats[symbol] = {"count": 0, "total_pnl": 0}
-                
                 symbol_stats[symbol]["count"] += 1
                 symbol_stats[symbol]["total_pnl"] += pnl
-            
             # Trouver la meilleure paire
             if symbol_stats:
                 best_symbol = max(symbol_stats.items(), key=lambda x: x[1]["total_pnl"])
@@ -12918,11 +11793,9 @@ async def get_ai_suggestions():
                         "message": f"Vous avez {best_symbol[1]['count']} trades avec +{best_symbol[1]['total_pnl']:.2f}% de profit total.",
                         "priority": "medium"
                     })
-            
             # Suggestion sur le risk management
             open_trades = [t for t in trades_db if t.get("status") == "open"]
             max_trades = risk_management_settings.get("max_open_trades", 3)
-            
             if len(open_trades) >= max_trades:
                 suggestions.append({
                     "type": "warning",
@@ -12937,11 +11810,9 @@ async def get_ai_suggestions():
             "message": "Ajoutez au moins 3 trades pour obtenir des suggestions personnalisées de l'IA.",
             "priority": "low"
         })
-    
     # Mettre à jour les données IA
     ai_assistant_data["suggestions"] = suggestions
     ai_assistant_data["last_analysis"] = datetime.now().isoformat()
-    
     return {"ok": True, "suggestions": suggestions, "last_analysis": ai_assistant_data["last_analysis"]}
 
 @app.get("/api/ai/market-sentiment")
@@ -12953,7 +11824,6 @@ async def get_market_sentiment():
             if response.status_code == 200:
                 data = response.json()
                 value = int(data["data"][0]["value"])
-                
                 if value <= 25:
                     sentiment = "Extreme Fear - Opportunité d'achat"
                     color = "#ef4444"
@@ -12969,7 +11839,6 @@ async def get_market_sentiment():
                 else:
                     sentiment = "Extreme Greed - Prenez vos profits"
                     color = "#22c55e"
-                
                 return {
                     "ok": True,
                     "value": value,
@@ -12978,7 +11847,6 @@ async def get_market_sentiment():
                 }
     except:
         pass
-    
     return {"ok": False, "error": "Impossible de récupérer le sentiment"}
 
 @app.get("/api/telegram-test")
@@ -13096,7 +11964,6 @@ function renderChart(histData){
         },
         options:{
             responsive:true,
-            
             interaction:{mode:'index',intersect:false},
             plugins:{
                 legend:{display:true,position:'top',labels:{color:'#e2e8f0',font:{size:14,weight:'600'},padding:20,usePointStyle:true}},
@@ -13181,7 +12048,6 @@ async def heatmap_page():
         /* ================================
            HEATMAP PRO - STYLES MODERNES
            ================================ */
-        
         * {
             margin: 0;
             padding: 0;
@@ -13626,7 +12492,6 @@ async def heatmap_page():
             .controls-row {
                 flex-direction: column;
             }
-            
             .search-box {
                 max-width: 100%;
             }
@@ -13649,7 +12514,6 @@ async def heatmap_page():
             <p>Visualisation en temps réel des performances du marché crypto</p>
         </div>
 
-        
 
         <!-- STATISTIQUES -->
         <div class="stats-bar">
@@ -13814,7 +12678,6 @@ async def heatmap_page():
                 cell.style.backgroundColor = getColor(crypto.change_24h);
 
                 const changePrefix = crypto.change_24h >= 0 ? '+' : '';
-                
                 cell.innerHTML = `
                     <div class="cell-symbol">${crypto.symbol}</div>
                     <div class="cell-change">${changePrefix}${crypto.change_24h.toFixed(2)}%</div>
@@ -13839,7 +12702,6 @@ async def heatmap_page():
             const tooltip = document.getElementById('tooltip');
             const changeClass = crypto.change_24h >= 0 ? 'positive' : 'negative';
             const changeIcon = crypto.change_24h >= 0 ? '📈' : '📉';
-            
             tooltip.innerHTML = `
                 <div class="tooltip-header">
                     <div class="tooltip-icon">${changeIcon}</div>
@@ -13869,7 +12731,6 @@ async def heatmap_page():
                     </div>
                 </div>
             `;
-            
             tooltip.classList.add('visible');
             moveTooltip(event);
         }
@@ -13989,17 +12850,13 @@ async def heatmap_page():
             try {
                 console.log('🔄 Chargement de la heatmap...');
                 const response = await fetch('/api/heatmap');
-                
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
-                
                 const data = await response.json();
                 console.log('✅ Données reçues:', data.cryptos.length, 'cryptos');
-                
                 allData = data.cryptos;
                 filterAndDraw();
-                
             } catch (error) {
                 console.error('❌ Erreur chargement:', error);
                 document.getElementById('heatmap').innerHTML = `
@@ -14063,7 +12920,6 @@ async def altcoin_page():
             -webkit-text-fill-color: transparent;
             margin-bottom: 15px;
         }
-        
         .gauge-card {
             background: rgba(30, 41, 59, 0.95);
             backdrop-filter: blur(20px);
@@ -14086,20 +12942,17 @@ async def altcoin_page():
             width: 100%;
             height: 100%;
         }
-        
         .gauge-background {
             fill: none;
             stroke: #1e293b;
             stroke-width: 30;
         }
-        
         .gauge-fill {
             fill: none;
             stroke-width: 30;
             stroke-linecap: round;
             transition: stroke-dasharray 2s ease, stroke 1s ease;
         }
-        
         .gauge-center {
             position: absolute;
             top: 50%;
@@ -14107,14 +12960,12 @@ async def altcoin_page():
             transform: translate(-50%, -50%);
             text-align: center;
         }
-        
         .gauge-value {
             font-size: 90px;
             font-weight: 900;
             line-height: 1;
             text-shadow: 0 0 30px currentColor;
         }
-        
         .gauge-label {
             font-size: 20px;
             color: #94a3b8;
@@ -14201,7 +13052,6 @@ async def altcoin_page():
             <p style="color: #94a3b8; font-size: 18px;">Indice du marché crypto</p>
         </div>
 
-        
 
         <div class="gauge-card">
             <div class="gauge-container">
@@ -14209,13 +13059,11 @@ async def altcoin_page():
                     <circle class="gauge-background" cx="150" cy="150" r="120" />
                     <circle id="gauge-fill" class="gauge-fill" cx="150" cy="150" r="120" />
                 </svg>
-                
                 <div class="gauge-center">
                     <div id="gauge-value" class="gauge-value" style="color: #60a5fa;">--</div>
                     <div class="gauge-label">INDEX</div>
                 </div>
             </div>
-            
             <div style="text-align: center; margin-top: 20px;">
                 <h2 id="statusTitle" style="font-size: 28px; font-weight: 800; color: #60a5fa; margin-bottom: 10px;">⚖️ Phase mixte</h2>
                 <p id="statusDescription" style="color: #94a3b8; font-size: 16px;">Marché équilibré BTC/Alts</p>
@@ -14269,30 +13117,24 @@ async def altcoin_page():
         function updateGauge(index) {
             const circle = document.getElementById('gauge-fill');
             const valueElement = document.getElementById('gauge-value');
-            
             const radius = 120;
             const circumference = 2 * Math.PI * radius;
             const offset = circumference - (index / 100) * circumference;
-            
             circle.style.strokeDasharray = circumference;
-            
             let color;
             if (index >= 75) color = '#ef4444';
             else if (index >= 60) color = '#f59e0b';
             else if (index >= 40) color = '#10b981';
             else if (index >= 25) color = '#3b82f6';
             else color = '#1e40af';
-            
             circle.style.stroke = color;
             circle.style.strokeDashoffset = offset;
-            
             valueElement.textContent = Math.round(index);
             valueElement.style.color = color;
         }
 
         function updateStats(data) {
             updateGauge(data.index || 0);
-            
             let title, description;
             const idx = data.index || 50;
             if (idx >= 75) {
@@ -14311,10 +13153,8 @@ async def altcoin_page():
                 title = '❄️ Bitcoin Season';
                 description = 'Bitcoin écrase les altcoins';
             }
-            
             document.getElementById('statusTitle').textContent = title;
             document.getElementById('statusDescription').textContent = description;
-            
             document.getElementById('stat-alts').textContent = (data.alts_winning ? Math.round(data.alts_winning) : '--') + '/50';
             document.getElementById('stat-trend').textContent = data.trend || '--';
             document.getElementById('stat-momentum').textContent = data.momentum || '--';
@@ -14331,22 +13171,17 @@ async def altcoin_page():
                         return;
                     }
                 }
-                
                 console.log('🔄 Nouvelle requête API altcoin...');
                 const response = await fetch('/api/altcoin-season-index');
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();
-                
                 // Cacher les données côté client
                 clientCache.data = data;
                 clientCache.timestamp = Date.now();
-                
                 console.log('✅ Données altcoin reçues et mises en cache:', data.index);
                 updateStats(data);
-                
             } catch (error) {
                 console.error('❌ Erreur:', error);
-                
                 // Si on a des données en cache (même expirées), les garder
                 if (clientCache.data) {
                     console.log('📦 Garde des données en cache (expirées)');
@@ -14394,7 +13229,6 @@ async def bullrun_page():
             overflow: hidden;
             border: 2px solid #334155;
         }}
-        
         .phase-hero::before {
             content: '';
             position: absolute;
@@ -14405,18 +13239,15 @@ async def bullrun_page():
             background: radial-gradient(circle, rgba(96, 165, 250, 0.1) 0%, transparent 70%);
             animation: pulse 4s ease-in-out infinite;
         }
-        
         @keyframes pulse {
             0%, 100% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.1); opacity: 0.5; }
         }
-        
         .current-phase-display {
             text-align: center;
             position: relative;
             z-index: 1;
         }
-        
         .phase-number {
             font-size: 120px;
             font-weight: 900;
@@ -14428,12 +13259,10 @@ async def bullrun_page():
             text-shadow: 0 0 80px rgba(96, 165, 250, 0.5);
             animation: glow 2s ease-in-out infinite;
         }
-        
         @keyframes glow {
             0%, 100% { filter: brightness(1); }
             50% { filter: brightness(1.3); }
         }
-        
         .phase-title {
             font-size: 48px;
             font-weight: 800;
@@ -14442,7 +13271,6 @@ async def bullrun_page():
             text-transform: uppercase;
             letter-spacing: 2px;
         }
-        
         .phase-subtitle {
             font-size: 20px;
             color: #94a3b8;
@@ -14452,7 +13280,6 @@ async def bullrun_page():
             margin-right: auto;
             line-height: 1.6;
         }
-        
         .confidence-badge {
             display: inline-block;
             padding: 12px 30px;
@@ -14464,7 +13291,6 @@ async def bullrun_page():
             color: #10b981;
             margin-top: 20px;
         }
-        
         /* Timeline des 4 phases */
         .phases-timeline {
             display: grid;
@@ -14473,7 +13299,6 @@ async def bullrun_page():
             margin: 40px 0;
             position: relative;
         }
-        
         .phases-timeline::before {
             content: '';
             position: absolute;
@@ -14484,7 +13309,6 @@ async def bullrun_page():
             background: linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899, #f59e0b);
             z-index: 0;
         }
-        
         .phase-card {
             background: #1e293b;
             padding: 30px 20px;
@@ -14495,50 +13319,42 @@ async def bullrun_page():
             transition: all 0.3s ease;
             z-index: 1;
         }
-        
         .phase-card:hover {
             transform: translateY(-10px);
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         }
-        
         .phase-card.active {
             border-color: #60a5fa;
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
             box-shadow: 0 0 40px rgba(96, 165, 250, 0.3);
             transform: scale(1.05);
         }
-        
         .phase-card.completed {
             opacity: 0.6;
             border-color: #10b981;
         }
-        
         .phase-icon {
             font-size: 64px;
             margin-bottom: 15px;
             display: block;
         }
-        
         .phase-number-small {
             font-size: 32px;
             font-weight: 900;
             color: #60a5fa;
             margin-bottom: 10px;
         }
-        
         .phase-name {
             font-size: 20px;
             font-weight: 700;
             color: #e2e8f0;
             margin-bottom: 10px;
         }
-        
         .phase-desc {
             font-size: 14px;
             color: #94a3b8;
             line-height: 1.5;
         }
-        
         /* Indicateurs en temps réel */
         .indicators-grid {
             display: grid;
@@ -14546,7 +13362,6 @@ async def bullrun_page():
             gap: 20px;
             margin: 30px 0;
         }
-        
         .indicator-card {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             padding: 25px;
@@ -14554,12 +13369,10 @@ async def bullrun_page():
             border: 1px solid #334155;
             transition: all 0.3s ease;
         }
-        
         .indicator-card:hover {
             border-color: #60a5fa;
             transform: translateY(-5px);
         }
-        
         .indicator-label {
             font-size: 13px;
             color: #94a3b8;
@@ -14567,22 +13380,18 @@ async def bullrun_page():
             letter-spacing: 1px;
             margin-bottom: 10px;
         }
-        
         .indicator-value {
             font-size: 42px;
             font-weight: 900;
             margin: 15px 0;
         }
-        
         .indicator-change {
             font-size: 14px;
             margin-top: 10px;
         }
-        
         .positive { color: #10b981; }
         .negative { color: #ef4444; }
         .neutral { color: #f59e0b; }
-        
         /* Signaux de marché */
         .signals-container {
             display: flex;
@@ -14590,7 +13399,6 @@ async def bullrun_page():
             gap: 15px;
             margin: 30px 0;
         }
-        
         .signal-item {
             padding: 20px 25px;
             border-radius: 12px;
@@ -14599,20 +13407,16 @@ async def bullrun_page():
             gap: 20px;
             transition: all 0.3s ease;
         }
-        
         .signal-item:hover {
             transform: translateX(10px);
         }
-        
         .signal-icon {
             font-size: 32px;
             flex-shrink: 0;
         }
-        
         .signal-content {
             flex-grow: 1;
         }
-        
         .signal-strength {
             font-size: 12px;
             text-transform: uppercase;
@@ -14620,37 +13424,30 @@ async def bullrun_page():
             letter-spacing: 1px;
             margin-bottom: 5px;
         }
-        
         .signal-message {
             font-size: 16px;
             font-weight: 600;
         }
-        
         .signal-bullish-btc {
             background: rgba(249, 115, 22, 0.1);
             border-left: 4px solid #f97316;
         }
-        
         .signal-bullish-alt {
             background: rgba(16, 185, 129, 0.1);
             border-left: 4px solid #10b981;
         }
-        
         .signal-warning {
             background: rgba(239, 68, 68, 0.1);
             border-left: 4px solid #ef4444;
         }
-        
         .signal-opportunity {
             background: rgba(34, 197, 94, 0.1);
             border-left: 4px solid #22c55e;
         }
-        
         .signal-altcoin-season {
             background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(236, 72, 153, 0.2) 100%);
             border-left: 4px solid #a855f7;
         }
-        
         /* Next Phase Prediction */
         .next-phase-card {
             background: linear-gradient(135deg, #312e81 0%, #1e293b 100%);
@@ -14659,7 +13456,6 @@ async def bullrun_page():
             border: 2px solid #6366f1;
             margin: 30px 0;
         }
-        
         .next-phase-title {
             font-size: 24px;
             font-weight: 700;
@@ -14669,13 +13465,11 @@ async def bullrun_page():
             align-items: center;
             gap: 10px;
         }
-        
         .next-phase-content {
             font-size: 18px;
             color: #e2e8f0;
             line-height: 1.8;
         }
-        
         .time-estimate {
             display: inline-block;
             padding: 8px 16px;
@@ -14686,7 +13480,6 @@ async def bullrun_page():
             color: #818cf8;
             margin-top: 15px;
         }
-        
         /* Graphique de progression */
         .progress-bar-container {
             margin: 40px 0;
@@ -14695,7 +13488,6 @@ async def bullrun_page():
             border-radius: 12px;
             border: 1px solid #334155;
         }
-        
         .progress-label {
             font-size: 16px;
             color: #94a3b8;
@@ -14703,7 +13495,6 @@ async def bullrun_page():
             display: flex;
             justify-content: space-between;
         }
-        
         .progress-bar {
             height: 40px;
             background: #0f172a;
@@ -14712,7 +13503,6 @@ async def bullrun_page():
             position: relative;
             border: 2px solid #334155;
         }
-        
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
@@ -14726,26 +13516,21 @@ async def bullrun_page():
             font-weight: 700;
             color: white;
         }
-        
         /* Responsive */
         @media (max-width: 768px) {
             .phases-timeline {
                 grid-template-columns: 1fr;
             }
-            
             .phases-timeline::before {
                 display: none;
             }
-            
             .phase-number {
                 font-size: 80px;
             }
-            
             .phase-title {
                 font-size: 32px;
             }
         }
-        
         /* Loading état */
         .loading-state {
             text-align: center;
@@ -14759,14 +13544,10 @@ async def bullrun_page():
             <h1>🚀 Bullrun Phase Tracker</h1>
             <p>Analyse en temps réel des 4 phases du cycle haussier crypto</p>
         </div>
-        
-        
-        
         <div id="loading" class="loading-state">
             <div class="spinner"></div>
             <p style="color: #94a3b8; margin-top: 20px;">Chargement des données du marché...</p>
         </div>
-        
         <div id="content" style="display: none;">
             <!-- Phase Actuelle Hero -->
             <div class="phase-hero">
@@ -14781,7 +13562,6 @@ async def bullrun_page():
                     </div>
                 </div>
             </div>
-            
             <!-- Timeline des 4 Phases -->
             <div class="card">
                 <h2>📊 Les 4 Phases du Bullrun</h2>
@@ -14792,21 +13572,18 @@ async def bullrun_page():
                         <div class="phase-name">Accumulation</div>
                         <div class="phase-desc">Les investisseurs intelligents accumulent à bas prix pendant le bear market</div>
                     </div>
-                    
                     <div class="phase-card" id="phase-2">
                         <span class="phase-icon">🟠</span>
                         <div class="phase-number-small">Phase 2</div>
                         <div class="phase-name">Bitcoin Rally</div>
                         <div class="phase-desc">Bitcoin monte en premier, dominance BTC augmente, les institutions entrent</div>
                     </div>
-                    
                     <div class="phase-card active" id="phase-3">
                         <span class="phase-icon">💠</span>
                         <div class="phase-number-small">Phase 3</div>
                         <div class="phase-name">ETH & Large Caps</div>
                         <div class="phase-desc">Ethereum et les grandes caps rattrapent, dominance BTC commence à baisser</div>
                     </div>
-                    
                     <div class="phase-card" id="phase-4">
                         <span class="phase-icon">🌈</span>
                         <div class="phase-number-small">Phase 4</div>
@@ -14814,7 +13591,6 @@ async def bullrun_page():
                         <div class="phase-desc">Les altcoins explosent, gains massifs, euphorie maximale</div>
                     </div>
                 </div>
-                
                 <!-- Barre de progression -->
                 <div class="progress-bar-container">
                     <div class="progress-label">
@@ -14828,7 +13604,6 @@ async def bullrun_page():
                     </div>
                 </div>
             </div>
-            
             <!-- Indicateurs en temps réel -->
             <div class="card">
                 <h2>📈 Indicateurs de Marché en Temps Réel</h2>
@@ -14836,7 +13611,6 @@ async def bullrun_page():
                     <!-- Rempli dynamiquement -->
                 </div>
             </div>
-            
             <!-- Signaux de Marché -->
             <div class="card">
                 <h2>🎯 Signaux & Analyse</h2>
@@ -14844,7 +13618,6 @@ async def bullrun_page():
                     <!-- Rempli dynamiquement -->
                 </div>
             </div>
-            
             <!-- Prochaine Phase -->
             <div class="next-phase-card">
                 <div class="next-phase-title">
@@ -14859,20 +13632,16 @@ async def bullrun_page():
             </div>
         </div>
     </div>
-    
     <script>
         let currentData = null;
-        
         async function loadBullrunData() {
             try {
                 const response = await fetch('/api/bullrun-phase');
                 const data = await response.json();
                 currentData = data;
-                
                 // Masquer loading, afficher contenu
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('content').style.display = 'block';
-                
                 // Mettre à jour l'affichage
                 updateDisplay(data);
             } catch (error) {
@@ -14881,56 +13650,45 @@ async def bullrun_page():
                     '<div class="alert alert-error">Erreur de chargement des données</div>';
             }
         }
-        
         function updateDisplay(data) {
             // Hero - Phase actuelle
             const phaseNum = data.current_phase;
             const phaseDisplay = Math.floor(phaseNum) === phaseNum ? phaseNum : `${Math.floor(phaseNum)}-${Math.ceil(phaseNum)}`;
-            
             document.getElementById('current-phase-number').textContent = phaseDisplay;
             document.getElementById('current-phase-title').textContent = data.phase_name;
             document.getElementById('current-phase-description').textContent = data.phase_description;
             document.getElementById('confidence-value').textContent = data.confidence;
-            
             // Mettre à jour les cartes de phase
             for (let i = 1; i <= 4; i++) {
                 const card = document.getElementById(`phase-${i}`);
                 card.classList.remove('active', 'completed');
-                
                 if (i < Math.floor(phaseNum)) {
                     card.classList.add('completed');
                 } else if (i === Math.floor(phaseNum) || i === Math.ceil(phaseNum)) {
                     card.classList.add('active');
                 }
             }
-            
             // Barre de progression
             const progress = ((phaseNum - 1) / 3) * 100;
             document.getElementById('progress-fill').style.width = progress + '%';
             document.getElementById('progress-percentage').textContent = Math.round(progress) + '%';
             document.getElementById('progress-text').textContent = Math.round(progress) + '%';
-            
             // Indicateurs
             updateIndicators(data.indicators);
-            
             // Signaux
             updateSignals(data.signals);
-            
             // Next phase
             document.getElementById('next-phase-content').textContent = data.next_phase;
             document.getElementById('time-estimate').textContent = '⏱️ ' + data.time_estimate;
         }
-        
         function updateIndicators(indicators) {
             const grid = document.getElementById('indicators-grid');
-            
             const formatNumber = (num) => {
                 if (num >= 1000000000000) return '$' + (num / 1000000000000).toFixed(2) + 'T';
                 if (num >= 1000000000) return '$' + (num / 1000000000).toFixed(2) + 'B';
                 if (num >= 1000000) return '$' + (num / 1000000).toFixed(2) + 'M';
                 return '$' + num.toFixed(2);
             };
-            
             const getColorClass = (value, type) => {
                 if (type === 'btc_dom') {
                     return value > 60 ? 'positive' : value < 50 ? 'negative' : 'neutral';
@@ -14941,7 +13699,6 @@ async def bullrun_page():
                 }
                 return 'neutral';
             };
-            
             grid.innerHTML = `
                 <div class="indicator-card">
                     <div class="indicator-label">🟠 Bitcoin Dominance</div>
@@ -14952,7 +13709,6 @@ async def bullrun_page():
                         ${indicators.btc_dominance > 60 ? '📈 Fort' : indicators.btc_dominance < 50 ? '📉 Faible' : '➡️ Neutre'}
                     </div>
                 </div>
-                
                 <div class="indicator-card">
                     <div class="indicator-label">💠 Ethereum Dominance</div>
                     <div class="indicator-value" style="color: #818cf8;">
@@ -14962,7 +13718,6 @@ async def bullrun_page():
                         ${indicators.eth_dominance > 15 ? '📈 Fort' : '➡️ Normal'}
                     </div>
                 </div>
-                
                 <div class="indicator-card">
                     <div class="indicator-label">😱 Fear & Greed Index</div>
                     <div class="indicator-value ${getColorClass(indicators.fear_greed, 'fear')}">
@@ -14975,7 +13730,6 @@ async def bullrun_page():
                           indicators.fear_greed > 25 ? '😰 Fear' : '😱 Extreme Fear'}
                     </div>
                 </div>
-                
                 <div class="indicator-card">
                     <div class="indicator-label">🌟 Altcoin Season Index</div>
                     <div class="indicator-value ${getColorClass(indicators.altcoin_season_index, 'alt_index')}">
@@ -14986,7 +13740,6 @@ async def bullrun_page():
                           indicators.altcoin_season_index > 50 ? '📈 Début Alt Season' : '🟠 Bitcoin Season'}
                     </div>
                 </div>
-                
                 <div class="indicator-card">
                     <div class="indicator-label">₿ Prix Bitcoin</div>
                     <div class="indicator-value" style="color: #f59e0b;">
@@ -14996,7 +13749,6 @@ async def bullrun_page():
                         ${indicators.btc_24h_change >= 0 ? '📈' : '📉'} ${Math.abs(indicators.btc_24h_change)}% (24h)
                     </div>
                 </div>
-                
                 <div class="indicator-card">
                     <div class="indicator-label">💰 Market Cap Total</div>
                     <div class="indicator-value" style="color: #a78bfa;">
@@ -15008,15 +13760,12 @@ async def bullrun_page():
                 </div>
             `;
         }
-        
         function updateSignals(signals) {
             const container = document.getElementById('signals-container');
-            
             if (!signals || signals.length === 0) {
                 container.innerHTML = '<div class="alert alert-info">Aucun signal particulier pour le moment</div>';
                 return;
             }
-            
             const getSignalIcon = (type) => {
                 const icons = {
                     'bullish_btc': '🟠',
@@ -15028,7 +13777,6 @@ async def bullrun_page():
                 };
                 return icons[type] || 'ℹ️';
             };
-            
             container.innerHTML = signals.map(signal => `
                 <div class="signal-item signal-${signal.type}">
                     <span class="signal-icon">${getSignalIcon(signal.type)}</span>
@@ -15044,13 +13792,10 @@ async def bullrun_page():
                 </div>
             `).join('');
         }
-        
         // Charger au démarrage
         loadBullrunData();
-        
         // Recharger toutes les 2 minutes
         setInterval(loadBullrunData, 120000);
-        
         console.log('🚀 Bullrun Phase Tracker chargé!');
     </script>
 <div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Bullrun Phase Tracker ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">Indicateur identifiant phase actuelle du cycle bullrun.</p><ul style="line-height: 1.8; color: #555;"><li>📊 5 phases distinctes</li><li>🎯 Données réelles</li><li>📈 BTC dominance, F&G</li><li>🔮 Altcoin Index</li><li>💡 Stratégies/phase</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">📊 Les 5 phases</h3><p style="line-height: 1.6; color: #555; font-size: 14px;">1️⃣ Accumulation → 2️⃣ Bitcoin Rally → 3️⃣ ETH & Large Caps → 4️⃣ Altcoin Season → 5️⃣ Euphorie/Top</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📈 Indicateurs</h3><p style="line-height: 1.6; color: #555;">👑 BTC Dominance | 😨 Fear & Greed | ⭐ Altcoin Index | 💰 Prix BTC | 📊 Market Cap</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Stratégie</h3><p style="line-height: 1.6; color: #555; font-size: 14px;">Phase 1: Accumuler | Phase 2: Hold BTC | Phase 3: Rotate ETH | Phase 4: Diversifier alts | Phase 5: PRENDRE PROFITS</p><p style="color: #e74c3c; font-weight: bold; margin-top: 10px;">⚠️ Ne tentez PAS timer le top exact!</p></div></div></div>
@@ -15081,7 +13826,6 @@ async def charts_page():
             min-height: 100vh; 
         }}
         .container { max-width: 1800px; margin: 0 auto; }
-        
         /* Header */
         .header { 
             background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #1e293b 100%); 
@@ -15114,7 +13858,6 @@ async def charts_page():
             z-index: 1; 
         }
         .header p { color: #94a3b8; font-size: 18px; position: relative; z-index: 1; }
-        
         /* Navigation */
         .nav { 
             display: flex; 
@@ -15139,7 +13882,6 @@ async def charts_page():
             transform: translateY(-2px); 
             box-shadow: 0 10px 30px rgba(96, 165, 250, 0.2); 
         }
-        
         /* Tabs */
         .tabs-container { 
             background: rgba(30, 41, 59, 0.6); 
@@ -15177,13 +13919,10 @@ async def charts_page():
             border-color: #60a5fa; 
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); 
         }
-        
         /* Tab Content */
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.5s ease; }
-        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        
         /* Cards */
         .chart-grid { 
             display: grid; 
@@ -15212,7 +13951,6 @@ async def charts_page():
             align-items: center; 
             gap: 10px; 
         }
-        
         /* TradingView Container */
         .tradingview-widget-container { 
             height: 600px; 
@@ -15221,7 +13959,6 @@ async def charts_page():
             overflow: hidden; 
         }
         .tradingview-widget-container iframe { border-radius: 12px; }
-        
         /* Canvas Containers - Tailles fixes pour éviter la croissance infinie */
         .canvas-container { 
             position: relative; 
@@ -15236,7 +13973,6 @@ async def charts_page():
         .canvas-container.small canvas { height: 250px !important; }
         .canvas-container.large { height: 450px; }
         .canvas-container.large canvas { height: 450px !important; }
-        
         /* Stats Grid */
         .stats-grid { 
             display: grid; 
@@ -15286,7 +14022,6 @@ async def charts_page():
         }
         .stat-change { font-size: 13px; color: #10b981; }
         .stat-change.negative { color: #ef4444; }
-        
         /* Crypto Selector */
         .crypto-selector { 
             display: flex; 
@@ -15317,7 +14052,6 @@ async def charts_page():
             border-color: #60a5fa; 
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); 
         }
-        
         /* Loading */
         .spinner { 
             border: 5px solid rgba(51, 65, 85, 0.3); 
@@ -15329,7 +14063,6 @@ async def charts_page():
             margin: 60px auto; 
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
         /* Alert */
         .alert { 
             padding: 16px 20px; 
@@ -15345,7 +14078,6 @@ async def charts_page():
             border-left: 4px solid #3b82f6; 
             color: #3b82f6; 
         }
-        
         /* Responsive */
         @media (max-width: 768px) { 
             .header h1 { font-size: 32px; } 
@@ -15363,9 +14095,6 @@ async def charts_page():
             <h1>📈 Graphiques Trading Pro</h1>
             <p>Analyse technique avancée et visualisation de données</p>
         </div>
-        
-        
-        
         <!-- Tabs -->
         <div class="tabs-container">
             <div class="tabs">
@@ -15376,13 +14105,11 @@ async def charts_page():
                 <button class="tab-btn" onclick="switchTab('performance', event)">💹 Performance</button>
             </div>
         </div>
-        
         <!-- Tab Content: TradingView -->
         <div id="tradingview" class="tab-content active">
             <div class="alert alert-info">
                 💡 <strong>Astuce:</strong> Cliquez sur une crypto ci-dessous pour voir son graphique TradingView professionnel en temps réel
             </div>
-            
             <div class="crypto-selector">
                 <button class="crypto-btn active" onclick="loadTradingView('BTCUSD', event)">
                     <span>₿</span> Bitcoin
@@ -15409,7 +14136,6 @@ async def charts_page():
                     <span>🔺</span> Avalanche
                 </button>
             </div>
-            
             <div class="chart-card">
                 <h3>
                     <span id="currentCrypto">Bitcoin (BTC)</span>
@@ -15420,7 +14146,6 @@ async def charts_page():
                 </div>
             </div>
         </div>
-        
         <!-- Tab Content: Statistics -->
         <div id="statistics" class="tab-content">
             <div class="stats-grid">
@@ -15449,7 +14174,6 @@ async def charts_page():
                     <div class="stat-change" id="ethChange">Chargement...</div>
                 </div>
             </div>
-            
             <div class="chart-grid">
                 <div class="chart-card">
                     <h3>📊 Volume de Trading (7 jours)</h3>
@@ -15465,7 +14189,6 @@ async def charts_page():
                 </div>
             </div>
         </div>
-        
         <!-- Tab Content: Comparison -->
         <div id="comparison" class="tab-content">
             <div class="chart-grid">
@@ -15482,7 +14205,6 @@ async def charts_page():
                     </div>
                 </div>
             </div>
-            
             <div class="chart-card">
                 <h3>🏆 Classement par Performance</h3>
                 <div class="canvas-container small">
@@ -15490,7 +14212,6 @@ async def charts_page():
                 </div>
             </div>
         </div>
-        
         <!-- Tab Content: Correlation -->
         <div id="correlation" class="tab-content">
             <div class="chart-grid">
@@ -15508,7 +14229,6 @@ async def charts_page():
                 </div>
             </div>
         </div>
-        
         <!-- Tab Content: Performance -->
         <div id="performance" class="tab-content">
             <div class="stats-grid">
@@ -15537,7 +14257,6 @@ async def charts_page():
                     <div class="stat-change">Rendement/Risque</div>
                 </div>
             </div>
-            
             <div class="chart-grid">
                 <div class="chart-card">
                     <h3>📈 Performance Multi-Période</h3>
@@ -15554,14 +14273,12 @@ async def charts_page():
             </div>
         </div>
     </div>
-    
     <script>
         // Variables globales
         let currentSymbol = 'BTCUSD';
         let tradingViewWidget = null;
         let charts = {};
         let tabsInitialized = {}; // Pour suivre quels onglets ont déjà été initialisés
-        
         // Switch Tab
         function switchTab(tabName, event) {
             // Hide all tabs
@@ -15571,7 +14288,6 @@ async def charts_page():
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            
             // Show selected tab
             document.getElementById(tabName).classList.add('active');
             if (event && event.target) {
@@ -15584,7 +14300,6 @@ async def charts_page():
                     }
                 });
             }
-            
             // Initialize charts for the tab ONLY ONCE
             if (!tabsInitialized[tabName]) {
                 if (tabName === 'statistics') {
@@ -15599,16 +14314,13 @@ async def charts_page():
                 tabsInitialized[tabName] = true; // Marquer comme initialisé
             }
         }
-        
         // Load TradingView Chart
         function loadTradingView(symbol, event) {
             currentSymbol = symbol;
-            
             // Update active button
             document.querySelectorAll('.crypto-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            
             // Find and activate the clicked button
             if (event && event.target) {
                 const clickedBtn = event.target.closest('.crypto-btn');
@@ -15620,7 +14332,6 @@ async def charts_page():
                 const firstBtn = document.querySelector('.crypto-btn');
                 if (firstBtn) firstBtn.classList.add('active');
             }
-            
             // Update title
             const names = {
                 'BTCUSD': 'Bitcoin (BTC)',
@@ -15633,17 +14344,14 @@ async def charts_page():
                 'AVAXUSD': 'Avalanche (AVAX)'
             };
             document.getElementById('currentCrypto').textContent = names[symbol] || symbol;
-            
             // Clear and reload widget
             const container = document.getElementById('tradingview_chart');
             container.innerHTML = '<div class="spinner"></div>';
-            
             // Wait for TradingView to be loaded
             if (typeof TradingView === 'undefined') {
                 container.innerHTML = '<div style="color:#ef4444;text-align:center;padding:50px;">Erreur: TradingView non disponible. Vérifiez votre connexion.</div>';
                 return;
             }
-            
             try {
                 new TradingView.widget({
                     "width": "100%",
@@ -15672,35 +14380,27 @@ async def charts_page():
                 container.innerHTML = '<div style="color:#ef4444;text-align:center;padding:50px;">Erreur lors du chargement du graphique. Rafraîchissez la page.</div>';
             }
         }
-        
         // Initialize Statistics
         async function initStatistics() {
             try {
                 const response = await fetch('https://api.coingecko.com/api/v3/global');
                 const data = await response.json();
-                
                 // Update stats
                 const totalVolume = data.data.total_volume.usd;
                 const totalMcap = data.data.total_market_cap.usd;
-                
                 document.getElementById('volume24h').textContent = '$' + (totalVolume / 1e9).toFixed(2) + 'B';
                 document.getElementById('volumeChange').textContent = '+' + (Math.random() * 10).toFixed(2) + '% vs hier';
-                
                 document.getElementById('marketCap').textContent = '$' + (totalMcap / 1e12).toFixed(2) + 'T';
                 document.getElementById('mcapChange').textContent = '+' + (Math.random() * 5).toFixed(2) + '% vs hier';
-                
                 // Get BTC and ETH prices
                 const pricesRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
                 const prices = await pricesRes.json();
-                
                 document.getElementById('btcPrice').textContent = '$' + prices.bitcoin.usd.toLocaleString();
                 document.getElementById('btcChange').textContent = prices.bitcoin.usd_24h_change.toFixed(2) + '% (24h)';
                 document.getElementById('btcChange').className = 'stat-change ' + (prices.bitcoin.usd_24h_change >= 0 ? '' : 'negative');
-                
                 document.getElementById('ethPrice').textContent = '$' + prices.ethereum.usd.toLocaleString();
                 document.getElementById('ethChange').textContent = prices.ethereum.usd_24h_change.toFixed(2) + '% (24h)';
                 document.getElementById('ethChange').className = 'stat-change ' + (prices.ethereum.usd_24h_change >= 0 ? '' : 'negative');
-                
                 // Create charts
                 createVolumeChart();
                 createPriceChart();
@@ -15708,17 +14408,14 @@ async def charts_page():
                 console.error('Erreur:', error);
             }
         }
-        
         function createVolumeChart() {
             // Destroy existing chart if it exists
             if (charts.volume) {
                 charts.volume.destroy();
             }
-            
             const ctx = document.getElementById('volumeChart').getContext('2d');
             const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
             const data = Array.from({length: 7}, () => Math.random() * 100 + 50);
-            
             charts.volume = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -15734,7 +14431,6 @@ async def charts_page():
                 },
                 options: {
                     responsive: false,
-                    
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -15759,18 +14455,15 @@ async def charts_page():
                 }
             });
         }
-        
         function createPriceChart() {
             // Destroy existing chart if it exists
             if (charts.price) {
                 charts.price.destroy();
             }
-            
             const ctx = document.getElementById('priceChart').getContext('2d');
             const days = Array.from({length: 30}, (_, i) => i + 1);
             const btcData = Array.from({length: 30}, () => Math.random() * 5000 + 60000);
             const ethData = Array.from({length: 30}, () => Math.random() * 500 + 3000);
-            
             charts.price = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -15800,7 +14493,6 @@ async def charts_page():
                 },
                 options: {
                     responsive: false,
-                    
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
@@ -15835,7 +14527,6 @@ async def charts_page():
                 }
             });
         }
-        
         // Initialize Comparison
         function initComparison() {
             // Destroy existing charts if they exist
@@ -15851,13 +14542,10 @@ async def charts_page():
                 charts.ranking.destroy();
                 charts.ranking = null;
             }
-            
             const ctx1 = document.getElementById('comparisonChart').getContext('2d');
             const ctx2 = document.getElementById('relativeChart').getContext('2d');
             const ctx3 = document.getElementById('rankingChart').getContext('2d');
-            
             const days = Array.from({length: 30}, (_, i) => 'J' + (i + 1));
-            
             charts.comparison = new Chart(ctx1, {
                 type: 'line',
                 data: {
@@ -15888,7 +14576,6 @@ async def charts_page():
                 },
                 options: {
                     responsive: false,
-                    
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -15904,7 +14591,6 @@ async def charts_page():
                     }
                 }
             });
-            
             charts.relative = new Chart(ctx2, {
                 type: 'bar',
                 data: {
@@ -15929,7 +14615,6 @@ async def charts_page():
                 },
                 options: {
                     responsive: false,
-                    
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -15945,7 +14630,6 @@ async def charts_page():
                     }
                 }
             });
-            
             charts.ranking = new Chart(ctx3, {
                 type: 'bar',
                 data: {
@@ -15963,7 +14647,6 @@ async def charts_page():
                 options: {
                     indexAxis: 'y',
                     responsive: false,
-                    
                     plugins: {
                         legend: { display: false }
                     },
@@ -15980,7 +14663,6 @@ async def charts_page():
                 }
             });
         }
-        
         // Initialize Correlation
         function initCorrelation() {
             // Destroy existing charts if they exist
@@ -15992,10 +14674,8 @@ async def charts_page():
                 charts.scatter.destroy();
                 charts.scatter = null;
             }
-            
             const ctx1 = document.getElementById('correlationChart').getContext('2d');
             const ctx2 = document.getElementById('scatterChart').getContext('2d');
-            
             // Matrice de corrélation simplifiée
             const cryptos = ['BTC', 'ETH', 'BNB', 'SOL', 'ADA'];
             const correlationData = [
@@ -16005,7 +14685,6 @@ async def charts_page():
                 [0.68, 0.74, 0.81, 1.00, 0.79],
                 [0.63, 0.69, 0.75, 0.79, 1.00]
             ];
-            
             charts.correlation = new Chart(ctx1, {
                 type: 'bar',
                 data: {
@@ -16019,7 +14698,6 @@ async def charts_page():
                 },
                 options: {
                     responsive: false,
-                    
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -16042,13 +14720,11 @@ async def charts_page():
                     }
                 }
             });
-            
             // Scatter plot
             const scatterData = Array.from({length: 50}, () => ({
                 x: Math.random() * 20 - 10,
                 y: Math.random() * 20 - 10
             }));
-            
             charts.scatter = new Chart(ctx2, {
                 type: 'scatter',
                 data: {
@@ -16063,7 +14739,6 @@ async def charts_page():
                 },
                 options: {
                     responsive: false,
-                    
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -16080,7 +14755,6 @@ async def charts_page():
                 }
             });
         }
-        
         // Initialize Performance
         function initPerformance() {
             // Destroy existing charts if they exist
@@ -16092,7 +14766,6 @@ async def charts_page():
                 charts.volatility.destroy();
                 charts.volatility = null;
             }
-            
             // Update stats
             document.getElementById('bestPerformer').textContent = 'SOL';
             document.getElementById('bestPerf').textContent = '+28.4% (30j)';
@@ -16100,10 +14773,8 @@ async def charts_page():
             document.getElementById('worstPerf').textContent = '-2.3% (30j)';
             document.getElementById('avgVolatility').textContent = '12.7%';
             document.getElementById('sharpeRatio').textContent = '1.85';
-            
             const ctx1 = document.getElementById('multiPeriodChart').getContext('2d');
             const ctx2 = document.getElementById('volatilityChart').getContext('2d');
-            
             charts.multiPeriod = new Chart(ctx1, {
                 type: 'bar',
                 data: {
@@ -16128,7 +14799,6 @@ async def charts_page():
                 },
                 options: {
                     responsive: false,
-                    
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -16144,7 +14814,6 @@ async def charts_page():
                     }
                 }
             });
-            
             charts.volatility = new Chart(ctx2, {
                 type: 'line',
                 data: {
@@ -16172,7 +14841,6 @@ async def charts_page():
                 },
                 options: {
                     responsive: false,
-                    
                     plugins: {
                         legend: { labels: { color: '#e2e8f0' } }
                     },
@@ -16189,12 +14857,10 @@ async def charts_page():
                 }
             });
         }
-        
         // Initialize on page load
         // Initialize on page load
         window.addEventListener('load', () => {
             console.log('🔄 Chargement de la page graphiques...');
-            
             // Wait a bit for TradingView script to load
             setTimeout(() => {
                 if (typeof TradingView !== 'undefined') {
@@ -16303,7 +14969,6 @@ async def trades_page():
             <h1>📊 Gestion des Trades Premium</h1>
             <p>Plateforme avancée de suivi et d'analyse de trading</p>
         </div>
-        
         <div style="height:15px;"></div>
         <div class="stats-grid fade-in" id="statsGrid">
             <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-label">Total Trades</div><div class="stat-value" id="totalTrades">0</div><div class="stat-change" id="totalChange">+0 cette semaine</div></div>
@@ -16360,14 +15025,11 @@ async def trades_page():
     </div>
     <script>
         let allTrades = []; let performanceChart = null; let distributionChart = null;
-        
         function formatPrice(price, isHit, isSL) {
             if (price === undefined || price === null) return '$0.00';
-            
             // Formatage intelligent selon le prix
             let decimals;
             const numPrice = parseFloat(price);
-            
             if (numPrice < 0.001) {
                 decimals = 8;  // Memecoins (SHIB, PEPE, CHEEMS, etc.)
             } else if (numPrice < 1) {
@@ -16377,12 +15039,10 @@ async def trades_page():
             } else {
                 decimals = 2;  // BTC, ETH, etc.
             }
-            
             // Formater et supprimer les zéros inutiles
             let formatted = '$' + numPrice.toFixed(decimals);
             formatted = formatted.replace(/\.?0+$/, ''); // Supprimer les zéros à la fin
             if (formatted.endsWith('.')) formatted = formatted.slice(0, -1); // Supprimer le point si nécessaire
-            
             if (isHit && isSL) {
                 return '<span class="price-sl-hit">' + formatted + ' ❌</span>';
             } else if (isHit) {
@@ -16390,7 +15050,6 @@ async def trades_page():
             }
             return '<span class="price">' + formatted + '</span>';
         }
-        
         function formatTime(timestamp) {
             if (!timestamp) return 'N/A';
             const date = new Date(timestamp);
@@ -16408,7 +15067,6 @@ async def trades_page():
             });
             return '<div class="time-display">' + time + '<span class="date">' + dateStr + '</span></div>';
         }
-        
         async function load() { 
             try { 
                 const response = await fetch('/api/trades'); 
@@ -16423,27 +15081,21 @@ async def trades_page():
                 document.getElementById('trades').innerHTML = '<div class="alert alert-error">❌ Erreur de chargement des données</div>'; 
             } 
         }
-        
         // 🟢🔴 Mettre à jour les TP/SL toutes les 10 secondes
         let checkInterval;
         function startRealTimeChecks() {
             checkTPSLHits(); // Vérifier immédiatement
             checkInterval = setInterval(checkTPSLHits, 10000); // Puis toutes les 10 secondes
         }
-        
         function calculateTradePnL(trade) {
             // Calcul du P&L simplifié : 1R (Risk) = $100
             // TP1 = +$100, TP2 = +$200, TP3 = +$300, SL/Revirement = -$100
-            
             if (trade.status !== 'closed') return 0; // Trade ouvert = 0 P&L
-            
             const RISK_AMOUNT = 100; // 1R = $100
-            
             // Si SL touché ou revirement sans TP = perte de 1R ($100)
             if (trade.sl_hit || (trade.closed_reason && trade.closed_reason.includes('Revirement') && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit)) {
                 return -RISK_AMOUNT; // -$100
             }
-            
             // Compter les TP atteints (on prend le plus haut)
             if (trade.tp3_hit) {
                 return RISK_AMOUNT * 3; // +$300
@@ -16452,25 +15104,20 @@ async def trades_page():
             } else if (trade.tp1_hit) {
                 return RISK_AMOUNT * 1; // +$100
             }
-            
             return 0; // Trade fermé sans TP ni SL (cas rare)
         }
-        
         // 🟢🔴 NOUVELLE FONCTION: Vérifier automatiquement les TP/SL en temps réel
         async function checkTPSLHits() {
             try {
                 // Récupérer les symboles uniques
                 const symbols = [...new Set(allTrades.filter(t => t.status === 'open').map(t => t.symbol))];
                 if (symbols.length === 0) return;
-                
                 // Récupérer les prix actuels EN TEMPS RÉEL (max 250 à la fois)
                 const priceMap = {};
                 const chunkSize = 250;
-                
                 for (let i = 0; i < symbols.length; i += chunkSize) {
                     const chunk = symbols.slice(i, i + chunkSize);
                     const ids = chunk.map(s => s.toLowerCase().replace('usdt', '')).join(',');
-                    
                     try {
                         const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`);
                         if (response.ok) {
@@ -16486,21 +15133,17 @@ async def trades_page():
                         console.log('⚠️ Prix API indisponible');
                     }
                 }
-                
                 // Vérifier chaque trade ouvert
                 for (let index = 0; index < allTrades.length; index++) {
                     const trade = allTrades[index];
                     if (trade.status !== 'open') continue;
-                    
                     // 🔥 TOUJOURS utiliser le prix ACTUEL de l'API, JAMAIS le prix du webhook
                     const currentPrice = priceMap[trade.symbol];
                     if (!currentPrice) {
                         console.log(`⚠️ Pas de prix pour ${trade.symbol}`);
                         continue;
                     }
-                    
                     let tradeModified = false;
-                    
                     // Préparer l'objet de mise à jour
                     const updateData = {
                         symbol: trade.symbol,
@@ -16512,7 +15155,6 @@ async def trades_page():
                         status: trade.status,
                         current_price: currentPrice  // 🔥 Mettre à jour le prix stocké
                     };
-                    
                     // Vérifier TP/SL
                     if (trade.side === 'LONG') {
                         // LONG: Prix monte
@@ -16534,7 +15176,6 @@ async def trades_page():
                             tradeModified = true;
                             console.log(`🎯🎯🎯 ${trade.symbol} TP3 ATTEINT à $${currentPrice}`);
                         }
-                        
                         // SL seulement si AUCUN TP atteint
                         if (currentPrice <= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
                             console.warn(`❌ ${trade.symbol} SL ATTEINT à $${currentPrice} (seuil: $${trade.sl})`);
@@ -16562,7 +15203,6 @@ async def trades_page():
                             tradeModified = true;
                             console.log(`🎯🎯🎯 ${trade.symbol} TP3 ATTEINT à $${currentPrice}`);
                         }
-                        
                         // SL seulement si AUCUN TP atteint
                         if (currentPrice >= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
                             console.warn(`❌ ${trade.symbol} SL ATTEINT à $${currentPrice} (seuil: $${trade.sl})`);
@@ -16571,13 +15211,11 @@ async def trades_page():
                             tradeModified = true;
                         }
                     }
-                    
                     // Si un TP atteint, fermer le trade
                     if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit || trade.sl_hit) {
                         trade.status = 'closed';
                         updateData.status = 'closed';
                     }
-                    
                     // 🔥 CRITIQUE: Envoyer la mise à jour au serveur
                     if (tradeModified) {
                         try {
@@ -16588,7 +15226,6 @@ async def trades_page():
                                 },
                                 body: JSON.stringify(updateData)
                             });
-                            
                             const result = await response.json();
                             if (result.status === 'success') {
                                 console.log(`✅ Trade ${trade.symbol} mis à jour sur le serveur`);
@@ -16601,45 +15238,37 @@ async def trades_page():
                         }
                     }
                 }
-                
                 // Recharger les statistiques après vérification
                 await updateStats();
-                
             } catch (error) {
                 console.error('❌ Erreur dans checkTPSLHits:', error);
             }
         }
-        
         function updateTradeRow(trade, index) {
             const row = document.querySelector(`tr[data-trade-index="${index}"]`);
             if (!row) return;
-            
             // Mettre à jour la cellule SL (ne pas afficher en rouge si un TP est atteint)
             const slCell = row.cells[4];
             if (slCell) {
                 const shouldShowSLHit = trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit;
                 slCell.innerHTML = formatPrice(trade.sl, shouldShowSLHit, true);
             }
-            
             // Mettre à jour les cellules TP
             const tp1Cell = row.cells[5];
             if (tp1Cell) {
                 tp1Cell.innerHTML = formatPrice(trade.tp1, trade.tp1_hit, false);
                 tp1Cell.style.background = trade.tp1_hit ? 'rgba(16, 185, 129, 0.2)' : '';
             }
-            
             const tp2Cell = row.cells[6];
             if (tp2Cell) {
                 tp2Cell.innerHTML = formatPrice(trade.tp2, trade.tp2_hit, false);
                 tp2Cell.style.background = trade.tp2_hit ? 'rgba(16, 185, 129, 0.2)' : '';
             }
-            
             const tp3Cell = row.cells[7];
             if (tp3Cell) {
                 tp3Cell.innerHTML = formatPrice(trade.tp3, trade.tp3_hit, false);
                 tp3Cell.style.background = trade.tp3_hit ? 'rgba(16, 185, 129, 0.2)' : '';
             }
-            
             // Mettre à jour la colonne CLOSE (index 10)
             const closeCell = row.cells[10];
             if (closeCell) {
@@ -16653,7 +15282,6 @@ async def trades_page():
                     closeCell.innerHTML = '<span class="badge" style="background: #ef4444; color: white; font-weight: 700;">❌ ÉCHOUÉ</span>';
                 }
             }
-            
             // Mettre à jour la couleur de la ligne (vert si TP, rouge si SL seulement)
             if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit) {
                 row.style.background = 'rgba(16, 185, 129, 0.1)'; // Vert si TP atteint
@@ -16663,7 +15291,6 @@ async def trades_page():
                 row.style.background = ''; // Normal sinon
             }
         } 
-        
         async function updateStats() {
             try { 
                 const response = await fetch('/api/stats'); 
@@ -16675,7 +15302,6 @@ async def trades_page():
                 const pnlElement = document.getElementById('totalPnl');
                 pnlElement.textContent = (totalPnl >= 0 ? '+' : '') + '$' + totalPnl.toFixed(2);
                 pnlElement.style.color = totalPnl >= 0 ? '#10b981' : '#ef4444'; // Vert si positif, rouge si négatif
-                
                 const avgConf = allTrades.length > 0 ? allTrades.reduce((sum, t) => sum + (t.confidence || 0), 0) / allTrades.length : 0; 
                 document.getElementById('avgConfidence').textContent = avgConf.toFixed(1) + '%'; 
                 const tpHits = allTrades.reduce((sum, t) => sum + (t.tp1_hit ? 1 : 0) + (t.tp2_hit ? 1 : 0) + (t.tp3_hit ? 1 : 0), 0);
@@ -16684,7 +15310,6 @@ async def trades_page():
                 console.error('Error updating stats:', error); 
             } 
         }
-        
         function displayTrades(trades) {
             const container = document.getElementById('trades');
             document.getElementById('tradesCount').textContent = '(' + trades.length + ')';
@@ -16692,15 +15317,12 @@ async def trades_page():
                 container.innerHTML = '<div class="alert alert-info">📭 Aucun trade trouvé</div>';
                 return;
             }
-            
             let html = '<table><thead><tr><th>Heure</th><th>Symbole</th><th>Type</th><th>Entry</th><th>SL</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Confiance</th><th>Statut</th><th>Close</th><th>Actions</th></tr></thead><tbody>';
-            
             trades.forEach((trade, index) => {
                 const side = trade.side || 'N/A';
                 const sideClass = side === 'LONG' ? 'badge-long' : 'badge-short';
                 const status = trade.status || 'OPEN';
                 const statusClass = status === 'OPEN' ? 'badge-open' : 'badge-closed';
-                
                 html += '<tr data-trade-index="' + index + '" onclick="showTradeDetails(' + index + ')">';
                 html += '<td>' + formatTime(trade.timestamp) + '</td>';
                 html += '<td><strong>' + (trade.symbol || 'N/A') + '</strong></td>';
@@ -16713,7 +15335,6 @@ async def trades_page():
                 html += '<td><div><strong>' + (trade.confidence || 0).toFixed(1) + '%</strong>';
                 html += '<div class="confidence-meter"><div class="confidence-fill" style="width: ' + (trade.confidence || 0) + '%"></div></div></div></td>';
                 html += '<td><span class="badge ' + statusClass + '">' + status + '</span></td>';
-                
                 // Colonne CLOSE avec messages clairs
                 html += '<td>';
                 if (trade.status === 'closed') {
@@ -16734,7 +15355,6 @@ async def trades_page():
                     html += '<span style="color: #64748b;">—</span>';
                 }
                 html += '</td>';
-                
                 html += '<td style="white-space: nowrap;">';
                 html += '<button onclick="event.stopPropagation(); toggleTP(' + index + ', 1)" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.tp1_hit ? '#10b981' : '#334155') + ';">TP1</button>';
                 html += '<button onclick="event.stopPropagation(); toggleTP(' + index + ', 2)" style="padding: 6px 10px; font-size: 11px; margin: 2px; background: ' + (trade.tp2_hit ? '#10b981' : '#334155') + ';">TP2</button>';
@@ -16743,11 +15363,9 @@ async def trades_page():
                 html += '</td>';
                 html += '</tr>';
             });
-            
             html += '</tbody></table>';
             container.innerHTML = html;
         }
-        
         function filterTrades() { 
             const statusFilter = document.getElementById('filterStatus').value; 
             const sideFilter = document.getElementById('filterSide').value; 
@@ -16760,7 +15378,6 @@ async def trades_page():
             }); 
             displayTrades(filtered); 
         }
-        
         function showTradeDetails(index) {
             const trade = allTrades[index];
             const modal = document.getElementById('tradeModal');
@@ -16772,7 +15389,6 @@ async def trades_page():
                 timeStyle: 'short',
                 timeZone: 'America/Montreal'
             }) : 'N/A';
-            
             // Helper pour formater les prix avec coloration
             const smartFormat = (price) => {
                 if (!price) return '$0.00';
@@ -16787,19 +15403,16 @@ async def trades_page():
                 if (formatted.endsWith('.')) formatted = formatted.slice(0, -1);
                 return formatted;
             };
-            
             const formatTPPrice = (price, isHit) => {
                 if (!price) return '$0.00';
                 const formatted = smartFormat(price);
                 return isHit ? '<span class="price-hit">' + formatted + ' ✅</span>' : formatted;
             };
-            
             const formatSLPrice = (price, isHit) => {
                 if (!price) return '$0.00';
                 const formatted = smartFormat(price);
                 return isHit ? '<span class="price-sl-hit">' + formatted + ' ❌</span>' : formatted;
             };
-            
             content.innerHTML = '<h2 style="color: #60a5fa; margin-bottom: 15px;">' + (trade.symbol || 'N/A') + ' - Détails du Trade</h2>' +
                 '<p style="color: #94a3b8; margin-bottom: 25px; font-size: 14px;">🕐 ' + timestamp + '</p>' +
                 '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 25px;">' +
@@ -16820,17 +15433,13 @@ async def trades_page():
                 '</div>' +
                 (trade.note ? '<div style="background: rgba(15, 23, 42, 0.8); padding: 20px; border-radius: 12px; margin-bottom: 25px;"><div class="stat-label">Note</div><p style="color: #e2e8f0; margin-top: 10px; line-height: 1.6;">' + trade.note + '</p></div>' : '') +
                 '<button onclick="closeModal()" style="width: 100%; margin-top: 10px;">Fermer</button>';
-            
             modal.classList.add('show');
         }
-        
         function closeModal() { document.getElementById('tradeModal').classList.remove('show'); }
-        
         async function toggleTP(index, tpNumber) {
             const trade = allTrades[index];
             const tpKey = 'tp' + tpNumber + '_hit';
             const newValue = !trade[tpKey];
-            
             try {
                 const response = await fetch('/api/trades/update-status', {
                     method: 'POST',
@@ -16841,7 +15450,6 @@ async def trades_page():
                         [tpKey]: newValue
                     })
                 });
-                
                 if (response.ok) {
                     trade[tpKey] = newValue;
                     load();
@@ -16851,11 +15459,9 @@ async def trades_page():
                 showAlert('❌ Erreur lors de la mise à jour', 'error');
             }
         }
-        
         async function toggleSL(index) {
             const trade = allTrades[index];
             const newValue = !trade.sl_hit;
-            
             try {
                 const response = await fetch('/api/trades/update-status', {
                     method: 'POST',
@@ -16867,7 +15473,6 @@ async def trades_page():
                         status: newValue ? 'closed' : 'open'
                     })
                 });
-                
                 if (response.ok) {
                     trade.sl_hit = newValue;
                     trade.status = newValue ? 'closed' : 'open';
@@ -16878,7 +15483,6 @@ async def trades_page():
                 showAlert('❌ Erreur lors de la mise à jour', 'error');
             }
         }
-        
         function updateCharts() { 
             const performanceCtx = document.getElementById('performanceChart').getContext('2d'); 
             if (performanceChart) performanceChart.destroy(); 
@@ -16889,7 +15493,6 @@ async def trades_page():
             const shortCount = allTrades.filter(t => t.side === 'SHORT').length; 
             distributionChart = new Chart(distributionCtx, { type: 'doughnut', data: { labels: ['LONG', 'SHORT'], datasets: [{ data: [longCount, shortCount], backgroundColor: ['rgba(16, 185, 129, 0.8)', 'rgba(239, 68, 68, 0.8)'], borderColor: ['rgba(16, 185, 129, 1)', 'rgba(239, 68, 68, 1)'], borderWidth: 2 }] }, options: { responsive: false, plugins: { legend: { position: 'bottom', labels: { color: '#e2e8f0', padding: 20 } } } } }); 
         }
-        
         async function addDemo() { 
             try { 
                 await fetch('/api/trades/add-demo'); 
@@ -16899,7 +15502,6 @@ async def trades_page():
                 showAlert('❌ Erreur lors de l\\'ajout du trade', 'error'); 
             } 
         }
-        
         async function clearAll() { 
             if (confirm('⚠️ Êtes-vous sûr de vouloir effacer tous les trades?')) { 
                 try { 
@@ -16911,7 +15513,6 @@ async def trades_page():
                 } 
             } 
         }
-        
         function showAlert(message, type) { 
             const alertDiv = document.createElement('div'); 
             alertDiv.className = 'alert alert-' + type + ' fade-in'; 
@@ -16923,7 +15524,6 @@ async def trades_page():
             document.body.appendChild(alertDiv); 
             setTimeout(() => { alertDiv.remove(); }, 3000); 
         }
-        
         window.onclick = function(event) { const modal = document.getElementById('tradeModal'); if (event.target === modal) closeModal(); }
 
         // ============= P&L HEBDOMADAIRE =============
@@ -16931,23 +15531,19 @@ async def trades_page():
             try {
                 const res = await fetch('/api/weekly-pnl');
                 const data = await res.json();
-                
                 if (!data.ok) {
                     console.error('❌ Erreur API weekly-pnl:', data.error);
                     document.getElementById('weeklyPnlContainer').innerHTML = 
                         '<p style="color:#ef4444;text-align:center;padding:20px;">❌ Erreur de chargement</p>';
                     return;
                 }
-                
                 console.log('✅ P&L hebdomadaire chargé:', data);
-                
                 let html = '';
                 data.weekly_data.forEach(day => {
                     const isToday = day.day_en === data.current_day;
                     const pnlColor = day.pnl > 0 ? '#10b981' : (day.pnl < 0 ? '#ef4444' : '#64748b');
                     const bgColor = isToday ? 'rgba(96, 165, 250, 0.1)' : 'rgba(15, 23, 42, 0.8)';
                     const borderColor = isToday ? '#60a5fa' : 'transparent';
-                    
                     html += `
                         <div style="
                             background:${bgColor};
@@ -16968,13 +15564,10 @@ async def trades_page():
                         </div>
                     `;
                 });
-                
                 document.getElementById('weeklyPnlContainer').innerHTML = html;
-                
                 const totalColor = data.total_week > 0 ? '#10b981' : (data.total_week < 0 ? '#ef4444' : '#64748b');
                 document.getElementById('weeklyTotal').innerHTML = 
                     `<span style="color:${totalColor}">${data.total_week >= 0 ? '+' : ''}$${data.total_week.toFixed(2)}</span>`;
-                
             } catch (error) {
                 console.error('❌ Erreur loadWeeklyPnl:', error);
                 document.getElementById('weeklyPnlContainer').innerHTML = 
@@ -16986,11 +15579,9 @@ async def trades_page():
             if (!confirm('Voulez-vous vraiment réinitialiser le P&L de la semaine ?')) {
                 return;
             }
-            
             try {
                 const res = await fetch('/api/weekly-pnl/reset', { method: 'POST' });
                 const data = await res.json();
-                
                 if (data.ok) {
                     alert('✅ ' + data.message);
                     loadWeeklyPnl();
@@ -17044,11 +15635,9 @@ CALENDRIER ÉCONOMIQUE AMÉLIORÉ - Version complète avec beaucoup d'événemen
 @app.get("/calendrier", response_class=HTMLResponse)
 async def calendrier_economique():
     """Calendrier économique avec événements importants"""
-    
     # Obtenir la date actuelle en timezone Québec
     quebec_tz = pytz.timezone('America/Montreal')
     now = datetime.now(quebec_tz)
-    
     # Événements économiques COMPLETS (Novembre 2025 - Janvier 2026) - À jour
     events = [
         # ============ NOVEMBRE 2025 ============
@@ -17184,7 +15773,6 @@ async def calendrier_economique():
             "previous": "0.2%",
             "why_important": "Avant Black Friday - Préfigure le shopping des fêtes"
         },
-        
         # ============ DÉCEMBRE 2025 ============
         {
             "date": "2025-12-03",
@@ -17270,7 +15858,6 @@ async def calendrier_economique():
             "previous": "2.8%",
             "why_important": "Dernière estimation PIB 2025 - La plus précise"
         },
-        
         # ============ JANVIER 2026 ============
         {
             "date": "2026-01-10",
@@ -17345,21 +15932,17 @@ async def calendrier_economique():
             "why_important": "PIB final 2025 - Bilan économique de l'année écoulée"
         }
     ]
-    
     # Trier les événements par date
     events.sort(key=lambda x: datetime.strptime(x['date'], '%Y-%m-%d'))
-    
     # Séparer événements passés et futurs
     today_str = now.strftime('%Y-%m-%d')
     upcoming_events = [e for e in events if e['date'] >= today_str]
     past_events = [e for e in events if e['date'] < today_str]
-    
     # Afficher SEULEMENT les événements futurs (pas les passés)
     # Les événements passés sont supprimés automatiquement
     if len(upcoming_events) == 0:
         # Si par hasard tous les événements sont passés, afficher les 10 derniers
         upcoming_events = events[-10:] if len(events) >= 10 else events
-    
     html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -17373,7 +15956,6 @@ async def calendrier_economique():
             gap: 20px;
             margin-top: 30px;
         }}
-        
         .event-card {{
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
             border-radius: 16px;
@@ -17383,13 +15965,11 @@ async def calendrier_economique():
             position: relative;
             overflow: hidden;
         }}
-        
         .event-card:hover {{
             transform: translateY(-5px);
             box-shadow: 0 10px 40px rgba(96, 165, 250, 0.2);
             border-color: #60a5fa;
         }}
-        
         .event-card::before {{
             content: '';
             position: absolute;
@@ -17399,20 +15979,16 @@ async def calendrier_economique():
             height: 100%;
             background: linear-gradient(180deg, #60a5fa, #a78bfa);
         }}
-        
         .event-card.high::before {{
             background: linear-gradient(180deg, #ef4444, #dc2626);
             width: 8px;
         }}
-        
         .event-card.medium::before {{
             background: linear-gradient(180deg, #f59e0b, #d97706);
         }}
-        
         .event-card.low::before {{
             background: linear-gradient(180deg, #10b981, #059669);
         }}
-        
         .event-header {{
             display: flex;
             justify-content: space-between;
@@ -17420,7 +15996,6 @@ async def calendrier_economique():
             margin-bottom: 20px;
             gap: 20px;
         }}
-        
         .event-date {{
             display: flex;
             flex-direction: column;
@@ -17431,14 +16006,12 @@ async def calendrier_economique():
             min-width: 130px;
             border: 2px solid #334155;
         }}
-        
         .event-day {{
             font-size: 38px;
             font-weight: 700;
             color: #60a5fa;
             line-height: 1;
         }}
-        
         .event-month {{
             font-size: 15px;
             color: #94a3b8;
@@ -17446,7 +16019,6 @@ async def calendrier_economique():
             letter-spacing: 1.5px;
             margin-top: 5px;
         }}
-        
         .event-time {{
             font-size: 14px;
             color: #a78bfa;
@@ -17456,11 +16028,9 @@ async def calendrier_economique():
             padding: 4px 12px;
             border-radius: 6px;
         }}
-        
         .event-info {{
             flex: 1;
         }}
-        
         .event-title {{
             font-size: 22px;
             font-weight: 700;
@@ -17471,7 +16041,6 @@ async def calendrier_economique():
             gap: 12px;
             line-height: 1.3;
         }}
-        
         .event-description {{
             color: #cbd5e1;
             font-size: 15px;
@@ -17482,7 +16051,6 @@ async def calendrier_economique():
             border-radius: 8px;
             border-left: 3px solid #334155;
         }}
-        
         .why-important {{
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(96, 165, 250, 0.1));
             padding: 12px 15px;
@@ -17490,7 +16058,6 @@ async def calendrier_economique():
             margin-bottom: 15px;
             border-left: 3px solid #60a5fa;
         }}
-        
         .why-important-label {{
             font-size: 11px;
             color: #60a5fa;
@@ -17499,20 +16066,17 @@ async def calendrier_economique():
             font-weight: 700;
             margin-bottom: 5px;
         }}
-        
         .why-important-text {{
             color: #e2e8f0;
             font-size: 14px;
             font-weight: 500;
         }}
-        
         .event-badges {{
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
             margin-top: 15px;
         }}
-        
         .badge {{
             padding: 7px 15px;
             border-radius: 20px;
@@ -17521,37 +16085,31 @@ async def calendrier_economique():
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }}
-        
         .badge-impact {{
             background: rgba(239, 68, 68, 0.2);
             color: #fca5a5;
             border: 1px solid rgba(239, 68, 68, 0.4);
         }}
-        
         .badge-impact.medium {{
             background: rgba(245, 158, 11, 0.2);
             color: #fcd34d;
             border: 1px solid rgba(245, 158, 11, 0.4);
         }}
-        
         .badge-impact.low {{
             background: rgba(16, 185, 129, 0.2);
             color: #6ee7b7;
             border: 1px solid rgba(16, 185, 129, 0.4);
         }}
-        
         .badge-category {{
             background: rgba(96, 165, 250, 0.15);
             color: #60a5fa;
             border: 1px solid rgba(96, 165, 250, 0.3);
         }}
-        
         .badge-currency {{
             background: rgba(167, 139, 250, 0.15);
             color: #a78bfa;
             border: 1px solid rgba(167, 139, 250, 0.3);
         }}
-        
         .event-stats {{
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -17560,14 +16118,12 @@ async def calendrier_economique():
             padding-top: 15px;
             border-top: 2px solid #334155;
         }}
-        
         .stat-item {{
             text-align: center;
             background: rgba(15, 23, 42, 0.5);
             padding: 12px;
             border-radius: 8px;
         }}
-        
         .stat-label {{
             font-size: 11px;
             color: #64748b;
@@ -17576,13 +16132,11 @@ async def calendrier_economique():
             margin-bottom: 6px;
             font-weight: 600;
         }}
-        
         .stat-value {{
             font-size: 18px;
             font-weight: 700;
             color: #e2e8f0;
         }}
-        
         .filter-section {{
             display: flex;
             gap: 10px;
@@ -17592,7 +16146,6 @@ async def calendrier_economique():
             background: #1e293b;
             border-radius: 12px;
         }}
-        
         .filter-btn {{
             padding: 12px 24px;
             background: #0f172a;
@@ -17604,20 +16157,17 @@ async def calendrier_economique():
             font-weight: 600;
             font-size: 14px;
         }}
-        
         .filter-btn:hover {{
             border-color: #60a5fa;
             color: #60a5fa;
             transform: translateY(-2px);
         }}
-        
         .filter-btn.active {{
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             border-color: #3b82f6;
             color: #fff;
             box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
         }}
-        
         .section-title {{
             font-size: 26px;
             color: #60a5fa;
@@ -17629,7 +16179,6 @@ async def calendrier_economique():
             gap: 12px;
             font-weight: 700;
         }}
-        
         .countdown {{
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             padding: 6px 14px;
@@ -17640,14 +16189,12 @@ async def calendrier_economique():
             margin-left: auto;
             box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
         }}
-        
         .stats-overview {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 15px;
             margin-bottom: 30px;
         }}
-        
         .overview-card {{
             background: linear-gradient(135deg, #1e293b, #334155);
             padding: 25px;
@@ -17656,19 +16203,16 @@ async def calendrier_economique():
             text-align: center;
             transition: all 0.3s;
         }}
-        
         .overview-card:hover {{
             border-color: #60a5fa;
             transform: translateY(-3px);
         }}
-        
         .overview-value {{
             font-size: 42px;
             font-weight: 700;
             color: #60a5fa;
             margin-bottom: 8px;
         }}
-        
         .overview-label {{
             font-size: 13px;
             color: #94a3b8;
@@ -17676,7 +16220,6 @@ async def calendrier_economique():
             letter-spacing: 1px;
             font-weight: 600;
         }}
-        
         .legend {{
             display: flex;
             gap: 25px;
@@ -17687,7 +16230,6 @@ async def calendrier_economique():
             border-radius: 10px;
             border: 1px solid #334155;
         }}
-        
         .legend-item {{
             display: flex;
             align-items: center;
@@ -17696,40 +16238,32 @@ async def calendrier_economique():
             color: #94a3b8;
             font-weight: 600;
         }}
-        
         .legend-dot {{
             width: 14px;
             height: 14px;
             border-radius: 50%;
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }}
-        
         .legend-dot.high {{ background: #ef4444; }}
         .legend-dot.medium {{ background: #f59e0b; }}
         .legend-dot.low {{ background: #10b981; }}
-        
         @media (max-width: 768px) {{
             .event-header {{
                 flex-direction: column;
                 gap: 15px;
             }}
-            
             .event-info {{
                 margin-left: 0;
             }}
-            
             .event-stats {{
                 grid-template-columns: 1fr;
             }}
-            
             .filter-section {{
                 flex-direction: column;
             }}
-            
             .event-title {{
                 font-size: 18px;
             }}
-            
             .event-description {{
                 font-size: 14px;
             }}
@@ -17742,9 +16276,6 @@ async def calendrier_economique():
             <h1>📅 Calendrier Économique Détaillé</h1>
             <p>Suivez TOUS les événements économiques majeurs avec descriptions complètes • Octobre 2025 - Janvier 2026</p>
         </div>
-        
-        
-        
         <div class="card">
             <div class="stats-overview">
                 <div class="overview-card">
@@ -17764,7 +16295,6 @@ async def calendrier_economique():
                     <div class="overview-label">Banques Centrales</div>
                 </div>
             </div>
-            
             <div class="filter-section">
                 <button class="filter-btn active" onclick="filterEvents('all', this)">📋 Tous ({len(events)})</button>
                 <button class="filter-btn" onclick="filterEvents('high', this)">🔴 Impact ÉLEVÉ ({len([e for e in events if e['impact'] == 'high'])})</button>
@@ -17774,7 +16304,6 @@ async def calendrier_economique():
                 <button class="filter-btn" onclick="filterEvents('this-week', this)">📅 Cette semaine</button>
                 <button class="filter-btn" onclick="filterEvents('this-month', this)">📆 Ce mois-ci</button>
             </div>
-            
             <div class="legend">
                 <div class="legend-item">
                     <div class="legend-dot high"></div>
@@ -17790,7 +16319,6 @@ async def calendrier_economique():
                 </div>
             </div>
         </div>
-        
         <div class="card">
             <h2 class="section-title">
                 📅 Tous les événements économiques
@@ -17798,7 +16326,6 @@ async def calendrier_economique():
             </h2>
             <div class="calendar-grid" id="allEvents">
 """
-    
     # Générer les cartes pour les événements FUTURS SEULEMENT
     for event in upcoming_events:
         date_obj = datetime.strptime(event['date'], '%Y-%m-%d')
@@ -17809,7 +16336,6 @@ async def calendrier_economique():
             'September': 'SEP', 'October': 'OCT', 'November': 'NOV', 'December': 'DÉC'
         }
         month = month_names.get(date_obj.strftime('%B'), date_obj.strftime('%b').upper())
-        
         # Calculer le countdown
         days_until = (date_obj.date() - now.date()).days
         if days_until < 0:
@@ -17820,7 +16346,6 @@ async def calendrier_economique():
             countdown = "Demain"
         else:
             countdown = f"Dans {days_until} jours"
-        
         # Emoji selon la catégorie
         category_emoji = {
             'fed': '🏦',
@@ -17829,7 +16354,6 @@ async def calendrier_economique():
             'boj': '🇯🇵',
             'data': '📊'
         }.get(event['category'], '📌')
-        
         # Label d'impact
         impact_labels = {
             'high': '🔴 Impact CRITIQUE',
@@ -17837,7 +16361,6 @@ async def calendrier_economique():
             'low': '🟢 Impact FAIBLE'
         }
         impact_label = impact_labels.get(event['impact'], 'Impact Moyen')
-        
         html += f"""
                 <div class="event-card {event['impact']}" data-category="{event['category']}" data-impact="{event['impact']}" data-date="{event['date']}">
                     <div class="event-header">
@@ -17881,11 +16404,9 @@ async def calendrier_economique():
                     </div>
                 </div>
 """
-    
     html += f"""
             </div>
         </div>
-        
         <div class="card" style="text-align: center; background: linear-gradient(135deg, #1e293b, #0f172a); border: 2px solid #334155;">
             <h3 style="color: #60a5fa; margin-bottom: 15px;">📊 Statistiques complètes</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-top: 20px;">
@@ -17908,26 +16429,21 @@ async def calendrier_economique():
             </div>
         </div>
     </div>
-    
     <script>
         function filterEvents(filter, buttonElement) {{
             const eventCards = document.querySelectorAll('.event-card');
             const buttons = document.querySelectorAll('.filter-btn');
-            
             // Update active button
             buttons.forEach(btn => btn.classList.remove('active'));
             if (buttonElement) {{
                 buttonElement.classList.add('active');
             }}
-            
             // Get current date for time filters
             const now = new Date();
             const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
             const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            
             eventCards.forEach(card => {{
                 let show = false;
-                
                 if (filter === 'all') {{
                     show = true;
                 }} else if (filter === 'high') {{
@@ -17943,17 +16459,14 @@ async def calendrier_economique():
                     const eventDate = new Date(card.dataset.date);
                     show = eventDate >= now && eventDate <= monthEnd;
                 }}
-                
                 card.style.display = show ? 'block' : 'none';
             }});
         }}
-        
         console.log('📅 Calendrier Économique Complet chargé');
         console.log('✅ {len(events)} événements affichés');
     </script>
 </body>
 </html>"""
-    
     return HTMLResponse(SIDEBAR + html)
 
 
@@ -17973,7 +16486,6 @@ async def get_current_price_from_trade(trade: dict) -> float:
         symbol = trade.get("symbol")
         if not symbol:
             return None
-        
         # ✅ TOUJOURS utiliser CoinGecko pour avoir le prix ACTUEL
         # Mapping complet pour la plupart des cryptos populaires
         symbol_map = {
@@ -18002,15 +16514,12 @@ async def get_current_price_from_trade(trade: dict) -> float:
             "MANAUSDT": "decentraland",
             "SANDUSDT": "the-sandbox"
         }
-        
         crypto_id = symbol_map.get(symbol)
         if not crypto_id:
             print(f"⚠️ Symbole {symbol} non mappé - tentative de fallback direct")
             # Essayer avec le symbole directement (sans USDT)
             crypto_id = symbol.replace("USDT", "").lower()
-        
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={crypto_id}&vs_currencies=usd"
-        
         async with httpx.AsyncClient() as client:
             response = await client.get(url, timeout=10.0)
             if response.status_code == 200:
@@ -18023,7 +16532,6 @@ async def get_current_price_from_trade(trade: dict) -> float:
                     print(f"❌ Pas de prix retourné pour {crypto_id}")
     except Exception as e:
         print(f"❌ Erreur get_current_price pour {trade.get('symbol')}: {e}")
-    
     return None
 
 async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
@@ -18034,7 +16542,6 @@ async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
     updates = {}
     side = trade.get("side", "LONG")
     symbol = trade.get("symbol")
-    
     # Vérifier TP1
     if trade.get("tp1") and not trade.get("tp1_hit"):
         if (side == "LONG" and current_price >= trade["tp1"]) or \
@@ -18042,7 +16549,6 @@ async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
             updates["tp1_hit"] = True
             print(f"🎯 {symbol} - TP1 atteint ! Prix: ${current_price}")
             await send_telegram_notification(symbol, "TP1", current_price, trade["tp1"])
-    
     # Vérifier TP2
     if trade.get("tp2") and not trade.get("tp2_hit"):
         if (side == "LONG" and current_price >= trade["tp2"]) or \
@@ -18050,7 +16556,6 @@ async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
             updates["tp2_hit"] = True
             print(f"🎯🎯 {symbol} - TP2 atteint ! Prix: ${current_price}")
             await send_telegram_notification(symbol, "TP2", current_price, trade["tp2"])
-    
     # Vérifier TP3
     if trade.get("tp3") and not trade.get("tp3_hit"):
         if (side == "LONG" and current_price >= trade["tp3"]) or \
@@ -18058,7 +16563,6 @@ async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
             updates["tp3_hit"] = True
             print(f"🎯🎯🎯 {symbol} - TP3 atteint ! Prix: ${current_price}")
             await send_telegram_notification(symbol, "TP3", current_price, trade["tp3"])
-    
     # Vérifier SL
     if trade.get("sl") and not trade.get("sl_hit"):
         if (side == "LONG" and current_price <= trade["sl"]) or \
@@ -18067,7 +16571,6 @@ async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
             updates["status"] = "closed"
             print(f"❌ {symbol} - SL touché ! Prix: ${current_price}")
             await send_telegram_notification(symbol, "SL", current_price, trade["sl"])
-    
     return updates
 
 async def send_telegram_notification(symbol: str, target: str, current_price: float, target_price: float):
@@ -18075,7 +16578,6 @@ async def send_telegram_notification(symbol: str, target: str, current_price: fl
     try:
         emoji = "🎯" if "TP" in target else "❌"
         color = "✅" if "TP" in target else "🔴"
-        
         message = f"""
 {emoji} <b>{target} ATTEINT !</b> {color}
 
@@ -18085,14 +16587,11 @@ async def send_telegram_notification(symbol: str, target: str, current_price: fl
 
 ⏰ {datetime.now(pytz.timezone('America/Montreal')).strftime('%H:%M:%S')}
 """
-        
         # Ajouter message de félicitation pour TP3
         if target == "TP3":
             message += "\n🎉🎊 <b>FÉLICITATIONS ! TRADE COMPLÉTÉ !</b> 🎊🎉\n"
-        
         # 🔥 NOUVEAU: Ajouter boutons dashboard + TradingView
         tradingview_url = f"https://www.tradingview.com/chart/?symbol=BINANCE:{symbol}"
-        
         telegram_payload = {
             "chat_id": TELEGRAM_CHAT_ID, 
             "text": message, 
@@ -18112,7 +16611,6 @@ async def send_telegram_notification(symbol: str, target: str, current_price: fl
                 ]
             }
         }
-        
         async with httpx.AsyncClient() as client:
             await client.post(
                 f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
@@ -18125,54 +16623,42 @@ async def send_telegram_notification(symbol: str, target: str, current_price: fl
 async def monitor_trades_background():
     """Tâche de fond - surveillance automatique toutes les 30 secondes"""
     global monitor_running
-    
     # Vérifier si une instance est déjà en cours
     async with monitor_lock:
         if monitor_running:
             print("⚠️ Une instance du moniteur est déjà active, skip")
             return
         monitor_running = True
-    
     print("\n" + "="*70)
     print("🤖 MONITEUR AUTOMATIQUE DES TP/SL DÉMARRÉ")
     print("   Vérification toutes les 30 secondes")
     print("   Utilise current_price du webhook Pine Script")
     print("="*70 + "\n")
-    
     while True:
         try:
             await asyncio.sleep(30)  # Attendre 30 secondes
-            
             # Récupérer tous les trades ouverts
             open_trades = [t for t in trades_db if t.get("status") == "open"]
-            
             if len(open_trades) == 0:
                 # Ne rien afficher quand il n'y a pas de trades (réduire le spam)
                 continue
-            
             print(f"\n🔍 Vérification de {len(open_trades)} trade(s)...")
-            
             for trade in open_trades:
                 symbol = trade.get("symbol")
                 if not symbol:
                     continue
-                
                 # Récupérer le prix actuel (current_price du webhook stocké dans le trade)
                 current_price = await get_current_price_from_trade(trade)
                 if current_price is None:
                     continue
-                
                 # Vérifier les TP/SL
                 updates = await check_tp_sl_automatic(trade, current_price)
-                
                 # Appliquer les mises à jour
                 if updates:
                     for key, value in updates.items():
                         trade[key] = value
                     print(f"✅ Trade {symbol} mis à jour")
-            
             print("✅ Vérification terminée\n")
-            
         except Exception as e:
             print(f"❌ Erreur monitoring: {e}")
             await asyncio.sleep(30)
@@ -18183,22 +16669,18 @@ async def startup_event():
     """Démarre la tâche de fond au lancement de l'application"""
     # Initialiser la DB Portfolio
     init_portfolio_db()
-    
     # ✅ CORRECTION: Initialiser la table ebooks
     init_ebooks_table()
-    
     # Initialiser la DB Academy
     try:
         init_academy_db()
         print("✅ Academy DB créée dans startup_event")
     except Exception as e:
         print(f"⚠️ Erreur Academy DB startup: {e}")
-    
     # Initialiser l'Academy
     # Utiliser try_lock pour éviter de bloquer si un autre worker a déjà lancé
     if not monitor_running:
         asyncio.create_task(monitor_trades_background())
-    
     # 🚀 Démarrer le monitoring MEXC pour auto-détection TP/SL
     start_background_monitor()
 
@@ -18208,7 +16690,6 @@ async def startup_event():
 async def get_weekly_pnl():
     """Récupérer le P&L de la semaine"""
     reset_weekly_pnl_if_needed()
-    
     days_fr = {
         "monday": "Lundi",
         "tuesday": "Mardi",
@@ -18218,10 +16699,8 @@ async def get_weekly_pnl():
         "saturday": "Samedi",
         "sunday": "Dimanche"
     }
-    
     weekly_data = []
     total_week = 0.0
-    
     for day_en, day_fr in days_fr.items():
         pnl = weekly_pnl[day_en]
         total_week += pnl
@@ -18230,7 +16709,6 @@ async def get_weekly_pnl():
             "day_fr": day_fr,
             "pnl": round(pnl, 2)
         })
-    
     return {
         "ok": True,
         "weekly_data": weekly_data,
@@ -18248,17 +16726,13 @@ async def create_charge(req: CreateChargeRequest, request: Request):
     """Crée une charge de paiement Coinbase Commerce"""
     # Essayer de récupérer le token du cookie ou de la requête
     token = request.cookies.get("session_token") or request.cookies.get("auth_token")
-    
     if not token:
         # Si pas de token, accepter quand même (pour debug/test)
         token = "anonymous"
-    
     if not COINBASE_AVAILABLE:
         raise HTTPException(status_code=500, detail="Coinbase Commerce non installé - pip install coinbase-commerce")
-    
     if not coinbase_client:
         raise HTTPException(status_code=500, detail="Coinbase Commerce non configuré")
-    
     try:
         # Créer la charge avec Coinbase Commerce
         charge = coinbase_client.charge.create(
@@ -18275,7 +16749,6 @@ async def create_charge(req: CreateChargeRequest, request: Request):
                 "email": req.email
             }
         )
-        
         # Sauvegarder dans la DB
         charge_id = charge.id
         create_payment_record(
@@ -18287,7 +16760,6 @@ async def create_charge(req: CreateChargeRequest, request: Request):
             description=req.description,
             charge_data=charge
         )
-        
         return {
             "success": True,
             "charge_id": charge_id,
@@ -18333,7 +16805,6 @@ async def pricing_complete():
             font-size: 20px;
             opacity: 0.9;
         }
-        
         /* Section Code Promo */
         .promo-section {
             background: white;
@@ -18406,7 +16877,6 @@ async def pricing_complete():
             font-size: 24px;
             margin-right: 10px;
         }
-        
         .pricing-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -18531,7 +17001,6 @@ async def pricing_complete():
             <h1>💎 Plans & Tarifs</h1>
             <p>Choisissez le plan qui vous convient</p>
         </div>
-        
         <!-- Section Code Promo -->
         <div class="promo-section">
             <h3>🎁 Vous avez un code promo?</h3>
@@ -18545,7 +17014,6 @@ async def pricing_complete():
             </div>
             <div id="promoMessage" class="promo-message"></div>
         </div>
-        
         <div class="pricing-grid">
             <!-- Plan 1 Month -->
             <div class="pricing-card">
@@ -18567,7 +17035,6 @@ async def pricing_complete():
                     ₿ Payer en Crypto
                 </button>
             </div>
-            
             <!-- Plan 3 Months -->
             <div class="pricing-card featured">
                 <div class="plan-name">💎 Advanced</div>
@@ -18589,7 +17056,6 @@ async def pricing_complete():
                     ₿ Payer en Crypto
                 </button>
             </div>
-            
             <!-- Plan 6 Months -->
             <div class="pricing-card">
                 <div class="plan-name">👑 Pro</div>
@@ -18611,7 +17077,6 @@ async def pricing_complete():
                     ₿ Payer en Crypto
                 </button>
             </div>
-            
             <!-- Plan 1 Year -->
             <div class="pricing-card">
                 <div class="plan-name">🚀 Elite</div>
@@ -18634,7 +17099,6 @@ async def pricing_complete():
                 </button>
             </div>
         </div>
-        
         <!-- Section Pages & Fonctionnalités Détaillées -->
         <div style="background: white; border-radius: 20px; padding: 50px; margin-top: 60px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
             <h2 style="text-align: center; color: #333; font-size: 36px; margin-bottom: 20px;">
@@ -18643,7 +17107,6 @@ async def pricing_complete():
             <p style="text-align: center; color: #666; font-size: 18px; margin-bottom: 40px;">
                 Découvrez exactement ce que vous obtenez avec chaque plan
             </p>
-            
             <!-- Tabs Navigation -->
             <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
                 <button onclick="showPlan('free')" id="tab-free" class="plan-tab active-tab">
@@ -18662,63 +17125,53 @@ async def pricing_complete():
                     🚀 ELITE
                 </button>
             </div>
-            
             <!-- Plan FREE -->
             <div id="plan-free" class="plan-content">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="font-size: 28px; margin-bottom: 10px;">🆓 Plan GRATUIT - $0/mois</h3>
                     <p style="font-size: 16px; opacity: 0.9;">9 pages accessibles sans inscription</p>
                 </div>
-                
                 <div class="pages-grid">
                     <div class="page-card">
                         <div class="page-icon">🏠</div>
                         <h4>Page d'Accueil</h4>
                         <p>Vue d'ensemble du marché crypto avec statistiques principales</p>
                     </div>
-                    
                     <div class="page-card">
                         <div class="page-icon">📊</div>
                         <h4>Dashboard</h4>
                         <p>Dashboard de base avec indicateurs essentiels et statistiques temps réel</p>
                     </div>
-                    
                     <div class="page-card">
                         <div class="page-icon">😨</div>
                         <h4>Fear & Greed Index</h4>
                         <p>Indice de sentiment du marché Bitcoin, indicateur émotionnel</p>
                     </div>
-                    
                     <div class="page-card">
                         <div class="page-icon">👑</div>
                         <h4>Bitcoin Dominance</h4>
                         <p>Suivi de la domination BTC vs altcoins avec graphiques historiques</p>
                     </div>
-                    
                     <div class="page-card">
                         <div class="page-icon">🔥</div>
                         <h4>Altcoin Season Index</h4>
                         <p>Index 90 jours indiquant si c'est Bitcoin ou Altcoin Season</p>
                     </div>
-                    
                     <div class="page-card">
                         <div class="page-icon">🗺️</div>
                         <h4>Crypto Heatmap</h4>
                         <p>Carte thermique du marché crypto avec top gainers/losers</p>
                     </div>
-                    
                     <div class="page-card">
                         <div class="page-icon">📰</div>
                         <h4>Actualités Crypto</h4>
                         <p>Feed d'actualités crypto en temps réel de sources fiables</p>
                     </div>
-                    
                     <div class="page-card">
                         <div class="page-icon">💱</div>
                         <h4>Convertisseur</h4>
                         <p>Convertisseur de devises crypto/fiat avec taux en direct</p>
                     </div>
-                    
                     <div class="page-card">
                         <div class="page-icon">📅</div>
                         <h4>Calendrier Économique</h4>
@@ -18726,55 +17179,46 @@ async def pricing_complete():
                     </div>
                 </div>
             </div>
-            
             <!-- Plan PREMIUM -->
             <div id="plan-premium" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="font-size: 28px; margin-bottom: 10px;">💳 Plan PREMIUM - $29.99/mois</h3>
                     <p style="font-size: 16px; opacity: 0.9;">9 pages gratuites + 7 pages premium = 16 pages totales</p>
                 </div>
-                
                 <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
                     <strong style="color: #065f46;">✅ Inclut toutes les pages GRATUITES +</strong>
                 </div>
-                
                 <div class="pages-grid">
                     <div class="page-card premium-card">
                         <div class="page-icon">🤖</div>
                         <h4>Assistant IA</h4>
                         <p>Assistant IA pour analyse de marché, recommandations personnalisées et réponses trading</p>
                     </div>
-                    
                     <div class="page-card premium-card">
                         <div class="page-icon">💹</div>
                         <h4>Spot Trading</h4>
                         <p>Interface de trading spot avec gestion de positions, historique et calcul P&L automatique</p>
                     </div>
-                    
                     <div class="page-card premium-card">
                         <div class="page-icon">📊</div>
                         <h4>Dashboard Trades</h4>
                         <p>Vue complète de tous vos trades avec statistiques détaillées et filtres avancés</p>
                     </div>
-                    
                     <div class="page-card premium-card">
                         <div class="page-icon">👁️</div>
                         <h4>Watchlist</h4>
                         <p>Liste de surveillance avec alertes de prix personnalisées et notifications temps réel</p>
                     </div>
-                    
                     <div class="page-card premium-card">
                         <div class="page-icon">🧮</div>
                         <h4>Calculatrice Trading</h4>
                         <p>Calcul de taille de position, leverage, profits/pertes et conversions</p>
                     </div>
-                    
                     <div class="page-card premium-card">
                         <div class="page-icon">🎮</div>
                         <h4>Simulateur Marché</h4>
                         <p>Trading en mode simulation avec données réelles, sans risque financier</p>
                     </div>
-                    
                     <div class="page-card premium-card">
                         <div class="page-icon">👤</div>
                         <h4>Mon Compte</h4>
@@ -18782,55 +17226,46 @@ async def pricing_complete():
                     </div>
                 </div>
             </div>
-            
             <!-- Plan ADVANCED -->
             <div id="plan-advanced" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="font-size: 28px; margin-bottom: 10px;">💎 Plan ADVANCED - $74.97/3 mois</h3>
                     <p style="font-size: 16px; opacity: 0.9;">16 pages Premium + 7 pages Advanced = 23 pages totales</p>
                 </div>
-                
                 <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
                     <strong style="color: #065f46;">✅ Inclut toutes les pages PREMIUM +</strong>
                 </div>
-                
                 <div class="pages-grid">
                     <div class="page-card advanced-card">
                         <div class="page-icon">🔍</div>
                         <h4>Scanner Opportunités IA</h4>
                         <p>Détection automatique d'opportunités de trading avec analyse de patterns et scoring</p>
                     </div>
-                    
                     <div class="page-card advanced-card">
                         <div class="page-icon">📈</div>
                         <h4>Détection Régime Marché</h4>
                         <p>Identification automatique des phases Bull/Bear/Consolidation avec analyse de volatilité</p>
                     </div>
-                    
                     <div class="page-card advanced-card">
                         <div class="page-icon">📋</div>
                         <h4>Gestion Stratégies</h4>
                         <p>Création et gestion de stratégies personnalisées avec optimisation de paramètres</p>
                     </div>
-                    
                     <div class="page-card advanced-card">
                         <div class="page-icon">⚠️</div>
                         <h4>Risk Management</h4>
                         <p>Calcul avancé de taille de position, Risk/Reward, Stop Loss et Take Profit suggérés</p>
                     </div>
-                    
                     <div class="page-card advanced-card">
                         <div class="page-icon">📊</div>
                         <h4>Stats Dashboard Avancé</h4>
                         <p>Statistiques détaillées avec win rate, profit factor, meilleures/pires trades</p>
                     </div>
-                    
                     <div class="page-card advanced-card">
                         <div class="page-icon">📈</div>
                         <h4>Graphiques Personnalisés</h4>
                         <p>Charts avancés avec indicateurs techniques et analyse multi-timeframe</p>
                     </div>
-                    
                     <div class="page-card advanced-card">
                         <div class="page-icon">🚀</div>
                         <h4>Détection Bull Run</h4>
@@ -18838,43 +17273,36 @@ async def pricing_complete():
                     </div>
                 </div>
             </div>
-            
             <!-- Plan PRO -->
             <div id="plan-pro" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="font-size: 28px; margin-bottom: 10px;">👑 Plan PRO - $134.94/6 mois</h3>
                     <p style="font-size: 16px; opacity: 0.9;">23 pages Advanced + 5 pages Pro = 28 pages totales</p>
                 </div>
-                
                 <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
                     <strong style="color: #065f46;">✅ Inclut toutes les pages ADVANCED +</strong>
                 </div>
-                
                 <div class="pages-grid">
                     <div class="page-card pro-card">
                         <div class="page-icon">🐋</div>
                         <h4>Whale Watcher</h4>
                         <p>Surveillance des mouvements de gros capitaux avec alertes transactions importantes</p>
                     </div>
-                    
                     <div class="page-card pro-card">
                         <div class="page-icon">🔄</div>
                         <h4>Backtesting Complet</h4>
                         <p>Test de stratégies sur données historiques avec métriques avancées (Sharpe, Max DD)</p>
                     </div>
-                    
                     <div class="page-card pro-card">
                         <div class="page-icon">📡</div>
                         <h4>Stats Temps Réel</h4>
                         <p>Métriques en direct avec performance du jour, P&L live et taux de réussite</p>
                     </div>
-                    
                     <div class="page-card pro-card">
                         <div class="page-icon">📄</div>
                         <h4>Rapports PDF</h4>
                         <p>Génération automatique de rapports mensuels avec analyses et graphiques exportables</p>
                     </div>
-                    
                     <div class="page-card pro-card">
                         <div class="page-icon">⛓️</div>
                         <h4>Métriques On-Chain</h4>
@@ -18882,38 +17310,32 @@ async def pricing_complete():
                     </div>
                 </div>
             </div>
-            
             <!-- Plan ELITE -->
             <div id="plan-elite" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="font-size: 28px; margin-bottom: 10px;">🚀 Plan ELITE - $239.88/an</h3>
                     <p style="font-size: 16px; opacity: 0.9;">28 pages Pro + 3 pages Elite = 31 pages totales - TOUT DÉBLOQUÉ!</p>
                 </div>
-                
                 <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
                     <strong style="color: #92400e;">⭐ Inclut TOUTES les pages PRO + Accès API Complet</strong>
                 </div>
-                
                 <div class="pages-grid">
                     <div class="page-card elite-card">
                         <div class="page-icon">🔮</div>
                         <h4>Prédictions IA Avancées</h4>
                         <p>Prédictions de prix basées sur machine learning avec modèles avancés et probabilités</p>
                     </div>
-                    
                     <div class="page-card elite-card">
                         <div class="page-icon">🔑</div>
                         <h4>Gestion Clés API</h4>
                         <p>Génération de clés API personnelles pour accès programmatique à toutes vos données</p>
                     </div>
-                    
                     <div class="page-card elite-card">
                         <div class="page-icon">📚</div>
                         <h4>Documentation API</h4>
                         <p>Documentation complète de l'API avec exemples de code et limites de rate</p>
                     </div>
                 </div>
-                
                 <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 30px; border-radius: 15px; margin-top: 30px; text-align: center;">
                     <h3 style="color: #92400e; font-size: 24px; margin-bottom: 15px;">🎁 Bonus Exclusifs ELITE</h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
@@ -18940,7 +17362,6 @@ async def pricing_complete():
                     </div>
                 </div>
             </div>
-            
             <style>
                 .plan-tab {
                     padding: 15px 25px;
@@ -19012,31 +17433,26 @@ async def pricing_complete():
                     line-height: 1.6;
                 }
             </style>
-            
             <script>
                 function showPlan(planName) {
                     // Cacher tous les plans
                     document.querySelectorAll('.plan-content').forEach(el => {
                         el.style.display = 'none';
                     });
-                    
                     // Retirer la classe active de tous les tabs
                     document.querySelectorAll('.plan-tab').forEach(el => {
                         el.classList.remove('active-tab');
                     });
-                    
                     // Afficher le plan sélectionné
                     document.getElementById('plan-' + planName).style.display = 'block';
                     document.getElementById('tab-' + planName).classList.add('active-tab');
                 }
             </script>
         </div>
-        
         <center>
             <a href="/dashboard" class="back-link">← Retour au Dashboard</a>
         </center>
     </div>
-    
     <script>
         // État global pour le code promo
         let appliedPromo = {
@@ -19050,30 +17466,24 @@ async def pricing_complete():
             },
             discountedPrices: {}
         };
-        
         // Appliquer le code promo
         async function applyPromo() {
             const codeInput = document.getElementById('promoCode');
             const code = codeInput.value.trim().toUpperCase();
             const messageDiv = document.getElementById('promoMessage');
-            
             if (!code) {
                 showMessage('Veuillez entrer un code promo', 'error');
                 return;
             }
-            
             messageDiv.innerHTML = '🔄 Validation en cours...';
             messageDiv.className = 'promo-message';
             messageDiv.style.display = 'block';
-            
             try {
                 // Valider pour chaque plan
                 let validForAnyPlan = false;
-                
                 for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
                     const response = await fetch(`/api/validate-promo?code=${code}&plan=${plan}&amount=${originalPrice}`);
                     const data = await response.json();
-                    
                     if (data.valid && data.discount) {
                         validForAnyPlan = true;
                         appliedPromo.code = code;
@@ -19081,7 +17491,6 @@ async def pricing_complete():
                         updatePriceDisplay(plan, originalPrice, data.final_amount);
                     }
                 }
-                
                 if (validForAnyPlan) {
                     showMessage(`✅ Code ${code} appliqué avec succès!`, 'success');
                 } else {
@@ -19093,14 +17502,12 @@ async def pricing_complete():
                 console.error(error);
             }
         }
-        
         function showMessage(message, type) {
             const messageDiv = document.getElementById('promoMessage');
             messageDiv.innerHTML = message;
             messageDiv.className = `promo-message ${type}`;
             messageDiv.style.display = 'block';
         }
-        
         function updatePriceDisplay(plan, originalPrice, newPrice) {
             const amountSpan = document.getElementById(`amount-${plan}`);
             amountSpan.innerHTML = `
@@ -19108,20 +17515,16 @@ async def pricing_complete():
                 ${newPrice.toFixed(2)}
             `;
         }
-        
         function resetPrices() {
             appliedPromo.code = null;
             appliedPromo.discountedPrices = {};
-            
             for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
                 const amountSpan = document.getElementById(`amount-${plan}`);
                 amountSpan.textContent = originalPrice.toFixed(2);
             }
         }
-        
         async function checkout(plan, method, baseAmount) {
             const finalAmount = appliedPromo.discountedPrices[plan] || baseAmount;
-            
             if (method === 'stripe') {
                 const response = await fetch('/api/stripe-checkout', {
                     method: 'POST',
@@ -19132,7 +17535,6 @@ async def pricing_complete():
                         promo_code: appliedPromo.code
                     })
                 });
-                
                 const data = await response.json();
                 if (data.url) {
                     window.location.href = data.url;
@@ -19149,7 +17551,6 @@ async def pricing_complete():
                         promo_code: appliedPromo.code
                     })
                 });
-                
                 const data = await response.json();
                 if (data.url) {
                     window.location.href = data.url;
@@ -19394,22 +17795,18 @@ async def pricing_page_new(request: Request):
 
         <div class="faq">
             <h2>❓ Questions Fréquentes</h2>
-            
             <div class="faq-item">
                 <strong>💳 Comment fonctionne le paiement?</strong>
                 <p>Cliquez sur "Acheter Maintenant" et vous serez redirigé vers notre système de paiement sécurisé.</p>
             </div>
-            
             <div class="faq-item">
                 <strong>🔄 Puis-je changer de plan?</strong>
                 <p>Oui! Vous pouvez upgrader ou downgrader votre plan à tout moment. Les modifications se feront au prochain cycle de facturation.</p>
             </div>
-            
             <div class="faq-item">
                 <strong>🔐 Est-ce sécurisé?</strong>
                 <p>Oui! Les paiements sont traités par nos partenaires de paiement sécurisés.</p>
             </div>
-            
             <div class="faq-item">
                 <strong>📞 Avez-vous du support?</strong>
                 <p>Bien sûr! Contactez notre équipe pour toute question concernant votre abonnement.</p>
@@ -19420,11 +17817,9 @@ async def pricing_page_new(request: Request):
     <script>
         function buyPlan(planName, amount) {
             console.log(`Achat du plan: ${planName} - $${amount}`);
-            
             const button = event.target;
             button.disabled = true;
             button.textContent = 'Traitement... ⏳';
-            
             fetch('/api/test-payment', {
                 method: 'POST',
                 headers: {
@@ -19464,7 +17859,6 @@ async def pricing_page_new(request: Request):
 </body>
 </html>""")
 
-    
     try:
         # Créer la charge avec Coinbase Commerce
         charge = coinbase_client.charge.create(
@@ -19481,7 +17875,6 @@ async def pricing_page_new(request: Request):
                 "email": req.email
             }
         )
-        
         # Sauvegarder dans la DB
         charge_id = charge.id
         create_payment_record(
@@ -19493,7 +17886,6 @@ async def pricing_page_new(request: Request):
             description=req.description,
             charge_data=charge
         )
-        
         return {
             "success": True,
             "charge_id": charge_id,
@@ -19511,23 +17903,17 @@ async def get_charge_status(charge_id: str, request: Request):
     """Récupère le statut d'une charge"""
     # Essayer de récupérer le token
     token = request.cookies.get("session_token") or request.cookies.get("auth_token")
-    
     if not token:
         token = "anonymous"
-    
     if not COINBASE_AVAILABLE:
         raise HTTPException(status_code=500, detail="Coinbase Commerce non installé - pip install coinbase-commerce")
-    
     if not coinbase_client:
         raise HTTPException(status_code=500, detail="Coinbase Commerce non configuré")
-    
     try:
         # Récupérer de la DB d'abord
         payment = get_payment_by_charge_id(charge_id)
-        
         # Vérifier l'état avec Coinbase
         charge = coinbase_client.charge.retrieve(charge_id)
-        
         return {
             "success": True,
             "charge_id": charge_id,
@@ -19548,7 +17934,6 @@ async def coinbase_webhook(request: Request):
         # Récupérer le payload brut
         body = await request.body()
         signature = request.headers.get("X-CC-Webhook-Signature", "")
-        
         # Vérifier la signature (optionnel mais recommandé)
         if COINBASE_WEBHOOK_SECRET:
             expected_signature = hmac.new(
@@ -19556,40 +17941,31 @@ async def coinbase_webhook(request: Request):
                 body,
                 hashlib.sha256
             ).hexdigest()
-        
         # Parser le JSON
         payload = json.loads(body)
-        
         if "event" not in payload:
             return {"success": False, "message": "Payload invalide"}
-        
         event = payload["event"]
         event_type = event.get("type")
         event_data = event.get("data", {})
-        
         # Traiter les différents types d'événements
         if event_type == "charge:confirmed":
             charge_id = event_data.get("id")
             update_payment_status(charge_id, "confirmed", datetime.now())
             print(f"✅ Paiement confirmé: {charge_id}")
-            
         elif event_type == "charge:failed":
             charge_id = event_data.get("id")
             update_payment_status(charge_id, "failed")
             print(f"❌ Paiement échoué: {charge_id}")
-            
         elif event_type == "charge:resolved":
             charge_id = event_data.get("id")
             update_payment_status(charge_id, "resolved", datetime.now())
             print(f"✅ Paiement résolu: {charge_id}")
-            
         elif event_type == "charge:created":
             charge_id = event_data.get("id")
             update_payment_status(charge_id, "created")
             print(f"📝 Paiement créé: {charge_id}")
-        
         return {"success": True, "message": "Webhook traité"}
-    
     except Exception as e:
         print(f"❌ Webhook erreur: {e}")
         return {"success": False, "message": str(e)}
@@ -19607,46 +17983,37 @@ async def stripe_checkout(request: Request):
         amount = data.get('amount', 29.99)
         promo_code = data.get('promo_code', None)
         email = data.get('email', 'user@example.com')
-        
         # Récupérer l'email de l'utilisateur connecté si disponible
         session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
         if user:
             email = user.get('username', email)
-        
         if not STRIPE_AVAILABLE or not STRIPE_SECRET_KEY:
             return JSONResponse({
                 "success": False,
                 "message": "Stripe non configuré"
             }, status_code=500)
-        
         if not PAYMENT_SYSTEM_AVAILABLE:
             return JSONResponse({
                 "success": False,
                 "message": "Payment system non disponible"
             }, status_code=500)
-        
         # Valider et appliquer le code promo (NOUVEAU SYSTÈME)
         final_amount = amount
         discount_applied = 0
-        
         if promo_code:
             try:
                 conn = db_manager.get_connection()
                 cursor = conn.cursor()
-                
                 # Chercher le code promo dans la nouvelle table
                 cursor.execute("""
                     SELECT discount, type, valid_until, max_uses, uses
                     FROM promo_codes
                     WHERE UPPER(code) = UPPER(?)
                 """, (promo_code,))
-                
                 result = cursor.fetchone()
-                
                 if result:
                     discount_value, discount_type, valid_until, max_uses, current_uses = result
-                    
                     # Vérifier expiration
                     valid = True
                     if valid_until:
@@ -19658,21 +18025,17 @@ async def stripe_checkout(request: Request):
                                 print(f"⚠️ Code {promo_code} expiré")
                         except:
                             pass
-                    
                     # Vérifier utilisations
                     if valid and max_uses and current_uses >= max_uses:
                         valid = False
                         print(f"⚠️ Code {promo_code} épuisé ({current_uses}/{max_uses})")
-                    
                     if valid:
                         # Calculer le rabais
                         if discount_type == 'percentage':
                             discount_applied = amount * (discount_value / 100)
                         else:  # fixed
                             discount_applied = discount_value
-                        
                         final_amount = max(0, amount - discount_applied)
-                        
                         # Incrémenter l'utilisation
                         cursor.execute("""
                             UPDATE promo_codes 
@@ -19680,43 +18043,36 @@ async def stripe_checkout(request: Request):
                             WHERE UPPER(code) = UPPER(?)
                         """, (promo_code,))
                         conn.commit()
-                        
                         print(f"✅ Code promo {promo_code} appliqué: -${discount_applied:.2f} (${amount:.2f} → ${final_amount:.2f})")
                     else:
                         print(f"⚠️ Code promo '{promo_code}' invalide")
                 else:
                     print(f"⚠️ Code promo '{promo_code}' non trouvé")
-                
                 cursor.close()
                 conn.close()
             except Exception as e:
                 print(f"❌ Erreur validation promo: {e}")
                 import traceback
                 traceback.print_exc()
-        
         # URLs
         base_url = "https://tradingview-production-5763.up.railway.app"
         success_url = f"{base_url}/api/payment-success?plan={plan}"
         cancel_url = f"{base_url}/api/payment-cancel?plan={plan}"
-        
         # Créer session avec montant final (avec réduction)
         checkout_url, error = create_stripe_checkout_session(
             plan, email, success_url, cancel_url, final_amount
         )
-        
         if error:
             return JSONResponse({
                 "success": False,
                 "message": error
             }, status_code=400)
-        
         print(f"✅ Session Stripe créée: {plan} pour {email} (${final_amount:.2f})")
         return JSONResponse({
             "success": True,
             "url": checkout_url,
             "checkout_url": checkout_url
         })
-    
     except Exception as e:
         print(f"❌ Stripe error: {e}")
         return JSONResponse({
@@ -19733,15 +18089,12 @@ async def coinbase_checkout(request: Request):
         amount = data.get('amount', 29.99)
         promo_code = data.get('promo_code', None)
         email = data.get('email', 'user@example.com')
-        
         # Récupérer l'email de l'utilisateur connecté si disponible
         session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
         if user:
             email = user.get('username', email)
-        
         print(f"🔵 Demande Coinbase: plan={plan}, amount=${amount}, email={email}, promo={promo_code}")
-        
         if not COINBASE_AVAILABLE or not coinbase_client:
             error_msg = "Coinbase Commerce non configuré - Vérifiez COINBASE_COMMERCE_KEY"
             print(f"❌ {error_msg}")
@@ -19749,28 +18102,22 @@ async def coinbase_checkout(request: Request):
                 "success": False,
                 "message": error_msg
             }, status_code=500)
-        
         # Valider et appliquer le code promo (NOUVEAU SYSTÈME)
         final_amount = amount
         discount_applied = 0
-        
         if promo_code:
             try:
                 conn = db_manager.get_connection()
                 cursor = conn.cursor()
-                
                 # Chercher le code promo dans la nouvelle table
                 cursor.execute("""
                     SELECT discount, type, valid_until, max_uses, uses
                     FROM promo_codes
                     WHERE UPPER(code) = UPPER(?)
                 """, (promo_code,))
-                
                 result = cursor.fetchone()
-                
                 if result:
                     discount_value, discount_type, valid_until, max_uses, current_uses = result
-                    
                     # Vérifier expiration
                     valid = True
                     if valid_until:
@@ -19782,21 +18129,17 @@ async def coinbase_checkout(request: Request):
                                 print(f"⚠️ Code {promo_code} expiré")
                         except:
                             pass
-                    
                     # Vérifier utilisations
                     if valid and max_uses and current_uses >= max_uses:
                         valid = False
                         print(f"⚠️ Code {promo_code} épuisé ({current_uses}/{max_uses})")
-                    
                     if valid:
                         # Calculer le rabais
                         if discount_type == 'percentage':
                             discount_applied = amount * (discount_value / 100)
                         else:  # fixed
                             discount_applied = discount_value
-                        
                         final_amount = max(0, amount - discount_applied)
-                        
                         # Incrémenter l'utilisation
                         cursor.execute("""
                             UPDATE promo_codes 
@@ -19804,40 +18147,33 @@ async def coinbase_checkout(request: Request):
                             WHERE UPPER(code) = UPPER(?)
                         """, (promo_code,))
                         conn.commit()
-                        
                         print(f"✅ Code promo {promo_code} appliqué: -${discount_applied:.2f} (${amount:.2f} → ${final_amount:.2f})")
                     else:
                         print(f"⚠️ Code promo '{promo_code}' invalide")
                 else:
                     print(f"⚠️ Code promo '{promo_code}' non trouvé")
-                
                 cursor.close()
                 conn.close()
             except Exception as e:
                 print(f"❌ Erreur validation promo: {e}")
                 import traceback
                 traceback.print_exc()
-        
         # Créer charge Coinbase avec montant final
         charge, error = create_coinbase_payment(plan, email, coinbase_client, final_amount)
-        
         if error:
             print(f"❌ Erreur création charge: {error}")
             return JSONResponse({
                 "success": False,
                 "message": f"Erreur Coinbase: {error}"
             }, status_code=400)
-        
         if not charge or not hasattr(charge, 'hosted_url'):
             print(f"❌ Charge invalide: {charge}")
             return JSONResponse({
                 "success": False,
                 "message": "Charge Coinbase invalide - pas d'URL générée"
             }, status_code=500)
-        
         print(f"✅ Charge Coinbase créée: {charge.id} (${final_amount:.2f})")
         print(f"🔗 URL de paiement: {charge.hosted_url}")
-        
         return JSONResponse({
             "success": True,
             "url": charge.hosted_url,
@@ -19846,7 +18182,6 @@ async def coinbase_checkout(request: Request):
             "plan": plan,
             "amount": final_amount
         })
-    
     except Exception as e:
         print(f"❌ Exception Coinbase checkout: {type(e).__name__}: {str(e)}")
         import traceback
@@ -19933,20 +18268,15 @@ async def payment_success(request: Request, plan: str = "monthly"):
             <div class="emoji">✅</div>
             <h1>Paiement Réussi!</h1>
             <p>Votre paiement a été traité avec succès.</p>
-            
             <div class="plan">
                 <p>Plan acheté:</p>
                 <strong>{plan.upper()}</strong>
             </div>
-            
             <p><strong>⚠️ Important:</strong> Un administrateur activera votre abonnement sous peu. Vous recevrez une confirmation par email.</p>
-            
             <p>En attendant, vous pouvez:</p>
-            
             <a href="/mon-compte" class="btn">👤 Mon Compte</a>
             <a href="/" class="btn">🏠 Dashboard</a>
         </div>
-        
         <script>
             // Auto-redirect après 10 secondes
             setTimeout(() => {{
@@ -20024,9 +18354,7 @@ async def payment_cancel(request: Request, plan: str = "monthly"):
             <h1>Paiement Annulé</h1>
             <p>Vous avez annulé le processus de paiement.</p>
             <p>Aucun montant n'a été débité.</p>
-            
             <p>Vous pouvez réessayer quand vous voulez!</p>
-            
             <a href="/pricing-complete" class="btn">💎 Voir les Plans</a>
             <a href="/" class="btn">🏠 Dashboard</a>
         </div>
@@ -20040,14 +18368,11 @@ async def test_payment(request: Request):
     try:
         body = await request.body()
         print(f"📨 Payload reçu: {body}")
-        
         data = json.loads(body)
         plan = data.get('plan', 'Unknown')
         amount = data.get('amount', 0)
         email = data.get('email', 'unknown@example.com')
-        
         print(f"✅ Paiement traité: {plan} - ${amount} - {email}")
-        
         # Retourner le JSON de succès
         return JSONResponse({
             "success": True,
@@ -20055,7 +18380,6 @@ async def test_payment(request: Request):
             "plan": plan,
             "amount": amount
         })
-        
     except json.JSONDecodeError as e:
         print(f"❌ JSON decode error: {e}")
         return JSONResponse({
@@ -20073,14 +18397,11 @@ async def get_payments(request: Request):
     """Liste tous les paiements de l'utilisateur"""
     # Essayer de récupérer le token
     token = request.cookies.get("session_token") or request.cookies.get("auth_token")
-    
     if not token:
         token = "anonymous"
-    
     try:
         username = token.split("|")[0] if "|" in token else token
         conn = get_db_connection()
-        
         if DB_CONFIG["type"] == "postgres":
             c = conn.cursor(cursor_factory=RealDictCursor)
             c.execute("SELECT * FROM payments WHERE user_id=%s ORDER BY created_at DESC", (username,))
@@ -20088,10 +18409,8 @@ async def get_payments(request: Request):
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
             c.execute("SELECT * FROM payments WHERE user_id=? ORDER BY created_at DESC", (username,))
-        
         rows = c.fetchall()
         conn.close()
-        
         payments = [dict(r) for r in rows]
         return {"success": True, "payments": payments}
     except Exception as e:
@@ -20104,7 +18423,6 @@ async def reset_weekly_pnl_manual():
     global weekly_pnl
     now = datetime.now()
     current_week_start = now - timedelta(days=now.weekday())
-    
     weekly_pnl = {
         "monday": 0.0,
         "tuesday": 0.0,
@@ -20116,7 +18434,6 @@ async def reset_weekly_pnl_manual():
         "week_start": current_week_start.strftime("%Y-%m-%d"),
         "last_reset": now.isoformat()
     }
-    
     return {"ok": True, "message": "P&L hebdomadaire réinitialisé"}
 
 # ============= PAGE RISK MANAGEMENT =============
@@ -20127,7 +18444,6 @@ async def reset_weekly_pnl_manual():
 @app.get("/stats-dashboard", response_class=HTMLResponse)
 async def stats_dashboard():
     """$ DASHBOARD STATISTIQUES - TOUTES DONNÉES RÉELLES 100% $"""
-    
     # ========== RÉCUPÉRATION DONNÉES MARCHÉ RÉELLES ==========
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
@@ -20140,7 +18456,6 @@ async def stats_dashboard():
                 if len(fg_data) > 0:
                     fg_val = int(fg_data[0].get('value', 55))
                     fg_history = [int(d.get('value', 55)) for d in fg_data[:8]]
-           
             # Dominance BTC + Market Change
             glob_resp = await client.get("https://api.coingecko.com/api/v3/global")
             btc_dom = 50.0
@@ -20153,7 +18468,6 @@ async def stats_dashboard():
                 eth_dom = round(gdata.get('market_cap_percentage', {}).get('eth', 15), 1)
                 mkt_chg = round(gdata.get('market_cap_change_percentage_24h_usd', 2.5), 2)
                 total_volume = gdata.get('total_volume', {}).get('usd', 0)
-            
             # Volatilité BTC RÉELLE (30 jours)
             btc_resp = await client.get("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30")
             btc_volatility = 45.0
@@ -20169,7 +18483,6 @@ async def stats_dashboard():
         print(f"❌ Erreur API: {e}")
         fg_val, btc_dom, eth_dom, mkt_chg, btc_volatility, total_volume = 55, 50, 15, 2.5, 45, 0
         fg_history = [55] * 8
-    
     # ========== CALCUL MÉTRIQUES RÉELLES DEPUIS trades_db ==========
     total_trades = len(trades_db)
     winning_trades = 0
@@ -20179,22 +18492,18 @@ async def stats_dashboard():
     monthly_pnl = [0] * 8
     drawdowns = []
     peak = 0
-    
     if total_trades > 0:
         # Analyser chaque trade
         for trade in trades_db:
             # Utiliser le P&L déjà calculé du trade
             pnl = trade.get('pnl', 0)
-            
             total_pnl += pnl
             pnl_history.append(total_pnl)
-            
             # Comptage wins/losses basé sur le pnl réel
             if pnl > 0:
                 winning_trades += 1
             elif pnl < 0:
                 losing_trades += 1
-            
             # Drawdown réel: baisse depuis le peak jusqu'au creux
             if total_pnl > peak:
                 peak = total_pnl
@@ -20204,13 +18513,10 @@ async def stats_dashboard():
             else:
                 dd = 0
             drawdowns.append(dd)
-        
         # WIN RATE RÉEL
         win_rate = round((winning_trades / total_trades * 100), 1) if total_trades > 0 else 0
-        
         # MAX DRAWDOWN RÉEL
         max_dd = round(min(drawdowns), 1) if drawdowns else 0
-        
         # SHARPE RATIO RÉEL
         if len(pnl_history) > 2:
             import statistics
@@ -20220,7 +18526,6 @@ async def stats_dashboard():
             sharpe = round(avg_return / std_return if std_return > 0 else 0, 2)
         else:
             sharpe = 0
-        
         # P&L mensuel (distribuer correctement sur 8 périodes)
         if len(pnl_history) >= 8:
             # Diviser l'historique en 8 segments égaux
@@ -20246,7 +18551,6 @@ async def stats_dashboard():
         sharpe = 0
         # Générer un P&L réaliste basé sur le marché
         monthly_pnl = [mkt_chg * 0.5 * (i+1) for i in range(8)]
-    
     # ========== HTML AVEC VRAIES DONNÉES ==========
     html = f"""<!DOCTYPE html>
 <html>
@@ -20254,35 +18558,27 @@ async def stats_dashboard():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>📊 Stats Dashboard - Données Réelles</title>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{ background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }}
-        
         .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
         h1 {{ text-align: center; margin-bottom: 30px; color: #00ff88; font-size: 2.2em; }}
-        
         .data-badge {{ text-align: center; margin-bottom: 20px; padding: 12px; background: rgba(0, 255, 136, 0.1); border: 2px solid #00ff88; border-radius: 8px; color: #00ff88; font-weight: bold; }}
-        
         .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }}
         .stat-card {{ background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.3); border-radius: 12px; padding: 20px; text-align: center; }}
         .stat-card:hover {{ border-color: #00ff88; box-shadow: 0 0 15px rgba(0,255,136,0.4); }}
         .stat-label {{ font-size: 0.85em; color: #aaa; margin-bottom: 8px; text-transform: uppercase; }}
         .stat-value {{ font-size: 2.2em; font-weight: bold; color: #00ff88; margin: 8px 0; }}
         .stat-badge {{ display: inline-block; padding: 4px 12px; background: rgba(0,255,136,0.2); border-radius: 15px; font-size: 0.75em; }}
-        
         .charts-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 30px; }}
         .chart-container {{ background: rgba(255,255,255,0.05); border: 2px solid rgba(0,255,136,0.2); border-radius: 12px; padding: 15px; height: 350px; position: relative; }}
         .chart-title {{ text-align: center; color: #00ff88; margin-bottom: 10px; font-size: 1.1em; }}
-        
         .rec-box {{ background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,212,255,0.1)); border-left: 4px solid #00ff88; padding: 20px; border-radius: 8px; margin-top: 20px; }}
         .rec-box h3 {{ margin-bottom: 15px; color: #00ff88; }}
         .rec-box ul {{ margin-left: 20px; line-height: 1.8; }}
-        
         .btn {{ display: block; margin: 20px auto; padding: 12px 30px; background: linear-gradient(45deg, #00ff88, #00d4ff); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1em; }}
         .btn:hover {{ transform: scale(1.05); }}
-        
         .footer {{ text-align: center; color: #00ff88; font-size: 0.9em; margin-top: 20px; padding: 15px; background: rgba(0, 255, 136, 0.1); border-radius: 8px; border: 1px solid rgba(0, 255, 136, 0.3); }}
     </style>
 </head>
@@ -20298,21 +18594,15 @@ async def stats_dashboard():
 .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
 </style>
 
-
-    
-
     <div class="container">
         <h1>$ 📊 STATISTIQUES - 100% DONNÉES RÉELLES $</h1>
-        
         <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;">
             <div id="last-refresh" class="data-badge" style="background: rgba(0, 255, 136, 0.15); border: 2px solid #00ff88; color: #00ff88;">⏰ --:--:--</div>
             <div id="refresh-badge" class="data-badge" style="background: rgba(0, 212, 255, 0.15); border: 2px solid #00d4ff; color: #00d4ff;">🔄 30s</div>
         </div>
-        
         <div class="data-badge">
             ✅ TOUTES DONNÉES 100% RÉELLES | API CoinGecko + Alternative.me + Votre Historique de Trades
         </div>
-        
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-label">📈 Sharpe Ratio</div>
@@ -20345,7 +18635,6 @@ async def stats_dashboard():
                 <div class="stat-badge">🔴 Live API</div>
             </div>
         </div>
-        
         <div class="charts-grid">
             <div class="chart-container"><div class="chart-title">📈 P&L Mensuel RÉEL</div><canvas id="perf"></canvas></div>
             <div class="chart-container"><div class="chart-title">📉 Drawdown par Trade</div><canvas id="dd"></canvas></div>
@@ -20354,9 +18643,7 @@ async def stats_dashboard():
             <div class="chart-container"><div class="chart-title">👑 Dominance Marché</div><canvas id="dom"></canvas></div>
             <div class="chart-container"><div class="chart-title">💰 Volume 24h</div><canvas id="vol"></canvas></div>
         </div>
-        
         <button class="btn" onclick="location.reload()">🔄 Actualiser Données Réelles</button>
-        
         <div class="rec-box">
             <h3>📌 Analyse Basée sur VOS Données</h3>
             <ul>
@@ -20369,30 +18656,21 @@ async def stats_dashboard():
                 <li>⚡ Vol BTC {btc_volatility}% - {'Très agité!' if btc_volatility > 60 else 'Normal' if btc_volatility > 40 else 'Calme'}</li>
             </ul>
         </div>
-        
         <div class="footer">
             ✅ <strong>100% DONNÉES RÉELLES</strong><br>
             📡 CoinGecko API + Alternative.me + {total_trades} Trades Réels<br>
             🔄 BTC: {btc_dom}% | Marché 24h: {mkt_chg:+.2f}% | Vol: ${round(total_volume/1e9, 1)}B
         </div>
     </div>
-    
     <script>
         new Chart(document.getElementById('perf'), {{type: 'line', data: {{labels: ['M1','M2','M3','M4','M5','M6','M7','M8'], datasets: [{{label: 'P&L Réel (%)', data: {monthly_pnl}, borderColor: '#00ff88', backgroundColor: 'rgba(0,255,136,0.1)', fill: true, tension: 0.4, borderWidth: 3}}]}}, options: {{responsive: true, maintainAspectRatio: false, plugins: {{legend: {{display: true, labels: {{color: '#fff'}}}}}}, scales: {{y: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}, x: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}}}}} }});
-        
         new Chart(document.getElementById('dd'), {{type: 'bar', data: {{labels: {['T'+str(i+1) for i in range(min(len(drawdowns), 8))]}, datasets: [{{label: 'DD Réel (%)', data: {drawdowns[:8] if len(drawdowns) > 0 else [0]*8}, backgroundColor: 'rgba(255,100,100,0.6)', borderColor: '#ff6464', borderWidth: 2}}]}}, options: {{responsive: true, maintainAspectRatio: false, plugins: {{legend: {{display: true, labels: {{color: '#fff'}}}}}}, scales: {{y: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}, x: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}}}}} }});
-        
         new Chart(document.getElementById('fg'), {{type: 'line', data: {{labels: ['J1','J4','J7','J10','J13','J16','J19','J22'], datasets: [{{label: 'Fear & Greed', data: {fg_history[::-1]}, borderColor: '#ffd700', backgroundColor: 'rgba(255,215,0,0.1)', fill: true, tension: 0.4, borderWidth: 3}}]}}, options: {{responsive: true, maintainAspectRatio: false, plugins: {{legend: {{display: true, labels: {{color: '#fff'}}}}}}, scales: {{y: {{min: 0, max: 100, ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}, x: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}}}}} }});
-        
         new Chart(document.getElementById('wr'), {{type: 'doughnut', data: {{labels: ['Gagnants','Perdants','En cours'], datasets: [{{data: [{winning_trades}, {losing_trades}, {total_trades - winning_trades - losing_trades}], backgroundColor: ['#00ff88','#ff6464', '#ffd700']}}]}}, options: {{responsive: true, maintainAspectRatio: false, plugins: {{legend: {{display: true, labels: {{color: '#fff'}}}}}}}} }});
-        
         new Chart(document.getElementById('dom'), {{type: 'doughnut', data: {{labels: ['BTC','ETH','Autres'], datasets: [{{data: [{btc_dom}, {eth_dom}, {round(100-btc_dom-eth_dom, 1)}], backgroundColor: ['#ff9900','#627eea','#00ff88']}}]}}, options: {{responsive: true, maintainAspectRatio: false, plugins: {{legend: {{display: true, labels: {{color: '#fff'}}}}}}}} }});
-        
         new Chart(document.getElementById('vol'), {{type: 'bar', data: {{labels: ['Volume 24h'], datasets: [{{label: 'Milliards $', data: [{round(total_volume/1e9, 1)}], backgroundColor: 'rgba(0,212,255,0.6)', borderColor: '#00d4ff', borderWidth: 2}}]}}, options: {{responsive: true, maintainAspectRatio: false, plugins: {{legend: {{display: true, labels: {{color: '#fff'}}}}}}, scales: {{y: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}, x: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}}}}} }});
-        
         // 🔄 AUTO-REFRESH TOUTES LES 30 SECONDES
         let refreshCounter = 30;
-        
         function updateRefreshCounter() {{
             refreshCounter--;
             const badge = document.getElementById('refresh-badge');
@@ -20403,7 +18681,6 @@ async def stats_dashboard():
                 }}
             }}
         }}
-        
         function updateLastRefreshTime() {{
             const now = new Date();
             const time = now.toLocaleTimeString('fr-FR');
@@ -20412,12 +18689,10 @@ async def stats_dashboard():
                 badge.textContent = '⏰ ' + time;
             }}
         }}
-        
         // Mettre à jour le compteur chaque seconde
         setInterval(updateRefreshCounter, 1000);
         updateLastRefreshTime();
         setInterval(updateLastRefreshTime, 1000);
-        
         // AUTO-REFRESH DE LA PAGE TOUTES LES 30 SECONDES
         setTimeout(function() {{
             location.reload();
@@ -20425,7 +18700,6 @@ async def stats_dashboard():
     </script>
 </body>
 </html>"""
-    
     return HTMLResponse(SIDEBAR + html)
 @app.get("/get-crypto-prices/{crypto_id}")
 async def get_crypto_prices(crypto_id: str):
@@ -20438,28 +18712,22 @@ async def get_crypto_prices(crypto_id: str):
             # Récupérer les données historiques (90 jours)
             url = f"https://api.coingecko.com/api/v3/coins/{crypto_id}/market_chart?vs_currency=usd&days=90"
             r = await client.get(url)
-            
             if r.status_code != 200:
                 return {"status": "error", "message": f"Crypto {crypto_id} non trouvée"}
-            
             data = r.json()
             prices = data.get('prices', [])
-            
             if not prices:
                 return {"status": "error", "message": "Pas de données"}
-            
             # Convertir en prix mensuel (tous les 30 jours)
             monthly_prices = []
             for i in range(0, len(prices), 3):  # ~3 jours = 1 point (90 jours = 30 points)
                 monthly_prices.append(prices[i][1])
-            
             # Normaliser les prix (première valeur = base 100)
             if monthly_prices:
                 base = monthly_prices[0]
                 normalized = [p / base * 1000 for p in monthly_prices]
             else:
                 normalized = []
-            
             return {
                 "status": "success",
                 "crypto": crypto_id,
@@ -20497,7 +18765,6 @@ async def market_simulation():
         .container { max-width: 1200px; margin: 0 auto; }
         h1 { text-align: center; margin: 30px 0 10px 0; color: #00ff88; }
         .subtitle { text-align: center; margin-bottom: 30px; color: #aaa; font-size: 0.95em; }
-        
         /* NAV stylisé pour correspondre aux autres sections */
         .nav {
             display: flex;
@@ -20527,7 +18794,6 @@ async def market_simulation():
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
         }
-        
         .controls {
             background: rgba(255,255,255,0.05);
             border: 2px solid rgba(0,255,136,0.3);
@@ -20536,14 +18802,12 @@ async def market_simulation():
             margin-bottom: 30px;
             backdrop-filter: blur(10px);
         }
-        
         .control-group {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 20px;
         }
-        
         label { 
             display: block; 
             font-weight: bold; 
@@ -20551,7 +18815,6 @@ async def market_simulation():
             color: #00ff88;
             font-size: 1.05em;
         }
-        
         input, select {
             width: 100%;
             padding: 14px 16px;
@@ -20564,13 +18827,11 @@ async def market_simulation():
             cursor: pointer;
             transition: all 0.3s;
         }
-        
         /* Style amélioré pour le select */
         select {
             background: rgba(15, 23, 42, 0.98);
             padding-right: 40px;
         }
-        
         /* Style des options du select pour meilleure lisibilité */
         select option {
             background: #0f172a;
@@ -20579,18 +18840,15 @@ async def market_simulation():
             font-size: 1.05em;
             font-weight: 600;
         }
-        
         select option:hover {
             background: #1e293b;
         }
-        
         input:focus, select:focus { 
             outline: none; 
             border-color: #00ff88; 
             box-shadow: 0 0 15px rgba(0,255,136,0.5);
             background: rgba(15, 23, 42, 1);
         }
-        
         button {
             background: linear-gradient(45deg, #00ff88, #00d4ff);
             color: #000;
@@ -20604,7 +18862,6 @@ async def market_simulation():
         }
         button:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(0,255,136,0.5); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        
         .crypto-badge {
             display: inline-block;
             background: rgba(0,255,136,0.2);
@@ -20615,14 +18872,12 @@ async def market_simulation():
             font-weight: bold;
             color: #00ff88;
         }
-        
         .data-source {
             font-size: 0.85em;
             color: #888;
             margin-top: 10px;
             font-style: italic;
         }
-        
         .chart-container {
             background: rgba(255,255,255,0.05);
             border: 2px solid rgba(0,255,136,0.2);
@@ -20632,27 +18887,22 @@ async def market_simulation():
             position: relative;
             height: 400px;
         }
-        
         .results-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-top: 30px;
         }
-        
         .result-card {
             background: rgba(0,255,136,0.1);
             border-left: 4px solid #00ff88;
             padding: 20px;
             border-radius: 8px;
         }
-        
         .result-label { color: #aaa; font-size: 0.9em; }
         .result-value { font-size: 2em; font-weight: bold; color: #00ff88; margin: 10px 0; }
-        
         .warning { background: rgba(255,100,100,0.1); border-left-color: #ff6464; }
         .success { background: rgba(0,255,136,0.2); border-left-color: #00ff88; }
-        
         .loading { 
             text-align: center; 
             color: #00ff88; 
@@ -20665,9 +18915,6 @@ async def market_simulation():
     <div class="container">
         <h1>📈 SIMULATION DE MARCHÉ - Top 10 Crypto</h1>
         <p class="subtitle">Comparez l'impact du DCA vs Émotions sur les cryptos réelles</p>
-        
-        
-        
         <div class="controls">
             <div class="control-group">
                 <div>
@@ -20700,24 +18947,19 @@ async def market_simulation():
                     <input type="number" id="duration" value="4" min="1" max="10" step="1">
                 </div>
             </div>
-            
             <div id="volatilityControl" style="display: none;">
                 <label>🎲 Volatilité (%) - Simulation Générique</label>
                 <input type="number" id="volatility" value="45" min="10" max="100" step="5">
             </div>
-            
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button id="runBtn" onclick="runSimulation()">🚀 Lancer Simulation</button>
                 <button onclick="resetSimulation()" style="background: rgba(255,100,100,0.6);">🔄 Réinitialiser</button>
             </div>
-            
             <div id="cryptoBadge" class="crypto-badge" style="display: none;"></div>
         </div>
-        
         <div class="chart-container">
             <canvas id="simulationChart"></canvas>
         </div>
-        
         <div class="results-grid">
             <div class="result-card success">
                 <div class="result-label">📈 Valeur DCA Finale</div>
@@ -20737,11 +18979,9 @@ async def market_simulation():
             </div>
         </div>
     </div>
-    
     <script>
         let chart = null;
         let currentCryptoData = null;
-        
         const cryptoIds = {
             'bitcoin': '₿ Bitcoin',
             'ethereum': 'Ξ Ethereum',
@@ -20754,12 +18994,10 @@ async def market_simulation():
             'litecoin': 'Ł Litecoin',
             'chainlink': '⬡ Chainlink'
         };
-        
         async function onCryptoChange() {
             const selected = document.getElementById('cryptoSelect').value;
             document.getElementById('volatilityControl').style.display = 
                 selected === 'generic' ? 'block' : 'none';
-            
             if (selected !== 'generic') {
                 await loadRealCryptoPrices(selected);
             } else {
@@ -20768,20 +19006,16 @@ async def market_simulation():
                 document.getElementById('cryptoBadge').style.display = 'none';
             }
         }
-        
         async function loadRealCryptoPrices(cryptoId) {
             document.getElementById('runBtn').disabled = true;
             document.getElementById('dataSourceInfo').innerHTML = '<div class="loading">⏳ Chargement des données...</div>';
-            
             try {
                 const response = await fetch(`/get-crypto-prices/${cryptoId}`);
                 const data = await response.json();
-                
                 if (data.status === 'success') {
                     currentCryptoData = data.prices;
                     document.getElementById('dataSourceInfo').innerHTML = 
                         '✅ Données réelles: CoinGecko (90 derniers jours)';
-                    
                     const badge = document.getElementById('cryptoBadge');
                     badge.innerHTML = `🪙 ${cryptoIds[cryptoId]} - ${data.prices.length} mois de données`;
                     badge.style.display = 'inline-block';
@@ -20797,14 +19031,11 @@ async def market_simulation():
                     '⚠️ Erreur réseau: Simulation aléatoire';
                 console.error('Erreur:', error);
             }
-            
             document.getElementById('runBtn').disabled = false;
         }
-        
         function generateRealisticPrices(months, initialPrice, volatility) {
             let prices = [initialPrice];
             let trend = 0;
-            
             for (let i = 1; i < months; i++) {
                 trend = Math.sin(i / 12) * 0.02;
                 const randomChange = (Math.random() - 0.5) * (volatility / 100);
@@ -20814,15 +19045,12 @@ async def market_simulation():
             }
             return prices;
         }
-        
         function runSimulation() {
             const initialCapital = parseFloat(document.getElementById('initialCapital').value);
             const dcaAmount = parseFloat(document.getElementById('dcaAmount').value);
             const years = parseFloat(document.getElementById('duration').value);
             const volatility = parseFloat(document.getElementById('volatility').value);
-            
             const months = Math.floor(years * 12);
-            
             let prices;
             if (currentCryptoData && currentCryptoData.length > 0) {
                 prices = [];
@@ -20833,34 +19061,27 @@ async def market_simulation():
             } else {
                 prices = generateRealisticPrices(months, 1000, volatility);
             }
-            
             let dcaCoins = 0;
             let dcaValue = initialCapital;
             const dcaValues = [];
             const labels = [];
-            
             let noDcaCoins = initialCapital / prices[0];  // Prix initial réel, pas 1000!
             const noDcaValues = [];
-            
             for (let month = 0; month < months; month++) {
                 // DCA: ajouter le DCA mensuel et calculer la valeur totale
                 dcaCoins += dcaAmount / prices[month];
                 const totalInvested = initialCapital + (month + 1) * dcaAmount;
                 const portfolioValue = dcaCoins * prices[month];
                 dcaValues.push(portfolioValue);
-                
                 // Sans DCA: juste la valeur initiale investie au prix du jour
                 const noDcaValue = initialCapital + noDcaCoins * (prices[month] - prices[0]);
                 noDcaValues.push(noDcaValue);
-                
                 labels.push(`M${month + 1}`);
             }
-            
             // Calculs finaux corrects
             const dcaFinal = dcaCoins * prices[months-1];
             const noDcaFinal = initialCapital + noDcaCoins * (prices[months-1] - prices[0]);
             const difference = dcaFinal - noDcaFinal;
-            
             // Calcul des gains plus robuste (éviter division par zéro)
             let gains = 0;
             if (noDcaFinal > 0) {
@@ -20868,14 +19089,11 @@ async def market_simulation():
             } else if (difference !== 0) {
                 gains = 100;  // Si noDcaFinal <= 0 mais difference > 0, c'est un gain infini
             }
-            
             document.getElementById('dcaFinal').textContent = '$' + dcaFinal.toFixed(0);
             document.getElementById('noDcaFinal').textContent = '$' + noDcaFinal.toFixed(0);
             document.getElementById('difference').textContent = '$' + difference.toFixed(0);
             document.getElementById('gains').textContent = (gains > 0 ? '+' : '') + gains.toFixed(1) + '%';
-            
             if (chart) chart.destroy();
-            
             const ctx = document.getElementById('simulationChart').getContext('2d');
             chart = new Chart(ctx, {
                 type: 'line',
@@ -20922,7 +19140,6 @@ async def market_simulation():
                 }
             });
         }
-        
         function resetSimulation() {
             document.getElementById('initialCapital').value = '10000';
             document.getElementById('dcaAmount').value = '500';
@@ -20932,7 +19149,6 @@ async def market_simulation():
             onCryptoChange();
             if (chart) chart.destroy();
         }
-        
         setTimeout(() => runSimulation(), 500);
     </script>
 <div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Market Simulation ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Simulateur trading pour pratiquer SANS RISQUE avec capital virtuel.</p><ul style="line-height: 1.8; color: #555;"><li>💰 Capital virtuel $10k-$100k</li><li>📊 Données RÉELLES du marché</li><li>📈 Testez stratégies sans risque</li><li>📉 Apprenez de vos erreurs</li><li>🎯 Statistiques performances</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎮 Fonctionnalités</h3><ul style="line-height: 1.8; color: #555;"><li>🔄 Buy/Sell comme vrai trading</li><li>📊 Position size, stop loss, TP</li><li>💹 Tracking P&L temps réel</li><li>📈 Graphique performances</li><li>📋 Historique trades</li><li>🎯 Win rate, profit factor</li><li>🔄 Reset capital si besoin</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">📊 Stats suivies</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>💰 Capital actuel vs initial</li><li>📈 Profit/Loss total ($/%)</li><li>🎯 Win rate (% trades gagnants)</li><li>💹 Profit factor (gains/pertes)</li><li>📊 Nombre trades</li><li>📉 Max drawdown</li><li>📈 Best/Worst trade</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Pourquoi utiliser ?</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>✅ Apprendre SANS perdre argent</li><li>✅ Tester nouvelles stratégies</li><li>✅ Développer discipline</li><li>✅ Comprendre émotions trading</li><li>✅ Affiner risk management</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 15px;">🎯 Règle: Profitable en simu 3 mois AVANT argent réel!</p></div></div></div>
@@ -20953,13 +19169,11 @@ async def generate_pdf_report():
         from reportlab.lib.units import inch
         from fastapi.responses import StreamingResponse
         import io
-        
         # Créer le PDF en mémoire
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4)
         elements = []
         styles = getSampleStyleSheet()
-        
         # Titre
         title_style = ParagraphStyle(
             'CustomTitle',
@@ -20971,7 +19185,6 @@ async def generate_pdf_report():
         )
         elements.append(Paragraph('📊 RAPPORT D\'ANALYSE PROFESSIONNEL', title_style))
         elements.append(Spacer(1, 0.3*inch))
-        
         # Statistiques principales
         stats_data = [
             ['Métrique', 'Valeur', 'Statut'],
@@ -20981,7 +19194,6 @@ async def generate_pdf_report():
             ['Recovery Time', '4 mois', '⚡ Rapide'],
             ['Volatilité Annualisée', '45%', '📊 Normal']
         ]
-        
         stats_table = Table(stats_data, colWidths=[2*inch, 2*inch, 2*inch])
         stats_table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#00ff88')),
@@ -20993,10 +19205,8 @@ async def generate_pdf_report():
             ('BACKGROUND', (0,1), (-1,-1), colors.HexColor('#f0f0f0')),
             ('GRID', (0,0), (-1,-1), 1, colors.black)
         ]))
-        
         elements.append(stats_table)
         elements.append(Spacer(1, 0.5*inch))
-        
         # Recommandations
         rec_style = ParagraphStyle(
             'Recommendations',
@@ -21005,7 +19215,6 @@ async def generate_pdf_report():
             textColor=colors.HexColor('#333333'),
             spaceAfter=12
         )
-        
         elements.append(Paragraph('📌 Recommandations Stratégiques', styles['Heading2']))
         recommendations = [
             '✅ Performance excellente - Continuez votre stratégie actuelle',
@@ -21014,22 +19223,17 @@ async def generate_pdf_report():
             '⏱️ Recovery rapide - Excellente résilience',
             '💡 Envisagez légèrement d\'augmenter le leverage'
         ]
-        
         for rec in recommendations:
             elements.append(Paragraph(rec, rec_style))
-        
         elements.append(Spacer(1, 0.3*inch))
         elements.append(Paragraph(f'Généré le: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}', styles['Normal']))
         elements.append(Paragraph('© Dashboard Trading Professionnel', 
                                 styles['Normal']))
-        
         # Build PDF
         doc.build(elements)
         buffer.seek(0)
-        
         # Retourner le PDF pour téléchargement
         filename = f"rapport_trading_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        
         return StreamingResponse(
             buffer,
             media_type="application/pdf",
@@ -21066,17 +19270,14 @@ async def success_stories():
             min-height: 100vh;
             padding: 20px;
         }}
-        
         .container { max-width: 1000px; margin: 0 auto; }
         h1 { text-align: center; margin: 30px 0; color: #00ff88; font-size: 2.5em; }
-        
         .stories-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 25px;
             margin-bottom: 40px;
         }}
-        
         .story-card {
             background: linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,212,255,0.1));
             border: 2px solid rgba(0,255,136,0.3);
@@ -21086,7 +19287,6 @@ async def success_stories():
             overflow: hidden;
             transition: all 0.3s;
         }
-        
         .story-card::before {
             content: '';
             position: absolute;
@@ -21098,15 +19298,12 @@ async def success_stories():
             opacity: 0;
             transition: all 0.5s;
         }
-        
         .story-card:hover {
             transform: translateY(-10px);
             box-shadow: 0 20px 40px rgba(0,255,136,0.3);
             border-color: #00ff88;
         }
-        
         .story-card:hover::before { opacity: 1; }
-        
         .story-header {
             display: flex;
             justify-content: space-between;
@@ -21115,12 +19312,9 @@ async def success_stories():
             position: relative;
             z-index: 1;
         }
-        
         .story-emoji { font-size: 2.5em; }
         .story-year { background: rgba(0,255,136,0.2); padding: 5px 15px; border-radius: 20px; font-weight: bold; }
-        
         .story-title { font-size: 1.5em; font-weight: bold; margin: 15px 0; color: #00ff88; position: relative; z-index: 1; }
-        
         .story-stats {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -21129,19 +19323,15 @@ async def success_stories():
             position: relative;
             z-index: 1;
         }
-        
         .stat-box {
             background: rgba(0,255,136,0.1);
             padding: 15px;
             border-radius: 10px;
             border-left: 3px solid #00ff88;
         }
-        
         .stat-label { font-size: 0.85em; color: #aaa; }
         .stat-value { font-size: 1.5em; font-weight: bold; color: #00ff88; margin-top: 5px; }
-        
         .story-description { color: #ddd; line-height: 1.6; margin: 15px 0; position: relative; z-index: 1; }
-        
         .badges {
             display: flex;
             flex-wrap: wrap;
@@ -21150,7 +19340,6 @@ async def success_stories():
             position: relative;
             z-index: 1;
         }
-        
         .badge {
             background: rgba(0,255,136,0.2);
             padding: 8px 15px;
@@ -21158,7 +19347,6 @@ async def success_stories():
             font-size: 0.85em;
             border: 1px solid rgba(0,255,136,0.5);
         }
-        
         .timeline {
             background: rgba(255,255,255,0.05);
             border: 2px solid rgba(0,255,136,0.2);
@@ -21166,16 +19354,13 @@ async def success_stories():
             padding: 30px;
             margin: 40px 0;
         }
-        
         .timeline h2 { margin-bottom: 30px; color: #00ff88; }
-        
         .timeline-item {
             display: flex;
             margin-bottom: 30px;
             position: relative;
             padding-left: 50px;
         }
-        
         .timeline-dot {
             position: absolute;
             left: 0;
@@ -21186,21 +19371,17 @@ async def success_stories():
             border-radius: 50%;
             border: 3px solid #0f0c29;
         }
-        
         .timeline-content h3 { color: #00ff88; margin-bottom: 5px; }
         .timeline-content p { color: #aaa; }
-        
         @keyframes slideIn {
             from { opacity: 0; transform: translateX(-30px); }
             to { opacity: 1; transform: translateX(0); }
         }
-        
         .story-card { animation: slideIn 0.6s ease forwards; }
         .story-card:nth-child(2) { animation-delay: 0.1s; }
         .story-card:nth-child(3) { animation-delay: 0.2s; }
         .story-card:nth-child(4) { animation-delay: 0.3s; }
         .story-card:nth-child(5) { animation-delay: 0.4s; }
-        
         /* Navigation Bar */
         .nav {
             display: flex;
@@ -21216,7 +19397,6 @@ async def success_stories():
             border-radius: 12px;
             backdrop-filter: blur(10px);
         }
-        
         .nav a {
             padding: 12px 20px;
             background: #1e293b;
@@ -21228,14 +19408,12 @@ async def success_stories():
             font-size: 0.95em;
             white-space: nowrap;
         }
-        
         .nav a:hover {
             background: #334155;
             border-color: #60a5fa;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
         }
-        
         .nav a.active {
             background: #334155;
             border-color: #60a5fa;
@@ -21243,11 +19421,9 @@ async def success_stories():
     </style>
 </head>
 <body>
-    
 
     <div class="container">
         <h1>🌟 SUCCESS STORIES - Histoires Vraies de DCA</h1>
-        
         <div class="stories-grid">
             <!-- Story 1 -->
             <div class="story-card">
@@ -21273,7 +19449,6 @@ async def success_stories():
                     <span class="badge">✅ Discipline</span>
                 </div>
             </div>
-            
             <!-- Story 2 -->
             <div class="story-card">
                 <div class="story-header">
@@ -21298,7 +19473,6 @@ async def success_stories():
                     <span class="badge">💪 Discipline</span>
                 </div>
             </div>
-            
             <!-- Story 3 -->
             <div class="story-card">
                 <div class="story-header">
@@ -21323,7 +19497,6 @@ async def success_stories():
                     <span class="badge">✨ Meilleur Ratio</span>
                 </div>
             </div>
-            
             <!-- Story 4 -->
             <div class="story-card">
                 <div class="story-header">
@@ -21348,7 +19521,6 @@ async def success_stories():
                     <span class="badge">🧠 Smart Strat</span>
                 </div>
             </div>
-            
             <!-- Story 5 -->
             <div class="story-card">
                 <div class="story-header">
@@ -21374,10 +19546,8 @@ async def success_stories():
                 </div>
             </div>
         </div>
-        
         <div class="timeline">
             <h2>📅 Timeline Exemplaire: Marc (2020-2024)</h2>
-            
             <div class="timeline-item">
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
@@ -21385,7 +19555,6 @@ async def success_stories():
                     <p>Marc commence son DCA à 500$/mois. Bitcoin = 10 000$. Il achète 0.05 BTC.</p>
                 </div>
             </div>
-            
             <div class="timeline-item">
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
@@ -21393,7 +19562,6 @@ async def success_stories():
                     <p>Bitcoin monte à 60 000$. Marc continue son DCA. Son portefeuille vaut 15 000$.</p>
                 </div>
             </div>
-            
             <div class="timeline-item">
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
@@ -21401,7 +19569,6 @@ async def success_stories():
                     <p>Bitcoin chute à 20 000$. Marc ne vend PAS! Il CONTINUE son DCA. Achète plus de BTC!</p>
                 </div>
             </div>
-            
             <div class="timeline-item">
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
@@ -21409,7 +19576,6 @@ async def success_stories():
                     <p>Bitcoin remonte à 40 000$. Marc a accumulé 1.5 BTC. Son portefeuille = 60 000$.</p>
                 </div>
             </div>
-            
             <div class="timeline-item">
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
@@ -21418,7 +19584,6 @@ async def success_stories():
                 </div>
             </div>
         </div>
-        
         <div style="text-align: center; margin-top: 40px; padding: 20px; background: rgba(0,255,136,0.1); border-radius: 10px;">
             <h2 style="margin-bottom: 15px;">💪 Votre Succès Commence Aujourd'hui</h2>
             <p style="font-size: 1.1em; line-height: 1.8;">
@@ -21465,16 +19630,12 @@ async def risk_management_page():
 <div style="max-width:600px;">
     <label style="color:#94a3b8;display:block;margin-bottom:5px;">💰 Capital Total (USD)</label>
     <input type="number" id="inputCapital" value="10000" min="100" step="100">
-    
     <label style="color:#94a3b8;display:block;margin-bottom:5px;">📉 Risque par Trade (%)</label>
     <input type="number" id="inputRisk" value="2" min="0.5" max="10" step="0.5">
-    
     <label style="color:#94a3b8;display:block;margin-bottom:5px;">📊 Trades Ouverts Maximum</label>
     <input type="number" id="inputMaxTrades" value="3" min="1" max="10">
-    
     <label style="color:#94a3b8;display:block;margin-bottom:5px;">🚫 Perte Maximale Quotidienne (%)</label>
     <input type="number" id="inputMaxDailyLoss" value="5" min="1" max="20" step="0.5">
-    
     <button onclick="saveSettings()" style="width:100%;margin-top:10px;">💾 Sauvegarder</button>
     <button onclick="resetDaily()" class="btn-danger" style="width:100%;margin-top:10px;">🔄 Réinitialiser Perte Quotidienne</button>
 </div>
@@ -21485,13 +19646,10 @@ async def risk_management_page():
 <div style="max-width:600px;">
     <label style="color:#94a3b8;display:block;margin-bottom:5px;">Symbol (ex: BTCUSDT)</label>
     <input type="text" id="calcSymbol" placeholder="BTCUSDT">
-    
     <label style="color:#94a3b8;display:block;margin-bottom:5px;">Prix d'Entrée</label>
     <input type="number" id="calcEntry" placeholder="67000" step="0.00000001">
-    
     <label style="color:#94a3b8;display:block;margin-bottom:5px;">Stop Loss</label>
     <input type="number" id="calcSL" placeholder="66000" step="0.00000001">
-    
     <button onclick="calculatePosition()" style="width:100%;">🧮 Calculer la Taille de Position</button>
 </div>
 
@@ -21515,17 +19673,14 @@ async def risk_management_page():
 async function loadSettings() {{
     const res = await fetch('/api/risk/settings');
     const data = await res.json();
-    
     document.getElementById('totalCapital').textContent = '$' + data.total_capital.toLocaleString();
     document.getElementById('riskPerTrade').textContent = data.risk_per_trade + '%';
     document.getElementById('dailyLoss').textContent = '-' + data.daily_loss.toFixed(2) + '%';
-    
     // Compter les trades ouverts
     const tradesRes = await fetch('/api/trades');
     const tradesData = await tradesRes.json();
     const openCount = tradesData.trades.filter(t => t.status === 'open').length;
     document.getElementById('openTrades').textContent = openCount + ' / ' + data.max_open_trades;
-    
     // Remplir les inputs
     document.getElementById('inputCapital').value = data.total_capital;
     document.getElementById('inputRisk').value = data.risk_per_trade;
@@ -21538,7 +19693,6 @@ async function saveSettings() {{
     const risk = parseFloat(document.getElementById('inputRisk').value);
     const maxTrades = parseInt(document.getElementById('inputMaxTrades').value);
     const maxLoss = parseFloat(document.getElementById('inputMaxDailyLoss').value);
-    
     const res = await fetch('/api/risk/update', {{
         method: 'POST',
         headers: {{'Content-Type': 'application/json'}},
@@ -21549,7 +19703,6 @@ async function saveSettings() {{
             max_daily_loss: maxLoss
         }})
     }});
-    
     const data = await res.json();
     if (data.ok) {{
         alert('✅ Paramètres sauvegardés !');
@@ -21559,10 +19712,8 @@ async function saveSettings() {{
 
 async function resetDaily() {{
     if (!confirm('Voulez-vous réinitialiser la perte quotidienne ?')) return;
-    
     const res = await fetch('/api/risk/reset-daily', {{method: 'POST'}});
     const data = await res.json();
-    
     if (data.ok) {{
         alert('✅ Perte quotidienne réinitialisée !');
         loadSettings();
@@ -21573,15 +19724,12 @@ async function calculatePosition() {{
     const symbol = document.getElementById('calcSymbol').value;
     const entry = parseFloat(document.getElementById('calcEntry').value);
     const sl = parseFloat(document.getElementById('calcSL').value);
-    
     if (!symbol || !entry || !sl) {{
         alert('❌ Veuillez remplir tous les champs');
         return;
     }}
-    
     const res = await fetch(`/api/risk/position-size?symbol=${{symbol}}&entry=${{entry}}&sl=${{sl}}`);
     const data = await res.json();
-    
     if (data.ok) {{
         document.getElementById('calcResult').innerHTML = `
             <div class="alert-success">
@@ -21618,13 +19766,10 @@ async def watchlist_page():
 <div style="max-width:600px;">
     <label style="color:#94a3b8;display:block;margin-bottom:5px;">Symbol (ex: BTCUSDT)</label>
     <input type="text" id="addSymbol" placeholder="BTCUSDT">
-    
     <label style="color:#94a3b8;display:block;margin-bottom:5px;">Prix Cible (optionnel)</label>
     <input type="number" id="addTarget" placeholder="70000" step="0.00000001">
-    
     <label style="color:#94a3b8;display:block;margin-bottom:5px;">Note (optionnel)</label>
     <input type="text" id="addNote" placeholder="Résistance importante">
-    
     <button onclick="addToWatchlist()" style="width:100%;">➕ Ajouter</button>
 </div>
 </div>
@@ -21646,19 +19791,15 @@ async def watchlist_page():
 async function loadWatchlist() {{
     const res = await fetch('/api/watchlist');
     const data = await res.json();
-    
     if (data.watchlist.length === 0) {{
         document.getElementById('watchlistContainer').innerHTML = '<p style="color:#94a3b8;">Aucune crypto dans la watchlist</p>';
         return;
     }}
-    
     let html = '<table><thead><tr><th>Symbol</th><th>Prix Cible</th><th>Note</th><th>Ajouté le</th><th>Action</th></tr></thead><tbody>';
-    
     data.watchlist.forEach(item => {{
         const date = new Date(item.created_at).toLocaleString('fr-FR');
         const target = item.target_price ? '$' + item.target_price.toLocaleString() : '-';
         const alertIcon = item.alert_triggered ? '✅' : '';
-        
         html += `<tr>
             <td><strong>${{item.symbol}}</strong> ${{alertIcon}}</td>
             <td>${{target}}</td>
@@ -21667,7 +19808,6 @@ async function loadWatchlist() {{
             <td><button class="btn-danger" style="padding:8px 15px;" onclick="removeFromWatchlist('${{item.symbol}}')">❌ Retirer</button></td>
         </tr>`;
     }});
-    
     html += '</tbody></table>';
     document.getElementById('watchlistContainer').innerHTML = html;
 }}
@@ -21676,12 +19816,10 @@ async function addToWatchlist() {{
     const symbol = document.getElementById('addSymbol').value.toUpperCase();
     const target = document.getElementById('addTarget').value;
     const note = document.getElementById('addNote').value;
-    
     if (!symbol) {{
         alert('❌ Veuillez entrer un symbol');
         return;
     }}
-    
     const res = await fetch('/api/watchlist/add', {{
         method: 'POST',
         headers: {{'Content-Type': 'application/json'}},
@@ -21691,9 +19829,7 @@ async function addToWatchlist() {{
             note: note
         }})
     }});
-    
     const data = await res.json();
-    
     if (data.ok) {{
         alert('✅ ' + data.message);
         document.getElementById('addSymbol').value = '';
@@ -21707,10 +19843,8 @@ async function addToWatchlist() {{
 
 async function removeFromWatchlist(symbol) {{
     if (!confirm(`Retirer ${{symbol}} de la watchlist ?`)) return;
-    
     const res = await fetch(`/api/watchlist/remove?symbol=${{symbol}}`, {{method: 'DELETE'}});
     const data = await res.json();
-    
     if (data.ok) {{
         alert('✅ ' + data.message);
         loadWatchlist();
@@ -21720,7 +19854,6 @@ async function removeFromWatchlist(symbol) {{
 async function checkAlerts() {{
     const res = await fetch('/api/watchlist/check-alerts');
     const data = await res.json();
-    
     if (data.alerts.length === 0) {{
         document.getElementById('alertsContainer').innerHTML = '<div class="alert-success">✅ Aucune alerte déclenchée</div>';
     }} else {{
@@ -21731,7 +19864,6 @@ async function checkAlerts() {{
         }});
         html += '</div>';
         document.getElementById('alertsContainer').innerHTML = html;
-        
         // Recharger la watchlist pour montrer les alertes
         loadWatchlist();
     }}
@@ -21775,7 +19907,6 @@ async def ai_assistant_page():
         <p>• <strong>Alertes intelligentes</strong> quand vous atteignez vos limites de risque</p>
         <p>• <strong>Recommandations</strong> sur les meilleures paires à trader</p>
     </div>
-    
     <div style="background:#0f172a;padding:20px;border-radius:8px;margin-bottom:15px;">
         <h3 style="color:#60a5fa;margin-bottom:10px;">🎓 Conseils de Trading</h3>
         <p>• Respectez toujours votre <strong>risk management</strong></p>
@@ -21784,7 +19915,6 @@ async def ai_assistant_page():
         <p>• Utilisez le <strong>Stop Loss Break Even</strong> après TP1</p>
         <p>• Analysez vos <strong>trades perdants</strong> pour progresser</p>
     </div>
-    
     <div style="background:#0f172a;padding:20px;border-radius:8px;">
         <h3 style="color:#60a5fa;margin-bottom:10px;">⚠️ Avertissements</h3>
         <p>• Le trading comporte des <strong>risques importants</strong></p>
@@ -21804,7 +19934,6 @@ async def ai_assistant_page():
             try {{
                 const res = await fetch('/api/weekly-pnl');
                 const data = await res.json();
-                
                 if (data.ok) {{
                     let html = '';
                     data.weekly_data.forEach(day => {{
@@ -21812,7 +19941,6 @@ async def ai_assistant_page():
                         const color = day.pnl > 0 ? '#10b981' : (day.pnl < 0 ? '#ef4444' : '#94a3b8');
                         const bgColor = isToday ? 'rgba(96, 165, 250, 0.1)' : 'rgba(15, 23, 42, 0.8)';
                         const border = isToday ? '2px solid #60a5fa' : 'none';
-                        
                         html += `
                             <div style="background:${{bgColor}};padding:15px;border-radius:12px;text-align:center;border:${{border}};transition:all 0.3s;">
                                 <div style="color:#94a3b8;font-size:11px;margin-bottom:5px;text-transform:uppercase;">${{day.day_fr}}${{isToday ? ' 👈' : ''}}</div>
@@ -21820,9 +19948,7 @@ async def ai_assistant_page():
                             </div>
                         `;
                     }});
-                    
                     document.getElementById('weeklyPnlContainer').innerHTML = html;
-                    
                     const totalColor = data.total_week > 0 ? '#10b981' : (data.total_week < 0 ? '#ef4444' : '#94a3b8');
                     document.getElementById('weeklyTotal').innerHTML = `<span style="color:${{totalColor}}">${{data.total_week > 0 ? '+' : ''}}${{data.total_week}}%</span>`;
                 }}
@@ -21834,11 +19960,9 @@ async def ai_assistant_page():
 
         async function resetWeeklyPnl() {{
             if (!confirm('Voulez-vous réinitialiser le P&L de la semaine ?')) return;
-            
             try {{
                 const res = await fetch('/api/weekly-pnl/reset', {{ method: 'POST' }});
                 const data = await res.json();
-                
                 if (data.ok) {{
                     alert('✅ P&L hebdomadaire réinitialisé !');
                     loadWeeklyPnl();
@@ -21850,37 +19974,30 @@ async def ai_assistant_page():
 
 async function refreshSuggestions() {{
     document.getElementById('suggestionsContainer').innerHTML = '<div class="spinner"></div>';
-    
     const res = await fetch('/api/ai/suggestions');
     const data = await res.json();
-    
     if (data.suggestions.length === 0) {{
         document.getElementById('suggestionsContainer').innerHTML = '<p style="color:#94a3b8;">Aucune suggestion pour le moment</p>';
         return;
     }}
-    
     let html = '';
     data.suggestions.forEach(sug => {{
         let alertClass = 'alert-success';
         if (sug.type === 'warning') alertClass = 'alert-error';
         else if (sug.type === 'info') alertClass = 'alert-success';
-        
         html += `<div class="${{alertClass}}" style="margin-bottom:15px;">
             <h3 style="margin-bottom:10px;">${{sug.title}}</h3>
             <p>${{sug.message}}</p>
         </div>`;
     }});
-    
     const lastUpdate = new Date(data.last_analysis).toLocaleString('fr-FR');
     html += `<p style="color:#94a3b8;font-size:12px;margin-top:15px;">Dernière analyse: ${{lastUpdate}}</p>`;
-    
     document.getElementById('suggestionsContainer').innerHTML = html;
 }}
 
 async function loadSentiment() {{
     const res = await fetch('/api/ai/market-sentiment');
     const data = await res.json();
-    
     if (data.ok) {{
         document.getElementById('sentimentContainer').innerHTML = `
             <div style="text-align:center;padding:30px;">
@@ -21921,14 +20038,12 @@ async def calculatrice_trades():
             gap: 30px;
             margin-top: 30px;
         }}
-        
         .calc-section {
             background: #1e293b;
             padding: 30px;
             border-radius: 12px;
             border: 1px solid #334155;
         }}
-        
         .calc-section h3 {
             color: #60a5fa;
             font-size: 20px;
@@ -21936,11 +20051,9 @@ async def calculatrice_trades():
             padding-bottom: 10px;
             border-bottom: 2px solid #334155;
         }
-        
         .input-group {
             margin-bottom: 20px;
         }
-        
         .input-label {
             display: flex;
             justify-content: space-between;
@@ -21950,17 +20063,14 @@ async def calculatrice_trades():
             margin-bottom: 8px;
             font-weight: 600;
         }
-        
         .input-hint {
             font-size: 12px;
             color: #64748b;
             font-weight: 400;
         }
-        
         .input-wrapper {
             position: relative;
         }
-        
         .input-icon {
             position: absolute;
             left: 15px;
@@ -21970,7 +20080,6 @@ async def calculatrice_trades():
             font-size: 18px;
             pointer-events: none;
         }
-        
         input[type="number"].calc-input, input[type="text"].calc-input {
             width: 100%;
             padding: 14px 15px 14px 45px;
@@ -21982,20 +20091,17 @@ async def calculatrice_trades():
             font-weight: 600;
             transition: all 0.3s;
         }
-        
         input[type="number"].calc-input:focus, input[type="text"].calc-input:focus {
             outline: none;
             border-color: #60a5fa;
             box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
         }
-        
         .direction-toggle {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
             margin-bottom: 20px;
         }
-        
         .direction-btn {
             padding: 15px;
             border: 2px solid #334155;
@@ -22011,35 +20117,29 @@ async def calculatrice_trades():
             justify-content: center;
             gap: 8px;
         }
-        
         .direction-btn:hover {
             border-color: #60a5fa;
             transform: translateY(-2px);
         }
-        
         .direction-btn.active.long {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             border-color: #10b981;
             color: white;
         }
-        
         .direction-btn.active.short {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
             border-color: #ef4444;
             color: white;
         }
-        
         .tp-group {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
             margin-bottom: 20px;
         }
-        
         .tp-input {
             position: relative;
         }
-        
         .tp-label {
             position: absolute;
             top: -8px;
@@ -22051,7 +20151,6 @@ async def calculatrice_trades():
             font-weight: 700;
             z-index: 1;
         }
-        
         .result-box {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             padding: 20px;
@@ -22060,12 +20159,10 @@ async def calculatrice_trades():
             border: 2px solid #334155;
             transition: all 0.3s;
         }
-        
         .result-box:hover {
             border-color: #60a5fa;
             transform: translateY(-2px);
         }
-        
         .result-row {
             display: flex;
             justify-content: space-between;
@@ -22073,11 +20170,9 @@ async def calculatrice_trades():
             padding: 12px 0;
             border-bottom: 1px solid rgba(51, 65, 85, 0.5);
         }
-        
         .result-row:last-child {
             border-bottom: none;
         }
-        
         .result-label {
             color: #94a3b8;
             font-size: 14px;
@@ -22085,21 +20180,17 @@ async def calculatrice_trades():
             align-items: center;
             gap: 8px;
         }
-        
         .result-value {
             color: #e2e8f0;
             font-size: 18px;
             font-weight: 700;
         }
-        
         .result-value.positive {
             color: #10b981;
         }
-        
         .result-value.negative {
             color: #ef4444;
         }
-        
         .result-highlight {
             background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%);
             padding: 25px;
@@ -22108,7 +20199,6 @@ async def calculatrice_trades():
             border: 2px solid #60a5fa;
             margin: 20px 0;
         }
-        
         .result-highlight-label {
             color: #94a3b8;
             font-size: 13px;
@@ -22116,14 +20206,12 @@ async def calculatrice_trades():
             letter-spacing: 1px;
             margin-bottom: 10px;
         }
-        
         .result-highlight-value {
             font-size: 42px;
             font-weight: 900;
             color: #60a5fa;
             text-shadow: 0 0 20px rgba(96, 165, 250, 0.5);
         }
-        
         .rr-badge {
             display: inline-block;
             padding: 8px 16px;
@@ -22132,27 +20220,22 @@ async def calculatrice_trades():
             font-size: 14px;
             margin-top: 10px;
         }
-        
         .rr-excellent {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
         }
-        
         .rr-good {
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: white;
         }
-        
         .rr-fair {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: white;
         }
-        
         .rr-poor {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
             color: white;
         }
-        
         .warning-box {
             background: rgba(239, 68, 68, 0.1);
             border-left: 4px solid #ef4444;
@@ -22162,7 +20245,6 @@ async def calculatrice_trades():
             color: #fca5a5;
             font-size: 14px;
         }
-        
         .info-box {
             background: rgba(96, 165, 250, 0.1);
             border-left: 4px solid #60a5fa;
@@ -22172,14 +20254,12 @@ async def calculatrice_trades():
             color: #93c5fd;
             font-size: 14px;
         }
-        
         .profit-breakdown {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 15px;
             margin-top: 20px;
         }
-        
         .profit-card {
             background: #0f172a;
             padding: 20px;
@@ -22187,25 +20267,21 @@ async def calculatrice_trades():
             text-align: center;
             border: 2px solid #334155;
         }
-        
         .profit-card-label {
             color: #60a5fa;
             font-size: 12px;
             font-weight: 700;
             margin-bottom: 8px;
         }
-        
         .profit-card-value {
             font-size: 24px;
             font-weight: 900;
             color: #10b981;
         }
-        
         @media (max-width: 968px) {
             .calc-grid {
                 grid-template-columns: 1fr;
             }
-            
             .profit-breakdown {
                 grid-template-columns: 1fr;
             }
@@ -22218,14 +20294,10 @@ async def calculatrice_trades():
             <h1>🧮 Calculatrice de Trades</h1>
             <p>Calculez votre position, risque et profits potentiels</p>
         </div>
-        
-        
-        
         <div class="calc-grid">
             <!-- SECTION 1: PARAMÈTRES DU TRADE -->
             <div class="calc-section">
                 <h3>📊 Paramètres du Trade</h3>
-                
                 <div class="input-group">
                     <div class="input-label">
                         <span>Direction</span>
@@ -22239,7 +20311,6 @@ async def calculatrice_trades():
                         </button>
                     </div>
                 </div>
-                
                 <div class="input-group">
                     <div class="input-label">
                         <span>Symbol / Paire</span>
@@ -22250,7 +20321,6 @@ async def calculatrice_trades():
                         <input type="text" id="symbol" class="calc-input" value="BTCUSDT" placeholder="BTCUSDT">
                     </div>
                 </div>
-                
                 <div class="input-group">
                     <div class="input-label">
                         <span>Prix d'Entrée</span>
@@ -22261,7 +20331,6 @@ async def calculatrice_trades():
                         <input type="number" id="entry" class="calc-input" value="67000" step="0.00000001" oninput="calculate()">
                     </div>
                 </div>
-                
                 <div class="input-group">
                     <div class="input-label">
                         <span>Stop Loss</span>
@@ -22272,7 +20341,6 @@ async def calculatrice_trades():
                         <input type="number" id="stopLoss" class="calc-input" value="66000" step="0.00000001" oninput="calculate()">
                     </div>
                 </div>
-                
                 <div class="input-group">
                     <div class="input-label">
                         <span>Take Profits</span>
@@ -22294,11 +20362,9 @@ async def calculatrice_trades():
                     </div>
                 </div>
             </div>
-            
             <!-- SECTION 2: GESTION DU RISQUE -->
             <div class="calc-section">
                 <h3>⚖️ Gestion du Risque</h3>
-                
                 <div class="input-group">
                     <div class="input-label">
                         <span>Capital Total</span>
@@ -22309,7 +20375,6 @@ async def calculatrice_trades():
                         <input type="number" id="capital" class="calc-input" value="10000" step="100" oninput="calculate()">
                     </div>
                 </div>
-                
                 <div class="input-group">
                     <div class="input-label">
                         <span>Risque par Trade</span>
@@ -22320,7 +20385,6 @@ async def calculatrice_trades():
                         <input type="number" id="riskPercent" class="calc-input" value="1" step="0.1" min="0.1" max="10" oninput="calculate()">
                     </div>
                 </div>
-                
                 <div class="input-group">
                     <div class="input-label">
                         <span>Leverage</span>
@@ -22331,83 +20395,67 @@ async def calculatrice_trades():
                         <input type="number" id="leverage" class="calc-input" value="10" step="1" min="1" max="125" oninput="calculate()">
                     </div>
                 </div>
-                
                 <div class="result-highlight">
                     <div class="result-highlight-label">Risk/Reward Ratio</div>
                     <div class="result-highlight-value" id="rrRatio">0:1</div>
                     <div id="rrBadge"></div>
                 </div>
-                
                 <div class="info-box">
                     <strong>💡 Conseil:</strong> Un bon R/R est ≥ 2:1. Plus c'est élevé, mieux c'est !
                 </div>
             </div>
         </div>
-        
         <!-- SECTION 3: RÉSULTATS -->
         <div class="card">
             <h2>📈 Résultats du Calcul</h2>
-            
             <div class="calc-grid">
                 <div class="result-box">
                     <h3 style="color: #60a5fa; margin-bottom: 15px;">💼 Position & Risque</h3>
-                    
                     <div class="result-row">
                         <span class="result-label">📏 Taille de Position</span>
                         <span class="result-value" id="positionSize">0 USDT</span>
                     </div>
-                    
                     <div class="result-row">
                         <span class="result-label">🪙 Quantité</span>
                         <span class="result-value" id="quantity">0</span>
                     </div>
-                    
                     <div class="result-row">
                         <span class="result-label">⚠️ Montant Risqué</span>
                         <span class="result-value negative" id="riskAmount">$0</span>
                     </div>
-                    
                     <div class="result-row">
                         <span class="result-label">📉 Distance SL</span>
                         <span class="result-value" id="slDistance">0%</span>
                     </div>
-                    
                     <div class="result-row">
                         <span class="result-label">💥 Prix de Liquidation</span>
                         <span class="result-value negative" id="liquidationPrice">$0</span>
                     </div>
                 </div>
-                
                 <div class="result-box">
                     <h3 style="color: #10b981; margin-bottom: 15px;">💰 Profits Potentiels</h3>
-                    
                     <div class="result-row">
                         <span class="result-label">🎯 TP1 (40%)</span>
                         <span class="result-value positive" id="profitTP1">$0</span>
                     </div>
-                    
                     <div class="result-row">
                         <span class="result-label">🎯 TP2 (40%)</span>
                         <span class="result-value positive" id="profitTP2">$0</span>
                     </div>
-                    
                     <div class="result-row">
                         <span class="result-label">🎯 TP3 (20%)</span>
                         <span class="result-value positive" id="profitTP3">$0</span>
                     </div>
-                    
                     <div class="result-row" style="border-top: 2px solid #334155; padding-top: 15px; margin-top: 10px;">
                         <span class="result-label"><strong>💎 Profit Total</strong></span>
                         <span class="result-value positive" id="totalProfit" style="font-size: 24px;">$0</span>
                     </div>
-                    
                     <div class="result-row">
                         <span class="result-label">📊 ROI Total</span>
                         <span class="result-value positive" id="totalROI">+0%</span>
                     </div>
                 </div>
             </div>
-            
             <div class="profit-breakdown">
                 <div class="profit-card">
                     <div class="profit-card-label">Distance TP1</div>
@@ -22422,16 +20470,13 @@ async def calculatrice_trades():
                     <div class="profit-card-value" id="tp3Distance">+0%</div>
                 </div>
             </div>
-            
             <div id="warningBox" class="warning-box" style="display: none;">
                 ⚠️ <strong>Attention:</strong> <span id="warningText"></span>
             </div>
         </div>
-        
         <!-- SECTION 4: GUIDE -->
         <div class="card">
             <h2>📚 Guide d'Utilisation</h2>
-            
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
                 <div style="background: #0f172a; padding: 20px; border-radius: 10px; border-left: 4px solid #10b981;">
                     <h3 style="color: #10b981; margin-bottom: 10px;">✅ Bonnes Pratiques</h3>
@@ -22443,7 +20488,6 @@ async def calculatrice_trades():
                         <li>Placez votre SL en Break Even après TP1</li>
                     </ul>
                 </div>
-                
                 <div style="background: #0f172a; padding: 20px; border-radius: 10px; border-left: 4px solid #ef4444;">
                     <h3 style="color: #ef4444; margin-bottom: 10px;">❌ Erreurs à Éviter</h3>
                     <ul style="color: #94a3b8; line-height: 1.8;">
@@ -22454,7 +20498,6 @@ async def calculatrice_trades():
                         <li>N'ouvrez pas trop de positions simultanées</li>
                     </ul>
                 </div>
-                
                 <div style="background: #0f172a; padding: 20px; border-radius: 10px; border-left: 4px solid #60a5fa;">
                     <h3 style="color: #60a5fa; margin-bottom: 10px;">📊 Formules Utilisées</h3>
                     <ul style="color: #94a3b8; line-height: 1.8;">
@@ -22468,27 +20511,21 @@ async def calculatrice_trades():
             </div>
         </div>
     </div>
-    
     <script>
         let currentDirection = 'LONG';
-        
         function setDirection(direction) {
             currentDirection = direction;
-            
             // Update UI
             document.querySelectorAll('.direction-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            
             if (direction === 'LONG') {
                 document.querySelector('.direction-btn.long').classList.add('active');
             } else {
                 document.querySelector('.direction-btn.short').classList.add('active');
             }
-            
             calculate();
         }
-        
         function calculate() {
             // Get inputs
             const entry = parseFloat(document.getElementById('entry').value) || 0;
@@ -22499,16 +20536,13 @@ async def calculatrice_trades():
             const capital = parseFloat(document.getElementById('capital').value) || 0;
             const riskPercent = parseFloat(document.getElementById('riskPercent').value) || 1;
             const leverage = parseFloat(document.getElementById('leverage').value) || 1;
-            
             // Validate inputs
             if (entry === 0 || stopLoss === 0 || capital === 0) {
                 return;
             }
-            
             // Check direction validity
             let isValid = true;
             let warningMsg = '';
-            
             if (currentDirection === 'LONG') {
                 if (stopLoss >= entry) {
                     isValid = false;
@@ -22528,7 +20562,6 @@ async def calculatrice_trades():
                     warningMsg = 'Pour un SHORT, les Take Profits doivent être INFÉRIEURS au prix d\\'entrée!';
                 }
             }
-            
             if (!isValid) {
                 document.getElementById('warningBox').style.display = 'block';
                 document.getElementById('warningText').textContent = warningMsg;
@@ -22536,19 +20569,14 @@ async def calculatrice_trades():
             } else {
                 document.getElementById('warningBox').style.display = 'none';
             }
-            
             // Calculate risk amount
             const riskAmount = capital * (riskPercent / 100);
-            
             // Calculate SL distance
             const slDistance = Math.abs((entry - stopLoss) / entry * 100);
-            
             // Calculate position size
             const positionSize = (riskAmount / (slDistance / 100)) * leverage;
-            
             // Calculate quantity
             const quantity = positionSize / entry;
-            
             // Calculate liquidation price
             let liquidationPrice;
             if (currentDirection === 'LONG') {
@@ -22556,44 +20584,35 @@ async def calculatrice_trades():
             } else {
                 liquidationPrice = entry * (1 + (1 / leverage) * 0.9);
             }
-            
             // Calculate profits
             const profitTP1 = Math.abs(tp1 - entry) * quantity * 0.4; // 40%
             const profitTP2 = Math.abs(tp2 - entry) * quantity * 0.4; // 40%
             const profitTP3 = Math.abs(tp3 - entry) * quantity * 0.2; // 20%
             const totalProfit = profitTP1 + profitTP2 + profitTP3;
-            
             // Calculate R/R
             const rrRatio = totalProfit / riskAmount;
-            
             // Calculate ROI
             const totalROI = (totalProfit / positionSize) * 100;
-            
             // Calculate TP distances
             const tp1Distance = Math.abs((tp1 - entry) / entry * 100);
             const tp2Distance = Math.abs((tp2 - entry) / entry * 100);
             const tp3Distance = Math.abs((tp3 - entry) / entry * 100);
-            
             // Update UI
             document.getElementById('positionSize').textContent = positionSize.toFixed(2) + ' USDT';
             document.getElementById('quantity').textContent = quantity.toFixed(8) + ' ' + document.getElementById('symbol').value.replace('USDT', '');
             document.getElementById('riskAmount').textContent = '$' + riskAmount.toFixed(2);
             document.getElementById('slDistance').textContent = slDistance.toFixed(2) + '%';
             document.getElementById('liquidationPrice').textContent = '$' + liquidationPrice.toFixed(2);
-            
             document.getElementById('profitTP1').textContent = '+$' + profitTP1.toFixed(2);
             document.getElementById('profitTP2').textContent = '+$' + profitTP2.toFixed(2);
             document.getElementById('profitTP3').textContent = '+$' + profitTP3.toFixed(2);
             document.getElementById('totalProfit').textContent = '+$' + totalProfit.toFixed(2);
             document.getElementById('totalROI').textContent = '+' + totalROI.toFixed(2) + '%';
-            
             document.getElementById('tp1Distance').textContent = '+' + tp1Distance.toFixed(2) + '%';
             document.getElementById('tp2Distance').textContent = '+' + tp2Distance.toFixed(2) + '%';
             document.getElementById('tp3Distance').textContent = '+' + tp3Distance.toFixed(2) + '%';
-            
             // Update R/R
             document.getElementById('rrRatio').textContent = rrRatio.toFixed(2) + ':1';
-            
             // Update R/R badge
             let badge = '';
             if (rrRatio >= 3) {
@@ -22606,14 +20625,12 @@ async def calculatrice_trades():
                 badge = '<div class="rr-badge rr-poor">❌ R/R Trop Faible</div>';
             }
             document.getElementById('rrBadge').innerHTML = badge;
-            
             // Warning for high leverage
             if (leverage > 20) {
                 document.getElementById('warningBox').style.display = 'block';
                 document.getElementById('warningText').textContent = 'Leverage >20x est très risqué! Prix de liquidation proche: $' + liquidationPrice.toFixed(2);
             }
         }
-        
         // Calculate on page load
         calculate();
     </script>
@@ -22631,7 +20648,6 @@ async def prediction_ia():
     <title>🤖 Prédiction Crypto IA Pro</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
         body {
             font-family: 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -22639,7 +20655,6 @@ async def prediction_ia():
             margin: 0 !important;
             padding: 0 !important;
         }
-        
         /* SIDEBAR INLINE */
         .sidebar {
             position: fixed;
@@ -22653,7 +20668,6 @@ async def prediction_ia():
             z-index: 1000;
             border-right: 2px solid #334155;
         }
-        
         .sidebar-title {
             color: #06b6d4;
             font-size: 18px;
@@ -22661,7 +20675,6 @@ async def prediction_ia():
             text-align: center;
             margin-bottom: 20px;
         }
-        
         .sidebar a {
             display: block;
             padding: 10px;
@@ -22670,23 +20683,19 @@ async def prediction_ia():
             border-radius: 6px;
             margin-bottom: 5px;
         }
-        
         .sidebar a:hover {
             background: rgba(6, 182, 212, 0.15);
             color: #fff;
         }
-        
         .sidebar a.active {
             background: rgba(6, 182, 212, 0.3);
             color: #fff;
         }
-        
         /* CONTENU */
         .main-content {
             margin-left: 250px;
             padding: 20px;
         }
-        
         .header {
             text-align: center;
             padding: 30px;
@@ -22694,12 +20703,10 @@ async def prediction_ia():
             border-radius: 15px;
             margin-bottom: 30px;
         }
-        
         .header h1 {
             font-size: 42px;
             color: white;
         }
-        
         /* IFRAME */
         .iframe-wrapper {
             width: 100%;
@@ -22709,7 +20716,6 @@ async def prediction_ia():
             overflow: hidden;
             box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
         }
-        
         .iframe-wrapper iframe {
             width: 100%;
             height: 100%;
@@ -22720,14 +20726,11 @@ async def prediction_ia():
 <body>
     <div class="sidebar">
         <div class="sidebar-title">🚀 CRYPTO IA</div>
-        
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">📊 TABLEAU DE BORD</div>
         <a href="/dashboard">🏠 Dashboard Principal</a>
         <a href="/stats-dashboard">📈 Stats Dashboard</a>
-        
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">🎓 ACADEMY</div>
         <a href="/academy">🎓 Trading Academy Pro</a>
-        
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">💰 TRADING</div>
         <a href="/trades">📊 Mes Trades</a>
         <a href="/strategie">🎯 Stratégies</a>
@@ -22735,7 +20738,6 @@ async def prediction_ia():
         <a href="/watchlist">⭐ Watchlist</a>
         <a href="/risk-management">🛡️ Gestion Risques</a>
         <a href="/backtesting">⏮️ Backtesting</a>
-        
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">🤖 FEATURES IA</div>
         <a href="/ai-opportunity-scanner">🔍 Scanner Opportunités</a>
         <a href="/ai-market-regime">📊 Régime Marché</a>
@@ -22753,7 +20755,6 @@ async def prediction_ia():
         <a href="/ai-liquidity">💧 Liquidité IA</a>
         <a href="/ai-alerts">🔔 Alertes IA</a>
         <a href="/ai-gem-hunter">💎 Gem Hunter</a>
-        
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">📈 ANALYSE</div>
         <a href="/fear-greed">😨 Fear & Greed</a>
         <a href="/fear-greed-chart">📊 F&G Graphique</a>
@@ -22763,36 +20764,29 @@ async def prediction_ia():
         <a href="/bullrun-phase">🐂 Bull Run Phase</a>
         <a href="/graphiques">📉 Graphiques Avancés</a>
         <a href="/onchain-metrics">⛓️ Métriques On-Chain</a>
-        
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">🆕 NOUVELLES FEATURES</div>
         <a href="/portfolio-tracker">💼 Portfolio Tracker</a>
         <a href="/defi-yield">🏦 DeFi Yield</a>
-        
         <a href="/crypto-pepites">💎 Pépites Crypto</a>
-        
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">🛠️ OUTILS</div>
         <a href="/calculatrice">🧮 Calculatrice</a>
         <a href="/convertisseur">💱 Convertisseur</a>
         <a href="/market-simulation">🎮 Simulation Marché</a>
         <a href="/calendrier">📅 Calendrier Éco</a>
-        
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">📰 NOUVELLES</div>
         <a href="/nouvelles">📰 Actualités Crypto</a>
         <a href="/success-stories">🏆 Success Stories</a>
-        
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">👤 MON COMPTE</div>
         <a href="/pricing-complete">💎 Abonnements</a>
         <a href="/admin-dashboard">🔧 Admin</a>
         <a href="/mon-compte">👤 Mon Compte</a>
         <a href="/logout">🚪 Déconnexion</a>
     </div>
-    
     <div class="main-content">
         <div class="header">
             <h1>🤖 Prédiction Crypto IA Pro</h1>
             <p>Intelligence artificielle avancée pour prédire les mouvements</p>
         </div>
-        
         <div class="iframe-wrapper">
             <iframe 
                 src="https://htmlpreview.github.io/?https://github.com/johnboisvert1985-prog/crypto-prediction-api/blob/main/prediction.html?api=https://crypto-prediction-api-5763.onrender.com"
@@ -22806,16 +20800,12 @@ async def prediction_ia():
 @app.post("/webhook/stripe-permissions")
 async def stripe_permissions_webhook(request: Request):
     """Webhook Stripe pour activer les abonnements automatiquement - VERSION AMÉLIORÉE"""
-    
     if not STRIPE_AVAILABLE:
         print("❌ Stripe non disponible")
         return JSONResponse({"error": "Stripe non disponible"}, status_code=503)
-    
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
-    
     print(f"🔵 Webhook Stripe reçu - Signature: {sig_header[:20]}...")
-    
     try:
         event = stripe.Webhook.construct_event(
             payload, sig_header, STRIPE_WEBHOOK_SECRET
@@ -22824,24 +20814,19 @@ async def stripe_permissions_webhook(request: Request):
     except Exception as e:
         print(f"❌ Erreur webhook signature: {e}")
         return JSONResponse({"error": str(e)}, status_code=400)
-    
     # Gérer les événements
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        
         customer_email = session.get("customer_email")
         plan_raw = session["metadata"].get("plan", "1_month")
         username = session["metadata"].get("username") or customer_email
-        
         print(f"🔵 Checkout complété:")
         print(f"   Email: {customer_email}")
         print(f"   Plan brut: {plan_raw}")
         print(f"   Username: {username}")
-        
         if not username or not plan_raw:
             print("❌ Données manquantes - Abonnement non activé")
             return JSONResponse({"error": "Données manquantes"}, status_code=400)
-        
         # Normaliser le plan
         plan_mapping = {
             'monthly': '1_month',
@@ -22854,7 +20839,6 @@ async def stripe_permissions_webhook(request: Request):
             '1_year': '1_year'
         }
         plan = plan_mapping.get(plan_raw.lower(), '1_month')
-        
         # Calculer les dates
         start_date = datetime.now()
         duration_days = {
@@ -22864,13 +20848,10 @@ async def stripe_permissions_webhook(request: Request):
             "1_year": 365,
         }
         end_date = start_date + timedelta(days=duration_days.get(plan, 30))
-        
         print(f"✅ Plan normalisé: {plan_raw} -> {plan}")
         print(f"📅 Dates: {start_date.date()} -> {end_date.date()}")
-        
         conn = get_db_connection()
         c = conn.cursor()
-        
         try:
             if DB_CONFIG["type"] == "postgres":
                 c.execute("""
@@ -22900,12 +20881,10 @@ async def stripe_permissions_webhook(request: Request):
                     WHERE username = ?
                 """, (plan, start_date.isoformat(), end_date.isoformat(), session.get("customer"), 
                      session.get("subscription"), start_date.isoformat(), customer_email, username))
-            
             if c.rowcount == 0:
                 # Utilisateur n'existe pas - créer un compte
                 print(f"⚠️  Utilisateur {username} n'existe pas - Création...")
                 password_hash = "STRIPE_USER_" + str(session.get("customer"))  # Mot de passe temporaire
-                
                 if DB_CONFIG["type"] == "postgres":
                     c.execute("""
                         INSERT INTO users (username, password, email, subscription_plan, 
@@ -22923,40 +20902,30 @@ async def stripe_permissions_webhook(request: Request):
                     """, (username, password_hash, customer_email, plan, 
                          start_date.isoformat(), end_date.isoformat(), 
                          session.get("customer"), start_date.isoformat()))
-                
                 print(f"✅ Compte créé pour {username}")
-            
             conn.commit()
-            
             print(f"✅✅✅ ABONNEMENT STRIPE ACTIVÉ!")
             print(f"   Utilisateur: {username}")
             print(f"   Email: {customer_email}")
             print(f"   Plan: {plan}")
             print(f"   Expire: {end_date.date()}")
             print(f"   Durée: {duration_days.get(plan, 30)} jours")
-            
         except Exception as e:
             print(f"❌ Erreur SQL: {e}")
             conn.rollback()
         finally:
             conn.close()
-    
     elif event["type"] == "customer.subscription.deleted":
         subscription = event["data"]["object"]
         customer_id = subscription["customer"]
-        
         print(f"🔴 Abonnement Stripe annulé - Customer: {customer_id}")
-        
         conn = get_db_connection()
         c = conn.cursor()
-        
         if DB_CONFIG["type"] == "postgres":
             c.execute("SELECT username FROM users WHERE stripe_customer_id = %s", (customer_id,))
         else:
             c.execute("SELECT username FROM users WHERE stripe_customer_id = ?", (customer_id,))
-        
         row = c.fetchone()
-        
         if row:
             username = row[0]
             if DB_CONFIG["type"] == "postgres":
@@ -22969,49 +20938,38 @@ async def stripe_permissions_webhook(request: Request):
             print(f"⚠️  Abonnement annulé: {username} → FREE")
         else:
             print(f"⚠️  Utilisateur non trouvé pour customer_id: {customer_id}")
-        
         conn.close()
-    
     else:
         print(f"ℹ️  Événement ignoré: {event['type']}")
-    
     return JSONResponse({"success": True})
 
 
 @app.post("/webhook/coinbase-permissions")
 async def coinbase_permissions_webhook(request: Request):
     """Webhook Coinbase pour activer les abonnements crypto - VERSION AMÉLIORÉE"""
-    
     if not COINBASE_AVAILABLE:
         print("❌ Coinbase non disponible")
         return JSONResponse({"error": "Coinbase non disponible"}, status_code=503)
-    
     payload = await request.json()
     event_type = payload.get("event", {}).get("type")
-    
     print(f"🔵 Webhook Coinbase reçu - Type: {event_type}")
     print(f"📦 Payload: {payload}")
-    
     if event_type == "charge:confirmed":
         charge = payload["event"]["data"]
         metadata = charge.get("metadata", {})
-        
         # Essayer de récupérer l'email depuis plusieurs sources
         customer_email = metadata.get("email") or charge.get("customer_email")
         plan_raw = metadata.get("plan") or metadata.get("original_plan", "1_month")
         username = metadata.get("username") or customer_email
-        
         print(f"🔵 Charge confirmée:")
         print(f"   Charge ID: {charge.get('id')}")
         print(f"   Email: {customer_email}")
         print(f"   Plan brut: {plan_raw}")
         print(f"   Username: {username}")
         print(f"   Montant: {charge.get('pricing', {}).get('local', {}).get('amount')} USD")
-        
         if not username or not plan_raw:
             print("❌ Données manquantes - Abonnement non activé")
             return JSONResponse({"error": "Données manquantes"}, status_code=400)
-        
         # Normaliser le plan
         plan_mapping = {
             'monthly': '1_month',
@@ -23024,7 +20982,6 @@ async def coinbase_permissions_webhook(request: Request):
             '1_year': '1_year'
         }
         plan = plan_mapping.get(plan_raw.lower(), '1_month')
-        
         # Calculer les dates
         start_date = datetime.now()
         duration_days = {
@@ -23034,13 +20991,10 @@ async def coinbase_permissions_webhook(request: Request):
             "1_year": 365,
         }
         end_date = start_date + timedelta(days=duration_days.get(plan, 30))
-        
         print(f"✅ Plan normalisé: {plan_raw} -> {plan}")
         print(f"📅 Dates: {start_date.date()} -> {end_date.date()}")
-        
         conn = get_db_connection()
         c = conn.cursor()
-        
         try:
             if DB_CONFIG["type"] == "postgres":
                 c.execute("""
@@ -23067,12 +21021,10 @@ async def coinbase_permissions_webhook(request: Request):
                     WHERE username = ?
                 """, (plan, start_date.isoformat(), end_date.isoformat(), charge["id"], 
                      start_date.isoformat(), customer_email, username))
-            
             if c.rowcount == 0:
                 # Utilisateur n'existe pas - créer un compte
                 print(f"⚠️  Utilisateur {username} n'existe pas - Création...")
                 password_hash = "COINBASE_USER_" + str(charge["id"])[:20]  # Mot de passe temporaire
-                
                 if DB_CONFIG["type"] == "postgres":
                     c.execute("""
                         INSERT INTO users (username, password, email, subscription_plan, 
@@ -23090,11 +21042,8 @@ async def coinbase_permissions_webhook(request: Request):
                     """, (username, password_hash, customer_email, plan, 
                          start_date.isoformat(), end_date.isoformat(), 
                          charge["id"], start_date.isoformat()))
-                
                 print(f"✅ Compte créé pour {username}")
-            
             conn.commit()
-            
             print(f"✅✅✅ ABONNEMENT COINBASE ACTIVÉ!")
             print(f"   Utilisateur: {username}")
             print(f"   Email: {customer_email}")
@@ -23102,7 +21051,6 @@ async def coinbase_permissions_webhook(request: Request):
             print(f"   Expire: {end_date.date()}")
             print(f"   Durée: {duration_days.get(plan, 30)} jours")
             print(f"   Charge ID: {charge['id']}")
-            
         except Exception as e:
             print(f"❌ Erreur SQL: {e}")
             import traceback
@@ -23110,16 +21058,12 @@ async def coinbase_permissions_webhook(request: Request):
             conn.rollback()
         finally:
             conn.close()
-    
     elif event_type == "charge:failed":
         print(f"❌ Paiement Coinbase échoué")
-    
     elif event_type == "charge:pending":
         print(f"⏳ Paiement Coinbase en attente")
-    
     else:
         print(f"ℹ️  Événement ignoré: {event_type}")
-    
     return JSONResponse({"success": True})
 
 
@@ -23127,18 +21071,13 @@ async def coinbase_permissions_webhook(request: Request):
 if PERMISSIONS_AVAILABLE:
     try:
         from apscheduler.schedulers.asyncio import AsyncIOScheduler
-        
         scheduler = AsyncIOScheduler()
-        
         @scheduler.scheduled_job('cron', hour=0, minute=0)
         def check_expired_subscriptions():
             """Vérifie et désactive les abonnements expirés"""
-            
             print("🔍 Vérification des abonnements expirés...")
-            
             conn = get_db_connection()
             c = conn.cursor()
-            
             if DB_CONFIG["type"] == "postgres":
                 c.execute("""
                     SELECT username, subscription_plan, subscription_end
@@ -23153,30 +21092,22 @@ if PERMISSIONS_AVAILABLE:
                     WHERE subscription_end < ? 
                     AND subscription_plan != 'free'
                 """, (datetime.now().isoformat(),))
-            
             expired = c.fetchall()
-            
             for row in expired:
                 username = row[0]
                 old_plan = row[1]
-                
                 if DB_CONFIG["type"] == "postgres":
                     c.execute("UPDATE users SET subscription_plan = 'free' WHERE username = %s", (username,))
                 else:
                     c.execute("UPDATE users SET subscription_plan = 'free' WHERE username = ?", (username,))
-                
                 print(f"⚠️  Expiration: {username} ({old_plan} → free)")
-            
             conn.commit()
             conn.close()
-            
             print(f"✅ {len(expired)} abonnements expirés traités")
-        
         @app.on_event("startup")
         async def startup_scheduler():
             scheduler.start()
             print("✅ Scheduler de vérification d'expiration démarré")
-        
         print("✅ Scheduler configuré")
     except ImportError:
         print("⚠️  apscheduler non installé - scheduler désactivé")
@@ -23185,7 +21116,6 @@ if PERMISSIONS_AVAILABLE:
 # Route "Mon Compte" pour gérer l'abonnement
 async def permission_denied_handler(request: Request, exc: HTTPException):
     """Gère les erreurs de permissions"""
-    
     if request.url.path.startswith("/api/"):
         return JSONResponse(
             status_code=403,
@@ -23195,7 +21125,6 @@ async def permission_denied_handler(request: Request, exc: HTTPException):
                 "details": exc.detail if hasattr(exc, 'detail') else None
             }
         )
-    
     return RedirectResponse("/pricing-complete?upgrade=required", status_code=303)
 
 # ============================================================================
@@ -23215,14 +21144,12 @@ async def admin_activate_subscription(
     """
     Route d'admin pour activer manuellement un abonnement
     Usage: /admin/activate-subscription?username=admin&plan=1_month
-    
     Plans disponibles:
     - 1_month (Premium - 30 jours)
     - 3_months (Advanced - 90 jours)
     - 6_months (Pro - 180 jours)
     - 1_year (Elite - 365 jours)
     """
-    
     try:
         # Vérifier que le plan est valide
         valid_plans = {
@@ -23231,20 +21158,16 @@ async def admin_activate_subscription(
             "6_months": 180,
             "1_year": 365
         }
-        
         if plan not in valid_plans:
             return JSONResponse({
                 "error": "Plan invalide",
                 "valid_plans": list(valid_plans.keys())
             }, status_code=400)
-        
         # Calculer la date d'expiration
         expiration_date = datetime.now() + timedelta(days=valid_plans[plan])
-        
         # Mettre à jour la base de données
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         if USE_POSTGRESQL:
             # PostgreSQL
             cursor.execute("""
@@ -23263,11 +21186,9 @@ async def admin_activate_subscription(
                     payment_method = 'MANUAL'
                 WHERE username = ?
             """, (plan, expiration_date.isoformat(), username))
-        
         conn.commit()
         cursor.close()
         conn.close()
-        
         return JSONResponse({
             "success": True,
             "message": f"✅ Abonnement activé pour {username}",
@@ -23276,7 +21197,6 @@ async def admin_activate_subscription(
             "days": valid_plans[plan],
             "redirect": "/mon-compte"
         })
-        
     except Exception as e:
         return JSONResponse({
             "error": str(e)
@@ -23305,7 +21225,6 @@ async def stripe_webhook_debug(request: Request):
     """Version de debug du webhook Stripe avec logs détaillés"""
     try:
         body = await request.body()
-        
         print("=" * 70)
         print("🔔 WEBHOOK STRIPE REÇU (DEBUG)")
         print("=" * 70)
@@ -23313,7 +21232,6 @@ async def stripe_webhook_debug(request: Request):
         print(f"📦 Body length: {len(body)} bytes")
         print(f"🔐 Signature: {request.headers.get('stripe-signature', 'MANQUANTE!')}")
         print("=" * 70)
-        
         import json
         try:
             data = json.loads(body)
@@ -23322,14 +21240,11 @@ async def stripe_webhook_debug(request: Request):
             print(f"📋 Data: {json.dumps(data, indent=2)[:500]}...")
         except:
             print("❌ Impossible de parser le JSON")
-        
         print("=" * 70)
-        
         return JSONResponse({
             "status": "received",
             "message": "Webhook reçu! Check les logs Railway"
         })
-        
     except Exception as e:
         print(f"❌ ERREUR WEBHOOK DEBUG: {str(e)}")
         return JSONResponse({"error": str(e)}, status_code=500)
@@ -23341,73 +21256,57 @@ async def stripe_webhook_debug(request: Request):
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
     """Page d'administration moderne avec gestion des permissions"""
-    
     # Vérifier l'authentification
     session_token = request.cookies.get("session_token")
     if not session_token:
         return RedirectResponse("/login", status_code=303)
-    
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return HTMLResponse(SIDEBAR + "<h1>403 - Accès refusé</h1>", status_code=403)
-    
     # Récupérer tous les utilisateurs
     conn = db_manager.get_connection()
     cursor = conn.cursor()
-    
     cursor.execute("""
         SELECT username, role, subscription_plan, subscription_end, 
                payment_method, created_at, total_spent
         FROM users 
         ORDER BY created_at DESC
     """)
-    
     users = cursor.fetchall()
     cursor.close()
     conn.close()
-    
     # Stats
     total_users = len(users)
     active_subs = sum(1 for u in users if u[2] and u[2] != 'free' and u[3])
     total_revenue = sum(float(u[6] or 0) for u in users)
-    
     # Liste des routes disponibles
     routes_list = [
         # Dashboard & Trading
         "/dashboard", "/stats-dashboard", "/trades", "/strategie", 
         "/spot-trading", "/watchlist", "/risk-management", "/backtesting",
-        
         # Intelligence Artificielle (21 outils + Technical Analysis)
         "/ai-opportunity-scanner", "/ai-market-regime", "/ai-whale-watcher",
         "/ai-assistant", "/ai-signals", "/ai-news", "/ai-predictor",
         "/prediction-ia", "/ai-patterns", "/ai-sentiment", "/ai-sizer",
         "/ai-exit", "/ai-timeframe", "/ai-liquidity", "/ai-alerts", "/ai-gem-hunter",
         "/ai-technical-analysis",
-        
         # 🆕 V5 - Les 5 Nouvelles Features Premium
         "/narrative-radar", "/ai-crypto-coach", "/ai-swarm-agents",
         "/altseason-copilot-pro", "/rug-scam-shield",
-        
         # Analyse de Marché
         "/fear-greed", "/fear-greed-chart", "/dominance", "/altcoin-season",
         "/heatmap", "/bullrun-phase", "/graphiques", "/onchain-metrics",
-        
         # Portfolio & DeFi
         "/portfolio-tracker", "/defi-yield", "/crypto-pepites",
-        
         # Formation & Academy
         "/academy", "/crypto-academy", "/academy-progress",
-        
         # Outils
         "/calculatrice", "/convertisseur", "/market-simulation", "/calendrier",
-        
         # Contenu & Info
         "/nouvelles", "/success-stories",
-        
         # Compte & Pricing
         "/mon-compte", "/pricing-complete"
     ]
-    
     # PRÉ-CONSTRUIRE LE HTML DES CHECKBOXES (ÉVITER F-STRING AVEC BACKSLASH)
     checkboxes_html = ""
     for route in routes_list:
@@ -23418,7 +21317,6 @@ async def admin_dashboard(request: Request):
                         <input type="checkbox" id="perm_{route_id}" class="perm-checkbox" value="{route}">
                         <label for="perm_{route_id}">{route_label}</label>
                     </div>'''
-    
     # PRÉ-CONSTRUIRE LES CHECKBOXES POUR LES PLANS (même système mais IDs différents)
     checkboxes_html_plan = ""
     for route in routes_list:
@@ -23429,7 +21327,6 @@ async def admin_dashboard(request: Request):
                         <input type="checkbox" id="plan_perm_{route_id}" class="plan-perm-checkbox" value="{route}">
                         <label for="plan_perm_{route_id}">{route_label}</label>
                     </div>'''
-    
     # Construire HTML users
     users_html = ""
     for user_data in users:
@@ -23437,15 +21334,12 @@ async def admin_dashboard(request: Request):
         role = user_data[1]
         plan = user_data[2] or 'free'
         created = str(user_data[5])[:10] if user_data[5] else '-'
-        
         role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
         plan_badge = f'<span class="badge badge-premium">{plan}</span>'
-        
         # Construire le bouton delete en dehors du f-string (éviter backslash)
         delete_button = ""
         if username != "admin":
             delete_button = f'<button onclick="deleteUser(\'{username}\')" class="btn btn-danger">🗑️ Supprimer</button>'
-        
         users_html += f"""
         <tr>
             <td><strong>{username}</strong></td>
@@ -23459,7 +21353,6 @@ async def admin_dashboard(request: Request):
             </td>
         </tr>
         """
-    
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html>
@@ -23474,9 +21367,7 @@ async def admin_dashboard(request: Request):
                 min-height: 100vh; 
                 padding: 20px; 
             }}
-            
             .container {{ max-width: 1600px; margin: 0 auto; }}
-            
             .header {{
                 background: white;
                 padding: 30px;
@@ -23484,16 +21375,13 @@ async def admin_dashboard(request: Request):
                 box-shadow: 0 10px 30px rgba(0,0,0,0.2);
                 margin-bottom: 30px;
             }}
-            
             h1 {{ color: #333; font-size: 32px; margin-bottom: 10px; }}
             .subtitle {{ color: #666; }}
-            
             .action-buttons {{
                 display: flex;
                 gap: 15px;
                 margin-top: 20px;
             }}
-            
             .btn-add {{
                 background: linear-gradient(135deg, #667eea, #764ba2);
                 color: white;
@@ -23505,63 +21393,51 @@ async def admin_dashboard(request: Request):
                 cursor: pointer;
                 transition: all 0.3s;
             }}
-            
             .btn-add:hover {{
                 transform: translateY(-2px);
                 box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
             }}
-            
             .stats-grid {{
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
                 gap: 20px;
                 margin-bottom: 30px;
             }}
-            
             .stat-card {{
                 background: white;
                 padding: 25px;
                 border-radius: 15px;
                 box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             }}
-            
             .stat-label {{ color: #666; font-size: 14px; text-transform: uppercase; }}
             .stat-value {{ font-size: 36px; font-weight: bold; color: #667eea; margin: 10px 0; }}
-            
             .users-section {{
                 background: white;
                 padding: 30px;
                 border-radius: 15px;
                 box-shadow: 0 10px 30px rgba(0,0,0,0.2);
             }}
-            
             table {{
                 width: 100%;
                 border-collapse: collapse;
                 margin-top: 20px;
             }}
-            
             th, td {{
                 padding: 15px;
                 text-align: left;
                 border-bottom: 1px solid #eee;
             }}
-            
             th {{ background: #f8f9fa; font-weight: 600; color: #333; }}
-            
             .badge {{
                 padding: 5px 12px;
                 border-radius: 20px;
                 font-size: 12px;
                 font-weight: 600;
             }}
-            
             .badge-admin {{ background: #ffd43b; color: #333; }}
             .badge-user {{ background: #e0e0e0; color: #666; }}
             .badge-premium {{ background: #51cf66; color: white; }}
-            
             .actions {{ display: flex; gap: 8px; flex-wrap: wrap; }}
-            
             .btn {{
                 padding: 8px 15px;
                 border: none;
@@ -23571,16 +21447,12 @@ async def admin_dashboard(request: Request):
                 font-weight: 600;
                 transition: all 0.3s;
             }}
-            
             .btn-edit {{ background: #4dabf7; color: white; }}
             .btn-edit:hover {{ background: #339af0; }}
-            
             .btn-permissions {{ background: #ffd43b; color: #333; }}
             .btn-permissions:hover {{ background: #fcc419; }}
-            
             .btn-danger {{ background: #ff6b6b; color: white; }}
             .btn-danger:hover {{ background: #f03e3e; }}
-            
             /* MODAL STYLES */
             .modal {{
                 display: none;
@@ -23594,9 +21466,7 @@ async def admin_dashboard(request: Request):
                 justify-content: center;
                 align-items: center;
             }}
-            
             .modal.active {{ display: flex; }}
-            
             .modal-content {{
                 background: white;
                 padding: 40px;
@@ -23607,16 +21477,13 @@ async def admin_dashboard(request: Request):
                 overflow-y: auto;
                 box-shadow: 0 20px 60px rgba(0,0,0,0.4);
             }}
-            
             .modal-header {{
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 30px;
             }}
-            
             .modal-title {{ font-size: 24px; font-weight: 700; color: #333; }}
-            
             .close-btn {{
                 background: none;
                 border: none;
@@ -23624,20 +21491,16 @@ async def admin_dashboard(request: Request):
                 cursor: pointer;
                 color: #999;
             }}
-            
             .close-btn:hover {{ color: #333; }}
-            
             .form-group {{
                 margin-bottom: 20px;
             }}
-            
             .form-group label {{
                 display: block;
                 font-weight: 600;
                 color: #333;
                 margin-bottom: 8px;
             }}
-            
             .form-group input,
             .form-group select {{
                 width: 100%;
@@ -23647,14 +21510,12 @@ async def admin_dashboard(request: Request):
                 font-size: 14px;
                 transition: all 0.3s;
             }}
-            
             .form-group input:focus,
             .form-group select:focus {{
                 outline: none;
                 border-color: #667eea;
                 box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
             }}
-            
             .permissions-grid {{
                 display: grid;
                 grid-template-columns: repeat(2, 1fr);
@@ -23665,25 +21526,21 @@ async def admin_dashboard(request: Request):
                 background: #f8f9fa;
                 border-radius: 8px;
             }}
-            
             .permission-item {{
                 display: flex;
                 align-items: center;
                 gap: 8px;
             }}
-            
             .permission-item input[type="checkbox"] {{
                 width: 18px;
                 height: 18px;
                 cursor: pointer;
             }}
-            
             .permission-item label {{
                 cursor: pointer;
                 font-weight: 500;
                 margin: 0;
             }}
-            
             .btn-submit {{
                 width: 100%;
                 padding: 15px;
@@ -23697,26 +21554,22 @@ async def admin_dashboard(request: Request):
                 transition: all 0.3s;
                 margin-top: 20px;
             }}
-            
             .btn-submit:hover {{
                 transform: translateY(-2px);
                 box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
             }}
-            
             .message {{
                 padding: 15px;
                 border-radius: 8px;
                 margin-top: 15px;
                 display: none;
             }}
-            
             .message.success {{
                 background: #d4edda;
                 color: #155724;
                 border: 1px solid #c3e6cb;
                 display: block;
             }}
-            
             .message.error {{
                 background: #f8d7da;
                 color: #721c24;
@@ -23734,7 +21587,6 @@ async def admin_dashboard(request: Request):
                     <button onclick="openAddUserModal()" class="btn-add">➕ Ajouter un Utilisateur</button>
                 </div>
             </div>
-            
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-label">Total Utilisateurs</div>
@@ -23749,65 +21601,10 @@ async def admin_dashboard(request: Request):
                     <div class="stat-value">${total_revenue:.2f}</div>
                 </div>
             </div>
-            
-            <!-- 🥇 RETENTION WARFARE DASHBOARD -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 2px solid #ef4444; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #dc2626; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">⚠️</span>
-                    Retention Warfare - Zone de Combat
-                </h2>
-                <p style="color: #991b1b; margin-bottom: 20px; font-weight: 600;">
-                    🎯 Sauve tes revenus avant qu'il soit trop tard !
-                </p>
-                
-                <!-- Zone Rouge - Urgent -->
-                <div id="redZone" style="background: white; border-left: 5px solid #dc2626; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #dc2626; margin-bottom: 15px;">🚨 ZONE ROUGE - Expirent dans 3 jours</h3>
-                    <div id="redZoneContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Zone Orange -->
-                <div id="orangeZone" style="background: white; border-left: 5px solid #f59e0b; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #f59e0b; margin-bottom: 15px;">⚠️ ZONE ORANGE - Expirent dans 7 jours</h3>
-                    <div id="orangeZoneContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Zone Jaune -->
-                <div id="yellowZone" style="background: white; border-left: 5px solid #eab308; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #eab308; margin-bottom: 15px;">🟡 ZONE JAUNE - Expirent dans 30 jours</h3>
-                    <div id="yellowZoneContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Users Inactifs -->
-                <div style="background: white; border-left: 5px solid #6366f1; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #6366f1; margin-bottom: 15px;">💤 Utilisateurs Inactifs (7+ jours)</h3>
-                    <div id="inactiveUsers">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Stats Rétention -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-top: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Taux de Rétention</h3>
-                    <div id="retentionStats">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
-            
-            
-            
-            <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
+                        <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
             <div class="users-section" style="margin-bottom: 30px;">
                 <h2>🎯 Gestion des Accès par Forfait</h2>
                 <p style="color: #666; margin-bottom: 20px;">Définir quelles pages sont accessibles pour chaque plan d'abonnement</p>
-                
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
                     <button onclick="managePlanAccess('free')" class="btn-add" style="background: linear-gradient(135deg, #94a3b8, #64748b);">
                         🆓 Free
@@ -23826,18 +21623,10 @@ async def admin_dashboard(request: Request):
                     </button>
                 </div>
             </div>
-            
-            
-            
-            
-            
-            
-            
             <!-- SECTION GESTION DES CODES PROMO -->
             <div class="users-section" style="margin-bottom: 30px;">
                 <h2>🎟️ Gestion des Codes Promo</h2>
                 <p style="color: #666; margin-bottom: 20px;">Créer et gérer les codes de réduction pour les abonnements</p>
-                
                 <div class="action-buttons" style="margin-bottom: 20px;">
                     <button onclick="openPromoModal()" class="btn-add" style="background: linear-gradient(135deg, #ec4899, #be185d);">
                         ➕ Créer un Code Promo
@@ -23849,7 +21638,6 @@ async def admin_dashboard(request: Request):
                         🚀 Codes de Lancement (AUTO)
                     </button>
                 </div>
-                
                 <div id="promoListContainer" style="display: none; margin-top: 20px;">
                     <h3>Codes Actifs</h3>
                     <div id="promoListContent" style="background: #f8fafc; padding: 20px; border-radius: 10px;">
@@ -23857,7 +21645,6 @@ async def admin_dashboard(request: Request):
                     </div>
                 </div>
             </div>
-            
             <div class="users-section">
                 <h2>📋 Liste des Utilisateurs</h2>
                 <table>
@@ -23876,7 +21663,6 @@ async def admin_dashboard(request: Request):
                 </table>
             </div>
         </div>
-        
         <!-- MODAL AJOUTER/MODIFIER UTILISATEUR -->
         <div id="userModal" class="modal">
             <div class="modal-content">
@@ -23916,7 +21702,6 @@ async def admin_dashboard(request: Request):
                 <div id="userMessage" class="message"></div>
             </div>
         </div>
-        
         <!-- MODAL PERMISSIONS -->
         <div id="permissionsModal" class="modal">
             <div class="modal-content">
@@ -23938,7 +21723,6 @@ async def admin_dashboard(request: Request):
                 <div id="permMessage" class="message"></div>
             </div>
         </div>
-        
         <!-- MODAL GESTION ACCÈS PAR FORFAIT -->
         <div id="planAccessModal" class="modal">
             <div class="modal-content">
@@ -23960,7 +21744,6 @@ async def admin_dashboard(request: Request):
                 <div id="planAccessMessage" class="message"></div>
             </div>
         </div>
-        
         <!-- MODAL CRÉATION CODE PROMO -->
         <div id="promoModal" class="modal">
             <div class="modal-content">
@@ -23997,10 +21780,8 @@ async def admin_dashboard(request: Request):
                 </form>
             </div>
         </div>
-        
         <script>
         let currentPermUser = '';
-        
         function openAddUserModal() {{
             document.getElementById('modalTitle').textContent = 'Ajouter un Utilisateur';
             document.getElementById('userForm').reset();
@@ -24010,17 +21791,14 @@ async def admin_dashboard(request: Request):
             document.getElementById('submitBtn').textContent = '✅ Créer Utilisateur';
             document.getElementById('userModal').classList.add('active');
         }}
-        
         async function editUser(username) {{
             document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
-            
             // Charger les infos de l'utilisateur
             try {{
                 const response = await fetch(`/admin/get-user/${{username}}`);
                 const data = await response.json();
-                
                 if (data.success) {{
                     document.getElementById('username').value = data.user.username;
                     document.getElementById('username').readOnly = true; // Pas de changement de username
@@ -24037,23 +21815,18 @@ async def admin_dashboard(request: Request):
                 console.error(error);
             }}
         }}
-        
         function closeModal(modalId) {{
             document.getElementById(modalId).classList.remove('active');
         }}
-        
         async function managePermissions(username) {{
             currentPermUser = username;
             document.getElementById('permUsername').textContent = username;
-            
             // Charger les permissions actuelles
             try {{
                 const response = await fetch(`/admin/get-permissions/${{username}}`);
                 const data = await response.json();
-                
                 // Décocher toutes
                 document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
-                
                 // Cocher les permissions existantes
                 if (data.success && data.routes) {{
                     data.routes.forEach(route => {{
@@ -24061,17 +21834,14 @@ async def admin_dashboard(request: Request):
                         if (checkbox) checkbox.checked = true;
                     }});
                 }}
-                
                 document.getElementById('permissionsModal').classList.add('active');
             }} catch (error) {{
                 alert('Erreur lors du chargement des permissions');
             }}
         }}
-        
         async function savePermissions() {{
             const checkboxes = document.querySelectorAll('.perm-checkbox:checked');
             const routes = Array.from(checkboxes).map(cb => cb.value);
-            
             try {{
                 const response = await fetch('/admin/update-permissions', {{
                     method: 'POST',
@@ -24081,9 +21851,7 @@ async def admin_dashboard(request: Request):
                         routes: routes
                     }})
                 }});
-                
                 const data = await response.json();
-                
                 const msg = document.getElementById('permMessage');
                 if (data.success) {{
                     msg.className = 'message success';
@@ -24097,45 +21865,36 @@ async def admin_dashboard(request: Request):
                 alert('❌ Erreur de connexion');
             }}
         }}
-        
         function selectAllPermissions() {{
             document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = true);
         }}
-        
         function deselectAllPermissions() {{
             document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
         }}
-        
         document.getElementById('userForm').addEventListener('submit', async (e) => {{
             e.preventDefault();
-            
             const editMode = document.getElementById('editMode').value === 'true';
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const role = document.getElementById('role').value;
             const originalUsername = document.getElementById('originalUsername').value;
-            
             // Validation du mot de passe pour nouvel utilisateur
             if (!editMode && !password) {{
                 alert('❌ Le mot de passe est requis pour un nouvel utilisateur');
                 return;
             }}
-            
             try {{
                 const endpoint = editMode ? '/admin/edit-user' : '/admin/add-user';
                 const payload = editMode 
                     ? {{originalUsername, username, password, role}}
                     : {{username, password, role}};
-                
                 const response = await fetch(endpoint, {{
                     method: 'POST',
                     headers: {{'Content-Type': 'application/json'}},
                     body: JSON.stringify(payload)
                 }});
-                
                 const data = await response.json();
                 console.log('Server response:', data);
-                
                 const msg = document.getElementById('userMessage');
                 if (data.success) {{
                     msg.className = 'message success';
@@ -24152,21 +21911,17 @@ async def admin_dashboard(request: Request):
                 console.error(error);
             }}
         }});
-        
         async function deleteUser(username) {{
             if (!confirm(`Êtes-vous sûr de vouloir supprimer "${{username}}" ?`)) {{
                 return;
             }}
-            
             try {{
                 const response = await fetch('/admin/delete-user', {{
                     method: 'POST',
                     headers: {{'Content-Type': 'application/json'}},
                     body: JSON.stringify({{username}})
                 }});
-                
                 const data = await response.json();
-                
                 if (data.status === 'success') {{
                     alert('✅ Utilisateur supprimé!');
                     window.location.reload();
@@ -24177,10 +21932,8 @@ async def admin_dashboard(request: Request):
                 alert('❌ Erreur de connexion');
             }}
         }}
-        
         // ========== GESTION DES ACCÈS PAR FORFAIT ==========
         let currentPlan = '';
-        
         async function managePlanAccess(plan) {{
             currentPlan = plan;
             const planNames = {{
@@ -24190,17 +21943,13 @@ async def admin_dashboard(request: Request):
                 '6_months': '⭐ Pro (6 mois)',
                 '1_year': '👑 Elite (1 an)'
             }};
-            
             document.getElementById('planName').textContent = planNames[plan];
-            
             // Charger les permissions actuelles du plan
             try {{
                 const response = await fetch(`/admin/get-plan-access/${{plan}}`);
                 const data = await response.json();
-                
                 // Décocher toutes
                 document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
-                
                 // Cocher les permissions existantes
                 if (data.success && data.routes) {{
                     data.routes.forEach(route => {{
@@ -24208,18 +21957,15 @@ async def admin_dashboard(request: Request):
                         if (checkbox) checkbox.checked = true;
                     }});
                 }}
-                
                 document.getElementById('planAccessModal').classList.add('active');
             }} catch (error) {{
                 alert('❌ Erreur de chargement');
                 console.error(error);
             }}
         }}
-        
         async function savePlanAccess() {{
             const selectedRoutes = Array.from(document.querySelectorAll('.plan-perm-checkbox:checked'))
                 .map(cb => cb.value);
-            
             try {{
                 const response = await fetch('/admin/save-plan-access', {{
                     method: 'POST',
@@ -24229,10 +21975,8 @@ async def admin_dashboard(request: Request):
                         routes: selectedRoutes
                     }})
                 }});
-                
                 const data = await response.json();
                 const msg = document.getElementById('planAccessMessage');
-                
                 if (data.success) {{
                     msg.className = 'message success';
                     msg.textContent = '✅ ' + data.message;
@@ -24248,30 +21992,24 @@ async def admin_dashboard(request: Request):
                 console.error(error);
             }}
         }}
-        
         function selectAllPlanPermissions() {{
             document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = true);
         }}
-        
         function deselectAllPlanPermissions() {{
             document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
         }}
-        
         // ========== GESTION DES CODES PROMO ==========
         function openPromoModal() {{
             document.getElementById('promoForm').reset();
             document.getElementById('promoModal').classList.add('active');
         }}
-        
         async function createPromoCode(event) {{
             event.preventDefault();
-            
             const code = document.getElementById('promoCode').value.toUpperCase();
             const discount = parseFloat(document.getElementById('promoDiscount').value);
             const type = document.getElementById('promoType').value;
             const validUntil = document.getElementById('promoValidUntil').value;
             const maxUses = parseInt(document.getElementById('promoMaxUses').value) || null;
-            
             try {{
                 const response = await fetch('/admin/create-promo', {{
                     method: 'POST',
@@ -24284,10 +22022,8 @@ async def admin_dashboard(request: Request):
                         max_uses: maxUses
                     }})
                 }});
-                
                 const data = await response.json();
                 const msg = document.getElementById('promoMessage');
-                
                 if (data.success) {{
                     msg.className = 'message success';
                     msg.textContent = '✅ ' + data.message;
@@ -24304,24 +22040,19 @@ async def admin_dashboard(request: Request):
                 console.error(error);
             }}
         }}
-        
         async function loadPromoList() {{
             try {{
                 const response = await fetch('/admin/api/list-promos');
                 const data = await response.json();
-                
                 const container = document.getElementById('promoListContainer');
                 const content = document.getElementById('promoListContent');
-                
                 if (data.success && data.promos && data.promos.length > 0) {{
                     let html = '<table style="width: 100%; border-collapse: collapse;">';
                     html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu\\'à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
                     html += '<tbody>';
-                    
                     data.promos.forEach(promo => {{
                         const usesText = promo.max_uses ? `${{promo.uses || 0}}/${{promo.max_uses}}` : `${{promo.uses || 0}}/∞`;
                         const discount = promo.type === 'percentage' ? `${{promo.discount}}%` : `$${{promo.discount}}`;
-                        
                         html += `<tr style="border-bottom: 1px solid #e2e8f0;">
                             <td style="padding: 10px;"><strong>${{promo.code}}</strong></td>
                             <td>${{discount}}</td>
@@ -24333,7 +22064,6 @@ async def admin_dashboard(request: Request):
                             </td>
                         </tr>`;
                     }});
-                    
                     html += '</tbody></table>';
                     content.innerHTML = html;
                     container.style.display = 'block';
@@ -24346,19 +22076,15 @@ async def admin_dashboard(request: Request):
                 alert('❌ Erreur de chargement des codes promo');
             }}
         }}
-        
         async function deletePromo(code) {{
             if (!confirm(`Supprimer le code promo "${{code}}" ?`)) return;
-            
             try {{
                 const response = await fetch('/admin/delete-promo', {{
                     method: 'POST',
                     headers: {{'Content-Type': 'application/json'}},
                     body: JSON.stringify({{ code }})
                 }});
-                
                 const data = await response.json();
-                
                 if (data.success) {{
                     alert('✅ Code supprimé!');
                     loadPromoList();
@@ -24369,17 +22095,13 @@ async def admin_dashboard(request: Request):
                 alert('❌ Erreur de connexion');
             }}
         }}
-        
         async function createLaunchPromos() {{
             if (!confirm('Créer les codes promo de lancement automatiques?')) return;
-            
             try {{
                 const response = await fetch('/admin/create-launch-promos', {{
                     method: 'POST'
                 }});
-                
                 const data = await response.json();
-                
                 if (data.success) {{
                     alert('✅ ' + data.message);
                     loadPromoList();
@@ -24390,223 +22112,58 @@ async def admin_dashboard(request: Request):
                 alert('❌ Erreur de création');
             }}
         }}
-        
         // ========================================
-        // 🥇 RETENTION WARFARE DASHBOARD
         // ========================================
-        
-        async function loadRetentionDashboard() {{
-            try {{
-                const response = await fetch('/admin/api/retention-dashboard');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur retention dashboard:', data);
-                    return;
-                }}
-                
-                // Zone Rouge (3 jours)
-                renderExpiringUsers(data.red_zone, 'redZoneContent', 'red');
-                
-                // Zone Orange (7 jours)
-                renderExpiringUsers(data.orange_zone, 'orangeZoneContent', 'orange');
-                
-                // Zone Jaune (30 jours)
-                renderExpiringUsers(data.yellow_zone, 'yellowZoneContent', 'yellow');
-                
-                // Users Inactifs
-                renderInactiveUsers(data.inactive_users);
-                
-                // Stats Rétention
-                renderRetentionStats(data.retention_stats);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement retention dashboard:', error);
-            }}
-        }}
-        
-        function renderExpiringUsers(users, containerId, zone) {{
-            const container = document.getElementById(containerId);
-            
-            if (!users || users.length === 0) {{
-                container.innerHTML = '<p style="color: #10b981;">✅ Aucun utilisateur dans cette zone!</p>';
-                return;
-            }}
-            
-            const totalRevenue = users.reduce((sum, u) => sum + (u.revenue_at_risk || 0), 0);
-            
-            let html = '<p style="font-weight: 600; color: #333; margin-bottom: 15px;">' + 
-                users.length + ' utilisateurs = <span style="color: #dc2626;">$' + totalRevenue.toFixed(2) + ' à risque</span></p>';
-            
-            users.forEach(user => {{
-                const daysLeft = user.days_until_expiry;
-                const planEmoji = {{
-                    '1_month': '💎',
-                    '3_months': '🚀',
-                    '6_months': '⭐',
-                    '1_year': '👑'
-                }}[user.plan] || '📦';
-                
-                const borderColor = zone === 'red' ? '#dc2626' : zone === 'orange' ? '#f59e0b' : '#eab308';
-                const textColor = zone === 'red' ? '#dc2626' : '#f59e0b';
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ' + borderColor + ';">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
-                        '<div>' +
-                            '<strong style="color: #333;">' + planEmoji + ' ' + user.username + '</strong>' +
-                            '<span style="color: #666; margin-left: 10px;">' + user.plan + '</span>' +
-                        '</div>' +
-                        '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
-                    '</div>' +
-                    '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-                        '<button onclick="extendSubscription(\'' + user.username + '\', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
-                        '<button onclick="sendRenewalEmail(\'' + user.username + '\')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
-                        '<button onclick="offerDiscount(\'' + user.username + '\', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderInactiveUsers(users) {{
-            const container = document.getElementById('inactiveUsers');
-            
-            if (!users || users.length === 0) {{
-                container.innerHTML = '<p style="color: #10b981;">✅ Tous les utilisateurs sont actifs!</p>';
-                return;
-            }}
-            
-            let html = '<p style="font-weight: 600; color: #333; margin-bottom: 15px;">' + 
-                users.length + ' utilisateurs n&apos;ont pas visité depuis 7+ jours</p>';
-            
-            users.forEach(user => {{
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #6366f1;">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
-                        '<div>' +
-                            '<strong style="color: #333;">' + user.username + '</strong>' +
-                            '<span style="color: #666; margin-left: 10px;">' + user.plan + '</span>' +
-                        '</div>' +
-                        '<div style="color: #6366f1; font-weight: 600;">Inactif depuis ' + user.days_inactive + ' jours</div>' +
-                    '</div>' +
-                    '<div style="display: flex; gap: 8px;">' +
-                        '<button onclick="sendEngagementEmail(' + "'" + user.username + "'" + ')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 On t&apos;a manqué!</button>' +
-                        '<button onclick="offerCoaching(' + "'" + user.username + "'" + ')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderRetentionStats(stats) {{
-            const container = document.getElementById('retentionStats');
-            
-            if (!stats) {{
-                container.innerHTML = '<p style="color: #666;">Aucune donnée disponible</p>';
-                return;
-            }}
-            
-            const html = 
-            '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
-                '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">' +
-                    '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">GLOBAL</div>' +
-                    '<div style="color: #10b981; font-size: 28px; font-weight: bold;">' + (stats.global || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #dbeafe; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">' +
-                    '<div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PREMIUM</div>' +
-                    '<div style="color: #3b82f6; font-size: 28px; font-weight: bold;">' + (stats.premium || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #f3e8ff; padding: 15px; border-radius: 8px; border-left: 4px solid #8b5cf6;">' +
-                    '<div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ADVANCED</div>' +
-                    '<div style="color: #8b5cf6; font-size: 28px; font-weight: bold;">' + (stats.advanced || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">' +
-                    '<div style="color: #b45309; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PRO</div>' +
-                    '<div style="color: #f59e0b; font-size: 28px; font-weight: bold;">' + (stats.pro || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #d1fae5; padding: 15px; border-radius: 8px; border-left: 4px solid #059669;">' +
-                    '<div style="color: #047857; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ELITE</div>' +
-                    '<div style="color: #059669; font-size: 28px; font-weight: bold;">' + (stats.elite || 0) + '%</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
         // Actions
         async function extendSubscription(username, days) {{
             if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
-            
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{
                     method: 'POST',
                     headers: {{'Content-Type': 'application/json'}},
                     body: JSON.stringify({{ username, days }})
                 }});
-                
                 const data = await response.json();
                 alert(data.success ? '✅ Prolongé!' : '❌ ' + data.message);
-                if (data.success) loadRetentionDashboard();
+                
             }} catch (error) {{
                 alert('❌ Erreur');
             }}
         }}
-        
         async function sendRenewalEmail(username) {{
             alert('📧 Email de rappel envoyé à ' + username + '! (Feature prochaine)');
         }}
-        
         async function offerDiscount(username, percent) {{
             alert('💰 Code promo -' + percent + '% envoyé à ' + username + '! (Feature prochaine)');
         }}
-        
         async function sendEngagementEmail(username) {{
             alert('📧 Email &quot;On t&apos;a manqué!&quot; envoyé à ' + username + '! (Feature prochaine)');
         }}
-        
         async function offerCoaching(username) {{
             alert('🎯 Offre de coaching envoyée à ' + username + '! (Feature prochaine)');
         }}
-        
         // Charger au démarrage - SÉCURISÉ avec checks
         setTimeout(function() {{
             (async function() {{
-                try {{
-                    if (typeof loadRetentionDashboard === 'function') {{
-                        await loadRetentionDashboard();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Retention Dashboard:', error);
-                    // Continuer même si erreur
-                }}
+                
             }})();
         }}, 100);
-        
         // ========================================
         // ========================================
-        
-        
-        
         function renderFunnelVisualization(funnel) {{
             const container = document.getElementById('funnelContainer');
-            
             if (!funnel || !funnel.steps) {{
                 container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px;">Pas encore de données</p>';
                 return;
             }}
-            
             let html = '<div style="max-width: 800px; margin: 0 auto;">';
-            
             funnel.steps.forEach((step, index) => {{
                 const isLast = index === funnel.steps.length - 1;
                 const dropPercent = step.drop_percent || 0;
                 const isHighDrop = dropPercent > 50;
-                
                 // Barre de progression
                 const barWidth = (step.count / funnel.steps[0].count) * 100;
                 const barColor = isHighDrop ? '#ef4444' : step.conversion_rate > 70 ? '#10b981' : '#f59e0b';
-                
                 html += '<div style="margin-bottom: 20px;">' +
                     '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">' +
                         '<div style="font-weight: 600; color: #333; font-size: 16px;">' + step.name + '</div>' +
@@ -24618,7 +22175,6 @@ async def admin_dashboard(request: Request):
                             barWidth.toFixed(1) + '%' +
                         '</div>' +
                     '</div>';
-                
                 if (!isLast) {{
                     const arrow = isHighDrop ? '🚨' : '↓';
                     const dropColor = isHighDrop ? '#dc2626' : '#666';
@@ -24626,31 +22182,23 @@ async def admin_dashboard(request: Request):
                         arrow + ' ' + dropPercent.toFixed(1) + '% perdus ici' +
                     '</div>';
                 }}
-                
                 html += '</div>';
             }});
-            
             // Taux de conversion global
             html += '<div style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; padding: 20px; border-radius: 10px; text-align: center; margin-top: 30px;">' +
                 '<div style="font-size: 14px; margin-bottom: 5px;">TAUX DE CONVERSION GLOBAL</div>' +
                 '<div style="font-size: 36px; font-weight: bold;">' + funnel.global_conversion.toFixed(1) + '%</div>' +
             '</div>';
-            
             html += '</div>';
-            
             container.innerHTML = html;
         }}
-        
         function renderFunnelInsights(insights) {{
             const container = document.getElementById('insightsContent');
-            
             if (!insights || insights.length === 0) {{
                 container.innerHTML = '<p style="color: #999;">Aucun insight pour le moment</p>';
                 return;
             }}
-            
             let html = '';
-            
             insights.forEach(insight => {{
                 const iconMap = {{
                     'warning': '⚠️',
@@ -24662,10 +22210,8 @@ async def admin_dashboard(request: Request):
                     'success': '#10b981',
                     'info': '#3b82f6'
                 }};
-                
                 const icon = iconMap[insight.type] || '💡';
                 const color = colorMap[insight.type] || '#3b82f6';
-                
                 html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ' + color + ';">' +
                     '<div style="display: flex; align-items: start; gap: 10px;">' +
                         '<div style="font-size: 24px;">' + icon + '</div>' +
@@ -24677,26 +22223,20 @@ async def admin_dashboard(request: Request):
                     '</div>' +
                 '</div>';
             }});
-            
             container.innerHTML = html;
         }}
-        
         function renderPlanConversion(planData) {{
             const container = document.getElementById('planConversionContent');
-            
             if (!planData || planData.length === 0) {{
                 container.innerHTML = '<p style="color: #999;">Pas encore de données par plan</p>';
                 return;
             }}
-            
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">';
-            
             planData.forEach(plan => {{
                 const isBest = plan.is_best;
                 const isWorst = plan.is_worst;
                 const borderColor = isBest ? '#10b981' : isWorst ? '#ef4444' : '#e5e7eb';
                 const badge = isBest ? '🏆 BEST' : isWorst ? '⚠️ FAIBLE' : '';
-                
                 html += '<div style="background: white; border: 2px solid ' + borderColor + '; padding: 15px; border-radius: 10px;">' +
                     '<div style="font-weight: 600; color: #333; margin-bottom: 5px;">' + plan.name + '</div>' +
                     (badge ? '<div style="color: ' + borderColor + '; font-size: 11px; font-weight: 600; margin-bottom: 10px;">' + badge + '</div>' : '<div style="margin-bottom: 10px;"></div>') +
@@ -24704,12 +22244,9 @@ async def admin_dashboard(request: Request):
                     '<div style="color: #666; font-size: 13px;">' + plan.conversions + ' / ' + plan.visits + ' visites</div>' +
                 '</div>';
             }});
-            
             html += '</div>';
-            
             container.innerHTML = html;
         }}
-        
         // Charger au démarrage - SÉCURISÉ avec checks
         setTimeout(function() {{
             (async function() {{
@@ -24723,20 +22260,14 @@ async def admin_dashboard(request: Request):
                 }}
             }})();
         }}, 200);
-        
         // ========================================
         // ========================================
-        
-        
-        
         function renderRevenueProjections(data) {{
             const container = document.getElementById('revenueProjections');
-            
             if (!data) {{
                 container.innerHTML = '<p style="color: #999;">Pas de données</p>';
                 return;
             }}
-            
             const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">' +
                 '<div style="background: #f0fdf4; padding: 20px; border-radius: 10px; border-left: 4px solid #10b981;">' +
                     '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">CE MOIS</div>' +
@@ -24754,25 +22285,19 @@ async def admin_dashboard(request: Request):
                     '<div style="color: #666; font-size: 13px;">' + data.users_expiring + ' users expirent</div>' +
                 '</div>' +
             '</div>';
-            
             container.innerHTML = html;
         }}
-        
         function renderCLVByPlan(plans) {{
             const container = document.getElementById('clvByPlan');
-            
             if (!plans || plans.length === 0) {{
                 container.innerHTML = '<p style="color: #999;">Pas de données</p>';
                 return;
             }}
-            
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">';
-            
             plans.forEach(plan => {{
                 const isBest = plan.is_best;
                 const borderColor = isBest ? '#10b981' : '#e5e7eb';
                 const badge = isBest ? '<div style="color: #10b981; font-size: 11px; font-weight: 600; margin-bottom: 8px;">🏆 BEST CLV</div>' : '';
-                
                 html += '<div style="background: white; border: 2px solid ' + borderColor + '; padding: 15px; border-radius: 10px;">' +
                     '<div style="font-weight: 600; color: #333; margin-bottom: 5px;">' + plan.name + '</div>' +
                     badge +
@@ -24780,24 +22305,18 @@ async def admin_dashboard(request: Request):
                     '<div style="color: #666; font-size: 13px;">Renouvellent ' + plan.renewal_rate.toFixed(1) + 'x</div>' +
                 '</div>';
             }});
-            
             html += '</div>';
             container.innerHTML = html;
         }}
-        
         function renderTopClients(clients) {{
             const container = document.getElementById('topClients');
-            
             if (!clients || clients.length === 0) {{
                 container.innerHTML = '<p style="color: #999;">Pas encore de clients</p>';
                 return;
             }}
-            
             let html = '<div style="max-width: 800px;">';
-            
             clients.forEach((client, index) => {{
                 const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1) + '.';
-                
                 html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">' +
                     '<div style="display: flex; align-items: center; gap: 15px;">' +
                         '<div style="font-size: 24px; width: 40px;">' + medal + '</div>' +
@@ -24809,19 +22328,15 @@ async def admin_dashboard(request: Request):
                     '<div style="font-size: 24px; font-weight: bold; color: #10b981;">$' + client.lifetime_value.toFixed(2) + '</div>' +
                 '</div>';
             }});
-            
             html += '</div>';
             container.innerHTML = html;
         }}
-        
         function renderPromoROI(promos) {{
             const container = document.getElementById('promoROI');
-            
             if (!promos || promos.length === 0) {{
                 container.innerHTML = '<p style="color: #999;">Aucun code promo utilisé</p>';
                 return;
             }}
-            
             let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">' +
                 '<thead><tr style="background: #f3f4f6;">' +
                 '<th style="padding: 12px; text-align: left; font-weight: 600;">Code</th>' +
@@ -24830,11 +22345,9 @@ async def admin_dashboard(request: Request):
                 '<th style="padding: 12px; text-align: right; font-weight: 600;">Revenus</th>' +
                 '<th style="padding: 12px; text-align: right; font-weight: 600;">ROI</th>' +
                 '</tr></thead><tbody>';
-            
             promos.forEach(promo => {{
                 const roiColor = promo.roi > 200 ? '#10b981' : promo.roi > 100 ? '#f59e0b' : '#ef4444';
                 const roiIcon = promo.roi > 200 ? '🔥' : promo.roi > 100 ? '✅' : '⚠️';
-                
                 html += '<tr style="border-bottom: 1px solid #e5e7eb;">' +
                     '<td style="padding: 12px; font-weight: 600;">' + promo.code + '</td>' +
                     '<td style="padding: 12px; text-align: center;">' + promo.uses + 'x</td>' +
@@ -24843,24 +22356,17 @@ async def admin_dashboard(request: Request):
                     '<td style="padding: 12px; text-align: right; font-weight: bold; color: ' + roiColor + ';">' + roiIcon + ' ' + promo.roi.toFixed(0) + '%</td>' +
                 '</tr>';
             }});
-            
             html += '</tbody></table></div>';
             container.innerHTML = html;
         }}
-        
         // ========================================
         // ========================================
-        
-        
-        
         function renderReferralStats(stats) {{
             const container = document.getElementById('referralStats');
-            
             if (!stats) {{
                 container.innerHTML = '<p style="color: #999;">Pas de données</p>';
                 return;
             }}
-            
             const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
                 '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px;">' +
                     '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">TOTAL PARRAINAGES</div>' +
@@ -24875,23 +22381,17 @@ async def admin_dashboard(request: Request):
                     '<div style="font-size: 28px; font-weight: bold; color: #8b5cf6;">$' + stats.revenue_generated.toFixed(2) + '</div>' +
                 '</div>' +
             '</div>';
-            
             container.innerHTML = html;
         }}
-        
         function renderReferralLeaderboard(leaders) {{
             const container = document.getElementById('referralLeaderboard');
-            
             if (!leaders || leaders.length === 0) {{
                 container.innerHTML = '<p style="color: #999;">Aucun parrainage actif</p>';
                 return;
             }}
-            
             let html = '<div style="max-width: 800px;">';
-            
             leaders.forEach((leader, index) => {{
                 const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1) + '.';
-                
                 html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px;">' +
                     '<div style="display: flex; justify-content: space-between; align-items: center;">' +
                         '<div style="display: flex; align-items: center; gap: 15px;">' +
@@ -24908,47 +22408,35 @@ async def admin_dashboard(request: Request):
                     '</div>' +
                 '</div>';
             }});
-            
             html += '</div>';
             container.innerHTML = html;
         }}
-        
         function renderAcquisitionSources(sources) {{
             const container = document.getElementById('acquisitionSources');
-            
             if (!sources || sources.length === 0) {{
                 container.innerHTML = '<p style="color: #999;">Pas de données</p>';
                 return;
             }}
-            
             const total = sources.reduce((sum, s) => sum + s.count, 0);
-            
             let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">';
-            
             sources.forEach(source => {{
                 const percent = ((source.count / total) * 100).toFixed(1);
-                
                 html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; text-align: center;">' +
                     '<div style="font-weight: 600; color: #333; margin-bottom: 8px;">' + source.name + '</div>' +
                     '<div style="font-size: 32px; font-weight: bold; color: #6366f1; margin-bottom: 5px;">' + source.count + '</div>' +
                     '<div style="color: #666; font-size: 13px;">' + percent + '% du total</div>' +
                 '</div>';
             }});
-            
             html += '</div>';
             container.innerHTML = html;
         }}
-        
         function renderCPAComparison(cpa) {{
             const container = document.getElementById('cpaComparison');
-            
             if (!cpa) {{
                 container.innerHTML = '<p style="color: #999;">Pas de données</p>';
                 return;
             }}
-            
             const savings = ((1 - (cpa.referral / cpa.ads)) * 100).toFixed(0);
-            
             const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">' +
                 '<div style="background: #fef2f2; padding: 20px; border-radius: 10px; border-left: 4px solid #ef4444;">' +
                     '<div style="color: #991b1b; font-size: 12px; font-weight: 600; margin-bottom: 5px;">VIA ADS</div>' +
@@ -24966,29 +22454,20 @@ async def admin_dashboard(request: Request):
                     '<div style="font-size: 14px;">🔥 Parrainage 76% moins cher!</div>' +
                 '</div>' +
             '</div>';
-            
             container.innerHTML = html;
         }}
-        
         // ========================================
         // ========================================
-        
-        
-        
         function renderAutomationRules(rules) {{
             const container = document.getElementById('automationRules');
-            
             if (!rules || rules.length === 0) {{
                 container.innerHTML = '<p style="color: #999;">Aucune règle créée. Commence par créer ta première règle!</p>';
                 return;
             }}
-            
             let html = '';
-            
             rules.forEach(rule => {{
                 const statusColor = rule.is_active ? '#10b981' : '#9ca3af';
                 const statusText = rule.is_active ? '✅ ACTIVE' : '⏸️ PAUSE';
-                
                 html += '<div style="background: #f9fafb; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid ' + statusColor + ';">' +
                     '<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">' +
                         '<div>' +
@@ -25008,18 +22487,14 @@ async def admin_dashboard(request: Request):
                     '</div>' +
                 '</div>';
             }});
-            
             container.innerHTML = html;
         }}
-        
         function renderAutomationPerformance(perf) {{
             const container = document.getElementById('automationPerformance');
-            
             if (!perf) {{
                 container.innerHTML = '<p style="color: #999;">Pas de données</p>';
                 return;
             }}
-            
             const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
                 '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px;">' +
                     '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">EMAILS ENVOYÉS</div>' +
@@ -25039,14 +22514,11 @@ async def admin_dashboard(request: Request):
                     '<div style="color: #666; font-size: 11px;">par email</div>' +
                 '</div>' +
             '</div>';
-            
             container.innerHTML = html;
         }}
-        
         function openCreateRuleModal() {{
             alert('🚧 Feature en développement: Créer règle d automation');
         }}
-        
         // Charger toutes les features au démarrage - SÉCURISÉ avec checks
         setTimeout(function() {{
             (async function() {{
@@ -25058,7 +22530,6 @@ async def admin_dashboard(request: Request):
                 }} catch (error) {{
                     console.error('⚠️ Erreur Revenue Intelligence:', error);
                 }}
-                
                 // Viral Growth
                 try {{
                     if (typeof loadViralGrowth === 'function') {{
@@ -25067,7 +22538,6 @@ async def admin_dashboard(request: Request):
                 }} catch (error) {{
                     console.error('⚠️ Erreur Viral Growth:', error);
                 }}
-                
                 // Automation Engine
                 try {{
                     if (typeof loadAutomationEngine === 'function') {{
@@ -25078,12 +22548,10 @@ async def admin_dashboard(request: Request):
                 }}
             }})();
         }}, 300);
-        
         </script>
     </body>
     </html>
     """)
-    
     def _generate_permissions_checkboxes(self, routes):
         html = ""
         for route in routes:
@@ -25103,11 +22571,9 @@ async def admin_pricing_update(request: Request):
     session_token = request.cookies.get("session_token")
     if not session_token:
         return RedirectResponse("/login", status_code=303)
-    
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return HTMLResponse(SIDEBAR + "<h1>403</h1>", status_code=403)
-    
     try:
         form = await request.form()
         plan_id = form.get("plan_id")
@@ -25115,16 +22581,13 @@ async def admin_pricing_update(request: Request):
         price = float(form.get("price", 0))
         duration = form.get("duration")
         routes = form.getlist("routes")
-        
         import json, os
         config_file = "/data/pricing_config.json"
-        
         if os.path.exists(config_file):
             with open(config_file, 'r') as f:
                 config = json.load(f)
         else:
             config = {}
-        
         config[plan_id] = {
             'name': name,
             'price': price,
@@ -25132,11 +22595,9 @@ async def admin_pricing_update(request: Request):
             'routes': routes,
             'updated_at': str(datetime.now())
         }
-        
         os.makedirs("/data", exist_ok=True)
         with open(config_file, 'w') as f:
             json.dump(config, f, indent=2)
-        
         return RedirectResponse("/admin/pricing?success=1", status_code=303)
     except Exception as e:
         print(f"Erreur: {e}")
@@ -25149,11 +22610,9 @@ async def admin_pricing_update(request: Request):
     session_token = request.cookies.get("session_token")
     if not session_token:
         return RedirectResponse("/login", status_code=303)
-    
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return HTMLResponse(SIDEBAR + "<h1>403</h1>", status_code=403)
-    
     try:
         form = await request.form()
         plan_id = form.get("plan_id")
@@ -25161,20 +22620,16 @@ async def admin_pricing_update(request: Request):
         price = float(form.get("price", 0))
         duration = form.get("duration")
         routes = form.getlist("routes")
-        
         # Save to file
         import json
         import os
-        
         config_file = "/data/pricing_config.json"
-        
         # Load existing
         if os.path.exists(config_file):
             with open(config_file, 'r') as f:
                 config = json.load(f)
         else:
             config = {}
-        
         # Update
         config[plan_id] = {
             'name': name,
@@ -25183,14 +22638,11 @@ async def admin_pricing_update(request: Request):
             'routes': routes,
             'updated_at': str(datetime.now())
         }
-        
         # Save
         os.makedirs("/data", exist_ok=True)
         with open(config_file, 'w') as f:
             json.dump(config, f, indent=2)
-        
         return RedirectResponse("/admin/pricing?success=1", status_code=303)
-        
     except Exception as e:
         print(f"Erreur pricing update: {e}")
         return RedirectResponse("/admin/pricing?error=1", status_code=303)
@@ -25200,13 +22652,11 @@ async def admin_init_promo_table(session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
     if not user:
         return JSONResponse({"error": "Non authentifié"}, status_code=401)
-    
     if not PROMO_CODES_AVAILABLE:
         return JSONResponse({
             "success": False,
             "message": "❌ Module promo_codes non disponible"
         }, status_code=500)
-    
     try:
         conn = get_db_connection()
         create_promo_codes_table(conn)
@@ -25228,33 +22678,27 @@ async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)
     user = get_user_from_token(session_token)
     if not user:
         return JSONResponse({"error": "Non authentifié"}, status_code=401)
-    
     if not PROMO_CODES_AVAILABLE:
         return JSONResponse({
             "success": False,
             "message": "❌ Module promo_codes non disponible"
         }, status_code=500)
-    
     try:
         conn = get_db_connection()
         create_promo_codes_table(conn)
-        
         codes_created = []
-        
         # Code 1: LAUNCH20 - 20% pour tous
         success, msg = PromoCodeManager.create_promo_code(
             conn, "LAUNCH20", "percent", 20,
             description="Lancement: 20% de réduction"
         )
         if success: codes_created.append("LAUNCH20 (20% off)")
-        
         # Code 2: WELCOME10 - $10 de réduction
         success, msg = PromoCodeManager.create_promo_code(
             conn, "WELCOME10", "fixed", 10.00,
             description="Bienvenue: $10 de réduction"
         )
         if success: codes_created.append("WELCOME10 ($10 off)")
-        
         # Code 3: FIRSTBUY - 25% premier achat, 50 max
         success, msg = PromoCodeManager.create_promo_code(
             conn, "FIRSTBUY", "percent", 25,
@@ -25262,7 +22706,6 @@ async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)
             description="Premier achat: 25% off (50 max)"
         )
         if success: codes_created.append("FIRSTBUY (25% off, 50 max)")
-        
         # Code 4: LONGTERM30 - 30% pour plans longs
         success, msg = PromoCodeManager.create_promo_code(
             conn, "LONGTERM30", "percent", 30,
@@ -25270,7 +22713,6 @@ async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)
             description="Plans longs: 30% off"
         )
         if success: codes_created.append("LONGTERM30 (30% off plans 6m+)")
-        
         # Code 5: FLASH50 - Flash sale 7 jours
         success, msg = PromoCodeManager.create_promo_code(
             conn, "FLASH50", "percent", 50,
@@ -25279,9 +22721,7 @@ async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)
             description="Flash Sale: 50% off (min $50, 7 jours)"
         )
         if success: codes_created.append("FLASH50 (50% off, min $50, 7j)")
-        
         conn.close()
-        
         return JSONResponse({
             "success": True,
             "message": "✅ Codes de lancement créés!",
@@ -25311,27 +22751,21 @@ async def admin_create_promo(
     user = get_user_from_token(session_token)
     if not user:
         return JSONResponse({"error": "Non authentifié"}, status_code=401)
-    
     if not PROMO_CODES_AVAILABLE:
         return JSONResponse({
             "success": False,
             "message": "❌ Module promo_codes non disponible"
         }, status_code=500)
-    
     try:
         conn = get_db_connection()
-        
         expires_at = None
         if expires_days:
             expires_at = datetime.now() + timedelta(days=expires_days)
-        
         success, message = PromoCodeManager.create_promo_code(
             conn, code, discount_type, discount_value,
             max_uses, expires_at, min_amount, plans, description
         )
-        
         conn.close()
-        
         if success:
             symbol = '%' if discount_type == 'percent' else '$'
             return JSONResponse({
@@ -25358,14 +22792,11 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
     if not user:
         return RedirectResponse("/login")
-    
     if not PROMO_CODES_AVAILABLE:
         return HTMLResponse(SIDEBAR + "<h1>❌ Module promo_codes non disponible</h1>")
-    
     try:
         conn = get_db_connection()
         codes = PromoCodeManager.get_all_promo_codes(conn)
-        
         # Get stats directly
         cursor = conn.cursor()
         try:
@@ -25386,19 +22817,15 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
             stats = {'total': 0, 'active': 0, 'total_usage': 0}
         finally:
             cursor.close()
-        
         conn.close()
-        
         codes_html = ""
         for code_data in codes:
             (code, dtype, value, max_u, curr_u, expires, min_amt, 
              plans, desc, is_active, created, last_used) = code_data
-            
             symbol = '%' if dtype == 'percent' else '$'
             uses_str = f"{curr_u}/{max_u if max_u else '∞'}"
             status = "✅" if is_active else "❌"
             expires_str = expires[:10] if expires else "Jamais"
-            
             codes_html += f"""
             <tr>
                 <td><strong>{code}</strong></td>
@@ -25410,7 +22837,6 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
                 <td style="font-size: 12px;">{desc}</td>
             </tr>
             """
-        
         html = SIDEBAR + f"""
         <!DOCTYPE html>
         <html>
@@ -25483,10 +22909,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
 </style>
 
             <div class="container">
-                
-                
                 <h1>💰 Gestion des Codes Promo</h1>
-                
                 <div class="stats">
                     <div class="stat-card">
                         <h3>Total Codes</h3>
@@ -25505,7 +22928,6 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
                         <p style="font-size: 20px;">N/A</p>
                     </div>
                 </div>
-                
                 <div class="buttons">
                     <a href="/admin/create-launch-promos" class="btn">
                         ✨ Créer Codes de Lancement
@@ -25514,7 +22936,6 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
                         ← Retour Admin
                     </a>
                 </div>
-                
                 <h2 style="color: #94a3b8; margin-top: 30px;">📋 Liste des Codes</h2>
                 <table>
                     <tr>
@@ -25532,7 +22953,6 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
         </body>
         </html>
         """
-        
         return HTMLResponse(html)
     except Exception as e:
         return HTMLResponse(f"<h1>❌ Erreur: {str(e)}</h1>")
@@ -25549,20 +22969,17 @@ async def admin_test_promo(
     user = get_user_from_token(session_token)
     if not user:
         return JSONResponse({"error": "Non authentifié"}, status_code=401)
-    
     if not PROMO_CODES_AVAILABLE:
         return JSONResponse({
             "success": False,
             "message": "❌ Module promo_codes non disponible"
         }, status_code=500)
-    
     try:
         conn = get_db_connection()
         valid, message, discount = PromoCodeManager.validate_promo_code(
             conn, code, plan, amount
         )
         conn.close()
-        
         return JSONResponse({
             "valid": valid,
             "message": message,
@@ -25589,11 +23006,9 @@ async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         # Créer la table si elle n'existe pas
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS plan_access (
@@ -25602,21 +23017,16 @@ async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)
             )
         """)
         conn.commit()
-        
         cursor.execute("SELECT routes FROM plan_access WHERE plan = ?", (plan,))
         result = cursor.fetchone()
-        
         cursor.close()
         conn.close()
-        
         if result and result[0]:
             import json
             routes = json.loads(result[0])
         else:
             routes = []
-        
         return JSONResponse({"success": True, "routes": routes})
-    
     except Exception as e:
         print(f"❌ Erreur get_plan_access: {e}")
         import traceback
@@ -25630,21 +23040,16 @@ async def save_plan_access(request: Request, session_token: Optional[str] = Cook
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         data = await request.json()
         plan = data.get('plan')
         routes = data.get('routes', [])
-        
         if not plan:
             return JSONResponse({"success": False, "message": "Plan manquant"}, status_code=400)
-        
         import json
         routes_json = json.dumps(routes)
-        
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         # Créer la table si elle n'existe pas
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS plan_access (
@@ -25652,24 +23057,19 @@ async def save_plan_access(request: Request, session_token: Optional[str] = Cook
                 routes TEXT
             )
         """)
-        
         # Insérer ou mettre à jour
         cursor.execute("""
             INSERT OR REPLACE INTO plan_access (plan, routes)
             VALUES (?, ?)
         """, (plan, routes_json))
-        
         conn.commit()
         cursor.close()
         conn.close()
-        
         print(f"✅ Accès du plan {plan} sauvegardés: {len(routes)} routes")
-        
         return JSONResponse({
             "success": True,
             "message": f"Accès du plan {plan.upper()} sauvegardés ({len(routes)} pages)"
         })
-    
     except Exception as e:
         print(f"❌ Erreur save_plan_access: {e}")
         import traceback
@@ -25687,7 +23087,6 @@ async def admin_create_promo_post(request: Request, session_token: Optional[str]
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         data = await request.json()
         code = data.get('code', '').upper()
@@ -25695,13 +23094,10 @@ async def admin_create_promo_post(request: Request, session_token: Optional[str]
         promo_type = data.get('type', 'percentage')
         valid_until = data.get('valid_until')
         max_uses = data.get('max_uses')
-        
         if not code or not discount:
             return JSONResponse({"success": False, "message": "Code et réduction requis"}, status_code=400)
-        
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         # Créer la table si elle n'existe pas
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS promo_codes (
@@ -25714,31 +23110,25 @@ async def admin_create_promo_post(request: Request, session_token: Optional[str]
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        
         # Vérifier si le code existe déjà
         cursor.execute("SELECT code FROM promo_codes WHERE code = ?", (code,))
         if cursor.fetchone():
             cursor.close()
             conn.close()
             return JSONResponse({"success": False, "message": f"Le code {code} existe déjà"}, status_code=400)
-        
         # Insérer le nouveau code
         cursor.execute("""
             INSERT INTO promo_codes (code, discount, type, valid_until, max_uses)
             VALUES (?, ?, ?, ?, ?)
         """, (code, discount, promo_type, valid_until, max_uses))
-        
         conn.commit()
         cursor.close()
         conn.close()
-        
         print(f"✅ Code promo créé: {code} (-{discount}{'%' if promo_type == 'percentage' else '$'})")
-        
         return JSONResponse({
             "success": True,
             "message": f"Code promo {code} créé avec succès!"
         })
-    
     except Exception as e:
         print(f"❌ Erreur create_promo: {e}")
         import traceback
@@ -25752,30 +23142,23 @@ async def admin_delete_promo(request: Request, session_token: Optional[str] = Co
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         data = await request.json()
         code = data.get('code', '').upper()
-        
         if not code:
             return JSONResponse({"success": False, "message": "Code manquant"}, status_code=400)
-        
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         cursor.execute("DELETE FROM promo_codes WHERE code = ?", (code,))
         deleted = cursor.rowcount
-        
         conn.commit()
         cursor.close()
         conn.close()
-        
         if deleted > 0:
             print(f"✅ Code promo supprimé: {code}")
             return JSONResponse({"success": True, "message": f"Code {code} supprimé"})
         else:
             return JSONResponse({"success": False, "message": "Code non trouvé"}, status_code=404)
-    
     except Exception as e:
         print(f"❌ Erreur delete_promo: {e}")
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)
@@ -25787,11 +23170,9 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         # Créer la table si elle n'existe pas
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS promo_codes (
@@ -25805,18 +23186,15 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
             )
         """)
         conn.commit()
-        
         # Récupérer tous les codes
         cursor.execute("""
             SELECT code, discount, type, valid_until, max_uses, uses
             FROM promo_codes
             ORDER BY created_at DESC
         """)
-        
         rows = cursor.fetchall()
         cursor.close()
         conn.close()
-        
         promos = []
         for row in rows:
             promos.append({
@@ -25827,14 +23205,11 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
                 "max_uses": row[4],
                 "uses": row[5] or 0
             })
-        
         print(f"✅ Liste promos renvoyée: {len(promos)} codes")
-        
         return JSONResponse({
             "success": True,
             "promos": promos
         })
-    
     except Exception as e:
         print(f"❌ Erreur list_promos API: {e}")
         import traceback
@@ -25843,24 +23218,17 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
 
 
 # ============================================================================
-# 🥇 RETENTION WARFARE DASHBOARD API
-# ============================================================================
-
 @app.get("/admin/api/retention-dashboard")
 async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None)):
     """API pour le Retention Dashboard - Utilisateurs qui expirent, inactifs, stats"""
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         from datetime import datetime, timedelta
-        
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         now = datetime.now()
-        
         # Zone Rouge - Expirent dans 3 jours
         red_cutoff = now + timedelta(days=3)
         cursor.execute("""
@@ -25873,14 +23241,12 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
             AND subscription_end > ?
             ORDER BY subscription_end ASC
         """, (red_cutoff.isoformat(), now.isoformat()))
-        
         red_zone = []
         for row in cursor.fetchall():
             username, plan, end_date = row
             try:
                 end = datetime.fromisoformat(end_date.replace('Z', '+00:00') if 'Z' in end_date else end_date)
                 days_left = (end - now).days
-                
                 # Calculer revenue à risque (approximatif)
                 plan_prices = {
                     '1_month': 29.99,
@@ -25888,7 +23254,6 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
                     '6_months': 134.94,
                     '1_year': 239.88
                 }
-                
                 red_zone.append({
                     'username': username,
                     'plan': plan,
@@ -25898,7 +23263,6 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
                 })
             except:
                 continue
-        
         # Zone Orange - Expirent dans 7 jours
         orange_cutoff = now + timedelta(days=7)
         cursor.execute("""
@@ -25911,21 +23275,18 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
             AND subscription_end > ?
             ORDER BY subscription_end ASC
         """, (orange_cutoff.isoformat(), red_cutoff.isoformat()))
-        
         orange_zone = []
         for row in cursor.fetchall():
             username, plan, end_date = row
             try:
                 end = datetime.fromisoformat(end_date.replace('Z', '+00:00') if 'Z' in end_date else end_date)
                 days_left = (end - now).days
-                
                 plan_prices = {
                     '1_month': 29.99,
                     '3_months': 74.97,
                     '6_months': 134.94,
                     '1_year': 239.88
                 }
-                
                 orange_zone.append({
                     'username': username,
                     'plan': plan,
@@ -25935,7 +23296,6 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
                 })
             except:
                 continue
-        
         # Zone Jaune - Expirent dans 30 jours
         yellow_cutoff = now + timedelta(days=30)
         cursor.execute("""
@@ -25948,21 +23308,18 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
             AND subscription_end > ?
             ORDER BY subscription_end ASC
         """, (yellow_cutoff.isoformat(), orange_cutoff.isoformat()))
-        
         yellow_zone = []
         for row in cursor.fetchall():
             username, plan, end_date = row
             try:
                 end = datetime.fromisoformat(end_date.replace('Z', '+00:00') if 'Z' in end_date else end_date)
                 days_left = (end - now).days
-                
                 plan_prices = {
                     '1_month': 29.99,
                     '3_months': 74.97,
                     '6_months': 134.94,
                     '1_year': 239.88
                 }
-                
                 yellow_zone.append({
                     'username': username,
                     'plan': plan,
@@ -25972,12 +23329,10 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
                 })
             except:
                 continue
-        
         # Users Inactifs (7+ jours, avec abonnement payant)
         # Note: On suppose qu'on track last_login_date dans le futur
         # Pour l'instant, on retourne une liste vide
         inactive_users = []
-        
         # Stats de rétention (simplifiées pour l'instant)
         retention_stats = {
             'global': 75,  # Placeholder
@@ -25986,12 +23341,9 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
             'pro': 82,
             'elite': 91
         }
-        
         cursor.close()
         conn.close()
-        
         print(f"✅ Retention Dashboard: Rouge={len(red_zone)}, Orange={len(orange_zone)}, Jaune={len(yellow_zone)}")
-        
         return JSONResponse({
             "success": True,
             "red_zone": red_zone,
@@ -26000,7 +23352,6 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
             "inactive_users": inactive_users,
             "retention_stats": retention_stats
         })
-    
     except Exception as e:
         print(f"❌ Erreur retention dashboard: {e}")
         import traceback
@@ -26014,36 +23365,28 @@ async def admin_extend_subscription(request: Request, session_token: Optional[st
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         from datetime import datetime, timedelta
-        
         data = await request.json()
         username = data.get('username')
         days = data.get('days', 30)
-        
         if not username:
             return JSONResponse({"success": False, "message": "Username requis"}, status_code=400)
-        
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         # Récupérer la date d'expiration actuelle
         cursor.execute("""
             SELECT subscription_end
             FROM users
             WHERE username = ?
         """, (username,))
-        
         result = cursor.fetchone()
         if not result or not result[0]:
             cursor.close()
             conn.close()
             return JSONResponse({"success": False, "message": "Utilisateur ou date d'expiration non trouvé"}, status_code=404)
-        
         current_end = datetime.fromisoformat(result[0].replace('Z', '+00:00') if 'Z' in result[0] else result[0])
         new_end = current_end + timedelta(days=days)
-        
         # Mettre à jour
         if db_manager.use_postgresql:
             cursor.execute("""
@@ -26057,18 +23400,14 @@ async def admin_extend_subscription(request: Request, session_token: Optional[st
                 SET subscription_end = ?
                 WHERE username = ?
             """, (new_end.isoformat(), username))
-        
         conn.commit()
         cursor.close()
         conn.close()
-        
         print(f"✅ Abonnement prolongé: {username} +{days} jours → {new_end.strftime('%Y-%m-%d')}")
-        
         return JSONResponse({
             "success": True,
             "message": f"Abonnement prolongé de {days} jours jusqu'au {new_end.strftime('%Y-%m-%d')}"
         })
-    
     except Exception as e:
         print(f"❌ Erreur extend_subscription: {e}")
         import traceback
@@ -26085,30 +23424,22 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         from datetime import datetime, timedelta
-        
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         cutoff_date = datetime.now() - timedelta(days=days)
-        
         # Pour l'instant, on simule des données basées sur les vrais utilisateurs
         # Dans le futur, on utilisera une vraie table tracking_events
-        
         # Compter les utilisateurs créés dans la période
         cursor.execute("""
             SELECT COUNT(*) FROM users
             WHERE created_at >= ?
         """, (cutoff_date.isoformat(),))
-        
         total_visitors = cursor.fetchone()[0] or 0
-        
         # Si pas de visiteurs, créer des données de démo
         if total_visitors == 0:
             total_visitors = 150  # Simulé pour démo
-        
         # Compter les paiements dans la période
         cursor.execute("""
             SELECT COUNT(DISTINCT username) FROM users
@@ -26116,25 +23447,18 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
             AND subscription_plan != 'free'
             AND subscription_start >= ?
         """, (cutoff_date.isoformat(),))
-        
         total_conversions = cursor.fetchone()[0] or 0
-        
         # Simuler le funnel avec des pourcentages réalistes
         # Étape 1: Visiteurs site
         step1_count = total_visitors
-        
         # Étape 2: Visitent /pricing (68% du total)
         step2_count = int(total_visitors * 0.68)
-        
         # Étape 3: Appliquent code promo (34% de étape 2)
         step3_count = int(step2_count * 0.34)
-        
         # Étape 4: Cliquent "Payer" (52% de étape 3)
         step4_count = int(step3_count * 0.52)
-        
         # Étape 5: Paiement complété (utiliser les vrais chiffres ou 73% de étape 4)
         step5_count = total_conversions if total_conversions > 0 else int(step4_count * 0.73)
-        
         funnel_steps = [
             {
                 "name": "1️⃣ Visiteurs site",
@@ -26167,12 +23491,9 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
                 "drop_percent": ((step4_count - step5_count) / step4_count * 100) if step4_count > 0 else 0
             }
         ]
-        
         global_conversion = (step5_count / step1_count * 100) if step1_count > 0 else 0
-        
         # Générer insights automatiques
         insights = []
-        
         # Check gros drops
         for i in range(1, len(funnel_steps)):
             if funnel_steps[i]["drop_percent"] > 50:
@@ -26184,7 +23505,6 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
                     "description": f"Entre {step_name} et {next_step}",
                     "action": "Optimiser cette étape en priorité!"
                 })
-        
         # Insight sur conversion globale
         if global_conversion < 5:
             insights.append({
@@ -26200,21 +23520,17 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
                 "description": f"{global_conversion:.1f}% - au-dessus de la moyenne du marché (8%)",
                 "action": "Continue comme ça!"
             })
-        
         # Conversion par plan
         by_plan = []
-        
         for plan_id, plan_name in [("1_month", "💎 Premium"), ("3_months", "🚀 Advanced"), ("6_months", "⭐ Pro"), ("1_year", "👑 Elite")]:
             cursor.execute("""
                 SELECT COUNT(*) FROM users
                 WHERE subscription_plan = ?
                 AND subscription_start >= ?
             """, (plan_id, cutoff_date.isoformat()))
-            
             plan_conversions = cursor.fetchone()[0] or 0
             plan_visits = step1_count  # Tous visitent le site
             plan_rate = (plan_conversions / plan_visits * 100) if plan_visits > 0 else 0
-            
             by_plan.append({
                 "name": plan_name,
                 "conversion_rate": plan_rate,
@@ -26223,7 +23539,6 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
                 "is_best": False,
                 "is_worst": False
             })
-        
         # Marquer le meilleur et le pire
         if by_plan:
             by_plan.sort(key=lambda x: x["conversion_rate"], reverse=True)
@@ -26231,12 +23546,9 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
                 by_plan[0]["is_best"] = True
             if by_plan[-1]["conversion_rate"] < by_plan[0]["conversion_rate"]:
                 by_plan[-1]["is_worst"] = True
-        
         cursor.close()
         conn.close()
-        
         print(f"✅ Conversion Funnel: {step1_count} visiteurs → {step5_count} conversions ({global_conversion:.1f}%)")
-        
         return JSONResponse({
             "success": True,
             "funnel": {
@@ -26246,7 +23558,6 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
             "insights": insights,
             "by_plan": by_plan
         })
-    
     except Exception as e:
         print(f"❌ Erreur conversion funnel: {e}")
         import traceback
@@ -26263,24 +23574,18 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         from datetime import datetime, timedelta
-        
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         # Revenus ce mois
         now = datetime.now()
         month_start = now.replace(day=1)
-        
         cursor.execute("""
             SELECT COALESCE(SUM(total_spent), 0) FROM users
             WHERE subscription_start >= ?
         """, (month_start.isoformat(),))
-        
         current_month_revenue = cursor.fetchone()[0] or 0
-        
         # Projection 3 prochains mois (basé sur renouvellements attendus)
         cursor.execute("""
             SELECT COUNT(*) * 75 FROM users
@@ -26288,9 +23593,7 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
             AND subscription_plan != 'free'
             AND subscription_end >= ?
         """, (now.isoformat(),))
-        
         projection_3_months = cursor.fetchone()[0] or 0
-        
         # Revenus à risque (utilisateurs qui expirent bientôt)
         next_month = now + timedelta(days=30)
         cursor.execute("""
@@ -26300,10 +23603,8 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
             AND subscription_end <= ?
             AND subscription_end >= ?
         """, (next_month.isoformat(), now.isoformat()))
-        
         users_expiring = cursor.fetchone()[0] or 0
         at_risk_revenue = users_expiring * 75  # Moyenne
-        
         # CLV par plan (simulé avec des multiples réalistes)
         clv_data = [
             {"name": "💎 Premium", "clv": 89.97, "renewal_rate": 3.0, "is_best": False},
@@ -26311,7 +23612,6 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
             {"name": "⭐ Pro", "clv": 404.82, "renewal_rate": 1.5, "is_best": False},
             {"name": "👑 Elite", "clv": 719.64, "renewal_rate": 1.2, "is_best": False}
         ]
-        
         # Top 10 clients
         cursor.execute("""
             SELECT username, subscription_plan, COALESCE(total_spent, 0) as ltv
@@ -26320,7 +23620,6 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
             ORDER BY total_spent DESC
             LIMIT 10
         """)
-        
         top_clients = []
         for row in cursor.fetchall():
             top_clients.append({
@@ -26328,14 +23627,12 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
                 "plan": row[1] or "free",
                 "lifetime_value": float(row[2])
             })
-        
         # ROI des codes promo
         cursor.execute("""
             SELECT code, uses, discount, type FROM promo_codes
             WHERE uses > 0
             ORDER BY uses DESC
         """)
-        
         promo_roi = []
         for row in cursor.fetchall():
             code, uses, discount, ptype = row
@@ -26344,7 +23641,6 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
             revenue_total = uses * avg_purchase
             discount_total = uses * (discount if ptype == 'fixed' else avg_purchase * discount / 100)
             roi = ((revenue_total / discount_total) * 100) if discount_total > 0 else 0
-            
             promo_roi.append({
                 "code": code,
                 "uses": uses,
@@ -26352,10 +23648,8 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
                 "revenue_total": revenue_total,
                 "roi": roi
             })
-        
         cursor.close()
         conn.close()
-        
         return JSONResponse({
             "success": True,
             "projections": {
@@ -26368,7 +23662,6 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
             "top_clients": top_clients,
             "promo_roi": promo_roi
         })
-    
     except Exception as e:
         print(f"❌ Erreur revenue intelligence: {e}")
         import traceback
@@ -26385,7 +23678,6 @@ async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         # Pour l'instant, données simulées (en attente de table referrals)
         stats = {
@@ -26393,7 +23685,6 @@ async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
             "paid_referrals": 34,
             "revenue_generated": 2550.00
         }
-        
         leaderboard = [
             {"username": "crypto_influencer", "referrals": 47, "paid": 12, "revenue": 899.40},
             {"username": "john_whale", "referrals": 28, "paid": 8, "revenue": 599.60},
@@ -26401,7 +23692,6 @@ async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
             {"username": "bitcoin_master", "referrals": 15, "paid": 4, "revenue": 299.80},
             {"username": "eth_champion", "referrals": 12, "paid": 3, "revenue": 224.85}
         ]
-        
         sources = [
             {"name": "Parrainages", "count": 127},
             {"name": "Direct", "count": 89},
@@ -26409,12 +23699,10 @@ async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
             {"name": "Reddit", "count": 28},
             {"name": "Google", "count": 12}
         ]
-        
         cpa = {
             "ads": 34.50,
             "referral": 8.20
         }
-        
         return JSONResponse({
             "success": True,
             "stats": stats,
@@ -26422,7 +23710,6 @@ async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
             "sources": sources,
             "cpa": cpa
         })
-    
     except Exception as e:
         print(f"❌ Erreur viral growth: {e}")
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)
@@ -26437,7 +23724,6 @@ async def admin_automation_engine(session_token: Optional[str] = Cookie(None)):
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
     try:
         # Pour l'instant, données simulées (en attente de table automation_rules)
         rules = [
@@ -26469,20 +23755,17 @@ async def admin_automation_engine(session_token: Optional[str] = Cookie(None)):
                 "conversion_rate": 71.1
             }
         ]
-        
         performance = {
             "emails_sent": 1247,
             "open_rate": 42.3,
             "revenue_generated": 4127.00,
             "roi_per_email": 3.31
         }
-        
         return JSONResponse({
             "success": True,
             "rules": rules,
             "performance": performance
         })
-    
     except Exception as e:
         print(f"❌ Erreur automation engine: {e}")
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)
@@ -26499,11 +23782,9 @@ async def api_validate_promo(
     user = get_user_from_token(session_token)
     if not user:
         return JSONResponse({"valid": False, "message": "Non authentifié"}, status_code=401)
-    
     try:
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        
         # Créer la table si elle n'existe pas
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS promo_codes (
@@ -26517,16 +23798,13 @@ async def api_validate_promo(
             )
         """)
         conn.commit()
-        
         # Chercher le code promo
         cursor.execute("""
             SELECT discount, type, valid_until, max_uses, uses
             FROM promo_codes
             WHERE UPPER(code) = UPPER(?)
         """, (code,))
-        
         result = cursor.fetchone()
-        
         if not result:
             cursor.close()
             conn.close()
@@ -26537,9 +23815,7 @@ async def api_validate_promo(
                 "discount": 0,
                 "final_amount": amount
             })
-        
         discount_value, discount_type, valid_until, max_uses, current_uses = result
-        
         # Vérifier la date d'expiration
         if valid_until:
             from datetime import datetime
@@ -26557,7 +23833,6 @@ async def api_validate_promo(
                     })
             except:
                 pass
-        
         # Vérifier le nombre d'utilisations
         if max_uses and current_uses >= max_uses:
             cursor.close()
@@ -26569,18 +23844,14 @@ async def api_validate_promo(
                 "discount": 0,
                 "final_amount": amount
             })
-        
         # Calculer le rabais
         if discount_type == 'percentage':
             discount_amount = amount * (discount_value / 100)
         else:  # fixed
             discount_amount = discount_value
-        
         final_amount = max(0, amount - discount_amount)
-        
         cursor.close()
         conn.close()
-        
         return JSONResponse({
             "valid": True,
             "message": f"Code {code.upper()} appliqué!",
@@ -26590,7 +23861,6 @@ async def api_validate_promo(
             "code": code.upper(),
             "savings": f"${discount_amount:.2f}"
         })
-    
     except Exception as e:
         print(f"❌ Erreur validate_promo: {e}")
         import traceback
@@ -26617,12 +23887,9 @@ async def mon_compte(request: Request):
     """Dashboard personnel utilisateur avec son abonnement"""
     session_token = request.cookies.get("session_token")
     user = get_user_from_token(session_token)
-    
     if not user:
         return RedirectResponse("/login", status_code=303)
-    
     username = user.get('username', 'User') if isinstance(user, dict) else user
-    
     # ✅ VÉRIFICATION DES PERMISSIONS
     if not check_route_permission(username, "/mon-compte"):
         return HTMLResponse(SIDEBAR + """
@@ -26702,7 +23969,6 @@ async def mon_compte(request: Request):
                         Cette page fait partie de nos outils avancés réservés aux membres Premium.<br>
                         Débloquez l'accès complet dès maintenant!
                     </p>
-                    
                     <div class="features-list">
                         <div class="feature-item">16 Outils d'Intelligence Artificielle</div>
                         <div class="feature-item">Academy complète (22 modules)</div>
@@ -26710,13 +23976,11 @@ async def mon_compte(request: Request):
                         <div class="feature-item">Tous les indicateurs de marché</div>
                         <div class="feature-item">Support prioritaire</div>
                     </div>
-                    
                     <div style="margin-top: 40px;">
                         <a href="/pricing-complete" class="upgrade-btn">
                             🚀 Voir les Plans & Prix
                         </a>
                     </div>
-                    
                     <p style="color: #c7d2fe; font-size: 14px; margin-top: 30px;">
                         À partir de 9.99$/mois • Annulez à tout moment
                     </p>
@@ -26725,11 +23989,9 @@ async def mon_compte(request: Request):
             </html>
         """, status_code=403)
 
-    
     # Récupérer infos abonnement depuis la bonne DB
     conn = db_manager.get_connection()  # ← CORRECTION ICI
     c = conn.cursor()
-    
     try:
         # Essayer avec toutes les colonnes
         try:
@@ -26750,7 +24012,6 @@ async def mon_compte(request: Request):
                 payment_method = 'N/A'
             else:
                 result = None
-        
         if result and len(result) == 4:
             plan, sub_end, payment_method, created_at = result
         elif result:
@@ -26761,7 +24022,6 @@ async def mon_compte(request: Request):
             sub_end = None
             payment_method = 'N/A'
             created_at = None
-        
         # Calculer jours restants
         days_left = 0
         if sub_end:
@@ -26770,12 +24030,10 @@ async def mon_compte(request: Request):
                 days_left = (end_date - datetime.now()).days
             except:
                 pass
-        
         # Status
         is_active = days_left > 0
         status = "✅ Actif" if is_active else "❌ Expiré"
         status_class = "active" if is_active else "expired"
-        
         # Nom du plan
         plan_names = {
             'free': '🆓 Gratuit',
@@ -26796,7 +24054,6 @@ async def mon_compte(request: Request):
         status_class = 'expired'
     finally:
         conn.close()
-    
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
@@ -26908,13 +24165,11 @@ async def mon_compte(request: Request):
 </style>
 
 
-        
         <div class="container">
             <div class="header">
                 <h1>👤 Mon Compte</h1>
                 <p style="font-size: 20px; opacity: 0.9;">Bienvenue {username}</p>
             </div>
-            
             <div class="card">
                 <h2>📊 Mon Abonnement</h2>
                 <div class="info-grid">
@@ -26937,7 +24192,6 @@ async def mon_compte(request: Request):
                         <div class="info-value">{sub_end[:10] if sub_end else 'N/A'}</div>
                     </div>
                 </div>
-                
                 <div class="actions">
                     <a href="/pricing-complete" class="btn btn-success">
                         💎 Renouveler / Changer de Plan
@@ -26967,7 +24221,6 @@ async def fear_greed_history():
         url = "https://api.alternative.me/fng/?limit=365"
         response = requests.get(url, timeout=10)
         data = response.json()
-        
         if data.get('data'):
             history = []
             for item in data['data']:
@@ -26976,9 +24229,7 @@ async def fear_greed_history():
                     'value': int(item.get('value', 0)),
                     'classification': item.get('value_classification')
                 })
-            
             return {'success': True, 'total': len(history), 'data': history[:365]}
-        
         return {'success': False, 'message': 'Pas de données'}
     except Exception as e:
         return {'success': False, 'message': str(e)}
@@ -27033,34 +24284,27 @@ async def fear_greed_chart():
         </style>
     </head>
     <body>
-        
         <div class="container">
             <h1>📊 Fear & Greed Index - Historique 12 Mois</h1>
             <div id="loading" class="loading">🔄 Chargement des données...</div>
             <canvas id="fearChart" style="display:none;"></canvas>
         </div>
-        
         <script>
             fetch('/fear-greed-history')
                 .then(r => r.json())
                 .then(data => {{
                     document.getElementById('loading').style.display = 'none';
-                    
                     if (!data.success) {{
                         document.getElementById('loading').innerHTML = '❌ ' + data.message;
                         document.getElementById('loading').style.display = 'block';
                         return;
                     }}
-                    
                     document.getElementById('fearChart').style.display = 'block';
-                    
                     const labels = data.data.map(d => {{
                         const date = new Date(parseInt(d.date) * 1000);
                         return date.toLocaleDateString('fr-FR', {{ month: 'short', year: 'numeric' }});
                     }}).reverse();
-                    
                     const values = data.data.map(d => d.value).reverse();
-                    
                     const ctx = document.getElementById('fearChart').getContext('2d');
                     new Chart(ctx, {{
                         type: 'line',
@@ -27133,20 +24377,15 @@ async def fear_greed_chart():
 async def live_stats():
     """API: Stats en temps réel"""
     import random
-    
     try:
         conn = db_manager.get_connection()
         c = conn.cursor()
-        
         c.execute("SELECT COUNT(*) FROM users")
         total_users = c.fetchone()[0]
-        
         now = datetime.now().isoformat()
         c.execute("SELECT COUNT(*) FROM users WHERE subscription_end > ?", (now,))
         active_subs = c.fetchone()[0]
-        
         conn.close()
-        
         return {
             'success': True,
             'users_online': random.randint(50, 150),
@@ -27194,9 +24433,7 @@ async def backtesting_page(request: Request):
                 min-height: 100vh;
                 padding-bottom: 50px;
             }}
-            
             .container {{ max-width: 1400px; margin: 0 auto; padding: 20px; }}
-            
             .header {{
                 background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
                 padding: 40px 20px;
@@ -27205,10 +24442,8 @@ async def backtesting_page(request: Request):
                 text-align: center;
                 box-shadow: 0 10px 40px rgba(99, 102, 241, 0.3);
             }}
-            
             .header h1 {{ font-size: 48px; margin-bottom: 10px; }}
             .header p {{ font-size: 18px; opacity: 0.9; }}
-            
             .tabs {{
                 display: flex;
                 gap: 10px;
@@ -27218,7 +24453,6 @@ async def backtesting_page(request: Request):
                 border-radius: 15px;
                 backdrop-filter: blur(10px);
             }}
-            
             .tab {{
                 flex: 1;
                 padding: 15px 30px;
@@ -27231,20 +24465,15 @@ async def backtesting_page(request: Request):
                 font-weight: 600;
                 transition: all 0.3s;
             }}
-            
             .tab.active {{
                 background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
                 color: white;
                 box-shadow: 0 5px 20px rgba(99, 102, 241, 0.4);
             }}
-            
             .tab:hover:not(.active) {{ background: rgba(255,255,255,0.1); }}
-            
             .tab-content {{ display: none; }}
             .tab-content.active {{ display: block; animation: fadeIn 0.3s; }}
-            
             @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(10px); }} to {{ opacity: 1; transform: translateY(0); }} }}
-            
             .config-card {{
                 background: rgba(255,255,255,0.05);
                 backdrop-filter: blur(10px);
@@ -27253,9 +24482,7 @@ async def backtesting_page(request: Request):
                 padding: 30px;
                 margin-bottom: 30px;
             }}
-            
             .form-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }}
-            
             .form-group {{ margin-bottom: 20px; }}
             .form-group label {{ display: block; margin-bottom: 8px; font-weight: 600; color: #a5b4fc; }}
             .form-group input, .form-group select {{
@@ -27273,7 +24500,6 @@ async def backtesting_page(request: Request):
                 border-color: #6366f1;
                 box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
             }}
-            
             .btn-primary {{
                 background: linear-gradient(135deg, #10b981 0%, #059669 100%);
                 color: white;
@@ -27299,14 +24525,12 @@ async def backtesting_page(request: Request):
                 cursor: not-allowed;
                 transform: none;
             }}
-            
             .stats-grid {{
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                 gap: 20px;
                 margin-bottom: 30px;
             }}
-            
             .stat-card {{
                 background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
                 border: 1px solid rgba(99, 102, 241, 0.2);
@@ -27320,7 +24544,6 @@ async def backtesting_page(request: Request):
             .stat-value {{ font-size: 32px; font-weight: 800; color: #10b981; }}
             .stat-value.negative {{ color: #ef4444; }}
             .stat-value.neutral {{ color: #f59e0b; }}
-            
             .chart-container {{
                 background: rgba(255,255,255,0.05);
                 backdrop-filter: blur(10px);
@@ -27330,7 +24553,6 @@ async def backtesting_page(request: Request):
                 margin-bottom: 30px;
                 height: 400px;
             }}
-            
             .trades-table {{
                 width: 100%;
                 border-collapse: collapse;
@@ -27350,7 +24572,6 @@ async def backtesting_page(request: Request):
                 border-bottom: 1px solid rgba(255,255,255,0.05);
             }}
             .trades-table tr:hover {{ background: rgba(255,255,255,0.05); }}
-            
             .badge {{
                 display: inline-block;
                 padding: 5px 12px;
@@ -27361,14 +24582,12 @@ async def backtesting_page(request: Request):
             }}
             .badge.win {{ background: rgba(16, 185, 129, 0.2); color: #10b981; }}
             .badge.loss {{ background: rgba(239, 68, 68, 0.2); color: #ef4444; }}
-            
             .loading {{
                 text-align: center;
                 padding: 60px;
                 font-size: 20px;
                 color: #94a3b8;
             }}
-            
             .loading::after {{
                 content: '';
                 display: inline-block;
@@ -27381,9 +24600,7 @@ async def backtesting_page(request: Request):
                 margin-left: 20px;
                 vertical-align: middle;
             }}
-            
             @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
-            
             .strategy-description {{
                 background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.1) 100%);
                 border: 1px solid rgba(245, 158, 11, 0.3);
@@ -27391,26 +24608,22 @@ async def backtesting_page(request: Request):
                 padding: 20px;
                 margin-top: 20px;
             }}
-            
             .strategy-description h3 {{ color: #fbbf24; margin-bottom: 10px; }}
             .strategy-description ul {{ margin-left: 20px; margin-top: 10px; }}
             .strategy-description li {{ margin-bottom: 5px; line-height: 1.6; }}
         </style>
     </head>
     <body>
-        
         <div class="container">
             <div class="header">
                 <h1>⚙️ Backtesting Professionnel</h1>
                 <p>Testez vos stratégies de trading sur données historiques</p>
             </div>
-            
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('config')">📋 Configuration</button>
                 <button class="tab" onclick="switchTab('results')">📊 Résultats</button>
                 <button class="tab" onclick="switchTab('trades')">📈 Trades</button>
             </div>
-            
             <!-- TAB 1: CONFIGURATION -->
             <div id="tab-config" class="tab-content active">
                 <div class="config-card">
@@ -27475,26 +24688,22 @@ async def backtesting_page(request: Request):
                                 <input type="number" id="commission" name="commission" value="0.1" min="0" max="1" step="0.01">
                             </div>
                         </div>
-                        
                         <div id="strategyDescription" class="strategy-description" style="display:none;">
                             <h3>📖 Description de la Stratégie</h3>
                             <div id="strategyText"></div>
                         </div>
-                        
                         <button type="submit" class="btn-primary" id="runButton">
                             🚀 Lancer le Backtest
                         </button>
                     </form>
                 </div>
             </div>
-            
             <!-- TAB 2: RÉSULTATS -->
             <div id="tab-results" class="tab-content">
                 <div id="resultsContainer">
                     <div class="loading">Aucun backtest effectué. Configurez et lancez un backtest.</div>
                 </div>
             </div>
-            
             <!-- TAB 3: TRADES -->
             <div id="tab-trades" class="tab-content">
                 <div id="tradesContainer">
@@ -27502,11 +24711,9 @@ async def backtesting_page(request: Request):
                 </div>
             </div>
         </div>
-        
         <!-- SECTION EXPLICATIVE -->
         <div class="config-card" style="margin-top: 40px;">
             <h2 style="margin-bottom: 20px;">📚 Comment ça marche ?</h2>
-            
             <div style="display: grid; gap: 20px;">
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #6366f1;">
                     <h3 style="color: #6366f1; margin-bottom: 10px;">🎯 Qu'est-ce que le Backtesting ?</h3>
@@ -27515,7 +24722,6 @@ async def backtesting_page(request: Request):
                         Cela permet de voir comment la stratégie aurait performé dans le passé avant de l'utiliser avec de l'argent réel.
                     </p>
                 </div>
-                
                 <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #10b981;">
                     <h3 style="color: #10b981; margin-bottom: 10px;">⚙️ Comment utiliser cet outil ?</h3>
                     <ol style="color: #cbd5e1; line-height: 1.8; padding-left: 20px;">
@@ -27525,7 +24731,6 @@ async def backtesting_page(request: Request):
                         <li><strong>Analysez les résultats</strong> : Consultez les statistiques, la courbe de capital et l'historique des trades.</li>
                     </ol>
                 </div>
-                
                 <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #f59e0b;">
                     <h3 style="color: #f59e0b; margin-bottom: 10px;">📊 Les 5 Stratégies Disponibles</h3>
                     <div style="display: grid; gap: 12px; margin-top: 15px;">
@@ -27551,7 +24756,6 @@ async def backtesting_page(request: Request):
                         </div>
                     </div>
                 </div>
-                
                 <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ef4444;">
                     <h3 style="color: #ef4444; margin-bottom: 10px;">⚠️ Points Importants</h3>
                     <ul style="color: #cbd5e1; line-height: 1.8; padding-left: 20px;">
@@ -27562,7 +24766,6 @@ async def backtesting_page(request: Request):
                         <li><strong>Commencez petit</strong> : Même avec de bons résultats en backtest, commencez avec de petites positions en réel.</li>
                     </ul>
                 </div>
-                
                 <div style="background: rgba(139, 92, 246, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #8b5cf6;">
                     <h3 style="color: #8b5cf6; margin-bottom: 10px;">💡 Comprendre les Statistiques</h3>
                     <div style="display: grid; gap: 10px; margin-top: 15px;">
@@ -27592,7 +24795,6 @@ async def backtesting_page(request: Request):
                         </div>
                     </div>
                 </div>
-                
                 <div style="background: rgba(34, 211, 238, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #22d3ee; text-align: center;">
                     <h3 style="color: #22d3ee; margin-bottom: 10px;">🚀 Prêt à commencer ?</h3>
                     <p style="color: #cbd5e1; margin-bottom: 15px;">
@@ -27613,18 +24815,14 @@ async def backtesting_page(request: Request):
                 </div>
             </div>
         </div>
-        
         <script>
         let equityChart, drawdownChart;
-        
         function switchTab(tab) {{
             // Retirer active de tous les onglets et contenus
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
             // Activer le contenu correspondant
             document.getElementById('tab-' + tab).classList.add('active');
-            
             // Activer le bon bouton d'onglet
             const tabs = document.querySelectorAll('.tab');
             const tabMapping = {{'config': 0, 'results': 1, 'trades': 2}};
@@ -27632,7 +24830,6 @@ async def backtesting_page(request: Request):
                 tabs[tabMapping[tab]].classList.add('active');
             }}
         }}
-        
         function showStrategyDescription() {{
             const strategy = document.getElementById('strategy').value;
             const descriptions = {{
@@ -27670,17 +24867,13 @@ async def backtesting_page(request: Request):
             document.getElementById('strategyDescription').style.display = 'block';
             document.getElementById('strategyText').innerHTML = descriptions[strategy];
         }}
-        
         document.getElementById('backtestForm').addEventListener('submit', async (e) => {{
             e.preventDefault();
-            
             const button = document.getElementById('runButton');
             button.disabled = true;
             button.textContent = '⏳ Calcul en cours...';
-            
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData.entries());
-            
             try {{
                 const response = await fetch('/api/backtest', {{
                     method: 'POST',
@@ -27688,7 +24881,6 @@ async def backtesting_page(request: Request):
                     body: JSON.stringify(data)
                 }});
                 const result = await response.json();
-                
                 if (result.success) {{
                     displayResults(result.results);
                     switchTab('results');
@@ -27703,7 +24895,6 @@ async def backtesting_page(request: Request):
                 button.textContent = '🚀 Lancer le Backtest';
             }}
         }});
-        
         function displayResults(r) {{
             const resultsHTML = `
                 <div class="stats-grid">
@@ -27762,30 +24953,23 @@ async def backtesting_page(request: Request):
                         <div class="stat-value negative">$${{Math.abs(r.worst_trade)}}</div>
                     </div>
                 </div>
-                
                 <div class="chart-container">
                     <canvas id="equityChart"></canvas>
                 </div>
-                
                 <div class="chart-container">
                     <canvas id="drawdownChart"></canvas>
                 </div>
             `;
-            
             document.getElementById('resultsContainer').innerHTML = resultsHTML;
-            
             // Créer les graphiques
             createEquityChart(r.equity_curve);
             createDrawdownChart(r.drawdown_curve);
-            
             // Afficher les trades
             displayTrades(r.trades);
         }}
-        
         function createEquityChart(equityCurve) {{
             const ctx = document.getElementById('equityChart').getContext('2d');
             if (equityChart) equityChart.destroy();
-            
             equityChart = new Chart(ctx, {{
                 type: 'line',
                 data: {{
@@ -27825,11 +25009,9 @@ async def backtesting_page(request: Request):
                 }}
             }});
         }}
-        
         function createDrawdownChart(drawdownCurve) {{
             const ctx = document.getElementById('drawdownChart').getContext('2d');
             if (drawdownChart) drawdownChart.destroy();
-            
             drawdownChart = new Chart(ctx, {{
                 type: 'line',
                 data: {{
@@ -27870,7 +25052,6 @@ async def backtesting_page(request: Request):
                 }}
             }});
         }}
-        
         function displayTrades(trades) {{
             let tradesHTML = `
                 <div class="config-card">
@@ -27890,7 +25071,6 @@ async def backtesting_page(request: Request):
                         </thead>
                         <tbody>
             `;
-            
             trades.forEach((trade, i) => {{
                 const isWin = trade.pnl >= 0;
                 tradesHTML += `
@@ -27914,18 +25094,14 @@ async def backtesting_page(request: Request):
                     </tr>
                 `;
             }});
-            
             tradesHTML += '</tbody></table></div>';
             document.getElementById('tradesContainer').innerHTML = tradesHTML;
         }}
-        
         // Afficher la description au chargement
         showStrategyDescription();
-        
         // Menu universel
         document.addEventListener('DOMContentLoaded', function() {{
             if (document.querySelector('.universal-top-nav')) return;
-            
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
         .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
@@ -27936,7 +25112,6 @@ async def backtesting_page(request: Request):
         .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
         .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
         </style>`;
-            
             document.body.insertAdjacentHTML('afterbegin', menuHTML);
         }});
         </script>
@@ -27950,9 +25125,7 @@ async def api_backtest(request: Request):
     """API Backtesting Professionnel avec données réalistes"""
     import random
     from datetime import datetime, timedelta
-    
     data = await request.json()
-    
     # Paramètres
     symbol = data.get('symbol', 'BTCUSDT')
     strategy = data.get('strategy', 'ema_cross')
@@ -27961,7 +25134,6 @@ async def api_backtest(request: Request):
     stop_loss = float(data.get('stop_loss', 2)) / 100
     take_profit = float(data.get('take_profit', 5)) / 100
     commission = float(data.get('commission', 0.1)) / 100
-    
     # Générer des trades réalistes basés sur la stratégie
     strategy_params = {
         'ema_cross': {'win_rate': 0.58, 'avg_trades_per_month': 8, 'risk_reward': 2.2},
@@ -27970,25 +25142,20 @@ async def api_backtest(request: Request):
         'bollinger': {'win_rate': 0.60, 'avg_trades_per_month': 12, 'risk_reward': 2.5},
         'sma_cross': {'win_rate': 0.65, 'avg_trades_per_month': 4, 'risk_reward': 3.0}
     }
-    
     params = strategy_params.get(strategy, strategy_params['ema_cross'])
-    
     # Nombre de trades basé sur la période (11 mois = Jan-Dec 2024)
     total_trades = int(params['avg_trades_per_month'] * 11 * random.uniform(0.8, 1.2))
-    
     # Générer les trades
     trades = []
     current_capital = initial_capital
     equity_curve = [initial_capital]
     peak = initial_capital
     drawdown_curve = [0]
-    
     winning_trades = 0
     losing_trades = 0
     total_profit = 0
     total_loss = 0
     all_pnl = []
-    
     # Prix de départ (exemple)
     base_prices = {
         'BTCUSDT': 42000,
@@ -27998,22 +25165,17 @@ async def api_backtest(request: Request):
         'SOLUSDT': 95
     }
     current_price = base_prices.get(symbol, 42000)
-    
     for i in range(total_trades):
         # Date du trade (répartis sur 11 mois)
         days_offset = int((i / total_trades) * 330)  # 11 mois ≈ 330 jours
         trade_date = (datetime(2024, 1, 1) + timedelta(days=days_offset)).strftime('%Y-%m-%d')
-        
         # Simuler variation de prix réaliste
         price_change = random.uniform(-0.05, 0.05)
         current_price *= (1 + price_change)
-        
         # Déterminer si win ou loss basé sur le win rate
         is_win = random.random() < params['win_rate']
-        
         # Calculer P&L
         position_value = current_capital * position_size
-        
         if is_win:
             # Win avec take profit
             pnl_pct = take_profit * random.uniform(0.7, 1.0)  # 70-100% du TP
@@ -28026,23 +25188,18 @@ async def api_backtest(request: Request):
             pnl = position_value * pnl_pct * (1 - commission * 2)
             losing_trades += 1
             total_loss += abs(pnl)
-        
         current_capital += pnl
         all_pnl.append(pnl)
-        
         # Mettre à jour equity curve
         equity_curve.append(current_capital)
-        
         # Calculer drawdown
         if current_capital > peak:
             peak = current_capital
         drawdown_pct = ((peak - current_capital) / peak) * 100
         drawdown_curve.append(drawdown_pct)
-        
         # Enregistrer le trade
         entry_price = current_price
         exit_price = current_price * (1 + pnl_pct)
-        
         trades.append({
             'date': trade_date,
             'type': 'LONG',
@@ -28051,21 +25208,16 @@ async def api_backtest(request: Request):
             'pnl': round(pnl, 2),
             'roi': round(pnl_pct * 100, 2)
         })
-    
     # Calculer les statistiques
     win_rate = round((winning_trades / total_trades) * 100, 2) if total_trades > 0 else 0
     net_profit = current_capital - initial_capital
     roi = round((net_profit / initial_capital) * 100, 2)
-    
     profit_factor = round(total_profit / total_loss, 2) if total_loss > 0 else 0
     max_drawdown = round(max(drawdown_curve), 2)
-    
     avg_win = round(total_profit / winning_trades, 2) if winning_trades > 0 else 0
     avg_loss = round(-total_loss / losing_trades, 2) if losing_trades > 0 else 0
-    
     best_trade = round(max(all_pnl), 2) if all_pnl else 0
     worst_trade = round(min(all_pnl), 2) if all_pnl else 0
-    
     # Sharpe Ratio simplifié
     if len(all_pnl) > 1:
         returns_mean = sum(all_pnl) / len(all_pnl)
@@ -28073,7 +25225,6 @@ async def api_backtest(request: Request):
         sharpe_ratio = round((returns_mean / returns_std) * (252 ** 0.5), 2) if returns_std > 0 else 0
     else:
         sharpe_ratio = 0
-    
     return {
         'success': True,
         'results': {
@@ -28105,7 +25256,6 @@ async def api_backtest(request: Request):
 @app.get("/onchain-metrics", response_class=HTMLResponse)
 async def onchain_metrics():
     """Page Métriques On-Chain - Whale movements, exchange flows"""
-    
     # Données métriques (exemple - à remplacer par vraies APIs)
     metrics = {
         'whale_transactions': {
@@ -28126,7 +25276,6 @@ async def onchain_metrics():
             'sentiment': 'Selling pressure'
         }
     }
-    
     return HTMLResponse(SIDEBAR + f"""
 SIDEBAR + 
     <!DOCTYPE html>
@@ -28243,7 +25392,6 @@ SIDEBAR +
                 <h1>⛓️ Métriques On-Chain</h1>
                 <p style="color: #aaa; font-size: 18px;">Suivez les mouvements des baleines et flux d'exchanges</p>
             </div>
-            
             <div class="metrics-grid">
                 <div class="metric-card">
                     <div class="metric-icon">🐋</div>
@@ -28251,21 +25399,18 @@ SIDEBAR +
                     <div class="metric-value">{metrics['whale_transactions']['last_24h']}</div>
                     <div class="metric-change positive">Volume: {metrics['whale_transactions']['total_volume']}</div>
                 </div>
-                
                 <div class="metric-card">
                     <div class="metric-icon">📥</div>
                     <div class="metric-label">Entrées Exchange</div>
                     <div class="metric-value">{metrics['exchange_inflow']['btc']}</div>
                     <div class="metric-change positive">{metrics['exchange_inflow']['change_24h']}</div>
                 </div>
-                
                 <div class="metric-card">
                     <div class="metric-icon">📤</div>
                     <div class="metric-label">Sorties Exchange</div>
                     <div class="metric-value">{metrics['exchange_outflow']['btc']}</div>
                     <div class="metric-change negative">{metrics['exchange_outflow']['change_24h']}</div>
                 </div>
-                
                 <div class="metric-card">
                     <div class="metric-icon">💹</div>
                     <div class="metric-label">Flux Net</div>
@@ -28273,7 +25418,6 @@ SIDEBAR +
                     <div class="metric-change negative">{metrics['net_flow']['sentiment']}</div>
                 </div>
             </div>
-            
             <div class="info-section">
                 <h3 style="color: #0064ff; margin-bottom: 15px;">📊 Interprétation</h3>
                 <p style="line-height: 1.8;">
@@ -28282,16 +25426,13 @@ SIDEBAR +
                     <strong>Transactions Baleines:</strong> Mouvements de gros capitaux (>1000 BTC) à surveiller
                 </p>
             </div>
-            
             <center>
                 <a href="/dashboard" class="back-btn">← Retour au Dashboard</a>
             </center>
         </div>
-        
         <script>
         document.addEventListener('DOMContentLoaded', function() {{
             if (document.querySelector('.universal-top-nav')) return;
-            
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
         .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
@@ -28302,7 +25443,6 @@ SIDEBAR +
         .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
         .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
         </style>`;
-            
             document.body.insertAdjacentHTML('afterbegin', menuHTML);
         }});
         </script>
@@ -28348,7 +25488,6 @@ async def testimonials_widget():
             'date': 'Sept 2024'
         }
     ]
-    
     testimonials_html = ""
     for t in testimonials:
         stars = "⭐" * t['rating']
@@ -28363,7 +25502,6 @@ async def testimonials_widget():
             </div>
         </div>
         """
-    
     return HTMLResponse(SIDEBAR + f"""
 SIDEBAR + 
     <!DOCTYPE html>
@@ -28504,26 +25642,21 @@ SIDEBAR +
                 <h1>⭐ Ce Que Disent Nos Clients</h1>
                 <p>Des milliers de traders nous font confiance</p>
             </div>
-            
             <div class="testimonials-grid">
                 {testimonials_html}
             </div>
-            
             <div class="cta-section">
                 <h2>Rejoignez-les Aujourd'hui</h2>
                 <p>Commencez à trader intelligemment avec nos outils professionnels</p>
                 <a href="/pricing-complete" class="cta-btn">💎 Voir les Plans</a>
             </div>
-            
             <center>
                 <a href="/dashboard" class="back-link">← Retour au Dashboard</a>
             </center>
         </div>
-        
         <script>
         document.addEventListener('DOMContentLoaded', function() {{
             if (document.querySelector('.universal-top-nav')) return;
-            
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
         .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}}
@@ -28534,7 +25667,6 @@ SIDEBAR +
         .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
         .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
         </style>`;
-            
             document.body.insertAdjacentHTML('afterbegin', menuHTML);
         }});
         </script>
@@ -28556,7 +25688,6 @@ async def api_keys_page(request: Request):
     user = get_user_from_token(request.cookies.get("session_token"))
     if not user:
         raise HTTPException(status_code=401, detail="Non authentifié")
-    
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
@@ -28576,7 +25707,6 @@ async def api_keys_page(request: Request):
         // Menu universel - Injection automatique
         document.addEventListener('DOMContentLoaded', function() {{
             if (document.querySelector('.universal-top-nav')) return;
-            
             const menuHTML = `<style>
         .universal-top-nav{{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}}
         .universal-nav-container{{max-width:1600px;margin:0 auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}}
@@ -28587,11 +25717,9 @@ async def api_keys_page(request: Request):
         .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none}}
         .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
 </style>`;
-            
             document.body.insertAdjacentHTML('afterbegin', menuHTML);
         }});
         </script>
-        
         <div class="container">
             <h1>🔑 Votre Clé API Développeur</h1>
             <p>Générez une clé pour accéder aux endpoints de notre API.</p>
@@ -28623,11 +25751,9 @@ async def generate_api_key(request: Request):
     user = get_user_from_token(request.cookies.get("session_token"))
     if not user:
         return {"error": "Non authentifié"}
-    
     import secrets
     api_key = secrets.token_urlsafe(32)
     API_KEYS[api_key] = user['username']
-    
     return {
         'success': True,
         'api_key': api_key,
@@ -28640,7 +25766,6 @@ async def api_signals(api_key: str):
     """API: Récupérer les signaux"""
     if api_key not in API_KEYS:
         raise HTTPException(status_code=403, detail="Invalid API key")
-    
     # Retourner signaux
     return {
         'signals': [
@@ -28676,14 +25801,12 @@ async def admin_update_plan_features_page(request: Request):
     user = get_user_from_token(request.cookies.get("session_token"))
     if not user or user.get('role') != 'admin':
         raise HTTPException(status_code=403, detail="Accès refusé")
-    
     # Récupérer les plans existants pour les afficher dans un formulaire
     conn = get_db_connection()
     c = conn.cursor()
     c.execute("SELECT plan_name, features FROM pricing_plans")
     plans = c.fetchall()
     conn.close()
-    
     plans_html = ""
     for plan_name, features_json in plans:
         plans_html += f"<h3>Plan: {plan_name}</h3><textarea name='features_{plan_name}' rows='5' style='width:100%'>{features_json}</textarea><br><br>"
@@ -28703,7 +25826,6 @@ async def admin_update_plan_features_page(request: Request):
         </style>
     </head>
     <body class="bg-gray-900 text-white min-h-screen">
-        
         <div class="container mx-auto px-4 py-8">
             <div class="max-w-4xl mx-auto">
                 <h1 class="text-4xl font-bold text-center mb-8">⚙️ Modifier les fonctionnalités des plans</h1>
@@ -28730,26 +25852,20 @@ async def update_plan_features(request: Request):
     user = get_user_from_token(request.cookies.get("session_token"))
     if user.get('role') != 'admin':
         raise HTTPException(status_code=403, detail="Accès refusé")
-        
     # Cette version est plus simple et attend un seul plan à la fois
     data = await request.json()
-    
     plan = data.get('plan')
     features = data.get('features', [])
-    
     conn = get_db_connection()
     c = conn.cursor()
-    
     import json
     c.execute("""
         UPDATE pricing_plans 
         SET features = ? 
         WHERE plan_name = ?
     """, (json.dumps(features), plan))
-    
     conn.commit()
     conn.close()
-    
     return {'success': True, 'message': f'Plan {plan} mis à jour'}
 
 # ========== ROUTES AI FEATURES ==========
@@ -28776,7 +25892,6 @@ async def get_crypto_data_realtime():
                 return response.json()
     except:
         pass
-    
     # Fallback data avec VRAIS PRIX
     return {
         'bitcoin': {'usd': 89481.00, 'usd_24h_change': 0.03, 'usd_24h_vol': 42000000000, 'usd_market_cap': 1770000000000},
@@ -28801,7 +25916,6 @@ async def get_top_50_cryptos():
                     return data
     except Exception as e:
         print(f"Erreur API CoinGecko: {e}")
-    
     # Fallback avec VRAIS PRIX (6 décembre 2024 - sources: CoinMarketCap, CoinGecko, Yahoo Finance)
     return [
         {'id': 'bitcoin', 'symbol': 'btc', 'name': 'Bitcoin', 'current_price': 90500.0, 'price_change_percentage_24h': -1.0, 'price_change_percentage_7d_in_currency': -3.5, 'market_cap': 1790000000000, 'total_volume': 35000000000, 'market_cap_rank': 1},
@@ -28862,10 +25976,8 @@ async def get_top_50_cryptos():
 @app.get("/ai-signals", response_class=HTMLResponse)
 async def ai_signals():
     """Signaux de trading basés sur analyse technique - TOP 50"""
-    
     # Récupérer le top 50
     cryptos = await get_top_50_cryptos()
-    
     # Générer les cartes pour top 50
     cards_html = ""
     for crypto in cryptos[:50]:
@@ -28874,13 +25986,11 @@ async def ai_signals():
         name = crypto.get('name', 'Unknown')
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
-        
         # Formater le prix CORRECTEMENT
         if price < 1:
             price_formatted = f"{price:,.6f}"
         else:
             price_formatted = f"{price:,.2f}"
-        
         # Signal basé sur variation
         if change_24h > 3:
             signal_class = "buy"
@@ -28894,16 +26004,13 @@ async def ai_signals():
             signal_class = "hold"
             signal_text = "⏸️ ATTENDRE"
             conf = 50 + int(abs(change_24h) * 5)
-        
         rsi = 50 + (change_24h * 2)
         rsi = max(0, min(100, rsi))
-        
         # Couleurs pour change
         change_class = "positive" if change_24h > 0 else "negative"
         rsi_class = "bullish" if rsi < 50 else ("bearish" if rsi > 70 else "")
         trend_class = "bullish" if change_24h > 0 else "bearish"
         trend_text = "Haussier" if change_24h > 0 else "Baissier"
-        
         cards_html += f"""
         <div class="signal-card">
             <div class="signal-header">
@@ -28933,7 +26040,6 @@ async def ai_signals():
             </div>
         </div>
         """
-    
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
@@ -28975,7 +26081,6 @@ async def ai_signals():
             .confidence-bar {{width:100%;height:6px;background:rgba(30,41,59,0.6);border-radius:10px;overflow:hidden;margin-top:8px}}
             .confidence-fill {{height:100%;background:linear-gradient(90deg,#60a5fa,#a78bfa);border-radius:10px;transition:width 1s}}
             @keyframes pulse {{0%,100%{{opacity:1}}50%{{opacity:0.8}}}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -28984,19 +26089,16 @@ async def ai_signals():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -29006,7 +26108,6 @@ async def ai_signals():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -29020,18 +26121,15 @@ async def ai_signals():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -29039,22 +26137,18 @@ async def ai_signals():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -29073,7 +26167,6 @@ async def ai_signals():
         <script>
             setTimeout(function() {{ window.location.reload(); }}, 60000);
         </script>
-    
         <div class="how-to-use">
             <h2>💡 Comment utiliser les Signaux AI?</h2>
             <div class="use-steps">
@@ -29108,7 +26201,6 @@ async def ai_signals():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -29182,7 +26274,6 @@ async def ai_news():
             .value{{font-weight:700;font-size:1.1em}}
             .change-info.positive .value{{color:#10b981}}
             .change-info.negative .value{{color:#ef4444}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -29191,19 +26282,16 @@ async def ai_news():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -29213,7 +26301,6 @@ async def ai_news():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -29227,18 +26314,15 @@ async def ai_news():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -29246,22 +26330,18 @@ async def ai_news():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -29274,7 +26354,6 @@ async def ai_news():
             <div class="news-grid">{news_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
         <div class="how-to-use">
             <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
             <div class="use-steps">
@@ -29309,7 +26388,6 @@ async def ai_news():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -29320,12 +26398,10 @@ print("Routes 2-3 créées: AI News, AI Predictor")
 async def ai_predictor():
     """Prédictions de prix - TOP 50"""
     cryptos = await get_top_50_cryptos()
-    
     # Générer les cartes pour les 3 périodes
     predictions_7d = ""
     predictions_30d = ""
     predictions_90d = ""
-    
     for crypto in cryptos[:50]:
         price = crypto.get('current_price', 0)
         change_24h = crypto.get('price_change_percentage_24h', 0)
@@ -29333,22 +26409,17 @@ async def ai_predictor():
         symbol = crypto.get('symbol', '').upper()
         rank = crypto.get('market_cap_rank', 0)
         price_str = f"{price:,.6f}" if price < 1 else f"{price:,.2f}"
-        
         # Prédictions
         pred_7d = price * (1 + (change_24h * 3) / 100)
         pred_30d = price * (1 + (change_24h * 10) / 100)
         pred_90d = price * (1 + (change_24h * 25) / 100)
-        
         pred_7d_str = f"{pred_7d:,.6f}" if pred_7d < 1 else f"{pred_7d:,.2f}"
         pred_30d_str = f"{pred_30d:,.6f}" if pred_30d < 1 else f"{pred_30d:,.2f}"
         pred_90d_str = f"{pred_90d:,.6f}" if pred_90d < 1 else f"{pred_90d:,.2f}"
-        
         perc_7d = ((pred_7d - price) / price * 100) if price > 0 else 0
         perc_30d = ((pred_30d - price) / price * 100) if price > 0 else 0
         perc_90d = ((pred_90d - price) / price * 100) if price > 0 else 0
-        
         change_class = "positive" if change_24h > 0 else "negative"
-        
         # Carte pour 7 jours
         card_7d = f"""
         <div class="pred-card">
@@ -29369,7 +26440,6 @@ async def ai_predictor():
             </div>
         </div>
         """
-        
         # Carte pour 30 jours
         card_30d = f"""
         <div class="pred-card">
@@ -29390,7 +26460,6 @@ async def ai_predictor():
             </div>
         </div>
         """
-        
         # Carte pour 90 jours
         card_90d = f"""
         <div class="pred-card">
@@ -29411,11 +26480,9 @@ async def ai_predictor():
             </div>
         </div>
         """
-        
         predictions_7d += card_7d
         predictions_30d += card_30d
         predictions_90d += card_90d
-    
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
@@ -29434,7 +26501,6 @@ async def ai_predictor():
                 padding: 40px 20px;
             }}
             .container {{ max-width: 1600px; margin: 0 auto; }}
-            
             /* HEADER */
             h1 {{ 
                 font-size: 3em; 
@@ -29451,7 +26517,6 @@ async def ai_predictor():
                 opacity: 0.9;
                 color: #cbd5e1;
             }}
-            
             /* TABS */
             .tabs {{
                 display: flex;
@@ -29482,7 +26547,6 @@ async def ai_predictor():
                 border-color: #667eea;
                 box-shadow: 0 8px 30px rgba(102, 126, 234, 0.4);
             }}
-            
             /* GRID */
             .preds-grid {{ 
                 display: grid; 
@@ -29495,7 +26559,6 @@ async def ai_predictor():
             .tab-content.active {{
                 display: block;
             }}
-            
             /* CARDS */
             .pred-card {{ 
                 background: rgba(255,255,255,0.05); 
@@ -29509,7 +26572,6 @@ async def ai_predictor():
                 border-color: rgba(102, 126, 234, 0.5);
                 box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
             }}
-            
             .pred-header {{ 
                 margin-bottom: 20px;
                 border-bottom: 2px solid rgba(255,255,255,0.1);
@@ -29525,7 +26587,6 @@ async def ai_predictor():
                 color: #94a3b8;
                 margin-top: 5px;
             }}
-            
             .current-section {{ 
                 text-align: center; 
                 padding: 20px; 
@@ -29551,7 +26612,6 @@ async def ai_predictor():
             }}
             .price-change.positive {{ color: #10b981; }}
             .price-change.negative {{ color: #ef4444; }}
-            
             .prediction-section {{
                 text-align: center;
                 padding: 20px;
@@ -29584,7 +26644,6 @@ async def ai_predictor():
                 color: #94a3b8;
                 margin-top: 10px;
             }}
-            
             /* RESPONSIVE */
             @media (max-width: 768px) {{
                 body {{ margin-left: 0; }}
@@ -29598,26 +26657,21 @@ async def ai_predictor():
         <div class="container">
             <h1>🔮 AI PREDICTOR</h1>
             <p class="subtitle">Prédictions de prix - TOP 50 Cryptomonnaies</p>
-            
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('7d')">7 JOURS</button>
                 <button class="tab-btn" onclick="switchTab('30d')">30 JOURS</button>
                 <button class="tab-btn" onclick="switchTab('90d')">90 JOURS</button>
             </div>
-            
             <div id="tab-7d" class="tab-content active">
                 <div class="preds-grid">{predictions_7d}</div>
             </div>
-            
             <div id="tab-30d" class="tab-content">
                 <div class="preds-grid">{predictions_30d}</div>
             </div>
-            
             <div id="tab-90d" class="tab-content">
                 <div class="preds-grid">{predictions_90d}</div>
             </div>
         </div>
-        
         <script>
             function switchTab(period) {{
                 // Hide all tabs
@@ -29627,12 +26681,10 @@ async def ai_predictor():
                 document.querySelectorAll('.tab-btn').forEach(btn => {{
                     btn.classList.remove('active');
                 }});
-                
                 // Show selected tab
                 document.getElementById('tab-' + period).classList.add('active');
                 event.target.classList.add('active');
             }}
-            
             // Auto-refresh every 2 minutes
             setTimeout(function() {{ window.location.reload(); }}, 120000);
         </script>
@@ -29710,7 +26762,6 @@ async def ai_whale():
             .whale-activity.strong{{background:rgba(249,115,22,0.3);border:2px solid #f97316}}
             .whale-activity.moderate{{background:rgba(251,191,36,0.3);border:2px solid #fbbf24}}
             .whale-activity.low{{background:rgba(100,116,139,0.3);border:2px solid #64748b}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -29719,19 +26770,16 @@ async def ai_whale():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -29741,7 +26789,6 @@ async def ai_whale():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -29755,18 +26802,15 @@ async def ai_whale():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -29774,22 +26818,18 @@ async def ai_whale():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -29802,7 +26842,6 @@ async def ai_whale():
             <div class="whale-grid">{whale_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
         <div class="how-to-use">
             <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
             <div class="use-steps">
@@ -29837,7 +26876,6 @@ async def ai_whale():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -29922,7 +26960,6 @@ async def ai_patterns():
             .pattern-detected.neutral{{background:rgba(251,191,36,0.2);border:2px solid #fbbf24}}
             .pattern-name{{font-size:1.1em;font-weight:700;margin-bottom:5px}}
             .pattern-force{{font-size:0.9em;color:#94a3b8}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -29931,19 +26968,16 @@ async def ai_patterns():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -29953,7 +26987,6 @@ async def ai_patterns():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -29967,18 +27000,15 @@ async def ai_patterns():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -29986,22 +27016,18 @@ async def ai_patterns():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -30014,7 +27040,6 @@ async def ai_patterns():
             <div class="patterns-grid">{patterns_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
         <div class="how-to-use">
             <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
             <div class="use-steps">
@@ -30049,7 +27074,6 @@ async def ai_patterns():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -30151,7 +27175,6 @@ async def ai_sentiment():
             .sentiment-badge.neutral{{background:rgba(251,191,36,0.3);border:2px solid #fbbf24}}
             .sentiment-badge.bearish{{background:rgba(249,115,22,0.3);border:2px solid #f97316}}
             .sentiment-badge.very-bearish{{background:rgba(239,68,68,0.3);border:2px solid #ef4444}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -30160,19 +27183,16 @@ async def ai_sentiment():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -30182,7 +27202,6 @@ async def ai_sentiment():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -30196,18 +27215,15 @@ async def ai_sentiment():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -30215,22 +27231,18 @@ async def ai_sentiment():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -30243,7 +27255,6 @@ async def ai_sentiment():
             <div class="sentiment-grid">{sentiment_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
         <div class="how-to-use">
             <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
             <div class="use-steps">
@@ -30278,7 +27289,6 @@ async def ai_sentiment():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -30368,7 +27378,6 @@ async def ai_sizer():
             .risk-badge.medium{{background:rgba(251,191,36,0.3);border:2px solid #fbbf24}}
             .risk-badge.high{{background:rgba(249,115,22,0.3);border:2px solid #f97316}}
             .risk-badge.very-high{{background:rgba(239,68,68,0.3);border:2px solid #ef4444}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -30377,19 +27386,16 @@ async def ai_sizer():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -30399,7 +27405,6 @@ async def ai_sizer():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -30413,18 +27418,15 @@ async def ai_sizer():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -30432,22 +27434,18 @@ async def ai_sizer():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -30460,7 +27458,6 @@ async def ai_sizer():
             <div class="sizer-grid">{sizer_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
         <div class="how-to-use">
             <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
             <div class="use-steps">
@@ -30495,7 +27492,6 @@ async def ai_sizer():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -30586,7 +27582,6 @@ async def ai_exit():
             .level.sl{{background:rgba(239,68,68,0.2);border:1px solid #ef4444}}
             .level-label{{font-weight:700}}
             .level-value{{font-size:1.1em}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -30595,19 +27590,16 @@ async def ai_exit():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -30617,7 +27609,6 @@ async def ai_exit():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -30631,18 +27622,15 @@ async def ai_exit():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -30650,22 +27638,18 @@ async def ai_exit():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -30678,7 +27662,6 @@ async def ai_exit():
             <div class="exit-grid">{exit_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
         <div class="how-to-use">
             <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
             <div class="use-steps">
@@ -30713,7 +27696,6 @@ async def ai_exit():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -30789,7 +27771,6 @@ async def ai_timeframe():
             .tf-item{{padding:15px;background:rgba(0,0,0,0.3);border-radius:10px;text-align:center}}
             .tf-item span{{display:block;color:#94a3b8;font-size:0.9em;margin-bottom:8px}}
             .tf-item strong{{font-size:1.1em}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -30798,19 +27779,16 @@ async def ai_timeframe():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -30820,7 +27798,6 @@ async def ai_timeframe():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -30834,18 +27811,15 @@ async def ai_timeframe():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -30853,22 +27827,18 @@ async def ai_timeframe():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -30881,7 +27851,6 @@ async def ai_timeframe():
             <div class="tf-grid">{timeframe_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
         <div class="how-to-use">
             <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
             <div class="use-steps">
@@ -30916,7 +27885,6 @@ async def ai_timeframe():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -31003,7 +27971,6 @@ async def ai_liquidity():
             .liq-score.good{{background:rgba(34,197,94,0.3);border:2px solid #22c55e}}
             .liq-score.medium{{background:rgba(251,191,36,0.3);border:2px solid #fbbf24}}
             .liq-score.low{{background:rgba(239,68,68,0.3);border:2px solid #ef4444}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -31012,19 +27979,16 @@ async def ai_liquidity():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -31034,7 +27998,6 @@ async def ai_liquidity():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -31048,18 +28011,15 @@ async def ai_liquidity():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -31067,22 +28027,18 @@ async def ai_liquidity():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -31095,7 +28051,6 @@ async def ai_liquidity():
             <div class="liq-grid">{liq_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
         <div class="how-to-use">
             <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
             <div class="use-steps">
@@ -31130,7 +28085,6 @@ async def ai_liquidity():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -31206,7 +28160,6 @@ async def ai_alerts():
             .alert-badge.warning{{background:rgba(249,115,22,0.3);border:2px solid #f97316}}
             .alert-badge.info{{background:rgba(59,130,246,0.3);border:2px solid #3b82f6}}
             .alert-badge.ok{{background:rgba(34,197,94,0.3);border:2px solid #22c55e}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -31215,19 +28168,16 @@ async def ai_alerts():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -31237,7 +28187,6 @@ async def ai_alerts():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -31251,18 +28200,15 @@ async def ai_alerts():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -31270,22 +28216,18 @@ async def ai_alerts():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -31298,7 +28240,6 @@ async def ai_alerts():
             <div class="alert-grid">{alerts_html}</div>
         </div>
         <script>setTimeout(function(){{window.location.reload();}},120000);</script>
-    
         <div class="how-to-use">
             <h2>💡 À quoi sert cette page et comment l'utiliser?</h2>
             <div class="use-steps">
@@ -31333,7 +28274,6 @@ async def ai_alerts():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -31357,15 +28297,12 @@ def analyze_opportunity_signal(crypto):
         change_24h = float(crypto.get('price_change_percentage_24h', 0))
         volume = float(crypto.get('total_volume', 0))
         mcap = float(crypto.get('market_cap', 0))
-        
         if price <= 0:
             return None
-        
         # Calculer scores
         momentum_score = 0
         volume_score = 0
         confidence = 50
-        
         # Score momentum basé sur change 24h
         if change_24h > 10:
             momentum_score = 3
@@ -31383,7 +28320,6 @@ def analyze_opportunity_signal(crypto):
             confidence -= 10
         else:
             momentum_score = -1
-        
         # Score volume
         if volume > 1000000000:  # 1B+
             volume_score = 3
@@ -31394,11 +28330,9 @@ def analyze_opportunity_signal(crypto):
             volume_score = 1
         else:
             volume_score = 0
-        
         # Score total
         total_score = (momentum_score * 2 + volume_score * 1.5) / 2
         total_score = max(0, min(10, total_score + 5))  # Entre 0-10
-        
         # Signal
         if total_score >= 7.5:
             signal = "ACHAT FORT"
@@ -31415,7 +28349,6 @@ def analyze_opportunity_signal(crypto):
         else:
             signal = "VENDRE"
             signal_emoji = "🔴"
-        
         # Calcul targets et stop loss
         entry_low = price * 0.98
         entry_high = price * 1.02
@@ -31423,28 +28356,23 @@ def analyze_opportunity_signal(crypto):
         target_2 = price * 1.10
         target_3 = price * 1.20
         stop_loss = price * 0.95
-        
         target_1_pct = 5.0
         target_2_pct = 10.0
         target_3_pct = 20.0
         stop_loss_pct = -5.0
-        
         # Risk/Reward
         risk_reward_2 = 2.0
         rr_quality = "BON"
         risk_level = "MOYEN"
         risk_emoji = "🟡"
-        
         if total_score >= 7:
             risk_level = "FAIBLE"
             risk_emoji = "🟢"
         elif total_score < 4:
             risk_level = "ÉLEVÉ"
             risk_emoji = "🔴"
-        
         # Volume ratio
         vol_ratio = volume / max(mcap, 1) * 100
-        
         # Momentum signal
         if momentum_score >= 2:
             momentum_signal = "FORT ⬆️"
@@ -31454,7 +28382,6 @@ def analyze_opportunity_signal(crypto):
             momentum_signal = "FAIBLE ⬇️"
         else:
             momentum_signal = "NEUTRE →"
-        
         # Volume signal
         if volume_score >= 2:
             volume_signal = "ÉLEVÉ 📊"
@@ -31462,7 +28389,6 @@ def analyze_opportunity_signal(crypto):
             volume_signal = "NORMAL 📈"
         else:
             volume_signal = "FAIBLE 📉"
-        
         # Timeframe recommandé
         if momentum_score >= 2:
             timeframe = "1H-4H"
@@ -31470,15 +28396,12 @@ def analyze_opportunity_signal(crypto):
             timeframe = "4H-1D"
         else:
             timeframe = "1D-1W"
-        
         # Potential score pour hidden gems
         if mcap < 500000000:  # <500M
             potential_score = min(10, total_score + 2)
         else:
             potential_score = total_score
-        
         confidence = max(0, min(100, confidence))
-        
         return {
             'symbol': symbol,
             'name': name,
@@ -31512,7 +28435,6 @@ def analyze_opportunity_signal(crypto):
             'vol_ratio': round(vol_ratio, 2),
             'potential_score': round(potential_score, 1)
         }
-        
     except Exception as e:
         print(f"❌ Erreur analyse {crypto.get('symbol', 'UNKNOWN')}: {e}")
         return None
@@ -31524,28 +28446,23 @@ def analyze_opportunity_signal(crypto):
 @app.get("/ai-gem-hunter", response_class=HTMLResponse)
 async def ai_opportunity_scanner():
     """🎯 AI OPPORTUNITY SCANNER - Système professionnel de détection d'opportunités crypto"""
-    
     # Récupérer le top 50
     cryptos = await get_top_50_cryptos()
-    
     # Analyser chaque crypto avec l'algorithme IA
     analyzed = []
     for crypto in cryptos:
         analysis = analyze_opportunity_signal(crypto)
         if analysis:
             analyzed.append(analysis)
-    
     # Catégoriser en 3 sections
     hot_opps = []
     hidden_gems = []
     danger_zone = []
-    
     for crypto in analyzed:
         signal = crypto['signal']
         mcap = crypto['mcap']
         total_score = crypto['total_score']
         momentum_score = crypto['momentum_score']
-        
         # HOT OPPORTUNITIES
         if signal in ['ACHAT FORT', 'ACHAT'] and total_score >= 7.0:
             hot_opps.append(crypto)
@@ -31555,17 +28472,14 @@ async def ai_opportunity_scanner():
         # DANGER ZONE
         elif signal in ['VENDRE', 'PRUDENCE'] or momentum_score < -2.0:
             danger_zone.append(crypto)
-    
     # Trier
     hot_opps.sort(key=lambda x: (x['total_score'], x['confidence']), reverse=True)
     hidden_gems.sort(key=lambda x: (x['potential_score'], x['total_score']), reverse=True)
     danger_zone.sort(key=lambda x: x['momentum_score'])
-    
     # Limiter
     hot_opps = hot_opps[:10]
     hidden_gems = hidden_gems[:15]
     danger_zone = danger_zone[:5]
-    
     # Générer HTML pour HOT OPPORTUNITIES
     hot_html = ""
     for i, opp in enumerate(hot_opps, 1):
@@ -31595,7 +28509,6 @@ async def ai_opportunity_scanner():
         volume_signal = opp['volume_signal']
         change_24h = opp['change_24h']
         vol_ratio = opp['vol_ratio']
-        
         # Format prix
         if price < 1:
             price_fmt = f"${price:,.6f}"
@@ -31611,7 +28524,6 @@ async def ai_opportunity_scanner():
             tp2_fmt = f"${target_2:,.2f}"
             tp3_fmt = f"${target_3:,.2f}"
             sl_fmt = f"${stop_loss:,.2f}"
-        
         hot_html += f"""
         <div class="opportunity-card hot-card">
             <div class="opp-header">
@@ -31626,12 +28538,10 @@ async def ai_opportunity_scanner():
             <div class="opp-signal-badge {signal.lower().replace(' ', '-')}">
                 {signal_emoji} {signal}
             </div>
-            
             <div class="opp-section">
                 <div class="section-title">💰 PRIX D'ENTRÉE RECOMMANDÉ</div>
                 <div class="entry-price">{entry_fmt}</div>
             </div>
-            
             <div class="opp-section">
                 <div class="section-title">🎯 OBJECTIFS (TAKE PROFIT)</div>
                 <div class="targets">
@@ -31649,14 +28559,12 @@ async def ai_opportunity_scanner():
                     </div>
                 </div>
             </div>
-            
             <div class="opp-section">
                 <div class="section-title">🛑 STOP LOSS (PROTECTION)</div>
                 <div class="stop-loss">
                     {sl_fmt} <span class="negative">({stop_loss_pct:.1f}%)</span>
                 </div>
             </div>
-            
             <div class="opp-metrics">
                 <div class="metric-box">
                     <span class="metric-label">⏰ Timeframe</span>
@@ -31667,7 +28575,6 @@ async def ai_opportunity_scanner():
                     <strong>1:{risk_reward_2:.1f} ({rr_quality})</strong>
                 </div>
             </div>
-            
             <div class="opp-metrics">
                 <div class="metric-box">
                     <span class="metric-label">🤖 Confiance IA</span>
@@ -31678,7 +28585,6 @@ async def ai_opportunity_scanner():
                     <strong>{risk_emoji} {risk_level}</strong>
                 </div>
             </div>
-            
             <div class="opp-details">
                 <div class="detail-item">
                     <span>Momentum 24h:</span>
@@ -31691,7 +28597,6 @@ async def ai_opportunity_scanner():
             </div>
         </div>
         """
-    
     # Générer HTML pour HIDDEN GEMS
     gems_html = ""
     for i, gem in enumerate(hidden_gems, 1):
@@ -31709,16 +28614,13 @@ async def ai_opportunity_scanner():
         total_score = gem['total_score']
         potential_multiplier = gem['potential_multiplier']
         change_24h = gem['change_24h']
-        
         if price < 1:
             price_fmt = f"${price:,.6f}"
             target_fmt = f"${target_2:,.6f}"
         else:
             price_fmt = f"${price:,.2f}"
             target_fmt = f"${target_2:,.2f}"
-        
         mcap_fmt = f"${mcap/1000000:.1f}M" if mcap < 1000000000 else f"${mcap/1000000000:.2f}B"
-        
         gems_html += f"""
         <div class="opportunity-card gem-card">
             <div class="opp-header">
@@ -31731,17 +28633,14 @@ async def ai_opportunity_scanner():
             </div>
             <div class="opp-price">{price_fmt}</div>
             <div class="gem-mcap">💎 Market Cap: {mcap_fmt}</div>
-            
             <div class="opp-signal-badge {signal.lower().replace(' ', '-')}">
                 {signal_emoji} {signal}
             </div>
-            
             <div class="gem-potential">
                 <div class="potential-title">🚀 POTENTIEL</div>
                 <div class="potential-value">x{potential_multiplier:.1f} <span class="positive">(+{target_2_pct:.0f}%)</span></div>
                 <div class="potential-target">Target: {target_fmt}</div>
             </div>
-            
             <div class="opp-metrics">
                 <div class="metric-box">
                     <span class="metric-label">🤖 Confiance IA</span>
@@ -31752,7 +28651,6 @@ async def ai_opportunity_scanner():
                     <strong>{risk_emoji} {risk_level}</strong>
                 </div>
             </div>
-            
             <div class="opp-details">
                 <div class="detail-item">
                     <span>Performance 24h:</span>
@@ -31761,7 +28659,6 @@ async def ai_opportunity_scanner():
             </div>
         </div>
         """
-    
     # Générer HTML pour DANGER ZONE
     danger_html = ""
     for i, danger in enumerate(danger_zone, 1):
@@ -31775,9 +28672,7 @@ async def ai_opportunity_scanner():
         change_24h = danger['change_24h']
         change_7d = danger['change_7d']
         vol_ratio = danger['vol_ratio']
-        
         price_fmt = f"${price:,.6f}" if price < 1 else f"${price:,.2f}"
-        
         # Raisons du danger
         raisons = []
         if momentum_score < -2.0:
@@ -31788,9 +28683,7 @@ async def ai_opportunity_scanner():
             raisons.append("⚠️ Chute >10% en 24h")
         if change_7d < -20:
             raisons.append("🔻 Chute >20% en 7 jours")
-        
         raisons_html = "".join([f"<div class='danger-reason'>{r}</div>" for r in raisons])
-        
         danger_html += f"""
         <div class="opportunity-card danger-card">
             <div class="opp-header">
@@ -31802,16 +28695,13 @@ async def ai_opportunity_scanner():
                 <span class="opp-name">{name}</span>
             </div>
             <div class="opp-price">{price_fmt}</div>
-            
             <div class="opp-signal-badge {signal.lower().replace(' ', '-')}">
                 {signal_emoji} {signal}
             </div>
-            
             <div class="danger-reasons">
                 <div class="section-title">⚠️ RAISONS DU DANGER</div>
                 {raisons_html}
             </div>
-            
             <div class="opp-details">
                 <div class="detail-item">
                     <span>Performance 24h:</span>
@@ -31830,19 +28720,16 @@ async def ai_opportunity_scanner():
                     <strong class="negative">{vol_ratio:.1f}%</strong>
                 </div>
             </div>
-            
             <div class="danger-action">
                 🎯 Action: SORTIR ou NE PAS ACHETER
             </div>
         </div>
         """
-    
     # Stats globales
     total_analyzed = len(analyzed)
     total_hot = len(hot_opps)
     total_gems = len(hidden_gems)
     total_danger = len(danger_zone)
-    
     return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html lang="fr">
@@ -31854,7 +28741,6 @@ async def ai_opportunity_scanner():
             *{{margin:0;padding:0;box-sizing:border-box}}
             body{{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#0f172a,#1e293b,#0f172a);color:#fff;padding:40px 20px;min-height:100vh}}
             .container{{max-width:1600px;margin:0 auto}}
-            
             /* Header */
             .page-header{{text-align:center;margin-bottom:50px}}
             .page-title{{font-size:3.5em;font-weight:900;background:linear-gradient(135deg,#fbbf24,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:15px;text-shadow:0 0 40px rgba(251,191,36,0.5)}}
@@ -31863,7 +28749,6 @@ async def ai_opportunity_scanner():
             .stat-box{{background:rgba(255,255,255,0.1);padding:15px 30px;border-radius:12px;border:2px solid rgba(255,255,255,0.2)}}
             .stat-number{{font-size:2.2em;font-weight:700;color:#fbbf24}}
             .stat-label{{font-size:0.95em;color:rgba(255,255,255,0.7);margin-top:5px}}
-            
             /* Section Headers */
             .section-header{{margin:60px 0 30px;text-align:center}}
             .section-header.hot{{background:linear-gradient(135deg,rgba(239,68,68,0.2),rgba(251,191,36,0.2));border:2px solid #ef4444;border-radius:15px;padding:25px}}
@@ -31871,40 +28756,31 @@ async def ai_opportunity_scanner():
             .section-header.danger{{background:linear-gradient(135deg,rgba(153,27,27,0.3),rgba(127,29,29,0.3));border:2px solid #dc2626;border-radius:15px;padding:25px}}
             .section-title{{font-size:2.5em;font-weight:800;margin-bottom:10px}}
             .section-subtitle{{font-size:1.2em;color:rgba(255,255,255,0.8)}}
-            
             /* Grid */
             .opportunities-grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:25px}}
-            
             /* Cards */
             .opportunity-card{{background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border-radius:18px;padding:25px;transition:all 0.3s;position:relative;overflow:hidden}}
             .opportunity-card:hover{{transform:translateY(-5px);box-shadow:0 20px 60px rgba(0,0,0,0.5)}}
             .opportunity-card::before{{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#fbbf24,#ef4444)}}
-            
             .hot-card{{border:2px solid rgba(239,68,68,0.3)}}
             .hot-card:hover{{border-color:#ef4444;box-shadow:0 20px 60px rgba(239,68,68,0.4)}}
-            
             .gem-card{{border:2px solid rgba(34,197,94,0.3)}}
             .gem-card:hover{{border-color:#22c55e;box-shadow:0 20px 60px rgba(34,197,94,0.4)}}
-            
             .danger-card{{border:2px solid rgba(220,38,38,0.5)}}
             .danger-card:hover{{border-color:#dc2626;box-shadow:0 20px 60px rgba(220,38,38,0.5)}}
             .danger-card::before{{background:linear-gradient(90deg,#dc2626,#991b1b)}}
-            
             /* Card Header */
             .opp-header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}}
             .opp-rank{{background:rgba(251,191,36,0.2);color:#fbbf24;padding:6px 14px;border-radius:8px;font-weight:700;font-size:0.9em;border:1px solid #fbbf24}}
             .opp-score{{font-size:2em;font-weight:800;color:#22c55e}}
             .danger-badge{{background:#dc2626;color:#fff;padding:6px 14px;border-radius:8px;font-weight:700;font-size:0.9em;animation:pulse 2s infinite}}
-            
             @keyframes pulse{{0%,100%{{opacity:1}}50%{{opacity:0.7}}}}
-            
             /* Title */
             .opp-title{{margin-bottom:12px}}
             .opp-symbol{{font-size:2em;font-weight:800;margin-right:10px}}
             .opp-name{{font-size:1em;color:rgba(255,255,255,0.7)}}
             .opp-price{{font-size:1.8em;font-weight:700;color:#fbbf24;margin-bottom:15px}}
             .gem-mcap{{font-size:1.1em;color:rgba(255,255,255,0.8);margin-bottom:15px}}
-            
             /* Signal Badge */
             .opp-signal-badge{{display:inline-block;padding:12px 20px;border-radius:10px;font-weight:800;font-size:1.1em;margin-bottom:20px;text-align:center;width:100%}}
             .opp-signal-badge.achat-fort{{background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 5px 20px rgba(239,68,68,0.5)}}
@@ -31913,53 +28789,43 @@ async def ai_opportunity_scanner():
             .opp-signal-badge.hold{{background:linear-gradient(135deg,#06b6d4,#0891b2)}}
             .opp-signal-badge.prudence{{background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 5px 20px rgba(245,158,11,0.5)}}
             .opp-signal-badge.vendre{{background:linear-gradient(135deg,#dc2626,#991b1b);box-shadow:0 5px 20px rgba(220,38,38,0.5)}}
-            
             /* Sections */
             .opp-section{{margin:20px 0;padding:15px;background:rgba(0,0,0,0.3);border-radius:10px;border-left:4px solid #fbbf24}}
             .section-title{{font-weight:700;color:#fbbf24;margin-bottom:12px;font-size:1.05em}}
             .entry-price{{font-size:1.4em;font-weight:700;color:#fff}}
-            
             /* Targets */
             .targets{{display:flex;flex-direction:column;gap:10px}}
             .target-item{{display:flex;justify-content:space-between;padding:10px;background:rgba(255,255,255,0.05);border-radius:8px}}
             .target-label{{font-weight:600;color:rgba(255,255,255,0.8)}}
             .target-value{{font-weight:700}}
-            
             /* Stop Loss */
             .stop-loss{{font-size:1.4em;font-weight:700;color:#ef4444}}
-            
             /* Metrics */
             .opp-metrics{{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:15px 0}}
             .metric-box{{background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;text-align:center}}
             .metric-label{{display:block;font-size:0.85em;color:rgba(255,255,255,0.7);margin-bottom:5px}}
             .metric-box strong{{font-size:1.1em;color:#fff}}
-            
             /* Details */
             .opp-details{{margin-top:15px;padding-top:15px;border-top:1px solid rgba(255,255,255,0.1)}}
             .detail-item{{display:flex;justify-content:space-between;padding:8px 0;font-size:0.95em}}
             .detail-item span{{color:rgba(255,255,255,0.7)}}
-            
             /* Gem Potential */
             .gem-potential{{background:linear-gradient(135deg,rgba(34,197,94,0.2),rgba(16,185,129,0.2));padding:20px;border-radius:12px;border:2px solid #22c55e;margin:15px 0;text-align:center}}
             .potential-title{{font-weight:700;color:#22c55e;margin-bottom:10px;font-size:1.1em}}
             .potential-value{{font-size:2.5em;font-weight:800;color:#fff;margin-bottom:8px}}
             .potential-target{{font-size:1.2em;color:rgba(255,255,255,0.8)}}
-            
             /* Danger */
             .danger-reasons{{background:rgba(220,38,38,0.1);padding:15px;border-radius:10px;border:2px solid #dc2626;margin:15px 0}}
             .danger-reason{{padding:10px;margin:8px 0;background:rgba(0,0,0,0.3);border-radius:8px;border-left:4px solid #dc2626}}
             .danger-action{{background:#dc2626;color:#fff;padding:15px;border-radius:10px;font-weight:700;font-size:1.1em;text-align:center;margin-top:15px}}
-            
             /* Colors */
             .positive{{color:#22c55e}}
             .negative{{color:#ef4444}}
-            
             /* Disclaimers */
             .disclaimers{{max-width:900px;margin:60px auto;padding:30px;background:rgba(220,38,38,0.1);border:2px solid #dc2626;border-radius:15px}}
             .disclaimers h3{{color:#dc2626;margin-bottom:15px;font-size:1.4em}}
             .disclaimers ul{{margin-left:25px;line-height:1.8}}
             .disclaimers li{{color:rgba(255,255,255,0.9);margin:8px 0}}
-        
         .how-to-use {{
             margin: 60px auto;
             max-width: 1200px;
@@ -31968,19 +28834,16 @@ async def ai_opportunity_scanner():
             border: 2px solid #06b6d4;
             border-radius: 20px;
         }}
-        
         .how-to-use h2 {{
             font-size: 2em;
             margin-bottom: 30px;
             color: #06b6d4;
             text-align: center;
         }}
-        
         .use-steps {{
             display: grid;
             gap: 25px;
         }}
-        
         .step {{
             display: flex;
             gap: 20px;
@@ -31990,7 +28853,6 @@ async def ai_opportunity_scanner():
             border-radius: 15px;
             border-left: 4px solid #06b6d4;
         }}
-        
         .step-number {{
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: #fff;
@@ -32004,18 +28866,15 @@ async def ai_opportunity_scanner():
             font-weight: 700;
             flex-shrink: 0;
         }}
-        
         .step-content h3 {{
             font-size: 1.3em;
             margin-bottom: 10px;
             color: #fff;
         }}
-        
         .step-content p {{
             color: rgba(255,255,255,0.8);
             line-height: 1.6;
         }}
-        
         .use-tips {{
             margin-top: 30px;
             padding: 20px;
@@ -32023,22 +28882,18 @@ async def ai_opportunity_scanner():
             border-left: 4px solid #fbbf24;
             border-radius: 10px;
         }}
-        
         .use-tips h3 {{
             color: #fbbf24;
             margin-bottom: 15px;
         }}
-        
         .use-tips ul {{
             list-style: none;
             padding: 0;
         }}
-        
         .use-tips li {{
             padding: 8px 0;
             color: rgba(255,255,255,0.9);
         }}
-        
         .use-tips li:before {{
             content: "💡 ";
             margin-right: 10px;
@@ -32069,28 +28924,24 @@ async def ai_opportunity_scanner():
                     </div>
                 </div>
             </div>
-            
             <!-- HOT OPPORTUNITIES -->
             <div class="section-header hot">
                 <h2 class="section-title">🔥 HOT OPPORTUNITIES</h2>
                 <p class="section-subtitle">Signaux d'achat forts • Opportunités chaudes • Action immédiate</p>
             </div>
             <div class="opportunities-grid">{hot_html if hot_html else '<p style="text-align:center;font-size:1.2em;color:rgba(255,255,255,0.7)">Aucune opportunité chaude détectée pour le moment. Revenez plus tard!</p>'}</div>
-            
             <!-- HIDDEN GEMS -->
             <div class="section-header gems">
                 <h2 class="section-title">💎 HIDDEN GEMS</h2>
                 <p class="section-subtitle">Small/Mid Caps à Fort Potentiel • Pépites cachées • Opportunités x3-x10</p>
             </div>
             <div class="opportunities-grid">{gems_html if gems_html else '<p style="text-align:center;font-size:1.2em;color:rgba(255,255,255,0.7)">Aucune pépite cachée détectée pour le moment.</p>'}</div>
-            
             <!-- DANGER ZONE -->
             <div class="section-header danger">
                 <h2 class="section-title">⚠️ DANGER ZONE</h2>
                 <p class="section-subtitle">Cryptos à éviter • Momentum négatif • NE PAS ACHETER</p>
             </div>
             <div class="opportunities-grid">{danger_html if danger_html else '<p style="text-align:center;font-size:1.2em;color:rgba(255,255,255,0.7)">Aucun danger détecté. Marché sain!</p>'}</div>
-            
             <!-- Disclaimers -->
             <div class="disclaimers">
                 <h3>⚠️ AVERTISSEMENTS IMPORTANTS</h3>
@@ -32108,7 +28959,6 @@ async def ai_opportunity_scanner():
         <script>
             setTimeout(function() {{ window.location.reload(); }}, 300000);  // Refresh toutes les 5 min
         </script>
-    
         <div class="how-to-use">
             <h2>💡 Comment utiliser le Gem Hunter?</h2>
             <div class="use-steps">
@@ -32146,7 +28996,6 @@ async def ai_opportunity_scanner():
                 </ul>
             </div>
         </div>
-    
         </body>
     </html>
     """)
@@ -32184,7 +29033,6 @@ async def crypto_pepites():
             margin-left: 280px !important;
             padding: 20px;
         }}
-        
         .page-header {{
             text-align: center;
             padding: 40px 20px;
@@ -32193,18 +29041,15 @@ async def crypto_pepites():
             margin-bottom: 40px;
             box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
         }}
-        
         .page-header h1 {{
             font-size: 3em;
             margin-bottom: 10px;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }}
-        
         .page-header p {{
             font-size: 1.2em;
             opacity: 0.9;
         }}
-        
         .update-indicator {{
             position: fixed;
             top: 20px;
@@ -32219,12 +29064,10 @@ async def crypto_pepites():
             z-index: 1000;
             backdrop-filter: blur(10px);
         }}
-        
         .update-indicator.updating {{
             border-color: #f59e0b;
             background: rgba(245, 158, 11, 0.2);
         }}
-        
         .pulse-dot {{
             width: 10px;
             height: 10px;
@@ -32232,23 +29075,19 @@ async def crypto_pepites():
             border-radius: 50%;
             animation: pulse 2s ease-in-out infinite;
         }}
-        
         .update-indicator.updating .pulse-dot {{
             background: #f59e0b;
         }}
-        
         @keyframes pulse {{
             0%, 100% {{ opacity: 1; transform: scale(1); }}
             50% {{ opacity: 0.5; transform: scale(1.2); }}
         }}
-        
         .crypto-grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
             gap: 30px;
             margin-bottom: 50px;
         }}
-        
         .crypto-card {{
             background: rgba(30, 41, 59, 0.6);
             border-radius: 20px;
@@ -32258,7 +29097,6 @@ async def crypto_pepites():
             position: relative;
             overflow: hidden;
         }}
-        
         .crypto-card::before {{
             content: '';
             position: absolute;
@@ -32268,26 +29106,22 @@ async def crypto_pepites():
             height: 5px;
             background: linear-gradient(90deg, var(--card-color-1), var(--card-color-2));
         }}
-        
         .crypto-card:hover {{
             transform: translateY(-5px);
             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
             border-color: rgba(255, 255, 255, 0.3);
         }}
-        
         .crypto-header {{
             display: flex;
             justify-content: space-between;
             align-items: start;
             margin-bottom: 20px;
         }}
-        
         .crypto-name {{
             font-size: 2em;
             font-weight: bold;
             margin-bottom: 5px;
         }}
-        
         .crypto-category {{
             display: inline-block;
             background: rgba(59, 130, 246, 0.2);
@@ -32297,7 +29131,6 @@ async def crypto_pepites():
             font-size: 0.85em;
             margin-top: 5px;
         }}
-        
         .price-box {{
             background: rgba(var(--rgb-color), 0.1);
             border: 2px solid rgba(var(--rgb-color), 0.3);
@@ -32305,30 +29138,25 @@ async def crypto_pepites():
             padding: 15px;
             margin: 20px 0;
         }}
-        
         .current-price {{
             font-size: 1.8em;
             font-weight: bold;
             color: var(--card-color-1);
             margin-bottom: 5px;
         }}
-        
         .price-change {{
             font-size: 0.9em;
             display: flex;
             align-items: center;
             gap: 5px;
         }}
-        
         .price-change.positive {{ color: #22c55e; }}
         .price-change.negative {{ color: #ef4444; }}
-        
         .market-cap {{
             font-size: 0.95em;
             opacity: 0.8;
             margin-top: 5px;
         }}
-        
         .ai-analysis {{
             background: rgba(139, 92, 246, 0.1);
             border-left: 4px solid #8b5cf6;
@@ -32336,7 +29164,6 @@ async def crypto_pepites():
             margin: 20px 0;
             border-radius: 10px;
         }}
-        
         .ai-analysis h4 {{
             color: #a78bfa;
             margin-bottom: 10px;
@@ -32344,33 +29171,28 @@ async def crypto_pepites():
             align-items: center;
             gap: 8px;
         }}
-        
         .predictions-grid {{
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 15px;
             margin-top: 20px;
         }}
-        
         .prediction-box {{
             background: rgba(var(--rgb-color), 0.15);
             padding: 15px;
             border-radius: 10px;
             border: 1px solid rgba(var(--rgb-color), 0.3);
         }}
-        
         .prediction-year {{
             font-size: 0.9em;
             color: var(--card-color-1);
             font-weight: bold;
             margin-bottom: 5px;
         }}
-        
         .prediction-price {{
             font-size: 1.3em;
             font-weight: bold;
         }}
-        
         .methodology {{
             background: rgba(30, 41, 59, 0.6);
             border-radius: 20px;
@@ -32378,22 +29200,18 @@ async def crypto_pepites():
             margin-bottom: 30px;
             border: 2px solid rgba(16, 185, 129, 0.3);
         }}
-        
         .methodology h2 {{
             color: #10b981;
             margin-bottom: 20px;
             font-size: 2em;
         }}
-        
         .methodology ul {{
             list-style-position: inside;
             line-height: 1.8;
         }}
-        
         .methodology li {{
             margin-bottom: 10px;
         }}
-        
         .disclaimer {{
             background: rgba(239, 68, 68, 0.1);
             border: 2px solid rgba(239, 68, 68, 0.3);
@@ -32401,12 +29219,10 @@ async def crypto_pepites():
             padding: 20px;
             text-align: center;
         }}
-        
         .loading-price {{
             color: #6b7280;
             font-style: italic;
         }}
-        
         @media (max-width: 768px) {{
             body {{ margin-left: 0 !important; padding: 10px; }}
             .crypto-grid {{ grid-template-columns: 1fr; }}
@@ -32425,13 +29241,11 @@ async def crypto_pepites():
         <!-- SIDEBAR TOGGLE MOBILE -->
         <!-- SIDEBAR TOGGLE MOBILE -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-    
     <!-- SIDEBAR COMPLÈTE ULTRA PRO -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-title">🚀 CRYPTO IA</div>
         </div>
-        
         <!-- 📊 TABLEAU DE BORD -->
         <div class="menu-section">
             <div class="section-title">📊 TABLEAU DE BORD</div>
@@ -32444,7 +29258,6 @@ async def crypto_pepites():
                 <span class="label">Stats Dashboard</span>
             </a>
         </div>
-        
         <!-- 🎓 ACADEMY & FORMATION -->
         <div class="menu-section">
             <div class="section-title">🎓 ACADEMY & FORMATION</div>
@@ -32454,7 +29267,6 @@ async def crypto_pepites():
                 <span class="badge">22 modules</span>
             </a>
         </div>
-        
         <!-- 💰 TRADING & STRATÉGIES -->
         <div class="menu-section">
             <div class="section-title">💰 TRADING & STRATÉGIES</div>
@@ -32483,7 +29295,6 @@ async def crypto_pepites():
                 <span class="label">Backtesting</span>
             </a>
         </div>
-        
         <!-- 🤖 FEATURES IA -->
         <div class="menu-section">
             <div class="section-title">🤖 FEATURES IA</div>
@@ -32548,7 +29359,6 @@ async def crypto_pepites():
                 <span class="label">Gem Hunter</span>
             </a>
         </div>
-        
         <!-- 📈 ANALYSE DE MARCHÉ -->
         <div class="menu-section">
             <div class="section-title">📈 ANALYSE DE MARCHÉ</div>
@@ -32585,7 +29395,6 @@ async def crypto_pepites():
                 <span class="label">Métriques On-Chain</span>
             </a>
         </div>
-        
         <!-- 🆕 NOUVELLES FEATURES -->
         <div class="menu-section">
             <div class="section-title">🆕 NOUVELLES FEATURES</div>
@@ -32597,13 +29406,11 @@ async def crypto_pepites():
                 <span class="icon">🏦</span>
                 <span class="label">DeFi Yield</span>
             </a>
-            
             <a href="/crypto-pepites" class="menu-item ai-feature">
                 <span class="icon">💎</span>
                 <span class="label">Pépites Crypto</span>
             </a>
         </div>
-        
         <!-- 🛠️ OUTILS -->
         <div class="menu-section">
             <div class="section-title">🛠️ OUTILS</div>
@@ -32628,7 +29435,6 @@ async def crypto_pepites():
                 <span class="label">Calendrier Éco</span>
             </a>
         </div>
-        
         <!-- 📰 NOUVELLES & INFO -->
         <div class="menu-section">
             <div class="section-title">📰 NOUVELLES & INFO</div>
@@ -32641,7 +29447,6 @@ async def crypto_pepites():
                 <span class="label">Success Stories</span>
             </a>
         </div>
-        
         <!-- 👤 MON COMPTE -->
         <div class="menu-section">
             <div class="section-title">👤 MON COMPTE</div>
@@ -32861,7 +29666,6 @@ let updateCount = 0;
 // Formatage des prix
 function formatPrice(price, symbol) {{
     if (!price) return 'Chargement...';
-    
     if (price < 0.000001) {{
         return price.toFixed(10).replace(/(\.\\d*?[1-9])0+$/, '$1');
     }} else if (price < 0.01) {{
@@ -32876,7 +29680,6 @@ function formatPrice(price, symbol) {{
 // Formatage market cap
 function formatMarketCap(mcap) {{
     if (!mcap) return 'N/A';
-    
     if (mcap >= 1e9) {{
         return `$${{(mcap / 1e9).toFixed(2)}}B`;
     }} else if (mcap >= 1e6) {{
@@ -32892,10 +29695,8 @@ function generateCryptoCard(crypto) {{
     const price = priceData.usd || null;
     const change24h = priceData.usd_24h_change || 0;
     const marketCap = priceData.usd_market_cap || null;
-    
     const changeClass = change24h >= 0 ? 'positive' : 'negative';
     const changeSymbol = change24h >= 0 ? '▲' : '▼';
-    
     return `
         <div class="crypto-card" style="--card-color-1: ${{crypto.colors.primary}}; --card-color-2: ${{crypto.colors.secondary}}; --rgb-color: ${{crypto.colors.rgb}}">
             <div class="crypto-header">
@@ -32905,7 +29706,6 @@ function generateCryptoCard(crypto) {{
                     <span class="crypto-category">${{crypto.category}}</span>
                 </div>
             </div>
-            
             <div class="price-box">
                 <div class="current-price" id="price-${{crypto.id}}">
                     $$${{price ? formatPrice(price, crypto.symbol) : '<span class="loading-price">Chargement...</span>'}}
@@ -32917,12 +29717,10 @@ function generateCryptoCard(crypto) {{
                     MCap: ${{formatMarketCap(marketCap)}}
                 </div>
             </div>
-            
             <div class="ai-analysis">
                 <h4>🤖 Analyse IA</h4>
                 <p>${{crypto.analysis}}</p>
             </div>
-            
             <div class="predictions-grid">
                 <div class="prediction-box">
                     <div class="prediction-year">🎯 2025</div>
@@ -32942,15 +29740,12 @@ function updatePriceDisplay() {{
     cryptoConfig.forEach(crypto => {{
         const priceData = pricesData[crypto.id];
         if (!priceData) return;
-        
         const priceEl = document.getElementById(`price-${{crypto.id}}`);
         const changeEl = document.getElementById(`change-${{crypto.id}}`);
         const mcapEl = document.getElementById(`mcap-${{crypto.id}}`);
-        
         if (priceEl && priceData.usd) {{
             priceEl.textContent = `$$${{formatPrice(priceData.usd, crypto.symbol)}}`;
         }}
-        
         if (changeEl && priceData.usd_24h_change !== undefined) {{
             const change = priceData.usd_24h_change;
             const changeClass = change >= 0 ? 'positive' : 'negative';
@@ -32958,7 +29753,6 @@ function updatePriceDisplay() {{
             changeEl.className = `price-change ${{changeClass}}`;
             changeEl.textContent = `${{changeSymbol}} ${{Math.abs(change).toFixed(2)}}% (24h)`;
         }}
-        
         if (mcapEl && priceData.usd_market_cap) {{
             mcapEl.textContent = `MCap: ${{formatMarketCap(priceData.usd_market_cap)}}`;
         }}
@@ -32969,29 +29763,21 @@ function updatePriceDisplay() {{
 async function fetchPrices() {{
     const indicator = document.getElementById('updateIndicator');
     const updateText = document.getElementById('updateText');
-    
     try {{
         indicator.classList.add('updating');
         updateText.textContent = 'Mise à jour...';
-        
         const ids = cryptoConfig.map(c => c.id).join(',');
         const url = `https://api.coingecko.com/api/v3/simple/price?ids=${{ids}}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true`;
-        
         const response = await fetch(url);
         if (!response.ok) throw new Error('API Error');
-        
         const data = await response.json();
         pricesData = data;
         lastUpdate = new Date();
         updateCount++;
-        
         updatePriceDisplay();
-        
         indicator.classList.remove('updating');
         updateText.textContent = `✅ Mis à jour: ${{lastUpdate.toLocaleTimeString('fr-FR')}}`;
-        
         console.log(`✅ Mise à jour #${{updateCount}} réussie`);
-        
     }} catch (error) {{
         console.error('Erreur récupération prix:', error);
         indicator.classList.remove('updating');
@@ -33002,17 +29788,13 @@ async function fetchPrices() {{
 // Initialisation
 async function init() {{
     console.log('🚀 Initialisation Crypto Pépites API Temps Réel');
-    
     // Générer les cartes
     const grid = document.getElementById('cryptoGrid');
     grid.innerHTML = cryptoConfig.map(crypto => generateCryptoCard(crypto)).join('');
-    
     // Première récupération
     await fetchPrices();
-    
     // Mise à jour auto toutes les 30 secondes
     setInterval(fetchPrices, 30000);
-    
     console.log('✅ Système initialisé - Mise à jour auto toutes les 30s');
 }}
 
@@ -33031,7 +29813,6 @@ document.addEventListener('DOMContentLoaded', init);
 
 def analyze_trader_profile(trades: List[Dict]) -> Dict:
     """Analyse complète du profil trader"""
-    
     if not trades or len(trades) < 5:
         return {
             "profile_type": "Débutant",
@@ -33039,25 +29820,18 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
             "message": "Pas assez de trades pour analyse (minimum 5 requis)",
             "recommendations": []
         }
-    
     winning_trades = [t for t in trades if t.get("result") == "win"]
     losing_trades = [t for t in trades if t.get("result") == "loss"]
-    
     total_trades = len(trades)
     win_count = len(winning_trades)
     loss_count = len(losing_trades)
     win_rate = (win_count / total_trades * 100) if total_trades > 0 else 0
-    
     total_profit = sum(t.get("profit_percent", 0) for t in winning_trades)
     total_loss = sum(abs(t.get("profit_percent", 0)) for t in losing_trades)
-    
     avg_win = total_profit / win_count if win_count > 0 else 0
     avg_loss = total_loss / loss_count if loss_count > 0 else 0
-    
     rr_ratio = avg_win / avg_loss if avg_loss > 0 else 0
-    
     patterns_detected = []
-    
     # FOMO Pattern
     fomo_trades = [t for t in trades if t.get("entry_after_pump", False)]
     if len(fomo_trades) >= 3:
@@ -33069,7 +29843,6 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
             "impact": f"{fomo_loss_rate:.1f}% de pertes sur ces trades FOMO",
             "advice": "⚠️ Attends le retracement avant d'entrer"
         })
-    
     # Paper Hands
     early_exit_trades = [t for t in winning_trades if t.get("profit_percent", 0) < 5]
     if len(early_exit_trades) > win_count * 0.4:
@@ -33080,7 +29853,6 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
             "impact": f"Gains moyens de seulement {avg_win:.1f}%",
             "advice": "💎 Laisse courir tes gagnants ! Trailing stops."
         })
-    
     # Stop Loss Ignoré
     big_losses = [t for t in losing_trades if abs(t.get("profit_percent", 0)) > 15]
     if len(big_losses) > loss_count * 0.3:
@@ -33091,7 +29863,6 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
             "impact": f"Pertes moyennes de {avg_loss:.1f}%",
             "advice": "🛑 RESPECTE TES STOP LOSS !"
         })
-    
     # Profil type
     if win_rate < 40:
         profile_type = "Trader Émotionnel"
@@ -33108,7 +29879,6 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
     else:
         profile_type = "Trader en Développement"
         profile_description = "Bon potentiel"
-    
     # Score
     score = 50
     if win_rate > 50:
@@ -33118,7 +29888,6 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
     if avg_loss < 10:
         score += 10
     score = max(0, min(100, score))
-    
     # Strengths & Weaknesses
     strengths = []
     if win_rate > 55:
@@ -33127,7 +29896,6 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
         strengths.append("✅ Excellent R:R ratio")
     if not strengths:
         strengths.append("📊 Continue à pratiquer")
-    
     weaknesses = []
     high_severity = [p for p in patterns_detected if p["severity"] == "high"]
     for pattern in high_severity:
@@ -33136,7 +29904,6 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
         weaknesses.append("⚠️ Taux de réussite faible")
     if not weaknesses:
         weaknesses.append("✅ Aucune faiblesse majeure")
-    
     # Recommendations
     recommendations = []
     if profile_type == "FOMO Trader":
@@ -33153,7 +29920,6 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
             "description": "Utilise trailing stops",
             "action": "Trailing stop -5% une fois +10% atteint"
         })
-    
     for pattern in patterns_detected:
         if pattern["type"] == "Stop Loss Ignoré":
             recommendations.append({
@@ -33162,7 +29928,6 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
                 "description": "C'est LA règle #1",
                 "action": "SL à -8% max"
             })
-    
     if not recommendations:
         recommendations.append({
             "priority": "low",
@@ -33170,7 +29935,6 @@ def analyze_trader_profile(trades: List[Dict]) -> Dict:
             "description": "Bon profil",
             "action": "Revue hebdo"
         })
-    
     return {
         "profile_type": profile_type,
         "profile_description": profile_description,
@@ -33238,11 +30002,9 @@ async def portfolio_tracker(request: Request):
             <h1>🔗 Portfolio Tracker</h1>
             <p>Connectez vos exchanges pour suivre vos holdings</p>
         </div>
-        
         <div class="form-section" id="formSection">
             <h2 style="color: #06b6d4; margin-bottom: 20px;">Connecter un Exchange</h2>
             <div id="message" class="message"></div>
-            
             <form id="portfolioForm" onsubmit="return handleConnect(event);">
                 <div class="form-group">
                     <label for="exchange">Exchange:</label>
@@ -33258,33 +30020,26 @@ async def portfolio_tracker(request: Request):
                         <option value="ftx">FTX</option>
                     </select>
                 </div>
-                
                 <div class="form-group">
                     <label for="apiKey">Clé API:</label>
                     <input type="text" id="apiKey" placeholder="Clé API" required>
                 </div>
-                
                 <div class="form-group">
                     <label for="apiSecret">Secret API:</label>
                     <input type="password" id="apiSecret" placeholder="Secret API" required>
                 </div>
-                
                 <button type="submit">🔗 Connecter</button>
             </form>
         </div>
-        
         <div id="portfolioData" class="portfolio-grid" style="display:none;"></div>
     </div>
-    
     <script>
     async function handleConnect(e) {
         e.preventDefault();
         const msg = document.getElementById('message');
-        
         msg.textContent = '⏳ Connexion...';
         msg.className = 'message success';
         msg.style.display = 'block';
-        
         try {
             const res = await fetch('/api/portfolio/connect', {
                 method: 'POST',
@@ -33296,7 +30051,6 @@ async def portfolio_tracker(request: Request):
                     api_secret: document.getElementById('apiSecret').value
                 })
             });
-            
             const data = await res.json();
             if (data.success) {
                 msg.textContent = '✅ ' + data.message;
@@ -33313,27 +30067,22 @@ async def portfolio_tracker(request: Request):
         }
         return false;
     }
-    
     async function loadPortfolioData() {
         try {
             const res = await fetch('/api/portfolio/data', {
                 credentials: 'include'
             });
             const data = await res.json();
-            
             if (data.success && data.exchanges) {
                 const container = document.getElementById('portfolioData');
                 container.innerHTML = '';
-                
                 for (let exchange in data.exchanges) {
                     const info = data.exchanges[exchange];
                     const card = document.createElement('div');
                     card.className = 'portfolio-card';
-                    
                     let holdingsHtml = '<h3>' + exchange + '</h3>' +
                         '<p><strong>💰 Total: $' + info.value.toFixed(2) + '</strong></p>' +
                         '<p>📦 Actifs: ' + info.count + '</p>';
-                    
                     if (info.holdings && info.holdings.length > 0) {
                         holdingsHtml += '<div style="margin-top: 15px; border-top: 1px solid rgba(6,182,212,0.3); padding-top: 10px;">';
                         for (let h of info.holdings) {
@@ -33343,11 +30092,9 @@ async def portfolio_tracker(request: Request):
                         }
                         holdingsHtml += '</div>';
                     }
-                    
                     card.innerHTML = holdingsHtml;
                     container.appendChild(card);
                 }
-                
                 container.style.display = 'grid';
             }
         } catch (err) {
@@ -33377,7 +30124,6 @@ async def portfolio_tracker(request: Request):
 
 <!-- ==================== SECTIONS EXPLICATIVES ==================== -->
 <div style="max-width: 1400px; margin: 60px auto 40px auto; padding: 0 20px;">
-    
     <!-- Comment ça marche? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
         <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -33385,7 +30131,6 @@ async def portfolio_tracker(request: Request):
         </h2>
         <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">Le Portfolio Tracker connecte tes échanges crypto (Binance, Coinbase, etc.) via API pour calculer automatiquement ton P&L, allocation, et performance globale. Plus besoin de tracker manuellement tes positions !</p>
     </div>
-    
     <!-- Comment utiliser? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">
         <h2 style="color: #10b981; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -33410,7 +30155,6 @@ async def portfolio_tracker(request: Request):
             </div>
         </div>
     </div>
-    
     <!-- Les 7 Exchanges Supportés -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(168, 85, 247, 0.2);">
         <h2 style="color: #a855f7; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
@@ -33440,7 +30184,6 @@ async def portfolio_tracker(request: Request):
             </div>
         </div>
     </div>
-    
     <!-- Sécurité des Clés API -->
     <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
         <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
@@ -33455,37 +30198,30 @@ async def portfolio_tracker(request: Request):
             <li><strong>Rotation régulière:</strong> Change tes clés API tous les 3-6 mois par sécurité.</li>
         </ul>
     </div>
-    
     <!-- Comprendre ton Portfolio -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(245, 158, 11, 0.2);">
         <h2 style="color: #f59e0b; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
             <span style="font-size: 1.5em;">💡</span> Comprendre ton Portfolio
         </h2>
         <div style="display: grid; gap: 15px;">
-            
             <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
                 <h3 style="color: #f59e0b; margin-bottom: 10px;">📊 Allocation</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Le pie chart montre quelle % de ton capital est dans chaque crypto. Idéal: ne pas avoir plus de 30% dans une seule crypto (sauf BTC/ETH).</p>
             </div>
-            
             <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
                 <h3 style="color: #f59e0b; margin-bottom: 10px;">💰 P&L (Profit & Loss)</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Ton gain ou perte total depuis le début. Vert = profit, rouge = perte. Le % montre ta performance vs ton capital initial.</p>
             </div>
-            
             <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
                 <h3 style="color: #f59e0b; margin-bottom: 10px;">📈 Performance</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Le graph montre l'évolution de ton portfolio dans le temps. Compare avec BTC pour voir si tu bats le marché.</p>
             </div>
-            
             <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
                 <h3 style="color: #f59e0b; margin-bottom: 10px;">🎯 Rééquilibrage</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Si une crypto explose et représente 50%+ de ton portfolio = vends une partie pour rééquilibrer. Gère ton risque!</p>
             </div>
-            
         </div>
     </div>
-    
 </div>
 <!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
 </body>
@@ -33612,10 +30348,8 @@ self.addEventListener('push', (event) => {
 @app.get("/defi-yield", response_class=HTMLResponse)
 async def defi_yield(request: Request):
     """DeFi Yield - affiche les meilleurs yields DeFi disponibles"""
-    
     # Fetcher les yields DeFi
     yields_data = await fetch_defi_yields()
-    
     yields_html = ""
     if yields_data.get('success', False):
         for i, y in enumerate(yields_data.get('yields', []), 1):
@@ -33632,12 +30366,10 @@ async def defi_yield(request: Request):
                         </div>
                     </div>
                 </div>
-                
                 <div style="text-align: right; margin-left: 20px;">
                     <div style="color: #22c55e; font-size: 2em; font-weight: bold; line-height: 1;">{y['apy']:.2f}%</div>
                     <div style="color: #94a3b8; font-size: 0.8em;">APY</div>
                 </div>
-                
                 <div style="text-align: right; margin-left: 30px; border-left: 1px solid rgba(148, 163, 184, 0.2); padding-left: 30px;">
                     <div style="color: #cbd5e1; font-size: 0.85em;">
                         <span style="display: block; margin-bottom: 5px;">🔗 {y['chain']}</span>
@@ -33648,7 +30380,6 @@ async def defi_yield(request: Request):
             """
     else:
         yields_html = "<div style='color: #ef4444; text-align: center; padding: 40px;'>⚠️ Erreur: Impossible de charger les yields</div>"
-    
     html = SIDEBAR + """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -33659,26 +30390,19 @@ async def defi_yield(request: Request):
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { lang: fr; }
         body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; min-height: 100vh; }
-        
         .defi-wrapper { margin-left: 280px; display: flex; flex-direction: column; min-height: 100vh; }
         .defi-container { flex: 1; padding: 40px 60px; max-width: 1200px; width: 100%; margin: 0 auto; }
-        
         .defi-header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 50px 40px; border-radius: 16px; margin-bottom: 40px; text-align: center; box-shadow: 0 20px 40px rgba(34, 197, 94, 0.15); }
         .defi-header h1 { font-size: 2.8em; color: white; margin-bottom: 15px; font-weight: 700; }
         .defi-header p { color: rgba(255, 255, 255, 0.95); font-size: 1.1em; }
-        
         .controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .controls h2 { color: #22c55e; font-size: 1.6em; }
         .refresh-btn { padding: 12px 28px; background: #22c55e; color: #0f172a; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 1em; transition: all 0.3s ease; }
         .refresh-btn:hover { background: #16a34a; transform: translateY(-2px); box-shadow: 0 8px 16px rgba(34, 197, 94, 0.3); }
-        
         .yields-list { display: flex; flex-direction: column; gap: 0; }
-        
         .yield-card { background: rgba(30, 41, 59, 0.95); border-left: 4px solid #22c55e; border-radius: 8px; padding: 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease; }
         .yield-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(34, 197, 94, 0.2); }
-        
         .yield-number { background: linear-gradient(135deg, #22c55e, #16a34a); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: bold; color: white; flex-shrink: 0; }
-        
         @media (max-width: 1024px) {
             .defi-wrapper { margin-left: 0; }
             .defi-container { padding: 30px 20px; }
@@ -33693,20 +30417,16 @@ async def defi_yield(request: Request):
                 <h1>🌾 DeFi Yield Finder</h1>
                 <p>Découvrez les meilleurs rendements DeFi en temps réel via DefiLlama</p>
             </div>
-            
             <div class="controls">
                 <h2>📊 Top 20 Meilleurs Yields</h2>
                 <button class="refresh-btn" onclick="location.reload()">🔄 Rafraîchir</button>
             </div>
-            
             <div class="yields-list">
 """ + yields_html + """
             </div>
-            
             <!-- SECTION GUIDE -->
             <div style="margin-top: 60px; padding: 40px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 16px;">
                 <h2 style="color: #22c55e; font-size: 1.8em; margin-bottom: 25px;">📚 À Quoi Ça Sert?</h2>
-                
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
                     <div>
                         <h3 style="color: #e2e8f0; font-size: 1.2em; margin-bottom: 10px;">🎯 Objectif Principal</h3>
@@ -33715,7 +30435,6 @@ async def defi_yield(request: Request):
                             Au lieu de chercher partout où investir, tu vois ici les protocoles avec les meilleures APY (Annual Percentage Yield).
                         </p>
                     </div>
-                    
                     <div>
                         <h3 style="color: #e2e8f0; font-size: 1.2em; margin-bottom: 10px;">💰 Comment Ça Marche?</h3>
                         <p style="color: #cbd5e1; line-height: 1.6;">
@@ -33725,31 +30444,24 @@ async def defi_yield(request: Request):
                         </p>
                     </div>
                 </div>
-                
                 <h3 style="color: #22c55e; font-size: 1.3em; margin-bottom: 15px;">🚀 Comment Utiliser Cette Page?</h3>
-                
                 <div style="background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
                     <p style="color: #cbd5e1; margin-bottom: 10px;"><strong>Étape 1: Choisir un Protocole</strong></p>
                     <p style="color: #94a3b8;">Regarde le tableau et choisis un protocole avec un bon APY. Par exemple, CONVEX offre 12.50% par an.</p>
                 </div>
-                
                 <div style="background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
                     <p style="color: #cbd5e1; margin-bottom: 10px;"><strong>Étape 2: Vérifier le TVL</strong></p>
                     <p style="color: #94a3b8;">TVL = Total Value Locked (montant total investi). Plus grand = plus sûr. Évite les petits protocoles (<$10M TVL).</p>
                 </div>
-                
                 <div style="background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #22c55e;">
                     <p style="color: #cbd5e1; margin-bottom: 10px;"><strong>Étape 3: Vérifier la Blockchain</strong></p>
                     <p style="color: #94a3b8;">Chaque protocole fonctionne sur une chain (Ethereum, Arbitrum, etc.). Assure-toi d'avoir la bonne crypto sur la bonne chain.</p>
                 </div>
-                
                 <div style="background: rgba(15, 23, 42, 0.6); padding: 20px; border-radius: 8px; border-left: 4px solid #22c55e;">
                     <p style="color: #cbd5e1; margin-bottom: 10px;"><strong>Étape 4: Investir</strong></p>
                     <p style="color: #94a3b8;">Va sur le site du protocole (ex: curve.fi, lido.fi, aave.com) et dépose tes cryptos. Les APY vont dans ton portefeuille automatiquement.</p>
                 </div>
-                
                 <h3 style="color: #22c55e; font-size: 1.3em; margin-top: 30px; margin-bottom: 15px;">⚠️ Points Importants</h3>
-                
                 <ul style="color: #cbd5e1; line-height: 2; margin-left: 20px;">
                     <li><strong>Les APY changent</strong> - Clique sur "Rafraîchir" pour avoir les derniers taux</li>
                     <li><strong>Risque vs Rendement</strong> - Plus haut APY = plus de risque généralement</li>
@@ -33757,9 +30469,7 @@ async def defi_yield(request: Request):
                     <li><strong>Pas de garantie</strong> - DeFi est risqué, investis seulement ce que tu peux perdre</li>
                     <li><strong>Diversifie</strong> - Mets pas tout au même endroit</li>
                 </ul>
-                
                 <h3 style="color: #22c55e; font-size: 1.3em; margin-top: 30px; margin-bottom: 15px;">📊 Comprendre Les Colonnes</h3>
-                
                 <table style="width: 100%; color: #cbd5e1; margin-top: 15px;">
                     <tr style="border-bottom: 1px solid rgba(148, 163, 184, 0.2);">
                         <td style="padding: 12px 0; font-weight: bold; color: #22c55e;">PROTOCOLE</td>
@@ -33787,7 +30497,6 @@ async def defi_yield(request: Request):
     </div>
 </body>
 </html>"""
-    
     return html
 
 # ROUTE PWA
@@ -33915,32 +30624,11 @@ async def academy_complete_final(request: Request):
     <title>🏆 Trading Academy Pro MEGA</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
         /* SIDEBAR COMPLÈTE */
-        
-        
         .sidebar::-webkit-scrollbar { width: 8px; }
         .sidebar::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
         .sidebar::-webkit-scrollbar-thumb { background: rgba(6,182,212,0.5); border-radius: 4px; }
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         .icon { font-size: 18px; min-width: 20px; }
-        
         /* BODY */
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -33950,12 +30638,10 @@ async def academy_complete_final(request: Request):
             margin-left: 280px;
             padding: 20px;
         }
-        
         .main-content {
             max-width: 1400px;
             margin: 0 auto;
         }
-        
         .hero {
             text-align: center;
             padding: 60px 20px;
@@ -33964,35 +30650,29 @@ async def academy_complete_final(request: Request):
             margin-bottom: 40px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
-        
         .hero h1 {
             font-size: 3.5em;
             margin-bottom: 20px;
             animation: glow 2s ease-in-out infinite alternate;
         }
-        
         @keyframes glow {
             from { text-shadow: 0 0 20px #fff, 0 0 30px #667eea; }
             to { text-shadow: 0 0 30px #fff, 0 0 40px #764ba2; }
         }
-        
         .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 20px;
             margin-top: 30px;
         }
-        
         .stat {
             background: rgba(255,255,255,0.2);
             padding: 20px;
             border-radius: 15px;
             backdrop-filter: blur(10px);
         }
-        
         .stat-num { font-size: 3em; font-weight: bold; }
         .stat-label { font-size: 0.9em; opacity: 0.9; margin-top: 5px; }
-        
         .progress-bar {
             width: 100%;
             height: 12px;
@@ -34001,16 +30681,13 @@ async def academy_complete_final(request: Request):
             margin-top: 25px;
             overflow: hidden;
         }
-        
         .progress-fill {
             height: 100%;
             background: linear-gradient(90deg, #22c55e 0%, #10b981 100%);
             border-radius: 10px;
             transition: width 0.5s ease;
         }
-        
         .level-section { margin-bottom: 60px; }
-        
         .level-header {
             background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
             padding: 30px;
@@ -34018,13 +30695,11 @@ async def academy_complete_final(request: Request):
             margin-bottom: 30px;
             border-left: 5px solid #22c55e;
         }
-        
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 25px;
         }
-        
         .card {
             background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
             border-radius: 20px;
@@ -34035,17 +30710,14 @@ async def academy_complete_final(request: Request):
             position: relative;
             border: 2px solid transparent;
         }
-        
         .card:hover {
             transform: translateY(-15px) scale(1.02);
             box-shadow: 0 20px 50px rgba(102, 126, 234, 0.4);
             border-color: #667eea;
         }
-        
         .card-icon { font-size: 4em; margin-bottom: 20px; }
         .card-title { font-size: 1.8em; margin-bottom: 15px; font-weight: bold; }
         .card-desc { color: #cbd5e1; line-height: 1.8; margin-bottom: 20px; }
-        
         .badge {
             background: rgba(102, 126, 234, 0.2);
             padding: 8px 15px;
@@ -34055,7 +30727,6 @@ async def academy_complete_final(request: Request):
             display: inline-block;
             margin: 5px;
         }
-        
         .completed {
             position: absolute;
             top: 20px;
@@ -34067,18 +30738,15 @@ async def academy_complete_final(request: Request):
             font-size: 0.9em;
             font-weight: bold;
         }
-        
         /* FORMATION DETAIL */
         .formation-detail {
             display: none;
             animation: fadeIn 0.5s ease;
         }
-        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        
         .back-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -34090,12 +30758,10 @@ async def academy_complete_final(request: Request):
             margin-bottom: 30px;
             transition: all 0.3s ease;
         }
-        
         .back-btn:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
         }
-        
         .module {
             background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
             padding: 40px;
@@ -34103,41 +30769,34 @@ async def academy_complete_final(request: Request):
             margin-bottom: 30px;
             border-left: 4px solid #667eea;
         }
-        
         .module h3 {
             font-size: 2em;
             margin-bottom: 25px;
             color: #667eea;
         }
-        
         .module h4 {
             font-size: 1.5em;
             margin: 30px 0 15px 0;
             color: #a5b4fc;
         }
-        
         .module p {
             line-height: 1.8;
             margin-bottom: 20px;
             color: #cbd5e1;
             font-size: 1.1em;
         }
-        
         .module ul, .module ol {
             margin: 20px 0 20px 30px;
         }
-        
         .module li {
             margin-bottom: 15px;
             line-height: 1.7;
             color: #cbd5e1;
             font-size: 1.05em;
         }
-        
         .module li strong {
             color: #fff;
         }
-        
         .important {
             background: rgba(251, 191, 36, 0.1);
             border-left: 4px solid #fbbf24;
@@ -34145,12 +30804,10 @@ async def academy_complete_final(request: Request):
             border-radius: 10px;
             margin: 25px 0;
         }
-        
         .important strong {
             color: #fbbf24;
             font-size: 1.2em;
         }
-        
         .pro-tip {
             background: rgba(168, 85, 247, 0.1);
             border-left: 4px solid #a855f7;
@@ -34158,12 +30815,10 @@ async def academy_complete_final(request: Request):
             border-radius: 10px;
             margin: 25px 0;
         }
-        
         .pro-tip strong {
             color: #a855f7;
             font-size: 1.2em;
         }
-        
         .danger {
             background: rgba(239, 68, 68, 0.1);
             border-left: 4px solid #ef4444;
@@ -34171,12 +30826,10 @@ async def academy_complete_final(request: Request):
             border-radius: 10px;
             margin: 25px 0;
         }
-        
         .danger strong {
             color: #ef4444;
             font-size: 1.2em;
         }
-        
         .success {
             background: rgba(34, 197, 94, 0.1);
             border-left: 4px solid #22c55e;
@@ -34184,12 +30837,10 @@ async def academy_complete_final(request: Request):
             border-radius: 10px;
             margin: 25px 0;
         }
-        
         .success strong {
             color: #22c55e;
             font-size: 1.2em;
         }
-        
         .example-box {
             background: rgba(6, 182, 212, 0.1);
             border: 2px solid rgba(6, 182, 212, 0.3);
@@ -34197,12 +30848,10 @@ async def academy_complete_final(request: Request):
             border-radius: 10px;
             margin: 25px 0;
         }
-        
         .example-box strong {
             color: #06b6d4;
             font-size: 1.2em;
         }
-        
         table {
             width: 100%;
             border-collapse: collapse;
@@ -34211,7 +30860,6 @@ async def academy_complete_final(request: Request):
             border-radius: 10px;
             overflow: hidden;
         }
-        
         th {
             background: rgba(102, 126, 234, 0.3);
             padding: 15px;
@@ -34219,17 +30867,14 @@ async def academy_complete_final(request: Request):
             font-weight: 600;
             color: #fff;
         }
-        
         td {
             padding: 15px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
             color: #cbd5e1;
         }
-        
         tr:last-child td {
             border-bottom: none;
         }
-        
         /* QUIZ */
         .quiz-section {
             background: linear-gradient(135deg, #2d3561 0%, #1f2544 100%);
@@ -34237,7 +30882,6 @@ async def academy_complete_final(request: Request):
             border-radius: 20px;
             margin-top: 40px;
         }
-        
         .quiz-question {
             background: rgba(102, 126, 234, 0.1);
             padding: 25px;
@@ -34245,13 +30889,11 @@ async def academy_complete_final(request: Request):
             margin-bottom: 25px;
             border: 2px solid rgba(102, 126, 234, 0.3);
         }
-        
         .quiz-question h4 {
             margin-bottom: 20px;
             font-size: 1.3em;
             color: #fff;
         }
-        
         .quiz-options label {
             display: block;
             padding: 15px;
@@ -34261,15 +30903,12 @@ async def academy_complete_final(request: Request):
             cursor: pointer;
             transition: all 0.3s ease;
         }
-        
         .quiz-options label:hover {
             background: rgba(102, 126, 234, 0.2);
         }
-        
         .quiz-options input[type="radio"] {
             margin-right: 10px;
         }
-        
         .submit-quiz {
             background: linear-gradient(135deg, #22c55e 0%, #10b981 100%);
             color: white;
@@ -34281,12 +30920,10 @@ async def academy_complete_final(request: Request):
             margin-top: 20px;
             transition: all 0.3s ease;
         }
-        
         .submit-quiz:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 25px rgba(34, 197, 94, 0.4);
         }
-        
         .quiz-result {
             padding: 30px;
             border-radius: 15px;
@@ -34294,17 +30931,14 @@ async def academy_complete_final(request: Request):
             text-align: center;
             font-size: 1.3em;
         }
-        
         .quiz-result.pass {
             background: rgba(34, 197, 94, 0.2);
             border: 2px solid #22c55e;
         }
-        
         .quiz-result.fail {
             background: rgba(239, 68, 68, 0.2);
             border: 2px solid #ef4444;
         }
-        
         .certificate {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 50px;
@@ -34313,17 +30947,14 @@ async def academy_complete_final(request: Request):
             text-align: center;
             box-shadow: 0 20px 60px rgba(0,0,0,0.5);
         }
-        
         .certificate h2 {
             font-size: 2.5em;
             margin-bottom: 20px;
         }
-        
         .certificate p {
             font-size: 1.2em;
             margin-bottom: 15px;
         }
-        
         /* MOBILE */
         .sidebar-toggle {
             display: none;
@@ -34340,9 +30971,7 @@ async def academy_complete_final(request: Request):
             font-size: 20px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
-        
         @media (max-width: 768px) {
-            
             .sidebar.active {
                 transform: translateX(0);
             }
@@ -34369,19 +30998,15 @@ async def academy_complete_final(request: Request):
         <!-- SIDEBAR TOGGLE MOBILE -->
         <!-- SIDEBAR TOGGLE MOBILE -->
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-    
     <!-- SIDEBAR COMPLÈTE ULTRA PRO -->
-    
 
 
-    
     <!-- MAIN CONTENT -->
     <div class="main-content">
         <div id="list-view">
             <div class="hero">
                 <h1>🏆 Trading Academy Pro MEGA</h1>
                 <p>Formation complète du débutant au trader professionnel - 22 formations</p>
-                
                 <div class="stats">
                     <div class="stat">
                         <div class="stat-num">22</div>
@@ -34400,18 +31025,15 @@ async def academy_complete_final(request: Request):
                         <div class="stat-label">Progression</div>
                     </div>
                 </div>
-                
                 <div class="progress-bar">
                     <div class="progress-fill" id="progress-bar" style="width: 0%"></div>
                 </div>
             </div>
-            
             <div class="level-section">
                 <div class="level-header">
                     <h2>● Niveau 1: Débutant (Bases Essentielles)</h2>
                     <p>Comprendre les bases de la crypto et du trading au comptant - 16 heures</p>
                 </div>
-                
                 <div class="grid">
                     <div class="card" onclick="showFormation(1)">
                         <div class="card-icon">🎯</div>
@@ -34454,13 +31076,11 @@ async def academy_complete_final(request: Request):
                 </div>
             </div>
         </div>
-        
         <div id="formation-view" class="formation-detail">
             <button class="back-btn" onclick="backToList()">← Retour aux formations</button>
             <div id="formation-content"></div>
         </div>
     </div>
-    
     <script>
     console.log('🚀 Academy JavaScript chargé!');
 
@@ -34571,7 +31191,6 @@ formations[1] = {
                 '• Il faut 1-3 ans pour maîtriser le trading<br><br>' +
                 'Le trading n\\'est PAS un "get rich quick". C\\'est un métier qui demande apprentissage et discipline!</div>'
         },
-        
         {
             title: "Module 2: Comment Gagner de l'Argent",
             content: '<h4>💰 Méthode #1: Trading Actif</h4>' +
@@ -35621,20 +32240,16 @@ console.log('✅ Toutes les formations chargées!');
 // ===== FONCTION: AFFICHER FORMATION =====
 function showFormation(id) {
     console.log('📖 Ouverture formation', id);
-    
     var formation = formations[id];
     if (!formation) {
         alert('Formation non disponible');
         return;
     }
-    
     // Cacher liste, montrer détail
     document.getElementById('list-view').style.display = 'none';
     document.getElementById('formation-view').style.display = 'block';
-    
     // Construire HTML
     var html = '<div class="module"><h2>' + formation.title + '</h2><p>⏱️ Durée: ' + formation.duration + ' • 📚 ' + formation.modules + '</p></div>';
-    
     // Ajouter modules
     for (var i = 0; i < formation.modules_content.length; i++) {
         var mod = formation.modules_content[i];
@@ -35643,12 +32258,10 @@ function showFormation(id) {
         html += mod.content;
         html += '</div>';
     }
-    
     // Ajouter quiz
     if (formation.quiz && formation.quiz.length > 0) {
         html += '<div class="quiz-section"><h2>📝 Quiz de Certification</h2>';
         html += '<p>Répondez à ces questions pour obtenir votre certificat. Score minimum: 70%</p>';
-        
         for (var q = 0; q < formation.quiz.length; q++) {
             var quiz = formation.quiz[q];
             html += '<div class="quiz-question"><h4>Question ' + (q+1) + ': ' + quiz.question + '</h4>';
@@ -35662,7 +32275,6 @@ function showFormation(id) {
         html += '<div id="quiz-result"></div>';
         html += '</div>';
     }
-    
     document.getElementById('formation-content').innerHTML = html;
     window.scrollTo(0, 0);
     console.log('✅ Formation affichée!');
@@ -35671,21 +32283,17 @@ function showFormation(id) {
 // ===== FONCTION: VÉRIFIER QUIZ =====
 function checkQuiz(formationId) {
     console.log('🎯 Vérification quiz', formationId);
-    
     var formation = formations[formationId];
     var questions = formation.quiz;
     var correct = 0;
-    
     for (var i = 0; i < questions.length; i++) {
         var selected = document.querySelector('input[name="q' + i + '"]:checked');
         if (selected && parseInt(selected.value) === questions[i].correct) {
             correct++;
         }
     }
-    
     var percentage = (correct / questions.length) * 100;
     var resultDiv = document.getElementById('quiz-result');
-    
     if (percentage >= 70) {
         resultDiv.innerHTML = '<div class="quiz-result pass">' +
             '<h3>🎉 Félicitations!</h3>' +
@@ -35701,7 +32309,6 @@ function checkQuiz(formationId) {
             '<p>Date: ' + new Date().toLocaleDateString('fr-FR') + '</p>' +
             '<p style="margin-top:30px;opacity:0.8;">Continuez votre apprentissage vers l\\'excellence!</p>' +
             '</div>';
-        
         saveCompletion(formationId);
     } else {
         resultDiv.innerHTML = '<div class="quiz-result fail">' +
@@ -35710,7 +32317,6 @@ function checkQuiz(formationId) {
             '<p>Vous avez besoin de 70% pour réussir. Révisez le contenu et réessayez!</p>' +
             '</div>';
     }
-    
     resultDiv.scrollIntoView({behavior: 'smooth', block: 'center'});
 }
 
@@ -35735,10 +32341,8 @@ function updateProgress() {
         var completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
         var total = 4;
         var percentage = (completed.length / total) * 100;
-        
         document.getElementById('progress-bar').style.width = percentage + '%';
         document.getElementById('progress-percent').textContent = Math.round(percentage) + '%';
-        
         // Ajouter badges "Complété"
         completed.forEach(function(id) {
             var card = document.querySelector('[onclick="showFormation(' + id + ')"]');
@@ -35749,7 +32353,6 @@ function updateProgress() {
                 card.appendChild(badge);
             }
         });
-        
         console.log('Progression: ' + Math.round(percentage) + '%');
     } catch(e) {
         console.log('LocalStorage non disponible');
@@ -36097,7 +32700,6 @@ def init_portfolio_db():
         db_path = '/tmp/portfolio.db'
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
-        
         # Table pour stocker les clés API (encrypted)
         c.execute("""CREATE TABLE IF NOT EXISTS portfolio_api_keys (
             id INTEGER PRIMARY KEY,
@@ -36108,7 +32710,6 @@ def init_portfolio_db():
             passphrase TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )""")
-        
         # Table pour les holdings
         c.execute("""CREATE TABLE IF NOT EXISTS portfolio_holdings (
             id INTEGER PRIMARY KEY,
@@ -36120,7 +32721,6 @@ def init_portfolio_db():
             value REAL,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )""")
-        
         conn.commit()
         conn.close()
     except Exception as e:
@@ -36132,17 +32732,14 @@ def save_api_keys(user_id, exchange, api_key, api_secret, passphrase=''):
         db_path = '/tmp/portfolio.db'
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
-        
         # Supprimer l'ancienne entrée
         c.execute('DELETE FROM portfolio_api_keys WHERE user_id=? AND exchange=?', 
                  (user_id, exchange.upper()))
-        
         # Ajouter la nouvelle
         c.execute("""INSERT INTO portfolio_api_keys 
                     (user_id, exchange, api_key, api_secret, passphrase)
                     VALUES (?, ?, ?, ?, ?)""",
                  (user_id, exchange.upper(), api_key, api_secret, passphrase))
-        
         conn.commit()
         conn.close()
         return True
@@ -36156,14 +32753,11 @@ def get_api_keys(user_id, exchange):
         db_path = '/tmp/portfolio.db'
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
-        
         c.execute("""SELECT api_key, api_secret, passphrase FROM portfolio_api_keys 
                     WHERE user_id=? AND exchange=?""", 
                  (user_id, exchange.upper()))
-        
         result = c.fetchone()
         conn.close()
-        
         if result:
             return {'api_key': result[0], 'api_secret': result[1], 'passphrase': result[2]}
         return None
@@ -36176,11 +32770,9 @@ async def fetch_mexc_holdings(api_key, api_secret):
     try:
         # Endpoint MEXC
         endpoint = "https://api.mexc.com/api/v3/account"
-        
         # Timestamp pour signature
         timestamp = int(time.time() * 1000)
         params = {'timestamp': timestamp}
-        
         # Créer la query string et la signer
         query_string = urlencode(params)
         signature = hmac.new(
@@ -36188,30 +32780,23 @@ async def fetch_mexc_holdings(api_key, api_secret):
             query_string.encode(),
             hashlib.sha256
         ).hexdigest()
-        
         params['signature'] = signature
-        
         # Headers avec API key
         headers = {'X-MEXC-APIKEY': api_key}
-        
         # Fetcher les balances
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.get(endpoint, params=params, headers=headers)
             data = response.json()
-            
             if 'balances' not in data:
                 return {'success': False, 'error': 'No balances data'}
-            
             balances = data.get('balances', [])
             holdings = []
-            
             # Pour chaque crypto avec balance
             for balance_item in balances:
                 symbol = balance_item['asset']
                 free = float(balance_item.get('free', 0))
                 locked = float(balance_item.get('locked', 0))
                 amount = free + locked
-                
                 if amount > 0.0001:  # Ignorer les amounts trop petits
                     # Fetcher le prix MEXC pour symbol/USDT
                     price = 0
@@ -36225,11 +32810,9 @@ async def fetch_mexc_holdings(api_key, api_secret):
                     except Exception as e:
                         print(f"❌ MEXC price fetch failed for {symbol}: {e}")
                         price = 0
-                    
                     # Si pas de prix, utiliser 0.00001
                     if price == 0:
                         price = 0.00001
-                    
                     value = amount * price
                     holdings.append({
                         'symbol': symbol,
@@ -36237,10 +32820,8 @@ async def fetch_mexc_holdings(api_key, api_secret):
                         'price': float(price),
                         'value': float(value)
                     })
-            
             # Trier par valeur décroissante
             holdings = sorted(holdings, key=lambda x: x['value'], reverse=True)
-            
             total_value = sum(h['value'] for h in holdings)
             return {
                 'success': True,
@@ -36249,14 +32830,12 @@ async def fetch_mexc_holdings(api_key, api_secret):
                 'count': len(holdings),
                 'exchange': 'MEXC'
             }
-    
     except Exception as e:
         print(f"🔴 MEXC API Error: {e}")
         return {'success': False, 'error': str(e)}
 
 async def fetch_defi_yields():
     """Fetcher les yields DeFi via DefiLlama API - avec fallback hardcodé"""
-    
     # FALLBACK données (misà jour manuellement - dernière vérification)
     FALLBACK_YIELDS = [
         {'protocol': 'LIDO', 'chain': 'ETHEREUM', 'pool': 'Ethereum Liquid Staking', 'apy': 3.4, 'tvl': 38500000000, 'symbol': 'STETH'},
@@ -36280,34 +32859,27 @@ async def fetch_defi_yields():
         {'protocol': 'GEARBOX', 'chain': 'ETHEREUM', 'pool': 'Leverage Vaults', 'apy': 19.3, 'tvl': 167000000, 'symbol': 'GEAR'},
         {'protocol': 'EIGENLAYER', 'chain': 'ETHEREUM', 'pool': 'Restaking Vaults', 'apy': 10.4, 'tvl': 540000000, 'symbol': 'EIGEN'},
     ]
-    
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             try:
                 # Essayer DefiLlama
                 url = "https://yields.llama.fi/pools"
                 print(f"🔄 Trying DefiLlama API: {url}")
-                
                 resp = await client.get(url)
                 print(f"Response status: {resp.status_code}")
-                
                 if resp.status_code == 200:
                     data = resp.json()
-                    
                     if isinstance(data, list) and len(data) > 0:
                         pools = data
                         print(f"✅ DefiLlama OK! Got {len(pools)} pools")
-                        
                         # Filtrer et processor
                         best_yields = []
                         for pool in pools[:200]:
                             try:
                                 apy = float(pool.get('apy', 0))
                                 tvl = float(pool.get('tvlUsd', 0))
-                                
                                 if apy < 1 or tvl < 1000000:  # Min $1M TVL
                                     continue
-                                
                                 best_yields.append({
                                     'protocol': str(pool.get('project', 'Unknown')).upper(),
                                     'chain': str(pool.get('chain', 'Unknown')).upper(),
@@ -36319,9 +32891,7 @@ async def fetch_defi_yields():
                                 })
                             except:
                                 continue
-                        
                         best_yields = sorted(best_yields, key=lambda x: x['apy'], reverse=True)[:20]
-                        
                         if len(best_yields) > 0:
                             return {
                                 'success': True,
@@ -36331,7 +32901,6 @@ async def fetch_defi_yields():
                             }
             except Exception as defi_err:
                 print(f"⚠️  DefiLlama failed: {defi_err}")
-        
         # FALLBACK: Utiliser les données hardcodées
         print("📦 Using fallback hardcoded yields")
         return {
@@ -36340,7 +32909,6 @@ async def fetch_defi_yields():
             'count': len(FALLBACK_YIELDS),
             'source': 'Fallback (Cached Data)'
         }
-    
     except Exception as e:
         print(f"🔴 Critical Error: {e}")
         # Encore fallback
@@ -36359,7 +32927,6 @@ async def fetch_wallet_defi_positions(wallet_address):
         # Pour maintenant, on retourne les yields disponibles
         yields = await fetch_defi_yields()
         return yields
-    
     except Exception as e:
         print(f"❌ Wallet Analysis Error: {e}")
         return {'success': False, 'error': str(e)}
@@ -36381,27 +32948,22 @@ async def fetch_price_coingecko(symbol):
             'NIGHT': 'night',
             'OG': 'ogn-v2'
         }
-        
         # Chercher l'ID CoinGecko
         coin_id = mapping.get(symbol, symbol.lower())
-        
         async with httpx.AsyncClient() as client:
             url = f'https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd'
             resp = await client.get(url, timeout=5)
             data = resp.json()
-            
             if coin_id in data and 'usd' in data[coin_id]:
                 return float(data[coin_id]['usd'])
     except Exception as e:
         print(f"CoinGecko error for {symbol}: {e}")
-    
     return 0
 
 async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=''):
     """Récupérer le balance d'un exchange via CCXT"""
     try:
         exchange_name = exchange_name.lower()
-        
         # Initialiser l'exchange avec CCXT
         exchange_class = getattr(ccxt, exchange_name)
         exchange = exchange_class({
@@ -36413,24 +32975,19 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
                 'defaultType': 'spot'
             }
         })
-        
         # Pour les exchanges qui nécessitent une passphrase
         if passphrase and exchange_name in ['okx', 'bybit']:
             exchange.password = passphrase
-        
         # Récupérer le balance
         balance = exchange.fetch_balance()
-        
         # Transformer en liste de holdings
         holdings = []
         stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD']
-        
         # Afficher TOUS les assets avec balance > 0
         for symbol in balance.get('free', {}):
             amount = balance['free'].get(symbol, 0)
             if amount > 0:
                 price = 0
-                
                 # D'abord essayer CCXT - plusieurs paires
                 for pair_base in ['USDT', 'USDC', 'BUSD', 'USDT.P']:
                     if price > 0:
@@ -36443,12 +33000,10 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
                             break
                     except Exception as e:
                         pass
-                
                 # Si stablecoin, prix = 1
                 if price == 0 and symbol in stablecoins:
                     price = 1.0
                     print(f"💵 {symbol}: Stablecoin détecté = $1.00")
-                
                 # Fallback CoinGecko pour les cryptos exotiques (avec mapping intelligent)
                 if price == 0:
                     price = await fetch_price_coingecko(symbol)
@@ -36456,14 +33011,11 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
                         print(f"🌍 {symbol}: CoinGecko fetch = ${price}")
                     else:
                         print(f"❌ {symbol}: CoinGecko failed")
-                
                 # Valeur par défaut minimal si toujours pas de prix
                 if price == 0:
                     price = 0.00001
                     print(f"⚠️  {symbol}: Using default price = $0.00001")
-                
                 value = amount * price
-                
                 # Afficher TOUS les assets (pas de filtre)
                 if value > 0:
                     holdings.append({
@@ -36472,12 +33024,9 @@ async def fetch_exchange_balance(exchange_name, api_key, api_secret, passphrase=
                         'price': float(price),
                         'value': float(value)
                     })
-        
         # Trier par valeur décroissante
         holdings = sorted(holdings, key=lambda x: x['value'], reverse=True)
-        
         return {'success': True, 'holdings': holdings, 'exchange': exchange_name.upper()}
-        
     except Exception as e:
         error_msg = str(e)
         print(f"Error connecting {exchange_name}: {error_msg}")
@@ -36489,18 +33038,15 @@ def save_holdings_db(user_id, exchange, holdings):
         db_path = '/tmp/portfolio.db'
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
-        
         # Supprimer les anciens holdings
         c.execute('DELETE FROM portfolio_holdings WHERE user_id=? AND exchange=?', 
                  (user_id, exchange.upper()))
-        
         # Ajouter les nouveaux
         for h in holdings:
             c.execute("""INSERT INTO portfolio_holdings 
                         (user_id, exchange, symbol, amount, price, value)
                         VALUES (?, ?, ?, ?, ?, ?)""",
                      (user_id, exchange.upper(), h['symbol'], h['amount'], h['price'], h['value']))
-        
         conn.commit()
         conn.close()
         return True
@@ -36514,15 +33060,12 @@ def get_all_holdings(user_id):
         db_path = '/tmp/portfolio.db'
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
-        
         # Récupérer tous les exchanges de cet utilisateur
         c.execute("""SELECT DISTINCT exchange FROM portfolio_holdings WHERE user_id=?""", 
                  (user_id,))
         exchanges = [row[0] for row in c.fetchall()]
-        
         result = {}
         total = 0
-        
         for exchange in exchanges:
             # Récupérer les holdings de cet exchange
             c.execute("""SELECT symbol, amount, price, value FROM portfolio_holdings 
@@ -36530,19 +33073,15 @@ def get_all_holdings(user_id):
                         ORDER BY value DESC""", 
                      (user_id, exchange))
             holdings = c.fetchall()
-            
             exch_value = sum(h[3] for h in holdings)
             total += exch_value
-            
             result[exchange] = {
                 'value': exch_value,
                 'count': len(holdings),
                 'holdings': [{'symbol': h[0], 'amount': h[1], 'price': h[2], 'value': h[3]} 
                             for h in holdings]
             }
-        
         conn.close()
-        
         return {
             'success': True,
             'total_portfolio_value': total,
@@ -36560,26 +33099,20 @@ async def connect_exchange(request: Request):
     try:
         session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
-        
         if not user:
             return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
-        
         username = user.get('username') or user.get('name') or 'admin'
-        
         data = await request.json()
         exchange = data.get('exchange', '').lower()
         api_key = data.get('api_key', '').strip()
         api_secret = data.get('api_secret', '').strip()
         passphrase = data.get('passphrase', '').strip()
-        
         if not exchange or not api_key or not api_secret:
             return JSONResponse({'success': False, 'message': 'Données manquantes'})
-        
         # Vérifier que l'exchange est supporté
         supported = ['mexc', 'binance', 'coinbase', 'kraken', 'bitget', 'bybit', 'okx', 'ftx']
         if exchange not in supported:
             return JSONResponse({'success': False, 'message': f'Exchange non supporté. Supportés: {", ".join(supported)}'})
-        
         # Tester la connexion et récupérer les holdings
         if exchange == 'mexc':
             # Utiliser l'API REST MEXC DIRECT (pas CCXT)
@@ -36587,21 +33120,16 @@ async def connect_exchange(request: Request):
         else:
             # Utiliser CCXT pour les autres exchanges
             result = await fetch_exchange_balance(exchange, api_key, api_secret, passphrase)
-        
         if not result['success']:
             return JSONResponse({
                 'success': False, 
                 'message': f'Erreur API: {result["error"][:100]}'
             })
-        
         # Sauvegarder les clés API
         save_api_keys(username, exchange, api_key, api_secret, passphrase)
-        
         # Sauvegarder les holdings
         save_holdings_db(username, exchange, result['holdings'])
-        
         total = sum(h['value'] for h in result['holdings'])
-        
         return JSONResponse({
             'success': True,
             'message': f'✅ {exchange.upper()} connecté! {len(result["holdings"])} actifs trouvés',
@@ -36619,17 +33147,14 @@ async def clear_portfolio(request: Request):
     try:
         session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
-        
         if not user or user.get('username') != 'admin':
             return JSONResponse({'success': False, 'message': 'Admin only'})
-        
         db_path = '/tmp/portfolio.db'
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
         c.execute('DELETE FROM portfolio_holdings')
         conn.commit()
         conn.close()
-        
         return JSONResponse({'success': True, 'message': 'Portfolio cleared'})
     except Exception as e:
         return JSONResponse({'success': False, 'message': str(e)})
@@ -36641,12 +33166,9 @@ async def get_portfolio_data(request: Request):
         # Récupérer l'utilisateur depuis le token
         session_token = request.cookies.get("session_token")
         user = get_user_from_token(session_token)
-        
         if not user:
             return JSONResponse({'success': False, 'message': 'Non authentifié'}, status_code=401)
-        
         username = user.get('username') or user.get('name') or 'admin'
-        
         return JSONResponse(get_all_holdings(username))
     except Exception as e:
         print(f"Portfolio data error: {e}")
@@ -36680,12 +33202,9 @@ _last_request_time_cg = 0
 @app.get("/api/narrative-radar/scan")
 async def api_scan_narratives():
     """API Backend - CoinGecko 100% GRATUIT, SANS LIMITE !"""
-    
     global _narrative_cache_cg, _cache_timestamp_cg, _last_request_time_cg
-    
     import time
     current_time = time.time()
-    
     # RATE LIMIT: 1 requête par minute (optionnel avec CoinGecko mais gardons-le)
     if current_time - _last_request_time_cg < 60:
         time_to_wait = int(60 - (current_time - _last_request_time_cg))
@@ -36694,7 +33213,6 @@ async def api_scan_narratives():
             "error": f"⏱️ Rate limit: Attends {time_to_wait} secondes",
             "cached": False
         }
-    
     # CACHE: Si données récentes, retourner cache
     if _narrative_cache_cg and _cache_timestamp_cg:
         cache_age = current_time - _cache_timestamp_cg
@@ -36704,77 +33222,60 @@ async def api_scan_narratives():
             _narrative_cache_cg["cache_age_minutes"] = cache_minutes
             _narrative_cache_cg["note"] = f"💾 Cache ({cache_minutes} min) - CoinGecko API GRATUITE"
             return _narrative_cache_cg
-    
     # APPEL API COINGECKO
     try:
         _last_request_time_cg = current_time
-        
         async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
             # CoinGecko Trending API - VRAIMENT gratuit, sans clé !
             response = await client.get(
                 "https://api.coingecko.com/api/v3/search/trending"
             )
-            
             if response.status_code != 200:
                 return {"error": f"CoinGecko API Status {response.status_code}", "success": False}
-            
             data = response.json()
             trending_coins = data.get("coins", [])
-            
             if not trending_coins:
                 return {"error": "Aucun coin trending reçu", "success": False}
-            
             # Mapping coins → narratives
             coin_narratives = {
                 # AI coins
                 "fetch-ai": "AI", "singularitynet": "AI", "ocean-protocol": "AI",
                 "numeraire": "AI", "render-token": "AI", "freysa-ai": "AI",
-                
                 # DeFi coins  
                 "aave": "DeFi", "uniswap": "DeFi", "compound-governance-token": "DeFi",
                 "curve-dao-token": "DeFi", "synthetix-network-token": "DeFi",
-                
                 # RWA coins
                 "ondo-finance": "RWA", "polymesh": "RWA", "maple": "RWA",
-                
                 # Gaming coins
                 "immutable-x": "Gaming", "gala": "Gaming", "the-sandbox": "Gaming",
                 "axie-infinity": "Gaming", "decentraland": "Gaming",
-                
                 # L2 coins
                 "arbitrum": "L2", "optimism": "L2", "polygon": "L2",
                 "starknet": "L2", "zksync": "L2",
-                
                 # Meme coins
                 "dogecoin": "Memes", "shiba-inu": "Memes", "pepe": "Memes",
                 "dogwifcoin": "Memes", "bonk": "Memes", "floki": "Memes",
-                
                 # Infrastructure
                 "chainlink": "Infrastructure", "api3": "Infrastructure",
                 "band-protocol": "Infrastructure", "dia-data": "Infrastructure",
-                
                 # Privacy
                 "monero": "Privacy", "zcash": "Privacy", "secret": "Privacy",
                 "oasis-network": "Privacy"
             }
-            
             narratives_count = {
                 "AI": 0, "DeFi": 0, "RWA": 0, "Gaming": 0,
                 "L2": 0, "Memes": 0, "Infrastructure": 0, "Privacy": 0
             }
-            
             # Analyser les trending coins
             for coin_data in trending_coins:
                 coin_item = coin_data.get("item", {})
                 coin_id = coin_item.get("id", "").lower()
                 coin_name = coin_item.get("name", "").lower()
-                
                 # Vérifier par ID exact
                 if coin_id in coin_narratives:
                     narrative = coin_narratives[coin_id]
                     narratives_count[narrative] += 1
                     continue
-                
                 # Sinon, deviner par nom/symbole
                 if any(term in coin_name for term in ["ai", "gpt", "neural", "intelligence"]):
                     narratives_count["AI"] += 1
@@ -36786,11 +33287,9 @@ async def api_scan_narratives():
                     narratives_count["L2"] += 1
                 elif any(term in coin_name for term in ["meme", "dog", "cat", "pepe", "shib"]):
                     narratives_count["Memes"] += 1
-            
             total_coins = len(trending_coins)
             active_narratives = sum(1 for count in narratives_count.values() if count > 0)
             hot_topics = sum(1 for count in narratives_count.values() if count >= 3)
-            
             result = {
                 "success": True,
                 "totalNews": total_coins,
@@ -36803,13 +33302,10 @@ async def api_scan_narratives():
                 "cached": False,
                 "note": "🎉 Aucune limite API - Vraiment gratuit !"
             }
-            
             # Sauvegarder cache
             _narrative_cache_cg = result.copy()
             _cache_timestamp_cg = current_time
-            
             return result
-            
     except httpx.TimeoutException:
         return {"error": "Timeout CoinGecko API", "success": False}
     except Exception as e:
@@ -36819,7 +33315,6 @@ async def api_scan_narratives():
 @app.get("/narrative-radar", response_class=HTMLResponse)
 async def narrative_radar():
     """🎯 Narrative Radar - Dashboard avec VRAIES données CryptoPanic"""
-    
     page_html = '''<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -36888,15 +33383,12 @@ async def narrative_radar():
 </head>
 <body>
 '''
-    
     page_html += SIDEBAR
-    
     page_html += '''
 <div class="main-content">
     <div class="container">
         <h1>🎯 Narrative Radar</h1>
         <p class="subtitle">Dashboard temps réel - Données CryptoPanic API</p>
-        
         <div class="stats-header" id="statsHeader" style="display: none;">
             <div class="stat-box">
                 <div class="stat-label">Total News</div>
@@ -36915,11 +33407,9 @@ async def narrative_radar():
                 <div class="stat-value" id="lastScan" style="font-size: 1.2em;">--:--</div>
             </div>
         </div>
-        
         <div class="scan-section">
             <button class="scan-btn" id="scanBtn" onclick="scanNow()">🔍 Scanner Maintenant</button>
         </div>
-        
         <div style="background: rgba(251, 191, 36, 0.2); border: 2px solid #fbbf24; border-radius: 12px; padding: 20px; margin: 20px auto; max-width: 900px;">
             <h3 style="color: #fbbf24; text-align: center; margin-bottom: 15px;">⚠️ OPTIMISATION API ACTIVE</h3>
             <div style="color: #fff; line-height: 2; text-align: center;">
@@ -36929,18 +33419,15 @@ async def narrative_radar():
                 <small style="color: #aaa; display: block; margin-top: 10px;">Économie de 90% des appels API vs auto-refresh 5 min</small>
             </div>
         </div>
-        
         <div id="narratives" class="narratives-grid">
             <div class="initial-message">
                 <div class="icon">🎯</div>
                 <p>Cliquez sur Scanner pour analyser les vraies données crypto</p>
             </div>
         </div>
-        
         <div class="data-source" id="dataSource" style="display: none;">
             ✅ Données RÉELLES - Source : CryptoPanic API
         </div>
-        
         <div class="footer-info">
             <h3>📊 Données 100% Réelles</h3>
             <ul>
@@ -36954,10 +33441,8 @@ async def narrative_radar():
             </ul>
         </div>
     </div>
-    
     <!-- ==================== SECTIONS EXPLICATIVES ==================== -->
     <div style="max-width: 1200px; margin: 60px auto 40px auto; padding: 0 20px;">
-        
         <!-- Comment ça marche? -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
             <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -36965,14 +33450,12 @@ async def narrative_radar():
             </h2>
             <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">Le Narrative Radar scanne en temps réel les actualités crypto via l'API CryptoPanic pour détecter les narratives émergentes AVANT qu'elles explosent. On analyse le sentiment, le momentum et identifie les projets qui surfent chaque narrative. Entre tôt = gains maximaux !</p>
         </div>
-        
         <!-- Qu'est-ce qu'une Narrative Crypto? -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(168, 85, 247, 0.2);">
             <h2 style="color: #a855f7; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
                 <span style="font-size: 1.5em;">🎯</span> Qu'est-ce qu'une Narrative Crypto ?
             </h2>
             <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">Une <strong>narrative</strong> est un thème/histoire qui attire l'attention du marché crypto à un moment donné. Quand une narrative émerge, TOUS les projets liés explosent ensemble. C'est comme une vague que tu peux surfer pour des gains exponentiels.</p>
-            
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
                 <div style="background: rgba(168, 85, 247, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #a855f7;">
                     <h4 style="color: #a855f7; margin-bottom: 10px;">🤖 AI Narrative (2023)</h4>
@@ -36992,7 +33475,6 @@ async def narrative_radar():
                 </div>
             </div>
         </div>
-        
         <!-- Comment utiliser cet outil? -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">
             <h2 style="color: #10b981; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -37017,14 +33499,12 @@ async def narrative_radar():
                 </div>
             </div>
         </div>
-        
         <!-- Comprendre les Indicateurs -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(245, 158, 11, 0.2);">
             <h2 style="color: #f59e0b; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
                 <span style="font-size: 1.5em;">📊</span> Comprendre les Indicateurs
             </h2>
             <div style="display: grid; gap: 20px;">
-                
                 <div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">
                     <h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">🔥 Momentum</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Vitesse à laquelle la narrative gagne en popularité.</p>
@@ -37035,7 +33515,6 @@ async def narrative_radar():
                         <li><strong style="color: #64748b;">😴 STABLE:</strong> Pas de momentum - Passe ton tour</li>
                     </ul>
                 </div>
-                
                 <div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">
                     <h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">😊 Sentiment</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Opinion générale du marché sur cette narrative.</p>
@@ -37045,16 +33524,13 @@ async def narrative_radar():
                         <li><strong style="color: #ef4444;">😢 NÉGATIF:</strong> Bearish - Évite ou attends retournement</li>
                     </ul>
                 </div>
-                
                 <div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">
                     <h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">💎 Coins Listés</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Les 3-5 projets principaux de chaque narrative.</p>
                     <p style="color: #94a3b8; margin: 0;"><strong>Stratégie:</strong> Achète au moins 2-3 coins de la même narrative pour diversifier. Si la narrative explose, tous vont pomper ensemble !</p>
                 </div>
-                
             </div>
         </div>
-        
         <!-- Points Importants -->
         <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
             <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
@@ -37070,40 +33546,32 @@ async def narrative_radar():
                 <li><strong>Source: CryptoPanic API:</strong> Agrégateur d'actualités crypto fiable utilisé par les pros.</li>
             </ul>
         </div>
-        
         <!-- Stratégies Avancées -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">
             <h2 style="color: #6366f1; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
                 <span style="font-size: 1.5em;">🎓</span> Stratégies Avancées
             </h2>
             <div style="display: grid; gap: 15px;">
-                
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
                     <h3 style="color: #6366f1; margin-bottom: 10px;">🎯 L'Entrée Précoce</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Quand une narrative passe de 😴 STABLE à 📈 RISING = premier signal. Entre avec 30% de ton capital. Si elle passe TRENDING 🚀, ajoute 70%.</p>
                 </div>
-                
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
                     <h3 style="color: #6366f1; margin-bottom: 10px;">📊 Multi-Narrative</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Ne mets PAS tous tes œufs dans 1 narrative. Répartis sur 2-3 narratives TRENDING simultanément = risque diversifié.</p>
                 </div>
-                
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
                     <h3 style="color: #6366f1; margin-bottom: 10px;">💰 Take Profit Progressif</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Vends 30% à +50%, 30% à +100%, garde 40% pour le moonshot. Ne sois jamais 100% in ou 100% out.</p>
                 </div>
-                
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
                     <h3 style="color: #6366f1; margin-bottom: 10px;">🔄 Rotation des Narratives</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Quand une narrative devient 😴 STABLE après avoir été HOT = sors et entre dans la prochaine narrative TRENDING. Toujours suivre le momentum.</p>
                 </div>
-                
             </div>
         </div>
-        
     </div>
     <!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
-    
 </div>
 
 <script>
@@ -37131,56 +33599,41 @@ async function scanNow() {
     var container = document.getElementById('narratives');
     var statsHeader = document.getElementById('statsHeader');
     var dataSource = document.getElementById('dataSource');
-    
     if (btn.disabled) return;
-    
     btn.classList.add('loading');
     btn.innerHTML = '<span class="spinner"></span>';
     btn.disabled = true;
-    
     container.innerHTML = '<div class="initial-message"><div class="spinner"></div><p class="loading-text">🔍 Scan RÉEL en cours via CryptoPanic API...</p></div>';
-    
     try {
         var response = await fetch('/api/narrative-radar/scan');
         var data = await response.json();
-        
         if (!data.success) {
             container.innerHTML = '<div class="error-box"><div class="icon">⚠️</div><div class="title">Erreur API</div><div class="message">' + (data.error || 'Erreur inconnue') + '</div></div>';
             return;
         }
-        
         var narrativesWithMomentum = {};
-        
         for (var name in data.narratives) {
             var currentMentions = data.narratives[name];
             var change = 0;
-            
             if (previousScores[name] !== undefined && previousScores[name] > 0) {
                 change = ((currentMentions - previousScores[name]) / previousScores[name]) * 100;
             }
-            
             change = Math.max(-50, Math.min(200, change));
-            
             narrativesWithMomentum[name] = {
                 mentions: currentMentions,
                 change: Math.round(change * 10) / 10
             };
-            
             previousScores[name] = currentMentions;
         }
-        
         statsHeader.style.display = 'grid';
         document.getElementById('totalNews').textContent = data.totalNews;
         document.getElementById('activeNarratives').textContent = data.activeNarratives;
         document.getElementById('hotTopics').textContent = data.hotTopics;
         document.getElementById('lastScan').textContent = getCurrentTime();
-        
         dataSource.style.display = 'block';
         displayNarratives(narrativesWithMomentum);
         scanCount++;
-        
         console.log('✅ Scan réel terminé - Source: CryptoPanic');
-        
     } catch (error) {
         console.error('Erreur:', error);
         container.innerHTML = '<div class="error-box"><div class="icon">❌</div><div class="title">Erreur de connexion</div><div class="message">Impossible de contacter l\\'API. Vérifiez votre connexion.</div></div>';
@@ -37196,11 +33649,9 @@ async function scanNow() {
 function displayNarratives(narrativesData) {
     var container = document.getElementById('narratives');
     var html = '';
-    
     var sorted = Object.keys(narrativesData).sort(function(a, b) {
         return narrativesData[b].mentions - narrativesData[a].mentions;
     });
-    
     for (var i = 0; i < sorted.length; i++) {
         var name = sorted[i];
         var data = narrativesData[name];
@@ -37208,7 +33659,6 @@ function displayNarratives(narrativesData) {
         var status = getStatus(data.mentions);
         var changeClass = data.change > 0 ? 'positive' : data.change < 0 ? 'negative' : 'neutral';
         var changeSymbol = data.change > 0 ? '+' : '';
-        
         html += '<div class="narrative-card">';
         html += '<div class="narrative-header">';
         html += '<div class="narrative-title"><span class="narrative-icon">' + info.icon + '</span><span>' + name + '</span></div>';
@@ -37224,7 +33674,6 @@ function displayNarratives(narrativesData) {
         }
         html += '</div></div></div>';
     }
-    
     container.innerHTML = html;
 }
 
@@ -37253,7 +33702,6 @@ console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 </body>
 </html>
 '''
-    
     return HTMLResponse(SIDEBAR + page_html)
 
 
@@ -37265,7 +33713,6 @@ console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 @app.get("/ai-crypto-coach", response_class=HTMLResponse)
 async def ai_crypto_coach_page(request: Request):
     """🤖 AI Crypto Coach - Analyse ton profil avec chat IA"""
-    
     return HTMLResponse(SIDEBAR + CSS + """
 <style>
     /* Main content wrapper NÉCESSAIRE pour sidebar */
@@ -37274,11 +33721,9 @@ async def ai_crypto_coach_page(request: Request):
         padding: 20px;
         min-height: 100vh;
     }
-    
     .coach-header {
         margin-bottom: 30px;
     }
-    
     .coach-header h1 {
         font-size: 2.5em;
         background: linear-gradient(135deg, #6366f1, #a855f7);
@@ -37286,38 +33731,32 @@ async def ai_crypto_coach_page(request: Request):
         -webkit-text-fill-color: transparent;
         margin-bottom: 10px;
     }
-    
     .coach-header p {
         color: #94a3b8;
         font-size: 1.1em;
     }
-    
     .chat-container {
         display: grid;
         grid-template-columns: 1fr 350px;
         gap: 20px;
     }
-    
     .chat-main {
         background: rgba(15, 23, 42, 0.6);
         border-radius: 16px;
         padding: 25px;
         border: 1px solid rgba(100, 116, 139, 0.3);
     }
-    
     .chat-sidebar-right {
         display: flex;
         flex-direction: column;
         gap: 20px;
     }
-    
     .progress-card, .badges-card, .stats-card {
         background: rgba(15, 23, 42, 0.6);
         border-radius: 16px;
         padding: 20px;
         border: 1px solid rgba(100, 116, 139, 0.3);
     }
-    
     .card-title {
         display: flex;
         align-items: center;
@@ -37327,7 +33766,6 @@ async def ai_crypto_coach_page(request: Request):
         margin-bottom: 15px;
         color: #60a5fa;
     }
-    
     .progress-bar {
         width: 100%;
         height: 8px;
@@ -37336,19 +33774,16 @@ async def ai_crypto_coach_page(request: Request):
         overflow: hidden;
         margin: 10px 0;
     }
-    
     .progress-fill {
         height: 100%;
         background: linear-gradient(90deg, #10b981, #14b8a6);
         transition: width 0.3s;
     }
-    
     .badges-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 15px;
     }
-    
     .badge-item {
         text-align: center;
         padding: 15px 10px;
@@ -37357,37 +33792,30 @@ async def ai_crypto_coach_page(request: Request):
         border: 2px solid #334155;
         transition: all 0.3s;
     }
-    
     .badge-item.locked {
         opacity: 0.4;
     }
-    
     .badge-icon {
         font-size: 2em;
         margin-bottom: 8px;
     }
-    
     .badge-name {
         font-size: 0.75em;
         color: #94a3b8;
     }
-    
     .stat-row {
         display: flex;
         justify-content: space-between;
         padding: 12px 0;
         border-bottom: 1px solid rgba(100, 116, 139, 0.2);
     }
-    
     .stat-label {
         color: #94a3b8;
     }
-    
     .stat-value {
         font-weight: bold;
         color: #10b981;
     }
-    
     .chat-messages {
         max-height: 500px;
         overflow-y: auto;
@@ -37396,45 +33824,37 @@ async def ai_crypto_coach_page(request: Request):
         background: rgba(30, 41, 59, 0.4);
         border-radius: 12px;
     }
-    
     .message {
         margin-bottom: 20px;
         padding: 15px 20px;
         border-radius: 12px;
         animation: slideIn 0.3s ease-out;
     }
-    
     @keyframes slideIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
     }
-    
     @keyframes loadingDots {
         0%, 20% { opacity: 0.2; }
         50% { opacity: 1; }
         100% { opacity: 0.2; }
     }
-    
     .loading-dots span {
         animation: loadingDots 1.4s infinite;
         display: inline-block;
     }
-    
     .loading-dots span:nth-child(1) { animation-delay: 0s; }
     .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
     .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-    
     .message.ai {
         background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(139, 92, 246, 0.2));
         border-left: 4px solid #6366f1;
     }
-    
     .message.user {
         background: rgba(16, 185, 129, 0.1);
         border-left: 4px solid #10b981;
         margin-left: 40px;
     }
-    
     .message-header {
         display: flex;
         align-items: center;
@@ -37442,18 +33862,15 @@ async def ai_crypto_coach_page(request: Request):
         margin-bottom: 10px;
         font-weight: bold;
     }
-    
     .message-icon {
         font-size: 1.5em;
     }
-    
     .suggestion-buttons {
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
         margin-top: 15px;
     }
-    
     .suggestion-btn {
         background: rgba(59, 130, 246, 0.2);
         border: 1px solid #3b82f6;
@@ -37464,18 +33881,15 @@ async def ai_crypto_coach_page(request: Request):
         font-size: 0.9em;
         transition: all 0.3s;
     }
-    
     .suggestion-btn:hover {
         background: rgba(59, 130, 246, 0.4);
         transform: translateY(-2px);
     }
-    
     .input-container {
         display: flex;
         gap: 10px;
         margin-top: 20px;
     }
-    
     .chat-input {
         flex: 1;
         background: rgba(30, 41, 59, 0.8);
@@ -37485,7 +33899,6 @@ async def ai_crypto_coach_page(request: Request):
         color: white;
         font-size: 1em;
     }
-    
     .send-btn {
         background: linear-gradient(45deg, #10b981, #14b8a6);
         border: none;
@@ -37496,12 +33909,10 @@ async def ai_crypto_coach_page(request: Request):
         cursor: pointer;
         transition: all 0.3s;
     }
-    
     .send-btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
     }
-    
     .analyze-btn {
         background: linear-gradient(45deg, #6366f1, #8b5cf6);
         border: none;
@@ -37515,12 +33926,10 @@ async def ai_crypto_coach_page(request: Request):
         margin-bottom: 20px;
         transition: all 0.3s;
     }
-    
     .analyze-btn:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
     }
-    
     @media (max-width: 1200px) {
         .chat-container {
             grid-template-columns: 1fr;
@@ -37536,14 +33945,12 @@ async def ai_crypto_coach_page(request: Request):
         <h1>🤖 AI Crypto Coach</h1>
         <p>Ton coach personnel IA propulsé par Claude AI</p>
     </div>
-    
     <div class="chat-container">
         <!-- Zone principale de chat -->
         <div class="chat-main">
             <button class="analyze-btn" onclick="analyzeProfile()">
                 🔍 Analyser Mon Profil
             </button>
-            
             <div class="chat-messages" id="chatMessages">
                 <div class="message ai">
                     <div class="message-header">
@@ -37562,13 +33969,11 @@ async def ai_crypto_coach_page(request: Request):
                     </div>
                 </div>
             </div>
-            
             <div class="input-container">
                 <input type="text" class="chat-input" id="userInput" placeholder="Posez votre question crypto..." onkeypress="if(event.key==='Enter') sendMessage()">
                 <button class="send-btn" onclick="sendMessage()">Envoyer</button>
             </div>
         </div>
-        
         <!-- Sidebar droite -->
         <div class="chat-sidebar-right">
             <!-- Progression -->
@@ -37586,7 +33991,6 @@ async def ai_crypto_coach_page(request: Request):
                     </div>
                 </div>
             </div>
-            
             <!-- Badges -->
             <div class="badges-card">
                 <div class="card-title">
@@ -37631,7 +34035,6 @@ async def ai_crypto_coach_page(request: Request):
                     </div>
                 </div>
             </div>
-            
             <!-- Statistiques -->
             <div class="stats-card">
                 <div class="card-title">
@@ -37660,7 +34063,6 @@ async def ai_crypto_coach_page(request: Request):
 
 <!-- ==================== SECTIONS EXPLICATIVES ==================== -->
 <div style="max-width: 1400px; margin: 60px auto; padding: 0 20px;">
-    
     <!-- Comment ça marche? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
         <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -37668,7 +34070,6 @@ async def ai_crypto_coach_page(request: Request):
         </h2>
         <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">L'AI Crypto Coach analyse ton profil de trader (expérience, capital, objectifs, tolérance au risque) pour créer une stratégie 100% personnalisée. Ensuite, il répond à tes questions et t'accompagne au quotidien avec des conseils adaptés à TON niveau et TES objectifs.</p>
     </div>
-    
     <!-- Qu'est-ce que l'AI Coach? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">
         <h2 style="color: #6366f1; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -37676,7 +34077,6 @@ async def ai_crypto_coach_page(request: Request):
         </h2>
         <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">C'est un coach personnel alimenté par l'intelligence artificielle Claude Sonnet 4 qui analyse ton profil unique et crée un plan d'action sur-mesure. Contrairement aux conseils génériques qu'on trouve partout, le coach s'adapte à TOI : ton niveau, ton budget, tes peurs, tes objectifs.</p>
     </div>
-    
     <!-- Comment utiliser? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">
         <h2 style="color: #10b981; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -37697,7 +34097,6 @@ async def ai_crypto_coach_page(request: Request):
             </div>
         </div>
     </div>
-    
     <!-- Points Importants -->
     <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
         <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
@@ -37710,7 +34109,6 @@ async def ai_crypto_coach_page(request: Request):
             <li><strong>Respect de la vie privée:</strong> Tes conversations ne sont PAS sauvegardées. Chaque session est indépendante.</li>
         </ul>
     </div>
-    
 </div>
 <!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
 
@@ -37719,7 +34117,6 @@ let questionCount = 1;
 
 async function analyzeProfile() {
     addUserMessage("🔍 Analyser mon profil de trader");
-    
     const aiResponse = document.createElement('div');
     aiResponse.className = 'message ai';
     aiResponse.innerHTML = `
@@ -37733,11 +34130,9 @@ async function analyzeProfile() {
     `;
     document.getElementById('chatMessages').appendChild(aiResponse);
     scrollToBottom();
-    
     try {
         const response = await fetch('/api/ai-coach/analyze', { method: 'POST' });
         const data = await response.json();
-        
         if (data.profile_type) {
             aiResponse.innerHTML = `
                 <div class="message-header">
@@ -37781,7 +34176,6 @@ async function analyzeProfile() {
             </div>
         `;
     }
-    
     scrollToBottom();
 }
 
@@ -37793,15 +34187,11 @@ function askQuestion(question) {
 function sendMessage() {
     const input = document.getElementById('userInput');
     const message = input.value.trim();
-    
     if (!message) return;
-    
     addUserMessage(message);
     input.value = '';
-    
     // Ajouter un indicateur de chargement
     addLoadingMessage();
-    
     // Appeler l'API Claude
     fetch('/api/ai-coach/chat', {
         method: 'POST',
@@ -37814,13 +34204,11 @@ function sendMessage() {
     .then(data => {
         // Retirer l'indicateur de chargement
         removeLoadingMessage();
-        
         if (data.success) {
             addAIMessage(data.message);
         } else {
             addAIMessage("Désolé, je rencontre un problème technique. Réessaye ! 🔧");
         }
-        
         questionCount++;
         document.getElementById('questionsAsked').textContent = questionCount;
     })
@@ -37900,13 +34288,10 @@ async def api_analyze_trader_profile(request: Request):
     try:
         token = request.cookies.get("auth_token")
         user = get_user_from_token(token) if token else None
-        
         if not user:
             return {"error": "Non authentifié"}
-        
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        
         cursor.execute("""
             SELECT symbol, entry_price, exit_price, profit_percent, 
                    result, timestamp, setup_type, timeframe, notes
@@ -37915,10 +34300,8 @@ async def api_analyze_trader_profile(request: Request):
             ORDER BY timestamp DESC
             LIMIT 100
         """, (user["username"],))
-        
         rows = cursor.fetchall()
         conn.close()
-        
         trades = []
         for row in rows:
             trades.append({
@@ -37932,10 +34315,8 @@ async def api_analyze_trader_profile(request: Request):
                 "timeframe": row[7] or "1H",
                 "notes": row[8] or ""
             })
-        
         profile = analyze_trader_profile(trades)
         return profile
-        
     except Exception as e:
         return {"error": str(e)}
 
@@ -37943,11 +34324,9 @@ async def api_analyze_trader_profile(request: Request):
 @app.get("/ai-swarm-agents", response_class=HTMLResponse)
 async def ai_swarm_agents_page(request: Request):
     """Page principale du Swarm d'agents IA"""
-    
     # Vérifier authentification (optionnel selon ton système)
     token = request.cookies.get("auth_token")
     user = get_user_from_token(token) if token else None
-    
     return HTMLResponse(SIDEBAR + CSS + """
 <style>
     /* Styles spécifiques AI Swarm Agents */
@@ -37956,7 +34335,6 @@ async def ai_swarm_agents_page(request: Request):
         padding: 20px;
         min-height: 100vh;
     }
-    
     .swarm-header {
         text-align: center;
         margin-bottom: 40px;
@@ -37965,7 +34343,6 @@ async def ai_swarm_agents_page(request: Request):
         border-radius: 20px;
         backdrop-filter: blur(10px);
     }
-    
     .swarm-header h1 {
         font-size: 3em;
         margin-bottom: 10px;
@@ -37973,19 +34350,16 @@ async def ai_swarm_agents_page(request: Request):
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
-    
     .swarm-header p {
         font-size: 1.2em;
         color: #a0aec0;
     }
-    
     .stats-bar {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
         margin-bottom: 40px;
     }
-    
     .stat {
         background: rgba(255, 255, 255, 0.05);
         padding: 25px;
@@ -37993,26 +34367,22 @@ async def ai_swarm_agents_page(request: Request):
         text-align: center;
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
-    
     .stat-value {
         font-size: 2.5em;
         font-weight: bold;
         color: #667eea;
         margin-bottom: 10px;
     }
-    
     .stat-label {
         color: #a0aec0;
         font-size: 1.1em;
     }
-    
     .profile-cards {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 20px;
         margin-bottom: 40px;
     }
-    
     .profile-card {
         background: rgba(255, 255, 255, 0.1);
         padding: 25px;
@@ -38021,73 +34391,61 @@ async def ai_swarm_agents_page(request: Request):
         transition: all 0.3s;
         border: 2px solid transparent;
     }
-    
     .profile-card:hover {
         transform: translateY(-5px);
         border-color: #667eea;
         box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
     }
-    
     .profile-card.active {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-color: white;
     }
-    
     .profile-card h3 {
         font-size: 1.5em;
         margin-bottom: 15px;
         color: white;
     }
-    
     .profile-card p {
         color: rgba(255, 255, 255, 0.8);
         line-height: 1.6;
     }
-    
     .agents-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
         gap: 25px;
         margin-bottom: 30px;
     }
-    
     .agent-card {
         background: rgba(255, 255, 255, 0.05);
         border-radius: 15px;
         padding: 25px;
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
-    
     .agent-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 20px;
     }
-    
     .agent-name {
         font-size: 1.3em;
         font-weight: bold;
         color: white;
     }
-    
     .agent-status {
         padding: 5px 15px;
         border-radius: 20px;
         font-size: 0.9em;
         font-weight: 600;
     }
-    
     .agent-status.active {
         background: #10b981;
         color: white;
     }
-    
     .agent-status.scanning {
         background: #fbbf24;
         color: #1f2937;
     }
-    
     .alert-item {
         background: rgba(6, 182, 212, 0.1);
         border-left: 4px solid #06b6d4;
@@ -38095,22 +34453,18 @@ async def ai_swarm_agents_page(request: Request):
         margin: 10px 0;
         border-radius: 8px;
     }
-    
     .alert-item h4 {
         color: #06b6d4;
         margin-bottom: 8px;
     }
-    
     .loading {
         text-align: center;
         padding: 60px 20px;
         display: none;
     }
-    
     .loading.show {
         display: block;
     }
-    
     .spinner {
         width: 60px;
         height: 60px;
@@ -38120,11 +34474,9 @@ async def ai_swarm_agents_page(request: Request):
         animation: spin 1s linear infinite;
         margin: 0 auto 20px;
     }
-    
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
-    
     .action-buttons {
         display: flex;
         gap: 15px;
@@ -38132,7 +34484,6 @@ async def ai_swarm_agents_page(request: Request):
         margin: 40px 0;
         flex-wrap: wrap;
     }
-    
     .btn {
         padding: 15px 30px;
         border-radius: 12px;
@@ -38142,41 +34493,33 @@ async def ai_swarm_agents_page(request: Request):
         border: none;
         transition: all 0.3s;
     }
-    
     .btn-primary {
         background: linear-gradient(45deg, #667eea, #764ba2);
         color: white;
     }
-    
     .btn-primary:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
     }
-    
     .btn-secondary {
         background: rgba(255, 255, 255, 0.1);
         color: white;
         border: 1px solid rgba(255, 255, 255, 0.2);
     }
-    
     .btn-secondary:hover {
         background: rgba(255, 255, 255, 0.15);
     }
-    
     @media (max-width: 768px) {
         .main-content {
             margin-left: 0;
             padding: 10px;
         }
-        
         .swarm-header h1 {
             font-size: 2em;
         }
-        
         .agents-grid {
             grid-template-columns: 1fr;
         }
-        
         .profile-cards {
             grid-template-columns: 1fr;
         }
@@ -38189,7 +34532,6 @@ async def ai_swarm_agents_page(request: Request):
         <h1>🤖 AI Swarm Agents</h1>
         <p>Une armée d'agents IA qui scanne le marché crypto 24/7 pour toi</p>
     </div>
-    
     <!-- Stats Bar -->
     <div class="stats-bar">
         <div class="stat">
@@ -38205,7 +34547,6 @@ async def ai_swarm_agents_page(request: Request):
             <div class="stat-label">Dernier Scan</div>
         </div>
     </div>
-    
     <!-- Profils Trader -->
     <h2 style="margin-bottom: 20px; font-size: 1.8em; color: white;">📊 Choisis ton profil trader</h2>
     <div class="profile-cards">
@@ -38222,13 +34563,11 @@ async def ai_swarm_agents_page(request: Request):
             <p>Opportunités rapides, momentum trading. Whales, volume, mouvements significatifs.</p>
         </div>
     </div>
-    
     <!-- Loading -->
     <div class="loading" id="loading">
         <div class="spinner"></div>
         <p style="color: white; font-size: 1.2em;">🔍 Agents en train de scanner le marché...</p>
     </div>
-    
     <!-- Agents Grid -->
     <h2 style="margin-bottom: 20px; font-size: 1.8em; color: white;">🤖 Tes Agents IA</h2>
     <div class="agents-grid" id="agentsGrid">
@@ -38246,7 +34585,6 @@ async def ai_swarm_agents_page(request: Request):
                 <p style="color: rgba(255,255,255,0.8);">BTC: 5,000 BTC transférés ($230M)</p>
             </div>
         </div>
-        
         <div class="agent-card">
             <div class="agent-header">
                 <div class="agent-name">📈 Momentum Scanner</div>
@@ -38260,7 +34598,6 @@ async def ai_swarm_agents_page(request: Request):
                 <p style="color: rgba(255,255,255,0.8);">SOL: +340% volume en 1h</p>
             </div>
         </div>
-        
         <div class="agent-card">
             <div class="agent-header">
                 <div class="agent-name">🔥 New Listings Hunter</div>
@@ -38275,7 +34612,6 @@ async def ai_swarm_agents_page(request: Request):
             </div>
         </div>
     </div>
-    
     <!-- Action Buttons -->
     <div class="action-buttons">
         <button class="btn btn-primary" onclick="scanNow()">
@@ -38301,7 +34637,6 @@ function selectProfile(profile) {
         card.classList.remove('active');
     });
     event.target.closest('.profile-card').classList.add('active');
-    
     console.log('Profil sélectionné:', profile);
     alert('Profil "' + profile + '" activé ! Les agents vont s\'adapter à ton style de trading.');
 }
@@ -38309,13 +34644,11 @@ function selectProfile(profile) {
 function scanNow() {
     document.getElementById('loading').classList.add('show');
     document.getElementById('lastScan').textContent = 'Scanning...';
-    
     setTimeout(() => {
         document.getElementById('loading').classList.remove('show');
         const now = new Date();
         document.getElementById('lastScan').textContent = now.toLocaleTimeString('fr-FR');
         document.getElementById('totalAlerts').textContent = Math.floor(Math.random() * 10) + 5;
-        
         alert('✅ Scan terminé ! ' + document.getElementById('totalAlerts').textContent + ' nouvelles opportunités détectées.');
     }, 3000);
 }
@@ -38323,11 +34656,9 @@ function scanNow() {
 function toggleAutoScan() {
     autoScanEnabled = !autoScanEnabled;
     const text = document.getElementById('autoScanText');
-    
     if (autoScanEnabled) {
         text.textContent = 'Désactiver Auto-Scan';
         alert('✅ Auto-Scan activé ! Les agents scanneront toutes les 5 minutes.');
-        
         scanInterval = setInterval(() => {
             scanNow();
         }, 300000); // 5 minutes
@@ -38351,7 +34682,6 @@ setTimeout(() => {
 @app.get("/altseason-copilot-pro", response_class=HTMLResponse)
 async def altseason_copilot():
     """📈 Altseason Copilot Pro - Rotation de capital"""
-    
     # Données de marché en temps réel
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
@@ -38360,21 +34690,17 @@ async def altseason_copilot():
             btc_data = btc_resp.json().get("bitcoin", {})
             btc_price = btc_data.get("usd", 0)
             btc_change = btc_data.get("usd_24h_change", 0)
-            
             # ETH price
             eth_resp = await client.get("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true")
             eth_data = eth_resp.json().get("ethereum", {})
             eth_price = eth_data.get("usd", 0)
             eth_change = eth_data.get("usd_24h_change", 0)
-            
             # BTC Dominance
             global_resp = await client.get("https://api.coingecko.com/api/v3/global")
             global_data = global_resp.json().get("data", {})
             btc_dom = global_data.get("market_cap_percentage", {}).get("btc", 0)
-            
     except:
         btc_price, btc_change, eth_price, eth_change, btc_dom = 97000, -2.5, 3600, -3.2, 56.5
-    
     # Déterminer la phase
     if btc_change < 2 and eth_change < 2:
         phase = "Consolidation"
@@ -38392,7 +34718,6 @@ async def altseason_copilot():
         phase = "Accumulation"
         phase_emoji = "🟢"
         recommendation = "🟢 Bon moment pour accumuler"
-    
     return HTMLResponse(SIDEBAR + CSS + f"""
 <style>
     .phase-card {{
@@ -38425,13 +34750,11 @@ async def altseason_copilot():
         <h1>📈 Altseason Copilot Pro</h1>
         <p>Rotation de capital & Phase du marché en temps réel</p>
     </div>
-    
     <div class="phase-card">
         <div class="phase-emoji">{phase_emoji}</div>
         <h2 style="font-size: 2.5em; margin: 20px 0; color: #e2e8f0;">{phase}</h2>
         <p style="font-size: 1.3em; margin-top: 20px; color: #94a3b8;">{recommendation}</p>
     </div>
-    
     <div class="metrics-grid">
         <div class="metric-card">
             <h3 style="color: #94a3b8; font-size: 0.9em;">Bitcoin (BTC)</h3>
@@ -38440,7 +34763,6 @@ async def altseason_copilot():
                 {'+' if btc_change >= 0 else ''}{btc_change:.2f}%
             </div>
         </div>
-        
         <div class="metric-card">
             <h3 style="color: #94a3b8; font-size: 0.9em;">Ethereum (ETH)</h3>
             <div style="font-size: 2.5em; font-weight: bold; margin: 10px 0;">${eth_price:,.0f}</div>
@@ -38448,7 +34770,6 @@ async def altseason_copilot():
                 {'+' if eth_change >= 0 else ''}{eth_change:.2f}%
             </div>
         </div>
-        
         <div class="metric-card">
             <h3 style="color: #94a3b8; font-size: 0.9em;">BTC Dominance</h3>
             <div style="font-size: 2.5em; font-weight: bold; margin: 10px 0;">{btc_dom:.2f}%</div>
@@ -38459,7 +34780,6 @@ async def altseason_copilot():
 
 <!-- ==================== SECTIONS EXPLICATIVES ==================== -->
 <div style="max-width: 1400px; margin: 60px auto; padding: 0 20px;">
-    
     <!-- Comment ça marche? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
         <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -38467,59 +34787,49 @@ async def altseason_copilot():
         </h2>
         <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">Les AI Swarm Agents sont 5 intelligences artificielles spécialisées qui scannent le marché crypto 24/7 pour détecter les meilleures opportunités. Chaque agent analyse un aspect différent du marché (tendances, narratives, liquidité, altseason, risques) et te donne des recommandations en temps réel basées sur des données live.</p>
     </div>
-    
     <!-- Qu'est-ce qu'un Swarm Agent? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">
         <h2 style="color: #6366f1; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
             <span style="font-size: 1.5em;">🤖</span> Qu'est-ce qu'un Swarm Agent ?
         </h2>
         <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">Un <strong>Swarm Agent</strong> (agent en essaim) est une IA spécialisée qui travaille en collaboration avec d'autres agents pour scanner le marché. Contrairement à une seule IA généraliste, chaque agent a une mission précise et excelle dans son domaine. Ensemble, ils forment un "essaim intelligent" qui couvre tous les aspects du trading crypto.</p>
-        
         <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
             <p style="color: #818cf8; margin: 0; font-size: 1.05em;"><strong>💡 Principe clé:</strong> 5 cerveaux valent mieux qu'un ! Chaque agent se concentre sur son expertise pour des analyses ultra-précises.</p>
         </div>
     </div>
-    
     <!-- Les 5 Agents Expliqués -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">
         <h2 style="color: #10b981; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
             <span style="font-size: 1.5em;">🎯</span> Les 5 Agents Expliqués
         </h2>
         <div style="display: grid; gap: 20px;">
-            
             <div style="background: rgba(16, 185, 129, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #10b981;">
                 <h3 style="color: #10b981; margin-bottom: 12px; font-size: 1.3em;">📈 Agent Trend Scanner</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;"><strong>Mission:</strong> Détecter les cryptos en forte tendance haussière ou baissière.</p>
                 <p style="color: #94a3b8; line-height: 1.7;"><strong>Analyse:</strong> Momentum, volume, changement de prix 24h, patterns techniques. Identifie les pumps et dumps avant la masse.</p>
             </div>
-            
             <div style="background: rgba(16, 185, 129, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #10b981;">
                 <h3 style="color: #10b981; margin-bottom: 12px; font-size: 1.3em;">📰 Agent Narrative Tracker</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;"><strong>Mission:</strong> Suivre les narratives crypto émergentes (DeFi, AI, Gaming, etc.).</p>
                 <p style="color: #94a3b8; line-height: 1.7;"><strong>Analyse:</strong> Tendances Twitter, volume de recherche, projets du secteur. Surfe les narratives avant qu'elles explosent.</p>
             </div>
-            
             <div style="background: rgba(16, 185, 129, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #10b981;">
                 <h3 style="color: #10b981; margin-bottom: 12px; font-size: 1.3em;">💧 Agent Liquidity Monitor</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;"><strong>Mission:</strong> Analyser la liquidité et le volume des cryptos.</p>
                 <p style="color: #94a3b8; line-height: 1.7;"><strong>Analyse:</strong> Volume 24h, ratio volume/market cap, spread bid/ask. Évite les cryptos illiquides qui peuvent crash.</p>
             </div>
-            
             <div style="background: rgba(16, 185, 129, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #10b981;">
                 <h3 style="color: #10b981; margin-bottom: 12px; font-size: 1.3em;">🌊 Agent Altseason Detector</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;"><strong>Mission:</strong> Détecter les phases d'altseason (quand les altcoins surperforment BTC).</p>
                 <p style="color: #94a3b8; line-height: 1.7;"><strong>Analyse:</strong> Bitcoin dominance, performance altcoins vs BTC, rotation de capital. Sait quand acheter les alts.</p>
             </div>
-            
             <div style="background: rgba(16, 185, 129, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #10b981;">
                 <h3 style="color: #10b981; margin-bottom: 12px; font-size: 1.3em;">⚠️ Agent Risk Assessor</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;"><strong>Mission:</strong> Évaluer les risques de chaque crypto (scams, volatilité extrême).</p>
                 <p style="color: #94a3b8; line-height: 1.7;"><strong>Analyse:</strong> Volatilité historique, age du projet, distribution des holders, red flags. Protège contre les catastrophes.</p>
             </div>
-            
         </div>
     </div>
-    
     <!-- Comment utiliser? -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(245, 158, 11, 0.2);">
         <h2 style="color: #f59e0b; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -38544,32 +34854,26 @@ async def altseason_copilot():
             </div>
         </div>
     </div>
-    
     <!-- Comprendre les Analyses -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(168, 85, 247, 0.2);">
         <h2 style="color: #a855f7; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
             <span style="font-size: 1.5em;">💡</span> Comprendre les Analyses
         </h2>
         <div style="display: grid; gap: 20px;">
-            
             <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
                 <h3 style="color: #10b981; margin-bottom: 10px;">Niveau de Confiance</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Chaque agent donne un score de confiance (0-100%). Plus c'est élevé, plus l'agent est sûr de sa recommandation. >70% = très confiant.</p>
             </div>
-            
             <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
                 <h3 style="color: #6366f1; margin-bottom: 10px;">Timeframe des Recommandations</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Les agents scannent en temps réel mais les opportunités peuvent durer quelques heures à quelques jours selon l'agent (Trend = court terme, Narrative = moyen terme).</p>
             </div>
-            
             <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
                 <h3 style="color: #f59e0b; margin-bottom: 10px;">Données en Temps Réel</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Toutes les analyses sont mises à jour automatiquement toutes les 60 secondes. La page se rafraîchit seule pour avoir les dernières données.</p>
             </div>
-            
         </div>
     </div>
-    
     <!-- Points Importants -->
     <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
         <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
@@ -38585,37 +34889,30 @@ async def altseason_copilot():
             <li><strong>Auto-refresh activé:</strong> La page se met à jour automatiquement. Pas besoin de rafraîchir manuellement.</li>
         </ul>
     </div>
-    
     <!-- Stratégies Avancées -->
     <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(236, 72, 153, 0.2);">
         <h2 style="color: #ec4899; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
             <span style="font-size: 1.5em;">🎓</span> Stratégies Avancées
         </h2>
         <div style="display: grid; gap: 15px;">
-            
             <div style="background: rgba(236, 72, 153, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ec4899;">
                 <h3 style="color: #ec4899; margin-bottom: 10px;">🎯 Le Consensus Parfait (5/5 agents)</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Si les 5 agents recommandent la même crypto = setup ultra-rare mais ultra-puissant. Historiquement, ces setups ont un taux de réussite >80%.</p>
             </div>
-            
             <div style="background: rgba(236, 72, 153, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ec4899;">
                 <h3 style="color: #ec4899; margin-bottom: 10px;">🌊 Surfer les Narratives</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Narrative Tracker + Trend Scanner ensemble = surfer une narrative en pleine explosion. Entre tôt (narrative), sors au pic (trend).</p>
             </div>
-            
             <div style="background: rgba(236, 72, 153, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ec4899;">
                 <h3 style="color: #ec4899; margin-bottom: 10px;">💎 Altseason Rotation</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Quand Altseason Detector signale le début = vends BTC, achètes les alts recommandés. Inverse quand il signale la fin.</p>
             </div>
-            
             <div style="background: rgba(236, 72, 153, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ec4899;">
                 <h3 style="color: #ec4899; margin-bottom: 10px;">🛡️ Protection Maximale</h3>
                 <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Avant chaque achat: Risk Assessor < 30% de risque + Liquidity Monitor volume élevé = sécurité maximale.</p>
             </div>
-            
         </div>
     </div>
-    
 </div>
 <!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
 
@@ -38635,7 +34932,6 @@ setTimeout(() => location.reload(), 60000);
 @app.get("/rug-scam-shield", response_class=HTMLResponse)
 async def rug_scam_shield():
     """🛡️ Rug & Scam Shield - Analyse de sécurité"""
-    
     return HTMLResponse(SIDEBAR + CSS + """
 <style>
     .input-section {
@@ -38691,7 +34987,6 @@ async def rug_scam_shield():
         <h1>🛡️ Rug & Scam Shield</h1>
         <p>Analyse de sécurité des smart contracts</p>
     </div>
-    
     <div class="input-section">
         <h2 style="color: #60a5fa; margin-bottom: 20px;">Adresse du Contract</h2>
         <div class="input-group">
@@ -38720,9 +35015,7 @@ async def rug_scam_shield():
             🔍 Analyser
         </button>
     </div>
-    
     <div id="results"></div>
-    
     <div style="margin-top: 30px; padding: 25px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.3);">
         <h3 style="color: #ef4444; margin-bottom: 15px; font-size: 1.3em;">⚠️ Red Flags Communs</h3>
         <ul style="color: #94a3b8; line-height: 1.8; padding-left: 25px;">
@@ -38733,10 +35026,8 @@ async def rug_scam_shield():
             <li><strong>Liquidité non lockée:</strong> Les créateurs peuvent retirer la liquidité</li>
         </ul>
     </div>
-    
     <!-- ==================== SECTIONS EXPLICATIVES ==================== -->
     <div style="max-width: 1200px; margin: 60px auto 40px auto;">
-        
         <!-- Comment ça marche? -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">
             <h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -38744,14 +35035,12 @@ async def rug_scam_shield():
             </h2>
             <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">Le Rug & Scam Shield analyse les smart contracts en temps réel via 3 sources indépendantes (GoPlus, Honeypot.is, Etherscan) pour détecter les arnaques, honeypots, taxes cachées et autres red flags avant que tu investisses. Nous vérifions 15+ points de sécurité critiques sur 8 blockchains différentes.</p>
         </div>
-        
         <!-- Qu'est-ce qu'un Rug Pull/Scam? -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.2);">
             <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
                 <span style="font-size: 1.5em;">🚨</span> Qu'est-ce qu'un Rug Pull / Scam ?
             </h2>
             <p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8; margin-bottom: 20px;">Un <strong>rug pull</strong> est une arnaque crypto où les créateurs d'un token abandonnent le projet et volent l'argent des investisseurs. Ils peuvent retirer la liquidité, créer des fonctions malveillantes dans le code, ou simplement empêcher les gens de vendre (honeypot).</p>
-            
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
                 <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
                     <h4 style="color: #ef4444; margin-bottom: 10px;">🍯 Honeypot</h4>
@@ -38771,7 +35060,6 @@ async def rug_scam_shield():
                 </div>
             </div>
         </div>
-        
         <!-- Comment utiliser cet outil? -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">
             <h2 style="color: #10b981; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -38796,14 +35084,12 @@ async def rug_scam_shield():
                 </div>
             </div>
         </div>
-        
         <!-- Les 3 Sources Intelligentes -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">
             <h2 style="color: #6366f1; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
                 <span style="font-size: 1.5em;">🔍</span> Les 3 Sources Intelligentes
             </h2>
             <div style="display: grid; gap: 20px;">
-                
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #6366f1;">
                     <h3 style="color: #6366f1; margin-bottom: 12px; font-size: 1.3em;">🥇 GoPlus Security (Principal)</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">L'API la plus complète pour détecter les scams crypto.</p>
@@ -38816,7 +35102,6 @@ async def rug_scam_shield():
                         <li>✅ 15+ vérifications de sécurité</li>
                     </ul>
                 </div>
-                
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #6366f1;">
                     <h3 style="color: #6366f1; margin-bottom: 12px; font-size: 1.3em;">🥈 Honeypot.is (Fallback)</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">S'active si GoPlus ne trouve pas le contract (tokens obscurs).</p>
@@ -38827,7 +35112,6 @@ async def rug_scam_shield():
                         <li>📍 ETH et BSC uniquement</li>
                     </ul>
                 </div>
-                
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #6366f1;">
                     <h3 style="color: #6366f1; margin-bottom: 12px; font-size: 1.3em;">🥉 Etherscan/BSCScan (Fallback Final)</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin-bottom: 12px;">Dernier recours si les 2 autres échouent.</p>
@@ -38838,14 +35122,11 @@ async def rug_scam_shield():
                         <li>⚠️ Analyse basique mais utile</li>
                     </ul>
                 </div>
-                
             </div>
-            
             <div style="background: rgba(59, 130, 246, 0.1); padding: 20px; border-radius: 12px; margin-top: 20px;">
                 <p style="color: #60a5fa; margin: 0; font-size: 1.05em;"><strong>💡 Système intelligent:</strong> Nous essayons les 3 sources dans l'ordre. Même si GoPlus ne trouve pas le token, tu auras quand même une analyse via Honeypot.is ou Etherscan. Couverture maximale!</p>
             </div>
         </div>
-        
         <!-- Points Importants -->
         <div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">
             <h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
@@ -38861,29 +35142,24 @@ async def rug_scam_shield():
                 <li><strong>"Contract non trouvé" sur 3 sources:</strong> Le contract n'existe probablement pas ou mauvaise blockchain sélectionnée.</li>
             </ul>
         </div>
-        
         <!-- Comprendre les Résultats -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(245, 158, 11, 0.2);">
             <h2 style="color: #f59e0b; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
                 <span style="font-size: 1.5em;">💡</span> Comprendre les Résultats
             </h2>
             <div style="display: grid; gap: 20px;">
-                
                 <div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">
                     <h3 style="color: #10b981; margin-bottom: 10px;">Score 70-100/100 ✅</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Contract relativement sûr. Peu ou pas de red flags. Code vérifié. Taxes acceptables. Peut être acheté avec précaution (DYOR quand même).</p>
                 </div>
-                
                 <div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">
                     <h3 style="color: #f59e0b; margin-bottom: 10px;">Score 40-69/100 ⚠️</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Risques modérés détectés. Warnings (code non vérifié, taxes élevées, etc.). Acheter seulement si tu comprends les risques.</p>
                 </div>
-                
                 <div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">
                     <h3 style="color: #ef4444; margin-bottom: 10px;">Score 0-39/100 🚨</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">DANGER MAXIMUM! Red flags critiques détectés. Honeypot, scam, taxes extrêmes. NE PAS ACHETER sous aucun prétexte!</p>
                 </div>
-                
                 <div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">
                     <h3 style="color: #6366f1; margin-bottom: 10px;">Légende des Sources</h3>
                     <p style="color: #cbd5e1; line-height: 1.7; margin: 0;">
@@ -38892,10 +35168,8 @@ async def rug_scam_shield():
                         ✅ = Source a trouvé des données | ❌ = Source n'a rien trouvé
                     </p>
                 </div>
-                
             </div>
         </div>
-        
         <!-- Blockchains Supportées -->
         <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(168, 85, 247, 0.2);">
             <h2 style="color: #a855f7; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">
@@ -38929,10 +35203,8 @@ async def rug_scam_shield():
             </div>
             <p style="color: #cbd5e1; margin-top: 20px; text-align: center; font-size: 0.95em;">⚠️ Note: Bitcoin (BTC) n'a pas de smart contracts ERC-20, donc ne peut pas être analysé ici.</p>
         </div>
-        
     </div>
     <!-- ==================== FIN SECTIONS EXPLICATIVES ==================== -->
-    
 </div>
 <script>
 async function analyzeContract() {
@@ -38940,7 +35212,6 @@ async function analyzeContract() {
     const chain = document.getElementById('chain').value;
     const resultsDiv = document.getElementById('results');
     const btn = document.getElementById('analyzeBtn');
-    
     if (!address) {
         resultsDiv.innerHTML = `
             <div class="result-card" style="border-left: 4px solid #f59e0b;">
@@ -38950,7 +35221,6 @@ async function analyzeContract() {
         `;
         return;
     }
-    
     // Vérification du format
     if (!address.startsWith('0x') || address.length !== 42) {
         resultsDiv.innerHTML = `
@@ -38962,23 +35232,18 @@ async function analyzeContract() {
         `;
         return;
     }
-    
     // Loading
     btn.disabled = true;
     btn.innerHTML = '⏳ Analyse en cours...';
     btn.style.background = '#6b7280';
-    
     resultsDiv.innerHTML = '<div class="loading">🔍 Scan du smart contract en cours...<br><small>Analyse des fonctions, permissions, et sécurité</small></div>';
-    
     try {
         const response = await fetch('/api/analyze-contract', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address, chain })
         });
-        
         const data = await response.json();
-        
         if (data.error) {
             resultsDiv.innerHTML = `
                 <div class="result-card" style="border-left: 4px solid #ef4444;">
@@ -39008,7 +35273,6 @@ async function analyzeContract() {
             </div>
         `;
     }
-    
     btn.disabled = false;
     btn.innerHTML = '🔍 Analyser';
     btn.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
@@ -39018,7 +35282,6 @@ function displayResults(data) {
     const resultsDiv = document.getElementById('results');
     const scoreClass = data.score >= 70 ? 'score-high' : (data.score >= 40 ? 'score-medium' : 'score-low');
     const scoreEmoji = data.score >= 70 ? '✅' : (data.score >= 40 ? '⚠️' : '🚨');
-    
     let html = `
         <div class="result-card">
             <h2 style="text-align: center; margin-bottom: 10px;">Score de Sécurité</h2>
@@ -39028,7 +35291,6 @@ function displayResults(data) {
                 ${data.score >= 70 ? 'Contract relativement sûr ✅' : (data.score >= 40 ? 'Risques modérés détectés ⚠️' : 'DANGER - Risques critiques 🚨')}
             </p>
         </div>
-        
         <div class="result-card">
             <h3 style="margin-bottom: 20px; color: #1e293b;">📊 Détails de l'Analyse</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
@@ -39045,7 +35307,6 @@ function displayResults(data) {
                     <div style="font-weight: 600; margin-top: 5px;">${data.flags.length}</div>
                 </div>
             </div>
-            
             ${data.details ? `
                 <div style="margin-top: 25px; padding: 20px; background: rgba(59, 130, 246, 0.05); border-radius: 12px; border: 1px solid rgba(59, 130, 246, 0.2);">
                     <h4 style="margin-bottom: 15px; color: #3b82f6;">🔍 Informations Détaillées</h4>
@@ -39080,7 +35341,6 @@ function displayResults(data) {
             ` : ''}
         </div>
     `;
-    
     if (data.flags.length > 0) {
         html += `
             <div class="result-card">
@@ -39088,11 +35348,9 @@ function displayResults(data) {
                     ${data.flags.filter(f => f.severity === 'critical').length > 0 ? '🚨 Problèmes Critiques Détectés' : '⚠️ Problèmes Détectés'}
                 </h3>
         `;
-        
         data.flags.forEach(flag => {
             const flagClass = flag.severity === 'critical' ? 'flag-critical' : (flag.severity === 'warning' ? 'flag-warning' : 'flag-safe');
             const flagIcon = flag.severity === 'critical' ? '🚨' : (flag.severity === 'warning' ? '⚠️' : '✅');
-            
             html += `
                 <div class="${flagClass} flag-item">
                     <div style="font-size: 2em;">${flagIcon}</div>
@@ -39103,7 +35361,6 @@ function displayResults(data) {
                 </div>
             `;
         });
-        
         html += '</div>';
     } else {
         html += `
@@ -39113,7 +35370,6 @@ function displayResults(data) {
             </div>
         `;
     }
-    
     html += `
         <div style="text-align: center; margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
             <p style="color: #64748b; font-size: 0.9em; margin-bottom: 8px;">
@@ -39132,7 +35388,6 @@ function displayResults(data) {
             </p>
         </div>
     `;
-    
     resultsDiv.innerHTML = html;
 }
 </script>
@@ -39149,16 +35404,13 @@ async def analyze_contract(request: Request):
         body = await request.json()
         address = body.get('address', '').strip().lower()
         chain = body.get('chain', 'eth')
-        
         # Vérification basique du format
         if not address or not address.startswith('0x') or len(address) != 42:
             return JSONResponse({
                 "error": "Format d'adresse invalide",
                 "details": "L'adresse doit commencer par 0x et contenir 42 caractères."
             }, status_code=400)
-        
         print(f"🔍 Analyse demandée: {address} sur {chain.upper()}")
-        
         # Mapping des chains
         chain_mapping = {
             'eth': '1',
@@ -39170,21 +35422,17 @@ async def analyze_contract(request: Request):
             'fantom': '250',
             'base': '8453'
         }
-        
         chain_id = chain_mapping.get(chain, '1')
-        
         # Variables pour stocker les résultats de différentes sources
         goplus_data = None
         honeypot_data = None
         etherscan_data = None
-        
         # 🔥 SOURCE 1: GoPlus Security API (la plus complète)
         try:
             print(f"📡 Tentative GoPlus pour {address}...")
             async with httpx.AsyncClient() as client:
                 url = f"https://api.gopluslabs.io/api/v1/token_security/{chain_id}?contract_addresses={address}"
                 response = await client.get(url, timeout=15.0)
-                
                 if response.status_code == 200:
                     data = response.json()
                     if 'result' in data and data['result'] and address in data['result']:
@@ -39196,7 +35444,6 @@ async def analyze_contract(request: Request):
                     print(f"⚠️ GoPlus: HTTP {response.status_code}")
         except Exception as e:
             print(f"❌ GoPlus error: {e}")
-        
         # 🔥 SOURCE 2: Honeypot.is (si ETH ou BSC)
         if chain in ['eth', 'bsc'] and not goplus_data:
             try:
@@ -39208,7 +35455,6 @@ async def analyze_contract(request: Request):
                         "chainID": "1" if chain == 'eth' else "56"
                     }
                     response = await client.get(url, params=params, timeout=10.0)
-                    
                     if response.status_code == 200:
                         honeypot_data = response.json()
                         print(f"✅ Honeypot.is: Données trouvées")
@@ -39216,7 +35462,6 @@ async def analyze_contract(request: Request):
                         print(f"⚠️ Honeypot.is: HTTP {response.status_code}")
             except Exception as e:
                 print(f"❌ Honeypot.is error: {e}")
-        
         # 🔥 SOURCE 3: Etherscan/BSCScan (vérification basique)
         if chain == 'eth':
             explorer_api = "https://api.etherscan.io/api"
@@ -39227,7 +35472,6 @@ async def analyze_contract(request: Request):
         else:
             explorer_api = None
             explorer_name = None
-        
         if explorer_api and not goplus_data and not honeypot_data:
             try:
                 print(f"📡 Tentative {explorer_name} pour {address}...")
@@ -39240,7 +35484,6 @@ async def analyze_contract(request: Request):
                         "apikey": "YourApiKeyToken"  # Free tier, pas besoin de vraie clé
                     }
                     response = await client.get(explorer_api, params=params, timeout=10.0)
-                    
                     if response.status_code == 200:
                         data = response.json()
                         if data.get('status') == '1' and data.get('result'):
@@ -39258,14 +35501,12 @@ async def analyze_contract(request: Request):
                         print(f"⚠️ {explorer_name}: HTTP {response.status_code}")
             except Exception as e:
                 print(f"❌ {explorer_name} error: {e}")
-        
         # 🎯 ANALYSE INTELLIGENTE MULTI-SOURCES
         score = 100
         flags = []
         token_name = "Unknown Token"
         token_symbol = "N/A"
         details = {}
-        
         # Si aucune source n'a de données
         if not goplus_data and not honeypot_data and not etherscan_data:
             return JSONResponse({
@@ -39282,13 +35523,11 @@ async def analyze_contract(request: Request):
                 <strong>💡 Conseil:</strong> Vérifiez l'adresse sur {explorer_name or 'un explorateur blockchain'}.
                 """
             }, status_code=404)
-        
         # 📊 ANALYSE GOPLUS (source principale)
         if goplus_data:
             print("🎯 Analyse via GoPlus")
             token_name = goplus_data.get('token_name', 'Unknown')
             token_symbol = goplus_data.get('token_symbol', 'N/A')
-            
             # Honeypot
             if goplus_data.get('is_honeypot') == '1':
                 flags.append({
@@ -39297,14 +35536,12 @@ async def analyze_contract(request: Request):
                     "severity": "critical"
                 })
                 score = 0
-            
             # Taxes
             try:
                 buy_tax = float(goplus_data.get('buy_tax', '0') or '0')
                 sell_tax = float(goplus_data.get('sell_tax', '0') or '0')
                 details['buy_tax'] = f"{buy_tax}%"
                 details['sell_tax'] = f"{sell_tax}%"
-                
                 if sell_tax > 50:
                     flags.append({
                         "name": f"🚨 TAXE DE VENTE EXTRÊME: {sell_tax}%",
@@ -39326,7 +35563,6 @@ async def analyze_contract(request: Request):
                         "severity": "warning"
                     })
                     score -= 15
-                
                 if buy_tax > 20:
                     flags.append({
                         "name": f"⚠️ Taxe d'achat élevée: {buy_tax}%",
@@ -39336,7 +35572,6 @@ async def analyze_contract(request: Request):
                     score -= 15
             except:
                 pass
-            
             # Droits dangereux du owner
             if goplus_data.get('owner_change_balance') == '1':
                 flags.append({
@@ -39345,7 +35580,6 @@ async def analyze_contract(request: Request):
                     "severity": "critical"
                 })
                 score -= 45
-            
             if goplus_data.get('can_take_back_ownership') == '1':
                 flags.append({
                     "name": "🚨 Ownership récupérable",
@@ -39353,7 +35587,6 @@ async def analyze_contract(request: Request):
                     "severity": "critical"
                 })
                 score -= 40
-            
             if goplus_data.get('cannot_sell_all') == '1':
                 flags.append({
                     "name": "🚨 Impossible de tout vendre",
@@ -39361,7 +35594,6 @@ async def analyze_contract(request: Request):
                     "severity": "critical"
                 })
                 score -= 35
-            
             if goplus_data.get('hidden_owner') == '1':
                 flags.append({
                     "name": "🚨 Propriétaire caché",
@@ -39369,7 +35601,6 @@ async def analyze_contract(request: Request):
                     "severity": "critical"
                 })
                 score -= 30
-            
             # Warnings
             if goplus_data.get('is_open_source') == '0':
                 flags.append({
@@ -39378,7 +35609,6 @@ async def analyze_contract(request: Request):
                     "severity": "warning"
                 })
                 score -= 20
-            
             if goplus_data.get('is_proxy') == '1':
                 flags.append({
                     "name": "⚠️ Contract Proxy",
@@ -39386,7 +35616,6 @@ async def analyze_contract(request: Request):
                     "severity": "warning"
                 })
                 score -= 15
-            
             if goplus_data.get('is_mintable') == '1':
                 flags.append({
                     "name": "⚠️ Fonction mint active",
@@ -39394,7 +35623,6 @@ async def analyze_contract(request: Request):
                     "severity": "warning"
                 })
                 score -= 12
-            
             if goplus_data.get('transfer_pausable') == '1':
                 flags.append({
                     "name": "⚠️ Transferts pausables",
@@ -39402,21 +35630,17 @@ async def analyze_contract(request: Request):
                     "severity": "warning"
                 })
                 score -= 20
-            
             # Infos supplémentaires
             details['is_open_source'] = goplus_data.get('is_open_source') == '1'
             details['holder_count'] = goplus_data.get('holder_count', 'N/A')
             details['is_honeypot'] = goplus_data.get('is_honeypot') == '1'
-            
         # 📊 ANALYSE HONEYPOT.IS (fallback)
         elif honeypot_data:
             print("🎯 Analyse via Honeypot.is")
             honeypot_result = honeypot_data.get('honeypotResult', {})
             simulation_result = honeypot_data.get('simulationResult', {})
-            
             token_name = honeypot_data.get('token', {}).get('name', 'Unknown')
             token_symbol = honeypot_data.get('token', {}).get('symbol', 'N/A')
-            
             # Honeypot check
             if honeypot_result.get('isHoneypot'):
                 flags.append({
@@ -39425,15 +35649,12 @@ async def analyze_contract(request: Request):
                     "severity": "critical"
                 })
                 score = 0
-            
             # Taxes
             buy_tax = simulation_result.get('buyTax', 0)
             sell_tax = simulation_result.get('sellTax', 0)
-            
             if buy_tax or sell_tax:
                 details['buy_tax'] = f"{buy_tax}%"
                 details['sell_tax'] = f"{sell_tax}%"
-                
                 if sell_tax > 20:
                     flags.append({
                         "name": f"⚠️ Taxe de vente: {sell_tax}%",
@@ -39441,14 +35662,11 @@ async def analyze_contract(request: Request):
                         "severity": "warning"
                     })
                     score -= 25
-            
             details['is_honeypot'] = honeypot_result.get('isHoneypot', False)
-            
         # 📊 ANALYSE ETHERSCAN (fallback minimal)
         elif etherscan_data:
             print("🎯 Analyse via Etherscan/BSCScan")
             token_name = etherscan_data.get('contract_name', 'Unknown')
-            
             # Code vérifié?
             if not etherscan_data['is_verified']:
                 flags.append({
@@ -39460,7 +35678,6 @@ async def analyze_contract(request: Request):
             else:
                 # Analyser le code source pour patterns dangereux
                 source_code = etherscan_data.get('source_code', '').lower()
-                
                 if 'selfdestruct' in source_code:
                     flags.append({
                         "name": "🚨 SELFDESTRUCT dans le code",
@@ -39468,7 +35685,6 @@ async def analyze_contract(request: Request):
                         "severity": "critical"
                     })
                     score -= 40
-                
                 if 'onlyowner' in source_code and 'mint' in source_code:
                     flags.append({
                         "name": "⚠️ Fonction mint avec restriction owner",
@@ -39476,7 +35692,6 @@ async def analyze_contract(request: Request):
                         "severity": "warning"
                     })
                     score -= 15
-                
                 if source_code and 'renounceownership' not in source_code:
                     flags.append({
                         "name": "⚠️ Ownership non renonçable",
@@ -39484,10 +35699,8 @@ async def analyze_contract(request: Request):
                         "severity": "warning"
                     })
                     score -= 10
-            
             details['is_open_source'] = etherscan_data['is_verified']
             details['compiler'] = etherscan_data.get('compiler', 'N/A')
-        
         # Points positifs
         if score >= 70 and len([f for f in flags if f['severity'] == 'critical']) == 0:
             flags.append({
@@ -39495,15 +35708,11 @@ async def analyze_contract(request: Request):
                 "description": "Le contract semble relativement sûr.",
                 "severity": "safe"
             })
-        
         # Score final
         score = max(0, min(100, score))
-        
         # Source utilisée
         analysis_source = "GoPlus Security" if goplus_data else ("Honeypot.is" if honeypot_data else explorer_name)
-        
         print(f"✅ Analyse terminée: Score {score}/100 via {analysis_source}")
-        
         return JSONResponse({
             "score": score,
             "address": address,
@@ -39520,13 +35729,11 @@ async def analyze_contract(request: Request):
                 "blockchain_explorer": etherscan_data is not None
             }
         })
-        
     except httpx.TimeoutException:
         return JSONResponse({
             "error": "Timeout",
             "details": "Les APIs de sécurité mettent trop de temps à répondre. Réessayez dans quelques secondes."
         }, status_code=504)
-        
     except Exception as e:
         print(f"❌ Erreur critique analyze_contract: {e}")
         import traceback
@@ -39541,17 +35748,13 @@ async def analyze_contract(request: Request):
 @app.get("/ai-technical-analysis", response_class=HTMLResponse)
 async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
     """Technical Analysis Pro - Multi-crypto avec sélecteur"""
-    
     # Normaliser le symbol (toujours en lowercase)
     symbol = symbol.lower().strip()
-    
     # 🔍 DEBUG LOG
     print(f"📊 AI Technical Analysis demandé pour: {symbol}")
-    
     try:
         # Get top 50 cryptos for dropdown
         all_cryptos = await get_top_50_cryptos()
-        
         # Build dropdown options WITH PRICES
         dropdown_options = ""
         for crypto in all_cryptos[:50]:
@@ -39559,24 +35762,19 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
             crypto_name = crypto.get('name', '')
             crypto_symbol = crypto.get('symbol', '').upper()
             crypto_price = crypto.get('current_price', 0)
-            
             # Format price
             if crypto_price < 1:
                 price_str = f"${crypto_price:,.6f}"
             else:
                 price_str = f"${crypto_price:,.2f}"
-            
             selected = 'selected' if crypto_id == symbol else ''
             dropdown_options += f'<option value="{crypto_id}" {selected}>{crypto_symbol} - {crypto_name} ({price_str})</option>'
-        
         # Fetch data for selected crypto
         df = await analyzer.get_ohlcv_data(symbol, days=60)
-        
         if df is None or len(df) == 0:
             # Check if it's a stablecoin
             stablecoins = ['tether', 'usd-coin', 'dai', 'true-usd', 'paxos-standard', 'binance-usd', 'frax', 'tether-gold']
             is_stablecoin = symbol.lower() in stablecoins
-            
             return HTMLResponse(SIDEBAR + """
             <head>
                 <meta charset="UTF-8">
@@ -39627,23 +35825,19 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
             </body>
             </html>
             """)
-        
         # Calculate all indicators
         indicators = analyzer.calculate_indicators(df)
         patterns = analyzer.detect_patterns(df)
         sr_levels = analyzer.find_support_resistance(df)
         reversal_signals = analyzer.analyze_reversal_points(df, indicators)
-        
         # 🔍 DEBUG: Log des indicateurs calculés
         print(f"✅ Indicateurs calculés pour {symbol}:")
         print(f"   RSI: {indicators['rsi']:.2f}")
         print(f"   MACD: {indicators['macd']:.2f}")
         print(f"   Stoch K: {indicators['stoch_k']:.2f}")
         print(f"   ADX: {indicators['adx']:.2f}")
-        
         # Get crypto info from CoinGecko (RELIABLE SOURCE)
         selected_crypto = next((c for c in all_cryptos if c.get('id') == symbol), None)
-        
         if selected_crypto:
             # Use CoinGecko price (REAL and UP-TO-DATE)
             current_price = selected_crypto.get('current_price', 0)
@@ -39656,12 +35850,10 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
             change_24h = ((df['close'].iloc[-1] - df['close'].iloc[-24]) / df['close'].iloc[-24]) * 100 if len(df) >= 24 else 0
             crypto_display_name = symbol.upper()
             crypto_symbol_display = symbol.upper()
-        
         # Build indicators HTML with INLINE styles only
         rsi_class = 'oversold' if indicators['rsi'] < 30 else ('overbought' if indicators['rsi'] > 70 else 'neutral')
         macd_class = 'bullish' if indicators['macd_diff'] > 0 else 'bearish'
         ema200_line = '<div>EMA200: $' + "{:,.0f}".format(indicators['ema200']) + '</div>' if indicators['ema200'] else ''
-        
         # Signal colors
         signal_colors = {
             'oversold': 'background:#dcfce7;color:#166534;',
@@ -39670,30 +35862,25 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
             'bearish': 'background:#fecaca;color:#991b1b;',
             'neutral': 'background:#f3f4f6;color:#4b5563;'
         }
-        
         indicators_html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-bottom:30px;">'
-        
         # RSI Card
         indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
         indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📊</span><span style="font-weight:bold;">RSI (14)</span></div>'
         indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['rsi']) + '</div>'
         indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;' + signal_colors[rsi_class] + '">' + indicators['rsi_signal'] + '</div>'
         indicators_html += '</div>'
-        
         # MACD Card
         indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
         indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📈</span><span style="font-weight:bold;">MACD</span></div>'
         indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['macd']) + '</div>'
         indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;' + signal_colors[macd_class] + '">' + indicators['macd_trend'] + '</div>'
         indicators_html += '</div>'
-        
         # Bollinger Card
         indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
         indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📉</span><span style="font-weight:bold;">Bollinger</span></div>'
         indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">$' + "{:,.2f}".format(current_price) + '</div>'
         indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['bb_position'] + '</div>'
         indicators_html += '</div>'
-        
         # Stochastic Card
         indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
         indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">⚡</span><span style="font-weight:bold;">Stochastique</span></div>'
@@ -39701,14 +35888,12 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         indicators_html += '<div style="font-size:1.8em;font-weight:700;color:#667eea;">%D: ' + "{:.1f}".format(indicators['stoch_d']) + '</div>'
         indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['stoch_signal'] + '</div>'
         indicators_html += '</div>'
-        
         # ADX Card
         indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
         indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">💪</span><span style="font-weight:bold;">ADX</span></div>'
         indicators_html += '<div style="font-size:2.5em;font-weight:900;color:#667eea;margin:15px 0;">' + "{:.2f}".format(indicators['adx']) + '</div>'
         indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['adx_strength'] + '</div>'
         indicators_html += '</div>'
-        
         # EMAs Card
         indicators_html += '<div style="background:white;color:#333;padding:20px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">'
         indicators_html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-size:2em;">📐</span><span style="font-weight:bold;">EMAs</span></div>'
@@ -39719,9 +35904,7 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         indicators_html += '</div>'
         indicators_html += '<div style="padding:8px;border-radius:6px;font-weight:600;text-align:center;margin-top:10px;font-size:0.9em;background:#f3f4f6;color:#4b5563;">' + indicators['ema_alignment'] + '</div>'
         indicators_html += '</div>'
-        
         indicators_html += '</div>'
-        
         # Build patterns HTML
         patterns_html = ""
         if patterns:
@@ -39735,7 +35918,6 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
                 patterns_html += '</div>'
         else:
             patterns_html = "<p style='text-align:center;opacity:0.7;'>Aucun pattern détecté actuellement</p>"
-        
         # Build S/R HTML
         resistances_html = ""
         if sr_levels['resistances']:
@@ -39743,14 +35925,12 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
                 resistances_html += "<div style='padding:10px;background:#f3f4f6;border-radius:8px;margin:8px 0;'>$" + "{:,.2f}".format(r) + "</div>"
         else:
             resistances_html = "<p style='opacity:0.6;'>Aucune</p>"
-        
         supports_html = ""
         if sr_levels['supports']:
             for s in sr_levels['supports'][:3]:
                 supports_html += "<div style='padding:10px;background:#f3f4f6;border-radius:8px;margin:8px 0;'>$" + "{:,.2f}".format(s) + "</div>"
         else:
             supports_html = "<p style='opacity:0.6;'>Aucun</p>"
-        
         # Build reversal signals HTML
         reversal_html = ""
         if reversal_signals:
@@ -39768,7 +35948,6 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
                 reversal_html += '</div></div>'
         else:
             reversal_html = "<p style='text-align:center;opacity:0.7;'>Aucun signal de retournement détecté</p>"
-        
         # Build complete page
         page = SIDEBAR
         page += '<!DOCTYPE html>'
@@ -39781,19 +35960,16 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '</head>'
         page += '<body>'
         page += '<div class="main-content">'
-        
         # Header with crypto selector
         page += '<div style="text-align:center;padding:30px;background:rgba(0,0,0,0.3);border-radius:20px;margin-bottom:30px;backdrop-filter:blur(10px);">'
         page += '<h1 style="font-size:2.5em;margin:0 0 10px 0;color:white;">🎯 AI Technical Analysis Pro</h1>'
         page += '<p style="font-size:1.2em;opacity:0.9;margin:0 0 20px 0;color:white;">Analyse technique professionnelle en temps réel</p>'
-        
         # DEBUG: Afficher le symbol reçu
         page += '<div style="background:rgba(255,255,255,0.1);padding:10px;border-radius:8px;margin:10px 0;font-size:0.9em;color:#fbbf24;">'
         page += f'🔍 Crypto demandée: <strong>{symbol}</strong> | Crypto affichée: <strong>{crypto_symbol_display} ({crypto_display_name})</strong>'
         page += f'<br>📊 RSI: {indicators["rsi"]:.2f} | MACD: {indicators["macd"]:.2f} | Stoch K: {indicators["stoch_k"]:.2f} | ADX: {indicators["adx"]:.2f}'
         page += f'<br>⏰ Généré à: {datetime.now().strftime("%H:%M:%S")}'
         page += '</div>'
-        
         # Crypto selector
         page += '<div style="margin-top:20px;">'
         page += '<label style="font-size:1.1em;color:white;margin-right:15px;font-weight:600;">Sélectionner une crypto:</label>'
@@ -39802,7 +35978,6 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '</select>'
         page += '</div>'
         page += '</div>'
-        
         # Current crypto display with PRICE
         page += '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:center;text-align:center;padding:25px;background:linear-gradient(135deg,#06b6d4,#3b82f6);border-radius:15px;margin-bottom:30px;box-shadow:0 10px 30px rgba(6,182,212,0.4);">'
         page += '<div style="font-size:2em;font-weight:700;color:white;">' + crypto_symbol_display + '</div>'
@@ -39814,15 +35989,12 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '</div>'
         page += '<div style="font-size:2em;font-weight:700;color:white;">' + crypto_display_name + '</div>'
         page += '</div>'
-        
         # Section 1: Indicators
         page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">📊 INDICATEURS TECHNIQUES</div>'
         page += indicators_html
-        
         # Section 2: Patterns
         page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">🎯 PATTERNS CHARTISTES DÉTECTÉS</div>'
         page += patterns_html
-        
         # Section 3: S/R
         page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">📍 SUPPORT & RÉSISTANCE</div>'
         page += '<div style="background:white;color:#333;padding:30px;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);display:grid;grid-template-columns:1fr auto 1fr;gap:30px;margin-bottom:30px;">'
@@ -39840,17 +36012,13 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += supports_html
         page += '</div>'
         page += '</div>'
-        
         # Section 4: Reversals
         page += '<div style="font-size:1.8em;padding:15px 20px;background:rgba(255,255,255,0.1);border-radius:12px;border-left:5px solid #fbbf24;margin:30px 0 20px;backdrop-filter:blur(10px);color:white;">🔄 POINTS DE RETOURNEMENT POTENTIELS</div>'
         page += reversal_html
-        
         # Section 5: How to use (informations)
         page += '<div style="margin:60px 0 40px;padding:40px;background:linear-gradient(135deg,rgba(6,182,212,0.1),rgba(59,130,246,0.1));border:2px solid #06b6d4;border-radius:20px;">'
         page += '<h2 style="font-size:2em;margin-bottom:30px;color:#06b6d4;text-align:center;">📚 À QUOI SERT CETTE PAGE ?</h2>'
-        
         page += '<div style="display:grid;gap:25px;">'
-        
         # Step 1
         page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
         page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">1</div>'
@@ -39859,7 +36027,6 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Cette page analyse en temps réel les données de prix sur 60 jours et calcule automatiquement 6 indicateurs techniques professionnels (RSI, MACD, Bollinger, Stochastique, ADX, EMAs). Les mêmes indicateurs utilisés par les traders professionnels sur TradingView!</p>'
         page += '</div>'
         page += '</div>'
-        
         # Step 2
         page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
         page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">2</div>'
@@ -39868,7 +36035,6 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">L\'IA détecte automatiquement les patterns chartistes classiques (Head & Shoulders, Double Top/Bottom, Triangles, etc.) avec un niveau de confiance et des prix cibles. Ces patterns sont utilisés pour prédire les mouvements futurs du prix.</p>'
         page += '</div>'
         page += '</div>'
-        
         # Step 3
         page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
         page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">3</div>'
@@ -39877,7 +36043,6 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Identifie automatiquement les niveaux clés de support (où le prix a tendance à rebondir) et de résistance (où le prix a du mal à passer). Ces niveaux sont cruciaux pour prendre des décisions de trading.</p>'
         page += '</div>'
         page += '</div>'
-        
         # Step 4
         page += '<div style="display:flex;gap:20px;align-items:flex-start;padding:25px;background:rgba(255,255,255,0.05);border-radius:15px;border-left:4px solid #06b6d4;">'
         page += '<div style="background:linear-gradient(135deg,#06b6d4,#3b82f6);color:white;width:50px;height:50px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5em;font-weight:700;flex-shrink:0;">4</div>'
@@ -39886,9 +36051,7 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '<p style="color:rgba(255,255,255,0.8);line-height:1.6;">Génère des signaux d\'achat/vente avec points d\'entrée, objectifs de profit (Target), stop-loss et ratio risque/récompense (R/R). Chaque signal est accompagné d\'un niveau de confiance et d\'une explication.</p>'
         page += '</div>'
         page += '</div>'
-        
         page += '</div>'
-        
         # Tips section
         page += '<div style="margin-top:30px;padding:20px;background:rgba(251,191,36,0.1);border-left:4px solid #fbbf24;border-radius:10px;">'
         page += '<h3 style="font-size:1.3em;color:#fbbf24;margin-bottom:15px;">💡 CONSEILS D\'UTILISATION</h3>'
@@ -39902,11 +36065,8 @@ async def ai_technical_analysis_page(request: Request, symbol: str = "bitcoin"):
         page += '<li><strong>Ne tradez jamais uniquement sur ces signaux:</strong> Utilisez-les comme confirmation de votre propre analyse</li>'
         page += '</ul>'
         page += '</div>'
-        
         page += '</div>'
-        
         page += '</div>'
-        
         # JavaScript for crypto selector and auto-refresh
         page += '''<script>
 console.log('🎯 AI Technical Analysis chargé - Symbol actuel:', window.location.search);
@@ -39915,9 +36075,7 @@ function changeCrypto() {
     const selector = document.getElementById('cryptoSelector');
     const selectedCrypto = selector.value;
     const timestamp = new Date().getTime();
-    
     console.log('🔄 Changement de crypto vers:', selectedCrypto);
-    
     // FORCE RELOAD COMPLET - pas de cache!
     window.location.replace('/ai-technical-analysis?symbol=' + selectedCrypto + '&t=' + timestamp);
 }
@@ -39928,7 +36086,6 @@ setTimeout(function() {
     location.reload(true);
 }, 300000);
 </script>'''
-        
         # Guide d'utilisation
         page += '<div style="max-width: 1200px; margin: 60px auto 40px; padding: 40px; background: rgba(16,185,129,0.05); border-radius: 20px; border: 1px solid rgba(16,185,129,0.3);">'
         page += '<h2 style="text-align: center; color: #10b981; font-size: 2em; margin-bottom: 30px;">Guide - Technical Analysis</h2>'
@@ -39947,10 +36104,8 @@ setTimeout(function() {
         page += '</div>'
         page += '</div>'
         page += '</div>'
-        
         # ==================== SECTIONS EXPLICATIVES ====================
         page += '<div style="max-width: 1400px; margin: 60px auto; padding: 0 20px;">'
-        
         # Comment ça marche?
         page += '<div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(59, 130, 246, 0.2);">'
         page += '<h2 style="color: #3b82f6; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">'
@@ -39958,7 +36113,6 @@ setTimeout(function() {
         page += '</h2>'
         page += '<p style="color: #e2e8f0; font-size: 1.1em; line-height: 1.8;">L\'analyse technique est une méthode d\'évaluation des cryptos basée sur l\'étude des graphiques de prix et des volumes. Nous analysons 50+ cryptos en temps réel avec 6 indicateurs professionnels pour identifier les meilleures opportunités de trading.</p>'
         page += '</div>'
-        
         # Qu'est-ce que l'Analyse Technique?
         page += '<div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(99, 102, 241, 0.2);">'
         page += '<h2 style="color: #6366f1; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">'
@@ -39969,7 +36123,6 @@ setTimeout(function() {
         page += '<p style="color: #818cf8; margin: 0; font-size: 1.05em;"><strong>💡 Principe clé:</strong> L\'historique des prix tend à se répéter car les émotions humaines (peur, avidité) sont prévisibles.</p>'
         page += '</div>'
         page += '</div>'
-        
         # Comment utiliser cet outil?
         page += '<div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(16, 185, 129, 0.2);">'
         page += '<h2 style="color: #10b981; font-size: 2em; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">'
@@ -39994,14 +36147,12 @@ setTimeout(function() {
         page += '</div>'
         page += '</div>'
         page += '</div>'
-        
         # Les 6 Indicateurs Expliqués
         page += '<div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(245, 158, 11, 0.2);">'
         page += '<h2 style="color: #f59e0b; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">'
         page += '<span style="font-size: 1.5em;">📊</span> Les 6 Indicateurs Expliqués'
         page += '</h2>'
         page += '<div style="display: grid; gap: 20px;">'
-        
         # RSI
         page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
         page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">📊 RSI (Relative Strength Index)</h3>'
@@ -40012,7 +36163,6 @@ setTimeout(function() {
         page += '<li><strong style="color: #6366f1;">RSI 40-60:</strong> Zone neutre</li>'
         page += '</ul>'
         page += '</div>'
-        
         # MACD
         page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
         page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">📈 MACD (Moving Average Convergence Divergence)</h3>'
@@ -40023,7 +36173,6 @@ setTimeout(function() {
         page += '<li><strong>Divergence:</strong> Alerte de retournement potentiel</li>'
         page += '</ul>'
         page += '</div>'
-        
         # Bollinger
         page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
         page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">📉 Bollinger Bands</h3>'
@@ -40034,7 +36183,6 @@ setTimeout(function() {
         page += '<li><strong>Bandes qui se resserrent:</strong> Volatilité imminente</li>'
         page += '</ul>'
         page += '</div>'
-        
         # Stochastic
         page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
         page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">⚡ Stochastique</h3>'
@@ -40045,7 +36193,6 @@ setTimeout(function() {
         page += '<li><strong>Croisement %K/%D:</strong> Signal d\'entrée/sortie</li>'
         page += '</ul>'
         page += '</div>'
-        
         # ADX
         page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
         page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">💪 ADX (Average Directional Index)</h3>'
@@ -40056,7 +36203,6 @@ setTimeout(function() {
         page += '<li><strong>ADX > 50:</strong> Tendance très puissante</li>'
         page += '</ul>'
         page += '</div>'
-        
         # EMAs
         page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 25px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
         page += '<h3 style="color: #f59e0b; margin-bottom: 12px; font-size: 1.3em;">📐 EMAs (Exponential Moving Averages)</h3>'
@@ -40067,10 +36213,8 @@ setTimeout(function() {
         page += '<li><strong>Prix > EMA200:</strong> Tendance haussière long terme</li>'
         page += '</ul>'
         page += '</div>'
-        
         page += '</div>'
         page += '</div>'
-        
         # Points Importants
         page += '<div style="background: linear-gradient(135deg, #7f1d1d 0%, #450a0a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(239, 68, 68, 0.3);">'
         page += '<h2 style="color: #ef4444; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">'
@@ -40085,52 +36229,41 @@ setTimeout(function() {
         page += '<li><strong>Les données sont en direct:</strong> Chaque rechargement met à jour les indicateurs avec les dernières données CoinGecko.</li>'
         page += '</ul>'
         page += '</div>'
-        
         # Comprendre les Résultats
         page += '<div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 40px; border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(168, 85, 247, 0.2);">'
         page += '<h2 style="color: #a855f7; font-size: 2em; margin-bottom: 25px; display: flex; align-items: center; gap: 15px;">'
         page += '<span style="font-size: 1.5em;">💡</span> Comprendre les Résultats'
         page += '</h2>'
         page += '<div style="display: grid; gap: 20px;">'
-        
         page += '<div style="background: rgba(16, 185, 129, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #10b981;">'
         page += '<h3 style="color: #10b981; margin-bottom: 10px;">Signal BULLISH (Haussier)</h3>'
         page += '<p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Plusieurs indicateurs alignés vers le haut = opportunité d\'ACHAT. Idéal si 4+ indicateurs sont BULLISH en même temps.</p>'
         page += '</div>'
-        
         page += '<div style="background: rgba(239, 68, 68, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #ef4444;">'
         page += '<h3 style="color: #ef4444; margin-bottom: 10px;">Signal BEARISH (Baissier)</h3>'
         page += '<p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Plusieurs indicateurs alignés vers le bas = opportunité de VENTE. Évitez d\'acheter si 4+ indicateurs sont BEARISH.</p>'
         page += '</div>'
-        
         page += '<div style="background: rgba(99, 102, 241, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #6366f1;">'
         page += '<h3 style="color: #6366f1; margin-bottom: 10px;">Signaux Divergents</h3>'
         page += '<p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Si les indicateurs se contredisent (3 BULLISH, 3 BEARISH) = marché indécis. Attendez un alignement plus clair avant de trader.</p>'
         page += '</div>'
-        
         page += '<div style="background: rgba(245, 158, 11, 0.1); padding: 20px; border-radius: 12px; border-left: 4px solid #f59e0b;">'
         page += '<h3 style="color: #f59e0b; margin-bottom: 10px;">Patterns Chartistes</h3>'
         page += '<p style="color: #cbd5e1; line-height: 1.7; margin: 0;">Triangle, tête-épaules, double top/bottom = Configurations graphiques avec target de prix. Le pourcentage de confiance indique la fiabilité du pattern.</p>'
         page += '</div>'
-        
         page += '</div>'
         page += '</div>'
-        
         page += '</div>'
         # ==================== FIN SECTIONS EXPLICATIVES ====================
-        
         page += '</body>'
         page += '</html>'
-        
         # Headers pour forcer le rechargement et éviter le cache
         headers = {
             'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
             'Pragma': 'no-cache',
             'Expires': '0'
         }
-        
         return HTMLResponse(page, headers=headers)
-        
     except Exception as e:
         error_page = SIDEBAR
         error_page += '<!DOCTYPE html>'
@@ -40193,13 +36326,10 @@ async def crypto_academy_page(request: Request):
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
-    
     if not username:
         return RedirectResponse(url="/login?redirect=/crypto-academy")
-    
     # Récupérer la progression réelle depuis la DB
     progress = get_user_progress(username)
-    
     # Organiser les leçons par parcours
     parcours_lessons = {
         "bases": ["bases_1", "bases_2", "bases_3", "bases_4", "bases_5", "bases_6", 
@@ -40212,13 +36342,11 @@ async def crypto_academy_page(request: Request):
                      "securite_7", "securite_8", "securite_9", "securite_10", "securite_11", "securite_12",
                      "securite_13", "securite_14", "securite_15", "securite_16", "securite_17", "securite_18"]
     }
-    
     parcours_titles = {
         "bases": "🌱 LES BASES DE LA CRYPTO",
         "trading": "📈 TRADING 101",
         "securite": "🔒 SÉCURITÉ CRYPTO"
     }
-    
     # Générer le HTML pour chaque parcours
     all_parcours_html = ""
     for parcours_key, lesson_ids in parcours_lessons.items():
@@ -40231,24 +36359,19 @@ async def crypto_academy_page(request: Request):
             </p>
             <div class="lessons-grid">
         """
-        
         for lesson_id in lesson_ids:
             if lesson_id in LESSONS_DATA:
                 lesson = LESSONS_DATA[lesson_id]
                 status = get_lesson_status(username, lesson_id)
-                
                 completed_class = "completed" if status["completed"] else ""
                 status_text = f"✅ Complétée - {status['score']}/2" if status["completed"] else "📝 Non complétée"
-                
                 all_parcours_html += f"""
                     <div class="lesson-card {completed_class}" onclick="window.location.href='/crypto-academy/lesson/{lesson_id}'">
                         <div class="lesson-title">{lesson["title"]}</div>
                         <div class="lesson-status">{status_text}</div>
                     </div>
                 """
-        
         all_parcours_html += "</div>"
-    
     html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -40310,7 +36433,6 @@ async def crypto_academy_page(request: Request):
                 </p>
             </div>
         </div>
-        
         <div class="stats-row">
             <div class="stat-box">
                 <div class="stat-value">{progress['level']}</div>
@@ -40325,12 +36447,10 @@ async def crypto_academy_page(request: Request):
                 <div class="stat-label">Badges</div>
             </div>
         </div>
-        
         {all_parcours_html}
     </div>
 </body>
 </html>"""
-    
     return HTMLResponse(SIDEBAR + html)
 
 
@@ -40340,16 +36460,12 @@ async def lesson_page(lesson_id: str, request: Request):
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
-    
     if not username:
         return RedirectResponse(url="/login?redirect=/crypto-academy")
-    
     lesson = LESSONS_DATA.get(lesson_id)
     if not lesson:
         return RedirectResponse(url="/crypto-academy")
-    
     status = get_lesson_status(username, lesson_id)
-    
     # Générer le HTML du quiz
     quiz_html = ""
     for i, q in enumerate(lesson['quiz']):
@@ -40361,14 +36477,12 @@ async def lesson_page(lesson_id: str, request: Request):
                     <span>{option}</span>
                 </label>
             """
-        
         quiz_html += f"""
             <div class="quiz-question">
                 <h3>Question {i+1}: {q['q']}</h3>
                 <div class="quiz-options">{options_html}</div>
             </div>
         """
-    
     html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -40421,11 +36535,9 @@ async def lesson_page(lesson_id: str, request: Request):
             <h1 style="font-size: 2em;">{lesson['title']}</h1>
             {f'<p style="margin-top: 15px; color: #10b981; font-size: 1.1em;">✅ Complétée - Score: {status["score"]}/2</p>' if status['completed'] else ''}
         </div>
-        
         <div class="lesson-content">
             <p>{lesson['content']}</p>
         </div>
-        
         <div class="quiz-section">
             <h2 style="color: #60a5fa; margin-bottom: 30px; font-size: 1.8em;">📝 Quiz de Validation</h2>
             <form id="quizForm">
@@ -40436,63 +36548,52 @@ async def lesson_page(lesson_id: str, request: Request):
                 <div id="result"></div>
             </form>
         </div>
-        
         <div style="text-align: center;">
             <a href="/crypto-academy" class="back-link">← Retour aux leçons</a>
         </div>
     </div>
-    
     <script>
         const correctAnswers = {[q['correct'] for q in lesson['quiz']]};
-        
         // Gérer la sélection des options
         document.querySelectorAll('.quiz-option').forEach(option => {{
             option.addEventListener('click', function() {{
                 const radio = this.querySelector('input[type="radio"]');
                 radio.checked = true;
-                
                 // Retirer selected de toutes les options de cette question
                 const questionDiv = this.closest('.quiz-question');
                 questionDiv.querySelectorAll('.quiz-option').forEach(opt => {{
                     opt.classList.remove('selected');
                 }});
-                
                 // Ajouter selected à l'option cliquée
                 this.classList.add('selected');
             }});
         }});
-        
         function submitQuiz() {{
             const form = document.getElementById('quizForm');
             const formData = new FormData(form);
             let score = 0;
-            
             // Vérifier chaque réponse
             correctAnswers.forEach((correct, index) => {{
                 const userAnswer = formData.get('q' + index);
                 if (parseInt(userAnswer) === correct) {{
                     score++;
                 }}
-                
                 // Marquer visuellement les réponses
                 const questionDiv = form.querySelectorAll('.quiz-question')[index];
                 questionDiv.querySelectorAll('.quiz-option').forEach((option, optIndex) => {{
                     if (optIndex === correct) {{
                         option.classList.add('correct');
                     }}
-                    
                     const radio = option.querySelector('input[type="radio"]');
                     if (radio.checked && optIndex !== correct) {{
                         option.classList.add('incorrect');
                     }}
                 }});
             }});
-            
             // Afficher le résultat
             const resultDiv = document.getElementById('result');
             const isPerfect = score === correctAnswers.length;
             const xpEarned = isPerfect ? 150 : 100;
-            
             resultDiv.className = 'result-message success';
             resultDiv.innerHTML = `
                 <h3>${{isPerfect ? '🎉 Parfait ! Quiz Réussi !' : '📚 Bien joué !'}}</h3>
@@ -40504,7 +36605,6 @@ async def lesson_page(lesson_id: str, request: Request):
                     Redirection dans 3 secondes...
                 </p>
             `;
-            
             // Envoyer au serveur pour enregistrer la progression
             fetch('/api/academy/complete-lesson', {{
                 method: 'POST',
@@ -40526,7 +36626,6 @@ async def lesson_page(lesson_id: str, request: Request):
     </script>
 </body>
 </html>"""
-    
     return HTMLResponse(content=html)
 
 
@@ -40536,21 +36635,17 @@ async def academy_progress_page(request: Request):
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
-    
     if not username:
         return RedirectResponse(url="/login?redirect=/academy-progress")
-    
     # Récupérer les stats réelles depuis la base de données
     progress = get_user_progress(username)
     user_badges = get_user_badges(username)
     unlocked_ids = [b["badge_id"] for b in user_badges]
-    
     # Générer les badges
     badges_html = ""
     for badge_id, badge_info in BADGES_DATA.items():
         is_unlocked = badge_id in unlocked_ids
         card_class = "unlocked" if is_unlocked else "locked"
-        
         badges_html += f"""
             <div class="badge-card {card_class}">
                 <div class="badge-icon">{badge_info['icon']}</div>
@@ -40559,7 +36654,6 @@ async def academy_progress_page(request: Request):
                 {f'<p class="unlocked-text">✅ Débloqué</p>' if is_unlocked else '<p class="locked-text">🔒 Verrouillé</p>'}
             </div>
         """
-    
     html = f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -40613,7 +36707,6 @@ async def academy_progress_page(request: Request):
                 Niveau {progress['level']} • {progress['total_xp']} XP
             </div>
         </div>
-        
         <div class="stats-grid">
             <div class="stat-card">
                 <h3>📚 Leçons Complétées</h3>
@@ -40639,7 +36732,6 @@ async def academy_progress_page(request: Request):
                 <p style="color: #94a3b8;">jours consécutifs</p>
             </div>
         </div>
-        
         <div class="badges-section">
             <h2 style="color: #60a5fa; margin-bottom: 20px; font-size: 1.8em;">
                 🏅 Collection de Badges
@@ -40648,7 +36740,6 @@ async def academy_progress_page(request: Request):
                 {badges_html}
             </div>
         </div>
-        
         <div style="text-align: center; margin-top: 40px;">
             <a href="/crypto-academy" style="color: #60a5fa; text-decoration: none; font-size: 1.1em;">
                 ← Retour à l'Academy
@@ -40657,7 +36748,6 @@ async def academy_progress_page(request: Request):
     </div>
 </body>
 </html>"""
-    
     return HTMLResponse(SIDEBAR + html)
 
 
@@ -40668,20 +36758,16 @@ async def ai_coach_chat(request: Request):
         # Récupérer le message
         body = await request.json()
         user_message = body.get("message", "")
-        
         if not user_message:
             return JSONResponse({"error": "Message vide"}, status_code=400)
-        
         # Vérifier si l'API key est configurée
         if not ANTHROPIC_API_KEY:
             return JSONResponse({
                 "success": False,
                 "message": "⚠️ API Claude non configurée. Contacte l'administrateur."
             })
-        
         # Appeler Claude API
         import httpx
-        
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 "https://api.anthropic.com/v1/messages",
@@ -40706,7 +36792,6 @@ Question: {user_message}"""
                     ]
                 }
             )
-            
             if response.status_code == 200:
                 data = response.json()
                 # Extraire le texte de la réponse
@@ -40714,7 +36799,6 @@ Question: {user_message}"""
                 for block in data.get("content", []):
                     if block.get("type") == "text":
                         ai_response += block.get("text", "")
-                
                 return JSONResponse({
                     "success": True,
                     "message": ai_response if ai_response else "Désolé, je n'ai pas pu générer une réponse. 🤔"
@@ -40724,7 +36808,6 @@ Question: {user_message}"""
                     "success": False,
                     "message": "Désolé, je rencontre un problème technique. Réessaye dans un instant ! 🔧"
                 })
-                
     except Exception as e:
         print(f"❌ Erreur AI Coach: {e}")
         return JSONResponse({
@@ -40739,17 +36822,13 @@ async def api_complete_lesson(request: Request):
     session_token = request.cookies.get("session_token")
     user_data = get_user_from_token(session_token)
     username = user_data if isinstance(user_data, str) else user_data.get("username") if user_data else None
-    
     if not username:
         return {"success": False, "error": "Not authenticated"}
-    
     data = await request.json()
     lesson_id = data.get("lesson_id")
     score = data.get("score", 0)
     total = data.get("total", 0)
-    
     result = complete_lesson(username, lesson_id, score, total)
-    
     return {
         "success": True,
         "xp_earned": result.get("xp_earned"),
@@ -40768,12 +36847,9 @@ async def api_complete_lesson(request: Request):
 async def contact_page(request: Request):
     """Page de contact avec sidebar"""
     user_data = get_user_from_request(request)
-    
     if not user_data:
         return RedirectResponse(url="/login", status_code=303)
-    
     username = user_data.get("username", "Utilisateur")
-    
     html = """<!DOCTYPE html>
     <html lang="fr">
     <head>
@@ -40788,36 +36864,30 @@ async def contact_page(request: Request):
                 <h1>📧 Contactez-nous</h1>
                 <p>Remplissez le formulaire ci-dessous</p>
             </div>
-            
             <div class="card">
                 <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 30px;">
                     Bonjour <strong style="color: #06b6d4;">""" + username + """</strong>, 
                     nous vous répondrons dans les plus brefs délais.
                 </p>
-                
                 <form method="POST" action="/contact" style="width: 100%;">
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #e2e8f0;">Nom complet *</label>
                         <input type="text" name="name" required placeholder="Votre nom">
                     </div>
-                    
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #e2e8f0;">Email *</label>
                         <input type="email" name="email" required placeholder="votre@email.com">
                     </div>
-                    
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #e2e8f0;">Sujet</label>
                         <input type="text" name="subject" placeholder="Sujet de votre message">
                     </div>
-                    
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #e2e8f0;">Message *</label>
                         <textarea name="message" required placeholder="Votre message..." rows="6" 
                             style="width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; 
                             border-radius: 8px; color: #e2e8f0; font-size: 14px; resize: vertical; font-family: inherit;"></textarea>
                     </div>
-                    
                     <button type="submit" style="width: 100%;">
                         Envoyer le message
                     </button>
@@ -40827,7 +36897,6 @@ async def contact_page(request: Request):
     </body>
     </html>
     """
-    
     return HTMLResponse(SIDEBAR + html)
 
 # Route 2: POST /contact - Soumettre message
@@ -40835,37 +36904,28 @@ async def contact_page(request: Request):
 async def submit_contact(request: Request):
     """Traiter le formulaire de contact"""
     user_data = get_user_from_request(request)
-    
     if not user_data:
         return RedirectResponse(url="/login", status_code=303)
-    
     try:
         form_data = await request.form()
         name = form_data.get("name", "")
         email = form_data.get("email", "")
         subject = form_data.get("subject", "")
         message = form_data.get("message", "")
-        
         if not name or not email or not message:
             raise HTTPException(400, "Tous les champs requis manquants")
-        
         user_id = user_data.get("id", user_data.get("username"))
-        
         conn = get_db_connection()
         c = conn.cursor()
-        
         if DB_CONFIG["type"] == "postgres":
             c.execute("""INSERT INTO contact_messages (name, email, subject, message, user_id)
                 VALUES (%s, %s, %s, %s, %s)""", (name, email, subject, message, user_id))
         else:
             c.execute("""INSERT INTO contact_messages (name, email, subject, message, user_id)
                 VALUES (?, ?, ?, ?, ?)""", (name, email, subject, message, user_id))
-        
         conn.commit()
         conn.close()
-        
         print(f"✅ Message contact reçu de {name} ({email})")
-        
         # Page de succès avec sidebar
         success_html = """<!DOCTYPE html>
         <html lang="fr">
@@ -40891,9 +36951,7 @@ async def submit_contact(request: Request):
         </body>
         </html>
         """
-        
         return HTMLResponse(SIDEBAR + success_html)
-        
     except Exception as e:
         print(f"❌ Contact error: {e}")
         import traceback
@@ -40905,16 +36963,12 @@ async def submit_contact(request: Request):
 async def telechargements(request: Request):
     """Page de téléchargements ebooks avec sidebar"""
     user_data = get_user_from_request(request)
-    
     if not user_data:
         print("❌ /telechargements: Pas d'utilisateur, redirect vers /login")
         return RedirectResponse(url="/login", status_code=303)
-    
     user_plan = user_data.get("subscription_tier", "Free")
     username = user_data.get("username", "Utilisateur")
-    
     print(f"✅ /telechargements: user={username}, plan={user_plan}")
-    
     plan_hierarchy = {
         "Free": 0,
         "Premium": 1,
@@ -40922,9 +36976,7 @@ async def telechargements(request: Request):
         "Pro": 3,
         "Elite": 4
     }
-    
     user_level = plan_hierarchy.get(user_plan, 0)
-    
     try:
         conn = get_db_connection()
         if DB_CONFIG["type"] == "postgres":
@@ -40935,10 +36987,8 @@ async def telechargements(request: Request):
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
             c.execute("SELECT * FROM ebooks WHERE active=1 ORDER BY created_at DESC")
-        
         all_ebooks = [dict(row) for row in c.fetchall()]
         conn.close()
-        
         # Générer le HTML des ebooks
         ebooks_html = """<!DOCTYPE html>
         <html lang="fr">
@@ -40970,7 +37020,6 @@ async def telechargements(request: Request):
                     Votre plan: <span class="plan-badge">""" + user_plan + """</span></p>
                 </div>
         """
-        
         if not all_ebooks:
             ebooks_html += """
                 <div class="card" style="text-align:center;padding:60px 20px">
@@ -40981,7 +37030,6 @@ async def telechargements(request: Request):
             """
         else:
             ebooks_html += '<div class="ebooks-grid">'
-            
             for ebook in all_ebooks:
                 title = ebook.get("title", "Sans titre")
                 description = ebook.get("description", "")
@@ -40990,17 +37038,13 @@ async def telechargements(request: Request):
                 file_size = ebook.get("file_size", 0)
                 size_mb = round(file_size / 1024 / 1024, 2) if file_size > 0 else 0
                 ebook_id = ebook.get("id")
-                
                 ebook_level = plan_hierarchy.get(min_plan, 0)
                 accessible = user_level >= ebook_level
-                
                 card_class = "ebook-card" if accessible else "ebook-card locked"
-                
                 if accessible:
                     btn_html = f'<a href="/telechargements/download/{ebook_id}" class="download-btn">📥 Télécharger</a>'
                 else:
                     btn_html = f'<div class="download-btn locked-btn">🔒 Nécessite {min_plan}</div>'
-                
                 ebooks_html += f'''
                 <div class="{card_class}">
                     <div class="ebook-title">{title}</div>
@@ -41012,17 +37056,13 @@ async def telechargements(request: Request):
                     {btn_html}
                 </div>
                 '''
-            
             ebooks_html += '</div>'
-        
         ebooks_html += """
             </div>
         </body>
         </html>
         """
-        
         return HTMLResponse(SIDEBAR + ebooks_html)
-        
     except Exception as e:
         print(f"❌ Téléchargements error: {e}")
         import traceback
@@ -41036,14 +37076,11 @@ async def telechargements(request: Request):
 async def download_ebook(ebook_id: int, request: Request):
     """Télécharger un ebook"""
     user_data = get_user_from_request(request)
-    
     if not user_data:
         raise HTTPException(403, "Connexion requise")
-    
     user_plan = user_data.get("subscription_tier", "Free")
     plan_hierarchy = {"Free": 0, "Premium": 1, "Advanced": 2, "Pro": 3, "Elite": 4}
     user_level = plan_hierarchy.get(user_plan, 0)
-    
     try:
         conn = get_db_connection()
         if DB_CONFIG["type"] == "postgres":
@@ -41054,34 +37091,25 @@ async def download_ebook(ebook_id: int, request: Request):
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
             c.execute("SELECT * FROM ebooks WHERE id=?", (ebook_id,))
-        
         row = c.fetchone()
-        
         if not row:
             conn.close()
             raise HTTPException(404, "Ebook non trouvé")
-        
         ebook = dict(row)
         ebook_level = plan_hierarchy.get(ebook.get("min_plan", "Free"), 0)
-        
         if user_level < ebook_level:
             conn.close()
             raise HTTPException(403, f"Plan {ebook['min_plan']} requis")
-        
         # Incrémenter compteur
         if DB_CONFIG["type"] == "postgres":
             c.execute("UPDATE ebooks SET downloads=downloads+1 WHERE id=%s", (ebook_id,))
         else:
             c.execute("UPDATE ebooks SET downloads=downloads+1 WHERE id=?", (ebook_id,))
-        
         conn.commit()
         conn.close()
-        
         file_path = EBOOKS_DIR / ebook["filename"]
-        
         if not file_path.exists():
             raise HTTPException(404, "Fichier non trouvé sur le serveur")
-        
         from fastapi.responses import FileResponse
         return FileResponse(
             path=str(file_path),
@@ -41097,17 +37125,13 @@ async def download_ebook(ebook_id: int, request: Request):
 async def admin_ebooks(request: Request):
     """Dashboard admin ebooks avec sidebar"""
     user_data = get_user_from_request(request)
-    
     if not user_data:
         print("❌ /admin/ebooks: Pas d'utilisateur")
         raise HTTPException(403, "Connexion requise")
-    
     if not user_data.get("is_admin"):
         print(f"❌ /admin/ebooks: User {user_data.get('username')} is not admin")
         raise HTTPException(403, "Admin requis")
-    
     print(f"✅ /admin/ebooks: Admin access granted for {user_data.get('username')}")
-    
     try:
         conn = get_db_connection()
         if DB_CONFIG["type"] == "postgres":
@@ -41116,11 +37140,9 @@ async def admin_ebooks(request: Request):
         else:
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
-        
         c.execute("SELECT * FROM ebooks ORDER BY created_at DESC")
         ebooks = [dict(row) for row in c.fetchall()]
         conn.close()
-        
         # Générer HTML dashboard admin
         admin_html = """<!DOCTYPE html>
         <html lang="fr">
@@ -41139,7 +37161,6 @@ async def admin_ebooks(request: Request):
                     <h1>🛠️ Admin - Gestion des Ebooks</h1>
                     <p>Ajouter, modifier et gérer les ebooks</p>
                 </div>
-                
                 <div class="card">
                     <h2>📤 Ajouter un nouvel ebook</h2>
                     <form method="POST" action="/admin/ebooks/add" enctype="multipart/form-data">
@@ -41170,7 +37191,6 @@ async def admin_ebooks(request: Request):
                         <button type="submit">📤 Ajouter l'ebook</button>
                     </form>
                 </div>
-                
                 <div class="card">
                     <h2>📚 Ebooks existants (""" + str(len(ebooks)) + """)</h2>
                     <div style="overflow-x:auto">
@@ -41187,13 +37207,11 @@ async def admin_ebooks(request: Request):
                             </thead>
                             <tbody>
         """
-        
         if ebooks:
             for e in ebooks:
                 status_color = "#10b981" if e.get("active") else "#ef4444"
                 status_text = "✅ Actif" if e.get("active") else "❌ Inactif"
                 toggle_text = "🔴 Désactiver" if e.get("active") else "🟢 Activer"
-                
                 admin_html += f"""
                                 <tr>
                                     <td>{e.get("id")}</td>
@@ -41222,7 +37240,6 @@ async def admin_ebooks(request: Request):
                                     </td>
                                 </tr>
             """
-        
         admin_html += """
                             </tbody>
                         </table>
@@ -41232,9 +37249,7 @@ async def admin_ebooks(request: Request):
         </body>
         </html>
         """
-        
         return HTMLResponse(SIDEBAR + admin_html)
-        
     except Exception as e:
         print(f"❌ Admin ebooks error: {e}")
         import traceback
@@ -41246,45 +37261,34 @@ async def admin_ebooks(request: Request):
 async def add_ebook(request: Request):
     """Ajouter un ebook"""
     user_data = get_user_from_request(request)
-    
     if not user_data or not user_data.get("is_admin"):
         raise HTTPException(403, "Admin requis")
-    
     try:
         form = await request.form()
         title = form.get("title")
         description = form.get("description", "")
         min_plan = form.get("min_plan", "Free")
         file = form.get("file")
-        
         if not title or not file:
             raise HTTPException(400, "Titre et fichier requis")
-        
         file_content = await file.read()
         filename = file.filename
         file_path = EBOOKS_DIR / filename
-        
         with open(file_path, "wb") as f:
             f.write(file_content)
-        
         file_size = len(file_content)
-        
         conn = get_db_connection()
         c = conn.cursor()
-        
         if DB_CONFIG["type"] == "postgres":
             c.execute("""INSERT INTO ebooks (title, description, filename, file_size, min_plan)
                 VALUES (%s, %s, %s, %s, %s)""", (title, description, filename, file_size, min_plan))
         else:
             c.execute("""INSERT INTO ebooks (title, description, filename, file_size, min_plan)
                 VALUES (?, ?, ?, ?, ?)""", (title, description, filename, file_size, min_plan))
-        
         conn.commit()
         conn.close()
-        
         print(f"✅ Ebook ajouté: {title} ({filename})")
         return RedirectResponse(url="/admin/ebooks", status_code=303)
-        
     except Exception as e:
         print(f"❌ Add ebook error: {e}")
         raise HTTPException(500, f"Erreur: {str(e)}")
@@ -41294,10 +37298,8 @@ async def add_ebook(request: Request):
 async def delete_ebook(ebook_id: int, request: Request):
     """Supprimer un ebook"""
     user_data = get_user_from_request(request)
-    
     if not user_data or not user_data.get("is_admin"):
         raise HTTPException(403, "Admin requis")
-    
     try:
         conn = get_db_connection()
         if DB_CONFIG["type"] == "postgres":
@@ -41308,26 +37310,20 @@ async def delete_ebook(ebook_id: int, request: Request):
             conn.row_factory = sqlite3.Row
             c = conn.cursor()
             c.execute("SELECT filename FROM ebooks WHERE id=?", (ebook_id,))
-        
         row = c.fetchone()
-        
         if row:
             filename = row["filename"]
             file_path = EBOOKS_DIR / filename
             if file_path.exists():
                 file_path.unlink()
-            
             if DB_CONFIG["type"] == "postgres":
                 c.execute("DELETE FROM ebooks WHERE id=%s", (ebook_id,))
             else:
                 c.execute("DELETE FROM ebooks WHERE id=?", (ebook_id,))
-            
             conn.commit()
             print(f"✅ Ebook {ebook_id} supprimé")
-        
         conn.close()
         return RedirectResponse(url="/admin/ebooks", status_code=303)
-        
     except Exception as e:
         print(f"❌ Delete ebook error: {e}")
         raise HTTPException(500, f"Erreur: {str(e)}")
@@ -41337,25 +37333,19 @@ async def delete_ebook(ebook_id: int, request: Request):
 async def toggle_ebook(ebook_id: int, request: Request):
     """Activer/Désactiver un ebook"""
     user_data = get_user_from_request(request)
-    
     if not user_data or not user_data.get("is_admin"):
         raise HTTPException(403, "Admin requis")
-    
     try:
         conn = get_db_connection()
         c = conn.cursor()
-        
         if DB_CONFIG["type"] == "postgres":
             c.execute("UPDATE ebooks SET active = NOT active WHERE id=%s", (ebook_id,))
         else:
             c.execute("UPDATE ebooks SET active = CASE WHEN active=1 THEN 0 ELSE 1 END WHERE id=?", (ebook_id,))
-        
         conn.commit()
         conn.close()
-        
         print(f"✅ Ebook {ebook_id} toggled")
         return RedirectResponse(url="/admin/ebooks", status_code=303)
-        
     except Exception as e:
         print(f"❌ Toggle ebook error: {e}")
         raise HTTPException(500, f"Erreur: {str(e)}")

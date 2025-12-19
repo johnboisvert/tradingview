@@ -2827,6 +2827,7 @@ body.sidebar-open{margin-left:280px}
     }
     </script>
 """
+
 # ==================================
 
 # ============================================================================
@@ -4488,7 +4489,110 @@ async def admin_panel():
         </div>
     </div>
     
+    <script>
+    // ===== FONCTIONS DU DASHBOARD ADMIN =====
     
+    function openAddUserModal() {{
+        document.getElementById('addUserForm').style.display = 'block';
+    }}
+    
+    function closeModal() {{
+        document.getElementById('addUserForm').style.display = 'none';
+    }}
+    
+    function deleteUser(username) {{
+        if (confirm(`Êtes-vous sûr de vouloir supprimer ${{username}}?`)) {{
+            fetch('/admin/delete-user', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{username}})
+            }}).then(() => location.reload());
+        }}
+    }}
+    
+    function editUser(username) {{
+        const newRole = prompt('Nouveau rôle (user/admin):', 'user');
+        if (newRole) {{
+            fetch('/admin/edit-user', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{username, role: newRole}})
+            }}).then(() => location.reload());
+        }}
+    }}
+    
+    function managePermissions(username) {{
+        alert(`Gérer les permissions pour ${{username}}`);
+    }}
+    
+    function openPromoModal() {{
+        alert('Créer un code promo');
+    }}
+    
+    function loadPromoList() {{
+        alert('Charger la liste des promos');
+    }}
+    
+    function createLaunchPromos() {{
+        alert('Créer et lancer des promos');
+    }}
+    
+    function createPromoCode() {{
+        alert('Créer un nouveau code promo');
+    }}
+    
+    function managePlanAccess(plan) {{
+        alert(`Gérer l'accès pour le plan: ${{plan}}`);
+    }}
+    
+    // Form submission
+    document.addEventListener('DOMContentLoaded', function() {{
+        const form = document.getElementById('addUserForm');
+        if (form) {{
+            form.addEventListener('submit', function(e) {{
+                e.preventDefault();
+                const username = document.getElementById('newUsername').value;
+                const password = document.getElementById('newPassword').value;
+                const role = document.getElementById('newRole').value;
+                
+                fetch('/admin/add-user', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{username, password, role}})
+                }}).then(r => r.json()).then(data => {{
+                    if (data.success) {{
+                        alert('✅ Utilisateur ajouté!');
+                        location.reload();
+                    }} else {{
+                        alert('❌ ' + (data.error || 'Erreur'));
+                    }}
+                }});
+            }});
+        }}
+        
+        const pwForm = document.getElementById('changePasswordForm');
+        if (pwForm) {{
+            pwForm.addEventListener('submit', function(e) {{
+                e.preventDefault();
+                const pwd = document.getElementById('newPasswordChange').value;
+                const confirm_pwd = document.getElementById('confirmPassword').value;
+                
+                if (pwd !== confirm_pwd) {{
+                    alert('❌ Les mots de passe ne correspondent pas');
+                    return;
+                }}
+                
+                fetch('/admin/change-password', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{password: pwd}})
+                }}).then(r => r.json()).then(data => {{
+                    alert(data.success ? '✅ Mot de passe changé!' : '❌ Erreur');
+                }});
+            }});
+        }}
+    }});
+    </script>
 </body>
 </html>""")
 

@@ -4510,11 +4510,11 @@ async def admin_panel():
             <h2>🆓 Gestion des Accès par Forfait</h2>
             <p style="color: #94a3b8; margin-bottom: 15px;">Cliquez sur un forfait pour gérer les accès</p>
             <div class="plan-buttons">
-                <button class="plan-btn" style="background: #3b82f6;" onclick="managePlanAccess(\'free\')">🆓 Free</button>
-                <button class="plan-btn" style="background: #8b5cf6;" onclick="managePlanAccess(\'premium\')">💎 Premium</button>
-                <button class="plan-btn" style="background: #f59e0b;" onclick="managePlanAccess(\'advanced\')">🚀 Advanced</button>
-                <button class="plan-btn" style="background: #ef4444;" onclick="managePlanAccess(\'pro\')">⭐ Pro</button>
-                <button class="plan-btn" style="background: #10b981;" onclick="managePlanAccess(\'elite\')">👑 Elite</button>
+                <button class="plan-btn" style="background: #3b82f6;" onclick="managePlanAccess('free')">🆓 Free</button>
+                <button class="plan-btn" style="background: #8b5cf6;" onclick="managePlanAccess('premium')">💎 Premium</button>
+                <button class="plan-btn" style="background: #f59e0b;" onclick="managePlanAccess('advanced')">🚀 Advanced</button>
+                <button class="plan-btn" style="background: #ef4444;" onclick="managePlanAccess('pro')">⭐ Pro</button>
+                <button class="plan-btn" style="background: #10b981;" onclick="managePlanAccess('elite')">👑 Elite</button>
             </div>
         </div>
         
@@ -4540,7 +4540,7 @@ async def admin_panel():
         <div class="card">
             <h2>📚 Gestion des Ebooks</h2>
             <p style="color: #94a3b8; margin-bottom: 15px;">Gérer les ebooks disponibles</p>
-            <button onclick="window.location.href=\'/admin/ebooks\'" class="plan-btn" style="background: #8b5cf6; padding: 10px 20px;">📖 Gérer Ebooks</button>
+            <button onclick="window.location.href='/admin/ebooks'" class="plan-btn" style="background: #8b5cf6; padding: 10px 20px;">📖 Gérer Ebooks</button>
         </div>
         
         <!-- LISTE DES UTILISATEURS -->

@@ -23635,7 +23635,7 @@ async def admin_dashboard(request: Request):
         # Construire le bouton delete en dehors du f-string
         delete_button = ""
         if username != "admin":
-            delete_button = f'<button data-username=\'{safe_username}\' onclick="deleteUser(JSON.parse(this.dataset.username))" class="btn btn-danger">🗑️ Supprimer</button>'
+            delete_button = f'<button data-username="{safe_username}" onclick="deleteUser(JSON.parse(this.dataset.username))" class="btn btn-danger">🗑️ Supprimer</button>'
         
         users_html += f"""
         <tr>

@@ -23801,50 +23801,7 @@ async def admin_dashboard(request: Request):
                 </div>
             </div>
             
-            <!-- 🥈 CONVERSION FUNNEL MICROSCOPE -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border: 2px solid #6366f1; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #4f46e5; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">🔍</span>
-                    Conversion Funnel Microscope
-                </h2>
-                <p style="color: #3730a3; margin-bottom: 20px; font-weight: 600;">
-                    📊 Voir EXACTEMENT où tu perds des conversions
-                </p>
-                
-                <!-- Période -->
-                <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-                    <label style="font-weight: 600; color: #333; margin-right: 10px;">Période:</label>
-                    <select id="funnelPeriod" onchange="" style="padding: 8px 15px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
-                        <option value="7">7 derniers jours</option>
-                        <option value="30" selected>30 derniers jours</option>
-                        <option value="90">90 derniers jours</option>
-                    </select>
-                </div>
-                
-                <!-- Funnel Visualization -->
-                <div id="funnelContainer" style="background: white; padding: 25px; border-radius: 10px; margin-bottom: 15px;">
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        <p style="font-size: 18px; margin-bottom: 10px;">🔄 Chargement du funnel...</p>
-                        <p style="font-size: 14px; color: #999;">Analyse des conversions en cours</p>
-                    </div>
-                </div>
-                
-                <!-- Insights Automatiques -->
-                <div id="funnelInsights" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">💡 Insights Automatiques</h3>
-                    <div id="insightsContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Conversion par Plan -->
-                <div id="funnelByPlan" style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Conversion par Plan</h3>
-                    <div id="planConversionContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
+            
             
             <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
             <div class="users-section" style="margin-bottom: 30px;">
@@ -23870,87 +23827,36 @@ async def admin_dashboard(request: Request):
                 </div>
             </div>
             
-            <!-- 🥉 REVENUE INTELLIGENCE CENTER -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #d97706; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">💰</span>
-                    Revenue Intelligence Center
-                </h2>
-                <p style="color: #92400e; margin-bottom: 20px; font-weight: 600;">
-                    📈 Prédis tes revenus & optimise les profits
-                </p>
-                
-                <!-- Revenus & Projections -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">💵 Revenus & Projections</h3>
-                    <div id="revenueProjections">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- CLV par Plan -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🎯 Customer Lifetime Value (CLV)</h3>
-                    <div id="clvByPlan">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Top Clients -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🏆 Top 10 Clients (Lifetime Value)</h3>
-                    <div id="topClients">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- ROI Codes Promo -->
-                <div style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🎟️ ROI des Codes Promo</h3>
-                    <div id="promoROI">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
             
-            <!-- 4️⃣ VIRAL GROWTH MACHINE -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 2px solid #10b981; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #047857; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">🚀</span>
-                    Viral Growth Machine
+            
+            
+            
+            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border: 2px solid #8b5cf6; border-radius: 15px; padding: 25px;">
+                <h2 style="color: #6d28d9; display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 32px;">🤖</span>
+                    Automation Engine
                 </h2>
-                <p style="color: #065f46; margin-bottom: 20px; font-weight: 600;">
-                    📢 Croissance organique explosive (0$ en ads!)
+                <p style="color: #5b21b6; margin-bottom: 20px; font-weight: 600;">
+                    ⚡ Robot marketing 24/7 qui travaille pour toi
                 </p>
                 
-                <!-- Stats Globales -->
+                <!-- Règles Actives -->
                 <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Stats Parrainage</h3>
-                    <div id="referralStats">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3 style="color: #333; margin: 0;">⚙️ Règles d'Automation</h3>
+                        <button onclick="openCreateRuleModal()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            ➕ Créer Règle
+                        </button>
+                    </div>
+                    <div id="automationRules">
                         <p style="color: #666;">🔄 Chargement...</p>
                     </div>
                 </div>
                 
-                <!-- Leaderboard -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🏆 Top Parrains</h3>
-                    <div id="referralLeaderboard">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Tracking Source -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📈 Sources d'Acquisition</h3>
-                    <div id="acquisitionSources">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- CPA Comparison -->
+                <!-- Performance Globale -->
                 <div style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">💰 Coût Par Acquisition (CPA)</h3>
-                    <div id="cpaComparison">
+                    <h3 style="color: #333; margin-bottom: 15px;">📊 Performance Globale</h3>
+                    <div id="automationPerformance">
                         <p style="color: #666;">🔄 Chargement...</p>
                     </div>
                 </div>
@@ -24707,29 +24613,9 @@ async def admin_dashboard(request: Request):
         }}, 100);
         
         // ========================================
-        // 🥈 CONVERSION FUNNEL MICROSCOPE
         // ========================================
         
-        async function  {{
-            try {{
-                const periodElement = document.getElementById('funnelPeriod');
-                const period = periodElement ? periodElement.value : '30';
-                const response = await fetch('/admin/api/conversion-funnel?days=' + period);
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur conversion funnel:', data);
-                    return;
-                }}
-                
-                renderFunnelVisualization(data.funnel);
-                renderFunnelInsights(data.insights);
-                renderPlanConversion(data.by_plan);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement conversion funnel:', error);
-            }}
-        }}
+        
         
         function renderFunnelVisualization(funnel) {{
             const container = document.getElementById('funnelContainer');
@@ -24858,7 +24744,7 @@ async def admin_dashboard(request: Request):
             (async function() {{
                 try {{
                     if (typeof loadConversionFunnel === 'function') {{
-                        await ;
+                        await loadConversionFunnel();
                     }}
                 }} catch (error) {{
                     console.error('⚠️ Erreur Conversion Funnel:', error);
@@ -24868,28 +24754,9 @@ async def admin_dashboard(request: Request):
         }}, 200);
         
         // ========================================
-        // 🥉 REVENUE INTELLIGENCE CENTER
         // ========================================
         
-        async function  {{
-            try {{
-                const response = await fetch('/admin/api/revenue-intelligence');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur revenue intelligence:', data);
-                    return;
-                }}
-                
-                renderRevenueProjections(data.projections);
-                renderCLVByPlan(data.clv_by_plan);
-                renderTopClients(data.top_clients);
-                ;
-                
-            }} catch (error) {{
-                console.error('Erreur chargement revenue intelligence:', error);
-            }}
-        }}
+        
         
         function renderRevenueProjections(data) {{
             const container = document.getElementById('revenueProjections');
@@ -24976,30 +24843,44 @@ async def admin_dashboard(request: Request):
             container.innerHTML = html;
         }}
         
-        
-        // ========================================
-        // 4️⃣ VIRAL GROWTH MACHINE
-        // ========================================
-        
-        async function  {{
-            try {{
-                const response = await fetch('/admin/api/viral-growth');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur viral growth:', data);
-                    return;
-                }}
-                
-                renderReferralStats(data.stats);
-                renderReferralLeaderboard(data.leaderboard);
-                renderAcquisitionSources(data.sources);
-                renderCPAComparison(data.cpa);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement viral growth:', error);
+        function renderPromoROI(promos) {{
+            const container = document.getElementById('promoROI');
+            
+            if (!promos || promos.length === 0) {{
+                container.innerHTML = '<p style="color: #999;">Aucun code promo utilisé</p>';
+                return;
             }}
+            
+            let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">' +
+                '<thead><tr style="background: #f3f4f6;">' +
+                '<th style="padding: 12px; text-align: left; font-weight: 600;">Code</th>' +
+                '<th style="padding: 12px; text-align: center; font-weight: 600;">Utilisé</th>' +
+                '<th style="padding: 12px; text-align: right; font-weight: 600;">Rabais</th>' +
+                '<th style="padding: 12px; text-align: right; font-weight: 600;">Revenus</th>' +
+                '<th style="padding: 12px; text-align: right; font-weight: 600;">ROI</th>' +
+                '</tr></thead><tbody>';
+            
+            promos.forEach(promo => {{
+                const roiColor = promo.roi > 200 ? '#10b981' : promo.roi > 100 ? '#f59e0b' : '#ef4444';
+                const roiIcon = promo.roi > 200 ? '🔥' : promo.roi > 100 ? '✅' : '⚠️';
+                
+                html += '<tr style="border-bottom: 1px solid #e5e7eb;">' +
+                    '<td style="padding: 12px; font-weight: 600;">' + promo.code + '</td>' +
+                    '<td style="padding: 12px; text-align: center;">' + promo.uses + 'x</td>' +
+                    '<td style="padding: 12px; text-align: right; color: #ef4444;">-$' + promo.discount_total.toFixed(2) + '</td>' +
+                    '<td style="padding: 12px; text-align: right; color: #10b981;">+$' + promo.revenue_total.toFixed(2) + '</td>' +
+                    '<td style="padding: 12px; text-align: right; font-weight: bold; color: ' + roiColor + ';">' + roiIcon + ' ' + promo.roi.toFixed(0) + '%</td>' +
+                '</tr>';
+            }});
+            
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
         }}
+        
+        // ========================================
+        // ========================================
+        
+        
         
         function renderReferralStats(stats) {{
             const container = document.getElementById('referralStats');
@@ -25119,26 +25000,9 @@ async def admin_dashboard(request: Request):
         }}
         
         // ========================================
-        // 5️⃣ AUTOMATION ENGINE
         // ========================================
         
-        async function  {{
-            try {{
-                const response = await fetch('/admin/api/automation-engine');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur automation engine:', data);
-                    return;
-                }}
-                
-                renderAutomationRules(data.rules);
-                renderAutomationPerformance(data.performance);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement automation engine:', error);
-            }}
-        }}
+        
         
         function renderAutomationRules(rules) {{
             const container = document.getElementById('automationRules');
@@ -25218,7 +25082,7 @@ async def admin_dashboard(request: Request):
                 // Revenue Intelligence
                 try {{
                     if (typeof loadRevenueIntelligence === 'function') {{
-                        await ;
+                        await loadRevenueIntelligence();
                     }}
                 }} catch (error) {{
                     console.error('⚠️ Erreur Revenue Intelligence:', error);
@@ -25227,7 +25091,7 @@ async def admin_dashboard(request: Request):
                 // Viral Growth
                 try {{
                     if (typeof loadViralGrowth === 'function') {{
-                        await ;
+                        await loadViralGrowth();
                     }}
                 }} catch (error) {{
                     console.error('⚠️ Erreur Viral Growth:', error);
@@ -25236,7 +25100,7 @@ async def admin_dashboard(request: Request):
                 // Automation Engine
                 try {{
                     if (typeof loadAutomationEngine === 'function') {{
-                        await ;
+                        await loadAutomationEngine();
                     }}
                 }} catch (error) {{
                     console.error('⚠️ Erreur Automation Engine:', error);
@@ -26242,7 +26106,6 @@ async def admin_extend_subscription(request: Request, session_token: Optional[st
 
 
 # ============================================================================
-# 🥈 CONVERSION FUNNEL MICROSCOPE API
 # ============================================================================
 
 @app.get("/admin/api/conversion-funnel")
@@ -26421,7 +26284,6 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
 
 
 # ============================================================================
-# 🥉 REVENUE INTELLIGENCE CENTER API
 # ============================================================================
 
 @app.get("/admin/api/revenue-intelligence")
@@ -26544,7 +26406,6 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
 
 
 # ============================================================================
-# 4️⃣ VIRAL GROWTH MACHINE API
 # ============================================================================
 
 @app.get("/admin/api/viral-growth")
@@ -26597,7 +26458,6 @@ async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
 
 
 # ============================================================================
-# 5️⃣ AUTOMATION ENGINE API
 # ============================================================================
 
 @app.get("/admin/api/automation-engine")

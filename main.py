@@ -4423,7 +4423,7 @@ async def admin_panel():
 <body>
     <div class="container">
         <div class="header">
-            <h1>👑 Panel d'Administration</h1>
+            <h1>👑 Panel d&#39;Administration</h1>
             <p>Gérez les accès au dashboard</p>
         </div>
         
@@ -4433,7 +4433,7 @@ async def admin_panel():
             <h2>➕ Ajouter un utilisateur</h2>
             <form id="addUserForm" class="form-inline">
                 <div>
-                    <label>Nom d'utilisateur</label>
+                    <label>Nom d&#39;utilisateur</label>
                     <input type="text" id="newUsername" required>
                 </div>
                 <div>
@@ -4458,7 +4458,7 @@ async def admin_panel():
             <table>
                 <thead>
                     <tr>
-                        <th>Nom d'utilisateur</th>
+                        <th>Nom d&#39;utilisateur</th>
                         <th>Rôle</th>
                         <th>Créé le</th>
                         <th>Actions</th>

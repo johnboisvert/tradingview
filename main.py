@@ -1086,8 +1086,6 @@ UPCOMING_GEMS_COMPLETE = [
 ]
 
 
-
-
 # ============================================================================
 # CRYPTO ACADEMY - SYSTÈME DE BASE DE DONNÉES INTÉGRÉ
 # ============================================================================
@@ -2154,8 +2152,6 @@ def get_user_from_request(request: Request):
         import traceback
         traceback.print_exc()
         return None
-
-
 
 # 🔐 CORRECTION 2: RATE LIMITING - Protection contre brute-force
 # ═══════════════════════════════════════════════════════════════════════════
@@ -4388,6 +4384,113 @@ async def admin_panel():
         </tr>
         """
     
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👑 Panel Admin</title>
+    {CSS}
+    <style>
+        .badge {{
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }}
+        .badge-admin {{
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }}
+        .badge-user {{
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }}
+        .btn-sm {{
+            padding: 6px 12px;
+            font-size: 13px;
+        }}
+        .form-inline {{
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }}
+        .form-inline > div {{
+            flex: 1;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👑 Panel d'Administration</h1>
+            <p>Gérez les accès au dashboard</p>
+        </div>
+        
+        
+        
+        <div class="card">
+            <h2>➕ Ajouter un utilisateur</h2>
+            <form id="addUserForm" class="form-inline">
+                <div>
+                    <label>Nom d'utilisateur</label>
+                    <input type="text" id="newUsername" required>
+                </div>
+                <div>
+                    <label>Mot de passe</label>
+                    <input type="password" id="newPassword" required>
+                </div>
+                <div>
+                    <label>Rôle</label>
+                    <select id="newRole">
+                        <option value="user">Utilisateur</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" style="margin-top: 25px;">Ajouter</button>
+                </div>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>👥 Utilisateurs ({len(users)})</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nom d'utilisateur</th>
+                        <th>Rôle</th>
+                        <th>Créé le</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {users_html}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="card">
+            <h2>🔑 Changer mon mot de passe</h2>
+            <form id="changePasswordForm" class="form-inline">
+                <div>
+                    <label>Nouveau mot de passe</label>
+                    <input type="password" id="newPasswordChange" required>
+                </div>
+                <div>
+                    <label>Confirmer</label>
+                    <input type="password" id="confirmPassword" required>
+                </div>
+                <div>
+                    <button type="submit" style="margin-top: 25px;">Changer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    
+</body>
+</html>""")
 
 @app.post("/admin/add-user")
 async def add_user(request: Request):
@@ -5625,8 +5728,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.insertAdjacentHTML('afterbegin', menuHTML);
 });
 </script>"""
-
-
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -12611,8 +12712,6 @@ async def debug_trades():
         "trades": trades_summary
     }
 
-
-
 # ============= API RISK MANAGEMENT =============
 @app.get("/api/risk/settings")
 async def get_risk_settings():
@@ -17858,8 +17957,6 @@ async def calendrier_economique():
     return HTMLResponse(SIDEBAR + html)
 
 
-
-
 # ============================================================================
 # 🤖 SYSTÈME DE DÉTECTION AUTOMATIQUE DES TP/SL
 # Utilise le current_price envoyé par le webhook Pine Script
@@ -18104,10 +18201,6 @@ async def startup_event():
     
     # 🚀 Démarrer le monitoring MEXC pour auto-détection TP/SL
     start_background_monitor()
-
-
-
-
 
 
 # ============= API P&L HEBDOMADAIRE =============
@@ -20005,8 +20098,6 @@ async def get_payments(request: Request):
         print(f"❌ Get payments: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
 @app.post("/api/weekly-pnl/reset")
 async def reset_weekly_pnl_manual():
     """Réinitialiser manuellement le P&L hebdomadaire"""
@@ -20847,8 +20938,6 @@ async def market_simulation():
 <div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Market Simulation ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Simulateur trading pour pratiquer SANS RISQUE avec capital virtuel.</p><ul style="line-height: 1.8; color: #555;"><li>💰 Capital virtuel $10k-$100k</li><li>📊 Données RÉELLES du marché</li><li>📈 Testez stratégies sans risque</li><li>📉 Apprenez de vos erreurs</li><li>🎯 Statistiques performances</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎮 Fonctionnalités</h3><ul style="line-height: 1.8; color: #555;"><li>🔄 Buy/Sell comme vrai trading</li><li>📊 Position size, stop loss, TP</li><li>💹 Tracking P&L temps réel</li><li>📈 Graphique performances</li><li>📋 Historique trades</li><li>🎯 Win rate, profit factor</li><li>🔄 Reset capital si besoin</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">📊 Stats suivies</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>💰 Capital actuel vs initial</li><li>📈 Profit/Loss total ($/%)</li><li>🎯 Win rate (% trades gagnants)</li><li>💹 Profit factor (gains/pertes)</li><li>📊 Nombre trades</li><li>📉 Max drawdown</li><li>📈 Best/Worst trade</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Pourquoi utiliser ?</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>✅ Apprendre SANS perdre argent</li><li>✅ Tester nouvelles stratégies</li><li>✅ Développer discipline</li><li>✅ Comprendre émotions trading</li><li>✅ Affiner risk management</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 15px;">🎯 Règle: Profitable en simu 3 mois AVANT argent réel!</p></div></div></div>
 </body>
 </html>""")
-
-
 
 # ============================================================================
 # 7️⃣ PDF REPORT GENERATOR - Téléchargement Professionnel (NOUVELLE FONCTIONNALITÉ)
@@ -22714,8 +22803,6 @@ async def prediction_ia():
 </body>
 </html>""")
 
-
-
 @app.post("/webhook/stripe-permissions")
 async def stripe_permissions_webhook(request: Request):
     """Webhook Stripe pour activer les abonnements automatiquement - VERSION AMÉLIORÉE"""
@@ -23659,247 +23746,32 @@ async def admin_dashboard(request: Request):
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Revenus Totaux</div>
-                    <div class="stat-value">${total_revenue:.2f}</div>
+                    
                 </div>
             </div>
             
             <!-- 🥇 RETENTION WARFARE DASHBOARD -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border: 2px solid #ef4444; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #dc2626; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">⚠️</span>
-                    Retention Warfare - Zone de Combat
-                </h2>
-                <p style="color: #991b1b; margin-bottom: 20px; font-weight: 600;">
-                    🎯 Sauve tes revenus avant qu'il soit trop tard !
-                </p>
-                
-                <!-- Zone Rouge - Urgent -->
-                <div id="redZone" style="background: white; border-left: 5px solid #dc2626; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #dc2626; margin-bottom: 15px;">🚨 ZONE ROUGE - Expirent dans 3 jours</h3>
-                    <div id="redZoneContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Zone Orange -->
-                <div id="orangeZone" style="background: white; border-left: 5px solid #f59e0b; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #f59e0b; margin-bottom: 15px;">⚠️ ZONE ORANGE - Expirent dans 7 jours</h3>
-                    <div id="orangeZoneContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Zone Jaune -->
-                <div id="yellowZone" style="background: white; border-left: 5px solid #eab308; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #eab308; margin-bottom: 15px;">🟡 ZONE JAUNE - Expirent dans 30 jours</h3>
-                    <div id="yellowZoneContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Users Inactifs -->
-                <div style="background: white; border-left: 5px solid #6366f1; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #6366f1; margin-bottom: 15px;">💤 Utilisateurs Inactifs (7+ jours)</h3>
-                    <div id="inactiveUsers">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Stats Rétention -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-top: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Taux de Rétention</h3>
-                    <div id="retentionStats">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
+            
             
             <!-- 🥈 CONVERSION FUNNEL MICROSCOPE -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border: 2px solid #6366f1; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #4f46e5; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">🔍</span>
-                    Conversion Funnel Microscope
-                </h2>
-                <p style="color: #3730a3; margin-bottom: 20px; font-weight: 600;">
-                    📊 Voir EXACTEMENT où tu perds des conversions
-                </p>
-                
-                <!-- Période -->
-                <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-                    <label style="font-weight: 600; color: #333; margin-right: 10px;">Période:</label>
-                    <select id="funnelPeriod" onchange="loadConversionFunnel()" style="padding: 8px 15px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
-                        <option value="7">7 derniers jours</option>
-                        <option value="30" selected>30 derniers jours</option>
-                        <option value="90">90 derniers jours</option>
-                    </select>
-                </div>
-                
-                <!-- Funnel Visualization -->
-                <div id="funnelContainer" style="background: white; padding: 25px; border-radius: 10px; margin-bottom: 15px;">
-                    <div style="text-align: center; padding: 40px; color: #666;">
-                        <p style="font-size: 18px; margin-bottom: 10px;">🔄 Chargement du funnel...</p>
-                        <p style="font-size: 14px; color: #999;">Analyse des conversions en cours</p>
-                    </div>
-                </div>
-                
-                <!-- Insights Automatiques -->
-                <div id="funnelInsights" style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">💡 Insights Automatiques</h3>
-                    <div id="insightsContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Conversion par Plan -->
-                <div id="funnelByPlan" style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Conversion par Plan</h3>
-                    <div id="planConversionContent">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
+            
             
             <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
             <div class="users-section" style="margin-bottom: 30px;">
                 <h2>🎯 Gestion des Accès par Forfait</h2>
                 <p style="color: #666; margin-bottom: 20px;">Définir quelles pages sont accessibles pour chaque plan d'abonnement</p>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-                    <button onclick="managePlanAccess('free')" class="btn-add" style="background: linear-gradient(135deg, #94a3b8, #64748b);">
-                        🆓 Free
-                    </button>
-                    <button onclick="managePlanAccess('1_month')" class="btn-add" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
-                        💎 Premium (1 mois)
-                    </button>
-                    <button onclick="managePlanAccess('3_months')" class="btn-add" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                        🚀 Advanced (3 mois)
-                    </button>
-                    <button onclick="managePlanAccess('6_months')" class="btn-add" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                        ⭐ Pro (6 mois)
-                    </button>
-                    <button onclick="managePlanAccess('1_year')" class="btn-add" style="background: linear-gradient(135deg, #10b981, #059669);">
-                        👑 Elite (1 an)
-                    </button>
-                </div>
+                
             </div>
             
             <!-- 🥉 REVENUE INTELLIGENCE CENTER -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #d97706; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">💰</span>
-                    Revenue Intelligence Center
-                </h2>
-                <p style="color: #92400e; margin-bottom: 20px; font-weight: 600;">
-                    📈 Prédis tes revenus & optimise les profits
-                </p>
-                
-                <!-- Revenus & Projections -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">💵 Revenus & Projections</h3>
-                    <div id="revenueProjections">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- CLV par Plan -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🎯 Customer Lifetime Value (CLV)</h3>
-                    <div id="clvByPlan">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Top Clients -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🏆 Top 10 Clients (Lifetime Value)</h3>
-                    <div id="topClients">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- ROI Codes Promo -->
-                <div style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🎟️ ROI des Codes Promo</h3>
-                    <div id="promoROI">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
+            
             
             <!-- 4️⃣ VIRAL GROWTH MACHINE -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 2px solid #10b981; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #047857; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">🚀</span>
-                    Viral Growth Machine
-                </h2>
-                <p style="color: #065f46; margin-bottom: 20px; font-weight: 600;">
-                    📢 Croissance organique explosive (0$ en ads!)
-                </p>
-                
-                <!-- Stats Globales -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Stats Parrainage</h3>
-                    <div id="referralStats">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Leaderboard -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">🏆 Top Parrains</h3>
-                    <div id="referralLeaderboard">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Tracking Source -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📈 Sources d'Acquisition</h3>
-                    <div id="acquisitionSources">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- CPA Comparison -->
-                <div style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">💰 Coût Par Acquisition (CPA)</h3>
-                    <div id="cpaComparison">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
+            
             
             <!-- 5️⃣ AUTOMATION ENGINE -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border: 2px solid #8b5cf6; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #6d28d9; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">🤖</span>
-                    Automation Engine
-                </h2>
-                <p style="color: #5b21b6; margin-bottom: 20px; font-weight: 600;">
-                    ⚡ Robot marketing 24/7 qui travaille pour toi
-                </p>
-                
-                <!-- Règles Actives -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="color: #333; margin: 0;">⚙️ Règles d'Automation</h3>
-                        <button onclick="openCreateRuleModal()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                            ➕ Créer Règle
-                        </button>
-                    </div>
-                    <div id="automationRules">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Performance Globale -->
-                <div style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Performance Globale</h3>
-                    <div id="automationPerformance">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
+            
             
             <!-- SECTION GESTION DES CODES PROMO -->
             <div class="users-section" style="margin-bottom: 30px;">
@@ -25211,14 +25083,7 @@ async def admin_dashboard(request: Request):
                     console.error('⚠️ Erreur Viral Growth:', error);
                 }}
                 
-                // Automation Engine
-                try {{
-                    if (typeof loadAutomationEngine === 'function') {{
-                        await loadAutomationEngine();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Automation Engine:', error);
-                }}
+
             }})();
         }}, 300);
         
@@ -25624,8 +25489,6 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
 .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
 .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
 </style>
-
-
 
             <div class="container">
                 
@@ -26582,7 +26445,7 @@ async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
 
 @app.get("/admin/api/automation-engine")
 async def admin_automation_engine(session_token: Optional[str] = Cookie(None)):
-    """API pour Automation Engine - Règles actives, performance"""
+
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
@@ -28247,8 +28110,6 @@ async def api_backtest(request: Request):
         }
     }
 
-
-
 # ============================================================================
 # MÉTRIQUES ON-CHAIN
 # ============================================================================
@@ -29267,8 +29128,6 @@ async def ai_signals():
 print("Route 1/12 créée: AI Signals")
 
 
-
-
 @app.get("/ai-news", response_class=HTMLResponse)
 async def ai_news():
     """Actualités crypto - TOP 50"""
@@ -29468,8 +29327,6 @@ async def ai_news():
     """)
 
 print("Routes 2-3 créées: AI News, AI Predictor")
-
-
 
 @app.get("/ai-predictor", response_class=HTMLResponse)
 async def ai_predictor():
@@ -29999,8 +29856,6 @@ async def ai_whale():
 
 print("Routes 4-7 créées")
 
-
-
 @app.get("/ai-patterns", response_class=HTMLResponse)
 async def ai_patterns():
     """Reconnaissance patterns - TOP 50"""
@@ -30212,8 +30067,6 @@ async def ai_patterns():
     """)
 
 print("Routes 4-7 créées")
-
-
 
 @app.get("/ai-sentiment", response_class=HTMLResponse)
 async def ai_sentiment():
@@ -30444,8 +30297,6 @@ async def ai_sentiment():
 
 print("Routes 4-7 créées")
 
-
-
 @app.get("/ai-sizer", response_class=HTMLResponse)
 async def ai_sizer():
     """Calcul position sizing - TOP 50"""
@@ -30662,8 +30513,6 @@ async def ai_sizer():
     """)
 
 print("Routes 4-7 créées")
-
-
 
 @app.get("/ai-exit", response_class=HTMLResponse)
 async def ai_exit():
@@ -30883,8 +30732,6 @@ async def ai_exit():
 
 print("Routes 4-7 créées")
 
-
-
 @app.get("/ai-timeframe", response_class=HTMLResponse)
 async def ai_timeframe():
     """Analyse multi-timeframes - TOP 50"""
@@ -31087,8 +30934,6 @@ async def ai_timeframe():
     """)
 
 print("Routes 4-7 créées")
-
-
 
 @app.get("/ai-liquidity", response_class=HTMLResponse)
 async def ai_liquidity():
@@ -31304,8 +31149,6 @@ async def ai_liquidity():
 
 print("Routes 4-7 créées")
 
-
-
 @app.get("/ai-alerts", response_class=HTMLResponse)
 async def ai_alerts():
     """Alertes actives - TOP 50"""
@@ -31510,8 +31353,6 @@ async def ai_alerts():
 print("✅ TOUTES LES 12 ROUTES AI CRÉÉES!")
 
 
-
-
 # ============================================================================
 # 🎯 FONCTION ANALYSE OPPORTUNITÉS
 # ============================================================================
@@ -31687,8 +31528,6 @@ def analyze_opportunity_signal(crypto):
     except Exception as e:
         print(f"❌ Erreur analyse {crypto.get('symbol', 'UNKNOWN')}: {e}")
         return None
-
-
 
 # ============================================================================
 # 🎯 ROUTE AI GEM HUNTER
@@ -32837,8 +32676,6 @@ async def crypto_pepites():
         </div>
     </nav>
 
-
-
 {SIDEBAR}
 
 <div class="update-indicator" id="updateIndicator">
@@ -33195,16 +33032,10 @@ async function init() {{
 document.addEventListener('DOMContentLoaded', init);
 </script>
 
-
-
 </body>
 </html>
     """
     return HTMLResponse(content=html_content)
-
-
-
-
 
 # ============================================================================
 # 🤖 AI CRYPTO COACH - HELPER FUNCTION
@@ -33673,8 +33504,6 @@ async def portfolio_tracker(request: Request):
 </html>"""
     return HTMLResponse(content=html)
 
-
-
 # ========== FEATURE 3 ==========
 
 # FICHIER 1: manifest.json
@@ -34084,8 +33913,6 @@ async def send_push_notification(request: Request):
         return {"success": True, "message": "Push sent"}
     except Exception as e:
         return {"success": False, "error": str(e)}
-
-
 
 # ========== FEATURE 4 ==========
 
@@ -36264,10 +36091,6 @@ console.log('✅ JavaScript Academy chargé avec succès!');
 async def launchpad_scanner():
     """🚀 Launchpad Scanner - TEMPORAIREMENT DÉSACTIVÉ"""
     return RedirectResponse(url="/dashboard", status_code=303)
-
-
-
-
 
 # ================================================================================
 # 🔗 PORTFOLIO TRACKER - ENDPOINTS API
@@ -38536,8 +38359,6 @@ setTimeout(() => {
 }, 1000);
 </script>
 """)
-
-
 
 @app.get("/altseason-copilot-pro", response_class=HTMLResponse)
 async def altseason_copilot():

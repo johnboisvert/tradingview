@@ -4376,13 +4376,16 @@ async def admin_panel():
         else:
             created_date = user[2].strftime('%Y-%m-%d')
         
+        # Encoder le username en JSON pour l'attribut data
+        safe_username = json.dumps(user[0])
+        
         users_html += f"""
         <tr>
             <td>{user[0]}</td>
             <td><span class="badge badge-{user[1]}">{user[1].upper()}</span></td>
             <td>{created_date}</td>
             <td>
-                <button onclick='deleteUser("{user[0]}")' class="btn-danger btn-sm">🗑️ Supprimer</button>
+                <button class="btn-danger btn-sm" data-username='{safe_username}' onclick="deleteUser(JSON.parse(this.dataset.username))">🗑️ Supprimer</button>
             </td>
         </tr>
         """
@@ -23626,10 +23629,13 @@ async def admin_dashboard(request: Request):
         role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
         plan_badge = f'<span class="badge badge-premium">{plan}</span>'
         
-        # Construire le bouton delete en dehors du f-string (éviter backslash)
+        # Encoder le username en JSON pour l'attribut data
+        safe_username = json.dumps(username)
+        
+        # Construire le bouton delete en dehors du f-string
         delete_button = ""
         if username != "admin":
-            delete_button = f'<button onclick="deleteUser(\'{username}\')" class="btn btn-danger">🗑️ Supprimer</button>'
+            delete_button = f'<button data-username=\'{safe_username}\' onclick="deleteUser(JSON.parse(this.dataset.username))" class="btn btn-danger">🗑️ Supprimer</button>'
         
         users_html += f"""
         <tr>
@@ -23638,8 +23644,8 @@ async def admin_dashboard(request: Request):
             <td>{plan_badge}</td>
             <td>{created}</td>
             <td class="actions">
-                <button onclick="editUser('{username}')" class="btn btn-edit">✏️ Modifier</button>
-                <button onclick="managePermissions('{username}')" class="btn btn-permissions">🔐 Permissions</button>
+                <button data-username='{safe_username}' onclick="editUser(JSON.parse(this.dataset.username))" class="btn btn-edit">✏️ Modifier</button>
+                <button data-username='{safe_username}' onclick="managePermissions(JSON.parse(this.dataset.username))" class="btn btn-permissions">🔐 Permissions</button>
                 {delete_button}
             </td>
         </tr>

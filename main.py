@@ -4376,8 +4376,8 @@ async def admin_panel():
         else:
             created_date = user[2].strftime('%Y-%m-%d')
         
-        # Encoder le username en JSON pour l'attribut data
-        safe_username = json.dumps(user[0])
+        # Échapper les guillemets simples pour JavaScript
+        escaped_username = user[0].replace("'", "\\'")
         
         users_html += f"""
         <tr>
@@ -4385,7 +4385,7 @@ async def admin_panel():
             <td><span class="badge badge-{user[1]}">{user[1].upper()}</span></td>
             <td>{created_date}</td>
             <td>
-                <button class="btn-danger btn-sm" data-username='{safe_username}' onclick="deleteUser(JSON.parse(this.dataset.username))">🗑️ Supprimer</button>
+                <button class="btn-danger btn-sm" onclick="deleteUser('{escaped_username}')">🗑️ Supprimer</button>
             </td>
         </tr>
         """
@@ -23634,14 +23634,15 @@ async def admin_dashboard(request: Request):
         role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
         plan_badge = f'<span class="badge badge-premium">{plan}</span>'
         
-        # Encoder le username en JSON pour l'attribut data
-        safe_username = json.dumps(username)
+        # Construire les boutons sans f-string pour éviter les problèmes d'escaping
+        escaped_username = username.replace('"', '&quot;').replace("'", "&#39;")
         
-        # Construire le bouton delete en dehors du f-string
+        edit_button = '<button onclick="editUser(\'' + escaped_username + '\')" class="btn btn-edit">✏️ Modifier</button>'
+        perm_button = '<button onclick="managePermissions(\'' + escaped_username + '\')" class="btn btn-permissions">🔐 Permissions</button>'
+        
         delete_button = ""
         if username != "admin":
-            onclick_delete = "deleteUser(JSON.parse(this.dataset.username))"
-            delete_button = '<button data-username=\'' + safe_username + '\' onclick="' + onclick_delete + '" class="btn btn-danger">🗑️ Supprimer</button>'
+            delete_button = '<button onclick="deleteUser(\'' + escaped_username + '\')" class="btn btn-danger">🗑️ Supprimer</button>'
         
         users_html += f"""
         <tr>
@@ -23650,14 +23651,14 @@ async def admin_dashboard(request: Request):
             <td>{plan_badge}</td>
             <td>{created}</td>
             <td class="actions">
-                <button data-username='{safe_username}' onclick="editUser(JSON.parse(this.dataset.username))" class="btn btn-edit">✏️ Modifier</button>
-                <button data-username='{safe_username}' onclick="managePermissions(JSON.parse(this.dataset.username))" class="btn btn-permissions">🔐 Permissions</button>
+                {edit_button}
+                {perm_button}
                 {delete_button}
             </td>
         </tr>
         """
     
-    return HTMLResponse(SIDEBAR + f"""
+    return HTMLResponse(f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -23670,6 +23671,7 @@ async def admin_dashboard(request: Request):
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                 min-height: 100vh; 
                 padding: 20px; 
+                margin-left: 280px;
             }}
             
             .container {{ max-width: 1600px; margin: 0 auto; }}
@@ -23923,6 +23925,7 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
+        {SIDEBAR}
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>

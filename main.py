@@ -1086,8 +1086,6 @@ UPCOMING_GEMS_COMPLETE = [
 ]
 
 
-
-
 # ============================================================================
 # CRYPTO ACADEMY - SYSTÈME DE BASE DE DONNÉES INTÉGRÉ
 # ============================================================================
@@ -2154,8 +2152,6 @@ def get_user_from_request(request: Request):
         import traceback
         traceback.print_exc()
         return None
-
-
 
 # 🔐 CORRECTION 2: RATE LIMITING - Protection contre brute-force
 # ═══════════════════════════════════════════════════════════════════════════
@@ -5732,8 +5728,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.insertAdjacentHTML('afterbegin', menuHTML);
 });
 </script>"""
-
-
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -12718,8 +12712,6 @@ async def debug_trades():
         "trades": trades_summary
     }
 
-
-
 # ============= API RISK MANAGEMENT =============
 @app.get("/api/risk/settings")
 async def get_risk_settings():
@@ -17965,8 +17957,6 @@ async def calendrier_economique():
     return HTMLResponse(SIDEBAR + html)
 
 
-
-
 # ============================================================================
 # 🤖 SYSTÈME DE DÉTECTION AUTOMATIQUE DES TP/SL
 # Utilise le current_price envoyé par le webhook Pine Script
@@ -18211,10 +18201,6 @@ async def startup_event():
     
     # 🚀 Démarrer le monitoring MEXC pour auto-détection TP/SL
     start_background_monitor()
-
-
-
-
 
 
 # ============= API P&L HEBDOMADAIRE =============
@@ -20112,8 +20098,6 @@ async def get_payments(request: Request):
         print(f"❌ Get payments: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-
 @app.post("/api/weekly-pnl/reset")
 async def reset_weekly_pnl_manual():
     """Réinitialiser manuellement le P&L hebdomadaire"""
@@ -20954,8 +20938,6 @@ async def market_simulation():
 <div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne la Market Simulation ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Simulateur trading pour pratiquer SANS RISQUE avec capital virtuel.</p><ul style="line-height: 1.8; color: #555;"><li>💰 Capital virtuel $10k-$100k</li><li>📊 Données RÉELLES du marché</li><li>📈 Testez stratégies sans risque</li><li>📉 Apprenez de vos erreurs</li><li>🎯 Statistiques performances</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎮 Fonctionnalités</h3><ul style="line-height: 1.8; color: #555;"><li>🔄 Buy/Sell comme vrai trading</li><li>📊 Position size, stop loss, TP</li><li>💹 Tracking P&L temps réel</li><li>📈 Graphique performances</li><li>📋 Historique trades</li><li>🎯 Win rate, profit factor</li><li>🔄 Reset capital si besoin</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">📊 Stats suivies</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>💰 Capital actuel vs initial</li><li>📈 Profit/Loss total ($/%)</li><li>🎯 Win rate (% trades gagnants)</li><li>💹 Profit factor (gains/pertes)</li><li>📊 Nombre trades</li><li>📉 Max drawdown</li><li>📈 Best/Worst trade</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Pourquoi utiliser ?</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>✅ Apprendre SANS perdre argent</li><li>✅ Tester nouvelles stratégies</li><li>✅ Développer discipline</li><li>✅ Comprendre émotions trading</li><li>✅ Affiner risk management</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 15px;">🎯 Règle: Profitable en simu 3 mois AVANT argent réel!</p></div></div></div>
 </body>
 </html>""")
-
-
 
 # ============================================================================
 # 7️⃣ PDF REPORT GENERATOR - Téléchargement Professionnel (NOUVELLE FONCTIONNALITÉ)
@@ -22821,8 +22803,6 @@ async def prediction_ia():
 </body>
 </html>""")
 
-
-
 @app.post("/webhook/stripe-permissions")
 async def stripe_permissions_webhook(request: Request):
     """Webhook Stripe pour activer les abonnements automatiquement - VERSION AMÉLIORÉE"""
@@ -23834,7 +23814,7 @@ async def admin_dashboard(request: Request):
                 <!-- Période -->
                 <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
                     <label style="font-weight: 600; color: #333; margin-right: 10px;">Période:</label>
-                    <select id="funnelPeriod" onchange="loadConversionFunnel()" style="padding: 8px 15px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
+                    <select id="funnelPeriod" onchange="" style="padding: 8px 15px; border: 2px solid #e5e7eb; border-radius: 6px; font-size: 14px;">
                         <option value="7">7 derniers jours</option>
                         <option value="30" selected>30 derniers jours</option>
                         <option value="90">90 derniers jours</option>
@@ -23971,38 +23951,6 @@ async def admin_dashboard(request: Request):
                 <div style="background: white; padding: 20px; border-radius: 10px;">
                     <h3 style="color: #333; margin-bottom: 15px;">💰 Coût Par Acquisition (CPA)</h3>
                     <div id="cpaComparison">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 5️⃣ AUTOMATION ENGINE -->
-            <div class="users-section" style="margin-bottom: 30px; background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border: 2px solid #8b5cf6; border-radius: 15px; padding: 25px;">
-                <h2 style="color: #6d28d9; display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 32px;">🤖</span>
-                    Automation Engine
-                </h2>
-                <p style="color: #5b21b6; margin-bottom: 20px; font-weight: 600;">
-                    ⚡ Robot marketing 24/7 qui travaille pour toi
-                </p>
-                
-                <!-- Règles Actives -->
-                <div style="background: white; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                        <h3 style="color: #333; margin: 0;">⚙️ Règles d'Automation</h3>
-                        <button onclick="openCreateRuleModal()" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                            ➕ Créer Règle
-                        </button>
-                    </div>
-                    <div id="automationRules">
-                        <p style="color: #666;">🔄 Chargement...</p>
-                    </div>
-                </div>
-                
-                <!-- Performance Globale -->
-                <div style="background: white; padding: 20px; border-radius: 10px;">
-                    <h3 style="color: #333; margin-bottom: 15px;">📊 Performance Globale</h3>
-                    <div id="automationPerformance">
                         <p style="color: #666;">🔄 Chargement...</p>
                     </div>
                 </div>
@@ -24762,7 +24710,7 @@ async def admin_dashboard(request: Request):
         // 🥈 CONVERSION FUNNEL MICROSCOPE
         // ========================================
         
-        async function loadConversionFunnel() {{
+        async function  {{
             try {{
                 const periodElement = document.getElementById('funnelPeriod');
                 const period = periodElement ? periodElement.value : '30';
@@ -24910,7 +24858,7 @@ async def admin_dashboard(request: Request):
             (async function() {{
                 try {{
                     if (typeof loadConversionFunnel === 'function') {{
-                        await loadConversionFunnel();
+                        await ;
                     }}
                 }} catch (error) {{
                     console.error('⚠️ Erreur Conversion Funnel:', error);
@@ -24923,7 +24871,7 @@ async def admin_dashboard(request: Request):
         // 🥉 REVENUE INTELLIGENCE CENTER
         // ========================================
         
-        async function loadRevenueIntelligence() {{
+        async function  {{
             try {{
                 const response = await fetch('/admin/api/revenue-intelligence');
                 const data = await response.json();
@@ -24936,7 +24884,7 @@ async def admin_dashboard(request: Request):
                 renderRevenueProjections(data.projections);
                 renderCLVByPlan(data.clv_by_plan);
                 renderTopClients(data.top_clients);
-                renderPromoROI(data.promo_roi);
+                ;
                 
             }} catch (error) {{
                 console.error('Erreur chargement revenue intelligence:', error);
@@ -25028,45 +24976,12 @@ async def admin_dashboard(request: Request):
             container.innerHTML = html;
         }}
         
-        function renderPromoROI(promos) {{
-            const container = document.getElementById('promoROI');
-            
-            if (!promos || promos.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Aucun code promo utilisé</p>';
-                return;
-            }}
-            
-            let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">' +
-                '<thead><tr style="background: #f3f4f6;">' +
-                '<th style="padding: 12px; text-align: left; font-weight: 600;">Code</th>' +
-                '<th style="padding: 12px; text-align: center; font-weight: 600;">Utilisé</th>' +
-                '<th style="padding: 12px; text-align: right; font-weight: 600;">Rabais</th>' +
-                '<th style="padding: 12px; text-align: right; font-weight: 600;">Revenus</th>' +
-                '<th style="padding: 12px; text-align: right; font-weight: 600;">ROI</th>' +
-                '</tr></thead><tbody>';
-            
-            promos.forEach(promo => {{
-                const roiColor = promo.roi > 200 ? '#10b981' : promo.roi > 100 ? '#f59e0b' : '#ef4444';
-                const roiIcon = promo.roi > 200 ? '🔥' : promo.roi > 100 ? '✅' : '⚠️';
-                
-                html += '<tr style="border-bottom: 1px solid #e5e7eb;">' +
-                    '<td style="padding: 12px; font-weight: 600;">' + promo.code + '</td>' +
-                    '<td style="padding: 12px; text-align: center;">' + promo.uses + 'x</td>' +
-                    '<td style="padding: 12px; text-align: right; color: #ef4444;">-$' + promo.discount_total.toFixed(2) + '</td>' +
-                    '<td style="padding: 12px; text-align: right; color: #10b981;">+$' + promo.revenue_total.toFixed(2) + '</td>' +
-                    '<td style="padding: 12px; text-align: right; font-weight: bold; color: ' + roiColor + ';">' + roiIcon + ' ' + promo.roi.toFixed(0) + '%</td>' +
-                '</tr>';
-            }});
-            
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        }}
         
         // ========================================
         // 4️⃣ VIRAL GROWTH MACHINE
         // ========================================
         
-        async function loadViralGrowth() {{
+        async function  {{
             try {{
                 const response = await fetch('/admin/api/viral-growth');
                 const data = await response.json();
@@ -25207,7 +25122,7 @@ async def admin_dashboard(request: Request):
         // 5️⃣ AUTOMATION ENGINE
         // ========================================
         
-        async function loadAutomationEngine() {{
+        async function  {{
             try {{
                 const response = await fetch('/admin/api/automation-engine');
                 const data = await response.json();
@@ -25303,7 +25218,7 @@ async def admin_dashboard(request: Request):
                 // Revenue Intelligence
                 try {{
                     if (typeof loadRevenueIntelligence === 'function') {{
-                        await loadRevenueIntelligence();
+                        await ;
                     }}
                 }} catch (error) {{
                     console.error('⚠️ Erreur Revenue Intelligence:', error);
@@ -25312,7 +25227,7 @@ async def admin_dashboard(request: Request):
                 // Viral Growth
                 try {{
                     if (typeof loadViralGrowth === 'function') {{
-                        await loadViralGrowth();
+                        await ;
                     }}
                 }} catch (error) {{
                     console.error('⚠️ Erreur Viral Growth:', error);
@@ -25321,7 +25236,7 @@ async def admin_dashboard(request: Request):
                 // Automation Engine
                 try {{
                     if (typeof loadAutomationEngine === 'function') {{
-                        await loadAutomationEngine();
+                        await ;
                     }}
                 }} catch (error) {{
                     console.error('⚠️ Erreur Automation Engine:', error);
@@ -25731,8 +25646,6 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
 .universal-nav-btn.account{{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}}
 .universal-nav-btn.logout{{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}}
 </style>
-
-
 
             <div class="container">
                 
@@ -28354,8 +28267,6 @@ async def api_backtest(request: Request):
         }
     }
 
-
-
 # ============================================================================
 # MÉTRIQUES ON-CHAIN
 # ============================================================================
@@ -29374,8 +29285,6 @@ async def ai_signals():
 print("Route 1/12 créée: AI Signals")
 
 
-
-
 @app.get("/ai-news", response_class=HTMLResponse)
 async def ai_news():
     """Actualités crypto - TOP 50"""
@@ -29575,8 +29484,6 @@ async def ai_news():
     """)
 
 print("Routes 2-3 créées: AI News, AI Predictor")
-
-
 
 @app.get("/ai-predictor", response_class=HTMLResponse)
 async def ai_predictor():
@@ -30106,8 +30013,6 @@ async def ai_whale():
 
 print("Routes 4-7 créées")
 
-
-
 @app.get("/ai-patterns", response_class=HTMLResponse)
 async def ai_patterns():
     """Reconnaissance patterns - TOP 50"""
@@ -30319,8 +30224,6 @@ async def ai_patterns():
     """)
 
 print("Routes 4-7 créées")
-
-
 
 @app.get("/ai-sentiment", response_class=HTMLResponse)
 async def ai_sentiment():
@@ -30551,8 +30454,6 @@ async def ai_sentiment():
 
 print("Routes 4-7 créées")
 
-
-
 @app.get("/ai-sizer", response_class=HTMLResponse)
 async def ai_sizer():
     """Calcul position sizing - TOP 50"""
@@ -30769,8 +30670,6 @@ async def ai_sizer():
     """)
 
 print("Routes 4-7 créées")
-
-
 
 @app.get("/ai-exit", response_class=HTMLResponse)
 async def ai_exit():
@@ -30990,8 +30889,6 @@ async def ai_exit():
 
 print("Routes 4-7 créées")
 
-
-
 @app.get("/ai-timeframe", response_class=HTMLResponse)
 async def ai_timeframe():
     """Analyse multi-timeframes - TOP 50"""
@@ -31194,8 +31091,6 @@ async def ai_timeframe():
     """)
 
 print("Routes 4-7 créées")
-
-
 
 @app.get("/ai-liquidity", response_class=HTMLResponse)
 async def ai_liquidity():
@@ -31411,8 +31306,6 @@ async def ai_liquidity():
 
 print("Routes 4-7 créées")
 
-
-
 @app.get("/ai-alerts", response_class=HTMLResponse)
 async def ai_alerts():
     """Alertes actives - TOP 50"""
@@ -31617,8 +31510,6 @@ async def ai_alerts():
 print("✅ TOUTES LES 12 ROUTES AI CRÉÉES!")
 
 
-
-
 # ============================================================================
 # 🎯 FONCTION ANALYSE OPPORTUNITÉS
 # ============================================================================
@@ -31794,8 +31685,6 @@ def analyze_opportunity_signal(crypto):
     except Exception as e:
         print(f"❌ Erreur analyse {crypto.get('symbol', 'UNKNOWN')}: {e}")
         return None
-
-
 
 # ============================================================================
 # 🎯 ROUTE AI GEM HUNTER
@@ -32944,8 +32833,6 @@ async def crypto_pepites():
         </div>
     </nav>
 
-
-
 {SIDEBAR}
 
 <div class="update-indicator" id="updateIndicator">
@@ -33302,16 +33189,10 @@ async function init() {{
 document.addEventListener('DOMContentLoaded', init);
 </script>
 
-
-
 </body>
 </html>
     """
     return HTMLResponse(content=html_content)
-
-
-
-
 
 # ============================================================================
 # 🤖 AI CRYPTO COACH - HELPER FUNCTION
@@ -33780,8 +33661,6 @@ async def portfolio_tracker(request: Request):
 </html>"""
     return HTMLResponse(content=html)
 
-
-
 # ========== FEATURE 3 ==========
 
 # FICHIER 1: manifest.json
@@ -34191,8 +34070,6 @@ async def send_push_notification(request: Request):
         return {"success": True, "message": "Push sent"}
     except Exception as e:
         return {"success": False, "error": str(e)}
-
-
 
 # ========== FEATURE 4 ==========
 
@@ -36371,10 +36248,6 @@ console.log('✅ JavaScript Academy chargé avec succès!');
 async def launchpad_scanner():
     """🚀 Launchpad Scanner - TEMPORAIREMENT DÉSACTIVÉ"""
     return RedirectResponse(url="/dashboard", status_code=303)
-
-
-
-
 
 # ================================================================================
 # 🔗 PORTFOLIO TRACKER - ENDPOINTS API
@@ -38643,8 +38516,6 @@ setTimeout(() => {
 }, 1000);
 </script>
 """)
-
-
 
 @app.get("/altseason-copilot-pro", response_class=HTMLResponse)
 async def altseason_copilot():

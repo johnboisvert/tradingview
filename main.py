@@ -23480,7 +23480,7 @@ async def admin_dashboard(request: Request):
         </tr>
         """
     
-    return HTMLResponse(SIDEBAR + f"""
+    return HTMLResponse(f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -24187,7 +24187,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
+            document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24634,7 +24634,7 @@ async def admin_dashboard(request: Request):
                         '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
                     '</div>' +
                     '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-                        '<button onclick="extendSubscription(" + "'" + "" + user.username + "'" + ", 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
+                        '<button onclick="extendSubscription(\'' + user.username + '\', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
                         '<button onclick="sendRenewalEmail(\'' + user.username + '\')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
                         '<button onclick="offerDiscount(\'' + user.username + '\', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
                     '</div>' +
@@ -24711,7 +24711,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm("Prolonger l'abonnement de " + username + ' de ' + days + ' jours?')) return;
+            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{
@@ -41669,7 +41669,7 @@ async def admin_messages_page(request: Request):
     if not user_data or user_data.get("role") != "admin":
         return RedirectResponse("/login", status_code=303)
     return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
-    <html><head><meta charset="UTF-8"><title>Messages</title></head><body style="margin-left: 300px; padding: 20px;"><h1>💬 Messages</h1></body></html>""")
+    <html><head><meta charset="UTF-8"><title>Messages</title></head><body style="margin-left: 300px; padding: 20px;"><h1>💬 Messages de Contact</h1></body></html>""")
 
 
 # ============================================================================

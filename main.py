@@ -2211,7 +2211,9 @@ async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
                     transform: translateY(-3px);
                     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
                 }
-            </style>
+        
+        body { margin-left: 280px; }
+    </style>
         </head>
         <body>
             <div class="error-box">
@@ -4385,7 +4387,7 @@ async def admin_panel():
         </tr>
         """
     
-    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
+    return HTMLResponse(f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -4458,6 +4460,8 @@ async def admin_panel():
     </style>
 </head>
 <body>
+    
+    {SIDEBAR}
     <div class="container">
         <div class="header">
             <h1>👑 Panel d&#39;Administration</h1>
@@ -4633,7 +4637,7 @@ async def admin_panel():
     }}
     
     function managePlanAccess(plan) {{
-        alert(`Gérer l\'accès pour le plan: ${{plan}}`);
+        alert(`Gérer l'accès pour le plan: ${plan}`);
     }}
     
     function loadMessages() {{

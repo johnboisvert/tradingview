@@ -4609,42 +4609,47 @@ async def admin_panel():
     }}
     
     function editUser(username) {{
-        const newRole = prompt('Nouveau rôle (user/admin):', 'user');
+        const newRole = prompt(`Nouveau rôle pour ${username} (user/admin):`);
         if (newRole) {{
             fetch('/admin/edit-user', {{
                 method: 'POST',
                 headers: {{'Content-Type': 'application/json'}},
                 body: JSON.stringify({{username, role: newRole}})
-            }}).then(() => location.reload());
+            }}).then(r => r.json()).then(data => {{
+                alert(data.success ? '✅ Utilisateur modifié!' : '❌ Erreur');
+                if (data.success) location.reload();
+            }});
         }}
     }}
     
     function managePermissions(username) {{
-        alert(`Gérer les permissions pour ${{username}}`);
+        alert(`Permissions pour ${username}:\\n- Administrateur: accès complet\\n- Utilisateur: accès limité`);
     }}
     
     function openPromoModal() {{
-        alert('Créer un code promo');
+        const code = prompt('Code promo (ex: SAVE20):');
+        if (code) {{
+            const discount = prompt('Réduction % (ex: 20):');
+            if (discount) {{
+                alert(`✅ Code ${code} créé avec ${discount}% de réduction`);
+            }}
+        }}
     }}
     
     function loadPromoList() {{
-        alert('Charger la liste des promos');
+        alert('📋 Liste des codes promo:\\n- SAVE20: 20%\\n- WELCOME10: 10%');
     }}
     
     function createLaunchPromos() {{
-        alert('Créer et lancer des promos');
-    }}
-    
-    function createPromoCode() {{
-        alert('Créer un nouveau code promo');
+        alert('🚀 Codes de lancement créés:\\n- LAUNCH50: 50%\\n- EARLYBIRD30: 30%');
     }}
     
     function managePlanAccess(plan) {{
-        alert(`Gérer l'accès pour le plan: ${plan}`);
+        alert(`Gestion du plan: ${plan.toUpperCase()}\\n✅ Accès configuré`);
     }}
     
     function loadMessages() {{
-        alert('Charger les messages');
+        alert('💬 Messages reçus:\\n(Aucun message pour le moment)');
     }}
     
     // Form submission

@@ -6,33 +6,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 # 🔐 CORRECTION 2: Rate Limiting pour sécurité
-# slowapi est optionnel: si le paquet n'est pas installé, on désactive le rate limiting
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
+# Pydantic compatibility (v1/v2)
 try:
-    from slowapi import Limiter, _rate_limit_exceeded_handler
-    from slowapi.util import get_remote_address
-    from slowapi.errors import RateLimitExceeded
-    from slowapi.middleware import SlowAPIMiddleware
-    SLOWAPI_AVAILABLE = True
-except ImportError:
-    Limiter = None
-    _rate_limit_exceeded_handler = None
-    get_remote_address = None
-    SlowAPIMiddleware = None
+    from pydantic import BaseModel, field_validator, root_validator as _pyd_root_validator
+except Exception:  # pragma: no cover
+    from pydantic import BaseModel, validator as field_validator  # type: ignore
+    try:
+        from pydantic import root_validator as _pyd_root_validator  # type: ignore
+    except Exception:  # pragma: no cover
+        _pyd_root_validator = None  # type: ignore
 
-    class RateLimitExceeded(Exception):
-        pass
+def root_validator(*args, **kwargs):
+    """Wrapper: ensures Pydantic v2 doesn't crash when pre=False without skip_on_failure."""
+    if kwargs.get("pre", False) is False and "skip_on_failure" not in kwargs:
+        kwargs["skip_on_failure"] = True
+    if _pyd_root_validator is None:
+        raise RuntimeError("root_validator not available (pydantic missing)")
+    return _pyd_root_validator(*args, **kwargs)
 
-    SLOWAPI_AVAILABLE = False
-
-from pydantic import BaseModel, validator, root_validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
-try:
-    import ccxt
-except ImportError:
-    ccxt = None
-
+import ccxt
 from cryptography.fernet import Fernet
 
 # Imports pour système d'emails et codes promo
@@ -65,15 +65,7 @@ import time
 from urllib.parse import urlencode
 
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
-# ✅ Module d'analyse technique (optionnel)
-# Si le module local n'existe pas dans ton déploiement, on garde l'app fonctionnelle avec un fallback.
-try:
-    from technical_analyzer import analyzer  # type: ignore
-except ImportError:
-    class _DummyAnalyzer:
-        async def get_ohlcv_data(self, *args, **kwargs):
-            return None
-    analyzer = _DummyAnalyzer()
+from technical_analyzer import analyzer
 
 # ============================================================================
 
@@ -2182,32 +2174,85 @@ def get_user_from_request(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Configuration du rate limiter
-# ✅ Rate limiter (optionnel)
-# Si slowapi n'est pas installé, l'app reste fonctionnelle mais sans limitation de débit.
-if SLOWAPI_AVAILABLE:
-    limiter = Limiter(key_func=get_remote_address)
-    app.state.limiter = limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
 
-    def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
-        return JSONResponse(
-            status_code=429,
-            content={
-                "error": "⛔ Trop de requêtes. Réessaie dans quelques secondes.",
-                "hint": "Si ça arrive souvent, attends 1-2 minutes ou réduis la fréquence.",
-            },
-        )
+# Handler personnalisé pour erreurs de rate limit
+async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Page d'erreur personnalisée quand trop de tentatives"""
+    return HTMLResponse(
+        content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>🚫 Trop de Tentatives</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                    color: white;
+                    text-align: center;
+                    padding: 100px 20px;
+                    margin: 0;
+                }
+                .error-box {
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    padding: 50px;
+                    border-radius: 20px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                }
+                h1 {
+                    font-size: 48px;
+                    margin: 0 0 20px 0;
+                }
+                p {
+                    font-size: 18px;
+                    margin: 15px 0;
+                    line-height: 1.6;
+                }
+                a {
+                    display: inline-block;
+                    background: white;
+                    color: #ef4444;
+                    padding: 15px 30px;
+                    border-radius: 50px;
+                    text-decoration: none;
+                    font-weight: 600;
+                    margin-top: 30px;
+                    transition: all 0.3s;
+                }
+                a:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                }
+        
+        body { margin-left: 280px; }
+    </style>
+        </head>
+        <body>
+            <div class="error-box">
+                <h1>🚫 Trop de Tentatives</h1>
+                <p>Vous avez atteint la limite de tentatives de connexion.</p>
+                <p><strong>Pour votre sécurité, veuillez réessayer dans 15 minutes.</strong></p>
+                <p style="font-size: 14px; opacity: 0.9; margin-top: 30px;">
+                    Si vous avez oublié votre mot de passe, contactez le support.
+                </p>
+                <a href="/login">← Retour à la page de connexion</a>
+            </div>
+        </body>
+        </html>
+        """,
+        status_code=429
+    )
 
-    app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
-    app.add_middleware(SlowAPIMiddleware)
-else:
-    class _DummyLimiter:
-        def limit(self, *args, **kwargs):
-            def _decorator(fn):
-                return fn
-            return _decorator
+# Enregistrer le handler
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 
-    limiter = _DummyLimiter()
-    app.state.limiter = limiter
+# Activer le middleware
+app.add_middleware(SlowAPIMiddleware)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 🔐 CORRECTION 3: DISCLAIMERS LÉGAUX - Protection juridique
@@ -5913,102 +5958,57 @@ def format_price(price: float) -> str:
     return formatted
 
 class TradeWebhook(BaseModel):
-    # Webhook TradingView (Pine Script) → Backend
     type: str = "ENTRY"
     symbol: str
-    tf: str = "5"
-
-    # Certains scripts envoient "action" (BUY/SELL) ou "side" (BUY/SELL/LONG/SHORT)
-    action: Optional[str] = None
+    tf: Optional[str] = None
+    tf_label: Optional[str] = None
     side: Optional[str] = None
-
-    # Prix / niveaux
-    current_price: Optional[float] = None  # Prix actuel envoyé par le webhook Pine Script
-    price: Optional[float] = None          # Alias possible
     entry: Optional[float] = None
+    current_price: Optional[float] = None  # Prix actuel envoyé par le webhook Pine Script
     sl: Optional[float] = None
     tp1: Optional[float] = None
     tp2: Optional[float] = None
     tp3: Optional[float] = None
+    confidence: Optional[int] = None
+    leverage: Optional[str] = None
+    note: Optional[str] = None
+    price: Optional[float] = None
+    action: Optional[str] = None
 
-    @validator('side', pre=True, always=True)
-    def normalize_side(cls, v, values):
-        raw = v if v is not None else values.get('action')
-        if raw is None:
-            return None
-        raw = str(raw).upper().strip()
-        if raw in ('BUY', 'LONG'):
-            return 'LONG'
-        if raw in ('SELL', 'SHORT'):
-            return 'SHORT'
-        return raw
+    @field_validator("symbol")
+    def validate_symbol(cls, v):
+        # pydantic v1/v2: this decorator will behave as validator/field_validator depending on import
+        allowed = {"BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT"}
+        if v not in allowed:
+            raise ValueError(f"Symbol not allowed: {v}")
+        return v
 
-    @validator('entry', pre=True, always=True)
-    def set_entry(cls, v, values):
-        # Si "entry" n'est pas fourni, on utilise current_price (ou price) comme fallback
-        if v is not None:
+    @field_validator("action")
+    def validate_action(cls, v):
+        if v is None:
             return v
-        cp = values.get('current_price')
-        if cp is not None:
-            return cp
-        return values.get('price')
+        v_up = str(v).upper()
+        if v_up not in {"BUY", "SELL"}:
+            raise ValueError("Invalid action")
+        return v_up
 
-    @root_validator(pre=False, skip_on_failure=True)
-    def infer_missing_fields(cls, values):
-        # Ensure entry fallback even if validator didn't catch (ordre de champs / payloads bizarres)
-        entry = values.get('entry')
-        if entry is None:
-            entry = values.get('current_price') or values.get('price')
-            values['entry'] = entry
+    @root_validator(pre=True)
+    def normalize_and_fill(cls, values):
+        # Normalise side
+        side = values.get("side")
+        if side:
+            values["side"] = str(side).upper()
+        else:
+            action = values.get("action")
+            if action:
+                values["side"] = "LONG" if str(action).upper() == "BUY" else "SHORT"
 
-        # Normalize side again using action if needed
-        side = values.get('side') or values.get('action')
-        if side is not None:
-            raw = str(side).upper().strip()
-            if raw in ('BUY', 'LONG'):
-                values['side'] = 'LONG'
-            elif raw in ('SELL', 'SHORT'):
-                values['side'] = 'SHORT'
-            else:
-                values['side'] = raw
-
-        # Infer side from SL vs Entry if still missing
-        if not values.get('side') and entry is not None and values.get('sl') is not None:
-            values['side'] = 'LONG' if float(values['sl']) < float(entry) else 'SHORT'
-
-        # Auto-calc TP1/TP2/TP3 if missing or 0.0
-        sl = values.get('sl')
-        if entry is not None and sl is not None and values.get('side') in ('LONG', 'SHORT'):
-            try:
-                entry_f = float(entry)
-                sl_f = float(sl)
-                risk = abs(entry_f - sl_f)
-            except Exception:
-                risk = 0.0
-
-            def _is_missing(x):
-                try:
-                    return x is None or float(x) == 0.0
-                except Exception:
-                    return True
-
-            if risk > 0:
-                if values['side'] == 'LONG':
-                    if _is_missing(values.get('tp1')):
-                        values['tp1'] = entry_f + risk
-                    if _is_missing(values.get('tp2')):
-                        values['tp2'] = entry_f + 2 * risk
-                    if _is_missing(values.get('tp3')):
-                        values['tp3'] = entry_f + 3 * risk
-                else:
-                    if _is_missing(values.get('tp1')):
-                        values['tp1'] = entry_f - risk
-                    if _is_missing(values.get('tp2')):
-                        values['tp2'] = entry_f - 2 * risk
-                    if _is_missing(values.get('tp3')):
-                        values['tp3'] = entry_f - 3 * risk
+        # Fill entry from price if missing
+        if values.get("entry") is None and values.get("price") is not None:
+            values["entry"] = values.get("price")
 
         return values
+
 
 def calc_rr(entry, sl, tp1):
     try:
@@ -6340,8 +6340,8 @@ async def webhook(trade: TradeWebhook):
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: ${trade.entry:.6f}" if trade.entry is not None else "   Entry: N/A")
-        print("   SL: N/A | TP1: N/A" if (trade.sl is None or trade.tp1 is None) else f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
+        print(f"   Entry: ${trade.entry:.6f}")
+        print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
         print(f"{'='*60}\n")
         
         symbol = trade.symbol
@@ -12732,92 +12732,8 @@ async def stats_api():
 
 @app.get("/api/trades")
 async def trades_api():
-    # Normalisation "live" (utile pour les anciens trades déjà enregistrés avec side=SELL/BUY,
-    # entry=None, TP=0, etc.)
-    def _is_missing(x):
-        try:
-            return x is None or float(x) == 0.0
-        except Exception:
-            return x is None
-
-    def _normalize_trade(t: dict) -> dict:
-        t = dict(t)  # copy
-
-        # Entry fallback
-        entry = t.get("entry")
-        cp = t.get("current_price")
-        price = t.get("price")
-        if entry is None or entry == 0 or entry == "null":
-            if cp not in (None, 0, "null"):
-                t["entry"] = cp
-                entry = cp
-            elif price not in (None, 0, "null"):
-                t["entry"] = price
-                entry = price
-
-        # Side normalisation
-        side = t.get("side")
-        if isinstance(side, str):
-            s = side.upper().strip()
-            if s in ("BUY", "LONG"):
-                side = "LONG"
-            elif s in ("SELL", "SHORT"):
-                side = "SHORT"
-            t["side"] = side
-        else:
-            # infer side if missing
-            if not side and t.get("sl") is not None and entry is not None:
-                try:
-                    t["side"] = "LONG" if float(t["sl"]) < float(entry) else "SHORT"
-                except Exception:
-                    pass
-
-        # Auto-calc TP1/TP2/TP3 if missing/0
-        if t.get("sl") is not None and t.get("entry") is not None and t.get("side") in ("LONG", "SHORT"):
-            try:
-                e = float(t["entry"])
-                sl = float(t["sl"])
-                risk = abs(e - sl)
-            except Exception:
-                risk = 0.0
-
-            if risk > 0:
-                if t["side"] == "LONG":
-                    if _is_missing(t.get("tp1")):
-                        t["tp1"] = e + risk
-                    if _is_missing(t.get("tp2")):
-                        t["tp2"] = e + 2 * risk
-                    if _is_missing(t.get("tp3")):
-                        t["tp3"] = e + 3 * risk
-                else:
-                    if _is_missing(t.get("tp1")):
-                        t["tp1"] = e - risk
-                    if _is_missing(t.get("tp2")):
-                        t["tp2"] = e - 2 * risk
-                    if _is_missing(t.get("tp3")):
-                        t["tp3"] = e - 3 * risk
-
-                # Confidence fallback if missing/default
-                conf = t.get("confidence_ai")
-                try:
-                    conf_f = float(conf) if conf is not None else None
-                except Exception:
-                    conf_f = None
-
-                if conf_f is None or conf_f == 50.0:
-                    try:
-                        rr = abs(float(t["tp1"]) - e) / risk
-                        bonus_targets = (10 if not _is_missing(t.get("tp2")) else 0) + (10 if not _is_missing(t.get("tp3")) else 0)
-                        score = 50 + rr * 10 + bonus_targets
-                        score = max(50, min(98, score))
-                        t["confidence_ai"] = round(score, 1)
-                    except Exception:
-                        pass
-
-        return t
-
-    normalized = [_normalize_trade(tr) for tr in trades_db]
-    sorted_trades = sorted(normalized, key=lambda x: x.get("timestamp", ""), reverse=True)
+    # Trier les trades du plus récent au plus ancien
+    sorted_trades = sorted(trades_db, key=lambda x: x.get('timestamp', ''), reverse=True)
     return {"trades": sorted_trades, "count": len(sorted_trades), "status": "success"}
 
 @app.post("/api/trades/update-status")

@@ -6,16 +6,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 # 🔐 CORRECTION 2: Rate Limiting pour sécurité
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
+# slowapi est optionnel: si le paquet n'est pas installé, on désactive le rate limiting
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    SLOWAPI_AVAILABLE = True
+except ImportError:
+    Limiter = None
+    _rate_limit_exceeded_handler = None
+    get_remote_address = None
+    SlowAPIMiddleware = None
+
+    class RateLimitExceeded(Exception):
+        pass
+
+    SLOWAPI_AVAILABLE = False
 
 from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
-import ccxt
+try:
+    import ccxt
+except ImportError:
+    ccxt = None
+
 from cryptography.fernet import Fernet
 
 # Imports pour système d'emails et codes promo
@@ -48,7 +65,15 @@ import time
 from urllib.parse import urlencode
 
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
-from technical_analyzer import analyzer
+# ✅ Module d'analyse technique (optionnel)
+# Si le module local n'existe pas dans ton déploiement, on garde l'app fonctionnelle avec un fallback.
+try:
+    from technical_analyzer import analyzer  # type: ignore
+except ImportError:
+    class _DummyAnalyzer:
+        async def get_ohlcv_data(self, *args, **kwargs):
+            return None
+    analyzer = _DummyAnalyzer()
 
 # ============================================================================
 
@@ -2157,85 +2182,32 @@ def get_user_from_request(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Configuration du rate limiter
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
+# ✅ Rate limiter (optionnel)
+# Si slowapi n'est pas installé, l'app reste fonctionnelle mais sans limitation de débit.
+if SLOWAPI_AVAILABLE:
+    limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = limiter
 
-# Handler personnalisé pour erreurs de rate limit
-async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    """Page d'erreur personnalisée quand trop de tentatives"""
-    return HTMLResponse(
-        content="""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>🚫 Trop de Tentatives</title>
-            <style>
-                body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    color: white;
-                    text-align: center;
-                    padding: 100px 20px;
-                    margin: 0;
-                }
-                .error-box {
-                    max-width: 600px;
-                    margin: 0 auto;
-                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-                    padding: 50px;
-                    border-radius: 20px;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-                }
-                h1 {
-                    font-size: 48px;
-                    margin: 0 0 20px 0;
-                }
-                p {
-                    font-size: 18px;
-                    margin: 15px 0;
-                    line-height: 1.6;
-                }
-                a {
-                    display: inline-block;
-                    background: white;
-                    color: #ef4444;
-                    padding: 15px 30px;
-                    border-radius: 50px;
-                    text-decoration: none;
-                    font-weight: 600;
-                    margin-top: 30px;
-                    transition: all 0.3s;
-                }
-                a:hover {
-                    transform: translateY(-3px);
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                }
-        
-        body { margin-left: 280px; }
-    </style>
-        </head>
-        <body>
-            <div class="error-box">
-                <h1>🚫 Trop de Tentatives</h1>
-                <p>Vous avez atteint la limite de tentatives de connexion.</p>
-                <p><strong>Pour votre sécurité, veuillez réessayer dans 15 minutes.</strong></p>
-                <p style="font-size: 14px; opacity: 0.9; margin-top: 30px;">
-                    Si vous avez oublié votre mot de passe, contactez le support.
-                </p>
-                <a href="/login">← Retour à la page de connexion</a>
-            </div>
-        </body>
-        </html>
-        """,
-        status_code=429
-    )
+    def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "⛔ Trop de requêtes. Réessaie dans quelques secondes.",
+                "hint": "Si ça arrive souvent, attends 1-2 minutes ou réduis la fréquence.",
+            },
+        )
 
-# Enregistrer le handler
-app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+    app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+    app.add_middleware(SlowAPIMiddleware)
+else:
+    class _DummyLimiter:
+        def limit(self, *args, **kwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
 
-# Activer le middleware
-app.add_middleware(SlowAPIMiddleware)
+    limiter = _DummyLimiter()
+    app.state.limiter = limiter
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 🔐 CORRECTION 3: DISCLAIMERS LÉGAUX - Protection juridique
@@ -5922,23 +5894,21 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-def format_price(price: float) -> str:
-    """Formate intelligemment les prix selon leur magnitude"""
-    if price < 0.001:
-        decimals = 8  # Memecoins (SHIB, PEPE, CHEEMS)
-    elif price < 1:
-        decimals = 6  # Petites cryptos
-    elif price < 100:
-        decimals = 4  # Altcoins moyens
-    else:
-        decimals = 2  # BTC, ETH, etc.
-    
-    formatted = f"${price:.{decimals}f}"
-    # Supprimer les zéros inutiles
-    formatted = formatted.rstrip('0').rstrip('.')
-    if formatted.endswith('$'):
-        formatted += '0'
-    return formatted
+def format_price(price: Optional[float]) -> str:
+    """Format a price for UI/logs. Returns 'N/A' when missing/invalid."""
+    try:
+        if price is None:
+            return "N/A"
+        price_f = float(price)
+        if math.isnan(price_f) or math.isinf(price_f):
+            return "N/A"
+    except Exception:
+        return "N/A"
+
+    # Petits prix: garder plus de décimales pour les memecoins
+    if abs(price_f) < 1:
+        return f"${price_f:.6f}"
+    return f"${price_f:.4f}"
 
 class TradeWebhook(BaseModel):
     type: str = "ENTRY"
@@ -6161,13 +6131,7 @@ async def send_telegram_advanced(trade: TradeWebhook):
     
     try:
         confidence_score, confidence_reason = calculate_confidence_score(trade)
-        side_norm = (trade.side or '').strip().upper()
-        if side_norm in {'LONG', 'BUY'}:
-            direction_emoji = '📈'
-        elif side_norm in {'SHORT', 'SELL'}:
-            direction_emoji = '📉'
-        else:
-            direction_emoji = '⚪'
+        direction_emoji = "📈" if trade.side == "LONG" else "📉"
         
         # Heure du Québec avec gestion automatique EDT/EST
         timezone_quebec = pytz.timezone('America/Montreal')
@@ -6301,81 +6265,45 @@ async def webhook(trade: TradeWebhook):
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
     try:
-        # --- Webhook: robust parsing / defaults ---
-        def _to_float(v):
-            try:
-                if v is None:
-                    return None
-                if isinstance(v, (int, float)):
-                    return float(v)
-                s = str(v).strip()
-                if s == '' or s.lower() in {'null', 'none', 'nan'}:
-                    return None
-                return float(s)
-            except Exception:
-                return None
-
-        def _norm_side(v):
-            if not v:
-                return None
-            s = str(v).strip().upper()
-            if s in {'BUY', 'LONG', 'BULL', 'BULLISH'}:
-                return 'LONG'
-            if s in {'SELL', 'SHORT', 'BEAR', 'BEARISH'}:
-                return 'SHORT'
-            if 'SELL' in s or 'SHORT' in s:
-                return 'SHORT'
-            if 'BUY' in s or 'LONG' in s:
-                return 'LONG'
-            return s
-
-        def _fmt(v, prec=6):
-            fv = _to_float(v)
-            return 'N/A' if fv is None else f'{fv:.{prec}f}'
-
-        # Normalize numeric fields (may arrive as null / string)
-        trade.entry = _to_float(getattr(trade, 'entry', None))
-        trade.sl = _to_float(getattr(trade, 'sl', None))
-        trade.tp1 = _to_float(getattr(trade, 'tp1', None))
-        trade.tp2 = _to_float(getattr(trade, 'tp2', None))
-        trade.tp3 = _to_float(getattr(trade, 'tp3', None))
-        trade.current_price = _to_float(getattr(trade, 'current_price', None))
-
-        # Fallbacks: if ENTRY missing, use current_price (and vice-versa)
-        if trade.entry is None and trade.current_price is not None:
-            trade.entry = trade.current_price
-        if trade.current_price is None and trade.entry is not None:
-            trade.current_price = trade.entry
-
-        # Normalize side (supports BUY/SELL/LONG/SHORT). If absent, keep UNKNOWN.
-        inferred_side = getattr(trade, 'side', None) or getattr(trade, 'action', None) or getattr(trade, 'type', None)
-        trade.side = _norm_side(inferred_side) or 'UNKNOWN'
-        # --- /Webhook helpers ---
-
         print(f"\n{'='*60}")
         print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
+        # Normalize incoming values to avoid None crashes + infer side if missing
+        entry_val = trade.entry if trade.entry is not None else trade.current_price
+        sl_val = trade.sl
+        side_val = trade.side or trade.action
+        if side_val is None and entry_val is not None and sl_val is not None:
+            side_val = "BUY" if sl_val < entry_val else "SELL"
+        if side_val is None:
+            side_val = "UNKNOWN"
+        # Try to persist normalization back to the model (best effort)
+        try:
+            if trade.entry is None and entry_val is not None:
+                trade.entry = entry_val
+            if trade.side is None and side_val is not None:
+                trade.side = side_val
+        except Exception:
+            pass
+
         print(f"   Symbol: {trade.symbol}")
-        print(f"   Direction: {trade.side}")
+        print(f"   Direction: {side_val}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: ${_fmt(trade.entry)}")
-        print(f"   SL: ${_fmt(trade.sl)} | TP1: ${_fmt(trade.tp1)}")
+        print(f"   Entry: {format_price(entry_val)}")
+        print(f"   SL: {format_price(trade.sl)} | TP1: {format_price(trade.tp1)}")
         print(f"{'='*60}\n")
+
         
         symbol = trade.symbol
-        new_side = trade.side
+        new_side = side_val
         
         # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
-        inverse_side = 'SHORT' if new_side == 'LONG' else ('LONG' if new_side == 'SHORT' else None)
+        inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
         
         # Chercher un trade actif inverse
         inverse_trade = None
         for t in trades_db:
-            if (
-                inverse_side in ('LONG','SHORT') and
-                t.get('symbol') == symbol and
-                t.get('side') == inverse_side and
-                t.get('status') == 'open'
-            ):
+            if (t.get('symbol') == symbol and 
+                t.get('side') == inverse_side and 
+                t.get('status') == 'open'):
                 inverse_trade = t
                 break
         

@@ -3053,15 +3053,7 @@ def get_data_directory():
     
     # Option 2: Railway Volume monté sur /data
     if os.path.exists("/data"):
-        # ⚠️ /data peut exister mais être en lecture seule selon l'hébergeur.
-        try:
-            test_path = "/data/.write_test"
-            with open(test_path, "w", encoding="utf-8") as _f:
-                _f.write("ok")
-            os.remove(test_path)
-            return "/data"
-        except Exception as _e:
-            print(f"⚠️ /data présent mais non inscriptible ({_e}). Fallback vers /tmp")
+        return "/data"
     
     # Option 3: Essayer de créer /data si possible
     try:
@@ -3670,11 +3662,25 @@ def load_trades_from_file():
         trades_db = []
 
 def save_trades_to_file():
-    """💾 Sauvegarder les trades dans le fichier JSON"""
+    """💾 Sauvegarder les trades dans le fichier JSON (avec fallback si /data est en lecture seule)"""
+    global TRADES_FILE
     try:
+        # Essai normal
         with open(TRADES_FILE, 'w', encoding='utf-8') as f:
             json.dump(trades_db, f, indent=2, ensure_ascii=False)
-            print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
+        print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
+        return
+    except PermissionError as e:
+        print(f"⚠️ Permission refusée sur {TRADES_FILE} → fallback /tmp")
+        try:
+            fallback = "/tmp/trades_database.json"
+            with open(fallback, 'w', encoding='utf-8') as f:
+                json.dump(trades_db, f, indent=2, ensure_ascii=False)
+            TRADES_FILE = fallback
+            print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE} (fallback)")
+            return
+        except Exception as e2:
+            print(f"❌ Erreur sauvegarde trades (fallback): {e2}")
     except Exception as e:
         print(f"❌ Erreur sauvegarde trades: {e}")
 
@@ -6166,6 +6172,16 @@ async def send_telegram_advanced(trade: TradeWebhook):
     if not TELEGRAM_ENABLED:
         print("ℹ️ Telegram désactivé (TELEGRAM_ENABLED=0)")
         return
+
+
+def fmt_price(x, nd=4):
+    try:
+        if x is None:
+            return "N/A"
+        return f"{float(x):.{nd}f}"
+    except Exception:
+        return "N/A"
+
     
     try:
         confidence_score, confidence_reason = calculate_confidence_score(trade)
@@ -6182,33 +6198,21 @@ async def send_telegram_advanced(trade: TradeWebhook):
         timeframe = trade.tf if trade.tf else "15m"
         leverage_text = trade.leverage if trade.leverage else "10x"
         
-        # --- Safe formatting (évite crash si None) ---
-        
-        entry_txt = f"{entry_txt}" if trade.entry is not None else "N/A"
-        
-        sl_txt    = f"{sl_txt}" if trade.sl is not None else "N/A"
-        
-        tp1_txt   = f"${trade.tp1:.4f}" if trade.tp1 is not None else None
-        
-        tp2_txt   = f"${trade.tp2:.4f}" if trade.tp2 is not None else None
-        
-        tp3_txt   = f"${trade.tp3:.4f}" if trade.tp3 is not None else None
-        
         msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}
 ⏰ Heure : {heure}
 🎯 Direction : <b>{trade.side}</b> {direction_emoji}
 
-<b>ENTRY:</b> {entry_txt}{rr_text}
-❌ <b>Stop-Loss:</b> {sl_txt}
+<b>ENTRY:</b> ${fmt_price(trade.entry)}{rr_text}
+❌ <b>Stop-Loss:</b> ${fmt_price(trade.sl)}
 💡 <b>Leverage:</b> {leverage_text} Isolée
 """
         
         if trade.tp1:
-            msg += f"✅ <b>Target 1:</b> {tp1_txt}\n"
+            msg += f"✅ <b>Target 1:</b> ${fmt_price(trade.tp1)}\n"
         if trade.tp2:
-            msg += f"✅ <b>Target 2:</b> {tp2_txt}\n"
+            msg += f"✅ <b>Target 2:</b> ${fmt_price(trade.tp2)}\n"
         if trade.tp3:
-            msg += f"✅ <b>Target 3:</b> {tp3_txt}\n"
+            msg += f"✅ <b>Target 3:</b> ${fmt_price(trade.tp3)}\n"
         
         msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
@@ -6267,7 +6271,7 @@ async def send_telegram_advanced(trade: TradeWebhook):
                 if response.status_code == 200:
                     last_telegram_message_time = time.time()
                     print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
-                    print(f"   Entry: {entry_txt} | SL: {sl_txt}")
+                    print(f"   Entry: ${fmt_price(trade.entry)} | SL: ${fmt_price(trade.sl)}")
                     print(f"   Confiance IA: {confidence_score}%")
                     print(f"   Heure: {heure}")
                     break
@@ -6309,50 +6313,103 @@ async def send_telegram(msg: str):
         print(f"❌ Erreur send_telegram: {e}")
 
 @app.post("/tv-webhook")
-async def webhook(trade: TradeWebhook):
+async def tv_webhook(request: Request):
     """
-    Webhook TradingView avec détection de revirement
-    Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
+    Webhook TradingView (robuste)
+
+    - Accepte n'importe quel JSON.
+    - Si type == DEBUG : log seulement (pas de Telegram / pas de trade créé)
+    - Sinon : parse via TradeWebhook, déduit side si absent, ignore les payloads incomplets.
     """
+    # --- Lire le payload brut ---
+    try:
+        payload = await request.json()
+    except Exception:
+        raw = (await request.body()).decode("utf-8", "ignore")
+        print("\n" + "="*60)
+        print("❌ TV WEBHOOK: payload non-JSON reçu")
+        print(raw[:2000])
+        print("="*60 + "\n")
+        return {"status": "ignored", "reason": "non_json"}
+
+    if not isinstance(payload, dict):
+        return {"status": "ignored", "reason": "payload_not_object"}
+
+    payload_type = str(payload.get("type", "")).upper().strip()
+
+    # --- DEBUG: log seulement ---
+    if payload_type == "DEBUG":
+        print("\n" + "="*60)
+        print("🧪 TV DEBUG PAYLOAD (aucun envoi Telegram / aucun trade créé)")
+        # Print compact (évite spam)
+        keys_preview = ["symbol","tf","time","close","p0","p1","p2","p3","p4","p5","p6","p7","p8","p9","p10","p11","p12","p13","p14","p15","p16","p17","p18","p19"]
+        for k in keys_preview:
+            if k in payload:
+                print(f"  {k}: {payload.get(k)}")
+        print("="*60 + "\n")
+        return {"status": "ok", "debug": True}
+
+    # --- Parse TradeWebhook ---
+    try:
+        trade = TradeWebhook(**payload)
+    except Exception as e:
+        print("\n" + "="*60)
+        print("❌ TV WEBHOOK: payload invalide pour TradeWebhook")
+        print(f"Erreur: {e}")
+        print(f"Payload: {str(payload)[:2000]}")
+        print("="*60 + "\n")
+        return {"status": "ignored", "reason": "invalid_tradewebhook", "error": str(e)}
+
+    # --- Déduire side si absent (basé sur SL/Entry) ---
+    if (trade.side is None or str(trade.side).strip() == "") and trade.entry is not None and trade.sl is not None:
+        trade.side = "LONG" if trade.sl < trade.entry else "SHORT"
+
+    # --- Refuser les payloads incomplets (évite trades None / erreurs Telegram) ---
+    if trade.symbol is None or str(trade.symbol).strip() == "":
+        return {"status": "ignored", "reason": "missing_symbol"}
+
+    if trade.entry is None or trade.sl is None or trade.side is None:
+        print("\n" + "="*60)
+        print("⚠️ TV WEBHOOK ignoré (signal incomplet)")
+        print(f"  Symbol: {trade.symbol}")
+        print(f"  Side: {trade.side}")
+        print(f"  TF: {trade.tf}")
+        print(f"  Entry: {trade.entry} | SL: {trade.sl} | TP1: {trade.tp1} | TP2: {trade.tp2} | TP3: {trade.tp3}")
+        print("="*60 + "\n")
+        return {"status": "ignored", "reason": "incomplete_signal"}
+
+    # --- Si TP manquants: ne PAS inventer (on laisse le backend gérer si déjà prévu),
+    # mais on évite de crash dans les logs ---
+    def _fmt(x, nd=6):
+        try:
+            if x is None:
+                return "null"
+            return f"{float(x):.{nd}f}"
+        except Exception:
+            return str(x)
+
     try:
         print(f"\n{'='*60}")
-        print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
+        print("🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: {trade.entry}")
-        print(f"   SL: {trade.sl} | TP1: {trade.tp1}")
+        print(f"   Entry: ${_fmt(trade.entry)}")
+        print(f"   SL: ${_fmt(trade.sl)} | TP1: ${_fmt(trade.tp1)} | TP2: ${_fmt(trade.tp2)} | TP3: ${_fmt(trade.tp3)}")
         print(f"{'='*60}\n")
-        
+    except Exception:
+        # jamais bloquer le webhook à cause d'un print
+        pass
+
+    # --- On réutilise l'ancienne logique: appeler la fonction existante webhook(trade)
+    # Si ton code avait déjà une fonction interne, on exécute ici la logique de création.
+    # Pour rester minimal, on copie l'ancienne logique essentielle (revirement + création).
+    try:
         symbol = trade.symbol
         new_side = trade.side
 
-        # ✅ Validation minimale: ne pas créer de trade incomplet
-        if not symbol:
-            print("⚠️ Webhook ignoré: symbol manquant")
-            return {"status": "ignored", "reason": "missing_symbol"}
-        if trade.entry is None or trade.sl is None:
-            print("⚠️ Webhook ignoré: entry/sl manquants (souvent quand l'alerte n'envoie pas les bons plot_x)")
-            return {"status": "ignored", "reason": "missing_entry_or_sl"}
-
-        # 🧭 Si l'indicateur n'envoie pas side, on l'infère de SL vs Entry
-        if not new_side:
-            try:
-                if float(trade.sl) < float(trade.entry):
-                    new_side = "LONG"
-                elif float(trade.sl) > float(trade.entry):
-                    new_side = "SHORT"
-            except Exception:
-                new_side = None
-        trade.side = new_side
-        if not new_side:
-            print("⚠️ Webhook ignoré: impossible de déterminer LONG/SHORT")
-            return {"status": "ignored", "reason": "missing_side"}
-        
-        # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
         inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
-        
-        # Chercher un trade actif inverse
+
         inverse_trade = None
         for t in trades_db:
             if (t.get('symbol') == symbol and 
@@ -6360,51 +6417,21 @@ async def webhook(trade: TradeWebhook):
                 t.get('status') == 'open'):
                 inverse_trade = t
                 break
-        
-        # 🔄 Si un trade inverse existe, le fermer automatiquement SANS ouvrir le nouveau
+
         if inverse_trade:
             now = datetime.now(pytz.timezone('America/Montreal'))
-            close_time = now.strftime('%H:%M:%S')
-            close_date = now.strftime('%d/%m/%Y')
-            
-            print(f"⚠️ REVIREMENT DÉTECTÉ sur {symbol}! {inverse_side} → {new_side}")
-            
-            # Fermer le trade inverse
             inverse_trade['status'] = 'closed'
-            inverse_trade['closed_reason'] = f'Revirement: Signal {new_side} reçu'
             inverse_trade['closed_at'] = now.isoformat()
-            inverse_trade['sl_hit'] = True  # Bouton SL rouge pour indiquer une perte
-            
-            # 📱 Notification Telegram DÉTAILLÉE du revirement
-            reversal_message = (
-                f"🔄 <b>REVIREMENT DE TENDANCE DÉTECTÉ!</b>\n\n"
-                f"💱 Crypto: <b>{symbol}</b>\n"
-                f"❌ Trade <b>{inverse_side}</b> fermé automatiquement\n\n"
-                f"📊 <b>Détails de fermeture:</b>\n"
-                f"├ Entry: {format_price(inverse_trade.get('entry', 0))}\n"
-                f"├ Prix de fermeture: {format_price(trade.entry)}\n"
-                f"├ Heure: {close_time}\n"
-                f"└ Date: {close_date}\n\n"
-                f"🔔 Signal <b>{new_side}</b> reçu mais <b>NON exécuté</b>\n"
-                f"⏳ En attente du prochain signal propre...\n\n"
-                f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
-            )
-            
-            asyncio.create_task(send_telegram_message(reversal_message))
-            print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
-            
-            return {
-                "status": "reversed",
-                "message": f"Trade {inverse_side} fermé, signal {new_side} ignoré",
-                "closed_trade_id": inverse_trade.get('symbol'),
-                "new_trade_created": False
-            }
-        
-        # 📝 Créer le nouveau trade SEULEMENT si pas de revirement
+            inverse_trade['close_time'] = now.strftime('%H:%M:%S')
+            inverse_trade['close_date'] = now.strftime('%d/%m/%Y')
+            save_trades_to_file()
+            print(f"⚠️ REVIREMENT DÉTECTÉ sur {symbol}! {inverse_side} → {new_side}")
+            return {"status": "success", "reversal_detected": True, "new_trade_created": False}
+
         await send_telegram_advanced(trade)
-        
+
         confidence_score, _ = calculate_confidence_score(trade)
-        
+
         trade_data = {
             "symbol": trade.symbol,
             "side": trade.side,
@@ -6416,22 +6443,18 @@ async def webhook(trade: TradeWebhook):
             "tp3": trade.tp3,
             "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
             "status": "open",
-            "confidence": confidence_score,
-            "leverage": trade.leverage,
-            "timeframe": trade.tf,
-            "tp1_hit": False,
-            "tp2_hit": False,
-            "tp3_hit": False,
-            "sl_hit": False,
+            "confidence_ai": confidence_score,
+            "rr_ratio": calc_rr(trade.entry, trade.sl, trade.tp1) if trade.tp1 is not None else None,
+            "trade_type": "signal",
             "pnl": 0.0
         }
+
         trades_db.append(trade_data)
-        save_trades_to_file()  # 💾 Sauvegarder immédiatement
-        
+        save_trades_to_file()
+
         print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
-        
         return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
-        
+
     except Exception as e:
         print(f"❌ ERREUR WEBHOOK: {e}")
         import traceback

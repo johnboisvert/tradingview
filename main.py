@@ -11,24 +11,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-# Pydantic compatibility (v1/v2)
-try:
-    from pydantic import BaseModel, field_validator, root_validator as _pyd_root_validator
-except Exception:  # pragma: no cover
-    from pydantic import BaseModel, validator as field_validator  # type: ignore
-    try:
-        from pydantic import root_validator as _pyd_root_validator  # type: ignore
-    except Exception:  # pragma: no cover
-        _pyd_root_validator = None  # type: ignore
-
-def root_validator(*args, **kwargs):
-    """Wrapper: ensures Pydantic v2 doesn't crash when pre=False without skip_on_failure."""
-    if kwargs.get("pre", False) is False and "skip_on_failure" not in kwargs:
-        kwargs["skip_on_failure"] = True
-    if _pyd_root_validator is None:
-        raise RuntimeError("root_validator not available (pydantic missing)")
-    return _pyd_root_validator(*args, **kwargs)
-
+from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
@@ -5975,40 +5958,17 @@ class TradeWebhook(BaseModel):
     price: Optional[float] = None
     action: Optional[str] = None
 
-    @field_validator("symbol")
-    def validate_symbol(cls, v):
-        # pydantic v1/v2: this decorator will behave as validator/field_validator depending on import
-        allowed = {"BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT"}
-        if v not in allowed:
-            raise ValueError(f"Symbol not allowed: {v}")
+    @validator('side', pre=True, always=True)
+    def set_side(cls, v, values):
+        if v:
+            return v.upper()
+        if 'action' in values and values['action']:
+            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
         return v
 
-    @field_validator("action")
-    def validate_action(cls, v):
-        if v is None:
-            return v
-        v_up = str(v).upper()
-        if v_up not in {"BUY", "SELL"}:
-            raise ValueError("Invalid action")
-        return v_up
-
-    @root_validator(pre=True)
-    def normalize_and_fill(cls, values):
-        # Normalise side
-        side = values.get("side")
-        if side:
-            values["side"] = str(side).upper()
-        else:
-            action = values.get("action")
-            if action:
-                values["side"] = "LONG" if str(action).upper() == "BUY" else "SHORT"
-
-        # Fill entry from price if missing
-        if values.get("entry") is None and values.get("price") is not None:
-            values["entry"] = values.get("price")
-
-        return values
-
+    @validator('entry', pre=True, always=True)
+    def set_entry(cls, v, values):
+        return v if v is not None else values.get('price')
 
 def calc_rr(entry, sl, tp1):
     try:
@@ -6329,12 +6289,69 @@ async def send_telegram(msg: str):
         print(f"❌ Erreur send_telegram: {e}")
 
 @app.post("/tv-webhook")
-async def webhook(trade: TradeWebhook):
+async def webhook(request: Request):
     """
     Webhook TradingView avec détection de revirement
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
     try:
+        # ✅ Parse manuel du payload TradingView pour éviter les erreurs 422 (validation FastAPI)
+        # TradingView peut envoyer: JSON, texte JSON, ou texte "key=value".
+        raw_body = await request.body()
+        raw_text = raw_body.decode("utf-8", errors="ignore") if raw_body else ""
+        payload = None
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = None
+
+        if payload is None and raw_text:
+            rt = raw_text.strip()
+            if rt.startswith("{") and rt.endswith("}"):
+                try:
+                    import json as _json
+                    payload = _json.loads(rt)
+                except Exception:
+                    payload = None
+
+        if payload is None:
+            payload = {}
+            if raw_text:
+                rt = raw_text.strip()
+                if "&" in rt and "=" in rt:
+                    for part in rt.split("&"):
+                        if "=" in part:
+                            k, v = part.split("=", 1)
+                            payload[k.strip()] = v.strip()
+                elif "\n" in rt and "=" in rt:
+                    for line in rt.splitlines():
+                        if "=" in line:
+                            k, v = line.split("=", 1)
+                            payload[k.strip()] = v.strip()
+                else:
+                    payload["message"] = rt
+
+        if not isinstance(payload, dict):
+            payload = {"message": str(payload)}
+
+        # Normalisations utiles
+        if "symbol" not in payload:
+            for k in ("ticker", "pair", "instrument", "market", "coin"):
+                if payload.get(k):
+                    payload["symbol"] = payload.get(k)
+                    break
+
+        if "side" not in payload and payload.get("action"):
+            payload["side"] = payload.get("action")
+
+        # Construire l'objet TradeWebhook sans faire planter la route
+        try:
+            from pydantic import ValidationError as _ValidationError
+            trade = TradeWebhook(**payload)
+        except Exception as _ve:
+            print(f"❌ Payload webhook invalide (TradeWebhook): {_ve}")
+            # Retour 200 pour empêcher TradingView de spammer (retries)
+            return {"status": "ignored", "reason": "validation_error", "raw": raw_text[:500]}
         print(f"\n{'='*60}")
         print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")

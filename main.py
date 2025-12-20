@@ -6,16 +6,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 # 🔐 CORRECTION 2: Rate Limiting pour sécurité
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
+# slowapi est optionnel: si le paquet n'est pas installé, on désactive le rate limiting
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    SLOWAPI_AVAILABLE = True
+except ImportError:
+    Limiter = None
+    _rate_limit_exceeded_handler = None
+    get_remote_address = None
+    SlowAPIMiddleware = None
 
-from pydantic import BaseModel, validator
+    class RateLimitExceeded(Exception):
+        pass
+
+    SLOWAPI_AVAILABLE = False
+
+from pydantic import BaseModel, validator, root_validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
-import ccxt
+try:
+    import ccxt
+except ImportError:
+    ccxt = None
+
 from cryptography.fernet import Fernet
 
 # Imports pour système d'emails et codes promo
@@ -48,7 +65,15 @@ import time
 from urllib.parse import urlencode
 
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
-from technical_analyzer import analyzer
+# ✅ Module d'analyse technique (optionnel)
+# Si le module local n'existe pas dans ton déploiement, on garde l'app fonctionnelle avec un fallback.
+try:
+    from technical_analyzer import analyzer  # type: ignore
+except ImportError:
+    class _DummyAnalyzer:
+        async def get_ohlcv_data(self, *args, **kwargs):
+            return None
+    analyzer = _DummyAnalyzer()
 
 # ============================================================================
 
@@ -2157,85 +2182,32 @@ def get_user_from_request(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Configuration du rate limiter
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
+# ✅ Rate limiter (optionnel)
+# Si slowapi n'est pas installé, l'app reste fonctionnelle mais sans limitation de débit.
+if SLOWAPI_AVAILABLE:
+    limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = limiter
 
-# Handler personnalisé pour erreurs de rate limit
-async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    """Page d'erreur personnalisée quand trop de tentatives"""
-    return HTMLResponse(
-        content="""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>🚫 Trop de Tentatives</title>
-            <style>
-                body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    color: white;
-                    text-align: center;
-                    padding: 100px 20px;
-                    margin: 0;
-                }
-                .error-box {
-                    max-width: 600px;
-                    margin: 0 auto;
-                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-                    padding: 50px;
-                    border-radius: 20px;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-                }
-                h1 {
-                    font-size: 48px;
-                    margin: 0 0 20px 0;
-                }
-                p {
-                    font-size: 18px;
-                    margin: 15px 0;
-                    line-height: 1.6;
-                }
-                a {
-                    display: inline-block;
-                    background: white;
-                    color: #ef4444;
-                    padding: 15px 30px;
-                    border-radius: 50px;
-                    text-decoration: none;
-                    font-weight: 600;
-                    margin-top: 30px;
-                    transition: all 0.3s;
-                }
-                a:hover {
-                    transform: translateY(-3px);
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                }
-        
-        body { margin-left: 280px; }
-    </style>
-        </head>
-        <body>
-            <div class="error-box">
-                <h1>🚫 Trop de Tentatives</h1>
-                <p>Vous avez atteint la limite de tentatives de connexion.</p>
-                <p><strong>Pour votre sécurité, veuillez réessayer dans 15 minutes.</strong></p>
-                <p style="font-size: 14px; opacity: 0.9; margin-top: 30px;">
-                    Si vous avez oublié votre mot de passe, contactez le support.
-                </p>
-                <a href="/login">← Retour à la page de connexion</a>
-            </div>
-        </body>
-        </html>
-        """,
-        status_code=429
-    )
+    def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "⛔ Trop de requêtes. Réessaie dans quelques secondes.",
+                "hint": "Si ça arrive souvent, attends 1-2 minutes ou réduis la fréquence.",
+            },
+        )
 
-# Enregistrer le handler
-app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+    app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+    app.add_middleware(SlowAPIMiddleware)
+else:
+    class _DummyLimiter:
+        def limit(self, *args, **kwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
 
-# Activer le middleware
-app.add_middleware(SlowAPIMiddleware)
+    limiter = _DummyLimiter()
+    app.state.limiter = limiter
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 🔐 CORRECTION 3: DISCLAIMERS LÉGAUX - Protection juridique
@@ -5941,34 +5913,102 @@ def format_price(price: float) -> str:
     return formatted
 
 class TradeWebhook(BaseModel):
+    # Webhook TradingView (Pine Script) → Backend
     type: str = "ENTRY"
     symbol: str
-    tf: Optional[str] = None
-    tf_label: Optional[str] = None
+    tf: str = "5"
+
+    # Certains scripts envoient "action" (BUY/SELL) ou "side" (BUY/SELL/LONG/SHORT)
+    action: Optional[str] = None
     side: Optional[str] = None
-    entry: Optional[float] = None
+
+    # Prix / niveaux
     current_price: Optional[float] = None  # Prix actuel envoyé par le webhook Pine Script
+    price: Optional[float] = None          # Alias possible
+    entry: Optional[float] = None
     sl: Optional[float] = None
     tp1: Optional[float] = None
     tp2: Optional[float] = None
     tp3: Optional[float] = None
-    confidence: Optional[int] = None
-    leverage: Optional[str] = None
-    note: Optional[str] = None
-    price: Optional[float] = None
-    action: Optional[str] = None
 
     @validator('side', pre=True, always=True)
-    def set_side(cls, v, values):
-        if v:
-            return v.upper()
-        if 'action' in values and values['action']:
-            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
-        return v
+    def normalize_side(cls, v, values):
+        raw = v if v is not None else values.get('action')
+        if raw is None:
+            return None
+        raw = str(raw).upper().strip()
+        if raw in ('BUY', 'LONG'):
+            return 'LONG'
+        if raw in ('SELL', 'SHORT'):
+            return 'SHORT'
+        return raw
 
     @validator('entry', pre=True, always=True)
     def set_entry(cls, v, values):
-        return v if v is not None else values.get('price')
+        # Si "entry" n'est pas fourni, on utilise current_price (ou price) comme fallback
+        if v is not None:
+            return v
+        cp = values.get('current_price')
+        if cp is not None:
+            return cp
+        return values.get('price')
+
+    @root_validator(pre=False, skip_on_failure=True)
+    def infer_missing_fields(cls, values):
+        # Ensure entry fallback even if validator didn't catch (ordre de champs / payloads bizarres)
+        entry = values.get('entry')
+        if entry is None:
+            entry = values.get('current_price') or values.get('price')
+            values['entry'] = entry
+
+        # Normalize side again using action if needed
+        side = values.get('side') or values.get('action')
+        if side is not None:
+            raw = str(side).upper().strip()
+            if raw in ('BUY', 'LONG'):
+                values['side'] = 'LONG'
+            elif raw in ('SELL', 'SHORT'):
+                values['side'] = 'SHORT'
+            else:
+                values['side'] = raw
+
+        # Infer side from SL vs Entry if still missing
+        if not values.get('side') and entry is not None and values.get('sl') is not None:
+            values['side'] = 'LONG' if float(values['sl']) < float(entry) else 'SHORT'
+
+        # Auto-calc TP1/TP2/TP3 if missing or 0.0
+        sl = values.get('sl')
+        if entry is not None and sl is not None and values.get('side') in ('LONG', 'SHORT'):
+            try:
+                entry_f = float(entry)
+                sl_f = float(sl)
+                risk = abs(entry_f - sl_f)
+            except Exception:
+                risk = 0.0
+
+            def _is_missing(x):
+                try:
+                    return x is None or float(x) == 0.0
+                except Exception:
+                    return True
+
+            if risk > 0:
+                if values['side'] == 'LONG':
+                    if _is_missing(values.get('tp1')):
+                        values['tp1'] = entry_f + risk
+                    if _is_missing(values.get('tp2')):
+                        values['tp2'] = entry_f + 2 * risk
+                    if _is_missing(values.get('tp3')):
+                        values['tp3'] = entry_f + 3 * risk
+                else:
+                    if _is_missing(values.get('tp1')):
+                        values['tp1'] = entry_f - risk
+                    if _is_missing(values.get('tp2')):
+                        values['tp2'] = entry_f - 2 * risk
+                    if _is_missing(values.get('tp3')):
+                        values['tp3'] = entry_f - 3 * risk
+
+        return values
 
 def calc_rr(entry, sl, tp1):
     try:
@@ -6293,72 +6333,125 @@ async def webhook(request: Request):
     """
     Webhook TradingView avec détection de revirement
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
+    TradingView envoie souvent le corps en `text/plain` même si c'est du JSON.
+    Donc on parse le body manuellement pour éviter les erreurs 422 (Unprocessable Entity).
     """
-    try:
-        # ✅ Parse manuel du payload TradingView pour éviter les erreurs 422 (validation FastAPI)
-        # TradingView peut envoyer: JSON, texte JSON, ou texte "key=value".
-        raw_body = await request.body()
-        raw_text = raw_body.decode("utf-8", errors="ignore") if raw_body else ""
-        payload = None
-        try:
-            payload = await request.json()
-        except Exception:
-            payload = None
+    import json
+    import urllib.parse
 
-        if payload is None and raw_text:
-            rt = raw_text.strip()
-            if rt.startswith("{") and rt.endswith("}"):
-                try:
-                    import json as _json
-                    payload = _json.loads(rt)
-                except Exception:
-                    payload = None
+    raw_bytes = await request.body()
+    raw_text = raw_bytes.decode("utf-8", errors="ignore").strip() if raw_bytes else ""
+    data = None
 
-        if payload is None:
-            payload = {}
-            if raw_text:
-                rt = raw_text.strip()
-                if "&" in rt and "=" in rt:
-                    for part in rt.split("&"):
-                        if "=" in part:
-                            k, v = part.split("=", 1)
-                            payload[k.strip()] = v.strip()
-                elif "\n" in rt and "=" in rt:
-                    for line in rt.splitlines():
-                        if "=" in line:
-                            k, v = line.split("=", 1)
-                            payload[k.strip()] = v.strip()
+    # 1) JSON direct (même si Content-Type = text/plain)
+    if raw_text:
+        if raw_text[0] in "{[":
+            try:
+                data = json.loads(raw_text)
+            except Exception:
+                # Cas: JSON entouré de texte -> on extrait le premier {...}
+                s = raw_text.find("{")
+                e = raw_text.rfind("}")
+                if s != -1 and e != -1 and e > s:
+                    try:
+                        data = json.loads(raw_text[s : e + 1])
+                    except Exception:
+                        data = None
+
+        # 2) Fallback: application/x-www-form-urlencoded ou "payload={...}"
+        if data is None:
+            try:
+                qs = urllib.parse.parse_qs(raw_text, keep_blank_values=True)
+                flat = {k: (v[-1] if isinstance(v, list) else v) for k, v in qs.items()}
+                if "payload" in flat and isinstance(flat["payload"], str) and flat["payload"].strip().startswith("{"):
+                    try:
+                        data = json.loads(flat["payload"])
+                    except Exception:
+                        data = flat
                 else:
-                    payload["message"] = rt
+                    data = flat if flat else None
+            except Exception:
+                data = None
 
-        if not isinstance(payload, dict):
-            payload = {"message": str(payload)}
-
-        # Normalisations utiles
-        if "symbol" not in payload:
-            for k in ("ticker", "pair", "instrument", "market", "coin"):
-                if payload.get(k):
-                    payload["symbol"] = payload.get(k)
-                    break
-
-        if "side" not in payload and payload.get("action"):
-            payload["side"] = payload.get("action")
-
-        # Construire l'objet TradeWebhook sans faire planter la route
+    # 3) Dernier recours: request.json()
+    if data is None:
         try:
-            from pydantic import ValidationError as _ValidationError
-            trade = TradeWebhook(**payload)
-        except Exception as _ve:
-            print(f"❌ Payload webhook invalide (TradeWebhook): {_ve}")
-            # Retour 200 pour empêcher TradingView de spammer (retries)
-            return {"status": "ignored", "reason": "validation_error", "raw": raw_text[:500]}
+            data = await request.json()
+        except Exception:
+            data = {}
+
+    # Normalisation
+    if isinstance(data, list) and data and isinstance(data[0], dict):
+        data = data[0]
+    if not isinstance(data, dict):
+        data = {"raw": data}
+
+    data = {str(k).strip(): v for k, v in data.items()}
+
+    # Coercition: strings -> float
+    def _coerce_float(x):
+        try:
+            if x is None:
+                return None
+            if isinstance(x, (int, float)):
+                return float(x)
+            if isinstance(x, str):
+                s = x.strip().replace(",", ".")
+                if s == "":
+                    return None
+                return float(s)
+        except Exception:
+            return None
+        return None
+
+    for _k in ("entry", "sl", "tp1", "tp2", "tp3", "current_price", "confidence", "rr"):
+        if _k in data:
+            data[_k] = _coerce_float(data[_k])
+
+    if "tf" in data and data["tf"] is not None and not isinstance(data["tf"], str):
+        data["tf"] = str(data["tf"])
+
+    # Validation -> TradeWebhook
+    try:
+        if hasattr(TradeWebhook, "model_validate"):
+            trade = TradeWebhook.model_validate(data)
+        else:
+            trade = TradeWebhook.parse_obj(data)
+    except Exception as e:
+        logger.warning(f"❌ Webhook invalide (non-bloquant): {e} | body={raw_text[:500]}")
+        # 200 pour éviter les retries agressifs de TradingView
+        return JSONResponse({"ok": False, "error": "invalid_payload", "details": str(e)}, status_code=200)
+
+    # Sanity-check: si le prix est complètement off vs prix live -> on rescale
+    try:
+        live_price = None
+        if "get_current_price_from_trade" in globals():
+            live_price = await get_current_price_from_trade({"symbol": trade.symbol})
+
+        if live_price and trade.entry and trade.entry > 0:
+            ratio = float(live_price) / float(trade.entry)
+            if ratio > 2.0 or ratio < 0.5:
+                scale = ratio
+                logger.warning(
+                    f"⚠️ Rescale webhook {trade.symbol}: entry={trade.entry} -> {float(trade.entry) * scale} (live={live_price})"
+                )
+                for _attr in ("entry", "sl", "tp1", "tp2", "tp3"):
+                    _v = getattr(trade, _attr, None)
+                    if _v is not None:
+                        setattr(trade, _attr, float(_v) * scale)
+
+        if trade.current_price is None and live_price:
+            trade.current_price = float(live_price)
+    except Exception as e:
+        logger.warning(f"⚠️ Sanity-check webhook ignoré: {e}")
+    try:
         print(f"\n{'='*60}")
         print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: ${trade.entry:.6f}")
-        print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
+        print(f"   Entry: ${trade.entry:.6f}" if trade.entry is not None else "   Entry: N/A")
+        print("   SL: N/A | TP1: N/A" if (trade.sl is None or trade.tp1 is None) else f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
         print(f"{'='*60}\n")
         
         symbol = trade.symbol
@@ -12749,8 +12842,92 @@ async def stats_api():
 
 @app.get("/api/trades")
 async def trades_api():
-    # Trier les trades du plus récent au plus ancien
-    sorted_trades = sorted(trades_db, key=lambda x: x.get('timestamp', ''), reverse=True)
+    # Normalisation "live" (utile pour les anciens trades déjà enregistrés avec side=SELL/BUY,
+    # entry=None, TP=0, etc.)
+    def _is_missing(x):
+        try:
+            return x is None or float(x) == 0.0
+        except Exception:
+            return x is None
+
+    def _normalize_trade(t: dict) -> dict:
+        t = dict(t)  # copy
+
+        # Entry fallback
+        entry = t.get("entry")
+        cp = t.get("current_price")
+        price = t.get("price")
+        if entry is None or entry == 0 or entry == "null":
+            if cp not in (None, 0, "null"):
+                t["entry"] = cp
+                entry = cp
+            elif price not in (None, 0, "null"):
+                t["entry"] = price
+                entry = price
+
+        # Side normalisation
+        side = t.get("side")
+        if isinstance(side, str):
+            s = side.upper().strip()
+            if s in ("BUY", "LONG"):
+                side = "LONG"
+            elif s in ("SELL", "SHORT"):
+                side = "SHORT"
+            t["side"] = side
+        else:
+            # infer side if missing
+            if not side and t.get("sl") is not None and entry is not None:
+                try:
+                    t["side"] = "LONG" if float(t["sl"]) < float(entry) else "SHORT"
+                except Exception:
+                    pass
+
+        # Auto-calc TP1/TP2/TP3 if missing/0
+        if t.get("sl") is not None and t.get("entry") is not None and t.get("side") in ("LONG", "SHORT"):
+            try:
+                e = float(t["entry"])
+                sl = float(t["sl"])
+                risk = abs(e - sl)
+            except Exception:
+                risk = 0.0
+
+            if risk > 0:
+                if t["side"] == "LONG":
+                    if _is_missing(t.get("tp1")):
+                        t["tp1"] = e + risk
+                    if _is_missing(t.get("tp2")):
+                        t["tp2"] = e + 2 * risk
+                    if _is_missing(t.get("tp3")):
+                        t["tp3"] = e + 3 * risk
+                else:
+                    if _is_missing(t.get("tp1")):
+                        t["tp1"] = e - risk
+                    if _is_missing(t.get("tp2")):
+                        t["tp2"] = e - 2 * risk
+                    if _is_missing(t.get("tp3")):
+                        t["tp3"] = e - 3 * risk
+
+                # Confidence fallback if missing/default
+                conf = t.get("confidence_ai")
+                try:
+                    conf_f = float(conf) if conf is not None else None
+                except Exception:
+                    conf_f = None
+
+                if conf_f is None or conf_f == 50.0:
+                    try:
+                        rr = abs(float(t["tp1"]) - e) / risk
+                        bonus_targets = (10 if not _is_missing(t.get("tp2")) else 0) + (10 if not _is_missing(t.get("tp3")) else 0)
+                        score = 50 + rr * 10 + bonus_targets
+                        score = max(50, min(98, score))
+                        t["confidence_ai"] = round(score, 1)
+                    except Exception:
+                        pass
+
+        return t
+
+    normalized = [_normalize_trade(tr) for tr in trades_db]
+    sorted_trades = sorted(normalized, key=lambda x: x.get("timestamp", ""), reverse=True)
     return {"trades": sorted_trades, "count": len(sorted_trades), "status": "success"}
 
 @app.post("/api/trades/update-status")

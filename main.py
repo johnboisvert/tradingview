@@ -6,16 +6,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 # 🔐 CORRECTION 2: Rate Limiting pour sécurité
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
+# slowapi est optionnel: si le paquet n'est pas installé, on désactive le rate limiting
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    SLOWAPI_AVAILABLE = True
+except ImportError:
+    Limiter = None
+    _rate_limit_exceeded_handler = None
+    get_remote_address = None
+    SlowAPIMiddleware = None
+
+    class RateLimitExceeded(Exception):
+        pass
+
+    SLOWAPI_AVAILABLE = False
 
 from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
-import ccxt
+try:
+    import ccxt
+except ImportError:
+    ccxt = None
+
 from cryptography.fernet import Fernet
 
 # Imports pour système d'emails et codes promo
@@ -48,7 +65,15 @@ import time
 from urllib.parse import urlencode
 
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
-from technical_analyzer import analyzer
+# ✅ Module d'analyse technique (optionnel)
+# Si le module local n'existe pas dans ton déploiement, on garde l'app fonctionnelle avec un fallback.
+try:
+    from technical_analyzer import analyzer  # type: ignore
+except ImportError:
+    class _DummyAnalyzer:
+        async def get_ohlcv_data(self, *args, **kwargs):
+            return None
+    analyzer = _DummyAnalyzer()
 
 # ============================================================================
 
@@ -2157,85 +2182,32 @@ def get_user_from_request(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Configuration du rate limiter
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
+# ✅ Rate limiter (optionnel)
+# Si slowapi n'est pas installé, l'app reste fonctionnelle mais sans limitation de débit.
+if SLOWAPI_AVAILABLE:
+    limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = limiter
 
-# Handler personnalisé pour erreurs de rate limit
-async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    """Page d'erreur personnalisée quand trop de tentatives"""
-    return HTMLResponse(
-        content="""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>🚫 Trop de Tentatives</title>
-            <style>
-                body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    color: white;
-                    text-align: center;
-                    padding: 100px 20px;
-                    margin: 0;
-                }
-                .error-box {
-                    max-width: 600px;
-                    margin: 0 auto;
-                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-                    padding: 50px;
-                    border-radius: 20px;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-                }
-                h1 {
-                    font-size: 48px;
-                    margin: 0 0 20px 0;
-                }
-                p {
-                    font-size: 18px;
-                    margin: 15px 0;
-                    line-height: 1.6;
-                }
-                a {
-                    display: inline-block;
-                    background: white;
-                    color: #ef4444;
-                    padding: 15px 30px;
-                    border-radius: 50px;
-                    text-decoration: none;
-                    font-weight: 600;
-                    margin-top: 30px;
-                    transition: all 0.3s;
-                }
-                a:hover {
-                    transform: translateY(-3px);
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                }
-        
-        body { margin-left: 280px; }
-    </style>
-        </head>
-        <body>
-            <div class="error-box">
-                <h1>🚫 Trop de Tentatives</h1>
-                <p>Vous avez atteint la limite de tentatives de connexion.</p>
-                <p><strong>Pour votre sécurité, veuillez réessayer dans 15 minutes.</strong></p>
-                <p style="font-size: 14px; opacity: 0.9; margin-top: 30px;">
-                    Si vous avez oublié votre mot de passe, contactez le support.
-                </p>
-                <a href="/login">← Retour à la page de connexion</a>
-            </div>
-        </body>
-        </html>
-        """,
-        status_code=429
-    )
+    def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "⛔ Trop de requêtes. Réessaie dans quelques secondes.",
+                "hint": "Si ça arrive souvent, attends 1-2 minutes ou réduis la fréquence.",
+            },
+        )
 
-# Enregistrer le handler
-app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+    app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+    app.add_middleware(SlowAPIMiddleware)
+else:
+    class _DummyLimiter:
+        def limit(self, *args, **kwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
 
-# Activer le middleware
-app.add_middleware(SlowAPIMiddleware)
+    limiter = _DummyLimiter()
+    app.state.limiter = limiter
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 🔐 CORRECTION 3: DISCLAIMERS LÉGAUX - Protection juridique
@@ -3662,25 +3634,11 @@ def load_trades_from_file():
         trades_db = []
 
 def save_trades_to_file():
-    """💾 Sauvegarder les trades dans le fichier JSON (avec fallback si /data est en lecture seule)"""
-    global TRADES_FILE
+    """💾 Sauvegarder les trades dans le fichier JSON"""
     try:
-        # Essai normal
         with open(TRADES_FILE, 'w', encoding='utf-8') as f:
             json.dump(trades_db, f, indent=2, ensure_ascii=False)
-        print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
-        return
-    except PermissionError as e:
-        print(f"⚠️ Permission refusée sur {TRADES_FILE} → fallback /tmp")
-        try:
-            fallback = "/tmp/trades_database.json"
-            with open(fallback, 'w', encoding='utf-8') as f:
-                json.dump(trades_db, f, indent=2, ensure_ascii=False)
-            TRADES_FILE = fallback
-            print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE} (fallback)")
-            return
-        except Exception as e2:
-            print(f"❌ Erreur sauvegarde trades (fallback): {e2}")
+            print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
     except Exception as e:
         print(f"❌ Erreur sauvegarde trades: {e}")
 
@@ -6172,16 +6130,6 @@ async def send_telegram_advanced(trade: TradeWebhook):
     if not TELEGRAM_ENABLED:
         print("ℹ️ Telegram désactivé (TELEGRAM_ENABLED=0)")
         return
-
-
-def fmt_price(x, nd=4):
-    try:
-        if x is None:
-            return "N/A"
-        return f"{float(x):.{nd}f}"
-    except Exception:
-        return "N/A"
-
     
     try:
         confidence_score, confidence_reason = calculate_confidence_score(trade)
@@ -6202,17 +6150,17 @@ def fmt_price(x, nd=4):
 ⏰ Heure : {heure}
 🎯 Direction : <b>{trade.side}</b> {direction_emoji}
 
-<b>ENTRY:</b> ${fmt_price(trade.entry)}{rr_text}
-❌ <b>Stop-Loss:</b> ${fmt_price(trade.sl)}
+<b>ENTRY:</b> ${trade.entry:.4f}{rr_text}
+❌ <b>Stop-Loss:</b> ${trade.sl:.4f}
 💡 <b>Leverage:</b> {leverage_text} Isolée
 """
         
         if trade.tp1:
-            msg += f"✅ <b>Target 1:</b> ${fmt_price(trade.tp1)}\n"
+            msg += f"✅ <b>Target 1:</b> ${trade.tp1:.4f}\n"
         if trade.tp2:
-            msg += f"✅ <b>Target 2:</b> ${fmt_price(trade.tp2)}\n"
+            msg += f"✅ <b>Target 2:</b> ${trade.tp2:.4f}\n"
         if trade.tp3:
-            msg += f"✅ <b>Target 3:</b> ${fmt_price(trade.tp3)}\n"
+            msg += f"✅ <b>Target 3:</b> ${trade.tp3:.4f}\n"
         
         msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
@@ -6271,7 +6219,7 @@ def fmt_price(x, nd=4):
                 if response.status_code == 200:
                     last_telegram_message_time = time.time()
                     print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
-                    print(f"   Entry: ${fmt_price(trade.entry)} | SL: ${fmt_price(trade.sl)}")
+                    print(f"   Entry: ${trade.entry:.4f} | SL: ${trade.sl:.4f}")
                     print(f"   Confiance IA: {confidence_score}%")
                     print(f"   Heure: {heure}")
                     break
@@ -6313,103 +6261,28 @@ async def send_telegram(msg: str):
         print(f"❌ Erreur send_telegram: {e}")
 
 @app.post("/tv-webhook")
-async def tv_webhook(request: Request):
+async def webhook(trade: TradeWebhook):
     """
-    Webhook TradingView (robuste)
-
-    - Accepte n'importe quel JSON.
-    - Si type == DEBUG : log seulement (pas de Telegram / pas de trade créé)
-    - Sinon : parse via TradeWebhook, déduit side si absent, ignore les payloads incomplets.
+    Webhook TradingView avec détection de revirement
+    Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
-    # --- Lire le payload brut ---
-    try:
-        payload = await request.json()
-    except Exception:
-        raw = (await request.body()).decode("utf-8", "ignore")
-        print("\n" + "="*60)
-        print("❌ TV WEBHOOK: payload non-JSON reçu")
-        print(raw[:2000])
-        print("="*60 + "\n")
-        return {"status": "ignored", "reason": "non_json"}
-
-    if not isinstance(payload, dict):
-        return {"status": "ignored", "reason": "payload_not_object"}
-
-    payload_type = str(payload.get("type", "")).upper().strip()
-
-    # --- DEBUG: log seulement ---
-    if payload_type == "DEBUG":
-        print("\n" + "="*60)
-        print("🧪 TV DEBUG PAYLOAD (aucun envoi Telegram / aucun trade créé)")
-        # Print compact (évite spam)
-        keys_preview = ["symbol","tf","time","close","p0","p1","p2","p3","p4","p5","p6","p7","p8","p9","p10","p11","p12","p13","p14","p15","p16","p17","p18","p19"]
-        for k in keys_preview:
-            if k in payload:
-                print(f"  {k}: {payload.get(k)}")
-        print("="*60 + "\n")
-        return {"status": "ok", "debug": True}
-
-    # --- Parse TradeWebhook ---
-    try:
-        trade = TradeWebhook(**payload)
-    except Exception as e:
-        print("\n" + "="*60)
-        print("❌ TV WEBHOOK: payload invalide pour TradeWebhook")
-        print(f"Erreur: {e}")
-        print(f"Payload: {str(payload)[:2000]}")
-        print("="*60 + "\n")
-        return {"status": "ignored", "reason": "invalid_tradewebhook", "error": str(e)}
-
-    # --- Déduire side si absent (basé sur SL/Entry) ---
-    if (trade.side is None or str(trade.side).strip() == "") and trade.entry is not None and trade.sl is not None:
-        trade.side = "LONG" if trade.sl < trade.entry else "SHORT"
-
-    # --- Refuser les payloads incomplets (évite trades None / erreurs Telegram) ---
-    if trade.symbol is None or str(trade.symbol).strip() == "":
-        return {"status": "ignored", "reason": "missing_symbol"}
-
-    if trade.entry is None or trade.sl is None or trade.side is None:
-        print("\n" + "="*60)
-        print("⚠️ TV WEBHOOK ignoré (signal incomplet)")
-        print(f"  Symbol: {trade.symbol}")
-        print(f"  Side: {trade.side}")
-        print(f"  TF: {trade.tf}")
-        print(f"  Entry: {trade.entry} | SL: {trade.sl} | TP1: {trade.tp1} | TP2: {trade.tp2} | TP3: {trade.tp3}")
-        print("="*60 + "\n")
-        return {"status": "ignored", "reason": "incomplete_signal"}
-
-    # --- Si TP manquants: ne PAS inventer (on laisse le backend gérer si déjà prévu),
-    # mais on évite de crash dans les logs ---
-    def _fmt(x, nd=6):
-        try:
-            if x is None:
-                return "null"
-            return f"{float(x):.{nd}f}"
-        except Exception:
-            return str(x)
-
     try:
         print(f"\n{'='*60}")
-        print("🎯 NOUVEAU SIGNAL TRADINGVIEW")
+        print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: ${_fmt(trade.entry)}")
-        print(f"   SL: ${_fmt(trade.sl)} | TP1: ${_fmt(trade.tp1)} | TP2: ${_fmt(trade.tp2)} | TP3: ${_fmt(trade.tp3)}")
+        print(f"   Entry: ${trade.entry:.6f}")
+        print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
         print(f"{'='*60}\n")
-    except Exception:
-        # jamais bloquer le webhook à cause d'un print
-        pass
-
-    # --- On réutilise l'ancienne logique: appeler la fonction existante webhook(trade)
-    # Si ton code avait déjà une fonction interne, on exécute ici la logique de création.
-    # Pour rester minimal, on copie l'ancienne logique essentielle (revirement + création).
-    try:
+        
         symbol = trade.symbol
         new_side = trade.side
-
+        
+        # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
         inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
-
+        
+        # Chercher un trade actif inverse
         inverse_trade = None
         for t in trades_db:
             if (t.get('symbol') == symbol and 
@@ -6417,21 +6290,51 @@ async def tv_webhook(request: Request):
                 t.get('status') == 'open'):
                 inverse_trade = t
                 break
-
+        
+        # 🔄 Si un trade inverse existe, le fermer automatiquement SANS ouvrir le nouveau
         if inverse_trade:
             now = datetime.now(pytz.timezone('America/Montreal'))
-            inverse_trade['status'] = 'closed'
-            inverse_trade['closed_at'] = now.isoformat()
-            inverse_trade['close_time'] = now.strftime('%H:%M:%S')
-            inverse_trade['close_date'] = now.strftime('%d/%m/%Y')
-            save_trades_to_file()
+            close_time = now.strftime('%H:%M:%S')
+            close_date = now.strftime('%d/%m/%Y')
+            
             print(f"⚠️ REVIREMENT DÉTECTÉ sur {symbol}! {inverse_side} → {new_side}")
-            return {"status": "success", "reversal_detected": True, "new_trade_created": False}
-
+            
+            # Fermer le trade inverse
+            inverse_trade['status'] = 'closed'
+            inverse_trade['closed_reason'] = f'Revirement: Signal {new_side} reçu'
+            inverse_trade['closed_at'] = now.isoformat()
+            inverse_trade['sl_hit'] = True  # Bouton SL rouge pour indiquer une perte
+            
+            # 📱 Notification Telegram DÉTAILLÉE du revirement
+            reversal_message = (
+                f"🔄 <b>REVIREMENT DE TENDANCE DÉTECTÉ!</b>\n\n"
+                f"💱 Crypto: <b>{symbol}</b>\n"
+                f"❌ Trade <b>{inverse_side}</b> fermé automatiquement\n\n"
+                f"📊 <b>Détails de fermeture:</b>\n"
+                f"├ Entry: {format_price(inverse_trade.get('entry', 0))}\n"
+                f"├ Prix de fermeture: {format_price(trade.entry)}\n"
+                f"├ Heure: {close_time}\n"
+                f"└ Date: {close_date}\n\n"
+                f"🔔 Signal <b>{new_side}</b> reçu mais <b>NON exécuté</b>\n"
+                f"⏳ En attente du prochain signal propre...\n\n"
+                f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
+            )
+            
+            asyncio.create_task(send_telegram_message(reversal_message))
+            print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
+            
+            return {
+                "status": "reversed",
+                "message": f"Trade {inverse_side} fermé, signal {new_side} ignoré",
+                "closed_trade_id": inverse_trade.get('symbol'),
+                "new_trade_created": False
+            }
+        
+        # 📝 Créer le nouveau trade SEULEMENT si pas de revirement
         await send_telegram_advanced(trade)
-
+        
         confidence_score, _ = calculate_confidence_score(trade)
-
+        
         trade_data = {
             "symbol": trade.symbol,
             "side": trade.side,
@@ -6443,18 +6346,22 @@ async def tv_webhook(request: Request):
             "tp3": trade.tp3,
             "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
             "status": "open",
-            "confidence_ai": confidence_score,
-            "rr_ratio": calc_rr(trade.entry, trade.sl, trade.tp1) if trade.tp1 is not None else None,
-            "trade_type": "signal",
+            "confidence": confidence_score,
+            "leverage": trade.leverage,
+            "timeframe": trade.tf,
+            "tp1_hit": False,
+            "tp2_hit": False,
+            "tp3_hit": False,
+            "sl_hit": False,
             "pnl": 0.0
         }
-
         trades_db.append(trade_data)
-        save_trades_to_file()
-
+        save_trades_to_file()  # 💾 Sauvegarder immédiatement
+        
         print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
+        
         return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
-
+        
     except Exception as e:
         print(f"❌ ERREUR WEBHOOK: {e}")
         import traceback

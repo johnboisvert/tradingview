@@ -6,33 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 # 🔐 CORRECTION 2: Rate Limiting pour sécurité
-# slowapi est optionnel: si le paquet n'est pas installé, on désactive le rate limiting
-try:
-    from slowapi import Limiter, _rate_limit_exceeded_handler
-    from slowapi.util import get_remote_address
-    from slowapi.errors import RateLimitExceeded
-    from slowapi.middleware import SlowAPIMiddleware
-    SLOWAPI_AVAILABLE = True
-except ImportError:
-    Limiter = None
-    _rate_limit_exceeded_handler = None
-    get_remote_address = None
-    SlowAPIMiddleware = None
-
-    class RateLimitExceeded(Exception):
-        pass
-
-    SLOWAPI_AVAILABLE = False
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
-try:
-    import ccxt
-except ImportError:
-    ccxt = None
-
+import ccxt
 from cryptography.fernet import Fernet
 
 # Imports pour système d'emails et codes promo
@@ -65,15 +48,7 @@ import time
 from urllib.parse import urlencode
 
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
-# ✅ Module d'analyse technique (optionnel)
-# Si le module local n'existe pas dans ton déploiement, on garde l'app fonctionnelle avec un fallback.
-try:
-    from technical_analyzer import analyzer  # type: ignore
-except ImportError:
-    class _DummyAnalyzer:
-        async def get_ohlcv_data(self, *args, **kwargs):
-            return None
-    analyzer = _DummyAnalyzer()
+from technical_analyzer import analyzer
 
 # ============================================================================
 
@@ -2182,32 +2157,85 @@ def get_user_from_request(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Configuration du rate limiter
-# ✅ Rate limiter (optionnel)
-# Si slowapi n'est pas installé, l'app reste fonctionnelle mais sans limitation de débit.
-if SLOWAPI_AVAILABLE:
-    limiter = Limiter(key_func=get_remote_address)
-    app.state.limiter = limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
 
-    def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
-        return JSONResponse(
-            status_code=429,
-            content={
-                "error": "⛔ Trop de requêtes. Réessaie dans quelques secondes.",
-                "hint": "Si ça arrive souvent, attends 1-2 minutes ou réduis la fréquence.",
-            },
-        )
+# Handler personnalisé pour erreurs de rate limit
+async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Page d'erreur personnalisée quand trop de tentatives"""
+    return HTMLResponse(
+        content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>🚫 Trop de Tentatives</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                    color: white;
+                    text-align: center;
+                    padding: 100px 20px;
+                    margin: 0;
+                }
+                .error-box {
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    padding: 50px;
+                    border-radius: 20px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                }
+                h1 {
+                    font-size: 48px;
+                    margin: 0 0 20px 0;
+                }
+                p {
+                    font-size: 18px;
+                    margin: 15px 0;
+                    line-height: 1.6;
+                }
+                a {
+                    display: inline-block;
+                    background: white;
+                    color: #ef4444;
+                    padding: 15px 30px;
+                    border-radius: 50px;
+                    text-decoration: none;
+                    font-weight: 600;
+                    margin-top: 30px;
+                    transition: all 0.3s;
+                }
+                a:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                }
+        
+        body { margin-left: 280px; }
+    </style>
+        </head>
+        <body>
+            <div class="error-box">
+                <h1>🚫 Trop de Tentatives</h1>
+                <p>Vous avez atteint la limite de tentatives de connexion.</p>
+                <p><strong>Pour votre sécurité, veuillez réessayer dans 15 minutes.</strong></p>
+                <p style="font-size: 14px; opacity: 0.9; margin-top: 30px;">
+                    Si vous avez oublié votre mot de passe, contactez le support.
+                </p>
+                <a href="/login">← Retour à la page de connexion</a>
+            </div>
+        </body>
+        </html>
+        """,
+        status_code=429
+    )
 
-    app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
-    app.add_middleware(SlowAPIMiddleware)
-else:
-    class _DummyLimiter:
-        def limit(self, *args, **kwargs):
-            def _decorator(fn):
-                return fn
-            return _decorator
+# Enregistrer le handler
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 
-    limiter = _DummyLimiter()
-    app.state.limiter = limiter
+# Activer le middleware
+app.add_middleware(SlowAPIMiddleware)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 🔐 CORRECTION 3: DISCLAIMERS LÉGAUX - Protection juridique
@@ -5894,21 +5922,23 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-def format_price(price: Optional[float]) -> str:
-    """Format a price for UI/logs. Returns 'N/A' when missing/invalid."""
-    try:
-        if price is None:
-            return "N/A"
-        price_f = float(price)
-        if math.isnan(price_f) or math.isinf(price_f):
-            return "N/A"
-    except Exception:
-        return "N/A"
-
-    # Petits prix: garder plus de décimales pour les memecoins
-    if abs(price_f) < 1:
-        return f"${price_f:.6f}"
-    return f"${price_f:.4f}"
+def format_price(price: float) -> str:
+    """Formate intelligemment les prix selon leur magnitude"""
+    if price < 0.001:
+        decimals = 8  # Memecoins (SHIB, PEPE, CHEEMS)
+    elif price < 1:
+        decimals = 6  # Petites cryptos
+    elif price < 100:
+        decimals = 4  # Altcoins moyens
+    else:
+        decimals = 2  # BTC, ETH, etc.
+    
+    formatted = f"${price:.{decimals}f}"
+    # Supprimer les zéros inutiles
+    formatted = formatted.rstrip('0').rstrip('.')
+    if formatted.endswith('$'):
+        formatted += '0'
+    return formatted
 
 class TradeWebhook(BaseModel):
     type: str = "ENTRY"
@@ -5930,13 +5960,30 @@ class TradeWebhook(BaseModel):
 
     @validator('side', pre=True, always=True)
     def set_side(cls, v, values):
-        if v:
-            return v.upper()
-        if 'action' in values and values['action']:
-            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
-        return v
+        # Normalisation robuste (TradingView envoie souvent BUY/SELL)
+        def _norm(x):
+            if x is None:
+                return None
+            s = str(x).upper().strip()
+            if s in ("BUY", "LONG"):
+                return "LONG"
+            if s in ("SELL", "SHORT"):
+                return "SHORT"
+            if s in ("", "NONE", "NULL", "N/A", "NA", "ENTRY"):
+                return None
+            return s
 
-    @validator('entry', pre=True, always=True)
+        side = _norm(v)
+        if side in ("LONG", "SHORT"):
+            return side
+
+        action = _norm(values.get('action'))
+        if action in ("LONG", "SHORT"):
+            return action
+
+        return side
+    @validator('entry'
+, pre=True, always=True)
     def set_entry(cls, v, values):
         return v if v is not None else values.get('price')
 
@@ -6265,38 +6312,89 @@ async def webhook(trade: TradeWebhook):
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
     try:
-        print(f"\n{'='*60}")
-        print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
-        # Normalize incoming values to avoid None crashes + infer side if missing
-        entry_val = trade.entry if trade.entry is not None else trade.current_price
-        sl_val = trade.sl
-        side_val = trade.side or trade.action
-        if side_val is None and entry_val is not None and sl_val is not None:
-            side_val = "BUY" if sl_val < entry_val else "SELL"
-        if side_val is None:
-            side_val = "UNKNOWN"
-        # Try to persist normalization back to the model (best effort)
+                        # --- Normalisation & sécurité ---
+        def _to_float(v):
+            try:
+                if v is None:
+                    return None
+                if isinstance(v, (int, float)):
+                    return float(v)
+                s = str(v).strip().replace(",", ".")
+                if s == "" or s.lower() in ("none", "null", "nan"):
+                    return None
+                return float(s)
+            except Exception:
+                return None
+
+        entry = _to_float(trade.entry)
+        sl = _to_float(trade.sl)
+        tp1 = _to_float(trade.tp1)
+        tp2 = _to_float(trade.tp2)
+        tp3 = _to_float(trade.tp3)
+
+        def _norm_side(x):
+            if x is None:
+                return None
+            s = str(x).upper().strip()
+            if s in ("BUY", "LONG"):
+                return "LONG"
+            if s in ("SELL", "SHORT"):
+                return "SHORT"
+            return None
+
+        side = _norm_side(trade.side) or _norm_side(getattr(trade, "action", None)) or _norm_side(getattr(trade, "type", None))
+
+        # Inférence si side absent
+        if side is None and entry is not None:
+            if tp1 not in (None, 0):
+                side = "LONG" if tp1 > entry else ("SHORT" if tp1 < entry else None)
+            if side is None and sl not in (None, 0):
+                side = "LONG" if sl < entry else ("SHORT" if sl > entry else None)
+
+        if side is None:
+            side = "ENTRY"
+
+        # Auto-calc TP si manquants (évite les 0.00)
+        if side in ("LONG", "SHORT") and entry is not None and sl not in (None, 0):
+            risk = abs(entry - sl)
+            if risk > 0:
+                def _tp(mult):
+                    return (entry + risk * mult) if side == "LONG" else (entry - risk * mult)
+                if tp1 in (None, 0):
+                    tp1 = _tp(1.0)
+                if tp2 in (None, 0):
+                    tp2 = _tp(1.5)
+                if tp3 in (None, 0):
+                    tp3 = _tp(2.0)
+
+        # Réinjecte dans l'objet (pour les fonctions existantes)
         try:
-            if trade.entry is None and entry_val is not None:
-                trade.entry = entry_val
-            if trade.side is None and side_val is not None:
-                trade.side = side_val
+            trade.side = side
+            trade.entry = entry
+            trade.sl = sl
+            trade.tp1 = tp1
+            trade.tp2 = tp2
+            trade.tp3 = tp3
         except Exception:
             pass
 
-        print(f"   Symbol: {trade.symbol}")
-        print(f"   Direction: {side_val}")
-        print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: {format_price(entry_val)}")
-        print(f"   SL: {format_price(trade.sl)} | TP1: {format_price(trade.tp1)}")
-        print(f"{'='*60}\n")
+        def _fmt(v):
+            return f"${v:.6f}" if isinstance(v, (int, float)) else "n/a"
 
+        print(f"\n{'='*60}")
+        print("🎯 NOUVEAU SIGNAL TRADINGVIEW")
+        print(f"   Symbol: {trade.symbol}")
+        print(f"   Direction: {side}")
+        print(f"   Timeframe: {trade.tf}")
+        print(f"   Entry: {_fmt(entry)}")
+        print(f"   SL: {_fmt(sl)} | TP1: {_fmt(tp1)} | TP2: {_fmt(tp2)} | TP3: {_fmt(tp3)}")
+        print(f"{'='*60}\n")
         
         symbol = trade.symbol
-        new_side = side_val
+        new_side = trade.side
         
         # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
-        inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
+        inverse_side = 'SHORT' if new_side == 'LONG' else ('LONG' if new_side == 'SHORT' else None)
         
         # Chercher un trade actif inverse
         inverse_trade = None
@@ -16451,6 +16549,7 @@ async def trades_page():
         .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
         .badge-long { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
         .badge-short { background: rgba(239, 68, 68, 0.2); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .badge-neutral { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.25); }
         .badge-open { background: rgba(59, 130, 246, 0.2); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
         .badge-closed { background: rgba(148, 163, 184, 0.2); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
         .confidence-meter { width: 100%; height: 8px; background: rgba(15, 23, 42, 0.8); border-radius: 4px; overflow: hidden; margin-top: 8px; }
@@ -16877,8 +16976,12 @@ async def trades_page():
             let html = '<table><thead><tr><th>Heure</th><th>Symbole</th><th>Type</th><th>Entry</th><th>SL</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Confiance</th><th>Statut</th><th>Close</th><th>Actions</th></tr></thead><tbody>';
             
             trades.forEach((trade, index) => {
-                const side = trade.side || 'N/A';
-                const sideClass = side === 'LONG' ? 'badge-long' : 'badge-short';
+                const rawSide = (trade.side || trade.type || '').toString().toUpperCase();
+                let side = rawSide;
+                if (side === 'BUY') side = 'LONG';
+                if (side === 'SELL') side = 'SHORT';
+                if (side !== 'LONG' && side !== 'SHORT') side = 'ENTRY';
+                const sideClass = side === 'LONG' ? 'badge-long' : (side === 'SHORT' ? 'badge-short' : 'badge-neutral');
                 const status = trade.status || 'OPEN';
                 const statusClass = status === 'OPEN' ? 'badge-open' : 'badge-closed';
                 
@@ -16956,7 +17059,7 @@ async def trades_page():
             
             // Helper pour formater les prix avec coloration
             const smartFormat = (price) => {
-                if (!price) return '$0.00';
+                if (price === undefined || price === null || price === 0 || price === '0' || price === '0.00') return '—';
                 const numPrice = parseFloat(price);
                 let decimals;
                 if (numPrice < 0.001) decimals = 8;
@@ -16970,13 +17073,13 @@ async def trades_page():
             };
             
             const formatTPPrice = (price, isHit) => {
-                if (!price) return '$0.00';
+                if (price === undefined || price === null || price === 0 || price === '0' || price === '0.00') return '—';
                 const formatted = smartFormat(price);
                 return isHit ? '<span class="price-hit">' + formatted + ' ✅</span>' : formatted;
             };
             
             const formatSLPrice = (price, isHit) => {
-                if (!price) return '$0.00';
+                if (price === undefined || price === null || price === 0 || price === '0' || price === '0.00') return '—';
                 const formatted = smartFormat(price);
                 return isHit ? '<span class="price-sl-hit">' + formatted + ' ❌</span>' : formatted;
             };

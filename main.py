@@ -5953,7 +5953,7 @@ class TradeWebhook(BaseModel):
             return cp
         return values.get('price')
 
-    @root_validator(pre=False)
+    @root_validator(pre=False, skip_on_failure=True)
     def infer_missing_fields(cls, values):
         # Ensure entry fallback even if validator didn't catch (ordre de champs / payloads bizarres)
         entry = values.get('entry')

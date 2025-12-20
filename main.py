@@ -5842,8 +5842,8 @@ def update_weekly_pnl(pnl_value):
 heatmap_cache = {"data": None, "timestamp": None, "cache_duration": 180}
 altcoin_cache = {"data": None, "timestamp": None, "cache_duration": 10800}  # Cache 3 heures
 bullrun_cache = {"data": None, "timestamp": None, "cache_duration": 1800}  # Cache 30 minutes
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8478131465:AAEh7Z0rvIqSNvn1wKdtkMNb-O96h41LCns")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1002940633257")
 
 # ============= VARIABLES D'ENVIRONNEMENT COMPLÈTES =============
 
@@ -5932,15 +5932,25 @@ class TradeWebhook(BaseModel):
 
     @validator('side', pre=True, always=True)
     def set_side(cls, v, values):
-        if v:
-            return v.upper()
-        if 'action' in values and values['action']:
-            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
-        return v
+        """Normalise le sens: BUY/LONG -> LONG, SELL/SHORT -> SHORT."""
+        raw = v if v is not None else values.get('action')
+        if raw is None:
+            return None
+        s = str(raw).strip().upper()
+        if s in ('BUY', 'LONG'):
+            return 'LONG'
+        if s in ('SELL', 'SHORT'):
+            return 'SHORT'
+        return s
+
 
     @validator('entry', pre=True, always=True)
     def set_entry(cls, v, values):
-        return v if v is not None else values.get('price')
+        # Certains scripts envoient price / current_price / close au lieu de entry
+        if v is not None:
+            return v
+        return values.get('price') or values.get('current_price') or values.get('close')
+
 
 def calc_rr(entry, sl, tp1):
     try:
@@ -6260,236 +6270,112 @@ async def send_telegram(msg: str):
     except Exception as e:
         print(f"❌ Erreur send_telegram: {e}")
 
-# ================================
-# TradingView Webhook helpers
-# ================================
-def _coerce_float(v):
-    try:
-        if v is None:
-            return None
-        if isinstance(v, (int, float)):
-            return float(v)
-        s = str(v).strip()
-        if s == "" or s.lower() == "null" or s.lower() == "none":
-            return None
-        return float(s)
-    except Exception:
-        return None
-
-def _normalize_side(raw_side):
-    if raw_side is None:
-        return "UNKNOWN"
-    s = str(raw_side).strip().upper()
-    if s in ("LONG", "BUY", "BULL", "BULLISH"):
-        return "LONG"
-    if s in ("SHORT", "SELL", "BEAR", "BEARISH"):
-        return "SHORT"
-    # try substring matches
-    s2 = str(raw_side).strip().lower()
-    if any(k in s2 for k in ("short", "sell", "bear")):
-        return "SHORT"
-    if any(k in s2 for k in ("long", "buy", "bull")):
-        return "LONG"
-    return "UNKNOWN"
-
-def normalize_trade(trade: "TradeWebhook", raw_payload: dict | None = None) -> dict:
-    """Convert incoming webhook to the schema used by the dashboard + DB."""
-    import uuid
-    from datetime import datetime, timezone
-
-    raw_payload = raw_payload if isinstance(raw_payload, dict) else {}
-    t = trade.model_dump() if hasattr(trade, "model_dump") else dict(trade)
-
-    trade_type = (t.get("type") or raw_payload.get("type") or "UNKNOWN").upper().strip()
-    symbol = (t.get("symbol") or raw_payload.get("symbol") or "").strip()
-    tf = t.get("tf") or raw_payload.get("tf") or raw_payload.get("timeframe") or raw_payload.get("interval")
-    tf = str(tf).strip() if tf is not None else ""
-
-    # side can come in many forms depending on indicator
-    raw_side = (
-        t.get("side")
-        or raw_payload.get("side")
-        or raw_payload.get("direction")
-        or raw_payload.get("dir")
-        or raw_payload.get("signal")
-        or raw_payload.get("action")
-        or raw_payload.get("position")
-        or raw_payload.get("current_position")
-    )
-    side = _normalize_side(raw_side)
-
-    entry = _coerce_float(t.get("entry") or raw_payload.get("entry"))
-    sl = _coerce_float(t.get("sl") or raw_payload.get("sl"))
-    tp1 = _coerce_float(t.get("tp1") or raw_payload.get("tp1"))
-    tp2 = _coerce_float(t.get("tp2") or raw_payload.get("tp2"))
-    tp3 = _coerce_float(t.get("tp3") or raw_payload.get("tp3"))
-    current_price = _coerce_float(t.get("current_price") or raw_payload.get("current_price") or raw_payload.get("price"))
-
-    if entry is None and current_price is not None:
-        entry = current_price
-
-    ts = t.get("timestamp") or raw_payload.get("timestamp")
-    if not ts:
-        ts = datetime.now(timezone.utc).isoformat()
-
-    status = t.get("status") or raw_payload.get("status")
-    if not status:
-        if trade_type in ("EXIT", "CLOSE", "CLOSED"):
-            status = "CLOSED"
-        elif trade_type in ("ENTRY", "OPEN", "OPENED"):
-            status = "OPEN"
-        else:
-            status = "UPDATE"
-
-    normalized = {
-        "id": t.get("id") or raw_payload.get("id") or str(uuid.uuid4()),
-        "timestamp": ts,
-        "type": trade_type,
-        "symbol": symbol,
-        "tf": tf,
-        "side": side,
-        "entry": entry,
-        "sl": sl,
-        "tp1": tp1,
-        "tp2": tp2,
-        "tp3": tp3,
-        "current_price": current_price,
-        "status": status,
-        "note": t.get("note") or raw_payload.get("note") or "",
-        # dashboard expects these flags
-        "tp1_hit": bool(t.get("tp1_hit") or raw_payload.get("tp1_hit") or False),
-        "tp2_hit": bool(t.get("tp2_hit") or raw_payload.get("tp2_hit") or False),
-        "tp3_hit": bool(t.get("tp3_hit") or raw_payload.get("tp3_hit") or False),
-        "sl_hit": bool(t.get("sl_hit") or raw_payload.get("sl_hit") or False),
-        # keep raw for debugging
-        "raw": raw_payload if raw_payload else (t.get("raw") or {}),
-    }
-    return normalized
-
-def store_trade(trade_dict: dict) -> dict:
-    """Persist trade to memory + JSON file (+ SQLite if available)."""
-    global trades_db
-    # keep a clean copy
-    trade = dict(trade_dict or {})
-    # in-memory
-    try:
-        if not isinstance(trades_db, list):
-            trades_db = []
-        trades_db.append(trade)
-        # keep last 2000
-        if len(trades_db) > 2000:
-            trades_db = trades_db[-2000:]
-    except Exception as e:
-        try:
-            log_event(f"store_trade memory error: {e}")
-        except Exception:
-            pass
-
-    # JSON persistence (used by dashboard endpoints)
-    try:
-        save_trades_to_file()
-    except Exception as e:
-        try:
-            log_event(f"save_trades_to_file error: {e}")
-        except Exception:
-            pass
-
-    # Optional SQLite persistence (if you decide to use it later)
-    try:
-        sql_create_trade(trade)
-    except Exception:
-        pass
-
-    return trade
-
-async def broadcast_update(_trade_dict: dict) -> None:
-    """Optional realtime broadcast hook (no-op unless you add websockets/SSE)."""
-    return
-
-def build_trade_message(trade_dict: dict) -> str:
-    t = trade_dict or {}
-    parts = []
-    parts.append("📈 *AI Trader Pro — Signal*")
-    parts.append(f"• *Type:* {t.get('type','')}")
-    parts.append(f"• *Symbol:* {t.get('symbol','')}")
-    if t.get("tf"):
-        parts.append(f"• *TF:* {t.get('tf')}")
-    parts.append(f"• *Side:* {t.get('side','UNKNOWN')}")
-    if t.get("entry") is not None:
-        parts.append(f"• *Entry:* {t.get('entry')}")
-    if t.get("sl") is not None:
-        parts.append(f"• *SL:* {t.get('sl')}")
-    if t.get("tp1") is not None:
-        parts.append(f"• *TP1:* {t.get('tp1')}")
-    if t.get("tp2") is not None:
-        parts.append(f"• *TP2:* {t.get('tp2')}")
-    if t.get("tp3") is not None:
-        parts.append(f"• *TP3:* {t.get('tp3')}")
-    if t.get("current_price") is not None:
-        parts.append(f"• *Price:* {t.get('current_price')}")
-    if t.get("note"):
-        parts.append(f"• *Note:* {t.get('note')}")
-    parts.append(f"• *Time:* {t.get('timestamp','')}")
-    return "\n".join(parts)
-
 @app.post("/tv-webhook")
-async def tv_webhook(request: Request):
-    """TradingView webhook endpoint. Accepts JSON even when TV sends text/plain."""
+async def webhook(trade: TradeWebhook):
+    """
+    Webhook TradingView avec détection de revirement
+    Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
+    """
     try:
-        raw = await request.body()
-        if not raw:
-            return {"status": "error", "error": "Empty body"}
-
-        # Try FastAPI JSON parser first
-        payload = None
-        try:
-            payload = await request.json()
-        except Exception:
-            try:
-                payload = json.loads(raw.decode("utf-8", errors="ignore"))
-            except Exception:
-                return {"status": "error", "error": "Invalid JSON payload"}
-
-        # Sometimes people wrap JSON inside a 'message' field
-        if isinstance(payload, dict) and isinstance(payload.get("message"), str):
-            msg = payload["message"].strip()
-            if msg.startswith("{") and msg.endswith("}"):
-                try:
-                    payload = json.loads(msg)
-                except Exception:
-                    pass
-
-        # Validate/normalize
-        try:
-            trade = TradeWebhook.model_validate(payload if isinstance(payload, dict) else {"raw": payload})
-        except Exception as e:
-            return {"status": "error", "error": f"Payload validation failed: {e}"}
-
-        normalized = normalize_trade(trade, raw_payload=payload if isinstance(payload, dict) else None)
-        stored = store_trade(normalized)
-
-        # optional realtime hook
-        try:
-            await broadcast_update(stored)
-        except Exception:
-            pass
-
-        # Telegram notify
-        try:
-            await send_telegram(build_trade_message(stored))
-        except Exception as e:
-            try:
-                log_event(f"Telegram send error: {e}")
-            except Exception:
-                pass
-
-        return {"status": "ok", "id": stored.get("id")}
-
+        print(f"\n{'='*60}")
+        print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
+        print(f"   Symbol: {trade.symbol}")
+        print(f"   Direction: {trade.side}")
+        print(f"   Timeframe: {trade.tf}")
+        print(f"   Entry: ${trade.entry:.6f}")
+        print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
+        print(f"{'='*60}\n")
+        
+        symbol = trade.symbol
+        new_side = trade.side
+        
+        # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
+        inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
+        
+        # Chercher un trade actif inverse
+        inverse_trade = None
+        for t in trades_db:
+            if (t.get('symbol') == symbol and 
+                t.get('side') == inverse_side and 
+                t.get('status') == 'open'):
+                inverse_trade = t
+                break
+        
+        # 🔄 Si un trade inverse existe, le fermer automatiquement SANS ouvrir le nouveau
+        if inverse_trade:
+            now = datetime.now(pytz.timezone('America/Montreal'))
+            close_time = now.strftime('%H:%M:%S')
+            close_date = now.strftime('%d/%m/%Y')
+            
+            print(f"⚠️ REVIREMENT DÉTECTÉ sur {symbol}! {inverse_side} → {new_side}")
+            
+            # Fermer le trade inverse
+            inverse_trade['status'] = 'closed'
+            inverse_trade['closed_reason'] = f'Revirement: Signal {new_side} reçu'
+            inverse_trade['closed_at'] = now.isoformat()
+            inverse_trade['sl_hit'] = True  # Bouton SL rouge pour indiquer une perte
+            
+            # 📱 Notification Telegram DÉTAILLÉE du revirement
+            reversal_message = (
+                f"🔄 <b>REVIREMENT DE TENDANCE DÉTECTÉ!</b>\n\n"
+                f"💱 Crypto: <b>{symbol}</b>\n"
+                f"❌ Trade <b>{inverse_side}</b> fermé automatiquement\n\n"
+                f"📊 <b>Détails de fermeture:</b>\n"
+                f"├ Entry: {format_price(inverse_trade.get('entry', 0))}\n"
+                f"├ Prix de fermeture: {format_price(trade.entry)}\n"
+                f"├ Heure: {close_time}\n"
+                f"└ Date: {close_date}\n\n"
+                f"🔔 Signal <b>{new_side}</b> reçu mais <b>NON exécuté</b>\n"
+                f"⏳ En attente du prochain signal propre...\n\n"
+                f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
+            )
+            
+            asyncio.create_task(send_telegram_message(reversal_message))
+            print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
+            
+            return {
+                "status": "reversed",
+                "message": f"Trade {inverse_side} fermé, signal {new_side} ignoré",
+                "closed_trade_id": inverse_trade.get('symbol'),
+                "new_trade_created": False
+            }
+        
+        # 📝 Créer le nouveau trade SEULEMENT si pas de revirement
+        await send_telegram_advanced(trade)
+        
+        confidence_score, _ = calculate_confidence_score(trade)
+        
+        trade_data = {
+            "symbol": trade.symbol,
+            "side": trade.side,
+            "entry": trade.entry,
+            "current_price": trade.current_price,
+            "sl": trade.sl,
+            "tp1": trade.tp1,
+            "tp2": trade.tp2,
+            "tp3": trade.tp3,
+            "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
+            "status": "open",
+            "confidence": confidence_score,
+            "leverage": trade.leverage,
+            "timeframe": trade.tf,
+            "tp1_hit": False,
+            "tp2_hit": False,
+            "tp3_hit": False,
+            "sl_hit": False,
+            "pnl": 0.0
+        }
+        trades_db.append(trade_data)
+        save_trades_to_file()  # 💾 Sauvegarder immédiatement
+        
+        print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
+        
+        return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
+        
     except Exception as e:
-        try:
-            log_event(f"tv_webhook error: {e}")
-        except Exception:
-            pass
+        print(f"❌ ERREUR WEBHOOK: {e}")
+        import traceback
+        traceback.print_exc()
         return {"status": "error", "error": str(e)}
 
 @app.get("/health")

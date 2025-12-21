@@ -6,33 +6,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 # 🔐 CORRECTION 2: Rate Limiting pour sécurité
-# slowapi est optionnel: si le paquet n'est pas installé, on désactive le rate limiting
-try:
-    from slowapi import Limiter, _rate_limit_exceeded_handler
-    from slowapi.util import get_remote_address
-    from slowapi.errors import RateLimitExceeded
-    from slowapi.middleware import SlowAPIMiddleware
-    SLOWAPI_AVAILABLE = True
-except ImportError:
-    Limiter = None
-    _rate_limit_exceeded_handler = None
-    get_remote_address = None
-    SlowAPIMiddleware = None
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
-    class RateLimitExceeded(Exception):
-        pass
-
-    SLOWAPI_AVAILABLE = False
-
-from pydantic import BaseModel, validator, root_validator, ConfigDict
+from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
-try:
-    import ccxt
-except ImportError:
-    ccxt = None
-
+import ccxt
 from cryptography.fernet import Fernet
 
 # Imports pour système d'emails et codes promo
@@ -65,15 +48,7 @@ import time
 from urllib.parse import urlencode
 
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
-# ✅ Module d'analyse technique (optionnel)
-# Si le module local n'existe pas dans ton déploiement, on garde l'app fonctionnelle avec un fallback.
-try:
-    from technical_analyzer import analyzer  # type: ignore
-except ImportError:
-    class _DummyAnalyzer:
-        async def get_ohlcv_data(self, *args, **kwargs):
-            return None
-    analyzer = _DummyAnalyzer()
+from technical_analyzer import analyzer
 
 # ============================================================================
 
@@ -2182,32 +2157,83 @@ def get_user_from_request(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Configuration du rate limiter
-# ✅ Rate limiter (optionnel)
-# Si slowapi n'est pas installé, l'app reste fonctionnelle mais sans limitation de débit.
-if SLOWAPI_AVAILABLE:
-    limiter = Limiter(key_func=get_remote_address)
-    app.state.limiter = limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
 
-    def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
-        return JSONResponse(
-            status_code=429,
-            content={
-                "error": "⛔ Trop de requêtes. Réessaie dans quelques secondes.",
-                "hint": "Si ça arrive souvent, attends 1-2 minutes ou réduis la fréquence.",
-            },
-        )
+# Handler personnalisé pour erreurs de rate limit
+async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Page d'erreur personnalisée quand trop de tentatives"""
+    return HTMLResponse(
+        content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>🚫 Trop de Tentatives</title>
+            <style>
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                    color: white;
+                    text-align: center;
+                    padding: 100px 20px;
+                    margin: 0;
+                }
+                .error-box {
+                    max-width: 600px;
+                    margin: 0 auto;
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    padding: 50px;
+                    border-radius: 20px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                }
+                h1 {
+                    font-size: 48px;
+                    margin: 0 0 20px 0;
+                }
+                p {
+                    font-size: 18px;
+                    margin: 15px 0;
+                    line-height: 1.6;
+                }
+                a {
+                    display: inline-block;
+                    background: white;
+                    color: #ef4444;
+                    padding: 15px 30px;
+                    border-radius: 50px;
+                    text-decoration: none;
+                    font-weight: 600;
+                    margin-top: 30px;
+                    transition: all 0.3s;
+                }
+                a:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                }
+            </style>
+        </head>
+        <body>
+            <div class="error-box">
+                <h1>🚫 Trop de Tentatives</h1>
+                <p>Vous avez atteint la limite de tentatives de connexion.</p>
+                <p><strong>Pour votre sécurité, veuillez réessayer dans 15 minutes.</strong></p>
+                <p style="font-size: 14px; opacity: 0.9; margin-top: 30px;">
+                    Si vous avez oublié votre mot de passe, contactez le support.
+                </p>
+                <a href="/login">← Retour à la page de connexion</a>
+            </div>
+        </body>
+        </html>
+        """,
+        status_code=429
+    )
 
-    app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
-    app.add_middleware(SlowAPIMiddleware)
-else:
-    class _DummyLimiter:
-        def limit(self, *args, **kwargs):
-            def _decorator(fn):
-                return fn
-            return _decorator
+# Enregistrer le handler
+app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
 
-    limiter = _DummyLimiter()
-    app.state.limiter = limiter
+# Activer le middleware
+app.add_middleware(SlowAPIMiddleware)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 🔐 CORRECTION 3: DISCLAIMERS LÉGAUX - Protection juridique
@@ -2801,7 +2827,6 @@ body.sidebar-open{margin-left:280px}
     }
     </script>
 """
-
 # ==================================
 
 # ============================================================================
@@ -4348,21 +4373,18 @@ async def admin_panel():
         else:
             created_date = user[2].strftime('%Y-%m-%d')
         
-        # Utiliser le username directement - pas de guillemets dedans normalement
-        username_for_onclick = user[0]
-        
         users_html += f"""
         <tr>
             <td>{user[0]}</td>
             <td><span class="badge badge-{user[1]}">{user[1].upper()}</span></td>
             <td>{created_date}</td>
             <td>
-                <button class="btn-danger btn-sm" onclick="deleteUser('{username_for_onclick}')">🗑️ Supprimer</button>
+                <button onclick="deleteUser('{user[0]}')" class="btn-danger btn-sm">🗑️ Supprimer</button>
             </td>
         </tr>
         """
     
-    return HTMLResponse(f"""<!DOCTYPE html>
+    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -4396,70 +4418,17 @@ async def admin_panel():
         .form-inline > div {{
             flex: 1;
         }}
-        .plan-buttons {{
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 15px;
-        }}
-        .plan-btn {{
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            color: white;
-            transition: all 0.3s;
-        }}
-        .plan-btn:hover {{
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }}
-        .promo-buttons {{
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }}
-        .promo-btn {{
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            color: white;
-            transition: all 0.3s;
-        }}
-        .promo-btn:hover {{
-            transform: translateY(-2px);
-        }}
     </style>
 </head>
 <body>
-    
-    {SIDEBAR}
     <div class="container">
         <div class="header">
             <h1>👑 Panel d&#39;Administration</h1>
             <p>Gérez les accès au dashboard</p>
         </div>
         
-        <!-- STATS CARDS -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
-            <div class="stat-box">
-                <div class="label">Total Utilisateurs</div>
-                <div class="value">{len(users)}</div>
-            </div>
-            <div class="stat-box">
-                <div class="label">Abonnements Actifs</div>
-                <div class="value">0</div>
-            </div>
-            <div class="stat-box">
-                <div class="label">Revenus Totaux</div>
-                <div class="value">$0.00</div>
-            </div>
-        </div>
         
-        <!-- AJOUTER UN UTILISATEUR -->
+        
         <div class="card">
             <h2>➕ Ajouter un utilisateur</h2>
             <form id="addUserForm" class="form-inline">
@@ -4484,45 +4453,6 @@ async def admin_panel():
             </form>
         </div>
         
-        <!-- GESTION DES ACCÈS PAR FORFAIT -->
-        <div class="card">
-            <h2>🆓 Gestion des Accès par Forfait</h2>
-            <p style="color: #94a3b8; margin-bottom: 15px;">Cliquez sur un forfait pour gérer les accès</p>
-            <div class="plan-buttons">
-                <button class="plan-btn" style="background: #3b82f6;" onclick="managePlanAccess('free')">🆓 Free</button>
-                <button class="plan-btn" style="background: #8b5cf6;" onclick="managePlanAccess('premium')">💎 Premium</button>
-                <button class="plan-btn" style="background: #f59e0b;" onclick="managePlanAccess('advanced')">🚀 Advanced</button>
-                <button class="plan-btn" style="background: #ef4444;" onclick="managePlanAccess('pro')">⭐ Pro</button>
-                <button class="plan-btn" style="background: #10b981;" onclick="managePlanAccess('elite')">👑 Elite</button>
-            </div>
-        </div>
-        
-        <!-- GESTION DES CODES PROMO -->
-        <div class="card">
-            <h2>🎟️ Gestion des Codes Promo</h2>
-            <p style="color: #94a3b8; margin-bottom: 15px;">Créer et gérer les codes de réduction</p>
-            <div class="promo-buttons">
-                <button class="promo-btn" style="background: #ec4899;" onclick="openPromoModal()">➕ Créer un Code</button>
-                <button class="promo-btn" style="background: #06b6d4;" onclick="loadPromoList()">📋 Liste des Codes</button>
-                <button class="promo-btn" style="background: #f97316;" onclick="createLaunchPromos()">🚀 Codes Lancement (AUTO)</button>
-            </div>
-        </div>
-        
-        <!-- MESSAGES -->
-        <div class="card">
-            <h2>💬 Messages Reçus</h2>
-            <p style="color: #94a3b8; margin-bottom: 15px;">Consultez les messages de contact</p>
-            <button onclick="loadMessages()" class="plan-btn" style="background: #06b6d4; padding: 10px 20px;">📨 Voir les Messages</button>
-        </div>
-        
-        <!-- EBOOKS -->
-        <div class="card">
-            <h2>📚 Gestion des Ebooks</h2>
-            <p style="color: #94a3b8; margin-bottom: 15px;">Gérer les ebooks disponibles</p>
-            <button onclick="window.location.href='/admin/ebooks'" class="plan-btn" style="background: #8b5cf6; padding: 10px 20px;">📖 Gérer Ebooks</button>
-        </div>
-        
-        <!-- LISTE DES UTILISATEURS -->
         <div class="card">
             <h2>👥 Utilisateurs ({len(users)})</h2>
             <table>
@@ -4540,7 +4470,6 @@ async def admin_panel():
             </table>
         </div>
         
-        <!-- CHANGER MOT DE PASSE -->
         <div class="card">
             <h2>🔑 Changer mon mot de passe</h2>
             <form id="changePasswordForm" class="form-inline">
@@ -4559,119 +4488,7 @@ async def admin_panel():
         </div>
     </div>
     
-    <script>
-    // ===== FONCTIONS DU DASHBOARD ADMIN =====
     
-    function openAddUserModal() {{
-        document.getElementById('addUserForm').style.display = 'block';
-    }}
-    
-    function closeModal() {{
-        document.getElementById('addUserForm').style.display = 'none';
-    }}
-    
-    function deleteUser(username) {{
-        if (confirm(`Êtes-vous sûr de vouloir supprimer ${{username}}?`)) {{
-            fetch('/admin/delete-user', {{
-                method: 'POST',
-                headers: {{'Content-Type': 'application/json'}},
-                body: JSON.stringify({{username}})
-            }}).then(() => location.reload());
-        }}
-    }}
-    
-    function editUser(username) {{
-        const newRole = prompt(`Nouveau rôle pour ${username} (user/admin):`);
-        if (newRole) {{
-            fetch('/admin/edit-user', {{
-                method: 'POST',
-                headers: {{'Content-Type': 'application/json'}},
-                body: JSON.stringify({{username, role: newRole}})
-            }}).then(r => r.json()).then(data => {{
-                alert(data.success ? '✅ Utilisateur modifié!' : '❌ Erreur');
-                if (data.success) location.reload();
-            }});
-        }}
-    }}
-    
-    function managePermissions(username) {{
-        alert(`Permissions pour ${username}:\\n- Administrateur: accès complet\\n- Utilisateur: accès limité`);
-    }}
-    
-    function openPromoModal() {{
-        const code = prompt('Code promo (ex: SAVE20):');
-        if (code) {{
-            const discount = prompt('Réduction % (ex: 20):');
-            if (discount) {{
-                alert(`✅ Code ${code} créé avec ${discount}% de réduction`);
-            }}
-        }}
-    }}
-    
-    function loadPromoList() {{
-        alert('📋 Liste des codes promo:\\n- SAVE20: 20%\\n- WELCOME10: 10%');
-    }}
-    
-    function createLaunchPromos() {{
-        alert('🚀 Codes de lancement créés:\\n- LAUNCH50: 50%\\n- EARLYBIRD30: 30%');
-    }}
-    
-    function managePlanAccess(plan) {{
-        alert(`Gestion du plan: ${plan.toUpperCase()}\\n✅ Accès configuré`);
-    }}
-    
-    function loadMessages() {{
-        alert('💬 Messages reçus:\\n(Aucun message pour le moment)');
-    }}
-    
-    // Form submission
-    document.addEventListener('DOMContentLoaded', function() {{
-        const form = document.getElementById('addUserForm');
-        if (form) {{
-            form.addEventListener('submit', function(e) {{
-                e.preventDefault();
-                const username = document.getElementById('newUsername').value;
-                const password = document.getElementById('newPassword').value;
-                const role = document.getElementById('newRole').value;
-                
-                fetch('/admin/add-user', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{username, password, role}})
-                }}).then(r => r.json()).then(data => {{
-                    if (data.success) {{
-                        alert('✅ Utilisateur ajouté!');
-                        location.reload();
-                    }} else {{
-                        alert('❌ ' + (data.error || 'Erreur'));
-                    }}
-                }});
-            }});
-        }}
-        
-        const pwForm = document.getElementById('changePasswordForm');
-        if (pwForm) {{
-            pwForm.addEventListener('submit', function(e) {{
-                e.preventDefault();
-                const pwd = document.getElementById('newPasswordChange').value;
-                const confirm_pwd = document.getElementById('confirmPassword').value;
-                
-                if (pwd !== confirm_pwd) {{
-                    alert('❌ Les mots de passe ne correspondent pas');
-                    return;
-                }}
-                
-                fetch('/admin/change-password', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{password: pwd}})
-                }}).then(r => r.json()).then(data => {{
-                    alert(data.success ? '✅ Mot de passe changé!' : '❌ Erreur');
-                }});
-            }});
-        }}
-    }});
-    </script>
 </body>
 </html>""")
 
@@ -5892,7 +5709,25 @@ last_telegram_message_time = 0
 TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 
-CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
+CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style><script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.location.pathname === '/login' || window.location.pathname === '/logout') return;
+    if (document.querySelector('.universal-top-nav')) return;
+    
+    const menuHTML = `<style>
+.universal-top-nav{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}
+.universal-nav-container{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.universal-nav-btn{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}
+.universal-nav-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}
+.universal-nav-btn.premium{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}
+.universal-nav-btn.admin{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}
+.universal-nav-btn.account{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}
+.universal-nav-btn.logout{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}
+</style>`;
+    
+    document.body.insertAdjacentHTML('afterbegin', menuHTML);
+});
+</script>"""
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -5912,110 +5747,45 @@ def format_price(price: float) -> str:
         formatted += '0'
     return formatted
 
-    model_config = {
-        'extra': 'allow',
-    }
+def safe_format_price(price: Optional[float]) -> str:
+    """Formate un prix ou retourne 'N/A' si absent."""
+    try:
+        if price is None:
+            return "N/A"
+        return format_price(float(price))
+    except Exception:
+        return "N/A"
+
 
 class TradeWebhook(BaseModel):
-    model_config = ConfigDict(extra="allow")
-
-    # Webhook TradingView (Pine Script) → Backend
     type: str = "ENTRY"
     symbol: str
-    tf: str = "5"
-
-    # Certains scripts envoient "action" (BUY/SELL) ou "side" (BUY/SELL/LONG/SHORT)
-    action: Optional[str] = None
+    tf: Optional[str] = None
+    tf_label: Optional[str] = None
     side: Optional[str] = None
-
-    # Prix / niveaux
-    current_price: Optional[float] = None  # Prix actuel envoyé par le webhook Pine Script
-    price: Optional[float] = None          # Alias possible
     entry: Optional[float] = None
+    current_price: Optional[float] = None  # Prix actuel envoyé par le webhook Pine Script
     sl: Optional[float] = None
     tp1: Optional[float] = None
     tp2: Optional[float] = None
     tp3: Optional[float] = None
-    leverage: float | None = None  # optional (TradingView may omit)
+    confidence: Optional[int] = None
+    leverage: Optional[str] = None
+    note: Optional[str] = None
+    price: Optional[float] = None
+    action: Optional[str] = None
 
     @validator('side', pre=True, always=True)
-    def normalize_side(cls, v, values):
-        raw = v if v is not None else values.get('action')
-        if raw is None:
-            return None
-        raw = str(raw).upper().strip()
-        if raw in ('BUY', 'LONG'):
-            return 'LONG'
-        if raw in ('SELL', 'SHORT'):
-            return 'SHORT'
-        return raw
+    def set_side(cls, v, values):
+        if v:
+            return v.upper()
+        if 'action' in values and values['action']:
+            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
+        return v
 
     @validator('entry', pre=True, always=True)
     def set_entry(cls, v, values):
-        # Si "entry" n'est pas fourni, on utilise current_price (ou price) comme fallback
-        if v is not None:
-            return v
-        cp = values.get('current_price')
-        if cp is not None:
-            return cp
-        return values.get('price')
-
-    @root_validator(pre=False, skip_on_failure=True)
-    def infer_missing_fields(cls, values):
-        # Ensure entry fallback even if validator didn't catch (ordre de champs / payloads bizarres)
-        entry = values.get('entry')
-        if entry is None:
-            entry = values.get('current_price') or values.get('price')
-            values['entry'] = entry
-
-        # Normalize side again using action if needed
-        side = values.get('side') or values.get('action')
-        if side is not None:
-            raw = str(side).upper().strip()
-            if raw in ('BUY', 'LONG'):
-                values['side'] = 'LONG'
-            elif raw in ('SELL', 'SHORT'):
-                values['side'] = 'SHORT'
-            else:
-                values['side'] = raw
-
-        # Infer side from SL vs Entry if still missing
-        if not values.get('side') and entry is not None and values.get('sl') is not None:
-            values['side'] = 'LONG' if float(values['sl']) < float(entry) else 'SHORT'
-
-        # Auto-calc TP1/TP2/TP3 if missing or 0.0
-        sl = values.get('sl')
-        if entry is not None and sl is not None and values.get('side') in ('LONG', 'SHORT'):
-            try:
-                entry_f = float(entry)
-                sl_f = float(sl)
-                risk = abs(entry_f - sl_f)
-            except Exception:
-                risk = 0.0
-
-            def _is_missing(x):
-                try:
-                    return x is None or float(x) == 0.0
-                except Exception:
-                    return True
-
-            if risk > 0:
-                if values['side'] == 'LONG':
-                    if _is_missing(values.get('tp1')):
-                        values['tp1'] = entry_f + risk
-                    if _is_missing(values.get('tp2')):
-                        values['tp2'] = entry_f + 2 * risk
-                    if _is_missing(values.get('tp3')):
-                        values['tp3'] = entry_f + 3 * risk
-                else:
-                    if _is_missing(values.get('tp1')):
-                        values['tp1'] = entry_f - risk
-                    if _is_missing(values.get('tp2')):
-                        values['tp2'] = entry_f - 2 * risk
-                    if _is_missing(values.get('tp3')):
-                        values['tp3'] = entry_f - 3 * risk
-
-        return values
+        return v if v is not None else values.get('price')
 
 def calc_rr(entry, sl, tp1):
     try:
@@ -6027,11 +5797,11 @@ def calc_rr(entry, sl, tp1):
         pass
     return None
 
-def calculate_confidence_score(trade: dict | None = None):
+def calculate_confidence_score(trade: TradeWebhook):
     """
     🎯 CALCUL DE CONFIANCE RÉEL ET DYNAMIQUE
-
-    Ce système calcule un score de confiance réaliste basé sur plusieurs critères,
+    
+    Ce système calcule un score de confiance RÉALISTE basé sur plusieurs critères,
     partant d'un score de base de 50% et ajustant significativement selon :
     - Risk/Reward (poids le plus important)
     - Distance du Stop Loss
@@ -6039,188 +5809,165 @@ def calculate_confidence_score(trade: dict | None = None):
     - Timeframe
     - Nombre de targets
     - Signal technique (si fourni)
-
+    
     Plage de confiance finale : 35% à 95%
     """
-
-    # Helper pour supporter TradeWebhook (objet) OU dict
-    def _get(key, default=None):
-        if trade is None:
-            return default
-        if isinstance(trade, dict):
-            return trade.get(key, default)
-        return getattr(trade, key, default)
-
-    entry = _get("entry")
-    sl = _get("sl")
-    tp1 = _get("tp1")
-    tp2 = _get("tp2")
-    tp3 = _get("tp3")
-    tf = _get("tf")
-    note = _get("note")
-    # "confidence" peut venir du PineScript (technique) ou être absent
-    tech_conf = _get("confidence")
-    lev_raw = _get("leverage")
-
+    
     # ============= SCORE DE BASE =============
-    score = 50.0
-    reasons: list[str] = []
-
+    score = 50.0  # On part de 50%, pas 85% !
+    reasons = []
+    
     # ============= 1. RISK/REWARD (POIDS LE PLUS IMPORTANT) =============
-    if entry is not None and sl is not None and tp1 is not None:
-        try:
-            risk = abs(float(entry) - float(sl))
-            reward = abs(float(tp1) - float(entry))
-            rr_ratio = reward / risk if risk > 0 else 0.0
-
-            if rr_ratio >= 4.0:
-                score += 25
-                reasons.append(f"Excellent R/R de {rr_ratio:.1f}:1")
-            elif rr_ratio >= 3.0:
-                score += 18
-                reasons.append(f"Très bon R/R de {rr_ratio:.1f}:1")
-            elif rr_ratio >= 2.5:
-                score += 12
-                reasons.append(f"Bon R/R de {rr_ratio:.1f}:1")
-            elif rr_ratio >= 2.0:
-                score += 8
-                reasons.append(f"R/R acceptable de {rr_ratio:.1f}:1")
-            elif rr_ratio >= 1.5:
-                score += 2
-                reasons.append(f"R/R moyen de {rr_ratio:.1f}:1")
-            elif rr_ratio >= 1.0:
-                score -= 8
-                reasons.append(f"R/R faible de {rr_ratio:.1f}:1 - risque élevé")
-            else:
-                score -= 15
-                reasons.append(f"R/R très faible de {rr_ratio:.1f}:1 - très risqué")
-        except Exception:
-            score -= 10
-            reasons.append("R/R invalide")
+    # C'est le facteur #1 de réussite d'un trade
+    if trade.entry and trade.sl and trade.tp1:
+        risk = abs(trade.entry - trade.sl)
+        reward = abs(trade.tp1 - trade.entry)
+        rr_ratio = reward / risk if risk > 0 else 0
+        
+        if rr_ratio >= 4.0:
+            score += 25  # Excellent R/R
+            reasons.append(f"Excellent R/R de {rr_ratio:.1f}:1")
+        elif rr_ratio >= 3.0:
+            score += 18  # Très bon R/R
+            reasons.append(f"Très bon R/R de {rr_ratio:.1f}:1")
+        elif rr_ratio >= 2.5:
+            score += 12  # Bon R/R
+            reasons.append(f"Bon R/R de {rr_ratio:.1f}:1")
+        elif rr_ratio >= 2.0:
+            score += 8   # R/R acceptable
+            reasons.append(f"R/R acceptable de {rr_ratio:.1f}:1")
+        elif rr_ratio >= 1.5:
+            score += 2   # R/R moyen
+            reasons.append(f"R/R moyen de {rr_ratio:.1f}:1")
+        elif rr_ratio >= 1.0:
+            score -= 8   # R/R faible
+            reasons.append(f"R/R faible de {rr_ratio:.1f}:1 - risque élevé")
+        else:
+            score -= 15  # R/R très faible - dangereux
+            reasons.append(f"R/R très faible de {rr_ratio:.1f}:1 - très risqué")
     else:
-        score -= 10
+        score -= 10  # Pas de R/R défini = mauvais signe
         reasons.append("Aucun R/R défini")
-
+    
     # ============= 2. DISTANCE DU STOP LOSS =============
-    if entry is not None and sl is not None:
-        try:
-            entry_f = float(entry)
-            sl_f = float(sl)
-            sl_distance = abs((sl_f - entry_f) / entry_f * 100) if entry_f else 0.0
-
-            if sl_distance <= 1.5:
-                score += 10
-                reasons.append("SL très serré (gestion optimale)")
-            elif sl_distance <= 3.0:
-                score += 6
-                reasons.append("SL serré (bonne gestion)")
-            elif sl_distance <= 5.0:
-                score += 2
-                reasons.append("SL bien placé")
-            elif sl_distance <= 8.0:
-                score -= 3
-                reasons.append("SL éloigné")
-            else:
-                score -= 8
-                reasons.append(f"SL trop éloigné ({sl_distance:.1f}%)")
-        except Exception:
-            pass
-
+    # Un SL serré = meilleure gestion du risque
+    if trade.entry and trade.sl:
+        sl_distance = abs((trade.sl - trade.entry) / trade.entry * 100)
+        
+        if sl_distance <= 1.5:
+            score += 10  # SL très serré - excellent
+            reasons.append("SL très serré (gestion optimale)")
+        elif sl_distance <= 3.0:
+            score += 6   # SL serré - bon
+            reasons.append("SL serré (bonne gestion)")
+        elif sl_distance <= 5.0:
+            score += 2   # SL modéré
+            reasons.append("SL bien placé")
+        elif sl_distance <= 8.0:
+            score -= 3   # SL un peu éloigné
+            reasons.append("SL éloigné")
+        else:
+            score -= 8   # SL trop éloigné = risque élevé
+            reasons.append(f"SL trop éloigné ({sl_distance:.1f}%)")
+    
     # ============= 3. LEVERAGE =============
-    if lev_raw is not None:
+    # Leverage trop élevé = risque accru
+    if trade.leverage:
         try:
-            if isinstance(lev_raw, (int, float)):
-                lev = int(round(float(lev_raw)))
-            else:
-                lev_s = str(lev_raw).strip()
-                lev_s = lev_s.replace("x", "").replace("X", "")
-                lev = int(float(lev_s))  # accepte "10.0"
+            lev = int(trade.leverage.replace('x', '').replace('X', ''))
+            
             if lev <= 5:
-                score += 8
+                score += 8   # Leverage conservateur
                 reasons.append("Leverage conservateur")
             elif lev <= 10:
-                score += 5
+                score += 5   # Leverage modéré
                 reasons.append("Leverage modéré")
             elif lev <= 15:
-                score += 1
+                score += 1   # Leverage acceptable
                 reasons.append("Leverage acceptable")
             elif lev <= 20:
-                score -= 3
+                score -= 3   # Leverage élevé
                 reasons.append("Leverage élevé")
             elif lev <= 30:
-                score -= 8
+                score -= 8   # Leverage très élevé
                 reasons.append("Leverage très élevé - risque accru")
             else:
-                score -= 15
+                score -= 15  # Leverage dangereux
                 reasons.append("Leverage dangereux (>30x)")
-        except Exception:
+        except:
             pass
-
+    
     # ============= 4. TIMEFRAME =============
-    if tf:
-        tf_lower = str(tf).lower()
-        if any(x in tf_lower for x in ["1d", "4h", "daily"]):
-            score += 8
+    # Les timeframes plus élevés = plus fiables
+    if trade.tf:
+        tf_lower = trade.tf.lower()
+        
+        if any(x in tf_lower for x in ['1d', '4h', 'daily']):
+            score += 8   # Timeframe élevé = plus fiable
             reasons.append("Timeframe élevé (plus fiable)")
-        elif any(x in tf_lower for x in ["1h", "2h"]):
-            score += 5
+        elif any(x in tf_lower for x in ['1h', '2h']):
+            score += 5   # Timeframe moyen
             reasons.append("Timeframe moyen")
-        elif any(x in tf_lower for x in ["15", "30"]):
-            score += 1
+        elif any(x in tf_lower for x in ['15', '30']):
+            score += 1   # Timeframe court
             reasons.append("Timeframe court (réactif)")
-        elif any(x in tf_lower for x in ["1m", "3m", "5m"]):
-            score -= 3
+        elif any(x in tf_lower for x in ['1m', '3m', '5m']):
+            score -= 3   # Timeframe très court = plus de bruit
             reasons.append("Timeframe très court (volatil)")
-
+    
     # ============= 5. STRATÉGIE DE SORTIE =============
-    try:
-        targets_count = sum(1 for tp in [tp1, tp2, tp3] if tp is not None)
-        if targets_count >= 3:
-            score += 6
-            reasons.append("Sortie progressive (3+ targets)")
-        elif targets_count >= 2:
-            score += 3
-            reasons.append("2 targets définis")
-        elif targets_count == 1:
-            score -= 2
-            reasons.append("Un seul target")
-    except Exception:
-        pass
-
+    # Plusieurs targets = meilleure gestion des profits
+    targets_count = sum([1 for tp in [trade.tp1, trade.tp2, trade.tp3] if tp is not None])
+    
+    if targets_count >= 3:
+        score += 6
+        reasons.append("Sortie progressive (3+ targets)")
+    elif targets_count >= 2:
+        score += 3
+        reasons.append("2 targets définis")
+    elif targets_count == 1:
+        score -= 2
+        reasons.append("Un seul target")
+    
     # ============= 6. SIGNAL TECHNIQUE (SI FOURNI) =============
-    if tech_conf is not None:
-        try:
-            tc = float(tech_conf)
-            if tc >= 90:
-                score += 10
-                reasons.append("Signal technique très fort")
-            elif tc >= 80:
-                score += 6
-                reasons.append("Signal technique fort")
-            elif tc >= 70:
-                score += 3
-                reasons.append("Signal technique bon")
-            elif tc >= 60:
-                score += 0
-            else:
-                score -= 5
-                reasons.append("Signal technique faible")
-        except Exception:
-            pass
-
+    # Si Pine Script envoie une confiance technique
+    if trade.confidence:
+        if trade.confidence >= 90:
+            score += 10
+            reasons.append("Signal technique très fort")
+        elif trade.confidence >= 80:
+            score += 6
+            reasons.append("Signal technique fort")
+        elif trade.confidence >= 70:
+            score += 3
+            reasons.append("Signal technique bon")
+        elif trade.confidence >= 60:
+            score += 0  # Neutre
+        else:
+            score -= 5
+            reasons.append("Signal technique faible")
+    
     # ============= 7. ANALYSE DÉTAILLÉE =============
-    if note and isinstance(note, str) and len(note) > 30:
+    # Une note détaillée montre de la préparation
+    if trade.note and len(trade.note) > 30:
         score += 3
         reasons.append("Analyse détaillée fournie")
-
+    
     # ============= LIMITES ET NORMALISATION =============
+    # Score final entre 35% et 95%
     score = max(35.0, min(95.0, score))
-
-    reason = ", ".join(reasons) if reasons else "Analyse technique standard"
+    
+    # ============= CONSTRUCTION DE LA RAISON =============
+    # Afficher toutes les raisons importantes, pas seulement 3
+    if len(reasons) > 0:
+        reason = ", ".join(reasons)
+    else:
+        reason = "Analyse technique standard"
+    
     return round(score, 1), reason.capitalize()
 
 
-async def send_telegram_advanced(trade: dict | None = None):
+async def send_telegram_advanced(trade: TradeWebhook):
     """Envoie message Telegram professionnel avec anti-rate-limit et variables d'env"""
     global last_telegram_message_time
     
@@ -6242,29 +5989,23 @@ async def send_telegram_advanced(trade: dict | None = None):
         rr_text = f" (R/R: {rr}:1)" if rr else ""
         trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"
         timeframe = trade.tf if trade.tf else "15m"
-        lev_raw = getattr(trade, 'leverage', None)
-        if lev_raw is None:
-            leverage_text = "10x"
-        elif isinstance(lev_raw, (int, float)):
-            leverage_text = f"{int(round(float(lev_raw)))}x"
-        else:
-            leverage_text = str(lev_raw)
+        leverage_text = trade.leverage if trade.leverage else "10x"
         
         msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}
 ⏰ Heure : {heure}
 🎯 Direction : <b>{trade.side}</b> {direction_emoji}
 
-<b>ENTRY:</b> ${trade.entry:.4f}{rr_text}
-❌ <b>Stop-Loss:</b> ${trade.sl:.4f}
+<b>ENTRY:</b> {safe_format_price(trade.entry)}{rr_text}
+❌ <b>Stop-Loss:</b> {safe_format_price(trade.sl)}
 💡 <b>Leverage:</b> {leverage_text} Isolée
 """
         
         if trade.tp1:
-            msg += f"✅ <b>Target 1:</b> ${trade.tp1:.4f}\n"
+            msg += f"✅ <b>Target 1:</b> {safe_format_price(trade.tp1)}\n"
         if trade.tp2:
-            msg += f"✅ <b>Target 2:</b> ${trade.tp2:.4f}\n"
+            msg += f"✅ <b>Target 2:</b> {safe_format_price(trade.tp2)}\n"
         if trade.tp3:
-            msg += f"✅ <b>Target 3:</b> ${trade.tp3:.4f}\n"
+            msg += f"✅ <b>Target 3:</b> {safe_format_price(trade.tp3)}\n"
         
         msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
@@ -6323,7 +6064,7 @@ async def send_telegram_advanced(trade: dict | None = None):
                 if response.status_code == 200:
                     last_telegram_message_time = time.time()
                     print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
-                    print(f"   Entry: ${trade.entry:.4f} | SL: ${trade.sl:.4f}")
+                    print(f"   Entry: {safe_format_price(trade.entry)} | SL: {safe_format_price(trade.sl)}")
                     print(f"   Confiance IA: {confidence_score}%")
                     print(f"   Heure: {heure}")
                     break
@@ -6367,66 +6108,87 @@ async def send_telegram(msg: str):
 @app.post("/tv-webhook")
 async def webhook(request: Request):
     """
-    Webhook TradingView avec détection de revirement
-    Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
+    Webhook TradingView.
+    - Supporte le JSON envoyé par alert() (ton Pine Script)
+    - Supporte aussi un message JSON statique dans TradingView (alertcondition / Buy & Sell)
     """
-
-    # --- Robust payload parsing (TradingView envoie parfois text/plain) ---
     try:
-        payload = await request.json()
-    except Exception:
-        raw = await request.body()
-        try:
-            payload = json.loads(raw.decode("utf-8", errors="ignore") or "{}")
-        except Exception:
-            payload = {}
+        raw_body = await request.body()
+        raw_text = raw_body.decode("utf-8", errors="ignore").strip()
+        data = {}
+        if raw_text:
+            try:
+                data = json.loads(raw_text)
+            except Exception:
+                data = {"raw": raw_text}
+        if isinstance(data, str):
+            data = {"raw": data}
+        # Si on reçoit juste du texte (BUY/SELL/LONG/SHORT), on le normalise
+        if isinstance(data, dict) and "raw" in data and not any(k in data for k in ("action","side")):
+            t = str(data["raw"]).upper()
+            if "BUY" in t or "LONG" in t:
+                data["action"] = "BUY"
+            elif "SELL" in t or "SHORT" in t:
+                data["action"] = "SELL"
+        # Certains envoient {"payload":"{...json...}"}
+        if isinstance(data, dict) and isinstance(data.get("payload"), str):
+            try:
+                data = json.loads(data["payload"])
+            except Exception:
+                pass
+        trade = TradeWebhook(**(data if isinstance(data, dict) else {}))
 
-    # Build TradeWebhook safely (accepte champs extra si le modèle le permet)
-    try:
-        trade = TradeWebhook(**payload)
-    except Exception as e:
-        return {"ok": False, "error": f"Invalid payload: {e}", "payload": payload}
-    # ----------------------------------------------------------------------
+        # Validation minimale
+        if not trade.symbol or not trade.side:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "status": "error",
+                    "error": "Payload incomplet. Il faut au minimum symbol + (side ou action).",
+                    "received": raw_text[:500],
+                    "example_buy": {"symbol": "{{ticker}}", "action": "BUY", "price": 123.45, "tf": "{{interval}}"},
+                    "example_sell": {"symbol": "{{ticker}}", "action": "SELL", "price": 123.45, "tf": "{{interval}}"}
+                }
+            )
 
-    try:
         print(f"\n{'='*60}")
-        print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
+        print("🎯 NOUVEAU SIGNAL TRADINGVIEW")
+        print(f"   Raw: {raw_text[:500]}")
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: ${trade.entry:.6f}" if trade.entry is not None else "   Entry: N/A")
-        print("   SL: N/A | TP1: N/A" if (trade.sl is None or trade.tp1 is None) else f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
+        print(f"   Entry: {safe_format_price(trade.entry)}")
+        print(f"   SL: {safe_format_price(trade.sl)} | TP1: {safe_format_price(trade.tp1)}")
         print(f"{'='*60}\n")
-
         symbol = trade.symbol
         new_side = trade.side
-
+        
         # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
         inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
-
+        
         # Chercher un trade actif inverse
         inverse_trade = None
         for t in trades_db:
-            if (t.get('symbol') == symbol and
-                t.get('side') == inverse_side and
+            if (t.get('symbol') == symbol and 
+                t.get('side') == inverse_side and 
                 t.get('status') == 'open'):
                 inverse_trade = t
                 break
-
+        
         # 🔄 Si un trade inverse existe, le fermer automatiquement SANS ouvrir le nouveau
         if inverse_trade:
             now = datetime.now(pytz.timezone('America/Montreal'))
             close_time = now.strftime('%H:%M:%S')
             close_date = now.strftime('%d/%m/%Y')
-
+            
             print(f"⚠️ REVIREMENT DÉTECTÉ sur {symbol}! {inverse_side} → {new_side}")
-
+            
             # Fermer le trade inverse
             inverse_trade['status'] = 'closed'
             inverse_trade['closed_reason'] = f'Revirement: Signal {new_side} reçu'
             inverse_trade['closed_at'] = now.isoformat()
             inverse_trade['sl_hit'] = True  # Bouton SL rouge pour indiquer une perte
-
+            
             # 📱 Notification Telegram DÉTAILLÉE du revirement
             reversal_message = (
                 f"🔄 <b>REVIREMENT DE TENDANCE DÉTECTÉ!</b>\n\n"
@@ -6441,27 +6203,22 @@ async def webhook(request: Request):
                 f"⏳ En attente du prochain signal propre...\n\n"
                 f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
             )
-
-            # send_telegram_message doit exister ailleurs; sinon fallback sur send_telegram
-            try:
-                asyncio.create_task(send_telegram_message(reversal_message))
-            except Exception:
-                asyncio.create_task(send_telegram(reversal_message))
-
+            
+            asyncio.create_task(send_telegram_message(reversal_message))
             print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
-
+            
             return {
                 "status": "reversed",
                 "message": f"Trade {inverse_side} fermé, signal {new_side} ignoré",
                 "closed_trade_id": inverse_trade.get('symbol'),
                 "new_trade_created": False
             }
-
+        
         # 📝 Créer le nouveau trade SEULEMENT si pas de revirement
         await send_telegram_advanced(trade)
-
+        
         confidence_score, _ = calculate_confidence_score(trade)
-
+        
         trade_data = {
             "symbol": trade.symbol,
             "side": trade.side,
@@ -6474,7 +6231,7 @@ async def webhook(request: Request):
             "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
             "status": "open",
             "confidence": confidence_score,
-            "leverage": getattr(trade, 'leverage', None),
+            "leverage": trade.leverage,
             "timeframe": trade.tf,
             "tp1_hit": False,
             "tp2_hit": False,
@@ -6484,11 +6241,11 @@ async def webhook(request: Request):
         }
         trades_db.append(trade_data)
         save_trades_to_file()  # 💾 Sauvegarder immédiatement
-
+        
         print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
-
+        
         return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
-
+        
     except Exception as e:
         print(f"❌ ERREUR WEBHOOK: {e}")
         import traceback
@@ -12791,92 +12548,8 @@ async def stats_api():
 
 @app.get("/api/trades")
 async def trades_api():
-    # Normalisation "live" (utile pour les anciens trades déjà enregistrés avec side=SELL/BUY,
-    # entry=None, TP=0, etc.)
-    def _is_missing(x):
-        try:
-            return x is None or float(x) == 0.0
-        except Exception:
-            return x is None
-
-    def _normalize_trade(t: dict) -> dict:
-        t = dict(t)  # copy
-
-        # Entry fallback
-        entry = t.get("entry")
-        cp = t.get("current_price")
-        price = t.get("price")
-        if entry is None or entry == 0 or entry == "null":
-            if cp not in (None, 0, "null"):
-                t["entry"] = cp
-                entry = cp
-            elif price not in (None, 0, "null"):
-                t["entry"] = price
-                entry = price
-
-        # Side normalisation
-        side = t.get("side")
-        if isinstance(side, str):
-            s = side.upper().strip()
-            if s in ("BUY", "LONG"):
-                side = "LONG"
-            elif s in ("SELL", "SHORT"):
-                side = "SHORT"
-            t["side"] = side
-        else:
-            # infer side if missing
-            if not side and t.get("sl") is not None and entry is not None:
-                try:
-                    t["side"] = "LONG" if float(t["sl"]) < float(entry) else "SHORT"
-                except Exception:
-                    pass
-
-        # Auto-calc TP1/TP2/TP3 if missing/0
-        if t.get("sl") is not None and t.get("entry") is not None and t.get("side") in ("LONG", "SHORT"):
-            try:
-                e = float(t["entry"])
-                sl = float(t["sl"])
-                risk = abs(e - sl)
-            except Exception:
-                risk = 0.0
-
-            if risk > 0:
-                if t["side"] == "LONG":
-                    if _is_missing(t.get("tp1")):
-                        t["tp1"] = e + risk
-                    if _is_missing(t.get("tp2")):
-                        t["tp2"] = e + 2 * risk
-                    if _is_missing(t.get("tp3")):
-                        t["tp3"] = e + 3 * risk
-                else:
-                    if _is_missing(t.get("tp1")):
-                        t["tp1"] = e - risk
-                    if _is_missing(t.get("tp2")):
-                        t["tp2"] = e - 2 * risk
-                    if _is_missing(t.get("tp3")):
-                        t["tp3"] = e - 3 * risk
-
-                # Confidence fallback if missing/default
-                conf = t.get("confidence_ai")
-                try:
-                    conf_f = float(conf) if conf is not None else None
-                except Exception:
-                    conf_f = None
-
-                if conf_f is None or conf_f == 50.0:
-                    try:
-                        rr = abs(float(t["tp1"]) - e) / risk
-                        bonus_targets = (10 if not _is_missing(t.get("tp2")) else 0) + (10 if not _is_missing(t.get("tp3")) else 0)
-                        score = 50 + rr * 10 + bonus_targets
-                        score = max(50, min(98, score))
-                        t["confidence_ai"] = round(score, 1)
-                    except Exception:
-                        pass
-
-        return t
-
-    normalized = [_normalize_trade(tr) for tr in trades_db]
-    sorted_trades = sorted(normalized, key=lambda x: x.get("timestamp", ""), reverse=True)
+    # Trier les trades du plus récent au plus ancien
+    sorted_trades = sorted(trades_db, key=lambda x: x.get('timestamp', ''), reverse=True)
     return {"trades": sorted_trades, "count": len(sorted_trades), "status": "success"}
 
 @app.post("/api/trades/update-status")
@@ -23817,15 +23490,10 @@ async def admin_dashboard(request: Request):
         role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
         plan_badge = f'<span class="badge badge-premium">{plan}</span>'
         
-        # Construire les boutons sans backslashes
-        escaped_username = username.replace('"', '&quot;')
-        
-        edit_button = '<button onclick="editUser(' + "'" + escaped_username + "'" + ')" class="btn btn-edit">✏️ Modifier</button>'
-        perm_button = '<button onclick="managePermissions(' + "'" + escaped_username + "'" + ')" class="btn btn-permissions">🔐 Permissions</button>'
-        
+        # Construire le bouton delete en dehors du f-string (éviter backslash)
         delete_button = ""
         if username != "admin":
-            delete_button = '<button onclick="deleteUser(' + "'" + escaped_username + "'" + ')" class="btn btn-danger">🗑️ Supprimer</button>'
+            delete_button = f'<button onclick="deleteUser(\'{username}\')" class="btn btn-danger">🗑️ Supprimer</button>'
         
         users_html += f"""
         <tr>
@@ -23834,14 +23502,14 @@ async def admin_dashboard(request: Request):
             <td>{plan_badge}</td>
             <td>{created}</td>
             <td class="actions">
-                {edit_button}
-                {perm_button}
+                <button onclick="editUser('{username}')" class="btn btn-edit">✏️ Modifier</button>
+                <button onclick="managePermissions('{username}')" class="btn btn-permissions">🔐 Permissions</button>
                 {delete_button}
             </td>
         </tr>
         """
     
-    return HTMLResponse(f"""
+    return HTMLResponse(SIDEBAR + f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -23854,7 +23522,6 @@ async def admin_dashboard(request: Request):
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                 min-height: 100vh; 
                 padding: 20px; 
-                margin-left: 280px;
             }}
             
             .container {{ max-width: 1600px; margin: 0 auto; }}
@@ -24108,7 +23775,6 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
-        {SIDEBAR}
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>

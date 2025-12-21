@@ -6334,27 +6334,29 @@ async def send_telegram(msg: str):
         print(f"❌ Erreur send_telegram: {e}")
 
 @app.post("/tv-webhook")
-async def webhook(request: Request, trade: dict | None = None):
-
-# --- Robust payload parsing (TradingView sometimes sends text/plain) ---
-try:
-    payload = await request.json()
-except Exception:
-    raw = await request.body()
-    try:
-        payload = json.loads(raw.decode("utf-8", errors="ignore") or "{}")
-    except Exception:
-        payload = {}
-# Build TradeWebhook safely (accepts extra fields)
-try:
-    trade = TradeWebhook(**payload)
-except Exception as e:
-    return {"ok": False, "error": f"Invalid payload: {e}", "payload": payload}
-# ----------------------------------------------------------------------
+async def webhook(request: Request):
     """
     Webhook TradingView avec détection de revirement
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
+
+    # --- Robust payload parsing (TradingView envoie parfois text/plain) ---
+    try:
+        payload = await request.json()
+    except Exception:
+        raw = await request.body()
+        try:
+            payload = json.loads(raw.decode("utf-8", errors="ignore") or "{}")
+        except Exception:
+            payload = {}
+
+    # Build TradeWebhook safely (accepte champs extra si le modèle le permet)
+    try:
+        trade = TradeWebhook(**payload)
+    except Exception as e:
+        return {"ok": False, "error": f"Invalid payload: {e}", "payload": payload}
+    # ----------------------------------------------------------------------
+
     try:
         print(f"\n{'='*60}")
         print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
@@ -6364,36 +6366,36 @@ except Exception as e:
         print(f"   Entry: ${trade.entry:.6f}" if trade.entry is not None else "   Entry: N/A")
         print("   SL: N/A | TP1: N/A" if (trade.sl is None or trade.tp1 is None) else f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
         print(f"{'='*60}\n")
-        
+
         symbol = trade.symbol
         new_side = trade.side
-        
+
         # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
         inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
-        
+
         # Chercher un trade actif inverse
         inverse_trade = None
         for t in trades_db:
-            if (t.get('symbol') == symbol and 
-                t.get('side') == inverse_side and 
+            if (t.get('symbol') == symbol and
+                t.get('side') == inverse_side and
                 t.get('status') == 'open'):
                 inverse_trade = t
                 break
-        
+
         # 🔄 Si un trade inverse existe, le fermer automatiquement SANS ouvrir le nouveau
         if inverse_trade:
             now = datetime.now(pytz.timezone('America/Montreal'))
             close_time = now.strftime('%H:%M:%S')
             close_date = now.strftime('%d/%m/%Y')
-            
+
             print(f"⚠️ REVIREMENT DÉTECTÉ sur {symbol}! {inverse_side} → {new_side}")
-            
+
             # Fermer le trade inverse
             inverse_trade['status'] = 'closed'
             inverse_trade['closed_reason'] = f'Revirement: Signal {new_side} reçu'
             inverse_trade['closed_at'] = now.isoformat()
             inverse_trade['sl_hit'] = True  # Bouton SL rouge pour indiquer une perte
-            
+
             # 📱 Notification Telegram DÉTAILLÉE du revirement
             reversal_message = (
                 f"🔄 <b>REVIREMENT DE TENDANCE DÉTECTÉ!</b>\n\n"
@@ -6408,22 +6410,27 @@ except Exception as e:
                 f"⏳ En attente du prochain signal propre...\n\n"
                 f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
             )
-            
-            asyncio.create_task(send_telegram_message(reversal_message))
+
+            # send_telegram_message doit exister ailleurs; sinon fallback sur send_telegram
+            try:
+                asyncio.create_task(send_telegram_message(reversal_message))
+            except Exception:
+                asyncio.create_task(send_telegram(reversal_message))
+
             print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
-            
+
             return {
                 "status": "reversed",
                 "message": f"Trade {inverse_side} fermé, signal {new_side} ignoré",
                 "closed_trade_id": inverse_trade.get('symbol'),
                 "new_trade_created": False
             }
-        
+
         # 📝 Créer le nouveau trade SEULEMENT si pas de revirement
         await send_telegram_advanced(trade)
-        
+
         confidence_score, _ = calculate_confidence_score(trade)
-        
+
         trade_data = {
             "symbol": trade.symbol,
             "side": trade.side,
@@ -6446,11 +6453,11 @@ except Exception as e:
         }
         trades_db.append(trade_data)
         save_trades_to_file()  # 💾 Sauvegarder immédiatement
-        
+
         print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
-        
+
         return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
-        
+
     except Exception as e:
         print(f"❌ ERREUR WEBHOOK: {e}")
         import traceback

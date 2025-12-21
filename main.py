@@ -24,7 +24,7 @@ except ImportError:
 
     SLOWAPI_AVAILABLE = False
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, root_validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
@@ -5912,35 +5912,108 @@ def format_price(price: float) -> str:
         formatted += '0'
     return formatted
 
+    model_config = {
+        'extra': 'allow',
+    }
+
 class TradeWebhook(BaseModel):
+    # Webhook TradingView (Pine Script) → Backend
     type: str = "ENTRY"
     symbol: str
-    tf: Optional[str] = None
-    tf_label: Optional[str] = None
+    tf: str = "5"
+
+    # Certains scripts envoient "action" (BUY/SELL) ou "side" (BUY/SELL/LONG/SHORT)
+    action: Optional[str] = None
     side: Optional[str] = None
-    entry: Optional[float] = None
+
+    # Prix / niveaux
     current_price: Optional[float] = None  # Prix actuel envoyé par le webhook Pine Script
+    price: Optional[float] = None          # Alias possible
+    entry: Optional[float] = None
     sl: Optional[float] = None
     tp1: Optional[float] = None
     tp2: Optional[float] = None
     tp3: Optional[float] = None
-    confidence: Optional[int] = None
-    leverage: Optional[str] = None
-    note: Optional[str] = None
-    price: Optional[float] = None
-    action: Optional[str] = None
+    leverage: float | None = None  # optional (TradingView may omit)
 
     @validator('side', pre=True, always=True)
-    def set_side(cls, v, values):
-        if v:
-            return v.upper()
-        if 'action' in values and values['action']:
-            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
-        return v
+    def normalize_side(cls, v, values):
+        raw = v if v is not None else values.get('action')
+        if raw is None:
+            return None
+        raw = str(raw).upper().strip()
+        if raw in ('BUY', 'LONG'):
+            return 'LONG'
+        if raw in ('SELL', 'SHORT'):
+            return 'SHORT'
+        return raw
 
     @validator('entry', pre=True, always=True)
     def set_entry(cls, v, values):
-        return v if v is not None else values.get('price')
+        # Si "entry" n'est pas fourni, on utilise current_price (ou price) comme fallback
+        if v is not None:
+            return v
+        cp = values.get('current_price')
+        if cp is not None:
+            return cp
+        return values.get('price')
+
+    @root_validator(pre=False, skip_on_failure=True)
+    def infer_missing_fields(cls, values):
+        # Ensure entry fallback even if validator didn't catch (ordre de champs / payloads bizarres)
+        entry = values.get('entry')
+        if entry is None:
+            entry = values.get('current_price') or values.get('price')
+            values['entry'] = entry
+
+        # Normalize side again using action if needed
+        side = values.get('side') or values.get('action')
+        if side is not None:
+            raw = str(side).upper().strip()
+            if raw in ('BUY', 'LONG'):
+                values['side'] = 'LONG'
+            elif raw in ('SELL', 'SHORT'):
+                values['side'] = 'SHORT'
+            else:
+                values['side'] = raw
+
+        # Infer side from SL vs Entry if still missing
+        if not values.get('side') and entry is not None and values.get('sl') is not None:
+            values['side'] = 'LONG' if float(values['sl']) < float(entry) else 'SHORT'
+
+        # Auto-calc TP1/TP2/TP3 if missing or 0.0
+        sl = values.get('sl')
+        if entry is not None and sl is not None and values.get('side') in ('LONG', 'SHORT'):
+            try:
+                entry_f = float(entry)
+                sl_f = float(sl)
+                risk = abs(entry_f - sl_f)
+            except Exception:
+                risk = 0.0
+
+            def _is_missing(x):
+                try:
+                    return x is None or float(x) == 0.0
+                except Exception:
+                    return True
+
+            if risk > 0:
+                if values['side'] == 'LONG':
+                    if _is_missing(values.get('tp1')):
+                        values['tp1'] = entry_f + risk
+                    if _is_missing(values.get('tp2')):
+                        values['tp2'] = entry_f + 2 * risk
+                    if _is_missing(values.get('tp3')):
+                        values['tp3'] = entry_f + 3 * risk
+                else:
+                    if _is_missing(values.get('tp1')):
+                        values['tp1'] = entry_f - risk
+                    if _is_missing(values.get('tp2')):
+                        values['tp2'] = entry_f - 2 * risk
+                    if _is_missing(values.get('tp3')):
+                        values['tp3'] = entry_f - 3 * risk
+
+        return values
 
 def calc_rr(entry, sl, tp1):
     try:
@@ -5952,7 +6025,7 @@ def calc_rr(entry, sl, tp1):
         pass
     return None
 
-def calculate_confidence_score(trade: TradeWebhook):
+def calculate_confidence_score(trade: dict | None = None):
     """
     🎯 CALCUL DE CONFIANCE RÉEL ET DYNAMIQUE
     
@@ -6027,9 +6100,9 @@ def calculate_confidence_score(trade: TradeWebhook):
     
     # ============= 3. LEVERAGE =============
     # Leverage trop élevé = risque accru
-    if trade.leverage:
+    if getattr(trade, 'leverage', None):
         try:
-            lev = int(trade.leverage.replace('x', '').replace('X', ''))
+            lev = int(getattr(trade, 'leverage', None).replace('x', '').replace('X', ''))
             
             if lev <= 5:
                 score += 8   # Leverage conservateur
@@ -6122,7 +6195,7 @@ def calculate_confidence_score(trade: TradeWebhook):
     return round(score, 1), reason.capitalize()
 
 
-async def send_telegram_advanced(trade: TradeWebhook):
+async def send_telegram_advanced(trade: dict | None = None):
     """Envoie message Telegram professionnel avec anti-rate-limit et variables d'env"""
     global last_telegram_message_time
     
@@ -6144,7 +6217,7 @@ async def send_telegram_advanced(trade: TradeWebhook):
         rr_text = f" (R/R: {rr}:1)" if rr else ""
         trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"
         timeframe = trade.tf if trade.tf else "15m"
-        leverage_text = trade.leverage if trade.leverage else "10x"
+        leverage_text = getattr(trade, 'leverage', None) if getattr(trade, 'leverage', None) else "10x"
         
         msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}
 ⏰ Heure : {heure}
@@ -6261,7 +6334,23 @@ async def send_telegram(msg: str):
         print(f"❌ Erreur send_telegram: {e}")
 
 @app.post("/tv-webhook")
-async def webhook(trade: TradeWebhook):
+async def webhook(request: Request, trade: dict | None = None):
+
+# --- Robust payload parsing (TradingView sometimes sends text/plain) ---
+try:
+    payload = await request.json()
+except Exception:
+    raw = await request.body()
+    try:
+        payload = json.loads(raw.decode("utf-8", errors="ignore") or "{}")
+    except Exception:
+        payload = {}
+# Build TradeWebhook safely (accepts extra fields)
+try:
+    trade = TradeWebhook(**payload)
+except Exception as e:
+    return {"ok": False, "error": f"Invalid payload: {e}", "payload": payload}
+# ----------------------------------------------------------------------
     """
     Webhook TradingView avec détection de revirement
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
@@ -6272,8 +6361,8 @@ async def webhook(trade: TradeWebhook):
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: ${trade.entry:.6f}")
-        print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
+        print(f"   Entry: ${trade.entry:.6f}" if trade.entry is not None else "   Entry: N/A")
+        print("   SL: N/A | TP1: N/A" if (trade.sl is None or trade.tp1 is None) else f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
         print(f"{'='*60}\n")
         
         symbol = trade.symbol
@@ -6347,7 +6436,7 @@ async def webhook(trade: TradeWebhook):
             "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
             "status": "open",
             "confidence": confidence_score,
-            "leverage": trade.leverage,
+            "leverage": getattr(trade, 'leverage', None),
             "timeframe": trade.tf,
             "tp1_hit": False,
             "tp2_hit": False,
@@ -12664,8 +12753,92 @@ async def stats_api():
 
 @app.get("/api/trades")
 async def trades_api():
-    # Trier les trades du plus récent au plus ancien
-    sorted_trades = sorted(trades_db, key=lambda x: x.get('timestamp', ''), reverse=True)
+    # Normalisation "live" (utile pour les anciens trades déjà enregistrés avec side=SELL/BUY,
+    # entry=None, TP=0, etc.)
+    def _is_missing(x):
+        try:
+            return x is None or float(x) == 0.0
+        except Exception:
+            return x is None
+
+    def _normalize_trade(t: dict) -> dict:
+        t = dict(t)  # copy
+
+        # Entry fallback
+        entry = t.get("entry")
+        cp = t.get("current_price")
+        price = t.get("price")
+        if entry is None or entry == 0 or entry == "null":
+            if cp not in (None, 0, "null"):
+                t["entry"] = cp
+                entry = cp
+            elif price not in (None, 0, "null"):
+                t["entry"] = price
+                entry = price
+
+        # Side normalisation
+        side = t.get("side")
+        if isinstance(side, str):
+            s = side.upper().strip()
+            if s in ("BUY", "LONG"):
+                side = "LONG"
+            elif s in ("SELL", "SHORT"):
+                side = "SHORT"
+            t["side"] = side
+        else:
+            # infer side if missing
+            if not side and t.get("sl") is not None and entry is not None:
+                try:
+                    t["side"] = "LONG" if float(t["sl"]) < float(entry) else "SHORT"
+                except Exception:
+                    pass
+
+        # Auto-calc TP1/TP2/TP3 if missing/0
+        if t.get("sl") is not None and t.get("entry") is not None and t.get("side") in ("LONG", "SHORT"):
+            try:
+                e = float(t["entry"])
+                sl = float(t["sl"])
+                risk = abs(e - sl)
+            except Exception:
+                risk = 0.0
+
+            if risk > 0:
+                if t["side"] == "LONG":
+                    if _is_missing(t.get("tp1")):
+                        t["tp1"] = e + risk
+                    if _is_missing(t.get("tp2")):
+                        t["tp2"] = e + 2 * risk
+                    if _is_missing(t.get("tp3")):
+                        t["tp3"] = e + 3 * risk
+                else:
+                    if _is_missing(t.get("tp1")):
+                        t["tp1"] = e - risk
+                    if _is_missing(t.get("tp2")):
+                        t["tp2"] = e - 2 * risk
+                    if _is_missing(t.get("tp3")):
+                        t["tp3"] = e - 3 * risk
+
+                # Confidence fallback if missing/default
+                conf = t.get("confidence_ai")
+                try:
+                    conf_f = float(conf) if conf is not None else None
+                except Exception:
+                    conf_f = None
+
+                if conf_f is None or conf_f == 50.0:
+                    try:
+                        rr = abs(float(t["tp1"]) - e) / risk
+                        bonus_targets = (10 if not _is_missing(t.get("tp2")) else 0) + (10 if not _is_missing(t.get("tp3")) else 0)
+                        score = 50 + rr * 10 + bonus_targets
+                        score = max(50, min(98, score))
+                        t["confidence_ai"] = round(score, 1)
+                    except Exception:
+                        pass
+
+        return t
+
+    normalized = [_normalize_trade(tr) for tr in trades_db]
+    sorted_trades = sorted(normalized, key=lambda x: x.get("timestamp", ""), reverse=True)
     return {"trades": sorted_trades, "count": len(sorted_trades), "status": "success"}
 
 @app.post("/api/trades/update-status")

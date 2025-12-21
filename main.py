@@ -5777,10 +5777,19 @@ class TradeWebhook(BaseModel):
 
     @validator('side', pre=True, always=True)
     def set_side(cls, v, values):
-        if v:
-            return v.upper()
-        if 'action' in values and values['action']:
-            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
+        # Normalize TradingView variants to LONG/SHORT
+        if v is not None and str(v).strip() != "":
+            s = str(v).strip().upper()
+            if s in ("BUY", "LONG"):
+                return "LONG"
+            if s in ("SELL", "SHORT"):
+                return "SHORT"
+            return s
+        # Some payloads use "action" instead of "side"
+        act = values.get('action') if isinstance(values, dict) else None
+        if act:
+            a = str(act).strip().upper()
+            return "LONG" if a == "BUY" else "SHORT"
         return v
 
     @validator('entry', pre=True, always=True)
@@ -5930,18 +5939,25 @@ def calculate_confidence_score(trade: TradeWebhook):
         reasons.append("Un seul target")
     
     # ============= 6. SIGNAL TECHNIQUE (SI FOURNI) =============
-    # Si Pine Script envoie une confiance technique
-    if trade.confidence:
-        if trade.confidence >= 90:
+    # Si Pine Script envoie une confiance technique (valeur optionnelle)
+    tech_conf = getattr(trade, 'confidence', None)
+    if tech_conf is not None:
+        try:
+            tech_conf = float(tech_conf)
+        except Exception:
+            tech_conf = None
+
+    if tech_conf is not None:
+        if tech_conf >= 90:
             score += 10
             reasons.append("Signal technique très fort")
-        elif trade.confidence >= 80:
+        elif tech_conf >= 80:
             score += 6
             reasons.append("Signal technique fort")
-        elif trade.confidence >= 70:
+        elif tech_conf >= 70:
             score += 3
             reasons.append("Signal technique bon")
-        elif trade.confidence >= 60:
+        elif tech_conf >= 60:
             score += 0  # Neutre
         else:
             score -= 5
@@ -5988,7 +6004,9 @@ async def send_telegram_advanced(trade: TradeWebhook):
         rr = calc_rr(trade.entry, trade.sl, trade.tp1)
         rr_text = f" (R/R: {rr}:1)" if rr else ""
         trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"
-        timeframe = trade.tf if trade.tf else "15m"
+        timeframe_raw = trade.tf if getattr(trade, 'tf', None) else "15m"
+        # TradingView {{interval}} can return "5" for 5 minutes; normalize to "5m"
+        timeframe = f"{timeframe_raw}m" if str(timeframe_raw).isdigit() else str(timeframe_raw)
         leverage_text = trade.leverage if trade.leverage else "10x"
         
         msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}

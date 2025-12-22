@@ -6,16 +6,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 # 🔐 CORRECTION 2: Rate Limiting pour sécurité
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
+# slowapi est optionnel: si le paquet n'est pas installé, on désactive le rate limiting
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    SLOWAPI_AVAILABLE = True
+except ImportError:
+    Limiter = None
+    _rate_limit_exceeded_handler = None
+    get_remote_address = None
+    SlowAPIMiddleware = None
+
+    class RateLimitExceeded(Exception):
+        pass
+
+    SLOWAPI_AVAILABLE = False
 
 from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
-import ccxt
+try:
+    import ccxt
+except ImportError:
+    ccxt = None
+
 from cryptography.fernet import Fernet
 
 # Imports pour système d'emails et codes promo
@@ -48,7 +65,15 @@ import time
 from urllib.parse import urlencode
 
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
-from technical_analyzer import analyzer
+# ✅ Module d'analyse technique (optionnel)
+# Si le module local n'existe pas dans ton déploiement, on garde l'app fonctionnelle avec un fallback.
+try:
+    from technical_analyzer import analyzer  # type: ignore
+except ImportError:
+    class _DummyAnalyzer:
+        async def get_ohlcv_data(self, *args, **kwargs):
+            return None
+    analyzer = _DummyAnalyzer()
 
 # ============================================================================
 
@@ -2157,85 +2182,32 @@ def get_user_from_request(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Configuration du rate limiter
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
+# ✅ Rate limiter (optionnel)
+# Si slowapi n'est pas installé, l'app reste fonctionnelle mais sans limitation de débit.
+if SLOWAPI_AVAILABLE:
+    limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = limiter
 
-# Handler personnalisé pour erreurs de rate limit
-async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    """Page d'erreur personnalisée quand trop de tentatives"""
-    return HTMLResponse(
-        content="""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>🚫 Trop de Tentatives</title>
-            <style>
-                body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    color: white;
-                    text-align: center;
-                    padding: 100px 20px;
-                    margin: 0;
-                }
-                .error-box {
-                    max-width: 600px;
-                    margin: 0 auto;
-                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-                    padding: 50px;
-                    border-radius: 20px;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-                }
-                h1 {
-                    font-size: 48px;
-                    margin: 0 0 20px 0;
-                }
-                p {
-                    font-size: 18px;
-                    margin: 15px 0;
-                    line-height: 1.6;
-                }
-                a {
-                    display: inline-block;
-                    background: white;
-                    color: #ef4444;
-                    padding: 15px 30px;
-                    border-radius: 50px;
-                    text-decoration: none;
-                    font-weight: 600;
-                    margin-top: 30px;
-                    transition: all 0.3s;
-                }
-                a:hover {
-                    transform: translateY(-3px);
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                }
-        
-        body { margin-left: 280px; }
-    </style>
-        </head>
-        <body>
-            <div class="error-box">
-                <h1>🚫 Trop de Tentatives</h1>
-                <p>Vous avez atteint la limite de tentatives de connexion.</p>
-                <p><strong>Pour votre sécurité, veuillez réessayer dans 15 minutes.</strong></p>
-                <p style="font-size: 14px; opacity: 0.9; margin-top: 30px;">
-                    Si vous avez oublié votre mot de passe, contactez le support.
-                </p>
-                <a href="/login">← Retour à la page de connexion</a>
-            </div>
-        </body>
-        </html>
-        """,
-        status_code=429
-    )
+    def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "⛔ Trop de requêtes. Réessaie dans quelques secondes.",
+                "hint": "Si ça arrive souvent, attends 1-2 minutes ou réduis la fréquence.",
+            },
+        )
 
-# Enregistrer le handler
-app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+    app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+    app.add_middleware(SlowAPIMiddleware)
+else:
+    class _DummyLimiter:
+        def limit(self, *args, **kwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
 
-# Activer le middleware
-app.add_middleware(SlowAPIMiddleware)
+    limiter = _DummyLimiter()
+    app.state.limiter = limiter
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 🔐 CORRECTION 3: DISCLAIMERS LÉGAUX - Protection juridique
@@ -6294,80 +6266,71 @@ async def webhook(request: Request):
     Webhook TradingView avec détection de revirement
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
+    # --- Parse TradingView payload robustly (JSON, text/plain, nested "alert", etc.) ---
+    payload: dict = {}
     try:
-        # --- Parse TradingView payload (supports nested {"alert":{...}} and raw strings) ---
-        raw_bytes = await request.body()
-        raw_text = raw_bytes.decode("utf-8", "ignore").strip() if raw_bytes else ""
-        data = {}
+        payload = await request.json()
+    except Exception:
+        raw_text = (await request.body()).decode("utf-8", errors="ignore").strip()
         if raw_text:
             try:
-                data = json.loads(raw_text)
+                payload = json.loads(raw_text)
             except Exception:
-                # Sometimes alerts include extra text; try to extract JSON object from the message
-                m = re.search(r"\{.*\}", raw_text, flags=re.S)
-                if m:
-                    try:
-                        data = json.loads(m.group(0))
-                    except Exception:
-                        data = {"raw": raw_text}
-                else:
-                    data = {"raw": raw_text}
+                payload = {"raw": raw_text}
+        else:
+            payload = {}
 
-        # If the indicator wraps the payload under an "alert" object, flatten it
-        if isinstance(data, dict) and isinstance(data.get("alert"), dict):
-            flat = dict(data["alert"])
-            for k, v in data.items():
-                if k != "alert" and k not in flat:
-                    flat[k] = v
-            data = flat
+    def _normalize_tv_payload(p):
+        # TradingView or indicators sometimes wrap the real payload under "alert"
+        # or send it as a raw JSON string.
+        if isinstance(p, str):
+            try:
+                p = json.loads(p)
+            except Exception:
+                return {"raw": p}
 
-        # If we received {"raw": "{...}"}, try to parse the inner JSON and merge other keys (e.g., action)
-        if isinstance(data, dict) and isinstance(data.get("raw"), str):
-            raw_candidate = data.get("raw", "").strip()
-            if raw_candidate.startswith("{") and raw_candidate.endswith("}"):
-                try:
-                    inner = json.loads(raw_candidate)
-                    if isinstance(inner, dict) and isinstance(inner.get("alert"), dict):
-                        flat = dict(inner["alert"])
-                        for k, v in inner.items():
-                            if k != "alert" and k not in flat:
-                                flat[k] = v
-                        inner = flat
-                    for k, v in data.items():
-                        if k != "raw" and k not in inner:
-                            inner[k] = v
-                    data = inner
-                except Exception:
-                    pass
+        if not isinstance(p, dict):
+            return {}
 
-        # Normalize common field names from various indicators
-        if isinstance(data, dict):
-            if "timeframe" in data and "tf" not in data:
-                data["tf"] = str(data.get("timeframe"))
-            if "signal" in data and "side" not in data:
-                data["side"] = str(data.get("signal"))
-            if "action" in data and "side" not in data:
-                data["side"] = str(data.get("action"))
-            if "price" in data and "entry" not in data:
-                try:
-                    data["entry"] = float(data.get("price"))
-                except Exception:
-                    pass
-            if "WEBHOOK_SECRET" in data and "webhook_secret" not in data:
-                data["webhook_secret"] = data.get("WEBHOOK_SECRET")
-            for k in ("entry", "sl", "tp1", "tp2", "tp3"):
-                if k in data and isinstance(data[k], str):
-                    try:
-                        data[k] = float(data[k])
-                    except Exception:
-                        pass
+        # If we already have a raw blob, try to decode it and merge
+        raw_blob = p.get("raw")
+        if isinstance(raw_blob, str):
+            try:
+                decoded = json.loads(raw_blob)
+                if isinstance(decoded, dict):
+                    merged = dict(decoded)
+                    for k, v in p.items():
+                        if k != "raw":
+                            merged[k] = v
+                    merged["raw"] = raw_blob
+                    p = merged
+            except Exception:
+                pass
 
-        # Validate into our Pydantic model (TradeWebhook)
-        try:
-            trade = TradeWebhook.model_validate(data)  # Pydantic v2
-        except Exception:
-            trade = TradeWebhook(**(data if isinstance(data, dict) else {}))
+        # Flatten {"alert": {...}} wrapper
+        if isinstance(p.get("alert"), dict):
+            merged = dict(p["alert"])
+            for k, v in p.items():
+                if k != "alert":
+                    merged[k] = v
+            p = merged
 
+        # Common key mappings
+        if "ticker" in p and "symbol" not in p:
+            p["symbol"] = p["ticker"]
+        if "timeframe" in p and "tf" not in p:
+            p["tf"] = p["timeframe"]
+        if "interval" in p and "tf" not in p:
+            p["tf"] = p["interval"]
+        if "signal" in p and "action" not in p and "side" not in p:
+            p["action"] = p["signal"]
+
+        return p
+
+    payload = _normalize_tv_payload(payload)
+    trade = TradeWebhook(**(payload if isinstance(payload, dict) else {}))
+
+    try:
         print(f"\n{'='*60}")
         print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")

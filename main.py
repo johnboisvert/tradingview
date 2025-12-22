@@ -6155,50 +6155,75 @@ async def webhook(request: Request):
             except Exception:
                 pass
 
-        # --- Webhook secret verification (optional) ---
-        expected_secret = (WEBHOOK_SECRET or "").strip()
-        if expected_secret:
-            def _extract_secret(obj):
+        # --- Webhook secret (optional / robust) ---
+expected = (os.getenv("WEBHOOK_SECRET") or os.getenv("WEBHOOK_PASSWORD") or "").strip()
+strict_auth = (os.getenv("WEBHOOK_STRICT_AUTH", "").lower() in ("1","true","yes","on"))
+forced_bypass = (os.getenv("WEBHOOK_BYPASS", "").lower() in ("1","true","yes","on"))
+
+def _extract_secret(obj):
+    try:
+        if obj is None:
+            return None
+        if isinstance(obj, str):
+            s = obj.strip()
+            if (s.startswith('{') and s.endswith('}')) or (s.startswith('[') and s.endswith(']')):
                 try:
-                    if obj is None:
-                        return None
-                    if isinstance(obj, dict):
-                        # direct keys
-                        for k in ("WEBHOOK_SECRET", "webhook_secret", "secret", "passphrase", "password", "token", "key"):
-                            v = obj.get(k)
-                            if isinstance(v, (str, int, float)) and str(v).strip():
-                                return str(v).strip()
-                        # common nested containers
-                        for nk in ("additional_data", "additionalData", "additional", "meta", "data", "extra", "inputs"):
-                            v = obj.get(nk)
-                            if isinstance(v, dict):
-                                got = _extract_secret(v)
-                                if got:
-                                    return got
-                            elif isinstance(v, str):
-                                s = v.strip()
-                                if s.startswith("{") and s.endswith("}"):
-                                    try:
-                                        got = _extract_secret(json.loads(s))
-                                        if got:
-                                            return got
-                                    except Exception:
-                                        pass
+                    import json as _json
+                    return _extract_secret(_json.loads(s))
                 except Exception:
                     return None
-                return None
+            return None
+        if isinstance(obj, list):
+            for it in obj:
+                got = _extract_secret(it)
+                if got:
+                    return got
+            return None
+        if not isinstance(obj, dict):
+            return None
 
-            received_secret = (
-                request.query_params.get("secret")
-                or request.query_params.get("passphrase")
-                or request.headers.get("x-webhook-secret")
-                or request.headers.get("X-Webhook-Secret")
-                or _extract_secret(data if isinstance(data, dict) else {})
-            )
-            if (not received_secret) or (not hmac.compare_digest(str(received_secret).strip(), expected_secret)):
-                return JSONResponse(status_code=401, content={"ok": False, "error": "Invalid webhook secret"})
+        if "WEBHOOK_SECRET" in obj and isinstance(obj["WEBHOOK_SECRET"], str) and obj["WEBHOOK_SECRET"].strip():
+            return obj["WEBHOOK_SECRET"].strip()
 
-        # --- Normalize common field names from various TradingView indicators ---
+        for k in list(obj.keys()):
+            lk = str(k).strip().lower()
+            if lk in ("webhook_secret","webhooksecret","secret","token","password","pass","key"):
+                v = obj.get(k)
+                if isinstance(v, str) and v.strip():
+                    return v.strip()
+
+        for nk in ("additionalData","additional_data","meta","data","extra","settings","payload"):
+            if nk in obj:
+                got = _extract_secret(obj.get(nk))
+                if got:
+                    return got
+
+        return None
+    except Exception:
+        return None
+
+provided = (
+    request.query_params.get("secret")
+    or request.query_params.get("token")
+    or request.query_params.get("key")
+    or request.query_params.get("password")
+    or request.headers.get("x-webhook-secret")
+    or request.headers.get("x-webhook-token")
+    or _extract_secret(payload)
+    or ""
+).strip()
+
+if forced_bypass:
+    logging.info("🔥🔥🔥 WEBHOOK BYPASS FORCÉ - PASS DIRECT 🔥🔥🔥")
+
+if expected and not forced_bypass and provided != expected:
+    # SOFT auth by default: don't block alerts. Set WEBHOOK_STRICT_AUTH=1 for 401.
+    logging.warning("❌ Webhook secret mismatch (soft). provided_prefix=%s expected_len=%s",
+                    (provided[:8] + "…") if provided else None, len(expected))
+    if strict_auth:
+        raise HTTPException(status_code=401, detail="Unauthorized (bad webhook secret)")
+
+# --- Normalize common field names from various TradingView indicators ---
         if isinstance(data, dict):
             # symbol fallbacks
             if not data.get("symbol"):

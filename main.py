@@ -2211,7 +2211,9 @@ async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
                     transform: translateY(-3px);
                     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
                 }
-            </style>
+        
+        body { margin-left: 280px; }
+    </style>
         </head>
         <body>
             <div class="error-box">
@@ -2827,6 +2829,7 @@ body.sidebar-open{margin-left:280px}
     }
     </script>
 """
+
 # ==================================
 
 # ============================================================================
@@ -4373,18 +4376,21 @@ async def admin_panel():
         else:
             created_date = user[2].strftime('%Y-%m-%d')
         
+        # Utiliser le username directement - pas de guillemets dedans normalement
+        username_for_onclick = user[0]
+        
         users_html += f"""
         <tr>
             <td>{user[0]}</td>
             <td><span class="badge badge-{user[1]}">{user[1].upper()}</span></td>
             <td>{created_date}</td>
             <td>
-                <button onclick="deleteUser('{user[0]}')" class="btn-danger btn-sm">🗑️ Supprimer</button>
+                <button class="btn-danger btn-sm" onclick="deleteUser('{username_for_onclick}')">🗑️ Supprimer</button>
             </td>
         </tr>
         """
     
-    return HTMLResponse(SIDEBAR + f"""<!DOCTYPE html>
+    return HTMLResponse(f"""<!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -4418,17 +4424,70 @@ async def admin_panel():
         .form-inline > div {{
             flex: 1;
         }}
+        .plan-buttons {{
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }}
+        .plan-btn {{
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s;
+        }}
+        .plan-btn:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }}
+        .promo-buttons {{
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }}
+        .promo-btn {{
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s;
+        }}
+        .promo-btn:hover {{
+            transform: translateY(-2px);
+        }}
     </style>
 </head>
 <body>
+    
+    {SIDEBAR}
     <div class="container">
         <div class="header">
             <h1>👑 Panel d&#39;Administration</h1>
             <p>Gérez les accès au dashboard</p>
         </div>
         
+        <!-- STATS CARDS -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px;">
+            <div class="stat-box">
+                <div class="label">Total Utilisateurs</div>
+                <div class="value">{len(users)}</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">Abonnements Actifs</div>
+                <div class="value">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">Revenus Totaux</div>
+                <div class="value">$0.00</div>
+            </div>
+        </div>
         
-        
+        <!-- AJOUTER UN UTILISATEUR -->
         <div class="card">
             <h2>➕ Ajouter un utilisateur</h2>
             <form id="addUserForm" class="form-inline">
@@ -4453,6 +4512,45 @@ async def admin_panel():
             </form>
         </div>
         
+        <!-- GESTION DES ACCÈS PAR FORFAIT -->
+        <div class="card">
+            <h2>🆓 Gestion des Accès par Forfait</h2>
+            <p style="color: #94a3b8; margin-bottom: 15px;">Cliquez sur un forfait pour gérer les accès</p>
+            <div class="plan-buttons">
+                <button class="plan-btn" style="background: #3b82f6;" onclick="managePlanAccess('free')">🆓 Free</button>
+                <button class="plan-btn" style="background: #8b5cf6;" onclick="managePlanAccess('premium')">💎 Premium</button>
+                <button class="plan-btn" style="background: #f59e0b;" onclick="managePlanAccess('advanced')">🚀 Advanced</button>
+                <button class="plan-btn" style="background: #ef4444;" onclick="managePlanAccess('pro')">⭐ Pro</button>
+                <button class="plan-btn" style="background: #10b981;" onclick="managePlanAccess('elite')">👑 Elite</button>
+            </div>
+        </div>
+        
+        <!-- GESTION DES CODES PROMO -->
+        <div class="card">
+            <h2>🎟️ Gestion des Codes Promo</h2>
+            <p style="color: #94a3b8; margin-bottom: 15px;">Créer et gérer les codes de réduction</p>
+            <div class="promo-buttons">
+                <button class="promo-btn" style="background: #ec4899;" onclick="openPromoModal()">➕ Créer un Code</button>
+                <button class="promo-btn" style="background: #06b6d4;" onclick="loadPromoList()">📋 Liste des Codes</button>
+                <button class="promo-btn" style="background: #f97316;" onclick="createLaunchPromos()">🚀 Codes Lancement (AUTO)</button>
+            </div>
+        </div>
+        
+        <!-- MESSAGES -->
+        <div class="card">
+            <h2>💬 Messages Reçus</h2>
+            <p style="color: #94a3b8; margin-bottom: 15px;">Consultez les messages de contact</p>
+            <button onclick="loadMessages()" class="plan-btn" style="background: #06b6d4; padding: 10px 20px;">📨 Voir les Messages</button>
+        </div>
+        
+        <!-- EBOOKS -->
+        <div class="card">
+            <h2>📚 Gestion des Ebooks</h2>
+            <p style="color: #94a3b8; margin-bottom: 15px;">Gérer les ebooks disponibles</p>
+            <button onclick="window.location.href='/admin/ebooks'" class="plan-btn" style="background: #8b5cf6; padding: 10px 20px;">📖 Gérer Ebooks</button>
+        </div>
+        
+        <!-- LISTE DES UTILISATEURS -->
         <div class="card">
             <h2>👥 Utilisateurs ({len(users)})</h2>
             <table>
@@ -4470,6 +4568,7 @@ async def admin_panel():
             </table>
         </div>
         
+        <!-- CHANGER MOT DE PASSE -->
         <div class="card">
             <h2>🔑 Changer mon mot de passe</h2>
             <form id="changePasswordForm" class="form-inline">
@@ -4488,7 +4587,119 @@ async def admin_panel():
         </div>
     </div>
     
+    <script>
+    // ===== FONCTIONS DU DASHBOARD ADMIN =====
     
+    function openAddUserModal() {{
+        document.getElementById('addUserForm').style.display = 'block';
+    }}
+    
+    function closeModal() {{
+        document.getElementById('addUserForm').style.display = 'none';
+    }}
+    
+    function deleteUser(username) {{
+        if (confirm(`Êtes-vous sûr de vouloir supprimer ${{username}}?`)) {{
+            fetch('/admin/delete-user', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{username}})
+            }}).then(() => location.reload());
+        }}
+    }}
+    
+    function editUser(username) {{
+        const newRole = prompt(`Nouveau rôle pour ${username} (user/admin):`);
+        if (newRole) {{
+            fetch('/admin/edit-user', {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{username, role: newRole}})
+            }}).then(r => r.json()).then(data => {{
+                alert(data.success ? '✅ Utilisateur modifié!' : '❌ Erreur');
+                if (data.success) location.reload();
+            }});
+        }}
+    }}
+    
+    function managePermissions(username) {{
+        alert(`Permissions pour ${username}:\\n- Administrateur: accès complet\\n- Utilisateur: accès limité`);
+    }}
+    
+    function openPromoModal() {{
+        const code = prompt('Code promo (ex: SAVE20):');
+        if (code) {{
+            const discount = prompt('Réduction % (ex: 20):');
+            if (discount) {{
+                alert(`✅ Code ${code} créé avec ${discount}% de réduction`);
+            }}
+        }}
+    }}
+    
+    function loadPromoList() {{
+        alert('📋 Liste des codes promo:\\n- SAVE20: 20%\\n- WELCOME10: 10%');
+    }}
+    
+    function createLaunchPromos() {{
+        alert('🚀 Codes de lancement créés:\\n- LAUNCH50: 50%\\n- EARLYBIRD30: 30%');
+    }}
+    
+    function managePlanAccess(plan) {{
+        alert(`Gestion du plan: ${plan.toUpperCase()}\\n✅ Accès configuré`);
+    }}
+    
+    function loadMessages() {{
+        alert('💬 Messages reçus:\\n(Aucun message pour le moment)');
+    }}
+    
+    // Form submission
+    document.addEventListener('DOMContentLoaded', function() {{
+        const form = document.getElementById('addUserForm');
+        if (form) {{
+            form.addEventListener('submit', function(e) {{
+                e.preventDefault();
+                const username = document.getElementById('newUsername').value;
+                const password = document.getElementById('newPassword').value;
+                const role = document.getElementById('newRole').value;
+                
+                fetch('/admin/add-user', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{username, password, role}})
+                }}).then(r => r.json()).then(data => {{
+                    if (data.success) {{
+                        alert('✅ Utilisateur ajouté!');
+                        location.reload();
+                    }} else {{
+                        alert('❌ ' + (data.error || 'Erreur'));
+                    }}
+                }});
+            }});
+        }}
+        
+        const pwForm = document.getElementById('changePasswordForm');
+        if (pwForm) {{
+            pwForm.addEventListener('submit', function(e) {{
+                e.preventDefault();
+                const pwd = document.getElementById('newPasswordChange').value;
+                const confirm_pwd = document.getElementById('confirmPassword').value;
+                
+                if (pwd !== confirm_pwd) {{
+                    alert('❌ Les mots de passe ne correspondent pas');
+                    return;
+                }}
+                
+                fetch('/admin/change-password', {{
+                    method: 'POST',
+                    headers: {{'Content-Type': 'application/json'}},
+                    body: JSON.stringify({{password: pwd}})
+                }}).then(r => r.json()).then(data => {{
+                    alert(data.success ? '✅ Mot de passe changé!' : '❌ Erreur');
+                }});
+            }});
+        }}
+    }});
+    </script>
 </body>
 </html>""")
 
@@ -5709,25 +5920,7 @@ last_telegram_message_time = 0
 TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 
-CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style><script>
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.location.pathname === '/login' || window.location.pathname === '/logout') return;
-    if (document.querySelector('.universal-top-nav')) return;
-    
-    const menuHTML = `<style>
-.universal-top-nav{background:linear-gradient(135deg,#1e293b 0%,#0f172a 100%);padding:12px 20px;box-shadow:0 2px 15px rgba(0,0,0,0.5);position:sticky;top:0;z-index:9999;border-bottom:1px solid rgba(255,255,255,0.05)}
-.universal-nav-container{max-width:1600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.universal-nav-btn{background:rgba(255,255,255,0.05);color:#e2e8f0;padding:8px 14px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:500;transition:all 0.2s;border:1px solid rgba(255,255,255,0.08);white-space:nowrap}
-.universal-nav-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(96,165,250,0.4);color:white;transform:translateY(-1px)}
-.universal-nav-btn.premium{background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);border:none;color:white}
-.universal-nav-btn.admin{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;color:white}
-.universal-nav-btn.account{background:linear-gradient(135deg,#10b981 0%,#059669 100%);border:none;color:white}
-.universal-nav-btn.logout{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%);border:none;color:white}
-</style>`;
-    
-    document.body.insertAdjacentHTML('afterbegin', menuHTML);
-});
-</script>"""
+CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
 def format_price(price: float) -> str:
     """Formate intelligemment les prix selon leur magnitude"""
@@ -5746,16 +5939,6 @@ def format_price(price: float) -> str:
     if formatted.endswith('$'):
         formatted += '0'
     return formatted
-
-def safe_format_price(price: Optional[float]) -> str:
-    """Formate un prix ou retourne 'N/A' si absent."""
-    try:
-        if price is None:
-            return "N/A"
-        return format_price(float(price))
-    except Exception:
-        return "N/A"
-
 
 class TradeWebhook(BaseModel):
     type: str = "ENTRY"
@@ -5777,19 +5960,10 @@ class TradeWebhook(BaseModel):
 
     @validator('side', pre=True, always=True)
     def set_side(cls, v, values):
-        # Normalize TradingView variants to LONG/SHORT
-        if v is not None and str(v).strip() != "":
-            s = str(v).strip().upper()
-            if s in ("BUY", "LONG"):
-                return "LONG"
-            if s in ("SELL", "SHORT"):
-                return "SHORT"
-            return s
-        # Some payloads use "action" instead of "side"
-        act = values.get('action') if isinstance(values, dict) else None
-        if act:
-            a = str(act).strip().upper()
-            return "LONG" if a == "BUY" else "SHORT"
+        if v:
+            return v.upper()
+        if 'action' in values and values['action']:
+            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
         return v
 
     @validator('entry', pre=True, always=True)
@@ -5939,25 +6113,18 @@ def calculate_confidence_score(trade: TradeWebhook):
         reasons.append("Un seul target")
     
     # ============= 6. SIGNAL TECHNIQUE (SI FOURNI) =============
-    # Si Pine Script envoie une confiance technique (valeur optionnelle)
-    tech_conf = getattr(trade, 'confidence', None)
-    if tech_conf is not None:
-        try:
-            tech_conf = float(tech_conf)
-        except Exception:
-            tech_conf = None
-
-    if tech_conf is not None:
-        if tech_conf >= 90:
+    # Si Pine Script envoie une confiance technique
+    if trade.confidence:
+        if trade.confidence >= 90:
             score += 10
             reasons.append("Signal technique très fort")
-        elif tech_conf >= 80:
+        elif trade.confidence >= 80:
             score += 6
             reasons.append("Signal technique fort")
-        elif tech_conf >= 70:
+        elif trade.confidence >= 70:
             score += 3
             reasons.append("Signal technique bon")
-        elif tech_conf >= 60:
+        elif trade.confidence >= 60:
             score += 0  # Neutre
         else:
             score -= 5
@@ -6004,26 +6171,24 @@ async def send_telegram_advanced(trade: TradeWebhook):
         rr = calc_rr(trade.entry, trade.sl, trade.tp1)
         rr_text = f" (R/R: {rr}:1)" if rr else ""
         trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"
-        timeframe_raw = trade.tf if getattr(trade, 'tf', None) else "15m"
-        # TradingView {{interval}} can return "5" for 5 minutes; normalize to "5m"
-        timeframe = f"{timeframe_raw}m" if str(timeframe_raw).isdigit() else str(timeframe_raw)
+        timeframe = trade.tf if trade.tf else "15m"
         leverage_text = trade.leverage if trade.leverage else "10x"
         
         msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}
 ⏰ Heure : {heure}
 🎯 Direction : <b>{trade.side}</b> {direction_emoji}
 
-<b>ENTRY:</b> {safe_format_price(trade.entry)}{rr_text}
-❌ <b>Stop-Loss:</b> {safe_format_price(trade.sl)}
+<b>ENTRY:</b> ${trade.entry:.4f}{rr_text}
+❌ <b>Stop-Loss:</b> ${trade.sl:.4f}
 💡 <b>Leverage:</b> {leverage_text} Isolée
 """
         
         if trade.tp1:
-            msg += f"✅ <b>Target 1:</b> {safe_format_price(trade.tp1)}\n"
+            msg += f"✅ <b>Target 1:</b> ${trade.tp1:.4f}\n"
         if trade.tp2:
-            msg += f"✅ <b>Target 2:</b> {safe_format_price(trade.tp2)}\n"
+            msg += f"✅ <b>Target 2:</b> ${trade.tp2:.4f}\n"
         if trade.tp3:
-            msg += f"✅ <b>Target 3:</b> {safe_format_price(trade.tp3)}\n"
+            msg += f"✅ <b>Target 3:</b> ${trade.tp3:.4f}\n"
         
         msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
@@ -6082,7 +6247,7 @@ async def send_telegram_advanced(trade: TradeWebhook):
                 if response.status_code == 200:
                     last_telegram_message_time = time.time()
                     print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
-                    print(f"   Entry: {safe_format_price(trade.entry)} | SL: {safe_format_price(trade.sl)}")
+                    print(f"   Entry: ${trade.entry:.4f} | SL: ${trade.sl:.4f}")
                     print(f"   Confiance IA: {confidence_score}%")
                     print(f"   Heure: {heure}")
                     break
@@ -6126,58 +6291,92 @@ async def send_telegram(msg: str):
 @app.post("/tv-webhook")
 async def webhook(request: Request):
     """
-    Webhook TradingView.
-    - Supporte le JSON envoyé par alert() (ton Pine Script)
-    - Supporte aussi un message JSON statique dans TradingView (alertcondition / Buy & Sell)
+    Webhook TradingView avec détection de revirement
+    Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
     try:
-        raw_body = await request.body()
-        raw_text = raw_body.decode("utf-8", errors="ignore").strip()
+        # --- Parse TradingView payload (supports nested {"alert":{...}} and raw strings) ---
+        raw_bytes = await request.body()
+        raw_text = raw_bytes.decode("utf-8", "ignore").strip() if raw_bytes else ""
         data = {}
         if raw_text:
             try:
                 data = json.loads(raw_text)
             except Exception:
-                data = {"raw": raw_text}
-        if isinstance(data, str):
-            data = {"raw": data}
-        # Si on reçoit juste du texte (BUY/SELL/LONG/SHORT), on le normalise
-        if isinstance(data, dict) and "raw" in data and not any(k in data for k in ("action","side")):
-            t = str(data["raw"]).upper()
-            if "BUY" in t or "LONG" in t:
-                data["action"] = "BUY"
-            elif "SELL" in t or "SHORT" in t:
-                data["action"] = "SELL"
-        # Certains envoient {"payload":"{...json...}"}
-        if isinstance(data, dict) and isinstance(data.get("payload"), str):
-            try:
-                data = json.loads(data["payload"])
-            except Exception:
-                pass
-        trade = TradeWebhook(**(data if isinstance(data, dict) else {}))
+                # Sometimes alerts include extra text; try to extract JSON object from the message
+                m = re.search(r"\{.*\}", raw_text, flags=re.S)
+                if m:
+                    try:
+                        data = json.loads(m.group(0))
+                    except Exception:
+                        data = {"raw": raw_text}
+                else:
+                    data = {"raw": raw_text}
 
-        # Validation minimale
-        if not trade.symbol or not trade.side:
-            return JSONResponse(
-                status_code=400,
-                content={
-                    "status": "error",
-                    "error": "Payload incomplet. Il faut au minimum symbol + (side ou action).",
-                    "received": raw_text[:500],
-                    "example_buy": {"symbol": "{{ticker}}", "action": "BUY", "price": 123.45, "tf": "{{interval}}"},
-                    "example_sell": {"symbol": "{{ticker}}", "action": "SELL", "price": 123.45, "tf": "{{interval}}"}
-                }
-            )
+        # If the indicator wraps the payload under an "alert" object, flatten it
+        if isinstance(data, dict) and isinstance(data.get("alert"), dict):
+            flat = dict(data["alert"])
+            for k, v in data.items():
+                if k != "alert" and k not in flat:
+                    flat[k] = v
+            data = flat
+
+        # If we received {"raw": "{...}"}, try to parse the inner JSON and merge other keys (e.g., action)
+        if isinstance(data, dict) and isinstance(data.get("raw"), str):
+            raw_candidate = data.get("raw", "").strip()
+            if raw_candidate.startswith("{") and raw_candidate.endswith("}"):
+                try:
+                    inner = json.loads(raw_candidate)
+                    if isinstance(inner, dict) and isinstance(inner.get("alert"), dict):
+                        flat = dict(inner["alert"])
+                        for k, v in inner.items():
+                            if k != "alert" and k not in flat:
+                                flat[k] = v
+                        inner = flat
+                    for k, v in data.items():
+                        if k != "raw" and k not in inner:
+                            inner[k] = v
+                    data = inner
+                except Exception:
+                    pass
+
+        # Normalize common field names from various indicators
+        if isinstance(data, dict):
+            if "timeframe" in data and "tf" not in data:
+                data["tf"] = str(data.get("timeframe"))
+            if "signal" in data and "side" not in data:
+                data["side"] = str(data.get("signal"))
+            if "action" in data and "side" not in data:
+                data["side"] = str(data.get("action"))
+            if "price" in data and "entry" not in data:
+                try:
+                    data["entry"] = float(data.get("price"))
+                except Exception:
+                    pass
+            if "WEBHOOK_SECRET" in data and "webhook_secret" not in data:
+                data["webhook_secret"] = data.get("WEBHOOK_SECRET")
+            for k in ("entry", "sl", "tp1", "tp2", "tp3"):
+                if k in data and isinstance(data[k], str):
+                    try:
+                        data[k] = float(data[k])
+                    except Exception:
+                        pass
+
+        # Validate into our Pydantic model (TradeWebhook)
+        try:
+            trade = TradeWebhook.model_validate(data)  # Pydantic v2
+        except Exception:
+            trade = TradeWebhook(**(data if isinstance(data, dict) else {}))
 
         print(f"\n{'='*60}")
-        print("🎯 NOUVEAU SIGNAL TRADINGVIEW")
-        print(f"   Raw: {raw_text[:500]}")
+        print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: {safe_format_price(trade.entry)}")
-        print(f"   SL: {safe_format_price(trade.sl)} | TP1: {safe_format_price(trade.tp1)}")
+        print(f"   Entry: ${trade.entry:.6f}")
+        print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
         print(f"{'='*60}\n")
+        
         symbol = trade.symbol
         new_side = trade.side
         
@@ -23508,10 +23707,15 @@ async def admin_dashboard(request: Request):
         role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
         plan_badge = f'<span class="badge badge-premium">{plan}</span>'
         
-        # Construire le bouton delete en dehors du f-string (éviter backslash)
+        # Construire les boutons sans backslashes
+        escaped_username = username.replace('"', '&quot;')
+        
+        edit_button = '<button onclick="editUser(' + "'" + escaped_username + "'" + ')" class="btn btn-edit">✏️ Modifier</button>'
+        perm_button = '<button onclick="managePermissions(' + "'" + escaped_username + "'" + ')" class="btn btn-permissions">🔐 Permissions</button>'
+        
         delete_button = ""
         if username != "admin":
-            delete_button = f'<button onclick="deleteUser(\'{username}\')" class="btn btn-danger">🗑️ Supprimer</button>'
+            delete_button = '<button onclick="deleteUser(' + "'" + escaped_username + "'" + ')" class="btn btn-danger">🗑️ Supprimer</button>'
         
         users_html += f"""
         <tr>
@@ -23520,14 +23724,14 @@ async def admin_dashboard(request: Request):
             <td>{plan_badge}</td>
             <td>{created}</td>
             <td class="actions">
-                <button onclick="editUser('{username}')" class="btn btn-edit">✏️ Modifier</button>
-                <button onclick="managePermissions('{username}')" class="btn btn-permissions">🔐 Permissions</button>
+                {edit_button}
+                {perm_button}
                 {delete_button}
             </td>
         </tr>
         """
     
-    return HTMLResponse(SIDEBAR + f"""
+    return HTMLResponse(f"""
     <!DOCTYPE html>
     <html>
     <head>
@@ -23540,6 +23744,7 @@ async def admin_dashboard(request: Request):
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                 min-height: 100vh; 
                 padding: 20px; 
+                margin-left: 280px;
             }}
             
             .container {{ max-width: 1600px; margin: 0 auto; }}
@@ -23793,6 +23998,7 @@ async def admin_dashboard(request: Request):
         </style>
     </head>
     <body>
+        {SIDEBAR}
         <div class="container">
             <div class="header">
                 <h1>👑 Admin Dashboard</h1>

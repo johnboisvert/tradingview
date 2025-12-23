@@ -35,8 +35,6 @@ except ImportError:
 import pytz
 import random
 import os
-TV_EXCHANGE = os.getenv("TV_EXCHANGE", "MEXC")
-
 import math
 import asyncio
 import json
@@ -2026,25 +2024,8 @@ templates = Jinja2Templates(directory="templates")
 print("✅ Templates Jinja2 configurés")
 
 # Enregistrer les fonctions template si système permissions disponible
-
 if PERMISSIONS_AVAILABLE:
-    try:
-        register_template_functions(templates)
-    except Exception as e:
-        print(f"⚠️  Erreur enregistrement template functions: {e}")
-        # Fallback: éviter que les templates cassent si une fonction manque
-        try:
-            templates.env.globals.setdefault("has_feature", lambda *args, **kwargs: True)
-            templates.env.globals.setdefault("has_access", lambda *args, **kwargs: True)
-            templates.env.globals.setdefault("user_plan", lambda *args, **kwargs: "free")
-        except Exception:
-            pass
-else:
-    # Même sans module permissions, on fournit au moins has_feature pour les templates
-    try:
-        templates.env.globals.setdefault("has_feature", lambda *args, **kwargs: True)
-    except Exception:
-        pass
+    register_template_functions(templates)
 
 
 # ============================================================================
@@ -5941,30 +5922,24 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-def format_price(price: Optional[float]) -> str:
-    """Formate intelligemment les prix selon leur magnitude (supporte None)."""
-    if price is None:
-        return "N/A"
-    try:
-        p = float(price)
-    except Exception:
-        return "N/A"
-
-    ap = abs(p)
-    if ap < 0.001:
-        decimals = 8  # Memecoins (SHIB, PEPE, etc.)
-    elif ap < 1:
+def format_price(price: float) -> str:
+    """Formate intelligemment les prix selon leur magnitude"""
+    if price < 0.001:
+        decimals = 8  # Memecoins (SHIB, PEPE, CHEEMS)
+    elif price < 1:
         decimals = 6  # Petites cryptos
-    elif ap < 100:
+    elif price < 100:
         decimals = 4  # Altcoins moyens
     else:
         decimals = 2  # BTC, ETH, etc.
-
-    formatted = f"${p:.{decimals}f}"
-    formatted = formatted.rstrip("0").rstrip(".")
-    if formatted == "$":
-        formatted = "$0"
+    
+    formatted = f"${price:.{decimals}f}"
+    # Supprimer les zéros inutiles
+    formatted = formatted.rstrip('0').rstrip('.')
+    if formatted.endswith('$'):
+        formatted += '0'
     return formatted
+
 class TradeWebhook(BaseModel):
     type: str = "ENTRY"
     symbol: str
@@ -5995,16 +5970,16 @@ class TradeWebhook(BaseModel):
     def set_entry(cls, v, values):
         return v if v is not None else values.get('price')
 
-def calc_rr(entry: Optional[float], sl: Optional[float], tp1: Optional[float]) -> Optional[float]:
-    """Calcule le Risk/Reward (TP1) si possible."""
+def calc_rr(entry, sl, tp1):
     try:
-        if entry is None or sl is None or tp1 is None:
-            return None
-        risk = abs(float(entry) - float(sl))
-        reward = abs(float(tp1) - float(entry))
-        return round(reward / risk, 2) if risk > 0 else None
-    except Exception:
-        return None
+        if entry and sl and tp1:
+            risk = abs(entry - sl)
+            reward = abs(tp1 - entry)
+            return round(reward / risk, 2) if risk > 0 else None
+    except:
+        pass
+    return None
+
 def calculate_confidence_score(trade: TradeWebhook):
     """
     🎯 CALCUL DE CONFIANCE RÉEL ET DYNAMIQUE
@@ -6027,7 +6002,7 @@ def calculate_confidence_score(trade: TradeWebhook):
     
     # ============= 1. RISK/REWARD (POIDS LE PLUS IMPORTANT) =============
     # C'est le facteur #1 de réussite d'un trade
-    if trade.entry is not None and trade.sl is not None and trade.tp1 is not None:
+    if trade.entry and trade.sl and trade.tp1:
         risk = abs(trade.entry - trade.sl)
         reward = abs(trade.tp1 - trade.entry)
         rr_ratio = reward / risk if risk > 0 else 0
@@ -6059,7 +6034,7 @@ def calculate_confidence_score(trade: TradeWebhook):
     
     # ============= 2. DISTANCE DU STOP LOSS =============
     # Un SL serré = meilleure gestion du risque
-    if trade.entry is not None and trade.sl is not None:
+    if trade.entry and trade.sl:
         sl_distance = abs((trade.sl - trade.entry) / trade.entry * 100)
         
         if sl_distance <= 1.5:
@@ -6082,7 +6057,7 @@ def calculate_confidence_score(trade: TradeWebhook):
     # Leverage trop élevé = risque accru
     if trade.leverage:
         try:
-            lev = int(re.sub(r'[^0-9]', '', str(trade.leverage))) if re.sub(r'[^0-9]', '', str(trade.leverage)) else 0
+            lev = int(trade.leverage.replace('x', '').replace('X', ''))
             
             if lev <= 5:
                 score += 8   # Leverage conservateur
@@ -6139,7 +6114,7 @@ def calculate_confidence_score(trade: TradeWebhook):
     
     # ============= 6. SIGNAL TECHNIQUE (SI FOURNI) =============
     # Si Pine Script envoie une confiance technique
-    if trade.confidence is not None:
+    if trade.confidence:
         if trade.confidence >= 90:
             score += 10
             reasons.append("Signal technique très fort")
@@ -6192,18 +6167,7 @@ async def send_telegram_advanced(trade: TradeWebhook):
         timezone_quebec = pytz.timezone('America/Montreal')
         now_quebec = datetime.now(timezone_quebec)
         heure = now_quebec.strftime("%Hh%M")
-
-        # Sécurité: si les champs essentiels manquent, on évite de planter
-        if trade.entry is None or trade.sl is None:
-            msg_min = (
-        f"📩 <b>{trade.symbol}</b> {trade.tf or '15m'} | Crypto IA\n"
-        f"⏰ Heure : {heure}\n"
-        f"🎯 Direction : <b>{trade.side}</b> {direction_emoji}\n\n"
-        f"⚠️ Payload incomplet: entry/sl manquant."
-            )
-            await send_telegram(msg_min)
-            return
-
+        
         rr = calc_rr(trade.entry, trade.sl, trade.tp1)
         rr_text = f" (R/R: {rr}:1)" if rr else ""
         trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"
@@ -6214,17 +6178,17 @@ async def send_telegram_advanced(trade: TradeWebhook):
 ⏰ Heure : {heure}
 🎯 Direction : <b>{trade.side}</b> {direction_emoji}
 
-<b>ENTRY:</b> {format_price(trade.entry)}{rr_text}
-❌ <b>Stop-Loss:</b> {format_price(trade.sl)}
+<b>ENTRY:</b> ${trade.entry:.4f}{rr_text}
+❌ <b>Stop-Loss:</b> ${trade.sl:.4f}
 💡 <b>Leverage:</b> {leverage_text} Isolée
 """
         
         if trade.tp1:
-            msg += f"✅ <b>Target 1:</b> {format_price(trade.tp1)}\n"
+            msg += f"✅ <b>Target 1:</b> ${trade.tp1:.4f}\n"
         if trade.tp2:
-            msg += f"✅ <b>Target 2:</b> {format_price(trade.tp2)}\n"
+            msg += f"✅ <b>Target 2:</b> ${trade.tp2:.4f}\n"
         if trade.tp3:
-            msg += f"✅ <b>Target 3:</b> {format_price(trade.tp3)}\n"
+            msg += f"✅ <b>Target 3:</b> ${trade.tp3:.4f}\n"
         
         msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
@@ -6325,301 +6289,57 @@ async def send_telegram(msg: str):
         print(f"❌ Erreur send_telegram: {e}")
 
 @app.post("/tv-webhook")
-async def webhook(request: Request):
+async def webhook(trade: TradeWebhook):
     """
-    Webhook TradingView (robuste + sécurisé)
-
-    - Accepte:
-      * JSON dict
-      * string JSON
-      * message "key=value" (une paire par ligne)
-    - Secret:
-      * query ?secret=...
-      * headers X-Webhook-Secret / X-TV-Secret
-      * payload { "secret": "..." } (optionnel)
+    Webhook TradingView avec détection de revirement
+    Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
-    # ------------------------------------------------------------------
-    # 1) AUTH (secret)
-    # ------------------------------------------------------------------
-    expected_secret = (
-        os.getenv("TV_WEBHOOK_SECRET")
-        or os.getenv("WEBHOOK_SECRET")
-        or os.getenv("TV_WEBHOOK_PASSWORD")
-        or os.getenv("TV_SECRET")
-        or WEBHOOK_SECRET
-    )
-    strict_auth = int(os.getenv("WEBHOOK_STRICT_AUTH", "1"))  # 1 = refuse si pas de secret valide
-
-    provided_secret = (
-        request.query_params.get("secret")
-        or request.headers.get("X-Webhook-Secret")
-        or request.headers.get("X-TV-Secret")
-    )
-
-    # Si le secret est dans le payload, on le lira après parsing (fallback).
-    # ------------------------------------------------------------------
-    # 2) PARSE PAYLOAD
-    # ------------------------------------------------------------------
-    raw_body = await request.body()
-    data: dict = {}
-
-    def _parse_key_value_lines(s: str) -> dict:
-        tmp = {}
-        for line in s.splitlines():
-            if "=" in line:
-                k, v = line.split("=", 1)
-                tmp[k.strip()] = v.strip()
-        return tmp
-
-    if raw_body:
-        # a) JSON direct
-        try:
-            data = json.loads(raw_body)
-        except Exception:
-            # b) string -> JSON
-            try:
-                s = raw_body.decode("utf-8", "ignore").strip()
-                data = json.loads(s)
-            except Exception:
-                # c) key=value lines
-                try:
-                    s = raw_body.decode("utf-8", "ignore")
-                    tmp = _parse_key_value_lines(s)
-                    data = tmp if tmp else {"message": s.strip()}
-                except Exception:
-                    data = {"message": ""}
-
-    # Si TradingView envoie {"message":"{...json...}"}
-    if isinstance(data, dict) and isinstance(data.get("message"), str):
-        msg_str = data.get("message", "").strip()
-        if msg_str.startswith("{") and msg_str.endswith("}"):
-            try:
-                data = json.loads(msg_str)
-            except Exception:
-                pass
-
-    if not isinstance(data, dict):
-        data = {"message": str(data)}
-
-    # ------------------------------------------------------------------
-    # 2b) FLATTEN NESTED PAYLOADS (common TradingView indicator formats)
-    # ------------------------------------------------------------------
-    # Some indicators send: {"alert": {...}} and/or put secrets inside "additional Data".
-    if isinstance(data, dict) and isinstance(data.get("alert"), dict):
-        _alert = data.get("alert") or {}
-        merged = dict(_alert)
-        for _k, _v in data.items():
-            if _k != "alert" and _k not in merged:
-                merged[_k] = _v
-        data = merged
-
-    if isinstance(data, dict):
-        for _k in ("additional Data", "additional_data", "additionalData", "additional", "extra", "metadata"):
-            _ad = data.get(_k)
-            if isinstance(_ad, dict):
-                for _kk, _vv in _ad.items():
-                    if _kk not in data:
-                        data[_kk] = _vv
-
-    # Secret dans le payload (fallback)
-    if not provided_secret:
-        provided_secret = (
-            data.get("secret")
-            or data.get("WEBHOOK_SECRET")
-            or data.get("webhook_secret")
-            or data.get("webhookSecret")
-            or data.get("passphrase")
-            or data.get("password")
-            or data.get("token")
-        )
-        if provided_secret is not None:
-            provided_secret = str(provided_secret)
-
-    if expected_secret:
-        if str(provided_secret or "") != str(expected_secret):
-            return JSONResponse(status_code=403, content={"status": "forbidden", "message": "Bad webhook secret"})
-    else:
-        if strict_auth:
-            return JSONResponse(
-                status_code=403,
-                content={"status": "forbidden", "message": "Webhook secret not configured (set WEBHOOK_SECRET)"},
-            )
-
-    # ------------------------------------------------------------------
-    # 3) NORMALISATION
-    # ------------------------------------------------------------------
-    def _to_float(x):
-        try:
-            if x is None:
-                return None
-            if isinstance(x, (int, float)):
-                return float(x)
-            s = str(x).strip().replace(",", "")
-            if s == "":
-                return None
-            return float(s)
-        except Exception:
-            return None
-
-    norm = dict(data)
-
-    symbol = (
-        data.get("symbol")
-        or data.get("ticker")
-        or data.get("pair")
-        or data.get("trading_pair")
-        or data.get("market")
-        or data.get("symbol_name")
-    )
-    if symbol:
-        norm["symbol"] = str(symbol)
-
-    tf = data.get("tf") or data.get("timeframe") or data.get("interval")
-    if tf and not norm.get("tf"):
-        norm["tf"] = str(tf)
-
-    side = (
-        data.get("side")
-        or data.get("action")
-        or data.get("order_action")
-        or data.get("strategy.order.action")
-        or data.get("signal")
-        or data.get("Signal")
-    )
-    if side and not norm.get("side"):
-        s = str(side).strip().lower()
-        if s in ("buy", "long", "bull", "bullish", "1"):
-            norm["side"] = "LONG"
-        elif s in ("sell", "short", "bear", "bearish", "-1"):
-            norm["side"] = "SHORT"
-        else:
-            up = str(side).strip().upper()
-            if up == "BUY":
-                norm["side"] = "LONG"
-            elif up == "SELL":
-                norm["side"] = "SHORT"
-            else:
-                norm["side"] = up
-
-    price = (
-        data.get("entry")
-        or data.get("entry_price")
-        or data.get("current_price")
-        or data.get("price")
-        or data.get("close")
-        or data.get("last")
-        or data.get("market_price")
-    )
-    if "entry" not in norm:
-        norm["entry"] = _to_float(price)
-    if "current_price" not in norm:
-        norm["current_price"] = _to_float(data.get("current_price") or price)
-    if "price" not in norm:
-        norm["price"] = _to_float(data.get("price") or price)
-
-    # Map common alternative keys coming from indicators (SMRT/others)
-    if "sl" not in norm:
-        sl = (
-            data.get("sl")
-            or data.get("stop_loss")
-            or data.get("stoploss")
-            or data.get("stop")
-            or data.get("stopPrice")
-        )
-        if sl is not None:
-            norm["sl"] = _to_float(sl)
-
-    if "tp1" not in norm:
-        tp1 = (
-            data.get("tp1")
-            or data.get("take_profit_1")
-            or data.get("take_profit1")
-            or data.get("take_profit")
-            or data.get("tp")
-        )
-        if tp1 is not None:
-            norm["tp1"] = _to_float(tp1)
-
-    if "tp2" not in norm:
-        tp2 = data.get("tp2") or data.get("take_profit_2") or data.get("take_profit2")
-        if tp2 is not None:
-            norm["tp2"] = _to_float(tp2)
-
-    if "tp3" not in norm:
-        tp3 = data.get("tp3") or data.get("take_profit_3") or data.get("take_profit3")
-        if tp3 is not None:
-            norm["tp3"] = _to_float(tp3)
-
-    for k in ("sl", "tp1", "tp2", "tp3"):
-        if k in norm:
-            norm[k] = _to_float(norm.get(k))
-
-    if "confidence" in norm and norm.get("confidence") is not None:
-        try:
-            norm["confidence"] = int(float(norm["confidence"]))
-        except Exception:
-            pass
-
-    if not norm.get("symbol"):
-        return {"status": "ignored", "reason": "missing_symbol", "received": data}
-
-    # ------------------------------------------------------------------
-    # 4) VALIDATION Pydantic
-    # ------------------------------------------------------------------
-    try:
-        trade = TradeWebhook.model_validate(norm)  # pydantic v2
-    except Exception:
-        trade = TradeWebhook(**norm)  # pydantic v1 ou fallback
-
-    # ------------------------------------------------------------------
-    # 5) LOG + LOGIQUE "REVIREMENT"
-    # ------------------------------------------------------------------
     try:
         print(f"\n{'='*60}")
-        print("🎯 NOUVEAU SIGNAL TRADINGVIEW")
+        print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        if trade.entry is not None:
-            print(f"   Entry: ${trade.entry:.6f}")
-        if trade.sl is not None and trade.tp1 is not None:
-            print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
+        print(f"   Entry: ${trade.entry:.6f}")
+        print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
         print(f"{'='*60}\n")
-
+        
         symbol = trade.symbol
-        new_side = (trade.side or "").upper()
-
-        if new_side not in ("LONG", "SHORT"):
-            return {"status": "ignored", "reason": "missing_side", "received": norm}
-
-        inverse_side = "SHORT" if new_side == "LONG" else "LONG"
-
+        new_side = trade.side
+        
+        # 🔍 Vérifier s'il existe un trade ACTIF dans le sens INVERSE
+        inverse_side = 'SHORT' if new_side == 'LONG' else 'LONG'
+        
         # Chercher un trade actif inverse
         inverse_trade = None
         for t in trades_db:
-            if (t.get("symbol") == symbol and t.get("side") == inverse_side and t.get("status") == "open"):
+            if (t.get('symbol') == symbol and 
+                t.get('side') == inverse_side and 
+                t.get('status') == 'open'):
                 inverse_trade = t
                 break
-
-        # Si revirement: fermer l'inverse et ignorer le nouveau signal (sécurité)
+        
+        # 🔄 Si un trade inverse existe, le fermer automatiquement SANS ouvrir le nouveau
         if inverse_trade:
-            now = datetime.now(pytz.timezone("America/Montreal"))
-            close_time = now.strftime("%H:%M:%S")
-            close_date = now.strftime("%d/%m/%Y")
-
+            now = datetime.now(pytz.timezone('America/Montreal'))
+            close_time = now.strftime('%H:%M:%S')
+            close_date = now.strftime('%d/%m/%Y')
+            
             print(f"⚠️ REVIREMENT DÉTECTÉ sur {symbol}! {inverse_side} → {new_side}")
-
-            inverse_trade["status"] = "closed"
-            inverse_trade["closed_reason"] = f"Revirement: Signal {new_side} reçu"
-            inverse_trade["closed_at"] = now.isoformat()
-            inverse_trade["sl_hit"] = True  # indicateur perte
-
+            
+            # Fermer le trade inverse
+            inverse_trade['status'] = 'closed'
+            inverse_trade['closed_reason'] = f'Revirement: Signal {new_side} reçu'
+            inverse_trade['closed_at'] = now.isoformat()
+            inverse_trade['sl_hit'] = True  # Bouton SL rouge pour indiquer une perte
+            
+            # 📱 Notification Telegram DÉTAILLÉE du revirement
             reversal_message = (
                 f"🔄 <b>REVIREMENT DE TENDANCE DÉTECTÉ!</b>\n\n"
                 f"💱 Crypto: <b>{symbol}</b>\n"
                 f"❌ Trade <b>{inverse_side}</b> fermé automatiquement\n\n"
                 f"📊 <b>Détails de fermeture:</b>\n"
-                f"├ Entry: {format_price(inverse_trade.get('entry'))}\n"
+                f"├ Entry: {format_price(inverse_trade.get('entry', 0))}\n"
                 f"├ Prix de fermeture: {format_price(trade.entry)}\n"
                 f"├ Heure: {close_time}\n"
                 f"└ Date: {close_date}\n\n"
@@ -6627,32 +6347,32 @@ async def webhook(request: Request):
                 f"⏳ En attente du prochain signal propre...\n\n"
                 f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
             )
+            
             asyncio.create_task(send_telegram(reversal_message))
             print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
-
-            save_trades_to_file()  # sauvegarder fermeture
+            
             return {
                 "status": "reversed",
                 "message": f"Trade {inverse_side} fermé, signal {new_side} ignoré",
-                "closed_trade_id": inverse_trade.get("id") or inverse_trade.get("symbol"),
-                "new_trade_created": False,
+                "closed_trade_id": inverse_trade.get('symbol'),
+                "new_trade_created": False
             }
-
-        # Pas de revirement → exécuter le signal
+        
+        # 📝 Créer le nouveau trade SEULEMENT si pas de revirement
         await send_telegram_advanced(trade)
-
+        
         confidence_score, _ = calculate_confidence_score(trade)
-
+        
         trade_data = {
             "symbol": trade.symbol,
-            "side": new_side,
+            "side": trade.side,
             "entry": trade.entry,
             "current_price": trade.current_price,
             "sl": trade.sl,
             "tp1": trade.tp1,
             "tp2": trade.tp2,
             "tp3": trade.tp3,
-            "timestamp": datetime.now(pytz.timezone("America/Montreal")).isoformat(),
+            "timestamp": datetime.now(pytz.timezone('America/Montreal')).isoformat(),
             "status": "open",
             "confidence": confidence_score,
             "leverage": trade.leverage,
@@ -6661,23 +6381,15 @@ async def webhook(request: Request):
             "tp2_hit": False,
             "tp3_hit": False,
             "sl_hit": False,
-            "pnl": 0.0,
+            "pnl": 0.0
         }
         trades_db.append(trade_data)
-
-        # Persist in SQLite (used by /trades and /api/trades)
-        try:
-            db_id = sql_create_trade(trade_data)
-            if db_id:
-                trade_data["id"] = db_id
-        except Exception as e:
-            print(f"⚠️ SQLite insert failed: {e}")
-
-        save_trades_to_file()
-
+        save_trades_to_file()  # 💾 Sauvegarder immédiatement
+        
         print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
+        
         return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}
-
+        
     except Exception as e:
         print(f"❌ ERREUR WEBHOOK: {e}")
         import traceback

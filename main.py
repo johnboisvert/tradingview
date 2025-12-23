@@ -2020,6 +2020,22 @@ BADGES_DATA = {
 app = FastAPI()
 
 # ✅ CORRECTION: Configuration Jinja2 templates
+def has_feature(user, feature: str) -> bool:
+    """Fallback: évite un crash si le système de features n'est pas chargé."""
+    try:
+        if user is None:
+            return False
+        feats = None
+        if isinstance(user, dict):
+            feats = user.get("features") or user.get("feature_flags")
+        if isinstance(feats, (list, set, tuple)):
+            return feature in feats
+        if isinstance(feats, dict):
+            return bool(feats.get(feature))
+    except Exception:
+        pass
+    return False
+
 templates = Jinja2Templates(directory="templates")
 print("✅ Templates Jinja2 configurés")
 
@@ -6289,7 +6305,114 @@ async def send_telegram(msg: str):
         print(f"❌ Erreur send_telegram: {e}")
 
 @app.post("/tv-webhook")
-async def webhook(trade: TradeWebhook):
+async def webhook(request: Request):
+# ------------------------------------------------------------------
+# TradingView webhook payload parser (robuste)
+# TradingView envoie exactement le "message" de l'alerte (souvent JSON).
+# Ici on accepte:
+# - JSON dict
+# - string JSON
+# - texte "key=value" (une paire par ligne)
+# Secret: ?secret=... ou header X-Webhook-Secret
+# ------------------------------------------------------------------
+expected_secret = os.getenv("TV_WEBHOOK_SECRET") or os.getenv("WEBHOOK_SECRET") or os.getenv("TV_WEBHOOK_PASSWORD") or os.getenv("TV_SECRET")
+
+provided_secret = request.query_params.get("secret") or request.headers.get("X-Webhook-Secret") or request.headers.get("X-TV-Secret")
+
+if expected_secret and provided_secret != expected_secret:
+    return JSONResponse(status_code=403, content={"status": "forbidden", "message": "Bad webhook secret"})
+
+raw_body = await request.body()
+data = {}
+
+if raw_body:
+    try:
+        data = json.loads(raw_body)
+    except Exception:
+        try:
+            s = raw_body.decode("utf-8", "ignore").strip()
+            data = json.loads(s)
+        except Exception:
+            try:
+                s = raw_body.decode("utf-8", "ignore")
+                tmp = {}
+                for line in s.splitlines():
+                    if "=" in line:
+                        k, v = line.split("=", 1)
+                        tmp[k.strip()] = v.strip()
+                data = tmp if tmp else {"message": s.strip()}
+            except Exception:
+                data = {"message": ""}
+
+if not isinstance(data, dict):
+    data = {"message": str(data)}
+
+def _to_float(x):
+    try:
+        if x is None:
+            return None
+        if isinstance(x, (int, float)):
+            return float(x)
+        s = str(x).strip().replace(",", "")
+        if s == "":
+            return None
+        return float(s)
+    except Exception:
+        return None
+
+norm = dict(data)
+
+symbol = (
+    data.get("symbol")
+    or data.get("ticker")
+    or data.get("pair")
+    or data.get("trading_pair")
+    or data.get("market")
+    or data.get("symbol_name")
+)
+if symbol:
+    norm["symbol"] = str(symbol)
+
+tf = data.get("tf") or data.get("timeframe") or data.get("interval")
+if tf and not norm.get("tf"):
+    norm["tf"] = str(tf)
+
+side = data.get("side") or data.get("action") or data.get("order_action") or data.get("strategy.order.action")
+if side and not norm.get("side"):
+    norm["side"] = str(side).upper()
+
+price = data.get("entry") or data.get("current_price") or data.get("price") or data.get("close") or data.get("last") or data.get("market_price")
+if "entry" not in norm:
+    norm["entry"] = _to_float(price)
+if "current_price" not in norm:
+    norm["current_price"] = _to_float(data.get("current_price") or price)
+if "price" not in norm:
+    norm["price"] = _to_float(data.get("price") or price)
+
+for k in ("sl", "tp1", "tp2", "tp3"):
+    if k in norm:
+        norm[k] = _to_float(norm.get(k))
+
+if "confidence" in norm and norm.get("confidence") is not None:
+    try:
+        norm["confidence"] = int(float(norm["confidence"]))
+    except Exception:
+        pass
+
+if not norm.get("symbol"):
+    return {"status": "ignored", "reason": "missing_symbol", "received": data}
+
+try:
+    trade = TradeWebhook.model_validate(norm)
+except Exception:
+    trade = TradeWebhook(**norm)
+
+def _fmt_num(x):
+    try:
+        return f"{float(x):.6f}"
+    except Exception:
+        return "N/A"
+
     """
     Webhook TradingView avec détection de revirement
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
@@ -6348,7 +6471,7 @@ async def webhook(trade: TradeWebhook):
                 f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
             )
             
-            asyncio.create_task(send_telegram(reversal_message))
+            asyncio.create_task(send_telegram_message(reversal_message))
             print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
             
             return {

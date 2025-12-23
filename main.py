@@ -35,6 +35,8 @@ except ImportError:
 import pytz
 import random
 import os
+TV_EXCHANGE = os.getenv("TV_EXCHANGE", "MEXC")
+
 import math
 import asyncio
 import json
@@ -6591,6 +6593,15 @@ async def webhook(request: Request):
             "pnl": 0.0,
         }
         trades_db.append(trade_data)
+
+        # Persist in SQLite (used by /trades and /api/trades)
+        try:
+            db_id = sql_create_trade(trade_data)
+            if db_id:
+                trade_data["id"] = db_id
+        except Exception as e:
+            print(f"⚠️ SQLite insert failed: {e}")
+
         save_trades_to_file()
 
         print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")

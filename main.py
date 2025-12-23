@@ -6401,13 +6401,36 @@ async def webhook(request: Request):
     if not isinstance(data, dict):
         data = {"message": str(data)}
 
+    # ------------------------------------------------------------------
+    # 2b) FLATTEN NESTED PAYLOADS (common TradingView indicator formats)
+    # ------------------------------------------------------------------
+    # Some indicators send: {"alert": {...}} and/or put secrets inside "additional Data".
+    if isinstance(data, dict) and isinstance(data.get("alert"), dict):
+        _alert = data.get("alert") or {}
+        merged = dict(_alert)
+        for _k, _v in data.items():
+            if _k != "alert" and _k not in merged:
+                merged[_k] = _v
+        data = merged
+
+    if isinstance(data, dict):
+        for _k in ("additional Data", "additional_data", "additionalData", "additional", "extra", "metadata"):
+            _ad = data.get(_k)
+            if isinstance(_ad, dict):
+                for _kk, _vv in _ad.items():
+                    if _kk not in data:
+                        data[_kk] = _vv
+
     # Secret dans le payload (fallback)
     if not provided_secret:
         provided_secret = (
             data.get("secret")
+            or data.get("WEBHOOK_SECRET")
             or data.get("webhook_secret")
+            or data.get("webhookSecret")
             or data.get("passphrase")
             or data.get("password")
+            or data.get("token")
         )
         if provided_secret is not None:
             provided_secret = str(provided_secret)
@@ -6460,12 +6483,27 @@ async def webhook(request: Request):
         or data.get("action")
         or data.get("order_action")
         or data.get("strategy.order.action")
+        or data.get("signal")
+        or data.get("Signal")
     )
     if side and not norm.get("side"):
-        norm["side"] = str(side).upper()
+        s = str(side).strip().lower()
+        if s in ("buy", "long", "bull", "bullish", "1"):
+            norm["side"] = "LONG"
+        elif s in ("sell", "short", "bear", "bearish", "-1"):
+            norm["side"] = "SHORT"
+        else:
+            up = str(side).strip().upper()
+            if up == "BUY":
+                norm["side"] = "LONG"
+            elif up == "SELL":
+                norm["side"] = "SHORT"
+            else:
+                norm["side"] = up
 
     price = (
         data.get("entry")
+        or data.get("entry_price")
         or data.get("current_price")
         or data.get("price")
         or data.get("close")
@@ -6478,6 +6516,39 @@ async def webhook(request: Request):
         norm["current_price"] = _to_float(data.get("current_price") or price)
     if "price" not in norm:
         norm["price"] = _to_float(data.get("price") or price)
+
+    # Map common alternative keys coming from indicators (SMRT/others)
+    if "sl" not in norm:
+        sl = (
+            data.get("sl")
+            or data.get("stop_loss")
+            or data.get("stoploss")
+            or data.get("stop")
+            or data.get("stopPrice")
+        )
+        if sl is not None:
+            norm["sl"] = _to_float(sl)
+
+    if "tp1" not in norm:
+        tp1 = (
+            data.get("tp1")
+            or data.get("take_profit_1")
+            or data.get("take_profit1")
+            or data.get("take_profit")
+            or data.get("tp")
+        )
+        if tp1 is not None:
+            norm["tp1"] = _to_float(tp1)
+
+    if "tp2" not in norm:
+        tp2 = data.get("tp2") or data.get("take_profit_2") or data.get("take_profit2")
+        if tp2 is not None:
+            norm["tp2"] = _to_float(tp2)
+
+    if "tp3" not in norm:
+        tp3 = data.get("tp3") or data.get("take_profit_3") or data.get("take_profit3")
+        if tp3 is not None:
+            norm["tp3"] = _to_float(tp3)
 
     for k in ("sl", "tp1", "tp2", "tp3"):
         if k in norm:

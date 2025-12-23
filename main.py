@@ -2020,28 +2020,29 @@ BADGES_DATA = {
 app = FastAPI()
 
 # ✅ CORRECTION: Configuration Jinja2 templates
-def has_feature(user, feature: str) -> bool:
-    """Fallback: évite un crash si le système de features n'est pas chargé."""
-    try:
-        if user is None:
-            return False
-        feats = None
-        if isinstance(user, dict):
-            feats = user.get("features") or user.get("feature_flags")
-        if isinstance(feats, (list, set, tuple)):
-            return feature in feats
-        if isinstance(feats, dict):
-            return bool(feats.get(feature))
-    except Exception:
-        pass
-    return False
-
 templates = Jinja2Templates(directory="templates")
 print("✅ Templates Jinja2 configurés")
 
 # Enregistrer les fonctions template si système permissions disponible
+
 if PERMISSIONS_AVAILABLE:
-    register_template_functions(templates)
+    try:
+        register_template_functions(templates)
+    except Exception as e:
+        print(f"⚠️  Erreur enregistrement template functions: {e}")
+        # Fallback: éviter que les templates cassent si une fonction manque
+        try:
+            templates.env.globals.setdefault("has_feature", lambda *args, **kwargs: True)
+            templates.env.globals.setdefault("has_access", lambda *args, **kwargs: True)
+            templates.env.globals.setdefault("user_plan", lambda *args, **kwargs: "free")
+        except Exception:
+            pass
+else:
+    # Même sans module permissions, on fournit au moins has_feature pour les templates
+    try:
+        templates.env.globals.setdefault("has_feature", lambda *args, **kwargs: True)
+    except Exception:
+        pass
 
 
 # ============================================================================
@@ -5891,166 +5892,109 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "-1002940633257")
 
 # ============= VARIABLES D'ENVIRONNEMENT COMPLÈTES =============
 
-import os
-import json
-import asyncio
-from datetime import datetime
-import pytz
-import httpx
-from typing import Optional
-
-from fastapi import Request
-from fastapi.responses import JSONResponse
-
-# Pydantic v2 (avec fallback v1 si jamais)
-try:
-    from pydantic import BaseModel, field_validator
-except Exception:  # pragma: no cover
-    from pydantic import BaseModel, validator as field_validator  # type: ignore
-
-
-# -----------------------------
 # Configuration Altseason
-# -----------------------------
 ALT_GREENS_REQUIRED = int(os.getenv("ALT_GREENS_REQUIRED", "3"))
 ALTSEASON_AUTONOTIFY = int(os.getenv("ALTSEASON_AUTONOTIFY", "1"))
 ALTSEASON_NOTIFY_MIN_GAP_MIN = int(os.getenv("ALTSEASON_NOTIFY_MIN_GAP_MIN", "60"))
 ALTSEASON_POLL_SECONDS = int(os.getenv("ALTSEASON_POLL_SECONDS", "300"))
 
-# -----------------------------
 # Configuration Générale
-# -----------------------------
 CONFIDENCE_MIN = float(os.getenv("CONFIDENCE_MIN", "0.70"))
 COOLDOWN_SEC = int(os.getenv("COOLDOWN_SEC", "28800"))
 DB_PATH = os.getenv("DB_PATH", "/tmp/ai_trader/data.db")
 MIN_CONFLUENCE = int(os.getenv("MIN_CONFLUENCE", "0"))
 NEAR_SR_ATR = float(os.getenv("NEAR_SR_ATR", "0.0"))
 RR_MIN = float(os.getenv("RR_MIN", "2.0"))
-
-# ⚠️ Recommandé: ne pas hardcoder un secret en prod. Mais je garde ton défaut tel quel.
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "nqgjiebqgiehgq8e78qhefjqez78gfq8eyrg")
 
-# -----------------------------
 # LLM / OpenAI
-# -----------------------------
 LLM_ENABLED = int(os.getenv("LLM_ENABLED", "1"))
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")
 LLM_REASONING = os.getenv("LLM_REASONING", "high")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
-# -----------------------------
 # Telegram Messages Configuration
-# -----------------------------
 TELEGRAM_COOLDOWN_SEC = int(os.getenv("TELEGRAM_COOLDOWN_SEC", "300"))
 TELEGRAM_ENABLED = int(os.getenv("TELEGRAM_ENABLED", "1"))
 TELEGRAM_PIN_ALTSEASON = int(os.getenv("TELEGRAM_PIN_ALTSEASON", "1"))
-
 TG_BUTTON_TEXT = os.getenv("TG_BUTTON_TEXT", "📊 Ouvrir le Dashboard")
 TG_BUTTONS = int(os.getenv("TG_BUTTONS", "1"))
 TG_COMPACT = int(os.getenv("TG_COMPACT", "0"))
 TG_DASHBOARD_URL = os.getenv("TG_DASHBOARD_URL", "https://www.cryptoia.ca/trades")
-
 TG_MIN_DELAY_SEC = float(os.getenv("TG_MIN_DELAY_SEC", "15.0"))
 TG_PARSE = os.getenv("TG_PARSE", "HTML")
 TG_PER_MIN_LIMIT = int(os.getenv("TG_PER_MIN_LIMIT", "5"))
 TG_SHOW_LLM = int(os.getenv("TG_SHOW_LLM", "1"))
 TG_SILENT = int(os.getenv("TG_SILENT", "0"))
 
-# -----------------------------
 # Vector / Analyse
-# -----------------------------
 VECTOR_GLOBAL_GAP_SEC = int(os.getenv("VECTOR_GLOBAL_GAP_SEC", "30"))
 VECTOR_MIN_GAP_SEC = int(os.getenv("VECTOR_MIN_GAP_SEC", "120"))
 VECTOR_TG_ENABLED = int(os.getenv("VECTOR_TG_ENABLED", "0"))
 
-# -----------------------------
-# Anti-rate-limit Telegram (global)
-# -----------------------------
-last_telegram_message_time = 0.0
+# Variables globales pour anti-rate-limit Telegram
+last_telegram_message_time = 0
 TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-
 def format_price(price: Optional[float]) -> str:
-    """Formate intelligemment les prix selon leur magnitude (safe si None)."""
+    """Formate intelligemment les prix selon leur magnitude (supporte None)."""
     if price is None:
         return "N/A"
+    try:
+        p = float(price)
+    except Exception:
+        return "N/A"
 
-    p = float(price)
-    if p < 0.001:
-        decimals = 8
-    elif p < 1:
-        decimals = 6
-    elif p < 100:
-        decimals = 4
+    ap = abs(p)
+    if ap < 0.001:
+        decimals = 8  # Memecoins (SHIB, PEPE, etc.)
+    elif ap < 1:
+        decimals = 6  # Petites cryptos
+    elif ap < 100:
+        decimals = 4  # Altcoins moyens
     else:
-        decimals = 2
+        decimals = 2  # BTC, ETH, etc.
 
-    s = f"{p:.{decimals}f}".rstrip("0").rstrip(".")
-    return f"${s}"
-
-
+    formatted = f"${p:.{decimals}f}"
+    formatted = formatted.rstrip("0").rstrip(".")
+    if formatted == "$":
+        formatted = "$0"
+    return formatted
 class TradeWebhook(BaseModel):
     type: str = "ENTRY"
     symbol: str
-
     tf: Optional[str] = None
     tf_label: Optional[str] = None
-
     side: Optional[str] = None
-    action: Optional[str] = None
-
     entry: Optional[float] = None
-    current_price: Optional[float] = None  # prix actuel envoyé par Pine
+    current_price: Optional[float] = None  # Prix actuel envoyé par le webhook Pine Script
     sl: Optional[float] = None
     tp1: Optional[float] = None
     tp2: Optional[float] = None
     tp3: Optional[float] = None
-
     confidence: Optional[int] = None
     leverage: Optional[str] = None
     note: Optional[str] = None
+    price: Optional[float] = None
+    action: Optional[str] = None
 
-    price: Optional[float] = None  # fallback si entry absent
-
-    # Pydantic v2: field_validator; fallback v1: validator aliasé plus haut
-    @field_validator("side", mode="before")
-    def _normalize_side(cls, v):
-        if v is None:
-            return v
-        return str(v).upper().strip()
-
-    @field_validator("action", mode="before")
-    def _normalize_action(cls, v):
-        if v is None:
-            return v
-        return str(v).upper().strip()
-
-    @field_validator("entry", mode="before")
-    def _entry_from_price(cls, v, info):
-        # si entry absent, prendre price
-        if v is not None:
-            return v
-        data = getattr(info, "data", {}) or {}
-        return data.get("price")
-
-    @field_validator("side", mode="after")
-    def _side_from_action(cls, v, info):
-        # si side absent, déduire de action BUY/SELL
+    @validator('side', pre=True, always=True)
+    def set_side(cls, v, values):
         if v:
-            return v
-        data = getattr(info, "data", {}) or {}
-        act = data.get("action")
-        if act == "BUY":
-            return "LONG"
-        if act == "SELL":
-            return "SHORT"
+            return v.upper()
+        if 'action' in values and values['action']:
+            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
         return v
 
+    @validator('entry', pre=True, always=True)
+    def set_entry(cls, v, values):
+        return v if v is not None else values.get('price')
 
-def calc_rr(entry, sl, tp1):
+def calc_rr(entry: Optional[float], sl: Optional[float], tp1: Optional[float]) -> Optional[float]:
+    """Calcule le Risk/Reward (TP1) si possible."""
     try:
         if entry is None or sl is None or tp1 is None:
             return None
@@ -6059,117 +6003,128 @@ def calc_rr(entry, sl, tp1):
         return round(reward / risk, 2) if risk > 0 else None
     except Exception:
         return None
-
-
 def calculate_confidence_score(trade: TradeWebhook):
     """
     🎯 CALCUL DE CONFIANCE RÉEL ET DYNAMIQUE
-
-    Plage finale : 35% à 95%
+    
+    Ce système calcule un score de confiance RÉALISTE basé sur plusieurs critères,
+    partant d'un score de base de 50% et ajustant significativement selon :
+    - Risk/Reward (poids le plus important)
+    - Distance du Stop Loss
+    - Leverage utilisé
+    - Timeframe
+    - Nombre de targets
+    - Signal technique (si fourni)
+    
+    Plage de confiance finale : 35% à 95%
     """
-    score = 50.0
+    
+    # ============= SCORE DE BASE =============
+    score = 50.0  # On part de 50%, pas 85% !
     reasons = []
-
-    # 1) RISK/REWARD
+    
+    # ============= 1. RISK/REWARD (POIDS LE PLUS IMPORTANT) =============
+    # C'est le facteur #1 de réussite d'un trade
     if trade.entry is not None and trade.sl is not None and trade.tp1 is not None:
         risk = abs(trade.entry - trade.sl)
         reward = abs(trade.tp1 - trade.entry)
-        rr_ratio = (reward / risk) if risk > 0 else 0.0
-
+        rr_ratio = reward / risk if risk > 0 else 0
+        
         if rr_ratio >= 4.0:
-            score += 25
+            score += 25  # Excellent R/R
             reasons.append(f"Excellent R/R de {rr_ratio:.1f}:1")
         elif rr_ratio >= 3.0:
-            score += 18
+            score += 18  # Très bon R/R
             reasons.append(f"Très bon R/R de {rr_ratio:.1f}:1")
         elif rr_ratio >= 2.5:
-            score += 12
+            score += 12  # Bon R/R
             reasons.append(f"Bon R/R de {rr_ratio:.1f}:1")
         elif rr_ratio >= 2.0:
-            score += 8
+            score += 8   # R/R acceptable
             reasons.append(f"R/R acceptable de {rr_ratio:.1f}:1")
         elif rr_ratio >= 1.5:
-            score += 2
+            score += 2   # R/R moyen
             reasons.append(f"R/R moyen de {rr_ratio:.1f}:1")
         elif rr_ratio >= 1.0:
-            score -= 8
+            score -= 8   # R/R faible
             reasons.append(f"R/R faible de {rr_ratio:.1f}:1 - risque élevé")
         else:
-            score -= 15
+            score -= 15  # R/R très faible - dangereux
             reasons.append(f"R/R très faible de {rr_ratio:.1f}:1 - très risqué")
     else:
-        score -= 10
+        score -= 10  # Pas de R/R défini = mauvais signe
         reasons.append("Aucun R/R défini")
-
-    # 2) DISTANCE SL
-    if trade.entry is not None and trade.entry != 0 and trade.sl is not None:
+    
+    # ============= 2. DISTANCE DU STOP LOSS =============
+    # Un SL serré = meilleure gestion du risque
+    if trade.entry is not None and trade.sl is not None:
         sl_distance = abs((trade.sl - trade.entry) / trade.entry * 100)
-
+        
         if sl_distance <= 1.5:
-            score += 10
+            score += 10  # SL très serré - excellent
             reasons.append("SL très serré (gestion optimale)")
         elif sl_distance <= 3.0:
-            score += 6
+            score += 6   # SL serré - bon
             reasons.append("SL serré (bonne gestion)")
         elif sl_distance <= 5.0:
-            score += 2
+            score += 2   # SL modéré
             reasons.append("SL bien placé")
         elif sl_distance <= 8.0:
-            score -= 3
+            score -= 3   # SL un peu éloigné
             reasons.append("SL éloigné")
         else:
-            score -= 8
+            score -= 8   # SL trop éloigné = risque élevé
             reasons.append(f"SL trop éloigné ({sl_distance:.1f}%)")
-
-    # 3) LEVERAGE
+    
+    # ============= 3. LEVERAGE =============
+    # Leverage trop élevé = risque accru
     if trade.leverage:
         try:
-            lev_raw = trade.leverage
-            if isinstance(lev_raw, (int, float)):
-                lev = int(lev_raw)
-            else:
-                lev = int(str(lev_raw).replace("x", "").replace("X", "").strip())
-
+            lev = int(re.sub(r'[^0-9]', '', str(trade.leverage))) if re.sub(r'[^0-9]', '', str(trade.leverage)) else 0
+            
             if lev <= 5:
-                score += 8
+                score += 8   # Leverage conservateur
                 reasons.append("Leverage conservateur")
             elif lev <= 10:
-                score += 5
+                score += 5   # Leverage modéré
                 reasons.append("Leverage modéré")
             elif lev <= 15:
-                score += 1
+                score += 1   # Leverage acceptable
                 reasons.append("Leverage acceptable")
             elif lev <= 20:
-                score -= 3
+                score -= 3   # Leverage élevé
                 reasons.append("Leverage élevé")
             elif lev <= 30:
-                score -= 8
+                score -= 8   # Leverage très élevé
                 reasons.append("Leverage très élevé - risque accru")
             else:
-                score -= 15
+                score -= 15  # Leverage dangereux
                 reasons.append("Leverage dangereux (>30x)")
-        except Exception:
+        except:
             pass
-
-    # 4) TIMEFRAME
+    
+    # ============= 4. TIMEFRAME =============
+    # Les timeframes plus élevés = plus fiables
     if trade.tf:
-        tf_lower = str(trade.tf).lower()
-
-        if any(x in tf_lower for x in ["1d", "4h", "daily"]):
-            score += 8
+        tf_lower = trade.tf.lower()
+        
+        if any(x in tf_lower for x in ['1d', '4h', 'daily']):
+            score += 8   # Timeframe élevé = plus fiable
             reasons.append("Timeframe élevé (plus fiable)")
-        elif any(x in tf_lower for x in ["1h", "2h"]):
-            score += 5
+        elif any(x in tf_lower for x in ['1h', '2h']):
+            score += 5   # Timeframe moyen
             reasons.append("Timeframe moyen")
-        elif any(x in tf_lower for x in ["15", "30"]):
-            score += 1
+        elif any(x in tf_lower for x in ['15', '30']):
+            score += 1   # Timeframe court
             reasons.append("Timeframe court (réactif)")
-        elif any(x in tf_lower for x in ["1m", "3m", "5m"]):
-            score -= 3
+        elif any(x in tf_lower for x in ['1m', '3m', '5m']):
+            score -= 3   # Timeframe très court = plus de bruit
             reasons.append("Timeframe très court (volatil)")
-
-    # 5) TARGETS
-    targets_count = sum(1 for tp in [trade.tp1, trade.tp2, trade.tp3] if tp is not None)
+    
+    # ============= 5. STRATÉGIE DE SORTIE =============
+    # Plusieurs targets = meilleure gestion des profits
+    targets_count = sum([1 for tp in [trade.tp1, trade.tp2, trade.tp3] if tp is not None])
+    
     if targets_count >= 3:
         score += 6
         reasons.append("Sortie progressive (3+ targets)")
@@ -6179,153 +6134,177 @@ def calculate_confidence_score(trade: TradeWebhook):
     elif targets_count == 1:
         score -= 2
         reasons.append("Un seul target")
-
-    # 6) SIGNAL TECHNIQUE (confidence du Pine)
+    
+    # ============= 6. SIGNAL TECHNIQUE (SI FOURNI) =============
+    # Si Pine Script envoie une confiance technique
     if trade.confidence is not None:
-        try:
-            c = float(trade.confidence)
-        except Exception:
-            c = None
-
-        if c is not None:
-            if c >= 90:
-                score += 10
-                reasons.append("Signal technique très fort")
-            elif c >= 80:
-                score += 6
-                reasons.append("Signal technique fort")
-            elif c >= 70:
-                score += 3
-                reasons.append("Signal technique bon")
-            elif c >= 60:
-                score += 0
-            else:
-                score -= 5
-                reasons.append("Signal technique faible")
-
-    # 7) NOTE
-    if trade.note and len(str(trade.note)) > 30:
+        if trade.confidence >= 90:
+            score += 10
+            reasons.append("Signal technique très fort")
+        elif trade.confidence >= 80:
+            score += 6
+            reasons.append("Signal technique fort")
+        elif trade.confidence >= 70:
+            score += 3
+            reasons.append("Signal technique bon")
+        elif trade.confidence >= 60:
+            score += 0  # Neutre
+        else:
+            score -= 5
+            reasons.append("Signal technique faible")
+    
+    # ============= 7. ANALYSE DÉTAILLÉE =============
+    # Une note détaillée montre de la préparation
+    if trade.note and len(trade.note) > 30:
         score += 3
         reasons.append("Analyse détaillée fournie")
-
-    score = max(35.0, min(95.0, float(score)))
-    reason = ", ".join(reasons) if reasons else "Analyse technique standard"
+    
+    # ============= LIMITES ET NORMALISATION =============
+    # Score final entre 35% et 95%
+    score = max(35.0, min(95.0, score))
+    
+    # ============= CONSTRUCTION DE LA RAISON =============
+    # Afficher toutes les raisons importantes, pas seulement 3
+    if len(reasons) > 0:
+        reason = ", ".join(reasons)
+    else:
+        reason = "Analyse technique standard"
+    
     return round(score, 1), reason.capitalize()
 
 
 async def send_telegram_advanced(trade: TradeWebhook):
     """Envoie message Telegram professionnel avec anti-rate-limit et variables d'env"""
     global last_telegram_message_time
-
+    
+    # Vérifier si Telegram est activé
     if not TELEGRAM_ENABLED:
         print("ℹ️ Telegram désactivé (TELEGRAM_ENABLED=0)")
         return
-
+    
     try:
         confidence_score, confidence_reason = calculate_confidence_score(trade)
         direction_emoji = "📈" if trade.side == "LONG" else "📉"
-
-        timezone_quebec = pytz.timezone("America/Montreal")
+        
+        # Heure du Québec avec gestion automatique EDT/EST
+        timezone_quebec = pytz.timezone('America/Montreal')
         now_quebec = datetime.now(timezone_quebec)
         heure = now_quebec.strftime("%Hh%M")
 
+# Sécurité: si les champs essentiels manquent, on évite de planter
+if trade.entry is None or trade.sl is None:
+    msg_min = (
+        f"📩 <b>{trade.symbol}</b> {trade.tf or '15m'} | Crypto IA\n"
+        f"⏰ Heure : {heure}\n"
+        f"🎯 Direction : <b>{trade.side}</b> {direction_emoji}\n\n"
+        f"⚠️ Payload incomplet: entry/sl manquant."
+    )
+    await send_telegram(msg_min)
+    return
+        
         rr = calc_rr(trade.entry, trade.sl, trade.tp1)
         rr_text = f" (R/R: {rr}:1)" if rr else ""
-
-        trade_type = "Crypto IA"
+        trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"
         timeframe = trade.tf if trade.tf else "15m"
         leverage_text = trade.leverage if trade.leverage else "10x"
-
+        
         msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}
 ⏰ Heure : {heure}
-🎯 Direction : <b>{trade.side or "N/A"}</b> {direction_emoji}
+🎯 Direction : <b>{trade.side}</b> {direction_emoji}
 
 <b>ENTRY:</b> {format_price(trade.entry)}{rr_text}
 ❌ <b>Stop-Loss:</b> {format_price(trade.sl)}
 💡 <b>Leverage:</b> {leverage_text} Isolée
 """
-
-        if trade.tp1 is not None:
+        
+        if trade.tp1:
             msg += f"✅ <b>Target 1:</b> {format_price(trade.tp1)}\n"
-        if trade.tp2 is not None:
+        if trade.tp2:
             msg += f"✅ <b>Target 2:</b> {format_price(trade.tp2)}\n"
-        if trade.tp3 is not None:
+        if trade.tp3:
             msg += f"✅ <b>Target 3:</b> {format_price(trade.tp3)}\n"
-
+        
         msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
         msg += "💡 <b>Après le TP1, veuillez vous mettre en SLBE</b>\n"
         msg += "<i>(Stop Loss Break Even - sécurisez vos gains)</i>"
-
+        
         if trade.note:
             msg += f"\n\n📝 <b>Note:</b> {trade.note}"
-
+        
         # ============= ANTI-RATE-LIMIT =============
+        # Attendre TG_MIN_DELAY_SEC secondes depuis le dernier message
         import time
-
         current_time = time.time()
-        time_since_last_message = current_time - float(last_telegram_message_time)
-
+        time_since_last_message = current_time - last_telegram_message_time
+        
         if time_since_last_message < TG_MIN_DELAY_SEC:
             wait_time = TG_MIN_DELAY_SEC - time_since_last_message
             print(f"⏳ Attente de {wait_time:.1f}s pour éviter rate limit...")
             await asyncio.sleep(wait_time)
-
+        
         # ============= ENVOI AVEC RETRY =============
         max_retries = 3
         retry_count = 0
-
+        
+        # 🔥 NOUVEAU: Ajouter boutons dashboard + TradingView
+        # Construire l'URL TradingView avec le symbole
         tradingview_url = f"https://www.tradingview.com/chart/?symbol=BINANCE:{trade.symbol}"
-
+        
         telegram_payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": msg,
+            "chat_id": TELEGRAM_CHAT_ID, 
+            "text": msg, 
             "parse_mode": TG_PARSE,
             "reply_markup": {
                 "inline_keyboard": [
                     [
-                        {"text": "📊 Dashboard", "url": "https://www.cryptoia.ca/"},
-                        {"text": "📈 TradingView", "url": tradingview_url},
+                        {
+                            "text": "📊 Dashboard",
+                            "url": "https://www.cryptoia.ca/"
+                        },
+                        {
+                            "text": "📈 TradingView",
+                            "url": tradingview_url
+                        }
                     ]
                 ]
-            },
+            }
         }
-
+        
         async with httpx.AsyncClient(timeout=10.0) as client:
             while retry_count < max_retries:
                 response = await client.post(
                     f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                    json=telegram_payload,
+                    json=telegram_payload
                 )
-
+                
                 if response.status_code == 200:
                     last_telegram_message_time = time.time()
                     print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
-                    print(f"   Entry: {format_price(trade.entry)} | SL: {format_price(trade.sl)}")
+                    print(f"   Entry: ${trade.entry:.4f} | SL: ${trade.sl:.4f}")
                     print(f"   Confiance IA: {confidence_score}%")
                     print(f"   Heure: {heure}")
                     break
-
-                if response.status_code == 429:
+                    
+                elif response.status_code == 429:
+                    # Rate limit hit - attendre et réessayer
                     try:
                         error_data = response.json()
                         retry_after = error_data.get("parameters", {}).get("retry_after", 5)
-                    except Exception:
+                    except:
                         retry_after = 5
-
+                    
                     retry_count += 1
                     if retry_count < max_retries:
-                        print(
-                            f"⚠️ Rate limit (429) - Attente de {retry_after}s avant retry {retry_count}/{max_retries}..."
-                        )
+                        print(f"⚠️ Rate limit (429) - Attente de {retry_after}s avant retry {retry_count}/{max_retries}...")
                         await asyncio.sleep(retry_after)
                     else:
                         print(f"❌ Rate limit (429) - Max retries atteint pour {trade.symbol}")
-                    continue
-
-                print(f"⚠️ Erreur Telegram: {response.status_code} - {response.text}")
-                break
-
+                        
+                else:
+                    print(f"⚠️ Erreur Telegram: {response.status_code} - {response.text}")
+                    break
+                
     except Exception as e:
         print(f"❌ Erreur Telegram: {e}")
         import traceback
@@ -6338,24 +6317,28 @@ async def send_telegram(msg: str):
         async with httpx.AsyncClient(timeout=10.0) as client:
             await client.post(
                 f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"},
+                json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"}
             )
     except Exception as e:
         print(f"❌ Erreur send_telegram: {e}")
 
-
 @app.post("/tv-webhook")
 async def webhook(request: Request):
-    # ------------------------------------------------------------------
-    # TradingView webhook payload parser (robuste)
-    # TradingView envoie exactement le "message" de l'alerte (souvent JSON).
-    # On accepte:
-    # - JSON dict
-    # - string JSON
-    # - texte "key=value" (une paire par ligne)
-    # Secret: ?secret=... ou header X-Webhook-Secret / X-TV-Secret
-    # ------------------------------------------------------------------
+    """
+    Webhook TradingView (robuste + sécurisé)
 
+    - Accepte:
+      * JSON dict
+      * string JSON
+      * message "key=value" (une paire par ligne)
+    - Secret:
+      * query ?secret=...
+      * headers X-Webhook-Secret / X-TV-Secret
+      * payload { "secret": "..." } (optionnel)
+    """
+    # ------------------------------------------------------------------
+    # 1) AUTH (secret)
+    # ------------------------------------------------------------------
     expected_secret = (
         os.getenv("TV_WEBHOOK_SECRET")
         or os.getenv("WEBHOOK_SECRET")
@@ -6363,6 +6346,7 @@ async def webhook(request: Request):
         or os.getenv("TV_SECRET")
         or WEBHOOK_SECRET
     )
+    strict_auth = int(os.getenv("WEBHOOK_STRICT_AUTH", "1"))  # 1 = refuse si pas de secret valide
 
     provided_secret = (
         request.query_params.get("secret")
@@ -6370,34 +6354,75 @@ async def webhook(request: Request):
         or request.headers.get("X-TV-Secret")
     )
 
-    if expected_secret and provided_secret != expected_secret:
-        return JSONResponse(status_code=403, content={"status": "forbidden", "message": "Bad webhook secret"})
-
+    # Si le secret est dans le payload, on le lira après parsing (fallback).
+    # ------------------------------------------------------------------
+    # 2) PARSE PAYLOAD
+    # ------------------------------------------------------------------
     raw_body = await request.body()
     data: dict = {}
 
+    def _parse_key_value_lines(s: str) -> dict:
+        tmp = {}
+        for line in s.splitlines():
+            if "=" in line:
+                k, v = line.split("=", 1)
+                tmp[k.strip()] = v.strip()
+        return tmp
+
     if raw_body:
-        # 1) JSON direct
+        # a) JSON direct
         try:
             data = json.loads(raw_body)
         except Exception:
-            # 2) decode puis JSON
+            # b) string -> JSON
             try:
                 s = raw_body.decode("utf-8", "ignore").strip()
                 data = json.loads(s)
             except Exception:
-                # 3) key=value par ligne
-                s = raw_body.decode("utf-8", "ignore")
-                tmp = {}
-                for line in s.splitlines():
-                    if "=" in line:
-                        k, v = line.split("=", 1)
-                        tmp[k.strip()] = v.strip()
-                data = tmp if tmp else {"message": s.strip()}
+                # c) key=value lines
+                try:
+                    s = raw_body.decode("utf-8", "ignore")
+                    tmp = _parse_key_value_lines(s)
+                    data = tmp if tmp else {"message": s.strip()}
+                except Exception:
+                    data = {"message": ""}
+
+    # Si TradingView envoie {"message":"{...json...}"}
+    if isinstance(data, dict) and isinstance(data.get("message"), str):
+        msg_str = data.get("message", "").strip()
+        if msg_str.startswith("{") and msg_str.endswith("}"):
+            try:
+                data = json.loads(msg_str)
+            except Exception:
+                pass
 
     if not isinstance(data, dict):
         data = {"message": str(data)}
 
+    # Secret dans le payload (fallback)
+    if not provided_secret:
+        provided_secret = (
+            data.get("secret")
+            or data.get("webhook_secret")
+            or data.get("passphrase")
+            or data.get("password")
+        )
+        if provided_secret is not None:
+            provided_secret = str(provided_secret)
+
+    if expected_secret:
+        if str(provided_secret or "") != str(expected_secret):
+            return JSONResponse(status_code=403, content={"status": "forbidden", "message": "Bad webhook secret"})
+    else:
+        if strict_auth:
+            return JSONResponse(
+                status_code=403,
+                content={"status": "forbidden", "message": "Webhook secret not configured (set WEBHOOK_SECRET)"},
+            )
+
+    # ------------------------------------------------------------------
+    # 3) NORMALISATION
+    # ------------------------------------------------------------------
     def _to_float(x):
         try:
             if x is None:
@@ -6413,7 +6438,6 @@ async def webhook(request: Request):
 
     norm = dict(data)
 
-    # Normalisation des champs
     symbol = (
         data.get("symbol")
         or data.get("ticker")
@@ -6426,11 +6450,16 @@ async def webhook(request: Request):
         norm["symbol"] = str(symbol)
 
     tf = data.get("tf") or data.get("timeframe") or data.get("interval")
-    if tf:
+    if tf and not norm.get("tf"):
         norm["tf"] = str(tf)
 
-    side = data.get("side") or data.get("action") or data.get("order_action") or data.get("strategy.order.action")
-    if side:
+    side = (
+        data.get("side")
+        or data.get("action")
+        or data.get("order_action")
+        or data.get("strategy.order.action")
+    )
+    if side and not norm.get("side"):
         norm["side"] = str(side).upper()
 
     price = (
@@ -6441,15 +6470,18 @@ async def webhook(request: Request):
         or data.get("last")
         or data.get("market_price")
     )
-
-    norm["entry"] = _to_float(norm.get("entry") if norm.get("entry") is not None else price)
-    norm["current_price"] = _to_float(norm.get("current_price") if norm.get("current_price") is not None else price)
-    norm["price"] = _to_float(norm.get("price") if norm.get("price") is not None else price)
+    if "entry" not in norm:
+        norm["entry"] = _to_float(price)
+    if "current_price" not in norm:
+        norm["current_price"] = _to_float(data.get("current_price") or price)
+    if "price" not in norm:
+        norm["price"] = _to_float(data.get("price") or price)
 
     for k in ("sl", "tp1", "tp2", "tp3"):
-        norm[k] = _to_float(norm.get(k))
+        if k in norm:
+            norm[k] = _to_float(norm.get(k))
 
-    if norm.get("confidence") is not None:
+    if "confidence" in norm and norm.get("confidence") is not None:
         try:
             norm["confidence"] = int(float(norm["confidence"]))
         except Exception:
@@ -6458,21 +6490,16 @@ async def webhook(request: Request):
     if not norm.get("symbol"):
         return {"status": "ignored", "reason": "missing_symbol", "received": data}
 
-    # Pydantic validate
+    # ------------------------------------------------------------------
+    # 4) VALIDATION Pydantic
+    # ------------------------------------------------------------------
     try:
         trade = TradeWebhook.model_validate(norm)  # pydantic v2
     except Exception:
-        trade = TradeWebhook(**norm)  # fallback
-
-    def _fmt_num(x):
-        try:
-            return f"{float(x):.6f}"
-        except Exception:
-            return "N/A"
+        trade = TradeWebhook(**norm)  # pydantic v1 ou fallback
 
     # ------------------------------------------------------------------
-    # Webhook TradingView avec détection de revirement
-    # Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
+    # 5) LOG + LOGIQUE "REVIREMENT"
     # ------------------------------------------------------------------
     try:
         print(f"\n{'='*60}")
@@ -6480,27 +6507,28 @@ async def webhook(request: Request):
         print(f"   Symbol: {trade.symbol}")
         print(f"   Direction: {trade.side}")
         print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: ${_fmt_num(trade.entry)}")
-        print(f"   SL: ${_fmt_num(trade.sl)} | TP1: ${_fmt_num(trade.tp1)}")
+        if trade.entry is not None:
+            print(f"   Entry: ${trade.entry:.6f}")
+        if trade.sl is not None and trade.tp1 is not None:
+            print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
         print(f"{'='*60}\n")
 
         symbol = trade.symbol
-        new_side = trade.side
+        new_side = (trade.side or "").upper()
 
-        # Sécurité: si pas de side clair, on ignore
         if new_side not in ("LONG", "SHORT"):
             return {"status": "ignored", "reason": "missing_side", "received": norm}
 
         inverse_side = "SHORT" if new_side == "LONG" else "LONG"
 
-        # 🔍 Chercher un trade actif inverse
+        # Chercher un trade actif inverse
         inverse_trade = None
         for t in trades_db:
-            if t.get("symbol") == symbol and t.get("side") == inverse_side and t.get("status") == "open":
+            if (t.get("symbol") == symbol and t.get("side") == inverse_side and t.get("status") == "open"):
                 inverse_trade = t
                 break
 
-        # 🔄 Revirement: on ferme l'inverse et on n'ouvre pas le nouveau
+        # Si revirement: fermer l'inverse et ignorer le nouveau signal (sécurité)
         if inverse_trade:
             now = datetime.now(pytz.timezone("America/Montreal"))
             close_time = now.strftime("%H:%M:%S")
@@ -6511,7 +6539,7 @@ async def webhook(request: Request):
             inverse_trade["status"] = "closed"
             inverse_trade["closed_reason"] = f"Revirement: Signal {new_side} reçu"
             inverse_trade["closed_at"] = now.isoformat()
-            inverse_trade["sl_hit"] = True
+            inverse_trade["sl_hit"] = True  # indicateur perte
 
             reversal_message = (
                 f"🔄 <b>REVIREMENT DE TENDANCE DÉTECTÉ!</b>\n\n"
@@ -6526,24 +6554,25 @@ async def webhook(request: Request):
                 f"⏳ En attente du prochain signal propre...\n\n"
                 f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
             )
-
             asyncio.create_task(send_telegram(reversal_message))
             print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
 
+            save_trades_to_file()  # sauvegarder fermeture
             return {
                 "status": "reversed",
                 "message": f"Trade {inverse_side} fermé, signal {new_side} ignoré",
-                "closed_trade_id": inverse_trade.get("symbol"),
+                "closed_trade_id": inverse_trade.get("id") or inverse_trade.get("symbol"),
                 "new_trade_created": False,
             }
 
-        # ✅ Pas de revirement -> on envoie Telegram + on crée le trade
+        # Pas de revirement → exécuter le signal
         await send_telegram_advanced(trade)
+
         confidence_score, _ = calculate_confidence_score(trade)
 
         trade_data = {
             "symbol": trade.symbol,
-            "side": trade.side,
+            "side": new_side,
             "entry": trade.entry,
             "current_price": trade.current_price,
             "sl": trade.sl,
@@ -6561,9 +6590,8 @@ async def webhook(request: Request):
             "sl_hit": False,
             "pnl": 0.0,
         }
-
         trades_db.append(trade_data)
-        save_trades_to_file()  # 💾 Sauvegarder immédiatement
+        save_trades_to_file()
 
         print(f"✅ Trade {new_side} créé: {symbol} @ {trade.entry}")
         return {"status": "success", "confidence_ai": confidence_score, "new_trade_created": True}

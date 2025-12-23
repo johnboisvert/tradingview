@@ -6191,17 +6191,17 @@ async def send_telegram_advanced(trade: TradeWebhook):
         now_quebec = datetime.now(timezone_quebec)
         heure = now_quebec.strftime("%Hh%M")
 
-# Sécurité: si les champs essentiels manquent, on évite de planter
-if trade.entry is None or trade.sl is None:
-    msg_min = (
+        # Sécurité: si les champs essentiels manquent, on évite de planter
+        if trade.entry is None or trade.sl is None:
+            msg_min = (
         f"📩 <b>{trade.symbol}</b> {trade.tf or '15m'} | Crypto IA\n"
         f"⏰ Heure : {heure}\n"
         f"🎯 Direction : <b>{trade.side}</b> {direction_emoji}\n\n"
         f"⚠️ Payload incomplet: entry/sl manquant."
-    )
-    await send_telegram(msg_min)
-    return
-        
+            )
+            await send_telegram(msg_min)
+            return
+
         rr = calc_rr(trade.entry, trade.sl, trade.tp1)
         rr_text = f" (R/R: {rr}:1)" if rr else ""
         trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"

@@ -6,16 +6,33 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 # 🔐 CORRECTION 2: Rate Limiting pour sécurité
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
+# slowapi est optionnel: si le paquet n'est pas installé, on désactive le rate limiting
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    SLOWAPI_AVAILABLE = True
+except ImportError:
+    Limiter = None
+    _rate_limit_exceeded_handler = None
+    get_remote_address = None
+    SlowAPIMiddleware = None
+
+    class RateLimitExceeded(Exception):
+        pass
+
+    SLOWAPI_AVAILABLE = False
 
 from pydantic import BaseModel, validator
 from typing import Optional, Any
 import httpx
 from datetime import datetime, timedelta
-import ccxt
+try:
+    import ccxt
+except ImportError:
+    ccxt = None
+
 from cryptography.fernet import Fernet
 
 # Imports pour système d'emails et codes promo
@@ -48,7 +65,15 @@ import time
 from urllib.parse import urlencode
 
 # 🎯 ANALYSE TECHNIQUE AVANCÉE - IMPORT
-from technical_analyzer import analyzer
+# ✅ Module d'analyse technique (optionnel)
+# Si le module local n'existe pas dans ton déploiement, on garde l'app fonctionnelle avec un fallback.
+try:
+    from technical_analyzer import analyzer  # type: ignore
+except ImportError:
+    class _DummyAnalyzer:
+        async def get_ohlcv_data(self, *args, **kwargs):
+            return None
+    analyzer = _DummyAnalyzer()
 
 # ============================================================================
 
@@ -72,7 +97,60 @@ except ImportError as e:
     PERMISSIONS_AVAILABLE = False
     protected_router = None
     def register_template_functions(templates):
-        pass
+        """Register safe helper functions for Jinja2 templates.
+
+        This must never crash the app at startup, even if optional modules are missing.
+        """
+        try:
+            env = getattr(templates, "env", None)
+            if env is None:
+                return
+
+            # --- Feature gating helper (UI only; API should enforce auth/plan) ---
+            def has_feature(user, feature: str) -> bool:
+                """Return True if the current user has access to a named feature.
+
+                Conservative default: False for unknown features when no permission system is available.
+                """
+                try:
+                    ps = globals().get("permission_system") or globals().get("permissions_system") or globals().get("permissions")
+                    if ps is not None:
+                        if hasattr(ps, "has_feature"):
+                            return bool(ps.has_feature(user, feature))
+                        if hasattr(ps, "user_has_feature"):
+                            return bool(ps.user_has_feature(user, feature))
+                        if hasattr(ps, "can_access"):
+                            return bool(ps.can_access(user, feature))
+                except Exception:
+                    pass
+
+                try:
+                    if user is None:
+                        return False
+                    feats = getattr(user, "features", None)
+                    if isinstance(feats, (list, set, tuple)):
+                        return feature in feats
+                    if isinstance(feats, dict):
+                        return bool(feats.get(feature, False))
+                    return False
+                except Exception:
+                    return False
+
+            def is_authenticated(request) -> bool:
+                try:
+                    sess = getattr(request, "session", {}) or {}
+                    return bool(sess.get("user"))
+                except Exception:
+                    return False
+
+            env.globals.setdefault("has_feature", has_feature)
+            env.globals.setdefault("is_authenticated", is_authenticated)
+
+        except Exception as e:
+            try:
+                print(f"⚠️  Erreur enregistrement template functions: {e}")
+            except Exception:
+                pass
 # ============================================================================
 
 # ===== NOUVEAU: Stripe et Payment System =====
@@ -420,16 +498,23 @@ class CoinbaseWebhookPayload(BaseModel):
 # ===== NOUVEAU: Système d'abonnement (import optionnel) =====
 try:
     from subscription_system import subscription_router, init_subscription_tables
-    from admin_pricing import admin_pricing_router
     SUBSCRIPTION_ENABLED = True
-    print("✅ Modules d'abonnement chargés")
+    print("✅ Module subscription_system chargé")
 except ImportError as e:
-    print(f"⚠️  Modules d'abonnement non disponibles: {e}")
+    print(f"⚠️  subscription_system non disponible: {e}")
     SUBSCRIPTION_ENABLED = False
     subscription_router = None
-    admin_pricing_router = None
     def init_subscription_tables():
         pass
+
+# Router admin pricing (optionnel)
+try:
+    from admin_pricing import admin_pricing_router
+    print("✅ admin_pricing chargé")
+except ImportError as e:
+    admin_pricing_router = None
+    # pas bloquant: le reste du système d'abonnement peut fonctionner
+    print(f"⚠️  admin_pricing non disponible (OK): {e}")
 # ===========================================================
 
 # PostgreSQL support
@@ -2157,85 +2242,32 @@ def get_user_from_request(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Configuration du rate limiter
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
+# ✅ Rate limiter (optionnel)
+# Si slowapi n'est pas installé, l'app reste fonctionnelle mais sans limitation de débit.
+if SLOWAPI_AVAILABLE:
+    limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = limiter
 
-# Handler personnalisé pour erreurs de rate limit
-async def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    """Page d'erreur personnalisée quand trop de tentatives"""
-    return HTMLResponse(
-        content="""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>🚫 Trop de Tentatives</title>
-            <style>
-                body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-                    color: white;
-                    text-align: center;
-                    padding: 100px 20px;
-                    margin: 0;
-                }
-                .error-box {
-                    max-width: 600px;
-                    margin: 0 auto;
-                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-                    padding: 50px;
-                    border-radius: 20px;
-                    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-                }
-                h1 {
-                    font-size: 48px;
-                    margin: 0 0 20px 0;
-                }
-                p {
-                    font-size: 18px;
-                    margin: 15px 0;
-                    line-height: 1.6;
-                }
-                a {
-                    display: inline-block;
-                    background: white;
-                    color: #ef4444;
-                    padding: 15px 30px;
-                    border-radius: 50px;
-                    text-decoration: none;
-                    font-weight: 600;
-                    margin-top: 30px;
-                    transition: all 0.3s;
-                }
-                a:hover {
-                    transform: translateY(-3px);
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                }
-        
-        body { margin-left: 280px; }
-    </style>
-        </head>
-        <body>
-            <div class="error-box">
-                <h1>🚫 Trop de Tentatives</h1>
-                <p>Vous avez atteint la limite de tentatives de connexion.</p>
-                <p><strong>Pour votre sécurité, veuillez réessayer dans 15 minutes.</strong></p>
-                <p style="font-size: 14px; opacity: 0.9; margin-top: 30px;">
-                    Si vous avez oublié votre mot de passe, contactez le support.
-                </p>
-                <a href="/login">← Retour à la page de connexion</a>
-            </div>
-        </body>
-        </html>
-        """,
-        status_code=429
-    )
+    def custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+        return JSONResponse(
+            status_code=429,
+            content={
+                "error": "⛔ Trop de requêtes. Réessaie dans quelques secondes.",
+                "hint": "Si ça arrive souvent, attends 1-2 minutes ou réduis la fréquence.",
+            },
+        )
 
-# Enregistrer le handler
-app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+    app.add_exception_handler(RateLimitExceeded, custom_rate_limit_handler)
+    app.add_middleware(SlowAPIMiddleware)
+else:
+    class _DummyLimiter:
+        def limit(self, *args, **kwargs):
+            def _decorator(fn):
+                return fn
+            return _decorator
 
-# Activer le middleware
-app.add_middleware(SlowAPIMiddleware)
+    limiter = _DummyLimiter()
+    app.state.limiter = limiter
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 🔐 CORRECTION 3: DISCLAIMERS LÉGAUX - Protection juridique
@@ -6288,8 +6320,7 @@ async def send_telegram(msg: str):
     except Exception as e:
         print(f"❌ Erreur send_telegram: {e}")
 
-@app.post("/tv-webhook")
-async def webhook(trade: TradeWebhook):
+async def _handle_tradingview_webhook(trade: TradeWebhook):
     """
     Webhook TradingView avec détection de revirement
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
@@ -6348,7 +6379,7 @@ async def webhook(trade: TradeWebhook):
                 f"⚠️ <i>Sécurité: Pas d'ouverture après revirement</i>"
             )
             
-            asyncio.create_task(send_telegram(reversal_message))
+            asyncio.create_task(send_telegram_message(reversal_message))
             print(f"✅ Trade {inverse_side} fermé, signal {new_side} IGNORÉ (revirement)")
             
             return {
@@ -6395,6 +6426,67 @@ async def webhook(trade: TradeWebhook):
         import traceback
         traceback.print_exc()
         return {"status": "error", "error": str(e)}
+
+@app.post("/tv-webhook")
+async def webhook(request: Request):
+    """Endpoint webhook TradingView robuste (évite 422).
+
+    - Accepte des tests manuels sans body (répond 200).
+    - Accepte JSON, text/plain (JSON string), et form-urlencoded.
+    - Valide via TradeWebhook sans laisser FastAPI renvoyer 422.
+    """
+    expected_secret = os.getenv("TV_WEBHOOK_SECRET", "").strip()
+    provided_secret = (request.query_params.get("secret") or "").strip()
+    if expected_secret and provided_secret != expected_secret:
+        print("❌ Webhook secret invalide")
+        return JSONResponse({"status": "error", "message": "Secret invalide"}, status_code=403)
+
+    # Lire le body
+    try:
+        raw_body = await request.body()
+    except Exception:
+        raw_body = b""
+
+    if not raw_body or raw_body.strip() in (b"",):
+        return JSONResponse({"status": "ok", "message": "No payload (test ack)"}, status_code=200)
+
+    payload = None
+
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = None
+
+    if payload is None:
+        try:
+            txt = raw_body.decode("utf-8", errors="ignore").strip()
+            if txt:
+                payload = json.loads(txt)
+        except Exception:
+            payload = None
+
+    if payload is None:
+        try:
+            form = await request.form()
+            payload = dict(form)
+        except Exception:
+            payload = None
+
+    if not isinstance(payload, dict):
+        print("⚠️ Webhook payload non supporté:", str(raw_body)[:200])
+        return JSONResponse({"status": "error", "message": "Payload invalide/non supporté"}, status_code=200)
+
+    try:
+        trade = TradeWebhook.parse_obj(payload)
+    except Exception:
+        try:
+            trade = TradeWebhook.model_validate(payload)  # type: ignore[attr-defined]
+        except Exception as e:
+            print(f"⚠️ Webhook payload invalide (TradeWebhook): {e}")
+            return JSONResponse({"status": "error", "message": "Champs manquants/invalides", "received_keys": list(payload.keys())}, status_code=200)
+
+    return await _handle_tradingview_webhook(trade)
+
 
 @app.get("/health")
 @app.head("/health")

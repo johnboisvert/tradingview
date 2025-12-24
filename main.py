@@ -2970,8 +2970,14 @@ async def debug_files():
 
 # ===== NOUVEAU: Monter les routeurs d'abonnement =====
 if SUBSCRIPTION_ENABLED:
-    app.include_router(subscription_router)
-    app.include_router(admin_pricing_router)
+    if subscription_router is not None:
+        app.include_router(subscription_router)
+    else:
+        print("⚠️ subscription_router est None (routes abonnement non montées)")
+    if admin_pricing_router is not None:
+        app.include_router(admin_pricing_router)
+    else:
+        print("⚠️ admin_pricing_router est None (routes admin pricing ignorées)")
     print("✅ Routes d'abonnement activées")
 # =====================================================
 

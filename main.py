@@ -5998,15 +5998,34 @@ class TradeWebhook(BaseModel):
 
     @validator('side', pre=True, always=True)
     def set_side(cls, v, values):
-        if v:
-            return v.upper()
-        if 'action' in values and values['action']:
-            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
-        return v
+        # Accepte: LONG/SHORT, BUY/SELL (peu importe la casse)
+        if v is not None and str(v).strip() != "":
+            s = str(v).strip().upper()
+            if s in ("BUY", "LONG"):
+                return "LONG"
+            if s in ("SELL", "SHORT"):
+                return "SHORT"
+            return s
 
+        act = values.get("action")
+        if act is not None and str(act).strip() != "":
+            a = str(act).strip().upper()
+            if a == "BUY":
+                return "LONG"
+            if a == "SELL":
+                return "SHORT"
+
+        return v
     @validator('entry', pre=True, always=True)
     def set_entry(cls, v, values):
-        return v if v is not None else values.get('price')
+        # Tolérant: entry peut venir de entry/price/current_price
+        if v is not None:
+            return v
+        if values.get('price') is not None:
+            return values.get('price')
+        if values.get('current_price') is not None:
+            return values.get('current_price')
+        return None
 
 def calc_rr(entry, sl, tp1):
     try:
@@ -6332,15 +6351,25 @@ async def _handle_tradingview_webhook(trade: TradeWebhook):
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
     try:
+        def _fmt(v, d=6):
+            return "N/A" if v is None else f"{float(v):.{d}f}"
+
+        entry_price = trade.entry if trade.entry is not None else (trade.price if trade.price is not None else trade.current_price)
+
         print(f"\n{'='*60}")
-        print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
+        print("🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")
-        print(f"   Direction: {trade.side}")
-        print(f"   Timeframe: {trade.tf}")
-        print(f"   Entry: ${trade.entry:.6f}")
-        print(f"   SL: ${trade.sl:.6f} | TP1: ${trade.tp1:.6f}")
+        print(f"   Direction: {trade.side or trade.action or 'N/A'}")
+        print(f"   Timeframe: {trade.tf or trade.tf_label or 'N/A'}")
+        print(f"   Entry: ${_fmt(entry_price)}")
+        print(f"   SL: ${_fmt(trade.sl)} | TP1: ${_fmt(trade.tp1)}")
         print(f"{'='*60}\n")
-        
+
+        if entry_price is None:
+            return {"status": "error", "message": "Missing entry/price/current_price"}
+
+        # Normaliser (utile pour le reste de la fonction)
+        trade.entry = float(entry_price)
         symbol = trade.symbol
         new_side = trade.side
         
@@ -6481,6 +6510,32 @@ async def webhook(request: Request):
     if not isinstance(payload, dict):
         print("⚠️ Webhook payload non supporté:", str(raw_body)[:200])
         return JSONResponse({"status": "error", "message": "Payload invalide/non supporté"}, status_code=200)
+
+    # Normaliser clés/alias TradingView + tests manuels
+    # - timeframe -> tf
+    # - si entry/price absent mais current_price présent -> price
+    # - convertir les champs numériques (form-urlencoded arrive en strings)
+    try:
+        if isinstance(payload.get("timeframe"), str) and not payload.get("tf"):
+            payload["tf"] = payload.get("timeframe")
+        if payload.get("entry") is None and payload.get("price") is None and payload.get("current_price") is not None:
+            payload["price"] = payload.get("current_price")
+
+        for k in ("entry", "price", "current_price", "sl", "tp1", "tp2", "tp3"):
+            if k in payload and payload[k] is not None and isinstance(payload[k], str):
+                s = payload[k].strip().replace(",", ".")
+                # Tolérer "$42000" ou "42000.0"
+                s = s.replace("$", "")
+                try:
+                    payload[k] = float(s)
+                except Exception:
+                    pass
+
+        # Harmoniser action/side si besoin
+        if payload.get("action") is None and payload.get("side") is not None:
+            payload["action"] = payload.get("side")
+    except Exception:
+        pass
 
     try:
         trade = TradeWebhook.parse_obj(payload)

@@ -3780,7 +3780,7 @@ async def check_tp_sl_hits():
                 trade['closed_at'] = datetime.now().isoformat()
                 pnl = (tp3 - entry) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🚀 TP3 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP3: ${tp3:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"🚀 TP3 HIT! {symbol} LONG\nEntry: {format_price(entry)}\nTP3: {format_price(tp3)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP3 HIT!")
             
@@ -3788,7 +3788,7 @@ async def check_tp_sl_hits():
                 trade['tp2_hit'] = True
                 pnl = (tp2 - entry) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"💎 TP2 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP2: ${tp2:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"💎 TP2 HIT! {symbol} LONG\nEntry: {format_price(entry)}\nTP2: {format_price(tp2)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP2 HIT!")
             
@@ -3796,7 +3796,7 @@ async def check_tp_sl_hits():
                 trade['tp1_hit'] = True
                 pnl = (tp1 - entry) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🎯 TP1 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP1: ${tp1:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"🎯 TP1 HIT! {symbol} LONG\nEntry: {format_price(entry)}\nTP1: {format_price(tp1)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP1 HIT!")
             
@@ -3806,7 +3806,7 @@ async def check_tp_sl_hits():
                 trade['closed_at'] = datetime.now().isoformat()
                 pnl = (sl - entry) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🛑 STOP LOSS HIT! {symbol} LONG\nEntry: ${entry:.4f}\nSL: ${sl:.4f}\nPnL: {pnl:.2f}%"
+                msg = f"🛑 STOP LOSS HIT! {symbol} LONG\nEntry: {format_price(entry)}\nSL: {format_price(sl)}\nPnL: {pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"❌ {symbol} SL HIT!")
         
@@ -3818,7 +3818,7 @@ async def check_tp_sl_hits():
                 trade['closed_at'] = datetime.now().isoformat()
                 pnl = (entry - tp3) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🚀 TP3 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP3: ${tp3:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"🚀 TP3 HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nTP3: {format_price(tp3)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP3 HIT!")
             
@@ -3826,7 +3826,7 @@ async def check_tp_sl_hits():
                 trade['tp2_hit'] = True
                 pnl = (entry - tp2) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"💎 TP2 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP2: ${tp2:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"💎 TP2 HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nTP2: {format_price(tp2)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP2 HIT!")
             
@@ -3834,7 +3834,7 @@ async def check_tp_sl_hits():
                 trade['tp1_hit'] = True
                 pnl = (entry - tp1) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🎯 TP1 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP1: ${tp1:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"🎯 TP1 HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nTP1: {format_price(tp1)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP1 HIT!")
             
@@ -3844,7 +3844,7 @@ async def check_tp_sl_hits():
                 trade['closed_at'] = datetime.now().isoformat()
                 pnl = (entry - sl) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🛑 STOP LOSS HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nSL: ${sl:.4f}\nPnL: {pnl:.2f}%"
+                msg = f"🛑 STOP LOSS HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nSL: {format_price(sl)}\nPnL: {pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"❌ {symbol} SL HIT!")
         
@@ -5998,33 +5998,21 @@ class TradeWebhook(BaseModel):
 
     @validator('side', pre=True, always=True)
     def set_side(cls, v, values):
-        # Accepte: LONG/SHORT, BUY/SELL (peu importe la casse)
-        if v is not None and str(v).strip() != "":
-            s = str(v).strip().upper()
-            if s in ("BUY", "LONG"):
-                return "LONG"
-            if s in ("SELL", "SHORT"):
-                return "SHORT"
-            return s
-
-        act = values.get("action")
-        if act is not None and str(act).strip() != "":
-            a = str(act).strip().upper()
-            if a == "BUY":
-                return "LONG"
-            if a == "SELL":
-                return "SHORT"
-
+        if v:
+            return v.upper()
+        if 'action' in values and values['action']:
+            return 'LONG' if values['action'].upper() == 'BUY' else 'SHORT'
         return v
+
     @validator('entry', pre=True, always=True)
     def set_entry(cls, v, values):
-        # Tolérant: entry peut venir de entry/price/current_price
+        # Fallback order: entry -> price -> current_price
         if v is not None:
             return v
-        if values.get('price') is not None:
-            return values.get('price')
-        if values.get('current_price') is not None:
-            return values.get('current_price')
+        for k in ('price', 'current_price'):
+            val = values.get(k)
+            if val is not None:
+                return val
         return None
 
 def calc_rr(entry, sl, tp1):
@@ -6230,22 +6218,25 @@ async def send_telegram_advanced(trade: TradeWebhook):
         trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"
         timeframe = trade.tf if trade.tf else "15m"
         leverage_text = trade.leverage if trade.leverage else "10x"
+        def _fp(v):
+            return format_price(float(v)) if v is not None else "N/A"
+
         
         msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}
 ⏰ Heure : {heure}
 🎯 Direction : <b>{trade.side}</b> {direction_emoji}
 
-<b>ENTRY:</b> ${trade.entry:.4f}{rr_text}
-❌ <b>Stop-Loss:</b> ${trade.sl:.4f}
+<b>ENTRY:</b> {_fp(trade.entry)}{rr_text}
+❌ <b>Stop-Loss:</b> {_fp(trade.sl)}
 💡 <b>Leverage:</b> {leverage_text} Isolée
 """
         
         if trade.tp1:
-            msg += f"✅ <b>Target 1:</b> ${trade.tp1:.4f}\n"
+            msg += f"✅ <b>Target 1:</b> {_fp(trade.tp1)}\n"
         if trade.tp2:
-            msg += f"✅ <b>Target 2:</b> ${trade.tp2:.4f}\n"
+            msg += f"✅ <b>Target 2:</b> {_fp(trade.tp2)}\n"
         if trade.tp3:
-            msg += f"✅ <b>Target 3:</b> ${trade.tp3:.4f}\n"
+            msg += f"✅ <b>Target 3:</b> {_fp(trade.tp3)}\n"
         
         msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
@@ -6304,7 +6295,7 @@ async def send_telegram_advanced(trade: TradeWebhook):
                 if response.status_code == 200:
                     last_telegram_message_time = time.time()
                     print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
-                    print(f"   Entry: ${trade.entry:.4f} | SL: ${trade.sl:.4f}")
+                    print(f"   Entry: {_fp(trade.entry)} | SL: {_fp(trade.sl)}")
                     print(f"   Confiance IA: {confidence_score}%")
                     print(f"   Heure: {heure}")
                     break
@@ -6351,25 +6342,16 @@ async def _handle_tradingview_webhook(trade: TradeWebhook):
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
     try:
-        def _fmt(v, d=6):
-            return "N/A" if v is None else f"{float(v):.{d}f}"
-
-        entry_price = trade.entry if trade.entry is not None else (trade.price if trade.price is not None else trade.current_price)
-
         print(f"\n{'='*60}")
-        print("🎯 NOUVEAU SIGNAL TRADINGVIEW")
+        print(f"🎯 NOUVEAU SIGNAL TRADINGVIEW")
         print(f"   Symbol: {trade.symbol}")
-        print(f"   Direction: {trade.side or trade.action or 'N/A'}")
-        print(f"   Timeframe: {trade.tf or trade.tf_label or 'N/A'}")
-        print(f"   Entry: ${_fmt(entry_price)}")
-        print(f"   SL: ${_fmt(trade.sl)} | TP1: ${_fmt(trade.tp1)}")
+        print(f"   Direction: {trade.side}")
+        print(f"   Timeframe: {trade.tf}")
+        entry_price = trade.entry or trade.price or trade.current_price
+        print(f"   Entry: {format_price(entry_price) if entry_price is not None else 'N/A'}")
+        print(f"   SL: {format_price(trade.sl) if trade.sl is not None else 'N/A'} | TP1: {format_price(trade.tp1) if trade.tp1 is not None else 'N/A'}")
         print(f"{'='*60}\n")
-
-        if entry_price is None:
-            return {"status": "error", "message": "Missing entry/price/current_price"}
-
-        # Normaliser (utile pour le reste de la fonction)
-        trade.entry = float(entry_price)
+        
         symbol = trade.symbol
         new_side = trade.side
         
@@ -6511,31 +6493,28 @@ async def webhook(request: Request):
         print("⚠️ Webhook payload non supporté:", str(raw_body)[:200])
         return JSONResponse({"status": "error", "message": "Payload invalide/non supporté"}, status_code=200)
 
-    # Normaliser clés/alias TradingView + tests manuels
-    # - timeframe -> tf
-    # - si entry/price absent mais current_price présent -> price
-    # - convertir les champs numériques (form-urlencoded arrive en strings)
-    try:
-        if isinstance(payload.get("timeframe"), str) and not payload.get("tf"):
+    # Normaliser certains champs TradingView (ex: timeframe -> tf)
+    if isinstance(payload, dict):
+        if payload.get("tf") in (None, "") and payload.get("timeframe") not in (None, ""):
             payload["tf"] = payload.get("timeframe")
-        if payload.get("entry") is None and payload.get("price") is None and payload.get("current_price") is not None:
-            payload["price"] = payload.get("current_price")
-
-        for k in ("entry", "price", "current_price", "sl", "tp1", "tp2", "tp3"):
-            if k in payload and payload[k] is not None and isinstance(payload[k], str):
-                s = payload[k].strip().replace(",", ".")
-                # Tolérer "$42000" ou "42000.0"
-                s = s.replace("$", "")
+        if payload.get("tf") in (None, "") and payload.get("tf_label") not in (None, ""):
+            payload["tf"] = payload.get("tf_label")
+        # side via action si nécessaire
+        if payload.get("side") in (None, "") and payload.get("action"):
+            payload["side"] = "LONG" if str(payload.get("action")).upper() == "BUY" else "SHORT"
+        # entry fallback: price -> current_price
+        if payload.get("entry") in (None, ""):
+            if payload.get("price") not in (None, ""):
+                payload["entry"] = payload.get("price")
+            elif payload.get("current_price") not in (None, ""):
+                payload["entry"] = payload.get("current_price")
+        # Convertir les nombres reçus en string (form-urlencoded)
+        for k in ("entry", "price", "current_price", "sl", "tp1", "tp2", "tp3", "confidence"):
+            if k in payload and isinstance(payload[k], str):
                 try:
-                    payload[k] = float(s)
+                    payload[k] = float(payload[k].replace(",", "."))
                 except Exception:
                     pass
-
-        # Harmoniser action/side si besoin
-        if payload.get("action") is None and payload.get("side") is not None:
-            payload["action"] = payload.get("side")
-    except Exception:
-        pass
 
     try:
         trade = TradeWebhook.parse_obj(payload)

@@ -6212,7 +6212,7 @@ async def send_telegram_advanced(trade: TradeWebhook):
         timeframe = trade.tf if trade.tf else "15m"
         leverage_text = trade.leverage if trade.leverage else "10x"
         
-                def _pf(x, d=4):
+        def _pf(x, d=4):
             return "N/A" if x is None else f"${x:.{d}f}"
 
         entry_txt = _pf(trade.entry, 4)
@@ -6519,6 +6519,40 @@ async def webhook(request: Request):
     if not isinstance(payload, dict):
         print("⚠️ Webhook payload non supporté:", str(raw_body)[:200])
         return JSONResponse({"status": "error", "message": "Payload invalide/non supporté"}, status_code=200)
+        # Normalisation: convertir les champs numériques (souvent envoyés en string) et accepter 'na'/'N/A'
+        # + alias de clés (tp_1 -> tp1, etc.) pour être tolérant aux variations côté Pine/alert.
+        _alias_map = {
+            'tp_1': 'tp1', 'tp_2': 'tp2', 'tp_3': 'tp3',
+            't1': 'tp1', 't2': 'tp2', 't3': 'tp3',
+            'target1': 'tp1', 'target2': 'tp2', 'target3': 'tp3',
+            'stop': 'sl', 'stop_loss': 'sl', 'stopLoss': 'sl',
+            'entryPrice': 'entry', 'entry_price': 'entry',
+        }
+        for k_src, k_dst in list(_alias_map.items()):
+            if k_src in payload and k_dst not in payload:
+                payload[k_dst] = payload.get(k_src)
+
+        def _to_float_or_none(v):
+            if v is None:
+                return None
+            if isinstance(v, (int, float)):
+                return float(v)
+            if isinstance(v, str):
+                s = v.strip().lower()
+                if s in ('', 'na', 'n/a', 'none', 'null'):
+                    return None
+                # enlever un éventuel '$' ou ','
+                s = s.replace('$', '').replace(',', '')
+                try:
+                    return float(s)
+                except Exception:
+                    return None
+            return None
+
+        for _k in ('entry', 'current_price', 'sl', 'tp1', 'tp2', 'tp3', 'confidence', 'rr', 'leverage'):
+            if _k in payload:
+                payload[_k] = _to_float_or_none(payload.get(_k))
+
 
     try:
         trade = TradeWebhook.parse_obj(payload)

@@ -3120,6 +3120,31 @@ DATA_DIR = get_data_directory()
 # 💾 FICHIER DE PERSISTANCE DES TRADES
 TRADES_FILE = f"{DATA_DIR}/trades_database.json"
 
+# --- Robustesse: si le fichier existe mais n'est pas inscriptible, basculer vers /tmp
+def _ensure_writable_trades_file():
+    global TRADES_FILE
+    try:
+        os.makedirs(os.path.dirname(TRADES_FILE), exist_ok=True)
+        # Si le fichier existe mais n'est pas writable (ex: volume monté avec mauvais owner)
+        if os.path.exists(TRADES_FILE) and not os.access(TRADES_FILE, os.W_OK):
+            raise PermissionError(f'File not writable: {TRADES_FILE}')
+        # Test d'écriture (append)
+        with open(TRADES_FILE, 'a', encoding='utf-8'):
+            pass
+    except Exception as e:
+        fallback_dir = '/tmp/ai_trader'
+        os.makedirs(fallback_dir, exist_ok=True)
+        TRADES_FILE = os.path.join(fallback_dir, 'trades_database.json')
+        try:
+            with open(TRADES_FILE, 'a', encoding='utf-8'):
+                pass
+            print(f'⚠️ TRADES_FILE non inscriptible, fallback → {TRADES_FILE} ({e})')
+        except Exception as e2:
+            print(f'❌ Impossible de configurer TRADES_FILE fallback: {e2}')
+
+_ensure_writable_trades_file()
+
+
 # 📲 TELEGRAM CONFIGURATION
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
@@ -3746,7 +3771,7 @@ async def get_mexc_price(symbol: str) -> Optional[float]:
         print(f"⚠️  MEXC Error {symbol}: {e}")
         return None
 
-async def send_telegram_notification(message: str):
+async def send_telegram_notification(message: str, target=None, current_price=None, target_price=None):
     """Send notification to Telegram"""
     try:
         if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
@@ -3798,7 +3823,7 @@ async def check_tp_sl_hits():
                 trade['closed_at'] = datetime.now().isoformat()
                 pnl = (tp3 - entry) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🚀 TP3 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP3: ${tp3:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"🚀 TP3 HIT! {symbol} LONG\nEntry: {format_price(entry)}\nTP3: {format_price(tp3)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP3 HIT!")
             
@@ -3806,7 +3831,7 @@ async def check_tp_sl_hits():
                 trade['tp2_hit'] = True
                 pnl = (tp2 - entry) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"💎 TP2 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP2: ${tp2:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"💎 TP2 HIT! {symbol} LONG\nEntry: {format_price(entry)}\nTP2: {format_price(tp2)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP2 HIT!")
             
@@ -3814,7 +3839,7 @@ async def check_tp_sl_hits():
                 trade['tp1_hit'] = True
                 pnl = (tp1 - entry) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🎯 TP1 HIT! {symbol} LONG\nEntry: ${entry:.4f}\nTP1: ${tp1:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"🎯 TP1 HIT! {symbol} LONG\nEntry: {format_price(entry)}\nTP1: {format_price(tp1)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP1 HIT!")
             
@@ -3824,7 +3849,7 @@ async def check_tp_sl_hits():
                 trade['closed_at'] = datetime.now().isoformat()
                 pnl = (sl - entry) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🛑 STOP LOSS HIT! {symbol} LONG\nEntry: ${entry:.4f}\nSL: ${sl:.4f}\nPnL: {pnl:.2f}%"
+                msg = f"🛑 STOP LOSS HIT! {symbol} LONG\nEntry: {format_price(entry)}\nSL: {format_price(sl)}\nPnL: {pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"❌ {symbol} SL HIT!")
         
@@ -3836,7 +3861,7 @@ async def check_tp_sl_hits():
                 trade['closed_at'] = datetime.now().isoformat()
                 pnl = (entry - tp3) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🚀 TP3 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP3: ${tp3:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"🚀 TP3 HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nTP3: {format_price(tp3)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP3 HIT!")
             
@@ -3844,7 +3869,7 @@ async def check_tp_sl_hits():
                 trade['tp2_hit'] = True
                 pnl = (entry - tp2) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"💎 TP2 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP2: ${tp2:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"💎 TP2 HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nTP2: {format_price(tp2)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP2 HIT!")
             
@@ -3852,7 +3877,7 @@ async def check_tp_sl_hits():
                 trade['tp1_hit'] = True
                 pnl = (entry - tp1) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🎯 TP1 HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nTP1: ${tp1:.4f}\nPnL: +{pnl:.2f}%"
+                msg = f"🎯 TP1 HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nTP1: {format_price(tp1)}\nPnL: +{pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"✅ {symbol} TP1 HIT!")
             
@@ -3862,7 +3887,7 @@ async def check_tp_sl_hits():
                 trade['closed_at'] = datetime.now().isoformat()
                 pnl = (entry - sl) / entry * 100
                 trade['pnl'] = pnl
-                msg = f"🛑 STOP LOSS HIT! {symbol} SHORT\nEntry: ${entry:.4f}\nSL: ${sl:.4f}\nPnL: {pnl:.2f}%"
+                msg = f"🛑 STOP LOSS HIT! {symbol} SHORT\nEntry: {format_price(entry)}\nSL: {format_price(sl)}\nPnL: {pnl:.2f}%"
                 await send_telegram_notification(msg)
                 print(f"❌ {symbol} SL HIT!")
         
@@ -6229,12 +6254,10 @@ async def send_telegram_advanced(trade: TradeWebhook):
         trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"
         timeframe = trade.tf if trade.tf else "15m"
         leverage_text = trade.leverage if trade.leverage else "10x"
-        
-        def _pf(x, d=4):
-            return "N/A" if x is None else f"${x:.{d}f}"
-
-        entry_txt = _pf(trade.entry, 4)
-        sl_txt = _pf(trade.sl, 4)
+        def _pf(x):
+            return format_price(x)
+        entry_txt = _pf(trade.entry)
+        sl_txt = _pf(trade.sl)
 
         msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}
 ⏰ Heure : {heure}
@@ -6244,15 +6267,13 @@ async def send_telegram_advanced(trade: TradeWebhook):
 ❌ <b>Stop-Loss:</b> {sl_txt}
 💡 <b>Leverage:</b> {leverage_text} Isolée
 """
-        
-
         if trade.tp1:
-            msg += f"✅ <b>Target 1:</b> ${trade.tp1:.4f}\n"
+            msg += f"✅ <b>Target 1:</b> {_pf(trade.tp1)}\n"
         if trade.tp2:
-            msg += f"✅ <b>Target 2:</b> ${trade.tp2:.4f}\n"
+            msg += f"✅ <b>Target 2:</b> {_pf(trade.tp2)}\n"
         if trade.tp3:
-            msg += f"✅ <b>Target 3:</b> ${trade.tp3:.4f}\n"
-        
+            msg += f"✅ <b>Target 3:</b> {_pf(trade.tp3)}\n"
+
         msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
         msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
         msg += "💡 <b>Après le TP1, veuillez vous mettre en SLBE</b>\n"
@@ -6357,8 +6378,9 @@ async def _handle_tradingview_webhook(trade: TradeWebhook):
     Ferme automatiquement les trades inverses SANS ouvrir le nouveau trade
     """
     try:
-        def _fmt(v, d=6):
-            return "N/A" if v is None else f"{v:.{d}f}"
+        def _fmt(v):
+            s = format_price(v)
+            return s.replace('$','') if s != 'N/A' else 'N/A'
 
         event_type = (trade.type or "ENTRY").upper()
         entry_price = trade.entry or trade.price or trade.current_price

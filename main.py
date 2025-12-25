@@ -18367,67 +18367,45 @@ async def calendrier_economique():
 
 import asyncio
 
-async def get_current_price_from_trade(trade: dict) -> float:
+async def get_current_price_from_trade(trade: dict) -> float | None:
+    """Retourne le prix actuel du symbole, de façon fiable.
+
+    Problème observé: CoinGecko peut renvoyer un mauvais actif (même ticker), ou un spot qui ne correspond pas à MEXC Perp.
+    -> On privilégie MEXC (ticker/price) avec un symbole normalisé, puis fallback sur le dernier prix connu du trade.
     """
-    Récupère le prix actuel EN TEMPS RÉEL via API (jamais le prix du webhook!)
-    ✅ FIX: Utiliser TOUJOURS l'API pour avoir le prix ACTUEL, pas un prix figé du webhook
-    """
+
     try:
-        symbol = trade.get("symbol")
-        if not symbol:
+        raw_symbol = str(trade.get("symbol") or "").strip()
+        if not raw_symbol:
             return None
-        
-        # ✅ TOUJOURS utiliser CoinGecko pour avoir le prix ACTUEL
-        # Mapping complet pour la plupart des cryptos populaires
-        symbol_map = {
-            "BTCUSDT": "bitcoin",
-            "ETHUSDT": "ethereum",
-            "BNBUSDT": "binancecoin",
-            "SOLUSDT": "solana",
-            "XRPUSDT": "ripple",
-            "ADAUSDT": "cardano",
-            "DOGEUSDT": "dogecoin",
-            "LTCUSDT": "litecoin",
-            "LINKUSDT": "chainlink",
-            "AVAXUSDT": "avalanche-2",
-            "ZENEUSDT": "zenes",  # Pour ZEN
-            "ZENUSDT": "zen",     # Pour ZEN (alias)
-            "POLKAUSDT": "polkadot",
-            "UNIUSDT": "uniswap",
-            "MATICUSDT": "matic-network",
-            "FTMUSDT": "fantom",
-            "ARBUSDT": "arbitrum",
-            "OPTIMUSDT": "optimism",
-            "NEARUSDT": "near",
-            "ATOMUSDT": "cosmos",
-            "SUIUSDT": "sui",
-            "APUSDT": "aptos",
-            "MANAUSDT": "decentraland",
-            "SANDUSDT": "the-sandbox"
-        }
-        
-        crypto_id = symbol_map.get(symbol)
-        if not crypto_id:
-            print(f"⚠️ Symbole {symbol} non mappé - tentative de fallback direct")
-            # Essayer avec le symbole directement (sans USDT)
-            crypto_id = symbol.replace("USDT", "").lower()
-        
-        url = f"https://api.coingecko.com/api/v3/simple/price?ids={crypto_id}&vs_currencies=usd"
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, timeout=10.0)
-            if response.status_code == 200:
-                data = response.json()
-                price = data.get(crypto_id, {}).get("usd")
-                if price and price > 0:
-                    print(f"📊 {symbol}: ${price:.6f} (PRIX ACTUEL EN TEMPS RÉEL)")
-                    return float(price)
-                else:
-                    print(f"❌ Pas de prix retourné pour {crypto_id}")
-    except Exception as e:
-        print(f"❌ Erreur get_current_price pour {trade.get('symbol')}: {e}")
-    
-    return None
+
+        # Normalisation TradingView (ex: 'MEXC:PLUMEUSDT.P' -> 'PLUMEUSDT')
+        sym = raw_symbol.upper()
+        if ":" in sym:
+            sym = sym.split(":")[-1]
+        sym = sym.replace(".P", "").replace("PERP", "").replace("PERPETUAL", "")
+        sym = sym.replace("USDTP", "USDT")  # parfois suffixe perp
+        sym = re.sub(r"[^A-Z0-9]", "", sym)
+
+        # 1) Prix MEXC (évite les faux SL/TP)
+        try:
+            price = await get_mexc_price(sym)
+            if price is not None:
+                return float(price)
+        except Exception:
+            pass
+
+        # 2) Dernier prix connu du webhook (si présent)
+        last = trade.get("current_price")
+        if last is not None:
+            try:
+                return float(last)
+            except Exception:
+                pass
+
+        return None
+    except Exception:
+        return None
 
 async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
     """

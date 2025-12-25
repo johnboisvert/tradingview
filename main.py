@@ -3079,36 +3079,39 @@ trades_db = []
 # 💾 CONFIGURATION DES CHEMINS PERSISTANTS
 # ============================================================================
 
+
+def _is_writable_dir(path: str) -> bool:
+    """Retourne True si on peut créer/supprimer un fichier dans ce dossier."""
+    try:
+        os.makedirs(path, exist_ok=True)
+        test_file = os.path.join(path, ".write_test")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("ok")
+        os.remove(test_file)
+        return True
+    except Exception:
+        return False
+
+
 def get_data_directory():
     """
-    Détermine le meilleur répertoire pour stocker les données persistantes.
-    Priorité: /data (Railway Volume) > /tmp (temporaire)
+    Trouve un dossier d'écriture fiable pour le JSON + fichiers.
+
+    IMPORTANT:
+    - Sur Railway, /data peut exister mais être en lecture seule selon le user / volume.
+      On teste donc réellement l'écriture avant de le choisir.
     """
-    # Option 1: Variable d'environnement personnalisée
-    env_data_dir = os.getenv("DATA_DIR")
-    if env_data_dir and os.path.exists(env_data_dir):
-        return env_data_dir
-    
-    # Option 2: Railway Volume monté sur /data
-    if os.path.exists("/data"):
+    # 1) DATA_DIR env
+    data_dir = os.getenv("DATA_DIR", "").strip()
+    if data_dir and _is_writable_dir(data_dir):
+        return data_dir
+
+    # 2) /data (volume Railway) si vraiment writable
+    if _is_writable_dir("/data"):
         return "/data"
-    
-    # Option 3: Essayer de créer /data si possible
-    try:
-        os.makedirs("/data", exist_ok=True)
-        # Tester si on peut écrire
-        test_file = "/data/.test_write"
-        with open(test_file, 'w') as f:
-            f.write("test")
-        os.remove(test_file)
-        print("✅ Utilisation de /data pour le stockage persistant")
-        return "/data"
-    except (PermissionError, OSError):
-        pass
-    
-    # Fallback: /tmp (données non persistantes)
-    print("⚠️  Utilisation de /tmp - Les données seront perdues au redémarrage!")
-    print("   Pour persister les données, configure un Railway Volume sur /data")
+
+    # 3) Fallback /tmp
+    os.makedirs("/tmp", exist_ok=True)
     return "/tmp"
 
 # Déterminer le répertoire de données au démarrage
@@ -3699,14 +3702,29 @@ def load_trades_from_file():
         print(f"❌ Erreur chargement trades: {e}")
         trades_db = []
 
+
 def save_trades_to_file():
-    """💾 Sauvegarder les trades dans le fichier JSON"""
+    """💾 Sauvegarder les trades dans le fichier JSON (avec fallback si /data n'est pas writable)."""
+    global TRADES_FILE
     try:
         with open(TRADES_FILE, 'w', encoding='utf-8') as f:
             json.dump(trades_db, f, indent=2, ensure_ascii=False)
             print(f"✅ {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
+            return
     except Exception as e:
         print(f"❌ Erreur sauvegarde trades: {e}")
+
+        # Fallback automatique si le dossier n'est pas writable (ex: /data permission denied)
+        try:
+            fallback_dir = "/tmp"
+            os.makedirs(fallback_dir, exist_ok=True)
+            TRADES_FILE = os.path.join(fallback_dir, "trades_database.json")
+            with open(TRADES_FILE, 'w', encoding='utf-8') as f:
+                json.dump(trades_db, f, indent=2, ensure_ascii=False)
+            print(f"✅ Fallback OK: {len(trades_db)} trades sauvegardés dans {TRADES_FILE}")
+        except Exception as e2:
+            print(f"❌ Fallback sauvegarde trades impossible: {e2}")
+
 
 # ============================================================================
 # 🚀 MEXC API - AUTO-DETECTION TP/SL
@@ -18404,7 +18422,7 @@ async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
            (side == "SHORT" and current_price <= trade["tp1"]):
             updates["tp1_hit"] = True
             print(f"🎯 {symbol} - TP1 atteint ! Prix: ${current_price}")
-            await send_telegram_notification(symbol, "TP1", current_price, trade["tp1"])
+            await send_telegram_target_notification(symbol, "TP1", current_price, trade["tp1"])
     
     # Vérifier TP2
     if trade.get("tp2") and not trade.get("tp2_hit"):
@@ -18412,7 +18430,7 @@ async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
            (side == "SHORT" and current_price <= trade["tp2"]):
             updates["tp2_hit"] = True
             print(f"🎯🎯 {symbol} - TP2 atteint ! Prix: ${current_price}")
-            await send_telegram_notification(symbol, "TP2", current_price, trade["tp2"])
+            await send_telegram_target_notification(symbol, "TP2", current_price, trade["tp2"])
     
     # Vérifier TP3
     if trade.get("tp3") and not trade.get("tp3_hit"):
@@ -18420,7 +18438,7 @@ async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
            (side == "SHORT" and current_price <= trade["tp3"]):
             updates["tp3_hit"] = True
             print(f"🎯🎯🎯 {symbol} - TP3 atteint ! Prix: ${current_price}")
-            await send_telegram_notification(symbol, "TP3", current_price, trade["tp3"])
+            await send_telegram_target_notification(symbol, "TP3", current_price, trade["tp3"])
     
     # Vérifier SL
     if trade.get("sl") and not trade.get("sl_hit"):
@@ -18429,11 +18447,11 @@ async def check_tp_sl_automatic(trade: dict, current_price: float) -> dict:
             updates["sl_hit"] = True
             updates["status"] = "closed"
             print(f"❌ {symbol} - SL touché ! Prix: ${current_price}")
-            await send_telegram_notification(symbol, "SL", current_price, trade["sl"])
+            await send_telegram_target_notification(symbol, "SL", current_price, trade["sl"])
     
     return updates
 
-async def send_telegram_notification(symbol: str, target: str, current_price: float, target_price: float):
+async def send_telegram_target_notification(symbol: str, target: str, current_price: float, target_price: float):
     """Envoie une notification Telegram quand un TP ou SL est atteint"""
     try:
         emoji = "🎯" if "TP" in target else "❌"

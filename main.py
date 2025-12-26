@@ -3741,7 +3741,7 @@ def save_trades_to_file():
 
         # Fallback automatique si le dossier n'est pas writable (ex: /data permission denied)
         try:
-            fallback_dir = "/tmp"
+            fallback_dir = "/tmp/ai_trader"
             os.makedirs(fallback_dir, exist_ok=True)
             TRADES_FILE = os.path.join(fallback_dir, "trades_database.json")
             with open(TRADES_FILE, 'w', encoding='utf-8') as f:
@@ -3908,6 +3908,13 @@ async def background_monitor():
         monitor_running = False
 
 def start_background_monitor():
+
+    # Par défaut, on DÉSACTIVE le moniteur TP/SL basé sur prix externes (CoinGecko/MEXC),
+    # car ça peut créer de faux SL/TP sur des petits coins.
+    # Active-le seulement si tu veux (TP_SL_MONITOR_ENABLED=1).
+    if os.getenv("TP_SL_MONITOR_ENABLED", "0").lower() not in ("1", "true", "yes"):
+        print("🟡 TP/SL monitor désactivé (on utilise les confirmations TradingView TP/SL).")
+        return
     """Start background monitor"""
     global monitor_running
     if not monitor_running:
@@ -6036,6 +6043,8 @@ class TradeWebhook(BaseModel):
     confidence: Optional[int] = None
     leverage: Optional[str] = None
     note: Optional[str] = None
+    target: Optional[str] = None  # TP1/TP2/TP3/SL (confirmation TradingView)
+    target_price: Optional[float] = None  # Prix du niveau touché (TP/SL)
     price: Optional[float] = None
     action: Optional[str] = None
 
@@ -6383,6 +6392,64 @@ async def _handle_tradingview_webhook(trade: TradeWebhook):
             return s.replace('$','') if s != 'N/A' else 'N/A'
 
         event_type = (trade.type or "ENTRY").upper()
+        # ============================
+        # ✅ Confirmations TP/SL venant de TradingView (source la + fiable)
+        # Types attendus: TARGET_HIT (target=TP1/TP2/TP3) ou STOP_LOSS_HIT (target=SL)
+        # ============================
+        if event_type in ("TARGET_HIT", "TP_HIT", "STOP_LOSS_HIT", "SL_HIT"):
+            target = (trade.target or "").upper().strip()
+            tgt_price = trade.target_price or trade.current_price
+            sym = trade.symbol or "UNKNOWN"
+        
+            # Cherche le trade OPEN le plus récent pour ce symbole
+            open_trade = None
+            for t in reversed(trades_db):
+                if (t.get("symbol") == sym) and (t.get("status") == "open"):
+                    open_trade = t
+                    break
+        
+            if not open_trade:
+                print(f"⚠️ Aucun trade OPEN trouvé pour {sym} (event={event_type}, target={target})")
+                return {"status": "ok", "message": "No open trade for symbol"}
+        
+            # Marqueur de progression TP
+            if target.startswith("TP"):
+                open_trade["last_update"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                open_trade["last_event"] = target
+                tp_hits = open_trade.get("tp_hits") or []
+                if target not in tp_hits:
+                    tp_hits.append(target)
+                open_trade["tp_hits"] = tp_hits
+                save_trades_to_file()
+        
+                msg = (
+                    f"✅ {target} HIT! {sym} {open_trade.get('type','')}\n"
+                    f"Entry: ${open_trade.get('entry')}\n"
+                    f"{target}: ${tgt_price}"
+                )
+                await send_telegram_notification(msg)
+                print(f"✅ {target} confirmé TradingView pour {sym} @ {tgt_price}")
+                return {"status": "ok", "message": f"{target} processed"}
+        
+            # STOP LOSS
+            if event_type in ("STOP_LOSS_HIT", "SL_HIT") or target == "SL":
+                open_trade["status"] = "closed"
+                open_trade["result"] = "ÉCHOUÉ"
+                open_trade["close_reason"] = "SL"
+                open_trade["close_price"] = tgt_price
+                open_trade["close_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                save_trades_to_file()
+        
+                msg = (
+                    f"🛑 STOP LOSS HIT! {sym} {open_trade.get('type','')}\n"
+                    f"Entry: ${open_trade.get('entry')}\n"
+                    f"SL: ${open_trade.get('sl')}\n"
+                    f"Close: ${tgt_price}"
+                )
+                await send_telegram_notification(msg)
+                print(f"🛑 SL confirmé TradingView pour {sym} @ {tgt_price}")
+                return {"status": "ok", "message": "SL processed"}
+
         entry_price = trade.entry or trade.price or trade.current_price
 
         print(f"\n{'='*60}")

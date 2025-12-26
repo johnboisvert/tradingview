@@ -4670,8 +4670,7 @@ async def admin_panel():
     </div>
     
     <script>
-    # ===== FONCTIONS DU DASHBOARD ADMIN =====
-    
+    // ===== FONCTIONS DU DASHBOARD ADMIN =====    
     function openAddUserModal() {{
         document.getElementById('addUserForm').style.display = 'block';
     }}
@@ -4734,8 +4733,7 @@ async def admin_panel():
         alert('💬 Messages reçus:\\n(Aucun message pour le moment)');
     }}
     
-    # Form submission
-    document.addEventListener('DOMContentLoaded', function() {{
+    // Form submission    document.addEventListener('DOMContentLoaded', function() {{
         const form = document.getElementById('addUserForm');
         if (form) {{
             form.addEventListener('submit', function(e) {{
@@ -7202,8 +7200,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-#  GLOBE 3D AVEC THREE.JS
-let scene, camera, renderer, globe;
+//  GLOBE 3D AVEC THREE.JSlet scene, camera, renderer, globe;
 
 function initGlobe() {
     const container = document.getElementById('globe3d');
@@ -7215,8 +7212,7 @@ function initGlobe() {
     renderer = new THREE.WebGLRenderer({ canvas: container, alpha: true, antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
     
-    # Globe avec texture gradient
-    const geometry = new THREE.SphereGeometry(1, 64, 64);
+    // Globe avec texture gradient    const geometry = new THREE.SphereGeometry(1, 64, 64);
     const material = new THREE.MeshBasicMaterial({
         color: 0x667eea,
         wireframe: true,
@@ -7226,8 +7222,7 @@ function initGlobe() {
     globe = new THREE.Mesh(geometry, material);
     scene.add(globe);
     
-    # Particules autour du globe
-    const particlesGeometry = new THREE.BufferGeometry();
+    // Particules autour du globe    const particlesGeometry = new THREE.BufferGeometry();
     const particlesCount = 1000;
     const posArray = new Float32Array(particlesCount * 3);
     
@@ -7256,14 +7251,12 @@ function animateGlobe() {
     renderer.render(scene, camera);
 }
 
-#  FETCH DATA FROM COINGECKO API (GRATUIT)
-async function fetchCryptoData() {
+//  FETCH DATA FROM COINGECKO API (GRATUIT)async function fetchCryptoData() {
     try {
         const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h');
         const data = await response.json();
         
-        # Global data
-        const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
+        // Global data        const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
         const globalData = await globalResponse.json();
         
         updateGlobalStats(globalData.data);
@@ -7281,8 +7274,7 @@ function updateGlobalStats(data) {
     document.getElementById('btcDom').textContent = data.market_cap_percentage.btc.toFixed(1) + '%';
 }
 
-#  CREATE INTERACTIVE BUBBLES
-function createBubbles(coins) {
+//  CREATE INTERACTIVE BUBBLESfunction createBubbles(coins) {
     const container = document.getElementById('bubbles');
     container.innerHTML = '';
     
@@ -7313,8 +7305,7 @@ function createBubbles(coins) {
     });
 }
 
-#  UPDATE TOP MOVERS
-function updateMovers(coins) {
+//  UPDATE TOP MOVERSfunction updateMovers(coins) {
     const sortedByGain = [...coins].sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h);
     const topGainers = sortedByGain.slice(0, 5);
     const topLosers = sortedByGain.slice(-5).reverse();
@@ -7354,8 +7345,7 @@ function displayMovers(containerId, coins) {
     });
 }
 
-#  FETCH FEAR & GREED INDEX
-async function fetchFearGreed() {
+//  FETCH FEAR & GREED INDEXasync function fetchFearGreed() {
     try {
         const response = await fetch('https://api.alternative.me/fng/');
         const data = await response.json();
@@ -7365,8 +7355,7 @@ async function fetchFearGreed() {
         document.getElementById('fearGreedValue').textContent = value;
         document.getElementById('fearGreedLabel').textContent = classification;
         
-        # Rotate needle
-        const angle = -90 + (value * 1.8); // 0-100 -> -90 to 90 degrees
+        // Rotate needle        const angle = -90 + (value * 1.8); // 0-100 -> -90 to 90 degrees
         document.getElementById('gaugeNeedle').style.transform = `rotate(${angle}deg)`;
         
     } catch (error) {
@@ -7374,14 +7363,12 @@ async function fetchFearGreed() {
     }
 }
 
-#  INIT ALL
-window.addEventListener('DOMContentLoaded', () => {
+//  INIT ALLwindow.addEventListener('DOMContentLoaded', () => {
     initGlobe();
     fetchCryptoData();
     fetchFearGreed();
     
-    # Auto refresh every 10 minutes (optimized for free API limits)
-    setInterval(() => {
+    // Auto refresh every 10 minutes (optimized for free API limits)    setInterval(() => {
         fetchCryptoData();
         fetchFearGreed();
     }, 600000);
@@ -7857,8 +7844,7 @@ async def home():
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-#  GLOBE 3D AVEC THREE.JS
-let scene, camera, renderer, globe;
+//  GLOBE 3D AVEC THREE.JSlet scene, camera, renderer, globe;
 
 function initGlobe() {
     const container = document.getElementById('globe3d');
@@ -7870,8 +7856,7 @@ function initGlobe() {
     renderer = new THREE.WebGLRenderer({ canvas: container, alpha: true, antialias: true });
     renderer.setSize(container.clientWidth, container.clientHeight);
     
-    # Globe avec texture gradient
-    const geometry = new THREE.SphereGeometry(1, 64, 64);
+    // Globe avec texture gradient    const geometry = new THREE.SphereGeometry(1, 64, 64);
     const material = new THREE.MeshBasicMaterial({
         color: 0x667eea,
         wireframe: true,
@@ -7881,8 +7866,7 @@ function initGlobe() {
     globe = new THREE.Mesh(geometry, material);
     scene.add(globe);
     
-    # Particules autour du globe
-    const particlesGeometry = new THREE.BufferGeometry();
+    // Particules autour du globe    const particlesGeometry = new THREE.BufferGeometry();
     const particlesCount = 1000;
     const posArray = new Float32Array(particlesCount * 3);
     
@@ -7911,14 +7895,12 @@ function animateGlobe() {
     renderer.render(scene, camera);
 }
 
-#  FETCH DATA FROM COINGECKO API (GRATUIT)
-async function fetchCryptoData() {
+//  FETCH DATA FROM COINGECKO API (GRATUIT)async function fetchCryptoData() {
     try {
         const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h');
         const data = await response.json();
         
-        # Global data
-        const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
+        // Global data        const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
         const globalData = await globalResponse.json();
         
         updateGlobalStats(globalData.data);
@@ -7936,8 +7918,7 @@ function updateGlobalStats(data) {
     document.getElementById('btcDom').textContent = data.market_cap_percentage.btc.toFixed(1) + '%';
 }
 
-#  CREATE INTERACTIVE BUBBLES
-function createBubbles(coins) {
+//  CREATE INTERACTIVE BUBBLESfunction createBubbles(coins) {
     const container = document.getElementById('bubbles');
     container.innerHTML = '';
     
@@ -7968,8 +7949,7 @@ function createBubbles(coins) {
     });
 }
 
-#  UPDATE TOP MOVERS
-function updateMovers(coins) {
+//  UPDATE TOP MOVERSfunction updateMovers(coins) {
     const sortedByGain = [...coins].sort((a, b) => b.price_change_percentage_24h - a.price_change_percentage_24h);
     const topGainers = sortedByGain.slice(0, 5);
     const topLosers = sortedByGain.slice(-5).reverse();
@@ -8009,8 +7989,7 @@ function displayMovers(containerId, coins) {
     });
 }
 
-#  FETCH FEAR & GREED INDEX
-async function fetchFearGreed() {
+//  FETCH FEAR & GREED INDEXasync function fetchFearGreed() {
     try {
         const response = await fetch('https://api.alternative.me/fng/');
         const data = await response.json();
@@ -8020,8 +7999,7 @@ async function fetchFearGreed() {
         document.getElementById('fearGreedValue').textContent = value;
         document.getElementById('fearGreedLabel').textContent = classification;
         
-        # Rotate needle
-        const angle = -90 + (value * 1.8); // 0-100 -> -90 to 90 degrees
+        // Rotate needle        const angle = -90 + (value * 1.8); // 0-100 -> -90 to 90 degrees
         document.getElementById('gaugeNeedle').style.transform = `rotate(${angle}deg)`;
         
     } catch (error) {
@@ -8029,14 +8007,12 @@ async function fetchFearGreed() {
     }
 }
 
-#  INIT ALL
-window.addEventListener('DOMContentLoaded', () => {
+//  INIT ALLwindow.addEventListener('DOMContentLoaded', () => {
     initGlobe();
     fetchCryptoData();
     fetchFearGreed();
     
-    # Auto refresh every 10 minutes (optimized for free API limits)
-    setInterval(() => {
+    // Auto refresh every 10 minutes (optimized for free API limits)    setInterval(() => {
         fetchCryptoData();
         fetchFearGreed();
     }, 600000);
@@ -9412,30 +9388,25 @@ async def spot_trading_page():
             document.getElementById('dcaResults').style.display = 'block';
         }
         
-        # FONCTION GRAPHIQUE COMPARATIF 3 SCNARIOS
-        function initializeDCAComparisonChart() {
+        // FONCTION GRAPHIQUE COMPARATIF 3 SCNARIOS        function initializeDCAComparisonChart() {
             const ctx = document.getElementById('dcaComparisonChart');
             if (!ctx) return;
             
-            # Donnes ralistes pour 60 mois (5 ans)
-            const months = 60;
+            // Donnes ralistes pour 60 mois (5 ans)            const months = 60;
             const monthlyAmount = 500; // 500$ par mois
             const startPrice = 50000;
             const endPrice = 100000;
             
-            # Gnrer prix raliste avec volatilit
-            const prices = [];
+            // Gnrer prix raliste avec volatilit            const prices = [];
             let basePrice = startPrice;
             for (let i = 0; i < months; i++) {
                 const progress = i / (months - 1);
-                # Tendance gnrale + volatilit raliste
-                const volatility = Math.sin(i * 0.3) * 10000 + Math.cos(i * 0.1) * 5000;
+                // Tendance gnrale + volatilit raliste                const volatility = Math.sin(i * 0.3) * 10000 + Math.cos(i * 0.1) * 5000;
                 const currentPrice = startPrice + (endPrice - startPrice) * progress + volatility;
                 prices.push(Math.max(20000, currentPrice)); // Min 20k
             }
             
-            # SCNARIO 1: DCA Rgulier (500$ chaque mois)
-            let dcaCumulative = 0;
+            // SCNARIO 1: DCA Rgulier (500$ chaque mois)            let dcaCumulative = 0;
             let dcaCoins = 0;
             const dcaData = [];
             for (let i = 0; i < months; i++) {
@@ -9444,13 +9415,11 @@ async def spot_trading_page():
                 dcaData.push((dcaCoins * prices[i]).toFixed(0));
             }
             
-            # SCNARIO 2: All-In au mois 1
-            const totalInvest = monthlyAmount * months;
+            // SCNARIO 2: All-In au mois 1            const totalInvest = monthlyAmount * months;
             let allInCoins = totalInvest / prices[0];
             const allInData = prices.map(p => (allInCoins * p).toFixed(0));
             
-            # SCNARIO 3: Timing Parfait (achte  chaque bas)
-            let perfectCoins = 0;
+            // SCNARIO 3: Timing Parfait (achte  chaque bas)            let perfectCoins = 0;
             const perfectData = [];
             for (let i = 0; i < months; i++) {
                 if (i === 0 || prices[i] < prices[i-1]) {
@@ -9459,11 +9428,9 @@ async def spot_trading_page():
                 perfectData.push((perfectCoins * prices[i]).toFixed(0));
             }
             
-            # Labels (mois)
-            const labels = Array.from({length: months}, (_, i) => `M${i+1}`);
+            // Labels (mois)            const labels = Array.from({length: months}, (_, i) => `M${i+1}`);
             
-            # Crer le graphique Chart.js
-            new Chart(ctx, {
+            // Crer le graphique Chart.js            new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
@@ -9554,17 +9521,14 @@ async def spot_trading_page():
             });
         }
         
-        # FONCTION HEATMAP CALENDRIER - TIMELINE INTERACTIVE
-        function generateHeatmap() {
+        // FONCTION HEATMAP CALENDRIER - TIMELINE INTERACTIVE        function generateHeatmap() {
             const container = document.getElementById('heatmapContainer');
             const months = 60;
             
-            # Calculer la date de dbut (aujourd'hui)
-            const startDate = new Date();
+            // Calculer la date de dbut (aujourd'hui)            const startDate = new Date();
             const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
             
-            # Gnration de prix ralistes avec volatilit
-            const prices = [];
+            // Gnration de prix ralistes avec volatilit            const prices = [];
             for (let i = 0; i < months; i++) {
                 const progress = i / (months - 1);
                 const basePrice = 50000 + (100000 - 50000) * progress;
@@ -9572,15 +9536,13 @@ async def spot_trading_page():
                 prices.push(Math.max(20000, basePrice + volatility));
             }
             
-            # Calculer prix min et max
-            const minPrice = Math.min(...prices);
+            // Calculer prix min et max            const minPrice = Math.min(...prices);
             const maxPrice = Math.max(...prices);
             const avgPrice = (minPrice + maxPrice) / 2;
             
             let countBuy = 0, countNeutral = 0, countWarn = 0, countWait = 0;
             
-            # Gnrer les cellules
-            prices.forEach((price, index) => {
+            // Gnrer les cellules            prices.forEach((price, index) => {
                 const cell = document.createElement('div');
                 cell.style.cssText = `
                     width: 100%;
@@ -9597,15 +9559,13 @@ async def spot_trading_page():
                     position: relative;
                 `;
                 
-                # Calculer la date du mois
-                const monthDate = new Date(startDate);
+                // Calculer la date du mois                const monthDate = new Date(startDate);
                 monthDate.setMonth(monthDate.getMonth() + index);
                 const monthName = monthNames[monthDate.getMonth()];
                 const year = monthDate.getFullYear();
                 const dateStr = `${monthName} ${year}`;
                 
-                # Dterminer la couleur selon le prix
-                let color = '#eab308'; // Neutre par défaut
+                // Dterminer la couleur selon le prix                let color = '#eab308'; // Neutre par défaut
                 let label = 'N';
                 let action = 'Normal';
                 
@@ -9636,14 +9596,12 @@ async def spot_trading_page():
                 cell.style.backgroundColor = color;
                 cell.textContent = label;
                 
-                # Crer la popup au hover
-                cell.addEventListener('mouseover', function(e) {
+                // Crer la popup au hover                cell.addEventListener('mouseover', function(e) {
                     this.style.transform = 'scale(1.4)';
                     this.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)';
                     this.style.zIndex = '100';
                     
-                    # Crer la popup
-                    const popup = document.createElement('div');
+                    // Crer la popup                    const popup = document.createElement('div');
                     popup.style.cssText = `
                         position: absolute;
                         bottom: 100%;
@@ -9679,23 +9637,20 @@ async def spot_trading_page():
                     }
                 });
                 
-                # Aussi clickable pour afficher l'info
-                cell.addEventListener('click', function() {
+                // Aussi clickable pour afficher l'info                cell.addEventListener('click', function() {
                     alert(`MOIS ${index + 1} - ${dateStr}\n\nPrix: $${Math.round(price).toLocaleString()}\nAction: ${action}`);
                 });
                 
                 container.appendChild(cell);
             });
             
-            # Mettre  jour les stats
-            document.getElementById('countBuy').textContent = countBuy + ' mois';
+            // Mettre  jour les stats            document.getElementById('countBuy').textContent = countBuy + ' mois';
             document.getElementById('countNeutral').textContent = countNeutral + ' mois';
             document.getElementById('countWarn').textContent = countWarn + ' mois';
             document.getElementById('countWait').textContent = countWait + ' mois';
         }
         
-        # FONCTION IA PROFILER SIMPLIFI
-        function analyzeAIProfile() {
+        // FONCTION IA PROFILER SIMPLIFI        function analyzeAIProfile() {
             const horizon = document.getElementById('aiHorizon')?.value;
             const risk = document.getElementById('aiRisk')?.value;
             const capital = document.getElementById('aiCapital')?.value;
@@ -9715,8 +9670,7 @@ async def spot_trading_page():
             document.getElementById('aiResults').style.display = 'block';
         }
         
-        # Lancer le graphique et heatmap au chargement de la page
-        document.addEventListener('DOMContentLoaded', function() {
+        // Lancer le graphique et heatmap au chargement de la page        document.addEventListener('DOMContentLoaded', function() {
             initializeDCAComparisonChart();
             generateHeatmap();
         });
@@ -10072,8 +10026,7 @@ async def ai_opportunity_scanner():
         <script>
             async function fetchRealData() {
                 try {
-                    # Rcuprer les top 50 cryptos avec donnes actuelles
-                    const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h,7d,30d');
+                    // Rcuprer les top 50 cryptos avec donnes actuelles                    const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false&price_change_percentage=24h,7d,30d');
                     const data = await response.json();
                 console.log('Server response:', data);
                     return data;
@@ -10086,26 +10039,22 @@ async def ai_opportunity_scanner():
             function calculateScore(crypto) {
                 let score = 50; // Base
                 
-                # Changement 24h (volatilit positive)
-                const change24h = crypto.price_change_percentage_24h || 0;
+                // Changement 24h (volatilit positive)                const change24h = crypto.price_change_percentage_24h || 0;
                 if (change24h > 5) score += 15;
                 else if (change24h > 2) score += 10;
                 else if (change24h > -2) score += 5;
                 else if (change24h > -5) score += 2;
                 
-                # Changement 7j
-                const change7d = crypto.price_change_percentage_7d_in_currency || 0;
+                // Changement 7j                const change7d = crypto.price_change_percentage_7d_in_currency || 0;
                 if (change7d > 15) score += 12;
                 else if (change7d > 5) score += 8;
                 else if (change7d > -5) score += 5;
                 
-                # Market cap (stabilit)
-                if (crypto.market_cap_rank && crypto.market_cap_rank <= 10) score += 15;
+                // Market cap (stabilit)                if (crypto.market_cap_rank && crypto.market_cap_rank <= 10) score += 15;
                 else if (crypto.market_cap_rank && crypto.market_cap_rank <= 50) score += 8;
                 else if (crypto.market_cap_rank && crypto.market_cap_rank <= 200) score += 5;
                 
-                # Volume (liquidit)
-                if (crypto.total_volume && crypto.market_cap) {
+                // Volume (liquidit)                if (crypto.total_volume && crypto.market_cap) {
                     const volumeRatio = crypto.total_volume / crypto.market_cap;
                     if (volumeRatio > 0.3) score += 10;
                     else if (volumeRatio > 0.1) score += 5;
@@ -10136,8 +10085,7 @@ async def ai_opportunity_scanner():
             async function generateOpportunities(cryptoData) {
                 if (!cryptoData) return [];
                 
-                # Filtrer et scorer
-                const opportunities = cryptoData
+                // Filtrer et scorer                const opportunities = cryptoData
                     .filter(c => c.current_price && c.market_cap)
                     .map(c => ({
                         symbol: c.symbol.toUpperCase(),
@@ -10156,8 +10104,7 @@ async def ai_opportunity_scanner():
                     .sort((a, b) => b.score - a.score)
                     .slice(0, 5);
                 
-                # Ajouter Entry/SL/TP
-                opportunities.forEach(opp => {
+                // Ajouter Entry/SL/TP                opportunities.forEach(opp => {
                     opp.entry = opp.price.toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
                     opp.sl = (opp.price * 0.95).toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
                     opp.tp = (opp.price * 1.12).toFixed(opp.price > 100 ? 0 : opp.price > 10 ? 2 : 4);
@@ -10255,16 +10202,14 @@ async def ai_opportunity_scanner():
                 grid.style.display = 'grid';
                 loadingDiv.style.display = 'none';
                 
-                # Mettre  jour les stats
-                document.getElementById('totalOpportunities').textContent = opportunities.length;
+                // Mettre  jour les stats                document.getElementById('totalOpportunities').textContent = opportunities.length;
                 document.getElementById('avgScore').textContent = Math.round(totalScore / opportunities.length);
                 document.getElementById('hotDeals').textContent = hotCount;
                 document.getElementById('marketSentiment').textContent = 
                     (totalScore / opportunities.length) >= 80 ? '📈 Très Positif' :
                     (totalScore / opportunities.length) >= 70 ? '📊 Positif' : '⚖️ Neutre';
                 
-                # Dernire mise  jour
-                const now = new Date();
+                // Dernire mise  jour                const now = new Date();
                 document.getElementById('lastUpdate').textContent = 
                     now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
             }
@@ -10273,11 +10218,9 @@ async def ai_opportunity_scanner():
                 renderOpportunities();
             }
             
-            # Initial render
-            renderOpportunities();
+            // Initial render            renderOpportunities();
             
-            # Auto-refresh toutes les 2 minutes
-            setInterval(renderOpportunities, 120000);
+            // Auto-refresh toutes les 2 minutes            setInterval(renderOpportunities, 120000);
         </script>
 <div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'AI Opportunity Scanner ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Scanner automatique détectant opportunités trading 24/7.</p><ul style="line-height: 1.8; color: #555;"><li>🔍 Scan 100+ cryptos en continu</li><li>📊 Détection patterns techniques</li><li>🎯 Scoring opportunités 0-100</li><li>⚡ Alertes temps réel</li><li>📈 Setups confirmés uniquement</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🔍 Critères détection</h3><p style="line-height: 1.6; color: #555;"><strong>📈 Breakouts:</strong> Cassure résistance + volume fort</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📉 Rebounds:</strong> Rebond support + RSI oversold</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>🎯 Divergences:</strong> RSI/MACD diverge du prix</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📊 Patterns:</strong> Triangles, flags, cup & handle</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 Score opportunité</h3><p style="line-height: 1.6; color: #555;">🔥 <strong>80-100:</strong> Setup excellent</p><p style="line-height: 1.6; color: #555;">✅ <strong>60-80:</strong> Setup bon</p><p style="line-height: 1.6; color: #555;">⚠️ <strong>40-60:</strong> Setup moyen</p><p style="line-height: 1.6; color: #555;">❌ <strong>&lt;40:</strong> À éviter</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">💡 Comment utiliser</h3><ul style="line-height: 1.8; color: #555;"><li>✅ Vérifiez score &gt;70</li><li>✅ Confirmez sur graphique</li><li>✅ Vérifiez volume</li><li>✅ Calculez risk/reward</li><li>✅ Placez stop loss</li><li>❌ Ne suivez pas aveuglément</li></ul><p style="color: #9b59b6; font-weight: bold; margin-top: 15px;">💡 Scanner = Filtre initial, pas signal d'achat direct!</p></div></div></div>
     </body>
@@ -10599,16 +10542,13 @@ async def ai_market_regime():
         <script>
             async function fetchMarketData() {
                 try {
-                    # Rcuprer global market data
-                    const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
+                    // Rcuprer global market data                    const globalResponse = await fetch('https://api.coingecko.com/api/v3/global');
                     const globalData = await globalResponse.json();
                     
-                    # Rcuprer Fear & Greed Index
-                    const fgResponse = await fetch('https://api.alternative.me/fng/?limit=1&format=json');
+                    // Rcuprer Fear & Greed Index                    const fgResponse = await fetch('https://api.alternative.me/fng/?limit=1&format=json');
                     const fgData = await fgResponse.json();
                     
-                    # Rcuprer top cryptos pour altcoin index
-                    const marketsResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&sparkline=false&price_change_percentage=24h,7d');
+                    // Rcuprer top cryptos pour altcoin index                    const marketsResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&sparkline=false&price_change_percentage=24h,7d');
                     const marketsData = await marketsResponse.json();
                     
                     return {
@@ -10631,16 +10571,14 @@ async def ai_market_regime():
                 const ethDominance = global.market_cap_percentage.eth;
                 const totalMarketCap = global.total_market_cap.usd / 1e12; // En trillions
                 
-                # BTC et ETH data
-                const btc = data.markets.find(m => m.symbol.toUpperCase() === 'BTC');
+                // BTC et ETH data                const btc = data.markets.find(m => m.symbol.toUpperCase() === 'BTC');
                 const eth = data.markets.find(m => m.symbol.toUpperCase() === 'ETH');
                 
                 const btcPrice = btc?.current_price || 0;
                 const btcChange24h = btc?.price_change_percentage_24h || 0;
                 const btcChange7d = btc?.price_change_percentage_7d_in_currency || 0;
                 
-                # Calculer Altcoin Season Index (Alt cap / BTC cap)
-                let altcoinSeasonIndex = 0;
+                // Calculer Altcoin Season Index (Alt cap / BTC cap)                let altcoinSeasonIndex = 0;
                 if (btc && data.markets.length > 2) {
                     const altCapSum = data.markets
                         .filter(m => m.symbol.toUpperCase() !== 'BTC' && m.symbol.toUpperCase() !== 'ETH')
@@ -10649,12 +10587,10 @@ async def ai_market_regime():
                     altcoinSeasonIndex = Math.min(100, Math.round((altRatio * 50)));
                 }
                 
-                # Calculer rgime
-                let regime, icon, subtitle, color, value;
+                // Calculer rgime                let regime, icon, subtitle, color, value;
                 let trendStrength, volumeTrend, momentum, marketPhase;
                 
-                # Dterminer la phase du march
-                if (fearGreed < 25) {
+                // Dterminer la phase du march                if (fearGreed < 25) {
                     regime = 'Bear Market - Extreme Fear';
                     icon = '📉😱';
                     color = '#ef4444';
@@ -10691,8 +10627,7 @@ async def ai_market_regime():
                     momentum = 'Haussier extrême (attention!)';
                 }
                 
-                # Volume trend (sur 7j)
-                const altcoins7d = data.markets
+                // Volume trend (sur 7j)                const altcoins7d = data.markets
                     .slice(2, 20)
                     .reduce((sum, m) => sum + (m.price_change_percentage_7d_in_currency || 0), 0) / 18;
                 
@@ -10701,15 +10636,13 @@ async def ai_market_regime():
                 else if (altcoins7d > -5) volumeTrend = '⚖️ ±0% (stable)';
                 else volumeTrend = '📉 -10% (pression vendeuse)';
                 
-                # Market phase
-                const monthsSinceStart = 12; // Depuis 2023
+                // Market phase                const monthsSinceStart = 12; // Depuis 2023
                 if (fearGreed > 65) marketPhase = 'Fin cycle haussier (prudence recommandée)';
                 else if (fearGreed > 50) marketPhase = 'Mi-parcours du bull run (opportunités)';
                 else if (fearGreed > 35) marketPhase = 'Accumulation (positions long-terme)';
                 else marketPhase = 'Bear market (préserver capital)';
                 
-                # Recommendations dynamiques
-                let recommendations = [];
+                // Recommendations dynamiques                let recommendations = [];
                 if (fearGreed > 75) {
                     recommendations = [
                         '⚠️ ATTENTION: Extreme Greed - sommet possible',
@@ -10789,20 +10722,17 @@ async def ai_market_regime():
             async function renderRegime() {
                 const data = await detectMarketRegime();
                 
-                # Display principal
-                document.getElementById('regimeIcon').textContent = data.icon;
+                // Display principal                document.getElementById('regimeIcon').textContent = data.icon;
                 document.getElementById('regimeTitle').textContent = data.regime;
                 document.getElementById('regimeTitle').style.color = data.color;
                 document.getElementById('regimeSubtitle').textContent = data.subtitle;
                 document.getElementById('regimeDisplay').style.borderColor = data.color;
                 
-                # Pointer position
-                const pointer = document.getElementById('regimePointer');
+                // Pointer position                const pointer = document.getElementById('regimePointer');
                 pointer.style.left = data.value + '%';
                 pointer.style.background = data.color;
                 
-                # Indicators
-                const indicatorsHtml = `
+                // Indicators                const indicatorsHtml = `
                     <div class="indicator-card">
                         <div class="indicator-title">Bitcoin</div>
                         <div class="indicator-value">${data.indicators.btcPrice}</div>
@@ -10861,12 +10791,10 @@ async def ai_market_regime():
                 `;
                 document.getElementById('indicatorsGrid').innerHTML = indicatorsHtml;
                 
-                # Recommendations
-                const recoHtml = data.recommendations.map(r => `<li>${r}</li>`).join('');
+                // Recommendations                const recoHtml = data.recommendations.map(r => `<li>${r}</li>`).join('');
                 document.getElementById('recommendationsList').innerHTML = recoHtml;
                 
-                # History timeline
-                const history = [
+                // History timeline                const history = [
                     {regime: 'Bear 2022-2023', duration: '12+ mois', color: '#ef4444'},
                     {regime: 'Accumulation 2023', duration: '10 mois', color: '#f59e0b'},
                     {regime: 'Early Bull 2024', duration: '8 mois', color: '#eab308'},
@@ -10883,11 +10811,9 @@ async def ai_market_regime():
                 document.getElementById('historyTimeline').innerHTML = historyHtml;
             }
             
-            # Initial render
-            renderRegime();
+            // Initial render            renderRegime();
             
-            # Auto-refresh toutes les 5 minutes
-            setInterval(renderRegime, 300000);
+            // Auto-refresh toutes les 5 minutes            setInterval(renderRegime, 300000);
         </script>
 <div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'AI Market Regime ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🎯 C'est quoi ?</h3><p style="line-height: 1.8; color: #666;">IA identifie le régime de marché actuel pour adapter stratégie.</p><ul style="line-height: 1.8; color: #555;"><li>📊 4 régimes: Bull, Bear, Range, Volatil</li><li>🧠 ML analyse 50+ indicateurs</li><li>🎯 Confiance prédiction 0-100%</li><li>⏱️ Mise à jour toutes les 4h</li><li>📈 Stratégies adaptées par régime</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Les 4 régimes</h3><p style="line-height: 1.6; color: #555;"><strong>🐂 Bull Market:</strong> Tendance haussière. Stratégie: Buy dips, hold</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>🐻 Bear Market:</strong> Tendance baissière. Stratégie: Cash, shorts</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📊 Range:</strong> Consolidation. Stratégie: Range trading S/R</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>🌪️ Volatil:</strong> Erratique. Stratégie: Taille réduite, stops serrés</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🔧 Indicateurs</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>📈 Trend: SMA 50/200, ADX</li><li>📊 Momentum: RSI, MACD</li><li>🌊 Volatility: ATR, Bollinger</li><li>💧 Volume: OBV, CMF</li><li>🎯 Sentiment: Fear & Greed</li><li>⛓️ On-chain: Flux, Addresses</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">💡 Adapter stratégie</h3><ul style="line-height: 1.6; color: #555; font-size: 14px;"><li>🐂 Bull: Long positions, trailing stops</li><li>🐻 Bear: Protection capital, shorts</li><li>📊 Range: Acheter support, vendre résistance</li><li>🌪️ Volatil: Réduire size, stops larges</li></ul><p style="color: #e74c3c; font-weight: bold; margin-top: 15px;">⚠️ Changer stratégie avec régime = clé succès!</p></div></div></div>
     </body>
@@ -11512,8 +11438,7 @@ async def ai_whale_watcher():
         </div>
         
         <script>
-            #  DONNES DIRECTEMENT INTGRES EN JSON
-            window.whaleData = WHALE_DATA_PLACEHOLDER;
+            //  DONNES DIRECTEMENT INTGRES EN JSON            window.whaleData = WHALE_DATA_PLACEHOLDER;
             console.log('🐋 Whale Data loaded:', window.whaleData.length, 'transactions');
             
             function renderWhaleTransactions() {
@@ -11575,8 +11500,7 @@ async def ai_whale_watcher():
                 
                 feed.innerHTML = html;
                 
-                # Mettre  jour les stats
-                document.getElementById('bullishCount').textContent = bullishCount;
+                // Mettre  jour les stats                document.getElementById('bullishCount').textContent = bullishCount;
                 document.getElementById('bearishCount').textContent = bearishCount;
                 document.getElementById('totalVolume').textContent = '$' + (totalVol / 1000000).toFixed(1) + 'M';
             }
@@ -11607,25 +11531,21 @@ async def ai_whale_watcher():
                 container.innerHTML = html;
             }
             
-            # Initialiser au chargement
-            document.addEventListener('DOMContentLoaded', function() {
+            // Initialiser au chargement            document.addEventListener('DOMContentLoaded', function() {
                 renderWhaleTransactions();
                 generateTopWhales();
                 
-                # Rafrachir toutes les 30 secondes (limiter les appels API)
-                setInterval(function() {
+                // Rafrachir toutes les 30 secondes (limiter les appels API)                setInterval(function() {
                     console.log('🔄 Rafraîchissement des données Whale...');
                     location.reload();
                 }, 30000);
             });
             
-            # Rafrachir manuellement
-            function refreshWhaleData() {
+            // Rafrachir manuellement            function refreshWhaleData() {
                 location.reload();
             }
             
-            #  Data Source: BLOCKCHAIN.INFO API (VRAIES DONNES)
-            console.log('🐋 Whale Watcher connecté à Blockchain.info API');
+            //  Data Source: BLOCKCHAIN.INFO API (VRAIES DONNES)            console.log('🐋 Whale Watcher connecté à Blockchain.info API');
             console.log('STATUS_BADGE_PLACEHOLDER');
         </script>
 <div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne l'AI Whale Watcher ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Surveillance mouvements gros porteurs (Whales) en temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>🐋 Transactions &gt;$1M détectées</li><li>📊 Flux exchange (in/out)</li><li>🎯 Impact prix potentiel</li><li>⚡ Alertes instantanées</li><li>📈 Historique mouvements</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">🔍 Types mouvements</h3><p style="line-height: 1.6; color: #555;"><strong>📤 Exchange → Wallet:</strong> 🟢 BULLISH - Whales accumulent</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>📥 Wallet → Exchange:</strong> 🔴 BEARISH - Whales vendent</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>🔄 Wallet → Wallet:</strong> ⚪ NEUTRAL - Réorganisation</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">📊 Interprétation</h3><p style="line-height: 1.6; color: #555;"><strong>🟢 Accumulation massive:</strong> Whales sortent exchanges = bullish</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>🔴 Distribution:</strong> Whales déposent = bearish</p><p style="line-height: 1.6; color: #555; margin-top: 8px;"><strong>⚠️ Volume anormal:</strong> Mouvement prix imminent</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #e74c3c;"><h3 style="color: #e74c3c; margin-bottom: 15px;">⚠️ Attention</h3><ul style="line-height: 1.8; color: #555; list-style: none; padding: 0;"><li>⚠️ Whale ≠ Toujours raison</li><li>📊 Regardez tendance, pas 1 transaction</li><li>🎯 Confirmez avec analyse technique</li><li>⏱️ Impact peut prendre heures/jours</li></ul><p style="color: #666; margin-top: 15px;"><strong>💡 Meilleur usage:</strong> Confirme analyse, pas signal seul.</p></div></div></div>
@@ -12540,8 +12460,7 @@ async def convertisseur_page():
         let rates = {{}};
         let isLoading = false;
         
-        # Charger les taux au dmarrage
-        async function loadRates() {{
+        // Charger les taux au dmarrage        async function loadRates() {{
             if (isLoading) return;
             isLoading = true;
             
@@ -12569,8 +12488,7 @@ async def convertisseur_page():
             }}
         }}
         
-        #  FONCTION DE CONVERSION CORRIGE
-        function convert() {{
+        //  FONCTION DE CONVERSION CORRIGE        function convert() {{
             const amount = parseFloat(document.getElementById('amount').value) || 0;
             const from = document.getElementById('fromCurrency').value;
             const to = document.getElementById('toCurrency').value;
@@ -12593,8 +12511,7 @@ async def convertisseur_page():
                 result = amount;
                 rate = 1;
             }} else {{
-                #  LOGIQUE CORRIGE : Conversion via USD
-                const fromValueInUSD = getValueInUSD(from, 1);
+                //  LOGIQUE CORRIGE : Conversion via USD                const fromValueInUSD = getValueInUSD(from, 1);
                 const toValueInUSD = getValueInUSD(to, 1);
                 
                 if (fromValueInUSD === 0 || toValueInUSD === 0) {{
@@ -12603,8 +12520,7 @@ async def convertisseur_page():
                     return;
                 }}
                 
-                # Convertir : montant  valeur_from_en_USD  valeur_to_en_USD
-                result = (amount * fromValueInUSD) / toValueInUSD;
+                // Convertir : montant  valeur_from_en_USD  valeur_to_en_USD                result = (amount * fromValueInUSD) / toValueInUSD;
                 rate = fromValueInUSD / toValueInUSD;
                 
                 console.log(`Conversion: ${{amount}} ${{from}} → ${{result}} ${{to}}`);
@@ -12620,19 +12536,16 @@ async def convertisseur_page():
             document.getElementById('rateInfo').style.display = 'block';
         }}
         
-        #  Obtenir la valeur en USD (combien vaut 1 unit de cette devise en USD)
-        function getValueInUSD(currency, amount = 1) {{
+        //  Obtenir la valeur en USD (combien vaut 1 unit de cette devise en USD)        function getValueInUSD(currency, amount = 1) {{
             if (!rates[currency]) {{
                 console.warn('⚠️ Devise inconnue:', currency);
                 return 0;
             }}
             
-            # La cl 'usd' contient la valeur en USD
-            return rates[currency].usd * amount;
+            // La cl 'usd' contient la valeur en USD            return rates[currency].usd * amount;
         }}
         
-        # Formater les nombres
-        function formatNumber(num) {{
+        // Formater les nombres        function formatNumber(num) {{
             if (num >= 1000) {{
                 return num.toFixed(2).replace(/\\B(?=(\\d{{3}})+(?!\\d))/g, " ");
             }} else if (num >= 1) {{
@@ -12644,8 +12557,7 @@ async def convertisseur_page():
             }}
         }}
         
-        # changer les devises
-        function swapCurrencies() {{
+        // changer les devises        function swapCurrencies() {{
             const from = document.getElementById('fromCurrency').value;
             const to = document.getElementById('toCurrency').value;
             
@@ -12655,24 +12567,20 @@ async def convertisseur_page():
             convert();
         }}
         
-        # Conversion rapide
-        function setQuickConversion(from, to) {{
+        // Conversion rapide        function setQuickConversion(from, to) {{
             document.getElementById('fromCurrency').value = from;
             document.getElementById('toCurrency').value = to;
             document.getElementById('amount').value = 1;
             convert();
         }}
         
-        # vnements
-        document.getElementById('amount').addEventListener('input', convert);
+        // vnements        document.getElementById('amount').addEventListener('input', convert);
         document.getElementById('fromCurrency').addEventListener('change', convert);
         document.getElementById('toCurrency').addEventListener('change', convert);
         
-        # Charger au dmarrage
-        loadRates();
+        // Charger au dmarrage        loadRates();
         
-        # Recharger toutes les 5 minutes
-        setInterval(loadRates, 300000);
+        // Recharger toutes les 5 minutes        setInterval(loadRates, 300000);
     </script>
 <div style="max-width: 1200px; margin: 50px auto; padding: 20px;"><h2 style="text-align: center; margin-bottom: 30px; color: #333; font-size: 32px;">📖 Comment fonctionne le Convertisseur ?</h2><div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;"><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #2ecc71;"><h3 style="color: #2ecc71; margin-bottom: 15px;">🎯 À quoi ça sert ?</h3><p style="line-height: 1.8; color: #666;">Convertisseur universel crypto ↔ fiat temps réel.</p><ul style="line-height: 1.8; color: #555;"><li>💱 100+ cryptos</li><li>🌍 30+ devises fiat</li><li>📊 Taux réels CoinGecko</li><li>⚡ Instantané</li><li>🔄 Bidirectionnel</li></ul></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #3498db;"><h3 style="color: #3498db; margin-bottom: 15px;">💡 Exemples</h3><p style="line-height: 1.6; color: #555;"><strong>💰 Planifier:</strong> "Combien BTC avec 5000 CAD?"</p><p style="line-height: 1.6; color: #555;"><strong>📊 Portfolio:</strong> "0.5 BTC = ? USD"</p><p style="line-height: 1.6; color: #555;"><strong>🔄 Crypto:</strong> "1 BTC = ? ETH"</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #f39c12;"><h3 style="color: #f39c12; margin-bottom: 15px;">🌍 Devises</h3><p style="line-height: 1.6; color: #555;">💵 Fiat: USD, EUR, CAD, GBP, JPY...</p><p style="line-height: 1.6; color: #555;">₿ Cryptos: BTC, ETH, BNB, SOL...</p><p style="color: #666; margin-top: 10px;">+ 100 autres!</p></div><div style="background: rgba(255,255,255,0.05); padding: 25px; border-radius: 10px; border-left: 4px solid #9b59b6;"><h3 style="color: #9b59b6; margin-bottom: 15px;">⚡ Features</h3><p style="line-height: 1.6; color: #555;">📊 Temps réel | 🔄 Instantané | 💱 Bidirectionnel | 🎯 Précis | ⚡ Gratuit</p></div></div></div>
 </body>
@@ -14216,18 +14124,12 @@ async def heatmap_page():
     </div>
 
     <script>
-        # ================================
-        # VARIABLES GLOBALES
-        # ================================
-        let allData = [];
+        // ================================        // VARIABLES GLOBALES        // ================================        let allData = [];
         let filteredData = [];
         let currentFilter = 'top50';
         let searchQuery = '';
 
-        # ================================
-        # FONCTION DE COULEUR AMLIORE
-        # ================================
-        function getColor(change) {
+        // ================================        // FONCTION DE COULEUR AMLIORE        // ================================        function getColor(change) {
             if (change >= 5) return '#16a34a';
             if (change >= 3) return '#22c55e';
             if (change >= 1) return '#4ade80';
@@ -14237,30 +14139,24 @@ async def heatmap_page():
             return '#dc2626';
         }
 
-        # ================================
-        # FONCTION DE RENDU HEATMAP
-        # ================================
-        function drawHeatmap(data) {
+        // ================================        // FONCTION DE RENDU HEATMAP        // ================================        function drawHeatmap(data) {
             const container = document.getElementById('heatmap');
             container.innerHTML = '';
 
             const width = container.clientWidth;
             const height = 800;
 
-            # Crer la hirarchie D3
-            const root = d3.hierarchy({ children: data })
+            // Crer la hirarchie D3            const root = d3.hierarchy({ children: data })
                 .sum(d => d.market_cap)
                 .sort((a, b) => b.value - a.value);
 
-            # Crer le treemap
-            d3.treemap()
+            // Crer le treemap            d3.treemap()
                 .size([width, height])
                 .padding(3)
                 .round(true)
                 (root);
 
-            # Crer les cellules
-            root.leaves().forEach(node => {
+            // Crer les cellules            root.leaves().forEach(node => {
                 const crypto = node.data;
                 const cell = document.createElement('div');
                 cell.className = 'heatmap-cell';
@@ -14278,8 +14174,7 @@ async def heatmap_page():
                     ${(node.x1 - node.x0) > 100 ? `<div class="cell-price">$${formatNumber(crypto.price)}</div>` : ''}
                 `;
 
-                # vnements
-                cell.addEventListener('mouseenter', (e) => showTooltip(e, crypto));
+                // vnements                cell.addEventListener('mouseenter', (e) => showTooltip(e, crypto));
                 cell.addEventListener('mouseleave', hideTooltip);
                 cell.addEventListener('mousemove', moveTooltip);
 
@@ -14289,10 +14184,7 @@ async def heatmap_page():
             updateStats(data);
         }
 
-        # ================================
-        # TOOLTIP
-        # ================================
-        function showTooltip(event, crypto) {
+        // ================================        // TOOLTIP        // ================================        function showTooltip(event, crypto) {
             const tooltip = document.getElementById('tooltip');
             const changeClass = crypto.change_24h >= 0 ? 'positive' : 'negative';
             const changeIcon = crypto.change_24h >= 0 ? '📈' : '📉';
@@ -14342,10 +14234,7 @@ async def heatmap_page():
             tooltip.classList.remove('visible');
         }
 
-        # ================================
-        # FORMATAGE DES NOMBRES
-        # ================================
-        function formatNumber(num) {
+        // ================================        // FORMATAGE DES NOMBRES        // ================================        function formatNumber(num) {
             if (num >= 1000) return num.toFixed(0);
             if (num >= 100) return num.toFixed(2);
             if (num >= 1) return num.toFixed(4);
@@ -14360,10 +14249,7 @@ async def heatmap_page():
             return num.toFixed(0);
         }
 
-        # ================================
-        # STATISTIQUES
-        # ================================
-        function updateStats(data) {
+        // ================================        // STATISTIQUES        // ================================        function updateStats(data) {
             const gainers = data.filter(c => c.change_24h > 0).length;
             const losers = data.filter(c => c.change_24h < 0).length;
             const totalVolume = data.reduce((sum, c) => sum + c.volume_24h, 0);
@@ -14378,12 +14264,8 @@ async def heatmap_page():
                 bestPerformer ? `${bestPerformer.symbol} +${bestPerformer.change_24h.toFixed(2)}%` : '--';
         }
 
-        # ================================
-        # FILTRES
-        # ================================
-        function applyFilter(button, filter) {
-            # Mettre  jour les boutons
-            document.querySelectorAll('.modern-btn[data-filter]').forEach(btn => {
+        // ================================        // FILTRES        // ================================        function applyFilter(button, filter) {
+            // Mettre  jour les boutons            document.querySelectorAll('.modern-btn[data-filter]').forEach(btn => {
                 btn.classList.remove('active');
             });
             button.classList.add('active');
@@ -14400,8 +14282,7 @@ async def heatmap_page():
         function filterAndDraw() {
             let data = [...allData];
 
-            # Appliquer le filtre
-            switch(currentFilter) {
+            // Appliquer le filtre            switch(currentFilter) {
                 case 'top50':
                     data = data.slice(0, 50);
                     break;
@@ -14416,8 +14297,7 @@ async def heatmap_page():
                     break;
             }
 
-            # Appliquer la recherche
-            if (searchQuery) {
+            // Appliquer la recherche            if (searchQuery) {
                 data = data.filter(c => 
                     c.symbol.toLowerCase().includes(searchQuery) || 
                     c.name.toLowerCase().includes(searchQuery)
@@ -14428,10 +14308,7 @@ async def heatmap_page():
             drawHeatmap(data);
         }
 
-        # ================================
-        # PLEIN CRAN
-        # ================================
-        function toggleFullscreen() {
+        // ================================        // PLEIN CRAN        // ================================        function toggleFullscreen() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen();
             } else {
@@ -14439,10 +14316,7 @@ async def heatmap_page():
             }
         }
 
-        # ================================
-        # CHARGEMENT DES DONNES
-        # ================================
-        async function loadData() {
+        // ================================        // CHARGEMENT DES DONNES        // ================================        async function loadData() {
             try {
                 console.log('🔄 Chargement de la heatmap...');
                 const response = await fetch('/api/heatmap');
@@ -14472,10 +14346,7 @@ async def heatmap_page():
             }
         }
 
-        # ================================
-        # INITIALISATION
-        # ================================
-        loadData();
+        // ================================        // INITIALISATION        // ================================        loadData();
         setInterval(loadData, 180000); // Refresh toutes les 3 minutes
 
         console.log('🔥 Heatmap Pro initialisée');
@@ -14716,8 +14587,7 @@ async def altcoin_page():
     </div>
 
     <script>
-        #  CACHE CLIENT PERSISTANT
-        let clientCache = {
+        //  CACHE CLIENT PERSISTANT        let clientCache = {
             data: null,
             timestamp: null,
             cacheDuration: 300000  // 5 minutes (5 * 60 * 1000)
@@ -14779,8 +14649,7 @@ async def altcoin_page():
 
         async function loadData(forceRefresh = false) {
             try {
-                # Vrifier le cache client
-                if (!forceRefresh && clientCache.data && clientCache.timestamp) {
+                // Vrifier le cache client                if (!forceRefresh && clientCache.data && clientCache.timestamp) {
                     const elapsed = Date.now() - clientCache.timestamp;
                     if (elapsed < clientCache.cacheDuration) {
                         console.log(`✅ Cache client valide (${Math.round(elapsed/1000)}s), données stables`);
@@ -14794,8 +14663,7 @@ async def altcoin_page():
                 if (!response.ok) throw new Error('HTTP ' + response.status);
                 const data = await response.json();
                 
-                # Cacher les donnes ct client
-                clientCache.data = data;
+                // Cacher les donnes ct client                clientCache.data = data;
                 clientCache.timestamp = Date.now();
                 
                 console.log('✅ Données altcoin reçues et mises en cache:', data.index);
@@ -14804,8 +14672,7 @@ async def altcoin_page():
             } catch (error) {
                 console.error('❌ Erreur:', error);
                 
-                # Si on a des donnes en cache (mme expires), les garder
-                if (clientCache.data) {
+                // Si on a des donnes en cache (mme expires), les garder                if (clientCache.data) {
                     console.log('📦 Garde des données en cache (expirées)');
                     updateStats(clientCache.data);
                 } else {
@@ -14819,8 +14686,7 @@ async def altcoin_page():
             loadData(true);  // Force le rechargement au premier chargement
         });
 
-        # Rafrachir toutes les 5 minutes (300000ms)
-        setInterval(() => loadData(false), 300000);
+        // Rafrachir toutes les 5 minutes (300000ms)        setInterval(() => loadData(false), 300000);
 
         console.log('🌟 Altcoin Season Index initialisé avec CACHE STABLE');
     </script>
@@ -15326,12 +15192,10 @@ async def bullrun_page():
                 const data = await response.json();
                 currentData = data;
                 
-                # Masquer loading, afficher contenu
-                document.getElementById('loading').style.display = 'none';
+                // Masquer loading, afficher contenu                document.getElementById('loading').style.display = 'none';
                 document.getElementById('content').style.display = 'block';
                 
-                # Mettre  jour l'affichage
-                updateDisplay(data);
+                // Mettre  jour l'affichage                updateDisplay(data);
             } catch (error) {
                 console.error('Erreur chargement:', error);
                 document.getElementById('loading').innerHTML = 
@@ -15340,8 +15204,7 @@ async def bullrun_page():
         }
         
         function updateDisplay(data) {
-            # Hero - Phase actuelle
-            const phaseNum = data.current_phase;
+            // Hero - Phase actuelle            const phaseNum = data.current_phase;
             const phaseDisplay = Math.floor(phaseNum) === phaseNum ? phaseNum : `${Math.floor(phaseNum)}-${Math.ceil(phaseNum)}`;
             
             document.getElementById('current-phase-number').textContent = phaseDisplay;
@@ -15349,8 +15212,7 @@ async def bullrun_page():
             document.getElementById('current-phase-description').textContent = data.phase_description;
             document.getElementById('confidence-value').textContent = data.confidence;
             
-            # Mettre  jour les cartes de phase
-            for (let i = 1; i <= 4; i++) {
+            // Mettre  jour les cartes de phase            for (let i = 1; i <= 4; i++) {
                 const card = document.getElementById(`phase-${i}`);
                 card.classList.remove('active', 'completed');
                 
@@ -15361,20 +15223,16 @@ async def bullrun_page():
                 }
             }
             
-            # Barre de progression
-            const progress = ((phaseNum - 1) / 3) * 100;
+            // Barre de progression            const progress = ((phaseNum - 1) / 3) * 100;
             document.getElementById('progress-fill').style.width = progress + '%';
             document.getElementById('progress-percentage').textContent = Math.round(progress) + '%';
             document.getElementById('progress-text').textContent = Math.round(progress) + '%';
             
-            # Indicateurs
-            updateIndicators(data.indicators);
+            // Indicateurs            updateIndicators(data.indicators);
             
-            # Signaux
-            updateSignals(data.signals);
+            // Signaux            updateSignals(data.signals);
             
-            # Next phase
-            document.getElementById('next-phase-content').textContent = data.next_phase;
+            // Next phase            document.getElementById('next-phase-content').textContent = data.next_phase;
             document.getElementById('time-estimate').textContent = '⏱️ ' + data.time_estimate;
         }
         
@@ -15502,11 +15360,9 @@ async def bullrun_page():
             `).join('');
         }
         
-        # Charger au dmarrage
-        loadBullrunData();
+        // Charger au dmarrage        loadBullrunData();
         
-        # Recharger toutes les 2 minutes
-        setInterval(loadBullrunData, 120000);
+        // Recharger toutes les 2 minutes        setInterval(loadBullrunData, 120000);
         
         console.log('🚀 Bullrun Phase Tracker chargé!');
     </script>
@@ -16013,37 +15869,31 @@ async def charts_page():
     </div>
     
     <script>
-        # Variables globales
-        let currentSymbol = 'BTCUSD';
+        // Variables globales        let currentSymbol = 'BTCUSD';
         let tradingViewWidget = null;
         let charts = {};
         let tabsInitialized = {}; // Pour suivre quels onglets ont déjà été initialisés
         
-        # Switch Tab
-        function switchTab(tabName, event) {
-            # Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(tab => {
+        // Switch Tab        function switchTab(tabName, event) {
+            // Hide all tabs            document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.classList.remove('active');
             });
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             
-            # Show selected tab
-            document.getElementById(tabName).classList.add('active');
+            // Show selected tab            document.getElementById(tabName).classList.add('active');
             if (event && event.target) {
                 event.target.classList.add('active');
             } else {
-                # Fallback: find button by text
-                document.querySelectorAll('.tab-btn').forEach(btn => {
+                // Fallback: find button by text                document.querySelectorAll('.tab-btn').forEach(btn => {
                     if (btn.textContent.toLowerCase().includes(tabName.toLowerCase())) {
                         btn.classList.add('active');
                     }
                 });
             }
             
-            # Initialize charts for the tab ONLY ONCE
-            if (!tabsInitialized[tabName]) {
+            // Initialize charts for the tab ONLY ONCE            if (!tabsInitialized[tabName]) {
                 if (tabName === 'statistics') {
                     initStatistics();
                 } else if (tabName === 'comparison') {
@@ -16057,29 +15907,24 @@ async def charts_page():
             }
         }
         
-        # Load TradingView Chart
-        function loadTradingView(symbol, event) {
+        // Load TradingView Chart        function loadTradingView(symbol, event) {
             currentSymbol = symbol;
             
-            # Update active button
-            document.querySelectorAll('.crypto-btn').forEach(btn => {
+            // Update active button            document.querySelectorAll('.crypto-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             
-            # Find and activate the clicked button
-            if (event && event.target) {
+            // Find and activate the clicked button            if (event && event.target) {
                 const clickedBtn = event.target.closest('.crypto-btn');
                 if (clickedBtn) {
                     clickedBtn.classList.add('active');
                 }
             } else {
-                # If no event (initial load), activate first button
-                const firstBtn = document.querySelector('.crypto-btn');
+                // If no event (initial load), activate first button                const firstBtn = document.querySelector('.crypto-btn');
                 if (firstBtn) firstBtn.classList.add('active');
             }
             
-            # Update title
-            const names = {
+            // Update title            const names = {
                 'BTCUSD': 'Bitcoin (BTC)',
                 'ETHUSD': 'Ethereum (ETH)',
                 'SOLUSD': 'Solana (SOL)',
@@ -16091,12 +15936,10 @@ async def charts_page():
             };
             document.getElementById('currentCrypto').textContent = names[symbol] || symbol;
             
-            # Clear and reload widget
-            const container = document.getElementById('tradingview_chart');
+            // Clear and reload widget            const container = document.getElementById('tradingview_chart');
             container.innerHTML = '<div class="spinner"></div>';
             
-            # Wait for TradingView to be loaded
-            if (typeof TradingView === 'undefined') {
+            // Wait for TradingView to be loaded            if (typeof TradingView === 'undefined') {
                 container.innerHTML = '<div style="color:#ef4444;text-align:center;padding:50px;">Erreur: TradingView non disponible. Vérifiez votre connexion.</div>';
                 return;
             }
@@ -16130,14 +15973,12 @@ async def charts_page():
             }
         }
         
-        # Initialize Statistics
-        async function initStatistics() {
+        // Initialize Statistics        async function initStatistics() {
             try {
                 const response = await fetch('https://api.coingecko.com/api/v3/global');
                 const data = await response.json();
                 
-                # Update stats
-                const totalVolume = data.data.total_volume.usd;
+                // Update stats                const totalVolume = data.data.total_volume.usd;
                 const totalMcap = data.data.total_market_cap.usd;
                 
                 document.getElementById('volume24h').textContent = '$' + (totalVolume / 1e9).toFixed(2) + 'B';
@@ -16146,8 +15987,7 @@ async def charts_page():
                 document.getElementById('marketCap').textContent = '$' + (totalMcap / 1e12).toFixed(2) + 'T';
                 document.getElementById('mcapChange').textContent = '+' + (Math.random() * 5).toFixed(2) + '% vs hier';
                 
-                # Get BTC and ETH prices
-                const pricesRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
+                // Get BTC and ETH prices                const pricesRes = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
                 const prices = await pricesRes.json();
                 
                 document.getElementById('btcPrice').textContent = '$' + prices.bitcoin.usd.toLocaleString();
@@ -16158,8 +15998,7 @@ async def charts_page():
                 document.getElementById('ethChange').textContent = prices.ethereum.usd_24h_change.toFixed(2) + '% (24h)';
                 document.getElementById('ethChange').className = 'stat-change ' + (prices.ethereum.usd_24h_change >= 0 ? '' : 'negative');
                 
-                # Create charts
-                createVolumeChart();
+                // Create charts                createVolumeChart();
                 createPriceChart();
             } catch (error) {
                 console.error('Erreur:', error);
@@ -16167,8 +16006,7 @@ async def charts_page():
         }
         
         function createVolumeChart() {
-            # Destroy existing chart if it exists
-            if (charts.volume) {
+            // Destroy existing chart if it exists            if (charts.volume) {
                 charts.volume.destroy();
             }
             
@@ -16218,8 +16056,7 @@ async def charts_page():
         }
         
         function createPriceChart() {
-            # Destroy existing chart if it exists
-            if (charts.price) {
+            // Destroy existing chart if it exists            if (charts.price) {
                 charts.price.destroy();
             }
             
@@ -16293,10 +16130,8 @@ async def charts_page():
             });
         }
         
-        # Initialize Comparison
-        function initComparison() {
-            # Destroy existing charts if they exist
-            if (charts.comparison) {
+        // Initialize Comparison        function initComparison() {
+            // Destroy existing charts if they exist            if (charts.comparison) {
                 charts.comparison.destroy();
                 charts.comparison = null;
             }
@@ -16438,10 +16273,8 @@ async def charts_page():
             });
         }
         
-        # Initialize Correlation
-        function initCorrelation() {
-            # Destroy existing charts if they exist
-            if (charts.correlation) {
+        // Initialize Correlation        function initCorrelation() {
+            // Destroy existing charts if they exist            if (charts.correlation) {
                 charts.correlation.destroy();
                 charts.correlation = null;
             }
@@ -16453,8 +16286,7 @@ async def charts_page():
             const ctx1 = document.getElementById('correlationChart').getContext('2d');
             const ctx2 = document.getElementById('scatterChart').getContext('2d');
             
-            # Matrice de corrlation simplifie
-            const cryptos = ['BTC', 'ETH', 'BNB', 'SOL', 'ADA'];
+            // Matrice de corrlation simplifie            const cryptos = ['BTC', 'ETH', 'BNB', 'SOL', 'ADA'];
             const correlationData = [
                 [1.00, 0.85, 0.72, 0.68, 0.63],
                 [0.85, 1.00, 0.78, 0.74, 0.69],
@@ -16500,8 +16332,7 @@ async def charts_page():
                 }
             });
             
-            # Scatter plot
-            const scatterData = Array.from({length: 50}, () => ({
+            // Scatter plot            const scatterData = Array.from({length: 50}, () => ({
                 x: Math.random() * 20 - 10,
                 y: Math.random() * 20 - 10
             }));
@@ -16538,10 +16369,8 @@ async def charts_page():
             });
         }
         
-        # Initialize Performance
-        function initPerformance() {
-            # Destroy existing charts if they exist
-            if (charts.multiPeriod) {
+        // Initialize Performance        function initPerformance() {
+            // Destroy existing charts if they exist            if (charts.multiPeriod) {
                 charts.multiPeriod.destroy();
                 charts.multiPeriod = null;
             }
@@ -16550,8 +16379,7 @@ async def charts_page():
                 charts.volatility = null;
             }
             
-            # Update stats
-            document.getElementById('bestPerformer').textContent = 'SOL';
+            // Update stats            document.getElementById('bestPerformer').textContent = 'SOL';
             document.getElementById('bestPerf').textContent = '+28.4% (30j)';
             document.getElementById('worstPerformer').textContent = 'DOGE';
             document.getElementById('worstPerf').textContent = '-2.3% (30j)';
@@ -16647,13 +16475,10 @@ async def charts_page():
             });
         }
         
-        # Initialize on page load
-        # Initialize on page load
-        window.addEventListener('load', () => {
+        // Initialize on page load        // Initialize on page load        window.addEventListener('load', () => {
             console.log('🔄 Chargement de la page graphiques...');
             
-            # Wait a bit for TradingView script to load
-            setTimeout(() => {
+            // Wait a bit for TradingView script to load            setTimeout(() => {
                 if (typeof TradingView !== 'undefined') {
                     loadTradingView('BTCUSD');
                     console.log('✅ Graphiques Trading Pro chargés');
@@ -16821,8 +16646,7 @@ async def trades_page():
         function formatPrice(price, isHit, isSL) {
             if (price === undefined || price === null) return '$0.00';
             
-            # Formatage intelligent selon le prix
-            let decimals;
+            // Formatage intelligent selon le prix            let decimals;
             const numPrice = parseFloat(price);
             
             if (numPrice < 0.001) {
@@ -16835,8 +16659,7 @@ async def trades_page():
                 decimals = 2;  // BTC, ETH, etc.
             }
             
-            # Formater et supprimer les zros inutiles
-            let formatted = '$' + numPrice.toFixed(decimals);
+            // Formater et supprimer les zros inutiles            let formatted = '$' + numPrice.toFixed(decimals);
             formatted = formatted.replace(/\.?0+$/, ''); // Supprimer les zéros à la fin
             if (formatted.endsWith('.')) formatted = formatted.slice(0, -1); // Supprimer le point si nécessaire
             
@@ -16881,28 +16704,23 @@ async def trades_page():
             } 
         }
         
-        #  Mettre  jour les TP/SL toutes les 10 secondes
-        let checkInterval;
+        //  Mettre  jour les TP/SL toutes les 10 secondes        let checkInterval;
         function startRealTimeChecks() {
             checkTPSLHits(); // Vérifier immédiatement
             checkInterval = setInterval(checkTPSLHits, 10000); // Puis toutes les 10 secondes
         }
         
         function calculateTradePnL(trade) {
-            # Calcul du P&L simplifi : 1R (Risk) = $100
-            # TP1 = +$100, TP2 = +$200, TP3 = +$300, SL/Revirement = -$100
-            
+            // Calcul du P&L simplifi : 1R (Risk) = $100            // TP1 = +$100, TP2 = +$200, TP3 = +$300, SL/Revirement = -$100            
             if (trade.status !== 'closed') return 0; // Trade ouvert = 0 P&L
             
             const RISK_AMOUNT = 100; // 1R = $100
             
-            # Si SL touch ou revirement sans TP = perte de 1R ($100)
-            if (trade.sl_hit || (trade.closed_reason && trade.closed_reason.includes('Revirement') && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit)) {
+            // Si SL touch ou revirement sans TP = perte de 1R ($100)            if (trade.sl_hit || (trade.closed_reason && trade.closed_reason.includes('Revirement') && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit)) {
                 return -RISK_AMOUNT; // -$100
             }
             
-            # Compter les TP atteints (on prend le plus haut)
-            if (trade.tp3_hit) {
+            // Compter les TP atteints (on prend le plus haut)            if (trade.tp3_hit) {
                 return RISK_AMOUNT * 3; // +$300
             } else if (trade.tp2_hit) {
                 return RISK_AMOUNT * 2; // +$200
@@ -16913,15 +16731,12 @@ async def trades_page():
             return 0; // Trade fermé sans TP ni SL (cas rare)
         }
         
-        #  NOUVELLE FONCTION: Vrifier automatiquement les TP/SL en temps rel
-        async function checkTPSLHits() {
+        //  NOUVELLE FONCTION: Vrifier automatiquement les TP/SL en temps rel        async function checkTPSLHits() {
             try {
-                # Rcuprer les symboles uniques
-                const symbols = [...new Set(allTrades.filter(t => t.status === 'open').map(t => t.symbol))];
+                // Rcuprer les symboles uniques                const symbols = [...new Set(allTrades.filter(t => t.status === 'open').map(t => t.symbol))];
                 if (symbols.length === 0) return;
                 
-                # Rcuprer les prix actuels EN TEMPS REL (max 250  la fois)
-                const priceMap = {};
+                // Rcuprer les prix actuels EN TEMPS REL (max 250  la fois)                const priceMap = {};
                 const chunkSize = 250;
                 
                 for (let i = 0; i < symbols.length; i += chunkSize) {
@@ -16933,8 +16748,7 @@ async def trades_page():
                         if (response.ok) {
                             const data = await response.json();
                             for (const [key, value] of Object.entries(data)) {
-                                #  IMPORTANT: Reconstruire le symbole correctement
-                                const symbol = key.toUpperCase() + 'USDT';
+                                //  IMPORTANT: Reconstruire le symbole correctement                                const symbol = key.toUpperCase() + 'USDT';
                                 priceMap[symbol] = value.usd;
                                 console.log(`💹 Prix ACTUEL ${symbol}: $${value.usd}`);
                             }
@@ -16944,13 +16758,11 @@ async def trades_page():
                     }
                 }
                 
-                # Vrifier chaque trade ouvert
-                for (let index = 0; index < allTrades.length; index++) {
+                // Vrifier chaque trade ouvert                for (let index = 0; index < allTrades.length; index++) {
                     const trade = allTrades[index];
                     if (trade.status !== 'open') continue;
                     
-                    #  TOUJOURS utiliser le prix ACTUEL de l'API, JAMAIS le prix du webhook
-                    const currentPrice = priceMap[trade.symbol];
+                    //  TOUJOURS utiliser le prix ACTUEL de l'API, JAMAIS le prix du webhook                    const currentPrice = priceMap[trade.symbol];
                     if (!currentPrice) {
                         console.log(`⚠️ Pas de prix pour ${trade.symbol}`);
                         continue;
@@ -16958,8 +16770,7 @@ async def trades_page():
                     
                     let tradeModified = false;
                     
-                    # Prparer l'objet de mise  jour
-                    const updateData = {
+                    // Prparer l'objet de mise  jour                    const updateData = {
                         symbol: trade.symbol,
                         timestamp: trade.timestamp,
                         tp1_hit: trade.tp1_hit || false,
@@ -16970,10 +16781,8 @@ async def trades_page():
                         current_price: currentPrice  // 🔥 Mettre à jour le prix stocké
                     };
                     
-                    # Vrifier TP/SL
-                    if (trade.side === 'LONG') {
-                        # LONG: Prix monte
-                        if (currentPrice >= trade.tp1 && !trade.tp1_hit) {
+                    // Vrifier TP/SL                    if (trade.side === 'LONG') {
+                        // LONG: Prix monte                        if (currentPrice >= trade.tp1 && !trade.tp1_hit) {
                             trade.tp1_hit = true;
                             updateData.tp1_hit = true;
                             tradeModified = true;
@@ -16992,16 +16801,14 @@ async def trades_page():
                             console.log(`🎯🎯🎯 ${trade.symbol} TP3 ATTEINT à $${currentPrice}`);
                         }
                         
-                        # SL seulement si AUCUN TP atteint
-                        if (currentPrice <= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
+                        // SL seulement si AUCUN TP atteint                        if (currentPrice <= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
                             console.warn(`❌ ${trade.symbol} SL ATTEINT à $${currentPrice} (seuil: $${trade.sl})`);
                             trade.sl_hit = true;
                             updateData.sl_hit = true;
                             tradeModified = true;
                         }
                     } else if (trade.side === 'SHORT') {
-                        # SHORT: Prix descend
-                        if (currentPrice <= trade.tp1 && !trade.tp1_hit) {
+                        // SHORT: Prix descend                        if (currentPrice <= trade.tp1 && !trade.tp1_hit) {
                             trade.tp1_hit = true;
                             updateData.tp1_hit = true;
                             tradeModified = true;
@@ -17020,8 +16827,7 @@ async def trades_page():
                             console.log(`🎯🎯🎯 ${trade.symbol} TP3 ATTEINT à $${currentPrice}`);
                         }
                         
-                        # SL seulement si AUCUN TP atteint
-                        if (currentPrice >= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
+                        // SL seulement si AUCUN TP atteint                        if (currentPrice >= trade.sl && !trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit) {
                             console.warn(`❌ ${trade.symbol} SL ATTEINT à $${currentPrice} (seuil: $${trade.sl})`);
                             trade.sl_hit = true;
                             updateData.sl_hit = true;
@@ -17029,14 +16835,12 @@ async def trades_page():
                         }
                     }
                     
-                    # Si un TP atteint, fermer le trade
-                    if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit || trade.sl_hit) {
+                    // Si un TP atteint, fermer le trade                    if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit || trade.sl_hit) {
                         trade.status = 'closed';
                         updateData.status = 'closed';
                     }
                     
-                    #  CRITIQUE: Envoyer la mise  jour au serveur
-                    if (tradeModified) {
+                    //  CRITIQUE: Envoyer la mise  jour au serveur                    if (tradeModified) {
                         try {
                             const response = await fetch('/api/trades/update-status', {
                                 method: 'POST',
@@ -17059,8 +16863,7 @@ async def trades_page():
                     }
                 }
                 
-                # Recharger les statistiques aprs vrification
-                await updateStats();
+                // Recharger les statistiques aprs vrification                await updateStats();
                 
             } catch (error) {
                 console.error('❌ Erreur dans checkTPSLHits:', error);
@@ -17071,15 +16874,13 @@ async def trades_page():
             const row = document.querySelector(`tr[data-trade-index="${index}"]`);
             if (!row) return;
             
-            # Mettre  jour la cellule SL (ne pas afficher en rouge si un TP est atteint)
-            const slCell = row.cells[4];
+            // Mettre  jour la cellule SL (ne pas afficher en rouge si un TP est atteint)            const slCell = row.cells[4];
             if (slCell) {
                 const shouldShowSLHit = trade.sl_hit && !trade.tp1_hit && !trade.tp2_hit && !trade.tp3_hit;
                 slCell.innerHTML = formatPrice(trade.sl, shouldShowSLHit, true);
             }
             
-            # Mettre  jour les cellules TP
-            const tp1Cell = row.cells[5];
+            // Mettre  jour les cellules TP            const tp1Cell = row.cells[5];
             if (tp1Cell) {
                 tp1Cell.innerHTML = formatPrice(trade.tp1, trade.tp1_hit, false);
                 tp1Cell.style.background = trade.tp1_hit ? 'rgba(16, 185, 129, 0.2)' : '';
@@ -17097,8 +16898,7 @@ async def trades_page():
                 tp3Cell.style.background = trade.tp3_hit ? 'rgba(16, 185, 129, 0.2)' : '';
             }
             
-            # Mettre  jour la colonne CLOSE (index 10)
-            const closeCell = row.cells[10];
+            // Mettre  jour la colonne CLOSE (index 10)            const closeCell = row.cells[10];
             if (closeCell) {
                 if (trade.tp3_hit) {
                     closeCell.innerHTML = '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP3</span>';
@@ -17111,8 +16911,7 @@ async def trades_page():
                 }
             }
             
-            # Mettre  jour la couleur de la ligne (vert si TP, rouge si SL seulement)
-            if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit) {
+            // Mettre  jour la couleur de la ligne (vert si TP, rouge si SL seulement)            if (trade.tp1_hit || trade.tp2_hit || trade.tp3_hit) {
                 row.style.background = 'rgba(16, 185, 129, 0.1)'; // Vert si TP atteint
             } else if (trade.sl_hit) {
                 row.style.background = 'rgba(239, 68, 68, 0.1)'; // Rouge si SL atteint
@@ -17171,8 +16970,7 @@ async def trades_page():
                 html += '<div class="confidence-meter"><div class="confidence-fill" style="width: ' + (trade.confidence || 0) + '%"></div></div></div></td>';
                 html += '<td><span class="badge ' + statusClass + '">' + status + '</span></td>';
                 
-                # Colonne CLOSE avec messages clairs
-                html += '<td>';
+                // Colonne CLOSE avec messages clairs                html += '<td>';
                 if (trade.status === 'closed') {
                     if (trade.tp3_hit) {
                         html += '<span class="badge" style="background: #10b981; color: white; font-weight: 700;">✅ RÉUSSI TP3</span>';
@@ -17230,8 +17028,7 @@ async def trades_page():
                 timeZone: 'America/Montreal'
             }) : 'N/A';
             
-            # Helper pour formater les prix avec coloration
-            const smartFormat = (price) => {
+            // Helper pour formater les prix avec coloration            const smartFormat = (price) => {
                 if (!price) return '$0.00';
                 const numPrice = parseFloat(price);
                 let decimals;
@@ -17383,8 +17180,7 @@ async def trades_page():
         
         window.onclick = function(event) { const modal = document.getElementById('tradeModal'); if (event.target === modal) closeModal(); }
 
-        # ============= P&L HEBDOMADAIRE =============
-        async function loadWeeklyPnl() {
+        // ============= P&L HEBDOMADAIRE =============        async function loadWeeklyPnl() {
             try {
                 const res = await fetch('/api/weekly-pnl');
                 const data = await res.json();
@@ -18370,14 +18166,12 @@ async def calendrier_economique():
             const eventCards = document.querySelectorAll('.event-card');
             const buttons = document.querySelectorAll('.filter-btn');
             
-            # Update active button
-            buttons.forEach(btn => btn.classList.remove('active'));
+            // Update active button            buttons.forEach(btn => btn.classList.remove('active'));
             if (buttonElement) {{
                 buttonElement.classList.add('active');
             }}
             
-            # Get current date for time filters
-            const now = new Date();
+            // Get current date for time filters            const now = new Date();
             const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
             const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             
@@ -19449,18 +19243,15 @@ async def pricing_complete():
             
             <script>
                 function showPlan(planName) {
-                    # Cacher tous les plans
-                    document.querySelectorAll('.plan-content').forEach(el => {
+                    // Cacher tous les plans                    document.querySelectorAll('.plan-content').forEach(el => {
                         el.style.display = 'none';
                     });
                     
-                    # Retirer la classe active de tous les tabs
-                    document.querySelectorAll('.plan-tab').forEach(el => {
+                    // Retirer la classe active de tous les tabs                    document.querySelectorAll('.plan-tab').forEach(el => {
                         el.classList.remove('active-tab');
                     });
                     
-                    # Afficher le plan slectionn
-                    document.getElementById('plan-' + planName).style.display = 'block';
+                    // Afficher le plan slectionn                    document.getElementById('plan-' + planName).style.display = 'block';
                     document.getElementById('tab-' + planName).classList.add('active-tab');
                 }
             </script>
@@ -19472,8 +19263,7 @@ async def pricing_complete():
     </div>
     
     <script>
-        # tat global pour le code promo
-        let appliedPromo = {
+        // tat global pour le code promo        let appliedPromo = {
             code: null,
             discount: 0,
             originalPrices: {
@@ -19485,8 +19275,7 @@ async def pricing_complete():
             discountedPrices: {}
         };
         
-        # Appliquer le code promo
-        async function applyPromo() {
+        // Appliquer le code promo        async function applyPromo() {
             const codeInput = document.getElementById('promoCode');
             const code = codeInput.value.trim().toUpperCase();
             const messageDiv = document.getElementById('promoMessage');
@@ -19501,8 +19290,7 @@ async def pricing_complete():
             messageDiv.style.display = 'block';
             
             try {
-                # Valider pour chaque plan
-                let validForAnyPlan = false;
+                // Valider pour chaque plan                let validForAnyPlan = false;
                 
                 for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
                     const response = await fetch(`/api/validate-promo?code=${code}&plan=${plan}&amount=${originalPrice}`);
@@ -19874,8 +19662,7 @@ async def pricing_page_new(request: Request):
             .then(data => {
                 console.log('Réponse:', data);
                 if (data.success) {
-                    # Afficher message de succs
-                    document.getElementById('successMsg').classList.add('show');
+                    // Afficher message de succs                    document.getElementById('successMsg').classList.add('show');
                     button.textContent = '✅ Paiement réussi!';
                     setTimeout(() => {
                         button.disabled = false;
@@ -20382,8 +20169,7 @@ async def payment_success(request: Request, plan: str = "monthly"):
         </div>
         
         <script>
-            # Auto-redirect aprs 10 secondes
-            setTimeout(() => {{
+            // Auto-redirect aprs 10 secondes            setTimeout(() => {{
                 window.location.href = '/mon-compte';
             }}, 10000);
         </script>
@@ -20824,8 +20610,7 @@ async def stats_dashboard():
         
         new Chart(document.getElementById('vol'), {{type: 'bar', data: {{labels: ['Volume 24h'], datasets: [{{label: 'Milliards $', data: [{round(total_volume/1e9, 1)}], backgroundColor: 'rgba(0,212,255,0.6)', borderColor: '#00d4ff', borderWidth: 2}}]}}, options: {{responsive: true, maintainAspectRatio: false, plugins: {{legend: {{display: true, labels: {{color: '#fff'}}}}}}, scales: {{y: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}, x: {{ticks: {{color: '#aaa'}}, grid: {{color: 'rgba(255,255,255,0.1)'}}}}}}}} }});
         
-        #  AUTO-REFRESH TOUTES LES 30 SECONDES
-        let refreshCounter = 30;
+        //  AUTO-REFRESH TOUTES LES 30 SECONDES        let refreshCounter = 30;
         
         function updateRefreshCounter() {{
             refreshCounter--;
@@ -20847,13 +20632,11 @@ async def stats_dashboard():
             }}
         }}
         
-        # Mettre  jour le compteur chaque seconde
-        setInterval(updateRefreshCounter, 1000);
+        // Mettre  jour le compteur chaque seconde        setInterval(updateRefreshCounter, 1000);
         updateLastRefreshTime();
         setInterval(updateLastRefreshTime, 1000);
         
-        # AUTO-REFRESH DE LA PAGE TOUTES LES 30 SECONDES
-        setTimeout(function() {{
+        // AUTO-REFRESH DE LA PAGE TOUTES LES 30 SECONDES        setTimeout(function() {{
             location.reload();
         }}, 30000);
     </script>
@@ -21277,26 +21060,22 @@ async def market_simulation():
             const noDcaValues = [];
             
             for (let month = 0; month < months; month++) {
-                # DCA: ajouter le DCA mensuel et calculer la valeur totale
-                dcaCoins += dcaAmount / prices[month];
+                // DCA: ajouter le DCA mensuel et calculer la valeur totale                dcaCoins += dcaAmount / prices[month];
                 const totalInvested = initialCapital + (month + 1) * dcaAmount;
                 const portfolioValue = dcaCoins * prices[month];
                 dcaValues.push(portfolioValue);
                 
-                # Sans DCA: juste la valeur initiale investie au prix du jour
-                const noDcaValue = initialCapital + noDcaCoins * (prices[month] - prices[0]);
+                // Sans DCA: juste la valeur initiale investie au prix du jour                const noDcaValue = initialCapital + noDcaCoins * (prices[month] - prices[0]);
                 noDcaValues.push(noDcaValue);
                 
                 labels.push(`M${month + 1}`);
             }
             
-            # Calculs finaux corrects
-            const dcaFinal = dcaCoins * prices[months-1];
+            // Calculs finaux corrects            const dcaFinal = dcaCoins * prices[months-1];
             const noDcaFinal = initialCapital + noDcaCoins * (prices[months-1] - prices[0]);
             const difference = dcaFinal - noDcaFinal;
             
-            # Calcul des gains plus robuste (viter division par zro)
-            let gains = 0;
+            // Calcul des gains plus robuste (viter division par zro)            let gains = 0;
             if (noDcaFinal > 0) {
                 gains = (difference / noDcaFinal) * 100;
             } else if (difference !== 0) {
@@ -21954,14 +21733,12 @@ async function loadSettings() {{
     document.getElementById('riskPerTrade').textContent = data.risk_per_trade + '%';
     document.getElementById('dailyLoss').textContent = '-' + data.daily_loss.toFixed(2) + '%';
     
-    # Compter les trades ouverts
-    const tradesRes = await fetch('/api/trades');
+    // Compter les trades ouverts    const tradesRes = await fetch('/api/trades');
     const tradesData = await tradesRes.json();
     const openCount = tradesData.trades.filter(t => t.status === 'open').length;
     document.getElementById('openTrades').textContent = openCount + ' / ' + data.max_open_trades;
     
-    # Remplir les inputs
-    document.getElementById('inputCapital').value = data.total_capital;
+    // Remplir les inputs    document.getElementById('inputCapital').value = data.total_capital;
     document.getElementById('inputRisk').value = data.risk_per_trade;
     document.getElementById('inputMaxTrades').value = data.max_open_trades;
     document.getElementById('inputMaxDailyLoss').value = data.max_daily_loss;
@@ -22166,8 +21943,7 @@ async function checkAlerts() {{
         html += '</div>';
         document.getElementById('alertsContainer').innerHTML = html;
         
-        # Recharger la watchlist pour montrer les alertes
-        loadWatchlist();
+        // Recharger la watchlist pour montrer les alertes        loadWatchlist();
     }}
 }}
 
@@ -22233,8 +22009,7 @@ async def ai_assistant_page():
 
 <script>
 
-        # ============= P&L HEBDOMADAIRE =============
-        async function loadWeeklyPnl() {{
+        // ============= P&L HEBDOMADAIRE =============        async function loadWeeklyPnl() {{
             try {{
                 const res = await fetch('/api/weekly-pnl');
                 const data = await res.json();
@@ -22909,8 +22684,7 @@ async def calculatrice_trades():
         function setDirection(direction) {
             currentDirection = direction;
             
-            # Update UI
-            document.querySelectorAll('.direction-btn').forEach(btn => {
+            // Update UI            document.querySelectorAll('.direction-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
             
@@ -22924,8 +22698,7 @@ async def calculatrice_trades():
         }
         
         function calculate() {
-            # Get inputs
-            const entry = parseFloat(document.getElementById('entry').value) || 0;
+            // Get inputs            const entry = parseFloat(document.getElementById('entry').value) || 0;
             const stopLoss = parseFloat(document.getElementById('stopLoss').value) || 0;
             const tp1 = parseFloat(document.getElementById('tp1').value) || 0;
             const tp2 = parseFloat(document.getElementById('tp2').value) || 0;
@@ -22934,13 +22707,11 @@ async def calculatrice_trades():
             const riskPercent = parseFloat(document.getElementById('riskPercent').value) || 1;
             const leverage = parseFloat(document.getElementById('leverage').value) || 1;
             
-            # Validate inputs
-            if (entry === 0 || stopLoss === 0 || capital === 0) {
+            // Validate inputs            if (entry === 0 || stopLoss === 0 || capital === 0) {
                 return;
             }
             
-            # Check direction validity
-            let isValid = true;
+            // Check direction validity            let isValid = true;
             let warningMsg = '';
             
             if (currentDirection === 'LONG') {
@@ -22971,45 +22742,35 @@ async def calculatrice_trades():
                 document.getElementById('warningBox').style.display = 'none';
             }
             
-            # Calculate risk amount
-            const riskAmount = capital * (riskPercent / 100);
+            // Calculate risk amount            const riskAmount = capital * (riskPercent / 100);
             
-            # Calculate SL distance
-            const slDistance = Math.abs((entry - stopLoss) / entry * 100);
+            // Calculate SL distance            const slDistance = Math.abs((entry - stopLoss) / entry * 100);
             
-            # Calculate position size
-            const positionSize = (riskAmount / (slDistance / 100)) * leverage;
+            // Calculate position size            const positionSize = (riskAmount / (slDistance / 100)) * leverage;
             
-            # Calculate quantity
-            const quantity = positionSize / entry;
+            // Calculate quantity            const quantity = positionSize / entry;
             
-            # Calculate liquidation price
-            let liquidationPrice;
+            // Calculate liquidation price            let liquidationPrice;
             if (currentDirection === 'LONG') {
                 liquidationPrice = entry * (1 - (1 / leverage) * 0.9);
             } else {
                 liquidationPrice = entry * (1 + (1 / leverage) * 0.9);
             }
             
-            # Calculate profits
-            const profitTP1 = Math.abs(tp1 - entry) * quantity * 0.4; // 40%
+            // Calculate profits            const profitTP1 = Math.abs(tp1 - entry) * quantity * 0.4; // 40%
             const profitTP2 = Math.abs(tp2 - entry) * quantity * 0.4; // 40%
             const profitTP3 = Math.abs(tp3 - entry) * quantity * 0.2; // 20%
             const totalProfit = profitTP1 + profitTP2 + profitTP3;
             
-            # Calculate R/R
-            const rrRatio = totalProfit / riskAmount;
+            // Calculate R/R            const rrRatio = totalProfit / riskAmount;
             
-            # Calculate ROI
-            const totalROI = (totalProfit / positionSize) * 100;
+            // Calculate ROI            const totalROI = (totalProfit / positionSize) * 100;
             
-            # Calculate TP distances
-            const tp1Distance = Math.abs((tp1 - entry) / entry * 100);
+            // Calculate TP distances            const tp1Distance = Math.abs((tp1 - entry) / entry * 100);
             const tp2Distance = Math.abs((tp2 - entry) / entry * 100);
             const tp3Distance = Math.abs((tp3 - entry) / entry * 100);
             
-            # Update UI
-            document.getElementById('positionSize').textContent = positionSize.toFixed(2) + ' USDT';
+            // Update UI            document.getElementById('positionSize').textContent = positionSize.toFixed(2) + ' USDT';
             document.getElementById('quantity').textContent = quantity.toFixed(8) + ' ' + document.getElementById('symbol').value.replace('USDT', '');
             document.getElementById('riskAmount').textContent = '$' + riskAmount.toFixed(2);
             document.getElementById('slDistance').textContent = slDistance.toFixed(2) + '%';
@@ -23025,11 +22786,9 @@ async def calculatrice_trades():
             document.getElementById('tp2Distance').textContent = '+' + tp2Distance.toFixed(2) + '%';
             document.getElementById('tp3Distance').textContent = '+' + tp3Distance.toFixed(2) + '%';
             
-            # Update R/R
-            document.getElementById('rrRatio').textContent = rrRatio.toFixed(2) + ':1';
+            // Update R/R            document.getElementById('rrRatio').textContent = rrRatio.toFixed(2) + ':1';
             
-            # Update R/R badge
-            let badge = '';
+            // Update R/R badge            let badge = '';
             if (rrRatio >= 3) {
                 badge = '<div class="rr-badge rr-excellent">🌟 Excellent R/R!</div>';
             } else if (rrRatio >= 2) {
@@ -23041,15 +22800,13 @@ async def calculatrice_trades():
             }
             document.getElementById('rrBadge').innerHTML = badge;
             
-            # Warning for high leverage
-            if (leverage > 20) {
+            // Warning for high leverage            if (leverage > 20) {
                 document.getElementById('warningBox').style.display = 'block';
                 document.getElementById('warningText').textContent = 'Leverage >20x est très risqué! Prix de liquidation proche: $' + liquidationPrice.toFixed(2);
             }
         }
         
-        # Calculate on page load
-        calculate();
+        // Calculate on page load        calculate();
     </script>
 </body>
 </html>""")
@@ -24397,8 +24154,7 @@ async def admin_dashboard(request: Request):
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
-            # Charger les infos de l'utilisateur
-            try {{
+            // Charger les infos de l'utilisateur            try {{
                 const response = await fetch(`/admin/get-user/${{username}}`);
                 const data = await response.json();
                 
@@ -24427,16 +24183,13 @@ async def admin_dashboard(request: Request):
             currentPermUser = username;
             document.getElementById('permUsername').textContent = username;
             
-            # Charger les permissions actuelles
-            try {{
+            // Charger les permissions actuelles            try {{
                 const response = await fetch(`/admin/get-permissions/${{username}}`);
                 const data = await response.json();
                 
-                # Dcocher toutes
-                document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
+                // Dcocher toutes                document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
                 
-                # Cocher les permissions existantes
-                if (data.success && data.routes) {{
+                // Cocher les permissions existantes                if (data.success && data.routes) {{
                     data.routes.forEach(route => {{
                         const checkbox = document.getElementById('perm_' + route.replace(/\//g, '_'));
                         if (checkbox) checkbox.checked = true;
@@ -24496,8 +24249,7 @@ async def admin_dashboard(request: Request):
             const role = document.getElementById('role').value;
             const originalUsername = document.getElementById('originalUsername').value;
             
-            # Validation du mot de passe pour nouvel utilisateur
-            if (!editMode && !password) {{
+            // Validation du mot de passe pour nouvel utilisateur            if (!editMode && !password) {{
                 alert('❌ Le mot de passe est requis pour un nouvel utilisateur');
                 return;
             }}
@@ -24559,8 +24311,7 @@ async def admin_dashboard(request: Request):
             }}
         }}
         
-        # ========== GESTION DES ACCS PAR FORFAIT ==========
-        let currentPlan = '';
+        // ========== GESTION DES ACCS PAR FORFAIT ==========        let currentPlan = '';
         
         async function managePlanAccess(plan) {{
             currentPlan = plan;
@@ -24574,16 +24325,13 @@ async def admin_dashboard(request: Request):
             
             document.getElementById('planName').textContent = planNames[plan];
             
-            # Charger les permissions actuelles du plan
-            try {{
+            // Charger les permissions actuelles du plan            try {{
                 const response = await fetch(`/admin/get-plan-access/${{plan}}`);
                 const data = await response.json();
                 
-                # Dcocher toutes
-                document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
+                // Dcocher toutes                document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
                 
-                # Cocher les permissions existantes
-                if (data.success && data.routes) {{
+                // Cocher les permissions existantes                if (data.success && data.routes) {{
                     data.routes.forEach(route => {{
                         const checkbox = document.getElementById('plan_perm_' + route.replace(/\//g, '_'));
                         if (checkbox) checkbox.checked = true;
@@ -24638,8 +24386,7 @@ async def admin_dashboard(request: Request):
             document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
         }}
         
-        # ========== GESTION DES CODES PROMO ==========
-        function openPromoModal() {{
+        // ========== GESTION DES CODES PROMO ==========        function openPromoModal() {{
             document.getElementById('promoForm').reset();
             document.getElementById('promoModal').classList.add('active');
         }}
@@ -24772,10 +24519,7 @@ async def admin_dashboard(request: Request):
             }}
         }}
         
-        # ========================================
-        #  RETENTION WARFARE DASHBOARD
-        # ========================================
-        
+        // ========================================        //  RETENTION WARFARE DASHBOARD        // ========================================        
         async function loadRetentionDashboard() {{
             try {{
                 const response = await fetch('/admin/api/retention-dashboard');
@@ -24786,20 +24530,15 @@ async def admin_dashboard(request: Request):
                     return;
                 }}
                 
-                # Zone Rouge (3 jours)
-                renderExpiringUsers(data.red_zone, 'redZoneContent', 'red');
+                // Zone Rouge (3 jours)                renderExpiringUsers(data.red_zone, 'redZoneContent', 'red');
                 
-                # Zone Orange (7 jours)
-                renderExpiringUsers(data.orange_zone, 'orangeZoneContent', 'orange');
+                // Zone Orange (7 jours)                renderExpiringUsers(data.orange_zone, 'orangeZoneContent', 'orange');
                 
-                # Zone Jaune (30 jours)
-                renderExpiringUsers(data.yellow_zone, 'yellowZoneContent', 'yellow');
+                // Zone Jaune (30 jours)                renderExpiringUsers(data.yellow_zone, 'yellowZoneContent', 'yellow');
                 
-                # Users Inactifs
-                renderInactiveUsers(data.inactive_users);
+                // Users Inactifs                renderInactiveUsers(data.inactive_users);
                 
-                # Stats Rtention
-                renderRetentionStats(data.retention_stats);
+                // Stats Rtention                renderRetentionStats(data.retention_stats);
                 
             }} catch (error) {{
                 console.error('Erreur chargement retention dashboard:', error);
@@ -24915,8 +24654,7 @@ async def admin_dashboard(request: Request):
             container.innerHTML = html;
         }}
         
-        # Actions
-        async function extendSubscription(username, days) {{
+        // Actions        async function extendSubscription(username, days) {{
             if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
             
             try {{
@@ -24950,8 +24688,7 @@ async def admin_dashboard(request: Request):
             alert('🎯 Offre de coaching envoyée à ' + username + '! (Feature prochaine)');
         }}
         
-        # Charger au dmarrage - SCURIS avec checks
-        setTimeout(function() {{
+        // Charger au dmarrage - SCURIS avec checks        setTimeout(function() {{
             (async function() {{
                 try {{
                     if (typeof loadRetentionDashboard === 'function') {{
@@ -24959,15 +24696,11 @@ async def admin_dashboard(request: Request):
                     }}
                 }} catch (error) {{
                     console.error('⚠️ Erreur Retention Dashboard:', error);
-                    # Continuer mme si erreur
-                }}
+                    // Continuer mme si erreur                }}
             }})();
         }}, 100);
         
-        # ========================================
-        #  CONVERSION FUNNEL MICROSCOPE
-        # ========================================
-        
+        // ========================================        //  CONVERSION FUNNEL MICROSCOPE        // ========================================        
         async function loadConversionFunnel() {{
             try {{
                 const periodElement = document.getElementById('funnelPeriod');
@@ -25004,8 +24737,7 @@ async def admin_dashboard(request: Request):
                 const dropPercent = step.drop_percent || 0;
                 const isHighDrop = dropPercent > 50;
                 
-                # Barre de progression
-                const barWidth = (step.count / funnel.steps[0].count) * 100;
+                // Barre de progression                const barWidth = (step.count / funnel.steps[0].count) * 100;
                 const barColor = isHighDrop ? '#ef4444' : step.conversion_rate > 70 ? '#10b981' : '#f59e0b';
                 
                 html += '<div style="margin-bottom: 20px;">' +
@@ -25031,8 +24763,7 @@ async def admin_dashboard(request: Request):
                 html += '</div>';
             }});
             
-            # Taux de conversion global
-            html += '<div style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; padding: 20px; border-radius: 10px; text-align: center; margin-top: 30px;">' +
+            // Taux de conversion global            html += '<div style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; padding: 20px; border-radius: 10px; text-align: center; margin-top: 30px;">' +
                 '<div style="font-size: 14px; margin-bottom: 5px;">TAUX DE CONVERSION GLOBAL</div>' +
                 '<div style="font-size: 36px; font-weight: bold;">' + funnel.global_conversion.toFixed(1) + '%</div>' +
             '</div>';
@@ -25111,8 +24842,7 @@ async def admin_dashboard(request: Request):
             container.innerHTML = html;
         }}
         
-        # Charger au dmarrage - SCURIS avec checks
-        setTimeout(function() {{
+        // Charger au dmarrage - SCURIS avec checks        setTimeout(function() {{
             (async function() {{
                 try {{
                     if (typeof loadConversionFunnel === 'function') {{
@@ -25120,15 +24850,11 @@ async def admin_dashboard(request: Request):
                     }}
                 }} catch (error) {{
                     console.error('⚠️ Erreur Conversion Funnel:', error);
-                    # Continuer mme si erreur
-                }}
+                    // Continuer mme si erreur                }}
             }})();
         }}, 200);
         
-        # ========================================
-        #  REVENUE INTELLIGENCE CENTER
-        # ========================================
-        
+        // ========================================        //  REVENUE INTELLIGENCE CENTER        // ========================================        
         async function loadRevenueIntelligence() {{
             try {{
                 const response = await fetch('/admin/api/revenue-intelligence');
@@ -25268,10 +24994,7 @@ async def admin_dashboard(request: Request):
             container.innerHTML = html;
         }}
         
-        # ========================================
-        # 4 VIRAL GROWTH MACHINE
-        # ========================================
-        
+        // ========================================        // 4 VIRAL GROWTH MACHINE        // ========================================        
         async function loadViralGrowth() {{
             try {{
                 const response = await fetch('/admin/api/viral-growth');
@@ -25409,10 +25132,7 @@ async def admin_dashboard(request: Request):
             container.innerHTML = html;
         }}
         
-        # ========================================
-        # 5 AUTOMATION ENGINE
-        # ========================================
-        
+        // ========================================        // 5 AUTOMATION ENGINE        // ========================================        
         async function loadAutomationEngine() {{
             try {{
                 const response = await fetch('/admin/api/automation-engine');
@@ -25503,11 +25223,9 @@ async def admin_dashboard(request: Request):
             alert('🚧 Feature en développement: Créer règle d automation');
         }}
         
-        # Charger toutes les features au dmarrage - SCURIS avec checks
-        setTimeout(function() {{
+        // Charger toutes les features au dmarrage - SCURIS avec checks        setTimeout(function() {{
             (async function() {{
-                # Revenue Intelligence
-                try {{
+                // Revenue Intelligence                try {{
                     if (typeof loadRevenueIntelligence === 'function') {{
                         await loadRevenueIntelligence();
                     }}
@@ -25515,8 +25233,7 @@ async def admin_dashboard(request: Request):
                     console.error('⚠️ Erreur Revenue Intelligence:', error);
                 }}
                 
-                # Viral Growth
-                try {{
+                // Viral Growth                try {{
                     if (typeof loadViralGrowth === 'function') {{
                         await loadViralGrowth();
                     }}
@@ -28071,15 +27788,12 @@ async def backtesting_page(request: Request):
         let equityChart, drawdownChart;
         
         function switchTab(tab) {{
-            # Retirer active de tous les onglets et contenus
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            // Retirer active de tous les onglets et contenus            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             
-            # Activer le contenu correspondant
-            document.getElementById('tab-' + tab).classList.add('active');
+            // Activer le contenu correspondant            document.getElementById('tab-' + tab).classList.add('active');
             
-            # Activer le bon bouton d'onglet
-            const tabs = document.querySelectorAll('.tab');
+            // Activer le bon bouton d'onglet            const tabs = document.querySelectorAll('.tab');
             const tabMapping = {{'config': 0, 'results': 1, 'trades': 2}};
             if (tabs[tabMapping[tab]]) {{
                 tabs[tabMapping[tab]].classList.add('active');
@@ -28227,12 +27941,10 @@ async def backtesting_page(request: Request):
             
             document.getElementById('resultsContainer').innerHTML = resultsHTML;
             
-            # Crer les graphiques
-            createEquityChart(r.equity_curve);
+            // Crer les graphiques            createEquityChart(r.equity_curve);
             createDrawdownChart(r.drawdown_curve);
             
-            # Afficher les trades
-            displayTrades(r.trades);
+            // Afficher les trades            displayTrades(r.trades);
         }}
         
         function createEquityChart(equityCurve) {{
@@ -28372,11 +28084,9 @@ async def backtesting_page(request: Request):
             document.getElementById('tradesContainer').innerHTML = tradesHTML;
         }}
         
-        # Afficher la description au chargement
-        showStrategyDescription();
+        // Afficher la description au chargement        showStrategyDescription();
         
-        # Menu universel
-        document.addEventListener('DOMContentLoaded', function() {{
+        // Menu universel        document.addEventListener('DOMContentLoaded', function() {{
             if (document.querySelector('.universal-top-nav')) return;
             
             const menuHTML = `<style>
@@ -29026,8 +28736,7 @@ async def api_keys_page(request: Request):
     </head>
     <body>
         <script>
-        # Menu universel - Injection automatique
-        document.addEventListener('DOMContentLoaded', function() {{
+        // Menu universel - Injection automatique        document.addEventListener('DOMContentLoaded', function() {{
             if (document.querySelector('.universal-top-nav')) return;
             
             const menuHTML = `<style>
@@ -30073,21 +29782,18 @@ async def ai_predictor():
         
         <script>
             function switchTab(period) {{
-                # Hide all tabs
-                document.querySelectorAll('.tab-content').forEach(tab => {{
+                // Hide all tabs                document.querySelectorAll('.tab-content').forEach(tab => {{
                     tab.classList.remove('active');
                 }});
                 document.querySelectorAll('.tab-btn').forEach(btn => {{
                     btn.classList.remove('active');
                 }});
                 
-                # Show selected tab
-                document.getElementById('tab-' + period).classList.add('active');
+                // Show selected tab                document.getElementById('tab-' + period).classList.add('active');
                 event.target.classList.add('active');
             }}
             
-            # Auto-refresh every 2 minutes
-            setTimeout(function() {{ window.location.reload(); }}, 120000);
+            // Auto-refresh every 2 minutes            setTimeout(function() {{ window.location.reload(); }}, 120000);
         </script>
     </body>
     </html>
@@ -33152,8 +32858,7 @@ async def crypto_pepites():
 </div>
 
 <script>
-# Configuration des 15 cryptos avec IDs CoinGecko
-const cryptoConfig = [
+// Configuration des 15 cryptos avec IDs CoinGeckoconst cryptoConfig = [
     {{
         id: 'hyperliquid',
         symbol: 'HYPE',
@@ -33306,13 +33011,11 @@ const cryptoConfig = [
     }}
 ];
 
-# tat global
-let pricesData = {{}};
+// tat globallet pricesData = {{}};
 let lastUpdate = null;
 let updateCount = 0;
 
-# Formatage des prix
-function formatPrice(price, symbol) {{
+// Formatage des prixfunction formatPrice(price, symbol) {{
     if (!price) return 'Chargement...';
     
     if (price < 0.000001) {{
@@ -33326,8 +33029,7 @@ function formatPrice(price, symbol) {{
     }}
 }}
 
-# Formatage market cap
-function formatMarketCap(mcap) {{
+// Formatage market capfunction formatMarketCap(mcap) {{
     if (!mcap) return 'N/A';
     
     if (mcap >= 1e9) {{
@@ -33339,8 +33041,7 @@ function formatMarketCap(mcap) {{
     }}
 }}
 
-# Gnrer HTML pour une crypto card
-function generateCryptoCard(crypto) {{
+// Gnrer HTML pour une crypto cardfunction generateCryptoCard(crypto) {{
     const priceData = pricesData[crypto.id] || {{}};
     const price = priceData.usd || null;
     const change24h = priceData.usd_24h_change || 0;
@@ -33390,8 +33091,7 @@ function generateCryptoCard(crypto) {{
     `;
 }}
 
-# Mettre  jour l'affichage des prix
-function updatePriceDisplay() {{
+// Mettre  jour l'affichage des prixfunction updatePriceDisplay() {{
     cryptoConfig.forEach(crypto => {{
         const priceData = pricesData[crypto.id];
         if (!priceData) return;
@@ -33418,8 +33118,7 @@ function updatePriceDisplay() {{
     }});
 }}
 
-# Rcuprer les prix via API CoinGecko
-async function fetchPrices() {{
+// Rcuprer les prix via API CoinGeckoasync function fetchPrices() {{
     const indicator = document.getElementById('updateIndicator');
     const updateText = document.getElementById('updateText');
     
@@ -33452,25 +33151,20 @@ async function fetchPrices() {{
     }}
 }}
 
-# Initialisation
-async function init() {{
+// Initialisationasync function init() {{
     console.log('🚀 Initialisation Crypto Pépites API Temps Réel');
     
-    # Gnrer les cartes
-    const grid = document.getElementById('cryptoGrid');
+    // Gnrer les cartes    const grid = document.getElementById('cryptoGrid');
     grid.innerHTML = cryptoConfig.map(crypto => generateCryptoCard(crypto)).join('');
     
-    # Premire rcupration
-    await fetchPrices();
+    // Premire rcupration    await fetchPrices();
     
-    # Mise  jour auto toutes les 30 secondes
-    setInterval(fetchPrices, 30000);
+    // Mise  jour auto toutes les 30 secondes    setInterval(fetchPrices, 30000);
     
     console.log('✅ Système initialisé - Mise à jour auto toutes les 30s');
 }}
 
-# Lancer au chargement
-document.addEventListener('DOMContentLoaded', init);
+// Lancer au chargementdocument.addEventListener('DOMContentLoaded', init);
 </script>
 
 </body>
@@ -34917,17 +34611,14 @@ async def academy_complete_final(request: Request):
     <script>
     console.log('🚀 Academy JavaScript chargé!');
 
-# Toggle Sidebar Mobile
-function toggleSidebar() {
+// Toggle Sidebar Mobilefunction toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('active');
     document.body.classList.toggle('sidebar-open');
 }
 
-# ===== DONNES DES FORMATIONS (CONTENU ULTRA-DTAILL) =====
-var formations = {};
+// ===== DONNES DES FORMATIONS (CONTENU ULTRA-DTAILL) =====var formations = {};
 
-# FORMATION 1: LES FONDAMENTAUX ABSOLUS (ULTRA-DTAILL)
-formations[1] = {
+// FORMATION 1: LES FONDAMENTAUX ABSOLUS (ULTRA-DTAILL)formations[1] = {
     title: "🎯 Les Fondamentaux Absolus",
     duration: "4 heures",
     modules: "6 modules",
@@ -35721,8 +35412,7 @@ formations[1] = {
 
 console.log('✅ Formation 1 chargée (ultra-détaillée)');
 
-# FORMATION 2: COMPRENDRE LES CRYPTOS
-formations[2] = {
+// FORMATION 2: COMPRENDRE LES CRYPTOSformations[2] = {
     title: "₿ Comprendre les Crypto-monnaies",
     duration: "4 heures",
     modules: "3 modules",
@@ -35825,8 +35515,7 @@ formations[2] = {
     ]
 };
 
-# FORMATION 3: SCURIT
-formations[3] = {
+// FORMATION 3: SCURITformations[3] = {
     title: "🔐 Sécurité Crypto Complète",
     duration: "4 heures",
     modules: "5 modules",
@@ -35925,8 +35614,7 @@ formations[3] = {
     ]
 };
 
-# FORMATION 4: PSYCHOLOGIE
-formations[4] = {
+// FORMATION 4: PSYCHOLOGIEformations[4] = {
     title: "🧠 Psychologie du Trading",
     duration: "4 heures",
     modules: "6 modules",
@@ -36071,8 +35759,7 @@ formations[4] = {
 
 console.log('✅ Toutes les formations chargées!');
 
-# ===== FONCTION: AFFICHER FORMATION =====
-function showFormation(id) {
+// ===== FONCTION: AFFICHER FORMATION =====function showFormation(id) {
     console.log('📖 Ouverture formation', id);
     
     var formation = formations[id];
@@ -36081,15 +35768,12 @@ function showFormation(id) {
         return;
     }
     
-    # Cacher liste, montrer dtail
-    document.getElementById('list-view').style.display = 'none';
+    // Cacher liste, montrer dtail    document.getElementById('list-view').style.display = 'none';
     document.getElementById('formation-view').style.display = 'block';
     
-    # Construire HTML
-    var html = '<div class="module"><h2>' + formation.title + '</h2><p>⏱️ Durée: ' + formation.duration + ' • 📚 ' + formation.modules + '</p></div>';
+    // Construire HTML    var html = '<div class="module"><h2>' + formation.title + '</h2><p>⏱️ Durée: ' + formation.duration + ' • 📚 ' + formation.modules + '</p></div>';
     
-    # Ajouter modules
-    for (var i = 0; i < formation.modules_content.length; i++) {
+    // Ajouter modules    for (var i = 0; i < formation.modules_content.length; i++) {
         var mod = formation.modules_content[i];
         html += '<div class="module">';
         html += '<h3>' + mod.title + '</h3>';
@@ -36097,8 +35781,7 @@ function showFormation(id) {
         html += '</div>';
     }
     
-    # Ajouter quiz
-    if (formation.quiz && formation.quiz.length > 0) {
+    // Ajouter quiz    if (formation.quiz && formation.quiz.length > 0) {
         html += '<div class="quiz-section"><h2>📝 Quiz de Certification</h2>';
         html += '<p>Répondez à ces questions pour obtenir votre certificat. Score minimum: 70%</p>';
         
@@ -36121,8 +35804,7 @@ function showFormation(id) {
     console.log('✅ Formation affichée!');
 }
 
-# ===== FONCTION: VRIFIER QUIZ =====
-function checkQuiz(formationId) {
+// ===== FONCTION: VRIFIER QUIZ =====function checkQuiz(formationId) {
     console.log('🎯 Vérification quiz', formationId);
     
     var formation = formations[formationId];
@@ -36167,8 +35849,7 @@ function checkQuiz(formationId) {
     resultDiv.scrollIntoView({behavior: 'smooth', block: 'center'});
 }
 
-# ===== FONCTION: SAUVEGARDER COMPLETION =====
-function saveCompletion(id) {
+// ===== FONCTION: SAUVEGARDER COMPLETION =====function saveCompletion(id) {
     try {
         var completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
         if (completed.indexOf(id) === -1) {
@@ -36182,8 +35863,7 @@ function saveCompletion(id) {
     }
 }
 
-# ===== FONCTION: METTRE  JOUR PROGRESSION =====
-function updateProgress() {
+// ===== FONCTION: METTRE  JOUR PROGRESSION =====function updateProgress() {
     try {
         var completed = JSON.parse(localStorage.getItem('completed_mega') || '[]');
         var total = 4;
@@ -36192,8 +35872,7 @@ function updateProgress() {
         document.getElementById('progress-bar').style.width = percentage + '%';
         document.getElementById('progress-percent').textContent = Math.round(percentage) + '%';
         
-        # Ajouter badges "Complt"
-        completed.forEach(function(id) {
+        // Ajouter badges "Complt"        completed.forEach(function(id) {
             var card = document.querySelector('[onclick="showFormation(' + id + ')"]');
             if (card && !card.querySelector('.completed')) {
                 var badge = document.createElement('div');
@@ -36209,21 +35888,18 @@ function updateProgress() {
     }
 }
 
-# ===== FONCTION: RETOUR LISTE =====
-function backToList() {
+// ===== FONCTION: RETOUR LISTE =====function backToList() {
     document.getElementById('list-view').style.display = 'block';
     document.getElementById('formation-view').style.display = 'none';
     window.scrollTo(0, 0);
 }
 
-# ===== INITIALISATION =====
-document.addEventListener('DOMContentLoaded', function() {
+// ===== INITIALISATION =====document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Academy initialisée!');
     updateProgress();
 });
 
-# FORMATION 5: ANALYSE TECHNIQUE PRO
-formations[5] = {
+// FORMATION 5: ANALYSE TECHNIQUE PROformations[5] = {
     title: "📊 Analyse Technique Professionnelle",
     duration: "8 heures",
     modules: "6 modules",
@@ -37693,14 +37369,7 @@ function getCurrentTime() {
     return now.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
 }
 
-# AUTO-REFRESH DSACTIV POUR CONOMISER L'API
-# setInterval(function() {
-#     var btn = document.getElementById('scanBtn');
-#     if (!btn.disabled && scanCount > 0) {
-#         scanNow();
-#     }
-# }, 300000);
-
+// AUTO-REFRESH DSACTIV POUR CONOMISER L'API// setInterval(function() {//     var btn = document.getElementById('scanBtn');//     if (!btn.disabled && scanCount > 0) {//         scanNow();//     }// }, 300000);
 console.log('🎯 Narrative Radar chargé - API CryptoPanic activée');
 </script>
 </body>
@@ -38252,11 +37921,9 @@ function sendMessage() {
     addUserMessage(message);
     input.value = '';
     
-    # Ajouter un indicateur de chargement
-    addLoadingMessage();
+    // Ajouter un indicateur de chargement    addLoadingMessage();
     
-    # Appeler l'API Claude
-    fetch('/api/ai-coach/chat', {
+    // Appeler l'API Claude    fetch('/api/ai-coach/chat', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -38265,8 +37932,7 @@ function sendMessage() {
     })
     .then(response => response.json())
     .then(data => {
-        # Retirer l'indicateur de chargement
-        removeLoadingMessage();
+        // Retirer l'indicateur de chargement        removeLoadingMessage();
         
         if (data.success) {
             addAIMessage(data.message);
@@ -38793,8 +38459,7 @@ function toggleAutoScan() {
     }
 }
 
-# Premier scan au chargement
-setTimeout(() => {
+// Premier scan au chargementsetTimeout(() => {
     const now = new Date();
     document.getElementById('lastScan').textContent = now.toLocaleTimeString('fr-FR');
 }, 1000);
@@ -39077,8 +38742,7 @@ function toggleSidebar() {{
     document.getElementById('sidebar').classList.toggle('active');
 }}
 
-# Auto-refresh toutes les 60 secondes
-setTimeout(() => location.reload(), 60000);
+// Auto-refresh toutes les 60 secondessetTimeout(() => location.reload(), 60000);
 </script>
 </body>
 </html>
@@ -39404,8 +39068,7 @@ async function analyzeContract() {
         return;
     }
     
-    # Vrification du format
-    if (!address.startsWith('0x') || address.length !== 42) {
+    // Vrification du format    if (!address.startsWith('0x') || address.length !== 42) {
         resultsDiv.innerHTML = `
             <div class="result-card" style="border-left: 4px solid #ef4444;">
                 <h3 style="color: #ef4444; margin-bottom: 10px;">❌ Format invalide</h3>
@@ -39416,8 +39079,7 @@ async function analyzeContract() {
         return;
     }
     
-    # Loading
-    btn.disabled = true;
+    // Loading    btn.disabled = true;
     btn.innerHTML = '⏳ Analyse en cours...';
     btn.style.background = '#6b7280';
     
@@ -40371,12 +40033,10 @@ function changeCrypto() {
     
     console.log('🔄 Changement de crypto vers:', selectedCrypto);
     
-    # FORCE RELOAD COMPLET - pas de cache!
-    window.location.replace('/ai-technical-analysis?symbol=' + selectedCrypto + '&t=' + timestamp);
+    // FORCE RELOAD COMPLET - pas de cache!    window.location.replace('/ai-technical-analysis?symbol=' + selectedCrypto + '&t=' + timestamp);
 }
 
-# Auto-refresh toutes les 5 minutes
-setTimeout(function() {
+// Auto-refresh toutes les 5 minutessetTimeout(function() {
     console.log('⏰ Auto-refresh après 5 minutes');
     location.reload(true);
 }, 300000);
@@ -40898,20 +40558,17 @@ async def lesson_page(lesson_id: str, request: Request):
     <script>
         const correctAnswers = {[q['correct'] for q in lesson['quiz']]};
         
-        # Grer la slection des options
-        document.querySelectorAll('.quiz-option').forEach(option => {{
+        // Grer la slection des options        document.querySelectorAll('.quiz-option').forEach(option => {{
             option.addEventListener('click', function() {{
                 const radio = this.querySelector('input[type="radio"]');
                 radio.checked = true;
                 
-                # Retirer selected de toutes les options de cette question
-                const questionDiv = this.closest('.quiz-question');
+                // Retirer selected de toutes les options de cette question                const questionDiv = this.closest('.quiz-question');
                 questionDiv.querySelectorAll('.quiz-option').forEach(opt => {{
                     opt.classList.remove('selected');
                 }});
                 
-                # Ajouter selected  l'option clique
-                this.classList.add('selected');
+                // Ajouter selected  l'option clique                this.classList.add('selected');
             }});
         }});
         
@@ -40920,15 +40577,13 @@ async def lesson_page(lesson_id: str, request: Request):
             const formData = new FormData(form);
             let score = 0;
             
-            # Vrifier chaque rponse
-            correctAnswers.forEach((correct, index) => {{
+            // Vrifier chaque rponse            correctAnswers.forEach((correct, index) => {{
                 const userAnswer = formData.get('q' + index);
                 if (parseInt(userAnswer) === correct) {{
                     score++;
                 }}
                 
-                # Marquer visuellement les rponses
-                const questionDiv = form.querySelectorAll('.quiz-question')[index];
+                // Marquer visuellement les rponses                const questionDiv = form.querySelectorAll('.quiz-question')[index];
                 questionDiv.querySelectorAll('.quiz-option').forEach((option, optIndex) => {{
                     if (optIndex === correct) {{
                         option.classList.add('correct');
@@ -40941,8 +40596,7 @@ async def lesson_page(lesson_id: str, request: Request):
                 }});
             }});
             
-            # Afficher le rsultat
-            const resultDiv = document.getElementById('result');
+            // Afficher le rsultat            const resultDiv = document.getElementById('result');
             const isPerfect = score === correctAnswers.length;
             const xpEarned = isPerfect ? 150 : 100;
             
@@ -40958,8 +40612,7 @@ async def lesson_page(lesson_id: str, request: Request):
                 </p>
             `;
             
-            # Envoyer au serveur pour enregistrer la progression
-            fetch('/api/academy/complete-lesson', {{
+            // Envoyer au serveur pour enregistrer la progression            fetch('/api/academy/complete-lesson', {{
                 method: 'POST',
                 headers: {{ 'Content-Type': 'application/json' }},
                 body: JSON.stringify({{

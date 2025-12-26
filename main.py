@@ -6362,16 +6362,37 @@ async def send_telegram_advanced(trade: TradeWebhook):
         traceback.print_exc()
 
 
-async def send_telegram(msg: str):
-    """Envoie message Telegram simple"""
+async def send_telegram(msg: str) -> None:
+    """Envoie un message Telegram (loggue les erreurs).
+
+    IMPORTANT:
+    - Token/chat_id doivent venir des variables d'environnement.
+    - Si manquants, on n'échoue pas le webhook: on loggue et on continue.
+    """
+    token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
+    chat_id = (os.getenv("TELEGRAM_CHAT_ID") or "").strip()
+
+    if not token or not chat_id:
+        print("⚠️ Telegram désactivé: TELEGRAM_BOT_TOKEN ou TELEGRAM_CHAT_ID manquant.")
+        return
+
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": msg,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }
+
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            await client.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"}
-            )
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url, json=payload, timeout=20.0)
+            if r.status_code >= 400:
+                # Telegram renvoie souvent un JSON avec "description"
+                print(f"❌ Telegram erreur {r.status_code}: {r.text[:800]}")
     except Exception as e:
-        print(f"❌ Erreur send_telegram: {e}")
+        print(f"❌ Telegram exception: {e}")
+
 
 async def _handle_tradingview_webhook(trade: TradeWebhook):
     """
@@ -6595,15 +6616,83 @@ async def webhook(request: Request):
                 payload[_k] = _to_float_or_none(payload.get(_k))
 
 
+    def _normalize_tv_payload(p: dict) -> dict:
+        # 1) Dé-emballe un format courant: {"message": "<json_string>"}
+        msg = p.get("message")
+        if isinstance(msg, str):
+            s = msg.strip()
+            if (s.startswith("{") and s.endswith("}")) or (s.startswith("[") and s.endswith("]")):
+                try:
+                    obj = json.loads(s)
+                    if isinstance(obj, dict):
+                        p = obj
+                except Exception:
+                    pass
+
+        q = dict(p)
+
+        # 2) Mappe les clés fréquentes TradingView -> notre schéma
+        if not q.get("symbol"):
+            for k in ("ticker", "pair", "instrument", "sym", "s"):
+                v = q.get(k)
+                if v:
+                    q["symbol"] = v
+                    break
+
+        # side/action (buy/sell/long/short)
+        if not q.get("side") and q.get("action"):
+            q["side"] = q.get("action")
+        if not q.get("action") and q.get("side"):
+            q["action"] = q.get("side")
+        if (not q.get("side")) and q.get("signal"):
+            q["side"] = q.get("signal")
+            q["action"] = q.get("signal")
+
+        # prix
+        if q.get("entry") is None:
+            for k in ("entry", "price", "close", "current_price", "last", "last_price"):
+                if q.get(k) not in (None, ""):
+                    q["entry"] = q.get(k)
+                    break
+
+        if q.get("sl") is None:
+            for k in ("sl", "stop", "stop_loss", "stoploss"):
+                if q.get(k) not in (None, ""):
+                    q["sl"] = q.get(k)
+                    break
+
+        if q.get("tp1") is None:
+            for k in ("tp1", "tp", "take_profit", "takeprofit"):
+                if q.get(k) not in (None, ""):
+                    q["tp1"] = q.get(k)
+                    break
+
+        if q.get("timeframe") is None:
+            for k in ("tf", "interval", "time_frame"):
+                if q.get(k) not in (None, ""):
+                    q["timeframe"] = q.get(k)
+                    break
+
+        return q
+
+    # Validation via Pydantic (mais sans 422)
+    trade = None
     try:
-        trade = TradeWebhook.parse_obj(payload)
+        trade = TradeWebhook.parse_obj(payload)  # pydantic v1
     except Exception:
         try:
             trade = TradeWebhook.model_validate(payload)  # type: ignore[attr-defined]
-        except Exception as e:
-            print(f"⚠️ Webhook payload invalide (TradeWebhook): {e}")
-            return JSONResponse({"status": "error", "message": "Champs manquants/invalides", "received_keys": list(payload.keys())}, status_code=200)
+        except Exception as e1:
+            normalized = _normalize_tv_payload(payload)
+            try:
+                trade = TradeWebhook.model_validate(normalized)  # type: ignore[attr-defined]
+                print(f"ℹ️ Webhook normalisé: {list(payload.keys())} -> {list(normalized.keys())}")
+            except Exception as e2:
+                print(f"⚠️ Webhook payload invalide (TradeWebhook): {e2} | original_error={e1}")
+                print(f"📌 Payload reçu keys={list(payload.keys())} (extrait)={str(payload)[:500]}")
+                return JSONResponse({"status": "error", "message": "Webhook payload invalide (TradeWebhook)"}, status_code=200)
 
+    assert trade is not None
     return await _handle_tradingview_webhook(trade)
 
 

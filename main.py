@@ -24366,7 +24366,7 @@ async def admin_dashboard(request: Request):
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>📅 Valide jusqu'à (optionnel)</label>
+                        <label>📅 Valide jusqu’à (optionnel)</label>
                         <input type="date" id="promoValidUntil">
                     </div>
                     <div class="form-group">
@@ -24393,7 +24393,7 @@ async def admin_dashboard(request: Request):
         }}
         
         async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = 'Modifier l\\'Utilisateur';
+            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
             document.getElementById('editMode').value = 'true';
             document.getElementById('originalUsername').value = username;
             
@@ -24699,7 +24699,7 @@ async def admin_dashboard(request: Request):
                 
                 if (data.success && data.promos && data.promos.length > 0) {{
                     let html = '<table style="width: 100%; border-collapse: collapse;">';
-                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu\\'à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
+                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu’à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
                     html += '<tbody>';
                     
                     data.promos.forEach(promo => {{
@@ -24843,9 +24843,9 @@ async def admin_dashboard(request: Request):
                         '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
                     '</div>' +
                     '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-                        '<button onclick="extendSubscription(\'' + user.username + '\', 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
-                        '<button onclick="sendRenewalEmail(\'' + user.username + '\')" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
-                        '<button onclick="offerDiscount(\'' + user.username + '\', 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
+                        '<button onclick="extendSubscription(&quot;' + user.username + '&quot;, 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
+                        '<button onclick="sendRenewalEmail(&quot;' + user.username + '&quot;)" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
+                        '<button onclick="offerDiscount(&quot;' + user.username + '&quot;, 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
                     '</div>' +
                 '</div>';
             }});
@@ -24920,7 +24920,7 @@ async def admin_dashboard(request: Request):
         
         // Actions
         async function extendSubscription(username, days) {{
-            if (!confirm('Prolonger l\'abonnement de ' + username + ' de ' + days + ' jours?')) return;
+            if (!confirm("Prolonger l'abonnement de " + username + " de " + days + " jours?")) return;
             
             try {{
                 const response = await fetch('/admin/api/extend-subscription', {{

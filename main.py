@@ -6541,6 +6541,65 @@ async def webhook(request: Request):
     - Accepte JSON, text/plain (JSON string), et form-urlencoded.
     - Valide via TradeWebhook sans laisser FastAPI renvoyer 422.
     """
+
+    def _to_float(x):
+        if x is None:
+            return None
+        if isinstance(x, (int, float)):
+            return float(x)
+        if isinstance(x, str):
+            s = x.strip().replace("$", "").replace(",", "")
+            try:
+                return float(s)
+            except Exception:
+                return None
+        return None
+
+    def _normalize_tv_payload(p: dict) -> dict:
+        # Map aliases -> canonical keys
+        alias_map = {
+            "sl": "stop_loss",
+            "stoploss": "stop_loss",
+            "stopLoss": "stop_loss",
+            "tp": "target1",
+            "tp1": "target1",
+            "tp2": "target2",
+            "tp3": "target3",
+            "entry": "entry_price",
+            "entryprice": "entry_price",
+            "entryPrice": "entry_price",
+            "price": "entry_price",
+            "confidence": "confidence",
+            "conf": "confidence",
+            "tf": "timeframe",
+            "timeframe": "timeframe",
+        }
+        out = dict(p)
+        for k, v in list(p.items()):
+            kk = alias_map.get(k, None)
+            if kk and kk not in out:
+                out[kk] = v
+
+        # Numeric fields normalization
+        for k in ("entry_price", "stop_loss", "target1", "target2", "target3", "confidence"):
+            if k in out:
+                fv = _to_float(out.get(k))
+                if fv is not None:
+                    out[k] = fv
+
+        # Normalize type/side
+        if "type" in out and isinstance(out["type"], str):
+            out["type"] = out["type"].strip().upper()
+        if "side" in out and isinstance(out["side"], str):
+            out["side"] = out["side"].strip().upper()
+
+        # Some alerts send "direction"
+        if "direction" in out and "side" not in out:
+            if isinstance(out["direction"], str):
+                out["side"] = out["direction"].strip().upper()
+
+        return out
+
     expected_secret = os.getenv("TV_WEBHOOK_SECRET", "").strip()
     provided_secret = (request.query_params.get("secret") or "").strip()
     if expected_secret and provided_secret != expected_secret:
@@ -6554,147 +6613,52 @@ async def webhook(request: Request):
         raw_body = b""
 
     if not raw_body or raw_body.strip() in (b"",):
-        return JSONResponse({"status": "ok", "message": "No payload (test ack)"}, status_code=200)
+        # TradingView test / manual ping
+        return JSONResponse({"status": "ok", "message": "No payload (test ok)"}, status_code=200)
 
+    content_type = (request.headers.get("content-type") or "").lower()
     payload = None
 
+    # Parser payload (JSON, form, text/plain)
     try:
-        payload = await request.json()
-    except Exception:
-        payload = None
-
-    if payload is None:
-        try:
-            txt = raw_body.decode("utf-8", errors="ignore").strip()
-            if txt:
-                payload = json.loads(txt)
-        except Exception:
-            payload = None
-
-    if payload is None:
-        try:
+        if "application/json" in content_type:
+            payload = json.loads(raw_body.decode("utf-8", errors="ignore"))
+        elif "application/x-www-form-urlencoded" in content_type:
             form = await request.form()
-            payload = dict(form)
-        except Exception:
-            payload = None
+            if "payload" in form:
+                payload = json.loads(str(form["payload"]))
+            else:
+                payload = dict(form)
+        else:
+            # text/plain ou autre -> on tente JSON
+            text_body = raw_body.decode("utf-8", errors="ignore").strip()
+            payload = json.loads(text_body)
+    except Exception as e:
+        print(f"❌ Erreur parsing payload: {e}")
+        return JSONResponse({"status": "error", "message": "Payload invalide"}, status_code=200)
 
     if not isinstance(payload, dict):
-        print("⚠️ Webhook payload non supporté:", str(raw_body)[:200])
-        return JSONResponse({"status": "error", "message": "Payload invalide/non supporté"}, status_code=200)
-        # Normalisation: convertir les champs numriques (souvent envoys en string) et accepter 'na'/'N/A'
-        # + alias de cls (tp_1 -> tp1, etc.) pour tre tolrant aux variations ct Pine/alert.
-        _alias_map = {
-            'tp_1': 'tp1', 'tp_2': 'tp2', 'tp_3': 'tp3',
-            't1': 'tp1', 't2': 'tp2', 't3': 'tp3',
-            'target1': 'tp1', 'target2': 'tp2', 'target3': 'tp3',
-            'stop': 'sl', 'stop_loss': 'sl', 'stopLoss': 'sl',
-            'entryPrice': 'entry', 'entry_price': 'entry',
-        }
-        for k_src, k_dst in list(_alias_map.items()):
-            if k_src in payload and k_dst not in payload:
-                payload[k_dst] = payload.get(k_src)
+        print("❌ Payload non-dict:", type(payload))
+        return JSONResponse({"status": "error", "message": "Payload invalide (dict requis)"}, status_code=200)
 
-        def _to_float_or_none(v):
-            if v is None:
-                return None
-            if isinstance(v, (int, float)):
-                return float(v)
-            if isinstance(v, str):
-                s = v.strip().lower()
-                if s in ('', 'na', 'n/a', 'none', 'null'):
-                    return None
-                # enlever un ventuel '$' ou ','
-                s = s.replace('$', '').replace(',', '')
-                try:
-                    return float(s)
-                except Exception:
-                    return None
-            return None
+    payload = _normalize_tv_payload(payload)
+    print(f"✅ Webhook reçu: {payload.get('symbol','?')} {payload.get('type','?')} {payload.get('side','?')} tf={payload.get('timeframe','?')}")
 
-        for _k in ('entry', 'current_price', 'sl', 'tp1', 'tp2', 'tp3', 'confidence', 'rr', 'leverage'):
-            if _k in payload:
-                payload[_k] = _to_float_or_none(payload.get(_k))
-
-
-    def _normalize_tv_payload(p: dict) -> dict:
-        # 1) Dé-emballe un format courant: {"message": "<json_string>"}
-        msg = p.get("message")
-        if isinstance(msg, str):
-            s = msg.strip()
-            if (s.startswith("{") and s.endswith("}")) or (s.startswith("[") and s.endswith("]")):
-                try:
-                    obj = json.loads(s)
-                    if isinstance(obj, dict):
-                        p = obj
-                except Exception:
-                    pass
-
-        q = dict(p)
-
-        # 2) Mappe les clés fréquentes TradingView -> notre schéma
-        if not q.get("symbol"):
-            for k in ("ticker", "pair", "instrument", "sym", "s"):
-                v = q.get(k)
-                if v:
-                    q["symbol"] = v
-                    break
-
-        # side/action (buy/sell/long/short)
-        if not q.get("side") and q.get("action"):
-            q["side"] = q.get("action")
-        if not q.get("action") and q.get("side"):
-            q["action"] = q.get("side")
-        if (not q.get("side")) and q.get("signal"):
-            q["side"] = q.get("signal")
-            q["action"] = q.get("signal")
-
-        # prix
-        if q.get("entry") is None:
-            for k in ("entry", "price", "close", "current_price", "last", "last_price"):
-                if q.get(k) not in (None, ""):
-                    q["entry"] = q.get(k)
-                    break
-
-        if q.get("sl") is None:
-            for k in ("sl", "stop", "stop_loss", "stoploss"):
-                if q.get(k) not in (None, ""):
-                    q["sl"] = q.get(k)
-                    break
-
-        if q.get("tp1") is None:
-            for k in ("tp1", "tp", "take_profit", "takeprofit"):
-                if q.get(k) not in (None, ""):
-                    q["tp1"] = q.get(k)
-                    break
-
-        if q.get("timeframe") is None:
-            for k in ("tf", "interval", "time_frame"):
-                if q.get(k) not in (None, ""):
-                    q["timeframe"] = q.get(k)
-                    break
-
-        return q
-
-    # Validation via Pydantic (mais sans 422)
-    trade = None
+    # Validation TradeWebhook sans renvoyer 422
     try:
-        trade = TradeWebhook.parse_obj(payload)  # pydantic v1
-    except Exception:
-        try:
-            trade = TradeWebhook.model_validate(payload)  # type: ignore[attr-defined]
-        except Exception as e1:
-            normalized = _normalize_tv_payload(payload)
-            try:
-                trade = TradeWebhook.model_validate(normalized)  # type: ignore[attr-defined]
-                print(f"ℹ️ Webhook normalisé: {list(payload.keys())} -> {list(normalized.keys())}")
-            except Exception as e2:
-                print(f"⚠️ Webhook payload invalide (TradeWebhook): {e2} | original_error={e1}")
-                print(f"📌 Payload reçu keys={list(payload.keys())} (extrait)={str(payload)[:500]}")
-                return JSONResponse({"status": "error", "message": "Webhook payload invalide (TradeWebhook)"}, status_code=200)
+        trade = TradeWebhook(**payload)
+    except Exception as e:
+        print("❌ TradeWebhook validation error:", e)
+        print("   Keys:", list(payload.keys()))
+        return JSONResponse({"status": "error", "message": "Payload incomplet/invalid"}, status_code=200)
 
-    assert trade is not None
-    return await _handle_tradingview_webhook(trade)
+    try:
+        await _handle_tradingview_webhook(trade)
+    except Exception as e:
+        print("❌ Erreur traitement webhook:", e)
+        return JSONResponse({"status": "error", "message": "Erreur traitement webhook"}, status_code=200)
 
+    return JSONResponse({"status": "ok", "message": "Webhook reçu"}, status_code=200)
 
 @app.get("/health")
 @app.head("/health")

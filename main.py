@@ -2373,35 +2373,62 @@ class PermissionMiddleware(BaseHTTPMiddleware):
         #  Routes PUBLIQUES (pas d'authentification requise)
         public_paths = [
             "/", "/login", "/register", "/logout", "/health",
-            "/manifest.json", "/favicon.ico", 
-            "/tv-webhook"  # ← AJOUTÉ POUR WEBHOOKS TRADINGVIEW
+            "/pricing", "/pricing-new", "/pricing-complete",
+            "/contact",
+            "/manifest.json", "/favicon.ico", "/robots.txt", "/sitemap.xml",
+            "/tv-webhook"
         ]
-        
-        # Chemins API et static sont toujours publics
-        if (path in public_paths or 
-            path.startswith("/api/") or 
-            path.startswith("/static/") or
-            path.startswith("/admin/")):  # Admin a sa propre protection
+
+        public_prefixes = [
+            "/static/",
+            "/assets/",
+            "/webhook/",
+            "/tv-webhook",
+            # Checkout / paiements
+            "/api/stripe-checkout",
+            "/api/coinbase-checkout",
+            "/api/payment-",
+        ]
+
+        # Public = accessible sans authentification
+        if path in public_paths or any(path.startswith(p) for p in public_prefixes):
             return await call_next(request)
-        
-        #  Vrifier si l'utilisateur est connect
+
+        #  Vérifier si l'utilisateur est connecté
         session_token = request.cookies.get("session_token")
         if not session_token:
-            # Pas connect  Rediriger vers login
+            # Pas connecté : API -> 401 | Pages -> redirect login
+            if path.startswith("/api/"):
+                return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
             return RedirectResponse("/login", status_code=303)
-        
+
         user = get_user_from_token(session_token)
         if not user:
-            # Token invalide  Rediriger vers login
+            # Token invalide : API -> 401 | Pages -> redirect login
+            if path.startswith("/api/"):
+                return JSONResponse({"success": False, "message": "Non authentifié"}, status_code=401)
             return RedirectResponse("/login", status_code=303)
-        
         username = user.get('username', '')
         
-        #  Routes PROTGES (sauf celles du minimum)
-        # Si la route n'est PAS dans DEFAULT_USER_PERMISSIONS, vrifier permission
-        if path not in DEFAULT_USER_PERMISSIONS and path != "/mon-compte":
-            if not check_route_permission(username, path):
+        #  Routes protégées : accès selon abonnement (plan_access)
+        # (API -> on map vers la page logique)
+        route_to_check = path
+        if path.startswith("/api/"):
+            api_map = {
+                "/api/fear-greed": "/fear-greed",
+                "/api/btc-dominance": "/dominance",
+                "/api/heatmap": "/heatmap",
+                "/api/altcoin-season": "/altcoin-season",
+                "/api/crypto-news": "/nouvelles",
+            }
+            route_to_check = api_map.get(path, path)
+
+        if not check_route_permission(username, route_to_check):
+            if path.startswith("/api/"):
+                return JSONResponse({"success": False, "message": "Accès premium requis"}, status_code=403)
+
                 #  PAS DE PERMISSION  Page d'upgrade
+
                 upgrade_page = f"""
                 <!DOCTYPE html>
                 <html><head>
@@ -2515,7 +2542,7 @@ class PermissionMiddleware(BaseHTTPMiddleware):
                         </div>
                         
                         <p style="color: #c7d2fe; font-size: 14px; margin-top: 30px;">
-                            À partir de 9.99$/mois • Annulez à tout moment
+                            À partir de 29.99$/mois • Annulez à tout moment
                         </p>
                         
                         <a href="/mon-compte" class="back-btn">← Retour à mon compte</a>
@@ -2994,126 +3021,12 @@ app.add_middleware(
 #  Middleware d'authentification
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
-    """Vérifier l'authentification sur toutes les routes sauf routes FREE et publiques"""
-    
-    path = request.url.path
-    
-    #  BYPASS FORC POUR WEBHOOK -  TESTER
-    if path == "/tv-webhook" or path.startswith("/tv-webhook"):
-        print(f"🔥🔥🔥 WEBHOOK BYPASS FORCÉ - PASS DIRECT 🔥🔥🔥")
-        return await call_next(request)
-    
-    #  ROUTES FREE - Accessibles SANS login (9 pages)
-    free_routes = {
-        "/",
-        "/dashboard",
-        "/fear-greed",
-        "/dominance",
-        "/altcoin-season",
-        "/heatmap",
-        "/nouvelles",
-        "/convertisseur",
-        "/calendrier"
-    }
-    
-    # Routes publiques (authentification, paiements, webhooks)
-    public_routes = {
-        "/login",
-        "/register",
-        "/logout",
-        "/health",
-        "/pricing",
-        "/pricing-new",
-        "/pricing-complete"
-    }
-    
-    # Routes qui commencent par ces prfixes
-    public_prefixes = [
-        "/tv-webhook",
-        "/webhook/",
-        "/api/altcoin-season",      # API Altcoin Season
-        "/api/fear-greed",           # API Fear & Greed
-        "/api/btc-dominance",        # API BTC Dominance
-        "/api/heatmap",              # API Heatmap
-        "/api/crypto-news",          # API News
-        "/api/backtest",             # API Backtesting
-        "/api/stripe-checkout",
-        "/api/coinbase-checkout",
-        "/api/payment-",
-        "/test-webhook",
-        "/admin/init-promo",
-        "/admin/create-promo",
-        "/admin/list-promos",
-        "/admin/test-promo"
-    ]
-    
-    # Check exact match pour FREE et public
-    if path in free_routes or path in public_routes:
-        print(f"✅ FREE/PUBLIC ACCESS: {path}")
-        return await call_next(request)
-    
-    # Check prefixes
-    if any(path.startswith(prefix) for prefix in public_prefixes):
-        print(f"✅ PUBLIC PREFIX: {path}")
-        return await call_next(request)
-    
-    # Sinon, vrifier authentification
-    session_token = request.cookies.get("session_token")
-    user = get_user_from_token(session_token)
-    
-    if not user:
-        print(f"❌ NO AUTH: {path} → redirecting to /login")
-        if request.url.path.startswith("/api/"):
-            return Response(content="Non authentifié", status_code=401)
-        else:
-            return RedirectResponse(url="/login", status_code=303)
-    
-    print(f"✅ AUTHENTICATED: {path} (user: {user.get('username')})")
+    """Middleware legacy désactivé.
+
+    La protection d'accès (login + abonnement) est gérée par PermissionMiddleware /
+    check_route_permission pour éviter les doubles règles contradictoires.
+    """
     return await call_next(request)
-
-#  DFINITIONS OBLIGATOIRES (AVANT les routes !)
-monitor_lock = asyncio.Lock()
-monitor_running = False
-trades_db = []
-
-# ============================================================================
-#  CONFIGURATION DES CHEMINS PERSISTANTS
-# ============================================================================
-
-
-def _is_writable_dir(path: str) -> bool:
-    """Retourne True si on peut créer/supprimer un fichier dans ce dossier."""
-    try:
-        os.makedirs(path, exist_ok=True)
-        test_file = os.path.join(path, ".write_test")
-        with open(test_file, "w", encoding="utf-8") as f:
-            f.write("ok")
-        os.remove(test_file)
-        return True
-    except Exception:
-        return False
-
-
-def get_data_directory():
-    """
-    Trouve un dossier d'écriture fiable pour le JSON + fichiers.
-
-    IMPORTANT:
-    - Sur Railway, /data peut exister mais être en lecture seule selon le user / volume.
-      On teste donc réellement l'écriture avant de le choisir.
-    """
-    # 1) DATA_DIR env
-    data_dir = os.getenv("DATA_DIR", "").strip()
-    if data_dir and _is_writable_dir(data_dir):
-        return data_dir
-
-    # 2) /data (volume Railway) si vraiment writable
-    if _is_writable_dir("/data"):
-        return "/data"
-
-    # 3) Fallback /tmp
-    os.makedirs("/tmp", exist_ok=True)
-    return "/tmp"
 
 # Dterminer le rpertoire de donnes au dmarrage
 DATA_DIR = get_data_directory()
@@ -3552,16 +3465,8 @@ PUBLIC_ROUTES = ["/", "/login", "/register", "/logout", "/health", "/tv-webhook"
 
 # Routes MINIMUM donnes  TOUS les utilisateurs par dfaut
 DEFAULT_USER_PERMISSIONS = [
-    "/pricing-complete",      # Voir les abonnements
-    #  ANALYSE DE MARCH (section complte)
-    "/fear-greed",           # Fear & Greed Index
-    "/fear-greed-chart",     # Historique Fear & Greed
-    "/dominance",            # Bitcoin Dominance
-    "/altcoin-season",       # Altcoin Season Index
-    "/heatmap",              # Market Heatmap
-    "/bullrun-phase",        # Phase du Bull Run
-    "/graphiques",           # Graphiques Avancés
-    "/onchain-metrics"       # Métriques On-Chain
+    "/dashboard",            # Dashboard (gratuit après login)
+    "/mon-compte",           # Gestion compte / abonnement
 ]
 
 def give_default_permissions(username: str) -> bool:
@@ -3619,87 +3524,172 @@ def give_default_permissions(username: str) -> bool:
 
 def check_route_permission(username: str, route: str) -> bool:
     """
-    ✅ SYSTÈME DE PERMISSIONS PAR PAGE (avec vérification du plan)
-    
-    Vérifie si un utilisateur a la permission d'accéder à une route spécifique.
-    
-    RÈGLES (par ordre de priorité):
-    1. Les ADMINS ont accès à TOUTES les pages (bypass complet)
-    2. Les USERS avec permissions individuelles → utiliser ces permissions
-    3. Les USERS sans permissions individuelles → vérifier le plan d'abonnement
-    
-    Args:
-        username: Le nom d'utilisateur  
-        route: Le chemin de la route (ex: "/dashboard", "/academy")
-    
-    Returns:
-        True = Accès autorisé | False = Accès refusé
-        
-    Exemple d'utilisation dans une route:
-        if not check_route_permission(username, "/dashboard"):
-            return HTMLResponse("Accès refusé", status_code=403)
+    ✅ Vérifie si un utilisateur peut accéder à une route.
+
+    Source de vérité:
+    - ADMIN: accès total
+    - Sinon: routes autorisées par le plan (table plan_access)
+    - Fallback intégré si la table n'est pas configurée (évite de "briser" le site)
+
+    Note:
+    - Les permissions individuelles (user_permissions) sont volontairement IGNORÉES ici,
+      pour éviter qu'un ancien "default grant" donne accès Premium sans abonnement.
+      Si tu veux offrir un accès spécial, ajoute la route dans plan_access du plan voulu.
     """
     try:
+        # Routes toujours autorisées une fois connecté (même plan free)
+        ALWAYS_ALLOW = {"/dashboard", "/mon-compte"}
+
+        if route in ALWAYS_ALLOW:
+            return True
+
         conn = db_manager.get_connection()
         c = conn.cursor()
-        
-        # tape 1: Vrifier le rle et le plan de l'utilisateur
+
+        # 1) Récupérer rôle + plan + fin d'abonnement
         if db_manager.use_postgresql:
-            c.execute("SELECT role, subscription_plan FROM users WHERE username = %s", (username,))
+            c.execute(
+                "SELECT role, subscription_plan, subscription_end FROM users WHERE username = %s",
+                (username,)
+            )
         else:
-            c.execute("SELECT role, subscription_plan FROM users WHERE username = ?", (username,))
-        
-        result = c.fetchone()
-        
-        if not result:
+            c.execute(
+                "SELECT role, subscription_plan, subscription_end FROM users WHERE username = ?",
+                (username,)
+            )
+
+        row = c.fetchone()
+        if not row:
             conn.close()
             return False
-        
-        role, subscription_plan = result[0], result[1] if len(result) > 1 else 'free'
-        
-        # Si ADMIN  Accs complet  tout (pas de restrictions)
+
+        role = row[0]
+        subscription_plan = (row[1] or "free") if len(row) > 1 else "free"
+        subscription_end = row[2] if len(row) > 2 else None
+
         if role == "admin":
             conn.close()
             return True
-        
-        # tape 2: Vrifier si l'utilisateur a des permissions individuelles
-        if db_manager.use_postgresql:
-            c.execute(
-                "SELECT route FROM user_permissions WHERE username = %s AND route = %s",
-                (username, route)
-            )
-        else:
-            c.execute(
-                "SELECT route FROM user_permissions WHERE username = ? AND route = ?",
-                (username, route)
-            )
-        
-        has_individual_permission = c.fetchone() is not None
-        
-        # Si permissions individuelles trouves, les utiliser
-        if has_individual_permission:
-            conn.close()
-            return True
-        
-        # tape 3: Vrifier les permissions du plan d'abonnement
-        c.execute("SELECT routes FROM plan_access WHERE plan = ?", (subscription_plan,))
-        plan_result = c.fetchone()
-        
-        conn.close()
-        
-        if plan_result and plan_result[0]:
-            import json
-            plan_routes = json.loads(plan_result[0])
-            return route in plan_routes
-        
-        # Par dfaut, refuser l'accs si aucune permission trouve
-        return False
-        
-    except Exception as e:
-        print(f"❌ Erreur vérification permission [{username}] sur [{route}]: {e}")
-        # En cas d'erreur, refuser l'accs par scurit
-        return False
 
+        # 2) Déterminer le "tier" (free / premium / elite), en tenant compte de l'expiration
+        from datetime import datetime
+
+        def _to_dt(v):
+            if not v:
+                return None
+            if isinstance(v, datetime):
+                return v
+            if isinstance(v, str):
+                try:
+                    return datetime.fromisoformat(v)
+                except Exception:
+                    return None
+            return None
+
+        end_dt = _to_dt(subscription_end)
+        if end_dt and datetime.now() > end_dt:
+            subscription_plan = "free"
+
+        plan_raw = str(subscription_plan).strip().lower()
+
+        def normalize_plan_key(p: str) -> str:
+            if not p:
+                return "free"
+            if "elite" in p or "ultim" in p:
+                return "elite"
+            if "premium" in p or "pro" in p or "mensuel" in p or "month" in p or "year" in p or "ann" in p:
+                return "premium"
+            if p in {"free", "gratuit"}:
+                return "free"
+            # Par défaut: considérer comme premium si ce n'est pas explicitement free
+            return "premium"
+
+        plan_key = normalize_plan_key(plan_raw)
+
+        # 3) Assurer l'existence de la table plan_access (SQLite/Postgres)
+        try:
+            if db_manager.use_postgresql:
+                c.execute("""
+                    CREATE TABLE IF NOT EXISTS plan_access (
+                        plan TEXT PRIMARY KEY,
+                        routes TEXT NOT NULL
+                    )
+                """)
+            else:
+                c.execute("""
+                    CREATE TABLE IF NOT EXISTS plan_access (
+                        plan TEXT PRIMARY KEY,
+                        routes TEXT NOT NULL
+                    )
+                """)
+            conn.commit()
+        except Exception:
+            # si CREATE TABLE échoue (permissions, etc), on continue avec le fallback
+            pass
+
+        # 4) Charger les routes autorisées depuis plan_access (essais: plan exact puis plan_key)
+        plan_routes = None
+
+        def _fetch_plan_routes(plan_name: str):
+            if not plan_name:
+                return None
+            try:
+                if db_manager.use_postgresql:
+                    c.execute("SELECT routes FROM plan_access WHERE plan = %s", (plan_name,))
+                else:
+                    c.execute("SELECT routes FROM plan_access WHERE plan = ?", (plan_name,))
+                r = c.fetchone()
+                if r and r[0]:
+                    import json
+                    return set(json.loads(r[0]))
+            except Exception:
+                return None
+            return None
+
+        plan_routes = _fetch_plan_routes(subscription_plan) or _fetch_plan_routes(plan_raw) or _fetch_plan_routes(plan_key)
+
+        # 5) Fallback (si pas configuré en DB)
+        free_routes = {"/dashboard", "/mon-compte"}
+
+        premium_routes = set(free_routes) | {
+            "/ai-market-regime",
+            "/ai-whale-watcher",
+            "/fear-greed",
+            "/fear-greed-chart",
+            "/dominance",
+            "/heatmap",
+            "/strategie",
+            "/spot-trading",
+            "/altcoin-season",
+            "/nouvelles",
+            "/convertisseur",
+            "/calendrier",
+            "/graphiques",
+            "/bullrun-phase",
+            "/onchain-metrics",
+        }
+
+        elite_routes = set(premium_routes) | {
+            "/ai-predictor",
+        }
+
+        fallback = {
+            "free": free_routes,
+            "premium": premium_routes,
+            "elite": elite_routes,
+        }
+
+        allowed = plan_routes if plan_routes is not None else fallback.get(plan_key, free_routes)
+
+        conn.close()
+        return route in allowed
+
+    except Exception as e:
+        try:
+            print(f"❌ Erreur vérification permission [{username}] sur [{route}]: {e}")
+        except Exception:
+            pass
+        return False
 def get_user_role(username: str) -> str:
     """Obtenir le rôle d'un utilisateur"""
     return db_manager.get_user_role(username)
@@ -6675,17 +6665,9 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     
     username = user.get('username', 'Utilisateur')
     
-    if not check_route_permission(username, "/dashboard"):
-        return HTMLResponse(SIDEBAR + """<!DOCTYPE html>
-            <html><head><meta charset="UTF-8"><title>Accès Refusé</title>""" + CSS + """</head>
-            <body>
-                <div style="padding: 40px; text-align: center;">
-                    <h1 style="color:#ef4444;">Accès Refusé</h1>
-                    <a href="/mon-compte" style="display: inline-block; background: #3b82f6; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none;">Mon Compte</a>
-                </div>
-            </body></html>
-        """, status_code=403)
-    
+        # Accès au dashboard: gratuit après login (pas de paywall ici)
+
+
     html = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -27081,106 +27063,7 @@ async def mon_compte(request: Request):
     username = user.get('username', 'User') if isinstance(user, dict) else user
     
     #  VRIFICATION DES PERMISSIONS
-    if not check_route_permission(username, "/mon-compte"):
-        return HTMLResponse(SIDEBAR + """
-            <!DOCTYPE html>
-            <html><head>
-                <meta charset="UTF-8">
-                <title>🔒 Accès Premium Requis</title>
-            """ + CSS + """
-                <style>
-                    .upgrade-box {
-                        max-width: 600px;
-                        margin: 60px auto;
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        border-radius: 20px;
-                        padding: 50px;
-                        text-align: center;
-                        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                    }
-                    .upgrade-icon {
-                        font-size: 80px;
-                        margin-bottom: 20px;
-                        animation: pulse 2s infinite;
-                    }
-                    @keyframes pulse {
-                        0%, 100% { transform: scale(1); }
-                        50% { transform: scale(1.1); }
-                    }
-                    .upgrade-title {
-                        color: white;
-                        font-size: 36px;
-                        font-weight: 700;
-                        margin-bottom: 15px;
-                    }
-                    .upgrade-text {
-                        color: #e0e7ff;
-                        font-size: 18px;
-                        margin-bottom: 30px;
-                        line-height: 1.6;
-                    }
-                    .upgrade-btn {
-                        display: inline-block;
-                        background: white;
-                        color: #667eea;
-                        padding: 18px 40px;
-                        border-radius: 50px;
-                        text-decoration: none;
-                        font-weight: 700;
-                        font-size: 18px;
-                        transition: all 0.3s;
-                        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                    }
-                    .upgrade-btn:hover {
-                        transform: translateY(-3px);
-                        box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-                    }
-                    .features-list {
-                        text-align: left;
-                        margin: 30px auto 0;
-                        max-width: 400px;
-                        color: white;
-                    }
-                    .feature-item {
-                        margin: 12px 0;
-                        font-size: 16px;
-                    }
-                    .feature-item::before {
-                        content: "✨ ";
-                        margin-right: 10px;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="upgrade-box">
-                    <div class="upgrade-icon">🔒</div>
-                    <h1 class="upgrade-title">Fonctionnalité Premium</h1>
-                    <p class="upgrade-text">
-                        Cette page fait partie de nos outils avancés réservés aux membres Premium.<br>
-                        Débloquez l'accès complet dès maintenant!
-                    </p>
-                    
-                    <div class="features-list">
-                        <div class="feature-item">16 Outils d'Intelligence Artificielle</div>
-                        <div class="feature-item">Academy complète (22 modules)</div>
-                        <div class="feature-item">Portfolio Tracker avancé</div>
-                        <div class="feature-item">Tous les indicateurs de marché</div>
-                        <div class="feature-item">Support prioritaire</div>
-                    </div>
-                    
-                    <div style="margin-top: 40px;">
-                        <a href="/pricing-complete" class="upgrade-btn">
-                            🚀 Voir les Plans & Prix
-                        </a>
-                    </div>
-                    
-                    <p style="color: #c7d2fe; font-size: 14px; margin-top: 30px;">
-                        À partir de 9.99$/mois • Annulez à tout moment
-                    </p>
-                </div>
-            </body>
-            </html>
-        """, status_code=403)
+        # Accès à mon compte: toujours permis après login
 
     
     # Rcuprer infos abonnement depuis la bonne DB

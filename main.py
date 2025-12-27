@@ -2870,10 +2870,6 @@ body.sidebar-open{margin-left:280px}
                 <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
             </a>
-            <a href="/admin/ebooks" class="menu-item admin">
-                <span class="icon">📚</span>
-                <span class="label">Admin Ebooks</span>
-            </a>
             <a href="/logout" class="menu-item logout">
                 <span class="icon">🚪</span>
                 <span class="label">Déconnexion</span>
@@ -19404,11 +19400,13 @@ async def pricing_complete():
                     min-width: 150px;
                     white-space: nowrap;
                     text-align: center;
-                }}
+                    color: #111;
+                }
                 .plan-tab:hover {
                     border-color: #667eea;
                     transform: scale(1.05);
-                }}
+                    color: #111;
+                }
                 .plan-tab.active-tab {
                     background: #667eea;
                     color: white;
@@ -24217,6 +24215,21 @@ async def admin_dashboard(request: Request):
             <div class="users-section" style="margin-bottom: 30px;">
                 <h2>🎯 Gestion des Accès par Forfait</h2>
                 <p style="color: #666; margin-bottom: 20px;">Définir quelles pages sont accessibles pour chaque plan d'abonnement</p>
+<div style="margin-top: 18px; display: flex; flex-wrap: wrap; gap: 12px;">
+    <button class="plan-pill" onclick="managePlanAccess('free')">🆓 <span>Gratuit</span> <small>(Free)</small></button>
+    <button class="plan-pill" onclick="managePlanAccess('premium')">💳 <span>Premium</span> <small>($29.99)</small></button>
+    <button class="plan-pill" onclick="managePlanAccess('advanced')">💎 <span>Advanced</span> <small>($49.99)</small></button>
+    <button class="plan-pill" onclick="managePlanAccess('pro')">👑 <span>Pro</span> <small>($79.99)</small></button>
+    <button class="plan-pill" onclick="managePlanAccess('elite')">🚀 <span>Elite</span> <small>($149.99)</small></button>
+</div>
+<div style="margin-top: 12px; color: #6b7280; font-size: 14px; line-height: 1.4;">
+    Cliquez sur un plan pour cocher/décocher les pages accessibles, puis cliquez <b>Enregistrer</b> dans la fenêtre.
+<div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px;">
+    <button class="plan-pill" style="min-width: auto; padding: 10px 14px;" onclick="window.location.href='/admin'">⚙️ Ouvrir Admin (vue classique)</button>
+    <button class="plan-pill" style="min-width: auto; padding: 10px 14px;" onclick="window.location.href='/admin/ebooks'">📚 Gérer les Ebooks</button>
+</div>
+</div>
+
                 
                 
             </div>

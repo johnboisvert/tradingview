@@ -98,44 +98,43 @@ except ImportError as e:
     PERMISSIONS_AVAILABLE = False
     protected_router = None
     def register_template_functions(templates):
-        """Register safe helper functions for Jinja2 templates.
+        """Enregistre des helpers Jinja2 (mode fallback).
 
-        This must never crash the app at startup, even if optional modules are missing.
+        - has_feature(user, feature): utile pour afficher/masquer des boutons dans le UI
+        - is_authenticated(request): utile pour le menu/login
+        Ce bloc ne doit JAMAIS faire planter l'app au démarrage.
         """
         try:
             env = getattr(templates, "env", None)
             if env is None:
                 return
 
-            # --- Feature gating helper (UI only; API should enforce auth/plan) ---
             def has_feature(user, feature: str) -> bool:
-                """Return True if the current user has access to a named feature.
-
-                Conservative default: False for unknown features when no permission system is available.
-                """
+                # 1) Si un système de permissions existe (optionnel), on l'utilise
                 try:
-                    ps = globals().get("permission_system") or globals().get("permissions_system") or globals().get("permissions")
+                    ps = (
+                        globals().get("permission_system")
+                        or globals().get("permissions_system")
+                        or globals().get("permissions")
+                    )
                     if ps is not None:
-                        if hasattr(ps, "has_feature"):
-                            return bool(ps.has_feature(user, feature))
-                        if hasattr(ps, "user_has_feature"):
-                            return bool(ps.user_has_feature(user, feature))
-                        if hasattr(ps, "can_access"):
-                            return bool(ps.can_access(user, feature))
+                        for attr in ("has_feature", "user_has_feature", "can_access"):
+                            if hasattr(ps, attr):
+                                return bool(getattr(ps, attr)(user, feature))
                 except Exception:
                     pass
 
+                # 2) Fallback léger: user.features (list/set/tuple/dict)
                 try:
-                    if user is None:
-                        return False
                     feats = getattr(user, "features", None)
                     if isinstance(feats, (list, set, tuple)):
                         return feature in feats
                     if isinstance(feats, dict):
                         return bool(feats.get(feature, False))
-                    return False
                 except Exception:
-                    return False
+                    pass
+
+                return False
 
             def is_authenticated(request) -> bool:
                 try:
@@ -3029,6 +3028,41 @@ async def auth_middleware(request: Request, call_next):
     return await call_next(request)
 
 # Dterminer le rpertoire de donnes au dmarrage
+
+def _is_writable_dir(path: str) -> bool:
+    """Retourne True si le répertoire est accessible en écriture."""
+    try:
+        os.makedirs(path, exist_ok=True)
+        test_file = os.path.join(path, ".write_test")
+        with open(test_file, "w", encoding="utf-8") as f:
+            f.write("ok")
+        os.remove(test_file)
+        return True
+    except Exception:
+        return False
+
+
+def get_data_directory() -> str:
+    """Choisit un répertoire persistant si possible, sinon fallback sur /tmp.
+
+    - DB_DIR (env) prioritaire
+    - /app/data si writable (Railway/Render selon mounts)
+    - /tmp/ai_trader en dernier recours
+    """
+    env_dir = (os.getenv("DB_DIR") or "").strip()
+    candidates = []
+    if env_dir:
+        candidates.append(env_dir)
+    candidates.extend([
+        "/app/data",
+        "/data",
+        "/tmp/ai_trader",
+    ])
+    for d in candidates:
+        if d and _is_writable_dir(d):
+            return d
+    return "/tmp/ai_trader"
+
 DATA_DIR = get_data_directory()
 
 #  FICHIER DE PERSISTANCE DES TRADES

@@ -2203,54 +2203,60 @@ app = FastAPI()
 # =====================
 # Static files (/static)
 # =====================
-# Sert le dossier static pour le logo, CSS, images, etc.
-# Supporte plusieurs structures de projet (ex: /static ou /tradingview/static)
+# Sert le dossier static (logo, css, js) : /static/...
+# Important : sur certains hébergeurs, le "working directory" et le chemin de __file__ peuvent varier.
+# On sert donc le statique via une route robuste qui cherche dans plusieurs dossiers possibles.
+
+_STATIC_DIRS = []
 try:
-    import os
-    from fastapi.staticfiles import StaticFiles
-    from pathlib import Path
-
     _BASE_DIR = Path(__file__).resolve().parent
-
-    # Optionnel: forcer via variable d'environnement
-    _ENV_STATIC_DIR = (os.getenv("STATIC_DIR") or "").strip()
-    _CANDIDATES = []
-    if _ENV_STATIC_DIR:
-        _CANDIDATES.append(Path(_ENV_STATIC_DIR))
-
-    # Candidats standards
-    _CANDIDATES += [
+    _STATIC_DIRS = [
         _BASE_DIR / "static",
         _BASE_DIR / "tradingview" / "static",
-        _BASE_DIR / "frontend" / "static",
+        Path.cwd() / "static",
+        Path("/app/static"),
+        Path("/app/tradingview/static"),
+        Path("/workspace/static"),
+        Path("/var/task/static"),
     ]
+except Exception:
+    _STATIC_DIRS = [Path.cwd() / "static"]
 
-    _mounted = False
-    for _d in _CANDIDATES:
-        try:
-            if _d.exists():
-                app.mount("/static", StaticFiles(directory=str(_d)), name="static")
-                print(f"✅ StaticFiles monté: {_d}")
-                _mounted = True
-                break
-        except Exception:
-            pass
+def _resolve_static_path(base: Path, rel_path: str) -> "Path|None":
+    """Résout un chemin statique en protégeant contre le path traversal."""
+    try:
+        base_res = base.resolve()
+        cand = (base_res / rel_path).resolve()
+        # cand doit rester dans base_res
+        if str(cand).startswith(str(base_res) + os.sep) and cand.is_file():
+            return cand
+    except Exception:
+        return None
+    return None
 
-    # Fallback: créer /static si rien n'existe, puis monter
-    if not _mounted:
-        _fallback = _BASE_DIR / "static"
-        try:
-            _fallback.mkdir(parents=True, exist_ok=True)
-        except Exception:
-            pass
-        app.mount("/static", StaticFiles(directory=str(_fallback)), name="static")
-        print(f"⚠️ StaticFiles: dossier manquant, fallback monté sur {_fallback}")
-except Exception as _e:
-    print(f"⚠️ StaticFiles non monté: {_e}")
+@app.get("/static/{file_path:path}")
+async def _serve_static(file_path: str):
+    """Sert les fichiers statiques (logo/CSS/JS) depuis les répertoires candidats."""
+    if not file_path:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
 
+    safe_rel = file_path.replace("\\", "/").lstrip("/")
+
+    for d in _STATIC_DIRS:
+        if not d:
+            continue
+        p = _resolve_static_path(d, safe_rel)
+        if p:
+            resp = FileResponse(str(p))
+            resp.headers["Cache-Control"] = "public, max-age=86400"
+            return resp
+
+    return JSONResponse({"detail": "Not Found"}, status_code=404)
 
 #  CORRECTION: Configuration Jinja2 templates
 templates = Jinja2Templates(directory="templates")
+templates.env.globals["SITE_LOGO_URL"] = "/static/logo1.png"
+templates.env.globals["SITE_NAME"] = "CRYPTOIA"
 print("✅ Templates Jinja2 configurés")
 
 # Enregistrer les fonctions template si systme permissions disponible

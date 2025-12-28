@@ -230,120 +230,104 @@ if COINBASE_AVAILABLE and COINBASE_API_KEY and Client:
 # FONCTIONS DE PAIEMENT
 # ============================================================================
 
+
 def create_coinbase_payment(plan, email, client, amount=None):
-    """Crée un paiement Coinbase Commerce avec montant personnalisé
-    
-    NOTE: Les cryptos acceptées (BTC, ETH, USDT, etc.) sont configurées 
-    dans votre dashboard Coinbase Commerce, pas dans l'API.
-    Allez sur: https://commerce.coinbase.com/dashboard/settings
-    """
     try:
         if not client:
             return None, "Coinbase client non initialisé"
-        
-        # Normaliser le nom du plan
-        plan_mapping = {
-            'monthly': '1_month',
-            '1_month': '1_month',
-            '3months': '3_months',
-            '3_months': '3_months',
-            '6months': '6_months',
-            '6_months': '6_months',
-            'yearly': '1_year',
-            '1_year': '1_year'
-        }
-        
-        normalized_plan = plan_mapping.get(plan.lower(), '1_month')
-        
-        # Prix par plan
-        plan_prices = {
-            '1_month': {'amount': 29.99, 'name': 'Premium 1 Mois', 'duration': '1 mois'},
-            '3_months': {'amount': 74.97, 'name': 'Advanced 3 Mois', 'duration': '3 mois'},
-            '6_months': {'amount': 134.94, 'name': 'Pro 6 Mois', 'duration': '6 mois'},
-            '1_year': {'amount': 239.88, 'name': 'Elite 1 An', 'duration': '1 an'}
-        }
-        
-        plan_info = plan_prices.get(normalized_plan, plan_prices['1_month'])
-        
-        # Si amount fourni (avec code promo), l'utiliser
+
+        plan_key = normalize_plan(plan)
+        plan_info = get_plan_pricing(plan_key)
+        if not plan_info:
+            return None, "Plan invalide"
+
+        base_price = round(float(plan_info.get("price_cents", 0)) / 100.0, 2)
+        currency = (plan_info.get("currency") or "cad").upper()
+
+        # amount override (promo) allowed only if <= base
+        final_price = base_price
         if amount is not None:
-            final_amount = amount
-        else:
-            final_amount = plan_info['amount']
-        
-        # Crer la charge Coinbase
-        # NOTE: Les cryptos acceptes sont configures au niveau du compte Coinbase
-        # Par dfaut: BTC, ETH, USDC, USDT, BCH, DAI, DOGE, LTC
-        charge_info = {
-            'name': f'Trading Dashboard Pro - {plan_info["name"]}',
-            'description': f'Abonnement {plan_info["duration"]} - Tous les indicateurs IA, Trades illimités, Support premium. Accepte: BTC, ETH, USDT, USDC',
-            'pricing_type': 'fixed_price',
-            'local_price': {
-                'amount': str(final_amount),
-                'currency': 'USD'
+            try:
+                final_price = float(amount)
+            except Exception:
+                final_price = base_price
+            if final_price <= 0 or final_price > base_price:
+                final_price = base_price
+
+        charge_data = {
+            "name": f"CryptoIA — {plan_info.get('display_name', plan_key.title())}",
+            "description": f"Accès {plan_info.get('display_name', plan_key)} ({plan})",
+            "pricing_type": "fixed_price",
+            "local_price": {
+                "amount": f"{final_price:.2f}",
+                "currency": currency
             },
-            'metadata': {
-                'plan': normalized_plan,
-                'original_plan': plan,
-                'email': email,
-                'duration': plan_info['duration']
+            "metadata": {
+                "plan": plan_key,
+                "original_plan": plan,
+                "email": email,
+                "currency": currency,
+                "amount": f"{final_price:.2f}"
             }
         }
-        
-        print(f"🔵 Création charge Coinbase: {plan} -> {normalized_plan} = ${final_amount}")
-        print(f"💰 Cryptos acceptées: BTC, ETH, USDT, USDC (selon config Coinbase Commerce)")
-        charge = client.charge.create(**charge_info)
-        print(f"✅ Charge créée: {charge.id} - URL: {charge.hosted_url}")
+
+        charge = client.charge.create(charge_data)
         return charge, None
-        
+
     except Exception as e:
-        print(f"❌ Erreur Coinbase: {e}")
         return None, str(e)
 
-def create_stripe_checkout_session(plan, email, success_url, cancel_url, amount=None):
-    """Crée une session Stripe Checkout avec montant personnalisé"""
+
+def create_stripe_checkout_session(plan, customer_email, success_url, cancel_url, amount=None):
     try:
-        if not STRIPE_AVAILABLE or not stripe.api_key:
-            return None, "Stripe non configuré"
-        
-        # Prix par plan (en cents)
-        plan_prices = {
-            'monthly': 2999,
-            '1_month': 2999,
-            '3_months': 7497,
-            '6_months': 13494,
-            '1_year': 23988
-        }
-        
-        # Si amount fourni (avec code promo), l'utiliser
+        if not STRIPE_AVAILABLE:
+            return None, "Stripe not available"
+
+        plan_key = normalize_plan(plan)
+        plan_info = get_plan_pricing(plan_key)
+        if not plan_info:
+            return None, "Invalid plan"
+
+        base_cents = int(plan_info.get("price_cents", 0))
+        currency = (plan_info.get("currency") or "cad").lower()
+
+        # amount override is accepted (promo), but clamped to <= base
+        amount_cents = base_cents
         if amount is not None:
-            price = int(amount * 100)  # Convertir en cents
-        else:
-            price = plan_prices.get(plan, 2999)
-        
+            try:
+                amount_cents = int(round(float(amount) * 100))
+            except Exception:
+                amount_cents = base_cents
+            if amount_cents <= 0 or amount_cents > base_cents:
+                amount_cents = base_cents
+
         session = stripe.checkout.Session.create(
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
-                    'currency': 'usd',
-                    'unit_amount': price,
+                    'currency': currency,
                     'product_data': {
-                        'name': f'Trading Dashboard Pro - {plan}',
+                        'name': f"CryptoIA — {plan_info.get('display_name', plan_key.title())}",
                     },
+                    'unit_amount': amount_cents,
                 },
                 'quantity': 1,
             }],
             mode='payment',
+            customer_email=customer_email,
             success_url=success_url,
             cancel_url=cancel_url,
-            customer_email=email,
-            metadata={'plan': plan, 'email': email}
+            metadata={
+                'plan': plan_key,
+                'original_plan': plan,
+                'currency': currency,
+                'amount_cents': str(amount_cents)
+            }
         )
-        
-        return session.url, None
-        
+        return session, None
+
     except Exception as e:
-        print(f"❌ Erreur Stripe: {e}")
+        print(f"Stripe session error: {e}")
         return None, str(e)
 
 def init_payments_db():
@@ -358,7 +342,7 @@ def init_payments_db():
                 user_id TEXT,
                 email TEXT,
                 amount REAL,
-                currency TEXT DEFAULT 'USD',
+                currency TEXT DEFAULT 'CAD',
                 description TEXT,
                 status TEXT DEFAULT 'pending',
                 crypto_address TEXT,
@@ -376,7 +360,7 @@ def init_payments_db():
                 user_id TEXT,
                 email TEXT,
                 amount REAL,
-                currency TEXT DEFAULT 'USD',
+                currency TEXT DEFAULT 'CAD',
                 description TEXT,
                 status TEXT DEFAULT 'pending',
                 crypto_address TEXT,
@@ -546,6 +530,114 @@ def get_db_connection():
     if DB_CONFIG["type"] == "postgres":
         return psycopg2.connect(DB_CONFIG["url"])
     return sqlite3.connect(DB_CONFIG["path"], timeout=30.0)
+
+
+# =====================
+# PLAN PRICING (CAD) + SYNC ADMIN / PRICING / PAYMENTS
+# =====================
+# Canonical plan keys used throughout the site:
+# free, premium (1 mois), advanced (3 mois), pro (6 mois), elite (1 an)
+
+PLAN_ALIASES = {
+    "free": "free",
+    "gratuit": "free",
+    "premium": "premium",
+    "advanced": "advanced",
+    "pro": "pro",
+    "elite": "elite",
+    # legacy keys / old buttons
+    "1_month": "premium",
+    "3_months": "advanced",
+    "6_months": "pro",
+    "1_year": "elite",
+    "monthly": "premium",
+    "quarterly": "advanced",
+    "semiannual": "pro",
+    "annual": "elite",
+}
+
+DEFAULT_PLAN_PRICES = {
+    "free":     {"display_name": "Gratuit",  "duration_days": 0,   "price_cents": 0,     "currency": "cad"},
+    "premium":  {"display_name": "Premium",  "duration_days": 30,  "price_cents": 2000,  "currency": "cad"},
+    "advanced": {"display_name": "Advanced", "duration_days": 90,  "price_cents": 5000,  "currency": "cad"},
+    "pro":      {"display_name": "Pro",      "duration_days": 180, "price_cents": 8000,  "currency": "cad"},
+    "elite":    {"display_name": "Elite",    "duration_days": 365, "price_cents": 15000, "currency": "cad"},
+}
+
+def normalize_plan(plan: str) -> str:
+    plan = (plan or "").strip().lower()
+    return PLAN_ALIASES.get(plan, plan)
+
+def init_plan_pricing_db():
+    """Ensure plan pricing table exists and has defaults."""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS plan_pricing (
+            plan_key TEXT PRIMARY KEY,
+            display_name TEXT,
+            duration_days INTEGER,
+            price_cents INTEGER,
+            currency TEXT,
+            updated_at TEXT
+        )
+        """)
+        cur.execute("SELECT COUNT(1) FROM plan_pricing")
+        row = cur.fetchone()
+        count = row[0] if row else 0
+        if count == 0:
+            now = datetime.utcnow().isoformat()
+            for k, v in DEFAULT_PLAN_PRICES.items():
+                cur.execute(
+                    "INSERT OR REPLACE INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at) VALUES (?,?,?,?,?,?)",
+                    (k, v["display_name"], int(v["duration_days"]), int(v["price_cents"]), v["currency"], now)
+                )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"⚠️ init_plan_pricing_db: {e}")
+
+def get_all_plan_pricing() -> dict:
+    """Return all plan pricing (db preferred, fallback to defaults)."""
+    try:
+        init_plan_pricing_db()
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT plan_key, display_name, duration_days, price_cents, currency FROM plan_pricing")
+        rows = cur.fetchall()
+        conn.close()
+        out = {k: {"display_name": dn, "duration_days": int(dd or 0), "price_cents": int(pc or 0), "currency": (c or "cad")} for k,dn,dd,pc,c in rows}
+        for k, v in DEFAULT_PLAN_PRICES.items():
+            out.setdefault(k, v.copy())
+        return out
+    except Exception:
+        return {k: v.copy() for k,v in DEFAULT_PLAN_PRICES.items()}
+
+def get_plan_pricing(plan_key: str):
+    plan_key = normalize_plan(plan_key)
+    return get_all_plan_pricing().get(plan_key)
+
+def set_plan_pricing(plan_key: str, display_name: str, duration_days: int, price_cents: int, currency: str = "cad") -> bool:
+    plan_key = normalize_plan(plan_key)
+    if plan_key not in DEFAULT_PLAN_PRICES:
+        return False
+    try:
+        init_plan_pricing_db()
+        conn = get_db_connection()
+        cur = conn.cursor()
+        now = datetime.utcnow().isoformat()
+        cur.execute(
+            "INSERT OR REPLACE INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at) VALUES (?,?,?,?,?,?)",
+            (plan_key, display_name, int(duration_days), int(price_cents), (currency or "cad").lower(), now)
+        )
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"⚠️ set_plan_pricing: {e}")
+        return False
+
 
 def init_trades_db():
     """Crée la table trades"""
@@ -2103,6 +2195,20 @@ BADGES_DATA = {
 
 
 app = FastAPI()
+
+
+# =====================
+# Static files (logo, css, images)
+# =====================
+try:
+    from fastapi.staticfiles import StaticFiles
+    from pathlib import Path
+    _STATIC_DIR = Path(__file__).resolve().parent / "static"
+    if _STATIC_DIR.exists():
+        app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+except Exception as _e:
+    print(f"⚠️ StaticFiles non monté: {_e}")
+
 
 #  CORRECTION: Configuration Jinja2 templates
 templates = Jinja2Templates(directory="templates")
@@ -3997,7 +4103,7 @@ async def calculate_altcoin_season_index():
             markets_response = await client.get(
                 'https://api.coingecko.com/api/v3/coins/markets',
                 params={
-                    'vs_currency': 'usd',
+                    'vs_currency': 'cad',
                     'order': 'market_cap_desc',
                     'per_page': 100,
                     'page': 1,
@@ -12216,7 +12322,7 @@ async def get_exchange_rates_live():
                         rates[symbol] = crypto_data[coin_id]
                 
                 # Ajouter les devises fiat (1 unit = X USD)
-                rates["USD"] = {"usd": 1, "eur": 0.92, "cad": 1.36, "gbp": 0.79, "jpy": 149.50, "chf": 0.88, "aud": 1.52, "cny": 7.24}
+                rates["CAD"] = {"usd": 1, "eur": 0.92, "cad": 1.36, "gbp": 0.79, "jpy": 149.50, "chf": 0.88, "aud": 1.52, "cny": 7.24}
                 rates["EUR"] = {"usd": 1.09, "eur": 1, "cad": 1.48, "gbp": 0.86, "jpy": 162.89, "chf": 0.96, "aud": 1.66, "cny": 7.89}
                 rates["CAD"] = {"usd": 0.74, "eur": 0.68, "cad": 1, "gbp": 0.58, "jpy": 110.29, "chf": 0.65, "aud": 1.12, "cny": 5.33}
                 rates["GBP"] = {"usd": 1.27, "eur": 1.16, "cad": 1.72, "gbp": 1, "jpy": 189.87, "chf": 1.12, "aud": 1.93, "cny": 9.19}
@@ -12248,7 +12354,7 @@ def get_fallback_rates():
             "USDT": {"usd": 1.0, "eur": 0.92, "cad": 1.36},
             "BNB": {"usd": 695.00, "eur": 638.00, "cad": 945.00},
             "SOL": {"usd": 245.00, "eur": 225.00, "cad": 333.00},
-            "USD": {"usd": 1, "eur": 0.92, "cad": 1.36},
+            "CAD": {"usd": 1, "eur": 0.92, "cad": 1.36},
             "EUR": {"usd": 1.09, "eur": 1, "cad": 1.48},
             "CAD": {"usd": 0.74, "eur": 0.68, "cad": 1}
         },
@@ -12450,7 +12556,7 @@ async def convertisseur_page():
                                 <option value="AVAX">🔺 Avalanche (AVAX)</option>
                             </optgroup>
                             <optgroup label="💰 Devises Fiduciaires">
-                                <option value="USD" selected>🇺🇸 Dollar américain (USD)</option>
+                                <option value="CAD" selected>🇺🇸 Dollar américain (USD)</option>
                                 <option value="EUR">🇪🇺 Euro (EUR)</option>
                                 <option value="CAD">🇨🇦 Dollar canadien (CAD)</option>
                                 <option value="GBP">🇬🇧 Livre sterling (GBP)</option>
@@ -12486,7 +12592,7 @@ async def convertisseur_page():
                                 <option value="AVAX">🔺 Avalanche (AVAX)</option>
                             </optgroup>
                             <optgroup label="💰 Devises Fiduciaires">
-                                <option value="USD">🇺🇸 Dollar américain (USD)</option>
+                                <option value="CAD">🇺🇸 Dollar américain (USD)</option>
                                 <option value="EUR">🇪🇺 Euro (EUR)</option>
                                 <option value="CAD" selected>🇨🇦 Dollar canadien (CAD)</option>
                                 <option value="GBP">🇬🇧 Livre sterling (GBP)</option>
@@ -12519,7 +12625,7 @@ async def convertisseur_page():
             <div class="card" style="margin-top: 30px;">
                 <h3 style="color: #60a5fa; margin-bottom: 20px;">⚡ Conversions rapides</h3>
                 <div class="popular-currencies">
-                    <div class="currency-btn" onclick="setQuickConversion('BTC', 'USD')">
+                    <div class="currency-btn" onclick="setQuickConversion('BTC', 'CAD')">
                         <div class="currency-btn-icon">₿→💵</div>
                         <div class="currency-btn-code">BTC→USD</div>
                     </div>
@@ -12527,15 +12633,15 @@ async def convertisseur_page():
                         <div class="currency-btn-icon">₿→🇨🇦</div>
                         <div class="currency-btn-code">BTC→CAD</div>
                     </div>
-                    <div class="currency-btn" onclick="setQuickConversion('ETH', 'USD')">
+                    <div class="currency-btn" onclick="setQuickConversion('ETH', 'CAD')">
                         <div class="currency-btn-icon">Ξ→💵</div>
                         <div class="currency-btn-code">ETH→USD</div>
                     </div>
-                    <div class="currency-btn" onclick="setQuickConversion('USD', 'CAD')">
+                    <div class="currency-btn" onclick="setQuickConversion('CAD', 'CAD')">
                         <div class="currency-btn-icon">🇺🇸→🇨🇦</div>
                         <div class="currency-btn-code">USD→CAD</div>
                     </div>
-                    <div class="currency-btn" onclick="setQuickConversion('CAD', 'USD')">
+                    <div class="currency-btn" onclick="setQuickConversion('CAD', 'CAD')">
                         <div class="currency-btn-icon">🇨🇦→🇺🇸</div>
                         <div class="currency-btn-code">CAD→USD</div>
                     </div>
@@ -13305,7 +13411,7 @@ async def check_watchlist_alerts():
         # Rcuprer le prix actuel via CoinGecko (simulation)
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
-                coin_id = symbol.replace("USDT", "").replace("USD", "").lower()
+                coin_id = symbol.replace("USDT", "").replace("CAD", "").lower()
                 if coin_id == "btc":
                     coin_id = "bitcoin"
                 elif coin_id == "eth":
@@ -17527,7 +17633,7 @@ async def calendrier_economique():
             "description": "L'indice PMI (Purchasing Managers' Index) mesure la santé du secteur manufacturier. Au-dessus de 50 = expansion, en-dessous = contraction. Basé sur des enquêtes auprès des directeurs d'achats. Premier indicateur de la santé industrielle.",
             "impact": "medium",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "48.5",
             "previous": "47.2",
             "why_important": "Premier indicateur de la santé du secteur manufacturier"
@@ -17539,7 +17645,7 @@ async def calendrier_economique():
             "description": "Indice PMI pour le secteur des services (80% de l'économie américaine). Mesure la santé des restaurants, hôtels, transport, finance, etc. Plus important que le PMI manufacturier car les services dominent l'économie moderne.",
             "impact": "medium",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "55.2",
             "previous": "55.2",
             "why_important": "Les services = 80% de l'économie américaine"
@@ -17551,7 +17657,7 @@ async def calendrier_economique():
             "description": "L'indice des prix à la consommation (CPI) mesure l'inflation. Crucial pour les décisions de la Fed. Publié le deuxième mardi du mois. Si CPI > 3%, cela suggère une inflation persistante. Les marchés réagissent fortement.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "2.6%",
             "previous": "2.6%",
             "why_important": "Indicateur d'inflation clé pour la Fed et les marchés"
@@ -17563,7 +17669,7 @@ async def calendrier_economique():
             "description": "CPI sans l'énergie et l'alimentation (plus volatile). Indicateur préféré de la Fed pour mesurer les tendances inflationnistes durables. Détermine la trajectoire des taux d'intérêt.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "3.3%",
             "previous": "3.3%",
             "why_important": "Inflation 'core' - Préférée de la Fed pour les décisions de taux"
@@ -17575,7 +17681,7 @@ async def calendrier_economique():
             "description": "Ventes des retailers américains pour le mois d'octobre. Indicateur clé de la santé des dépenses des consommateurs (70% du PIB américain). Si les ventes ralentissent, l'économie ralentit.",
             "impact": "medium",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "0.3%",
             "previous": "0.1%",
             "why_important": "Les dépenses de consommation = 70% de l'économie américaine"
@@ -17587,7 +17693,7 @@ async def calendrier_economique():
             "description": "Réunion critique de la Fed. Décision sur les taux d'intérêt directeurs. Le FOMC détermine la politique monétaire américaine qui impacte tous les marchés mondiaux. Conférence de presse de Jerome Powell à 14h30.",
             "impact": "high",
             "category": "fed",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "4.75%",
             "previous": "5.00%",
             "why_important": "LA décision la plus importante pour tous les marchés financiers"
@@ -17599,7 +17705,7 @@ async def calendrier_economique():
             "description": "LE rapport d'emploi le plus suivi au monde. Publié le premier vendredi de chaque mois, il révèle combien d'emplois ont été créés (hors secteur agricole). Fort impact sur le dollar, les obligations et les actions. La Fed suit de près ces chiffres.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "200K",
             "previous": "254K",
             "why_important": "LE rapport d'emploi le plus important au monde - 1er vendredi/mois"
@@ -17611,7 +17717,7 @@ async def calendrier_economique():
             "description": "Pourcentage de la population active au chômage. Publié en même temps que les NFP. Un taux faible (<4%) indique un marché du travail tendu et peut alimenter l'inflation salariale. La Fed vise le 'plein emploi' autour de 4%.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "4.2%",
             "previous": "4.1%",
             "why_important": "Indicateur clé pour la politique de la Fed"
@@ -17623,7 +17729,7 @@ async def calendrier_economique():
             "description": "L'indice PCE (Personal Consumption Expenditures) est l'indicateur d'inflation PRÉFÉRÉ de la Fed, encore plus que le CPI. Il mesure l'évolution des prix des biens et services consommés. La Fed cible 2% annuel. Un dépassement durable entraîne des hausses de taux.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "2.7%",
             "previous": "2.6%",
             "why_important": "L'indicateur d'inflation PRÉFÉRÉ de Jerome Powell et la Fed"
@@ -17635,7 +17741,7 @@ async def calendrier_economique():
             "description": "Indice mesurant l'optimisme des consommateurs américains concernant l'économie. Un indice élevé suggère des dépenses futures robustes (70% du PIB américain). Les entreprises l'utilisent pour prévoir la demande.",
             "impact": "medium",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "104.2",
             "previous": "103.5",
             "why_important": "Les dépenses des consommateurs = 70% de l'économie américaine"
@@ -17647,7 +17753,7 @@ async def calendrier_economique():
             "description": "Données de dépenses avant la période Thanksgiving/Black Friday. Révèle le sentiment des consommateurs avant la saison des fêtes. Impact majeur sur les prévisions de vente au détail de fin d'année.",
             "impact": "medium",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "0.4%",
             "previous": "0.2%",
             "why_important": "Avant Black Friday - Préfigure le shopping des fêtes"
@@ -17661,7 +17767,7 @@ async def calendrier_economique():
             "description": "Indice PMI manufacturier pour décembre. Mesure comment les usines américaines se portent avant la fin d'année. Décembre est souvent un mois lent avec les fêtes qui approchent.",
             "impact": "medium",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "48.2",
             "previous": "48.5",
             "why_important": "Santé du secteur manufacturier en fin d'année"
@@ -17673,7 +17779,7 @@ async def calendrier_economique():
             "description": "Indice PMI des services pour décembre. Les services dominent l'économie américaine. Décembre voit souvent un boost des services (retail, restaurant) due aux fêtes.",
             "impact": "medium",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "55.5",
             "previous": "55.2",
             "why_important": "Santé du secteur des services (80% de l'économie)"
@@ -17685,7 +17791,7 @@ async def calendrier_economique():
             "description": "Dernière mesure d'inflation de 2025. Crucial avant la réunion Fed de décembre. Si l'inflation persiste, la Fed maintient taux élevés. Si elle baisse, la Fed peut assouplir sa politique.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "2.7%",
             "previous": "2.6%",
             "why_important": "Dernière inflation 2025 - Définit la Fed de décembre"
@@ -17697,7 +17803,7 @@ async def calendrier_economique():
             "description": "Inflation sous-jacente pour décembre. Mesure les tendances d'inflation durables en excluant l'énergie et l'alimentation volatiles.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "3.2%",
             "previous": "3.3%",
             "why_important": "Inflation durable - Préférence de la Fed"
@@ -17709,7 +17815,7 @@ async def calendrier_economique():
             "description": "Ventes des retailers en novembre, incluant Black Friday. Période critique de shopping. Les retailers comptent sur ces ventes pour sauver leur année. Impact majeur sur les perspectives économiques.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "0.5%",
             "previous": "0.3%",
             "why_important": "Inclut Black Friday - Données critiques de vente de fin d'année"
@@ -17721,7 +17827,7 @@ async def calendrier_economique():
             "description": "LA réunion la plus importante de l'année ! Inclut : 1) Décision sur les taux, 2) Le fameux 'Dot Plot' (projections de taux par chaque membre), 3) Nouvelles projections économiques (PIB, chômage, inflation pour 2026-2028), 4) Conférence de presse de Jerome Powell. Impact énorme sur tous les marchés.",
             "impact": "high",
             "category": "fed",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "4.50%",
             "previous": "4.75%",
             "why_important": "RÉUNION FED LA PLUS IMPORTANTE - Dot Plot + Projections 2026-2028"
@@ -17733,7 +17839,7 @@ async def calendrier_economique():
             "description": "Troisième et dernière estimation du PIB du troisième trimestre. Version finale et la plus précise. Clôture les données économiques de 2025 avant les fêtes. Les révisions peuvent être significatives.",
             "impact": "medium",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "2.9%",
             "previous": "2.8%",
             "why_important": "Dernière estimation PIB 2025 - La plus précise"
@@ -17747,7 +17853,7 @@ async def calendrier_economique():
             "description": "Premier rapport d'emploi de la nouvelle année. Crucial pour évaluer comment l'économie a traversé les fêtes. Les traders reviennent de vacances et ce rapport donne le ton pour 2026. Souvent volatil après les ajustements saisonniers.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "160K",
             "previous": "200K",
             "why_important": "Premier NFP 2026 - Donne le ton pour la nouvelle année"
@@ -17759,7 +17865,7 @@ async def calendrier_economique():
             "description": "Première lecture d'inflation de 2026. Après les fêtes, vérifie si les pressions inflationnistes persistent. La Fed analyse ces données pour sa première réunion de l'année fin janvier. Moment clé pour définir la trajectoire 2026.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "2.4%",
             "previous": "2.7%",
             "why_important": "Première inflation 2026 - Définit la trajectoire de l'année"
@@ -17771,7 +17877,7 @@ async def calendrier_economique():
             "description": "Révèle la performance des retailers pendant les fêtes de fin d'année. Inclut les retours et échanges post-Noël. Les analystes comparent aux prévisions pour juger la santé des consommateurs. Impact sur les actions retail.",
             "impact": "medium",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "0.4%",
             "previous": "0.5%",
             "why_important": "Performance des fêtes - Verdict sur les ventes de Noël"
@@ -17783,7 +17889,7 @@ async def calendrier_economique():
             "description": "Première réunion de la Fed pour 2026. Jerome Powell commente les perspectives économiques après les fêtes et définit les orientations pour l'année. Les traders scrutent chaque mot pour anticiper la trajectoire des taux en 2026.",
             "impact": "high",
             "category": "fed",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "4.50%",
             "previous": "4.50%",
             "why_important": "Première Fed 2026 - Définit la politique monétaire de l'année"
@@ -17795,7 +17901,7 @@ async def calendrier_economique():
             "description": "Dernière inflation PCE de 2025 (publiée en janvier). La Fed analyse ces données juste après sa réunion. Confirme ou infirme les tendances inflationnistes de fin 2025. Critical pour valider la trajectoire de la Fed.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "2.5%",
             "previous": "2.7%",
             "why_important": "Dernière inflation PCE 2025 - Validation des tendances"
@@ -17807,7 +17913,7 @@ async def calendrier_economique():
             "description": "Première estimation du PIB du quatrième trimestre 2025. Clôture l'année économique 2025. Les analystes calculent la croissance annuelle totale et comparent aux objectifs. Impact majeur sur les perspectives 2026.",
             "impact": "high",
             "category": "data",
-            "currency": "USD",
+            "currency": "CAD",
             "forecast": "2.2%",
             "previous": "2.9%",
             "why_important": "PIB final 2025 - Bilan économique de l'année écoulée"
@@ -18712,7 +18818,7 @@ async def create_charge(req: CreateChargeRequest, request: Request):
             description=req.description,
             local_price={
                 "amount": str(req.amount_usd),
-                "currency": "USD"
+                "currency": "CAD"
             },
             pricing_type="fixed_price",
             receipt_email=req.email,
@@ -18729,7 +18835,7 @@ async def create_charge(req: CreateChargeRequest, request: Request):
             user_id=req.user_id or token.split("|")[0] if "|" in token else token,
             email=req.email,
             amount=req.amount_usd,
-            currency="USD",
+            currency="CAD",
             description=req.description,
             charge_data=charge
         )
@@ -19176,7 +19282,7 @@ async def pricing_complete():
             <!-- Plan PREMIUM -->
             <div id="plan-premium" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">💳 Plan PREMIUM - $29.99/mois</h3>
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">💳 Plan PREMIUM - $20.00/mois</h3>
                     <p style="font-size: 16px; opacity: 0.9;">9 pages gratuites + 7 pages premium = 16 pages totales</p>
                 </div>
                 
@@ -19232,7 +19338,7 @@ async def pricing_complete():
             <!-- Plan ADVANCED -->
             <div id="plan-advanced" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">💎 Plan ADVANCED - $74.97/3 mois</h3>
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">💎 Plan ADVANCED - $50.00/3 mois</h3>
                     <p style="font-size: 16px; opacity: 0.9;">16 pages Premium + 7 pages Advanced = 23 pages totales</p>
                 </div>
                 
@@ -19332,7 +19438,7 @@ async def pricing_complete():
             <!-- Plan ELITE -->
             <div id="plan-elite" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">🚀 Plan ELITE - $239.88/an</h3>
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">🚀 Plan ELITE - $150.00/an</h3>
                     <p style="font-size: 16px; opacity: 0.9;">28 pages Pro + 3 pages Elite = 31 pages totales - TOUT DÉBLOQUÉ!</p>
                 </div>
                 
@@ -19804,7 +19910,7 @@ async def pricing_page_new(request: Request):
                 <h3>💎 Professional</h3>
                 <p>Pour les traders actifs</p>
                 <div class="price">
-                    $29.99<br><small>/mois</small>
+                    $20.00<br><small>/mois</small>
                 </div>
                 <ul class="features">
                     <li>Accès complet au dashboard</li>
@@ -19920,7 +20026,7 @@ async def pricing_page_new(request: Request):
             description=req.description,
             local_price={
                 "amount": str(req.amount_usd),
-                "currency": "USD"
+                "currency": "CAD"
             },
             pricing_type="fixed_price",
             receipt_email=req.email,
@@ -19937,7 +20043,7 @@ async def pricing_page_new(request: Request):
             user_id=req.user_id or token.split("|")[0],
             email=req.email,
             amount=req.amount_usd,
-            currency="USD",
+            currency="CAD",
             description=req.description,
             charge_data=charge
         )
@@ -20051,8 +20157,10 @@ async def stripe_checkout(request: Request):
     """Crée une session Stripe Checkout avec support des codes promo"""
     try:
         data = await request.json()
-        plan = data.get('plan', 'monthly')
-        amount = data.get('amount', 29.99)
+        plan = data.get('plan', 'premium')
+        plan_key = normalize_plan(plan)
+        plan_info = get_plan_pricing(plan_key) or {}
+        amount = round(float(plan_info.get('price_cents', 2000)) / 100.0, 2)  # server price
         promo_code = data.get('promo_code', None)
         email = data.get('email', 'user@example.com')
         
@@ -24213,11 +24321,96 @@ async def admin_dashboard(request: Request):
             
             <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
             <div class="users-section" style="margin-bottom: 30px;">
+
+<h2>💰 Gestion des Prix des Abonnements</h2>
+<p class="muted">Modifiez les prix ici: ça se répercute automatiquement sur <b>/pricing-complete</b> et sur les paiements <b>Stripe + Coinbase</b>.</p>
+
+<div class="card">
+  <div class="grid-2">
+    <div>
+      <label>Premium (1 mois)</label>
+      <div class="row">
+        <input id="price-premium" type="number" step="0.01" min="0" placeholder="20.00">
+        <span class="suffix">CAD</span>
+      </div>
+    </div>
+    <div>
+      <label>Advanced (3 mois)</label>
+      <div class="row">
+        <input id="price-advanced" type="number" step="0.01" min="0" placeholder="50.00">
+        <span class="suffix">CAD</span>
+      </div>
+    </div>
+    <div>
+      <label>Pro (6 mois)</label>
+      <div class="row">
+        <input id="price-pro" type="number" step="0.01" min="0" placeholder="80.00">
+        <span class="suffix">CAD</span>
+      </div>
+    </div>
+    <div>
+      <label>Elite (1 an)</label>
+      <div class="row">
+        <input id="price-elite" type="number" step="0.01" min="0" placeholder="150.00">
+        <span class="suffix">CAD</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" onclick="savePlanPrices()">💾 Sauvegarder les prix</button>
+    <span id="prices-status" class="status"></span>
+  </div>
+</div>
+
+<script>
+async function loadPlanPrices(){{
+  try{{
+    const r = await fetch('/admin/api/plan-prices');
+    const j = await r.json();
+    if(!j.success) return;
+    const p = j.plans || {{}};
+    const v = (k, d) => (p[k] && p[k].price_cents != null) ? (p[k].price_cents/100).toFixed(2) : d;
+    document.getElementById('price-premium').value  = v('premium','20.00');
+    document.getElementById('price-advanced').value = v('advanced','50.00');
+    document.getElementById('price-pro').value      = v('pro','80.00');
+    document.getElementById('price-elite').value    = v('elite','150.00');
+  }}catch(e){{}}
+}}
+
+async function savePlanPrices(){{
+  const status = document.getElementById('prices-status');
+  status.textContent = 'Enregistrement...';
+  try{{
+    const payload = {{
+      plans: {{
+        premium:  {{ price: parseFloat(document.getElementById('price-premium').value||20),  duration_days: 30,  currency: 'cad', display_name: 'Premium' }},
+        advanced: {{ price: parseFloat(document.getElementById('price-advanced').value||50), duration_days: 90,  currency: 'cad', display_name: 'Advanced' }},
+        pro:      {{ price: parseFloat(document.getElementById('price-pro').value||80),      duration_days: 180, currency: 'cad', display_name: 'Pro' }},
+        elite:    {{ price: parseFloat(document.getElementById('price-elite').value||150),   duration_days: 365, currency: 'cad', display_name: 'Elite' }}
+      }}
+    }};
+    const r = await fetch('/admin/save-plan-prices', {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body: JSON.stringify(payload) }});
+    const j = await r.json();
+    if(j.success){{
+      status.textContent = '✅ Prix sauvegardés';
+    }}else{{
+      status.textContent = '❌ ' + (j.message||'Erreur');
+    }}
+  }}catch(e){{
+    status.textContent = '❌ Erreur';
+  }}
+}}
+document.addEventListener('DOMContentLoaded', loadPlanPrices);
+</script>
+
+<hr style="margin:24px 0;opacity:.12"/>
+
                 <h2>🎯 Gestion des Accès par Forfait</h2>
                 <p style="color: #666; margin-bottom: 20px;">Définir quelles pages sont accessibles pour chaque plan d'abonnement</p>
 <div style="margin-top: 18px; display: flex; flex-wrap: wrap; gap: 12px;">
     <button class="plan-pill" onclick="managePlanAccess('free')">🆓 <span>Gratuit</span> <small>(Free)</small></button>
-    <button class="plan-pill" onclick="managePlanAccess('premium')">💳 <span>Premium</span> <small>($29.99)</small></button>
+    <button class="plan-pill" onclick="managePlanAccess('premium')">💳 <span>Premium</span> <small>($20.00)</small></button>
     <button class="plan-pill" onclick="managePlanAccess('advanced')">💎 <span>Advanced</span> <small>($49.99)</small></button>
     <button class="plan-pill" onclick="managePlanAccess('pro')">👑 <span>Pro</span> <small>($79.99)</small></button>
     <button class="plan-pill" onclick="managePlanAccess('elite')">🚀 <span>Elite</span> <small>($149.99)</small></button>
@@ -26162,6 +26355,53 @@ async def save_plan_access(request: Request, session_token: Optional[str] = Cook
 # ============================================================================
 #  GESTION DES CODES PROMO (ADMIN) - ROUTES POST
 # ============================================================================
+
+
+
+# =====================
+# Admin - Plan Prices (sync /pricing-complete + Stripe/Coinbase)
+# =====================
+@app.get("/admin/api/plan-prices")
+async def admin_get_plan_prices(request: Request):
+    if not request.cookies.get("admin_session"):
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
+    return JSONResponse({"success": True, "plans": get_all_plan_pricing()})
+
+@app.post("/admin/save-plan-prices")
+async def admin_save_plan_prices(request: Request):
+    if not request.cookies.get("admin_session"):
+        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
+
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+
+    plans = data.get("plans", {})
+    if not isinstance(plans, dict):
+        return JSONResponse({"success": False, "message": "Payload invalide"}, status_code=400)
+
+    updated = []
+    for plan_key, cfg in plans.items():
+        try:
+            p = normalize_plan(plan_key)
+            if p not in DEFAULT_PLAN_PRICES:
+                continue
+            display = str(cfg.get("display_name") or DEFAULT_PLAN_PRICES[p]["display_name"])
+            currency = str(cfg.get("currency") or "cad").lower()
+            if "price_cents" in cfg:
+                cents = int(cfg.get("price_cents") or 0)
+            else:
+                cents = int(round(float(cfg.get("price") or 0) * 100))
+            days = int(cfg.get("duration_days") or DEFAULT_PLAN_PRICES[p]["duration_days"])
+            cents = max(0, cents)
+            days = max(0, days)
+            if set_plan_pricing(p, display, days, cents, currency):
+                updated.append(p)
+        except Exception as e:
+            print(f"⚠️ admin_save_plan_prices: {e}")
+
+    return JSONResponse({"success": True, "updated": updated, "plans": get_all_plan_pricing()})
 
 @app.post("/admin/create-promo")
 async def admin_create_promo_post(request: Request, session_token: Optional[str] = Cookie(None)):

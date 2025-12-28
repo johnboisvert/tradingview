@@ -2200,12 +2200,51 @@ app = FastAPI()
 # =====================
 # Static files (logo, css, images)
 # =====================
+# =====================
+# Static files (/static)
+# =====================
+# Sert le dossier static pour le logo, CSS, images, etc.
+# Supporte plusieurs structures de projet (ex: /static ou /tradingview/static)
 try:
+    import os
     from fastapi.staticfiles import StaticFiles
     from pathlib import Path
-    _STATIC_DIR = Path(__file__).resolve().parent / "static"
-    if _STATIC_DIR.exists():
-        app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+    _BASE_DIR = Path(__file__).resolve().parent
+
+    # Optionnel: forcer via variable d'environnement
+    _ENV_STATIC_DIR = (os.getenv("STATIC_DIR") or "").strip()
+    _CANDIDATES = []
+    if _ENV_STATIC_DIR:
+        _CANDIDATES.append(Path(_ENV_STATIC_DIR))
+
+    # Candidats standards
+    _CANDIDATES += [
+        _BASE_DIR / "static",
+        _BASE_DIR / "tradingview" / "static",
+        _BASE_DIR / "frontend" / "static",
+    ]
+
+    _mounted = False
+    for _d in _CANDIDATES:
+        try:
+            if _d.exists():
+                app.mount("/static", StaticFiles(directory=str(_d)), name="static")
+                print(f"✅ StaticFiles monté: {_d}")
+                _mounted = True
+                break
+        except Exception:
+            pass
+
+    # Fallback: créer /static si rien n'existe, puis monter
+    if not _mounted:
+        _fallback = _BASE_DIR / "static"
+        try:
+            _fallback.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+        app.mount("/static", StaticFiles(directory=str(_fallback)), name="static")
+        print(f"⚠️ StaticFiles: dossier manquant, fallback monté sur {_fallback}")
 except Exception as _e:
     print(f"⚠️ StaticFiles non monté: {_e}")
 

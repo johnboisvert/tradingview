@@ -2255,9 +2255,53 @@ async def _serve_static(file_path: str):
 
 #  CORRECTION: Configuration Jinja2 templates
 templates = Jinja2Templates(directory="templates")
-templates.env.globals["SITE_LOGO_URL"] = "/static/logo1.png"
-templates.env.globals["SITE_NAME"] = "CRYPTOIA"
-print("✅ Templates Jinja2 configurés")
+
+# ----------------------------------------------------------------------------
+# Logo & Branding (global dans tous les templates)
+# - Priorité: variable d'env SITE_LOGO_URL
+# - Sinon: auto-détection dans /static (plusieurs noms possibles)
+# ----------------------------------------------------------------------------
+def _resolve_site_logo_url() -> str:
+    env_url = (os.getenv("SITE_LOGO_URL") or "").strip()
+    if env_url:
+        return env_url
+
+    candidates = [
+        "logo.png", "logo.webp", "logo.jpg", "logo.jpeg", "logo.svg",
+        "logo1.png", "logo1.webp", "logo1.jpg", "logo1.jpeg", "logo1.svg",
+    ]
+
+    # _STATIC_DIRS est défini plus haut (liste de dossiers candidats)
+    static_dirs = []
+    try:
+        static_dirs = list(_STATIC_DIRS) if "_STATIC_DIRS" in globals() else []
+    except Exception:
+        static_dirs = []
+
+    # fallback minimal si jamais _STATIC_DIRS n'existe pas
+    if not static_dirs:
+        try:
+            static_dirs = [Path(__file__).resolve().parent / "static", Path.cwd() / "static"]
+        except Exception:
+            static_dirs = [Path.cwd() / "static"]
+
+    for d in static_dirs:
+        try:
+            d = Path(d)
+            for name in candidates:
+                if (d / name).is_file():
+                    return f"/static/{name}"
+        except Exception:
+            continue
+
+    return "/static/logo.png"
+
+SITE_LOGO_URL = _resolve_site_logo_url()
+SITE_NAME = (os.getenv("SITE_NAME") or "CRYPTOIA").strip() or "CRYPTOIA"
+
+templates.env.globals["SITE_LOGO_URL"] = SITE_LOGO_URL
+templates.env.globals["SITE_NAME"] = SITE_NAME
+print(f"✅ Templates Jinja2 configurés (logo={SITE_LOGO_URL})")
 
 # Enregistrer les fonctions template si systme permissions disponible
 if PERMISSIONS_AVAILABLE:
@@ -2717,7 +2761,9 @@ SIDEBAR = """<style>
 .sidebar::-webkit-scrollbar-track{background:rgba(0,0,0,0.2)}
 .sidebar::-webkit-scrollbar-thumb{background:rgba(6,182,212,0.5);border-radius:4px}
 .sidebar-header{padding:0 20px 20px 20px;border-bottom:2px solid rgba(6,182,212,0.3);margin-bottom:15px}
-.sidebar-title{color:#06b6d4;font-size:20px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:1px}
+.sidebar-brand{display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none}
+.sidebar-logo{width:38px;height:38px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.06);padding:6px;border:1px solid rgba(6,182,212,0.35);box-shadow:0 6px 18px rgba(0,0,0,0.35)}
+.sidebar-title{color:#06b6d4;font-size:18px;font-weight:800;text-align:left;text-transform:uppercase;letter-spacing:1px;line-height:1.1}
 .menu-section{margin-bottom:10px}
 .section-title{color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;padding:10px 20px 8px 20px;border-bottom:1px solid rgba(255,255,255,0.1)}
 .menu-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:#e2e8f0;text-decoration:none;font-size:14px;font-weight:500;transition:all 0.3s ease;border-left:3px solid transparent}
@@ -2752,7 +2798,10 @@ body.sidebar-open{margin-left:280px}
     <!-- SIDEBAR COMPLÈTE RÉORGANISÉE -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-title">🚀 CRYPTO IA</div>
+            <a href="/dashboard" class="sidebar-brand">
+                <img src="__SITE_LOGO_URL__" alt="__SITE_NAME__" class="sidebar-logo">
+                <div class="sidebar-title">__SITE_NAME__</div>
+            </a>
         </div>
         
         <!-- 📊 DASHBOARD & TRADING (8) -->
@@ -3018,7 +3067,10 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">Abonnements</span>
             </a>
             <a href="/admin-dashboard" class="menu-item admin">
-                <span class="icon">🔧</span>
+                <span class="icon">🔧<
+
+SIDEBAR = SIDEBAR.replace("__SITE_LOGO_URL__", SITE_LOGO_URL).replace("__SITE_NAME__", SITE_NAME)
+/span>
                 <span class="label">Admin Dashboard</span>
             </a>
             <a href="/logout" class="menu-item logout">
@@ -3033,8 +3085,7 @@ body.sidebar-open{margin-left:280px}
         document.getElementById('sidebar').classList.toggle('active');
         document.body.classList.toggle('sidebar-open');
     }
-    </script>
-"""
+    </script>"""
 
 # ==================================
 
@@ -4615,8 +4666,12 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
     return redirect
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_panel():
+async def admin_panel(request: Request):
     """Panel d'administration pour gérer les utilisateurs"""
+
+    # Rediriger tout l’ancien /admin vers la nouvelle section /admin-dashboard
+    return RedirectResponse(url="/admin-dashboard", status_code=302)
+
     
     # Rcuprer tous les utilisateurs
     users = db_manager.get_all_users()
@@ -4957,6 +5012,7 @@ async def admin_panel():
 </html>""")
 
 @app.post("/admin/add-user")
+@app.post("/admin-dashboard/add-user")
 async def add_user(request: Request):
     """Ajouter un nouvel utilisateur avec permissions par défaut ou plan d'abonnement"""
     try:
@@ -5055,6 +5111,7 @@ async def add_user(request: Request):
         return {"success": False, "message": f"Erreur: {str(e)}"}
 
 @app.post("/admin/delete-user")
+@app.post("/admin-dashboard/delete-user")
 async def delete_user(request: Request):
     """Supprimer un utilisateur"""
     data = await request.json()
@@ -5067,6 +5124,7 @@ async def delete_user(request: Request):
     return {"status": "success", "message": "Utilisateur supprimé"}
 
 @app.get("/admin/get-user/{username}")
+@app.get("/admin-dashboard/get-user/{username}")
 async def get_user_info(username: str):
     """Récupérer les informations d'un utilisateur"""
     try:
@@ -5097,6 +5155,7 @@ async def get_user_info(username: str):
         return {"success": False, "message": str(e)}
 
 @app.post("/admin/edit-user")
+@app.post("/admin-dashboard/edit-user")
 async def edit_user(request: Request):
     """Modifier un utilisateur existant"""
     try:
@@ -5146,6 +5205,7 @@ async def edit_user(request: Request):
 
 
 @app.post("/admin/update-permissions")
+@app.post("/admin-dashboard/update-permissions")
 async def update_permissions(request: Request):
     """Mettre à jour les permissions d'un utilisateur"""
     try:
@@ -5177,6 +5237,7 @@ async def update_permissions(request: Request):
         return {"success": False, "message": str(e)}
 
 @app.get("/admin/get-permissions/{username}")
+@app.get("/admin-dashboard/get-permissions/{username}")
 async def get_permissions(username: str):
     """Récupérer les permissions d'un utilisateur"""
     try:
@@ -5197,6 +5258,7 @@ async def get_permissions(username: str):
 
 
 @app.post("/admin/change-password")
+@app.post("/admin-dashboard/change-password")
 async def change_password(request: Request):
     """Changer son propre mot de passe"""
     data = await request.json()
@@ -23808,6 +23870,7 @@ async def permission_denied_handler(request: Request, exc: HTTPException):
 # ============================================================================
 
 @app.get("/admin/activate-subscription")
+@app.get("/admin-dashboard/activate-subscription")
 async def admin_activate_subscription(
     username: str,
     plan: str,
@@ -25818,6 +25881,7 @@ document.addEventListener('DOMContentLoaded', loadPlanPrices);
         return html
 
 @app.post("/admin/pricing/update")
+@app.post("/admin-dashboard/pricing/update")
 async def admin_pricing_update(request: Request):
     """Update plan"""
     session_token = request.cookies.get("session_token")
@@ -25864,6 +25928,7 @@ async def admin_pricing_update(request: Request):
 
 
 @app.post("/admin/pricing/update")
+@app.post("/admin-dashboard/pricing/update")
 async def admin_pricing_update(request: Request):
     """Mise à jour d'un plan"""
     session_token = request.cookies.get("session_token")
@@ -25915,6 +25980,7 @@ async def admin_pricing_update(request: Request):
         print(f"Erreur pricing update: {e}")
         return RedirectResponse("/admin/pricing?error=1", status_code=303)
 @app.get("/admin/init-promo-table")
+@app.get("/admin-dashboard/init-promo-table")
 async def admin_init_promo_table(session_token: Optional[str] = Cookie(None)):
     """Initialise la table promo_codes (à exécuter une seule fois)"""
     user = get_user_from_token(session_token)
@@ -25943,6 +26009,7 @@ async def admin_init_promo_table(session_token: Optional[str] = Cookie(None)):
 
 
 @app.get("/admin/create-launch-promos")
+@app.get("/admin-dashboard/create-launch-promos")
 async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)):
     """Crée automatiquement 5 codes promo de lancement"""
     user = get_user_from_token(session_token)
@@ -26016,6 +26083,7 @@ async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)
 
 
 @app.get("/admin/create-promo")
+@app.get("/admin-dashboard/create-promo")
 async def admin_create_promo(
     code: str,
     discount_type: str,
@@ -26073,6 +26141,7 @@ async def admin_create_promo(
 
 
 @app.get("/admin/list-promos", response_class=HTMLResponse)
+@app.get("/admin-dashboard/list-promos", response_class=HTMLResponse)
 async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
     """Page admin: liste tous les codes promo avec stats"""
     user = get_user_from_token(session_token)
@@ -26259,6 +26328,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
 
 
 @app.get("/admin/test-promo")
+@app.get("/admin-dashboard/test-promo")
 async def admin_test_promo(
     code: str,
     plan: str = "1_month",
@@ -26304,6 +26374,7 @@ async def admin_test_promo(
 # ============================================================================
 
 @app.get("/admin/get-plan-access/{plan}")
+@app.get("/admin-dashboard/get-plan-access/{plan}")
 async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)):
     """Récupérer les routes accessibles pour un plan d'abonnement"""
     user = get_user_from_token(session_token)
@@ -26345,6 +26416,7 @@ async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)
 
 
 @app.post("/admin/save-plan-access")
+@app.post("/admin-dashboard/save-plan-access")
 async def save_plan_access(request: Request, session_token: Optional[str] = Cookie(None)):
     """Sauvegarder les routes accessibles pour un plan"""
     user = get_user_from_token(session_token)
@@ -26407,12 +26479,14 @@ async def save_plan_access(request: Request, session_token: Optional[str] = Cook
 # Admin - Plan Prices (sync /pricing-complete + Stripe/Coinbase)
 # =====================
 @app.get("/admin/api/plan-prices")
+@app.get("/admin-dashboard/api/plan-prices")
 async def admin_get_plan_prices(request: Request):
     if not request.cookies.get("admin_session"):
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
     return JSONResponse({"success": True, "plans": get_all_plan_pricing()})
 
 @app.post("/admin/save-plan-prices")
+@app.post("/admin-dashboard/save-plan-prices")
 async def admin_save_plan_prices(request: Request):
     if not request.cookies.get("admin_session"):
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
@@ -26449,6 +26523,7 @@ async def admin_save_plan_prices(request: Request):
     return JSONResponse({"success": True, "updated": updated, "plans": get_all_plan_pricing()})
 
 @app.post("/admin/create-promo")
+@app.post("/admin-dashboard/create-promo")
 async def admin_create_promo_post(request: Request, session_token: Optional[str] = Cookie(None)):
     """Créer un code promo (version POST pour le frontend)"""
     user = get_user_from_token(session_token)
@@ -26514,6 +26589,7 @@ async def admin_create_promo_post(request: Request, session_token: Optional[str]
 
 
 @app.post("/admin/delete-promo")
+@app.post("/admin-dashboard/delete-promo")
 async def admin_delete_promo(request: Request, session_token: Optional[str] = Cookie(None)):
     """Supprimer un code promo"""
     user = get_user_from_token(session_token)
@@ -26549,6 +26625,7 @@ async def admin_delete_promo(request: Request, session_token: Optional[str] = Co
 
 
 @app.get("/admin/api/list-promos")
+@app.get("/admin-dashboard/api/list-promos")
 async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
     """API JSON: Lister tous les codes promo pour l'admin dashboard"""
     user = get_user_from_token(session_token)
@@ -26614,6 +26691,7 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
 # ============================================================================
 
 @app.get("/admin/api/retention-dashboard")
+@app.get("/admin-dashboard/api/retention-dashboard")
 async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None)):
     """API pour le Retention Dashboard - Utilisateurs qui expirent, inactifs, stats"""
     user = get_user_from_token(session_token)
@@ -26776,6 +26854,7 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
 
 
 @app.post("/admin/api/extend-subscription")
+@app.post("/admin-dashboard/api/extend-subscription")
 async def admin_extend_subscription(request: Request, session_token: Optional[str] = Cookie(None)):
     """Prolonger l'abonnement d'un utilisateur"""
     user = get_user_from_token(session_token)
@@ -26848,6 +26927,7 @@ async def admin_extend_subscription(request: Request, session_token: Optional[st
 # ============================================================================
 
 @app.get("/admin/api/conversion-funnel")
+@app.get("/admin-dashboard/api/conversion-funnel")
 async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] = Cookie(None)):
     """API pour le Conversion Funnel - Analyse des conversions"""
     user = get_user_from_token(session_token)
@@ -27027,6 +27107,7 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
 # ============================================================================
 
 @app.get("/admin/api/revenue-intelligence")
+@app.get("/admin-dashboard/api/revenue-intelligence")
 async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)):
     """API pour Revenue Intelligence - Revenus, CLV, Top clients, ROI promos"""
     user = get_user_from_token(session_token)
@@ -27150,6 +27231,7 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
 # ============================================================================
 
 @app.get("/admin/api/viral-growth")
+@app.get("/admin-dashboard/api/viral-growth")
 async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
     """API pour Viral Growth - Stats parrainage, leaderboard, sources"""
     user = get_user_from_token(session_token)
@@ -27203,6 +27285,7 @@ async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
 # ============================================================================
 
 @app.get("/admin/api/automation-engine")
+@app.get("/admin-dashboard/api/automation-engine")
 async def admin_automation_engine(session_token: Optional[str] = Cookie(None)):
 
     user = get_user_from_token(session_token)
@@ -29342,6 +29425,7 @@ curl -H "api-key: YOUR_KEY" \\
 
 # Page d'admin pour modifier les plans
 @app.get("/admin/update-plan-features", response_class=HTMLResponse)
+@app.get("/admin-dashboard/update-plan-features", response_class=HTMLResponse)
 async def admin_update_plan_features_page(request: Request):
     """Page admin pour modifier les features d'un plan"""
     # On vrifie si l'utilisateur est admin
@@ -29397,6 +29481,7 @@ async def admin_update_plan_features_page(request: Request):
     """)
 
 @app.post("/admin/update-plan-features")
+@app.post("/admin-dashboard/update-plan-features")
 async def update_plan_features(request: Request):
     """Modifier les features d'un plan (endpoint POST)"""
     user = get_user_from_token(request.cookies.get("session_token"))
@@ -41766,6 +41851,7 @@ async def download_ebook(ebook_id: int, request: Request):
 
 # Route 5: GET /admin/ebooks - Dashboard admin
 @app.get("/admin/ebooks")
+@app.get("/admin-dashboard/ebooks")
 async def admin_ebooks(request: Request):
     """Dashboard admin ebooks avec sidebar"""
     user_data = get_user_from_request(request)
@@ -41915,6 +42001,7 @@ async def admin_ebooks(request: Request):
 
 # Route 6: POST /admin/ebooks/add - Ajouter ebook
 @app.post("/admin/ebooks/add")
+@app.post("/admin-dashboard/ebooks/add")
 async def add_ebook(request: Request):
     """Ajouter un ebook"""
     user_data = get_user_from_request(request)
@@ -41963,6 +42050,7 @@ async def add_ebook(request: Request):
 
 # Route 7: POST /admin/ebooks/delete/{ebook_id} - Supprimer
 @app.post("/admin/ebooks/delete/{ebook_id}")
+@app.post("/admin-dashboard/ebooks/delete/{ebook_id}")
 async def delete_ebook(ebook_id: int, request: Request):
     """Supprimer un ebook"""
     user_data = get_user_from_request(request)
@@ -42006,6 +42094,7 @@ async def delete_ebook(ebook_id: int, request: Request):
 
 # Route 8: POST /admin/ebooks/toggle/{ebook_id} - Activer/Dsactiver
 @app.post("/admin/ebooks/toggle/{ebook_id}")
+@app.post("/admin-dashboard/ebooks/toggle/{ebook_id}")
 async def toggle_ebook(ebook_id: int, request: Request):
     """Activer/Désactiver un ebook"""
     user_data = get_user_from_request(request)

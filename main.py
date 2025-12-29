@@ -2267,8 +2267,12 @@ def _resolve_site_logo_url() -> str:
         return env_url
 
     candidates = [
+        # Généraux
         "logo.png", "logo.webp", "logo.jpg", "logo.jpeg", "logo.svg",
         "logo1.png", "logo1.webp", "logo1.jpg", "logo1.jpeg", "logo1.svg",
+        # Ton repo (ex: static/cryptoia_logo.png)
+        "cryptoia_logo.png", "cryptoia_logo.webp", "cryptoia_logo.jpg", "cryptoia_logo.jpeg", "cryptoia_logo.svg",
+        "cryptoia-logo.png", "cryptoia-logo.webp", "cryptoia-logo.jpg", "cryptoia-logo.jpeg", "cryptoia-logo.svg",
     ]
 
     # _STATIC_DIRS est défini plus haut (liste de dossiers candidats)
@@ -2297,7 +2301,11 @@ def _resolve_site_logo_url() -> str:
     return "/static/logo.png"
 
 SITE_LOGO_URL = _resolve_site_logo_url()
-SITE_NAME = (os.getenv("SITE_NAME") or "CRYPTOIA").strip() or "CRYPTOIA"
+# Cache-buster pour éviter que le navigateur garde un vieux logo (surtout sur Railway/Render/CDN)
+ASSET_VERSION = (os.getenv("ASSET_VERSION") or str(int(time.time()))).strip()
+if SITE_LOGO_URL.startswith("/static/") and "?" not in SITE_LOGO_URL:
+    SITE_LOGO_URL = f"{SITE_LOGO_URL}?v={ASSET_VERSION}"
+SITE_NAME = (os.getenv("SITE_NAME") or "Crypto IA").strip() or "Crypto IA"
 
 templates.env.globals["SITE_LOGO_URL"] = SITE_LOGO_URL
 templates.env.globals["SITE_NAME"] = SITE_NAME

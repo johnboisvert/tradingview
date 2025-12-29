@@ -2799,7 +2799,7 @@ body.sidebar-open{margin-left:280px}
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <a href="/dashboard" class="sidebar-brand">
-                <img src="__SITE_LOGO_URL__" alt="__SITE_NAME__" class="sidebar-logo">
+                <img src="__SITE_LOGO_URL__" alt="__SITE_NAME__" class="sidebar-logo" onerror="this.style.display='none';">
                 <div class="sidebar-title">__SITE_NAME__</div>
             </a>
         </div>
@@ -3067,10 +3067,7 @@ body.sidebar-open{margin-left:280px}
                 <span class="label">Abonnements</span>
             </a>
             <a href="/admin-dashboard" class="menu-item admin">
-                <span class="icon">🔧<
-
-SIDEBAR = SIDEBAR.replace("__SITE_LOGO_URL__", SITE_LOGO_URL).replace("__SITE_NAME__", SITE_NAME)
-/span>
+                <span class="icon">🔧</span>
                 <span class="label">Admin Dashboard</span>
             </a>
             <a href="/logout" class="menu-item logout">
@@ -3086,6 +3083,13 @@ SIDEBAR = SIDEBAR.replace("__SITE_LOGO_URL__", SITE_LOGO_URL).replace("__SITE_NA
         document.body.classList.toggle('sidebar-open');
     }
     </script>"""
+
+# Appliquer les placeholders (logo + nom) dans la sidebar
+try:
+    SIDEBAR = SIDEBAR.replace("__SITE_LOGO_URL__", SITE_LOGO_URL).replace("__SITE_NAME__", SITE_NAME)
+except Exception:
+    pass
+
 
 # ==================================
 

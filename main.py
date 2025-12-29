@@ -2234,6 +2234,18 @@ def _resolve_static_path(base: Path, rel_path: str) -> "Path|None":
         return None
     return None
 
+def _find_static_candidate(relative_path: str):
+    """Return the first existing file for a requested /static path.
+
+    Uses `_resolve_static_path()` to prevent path traversal, then checks existence.
+    """
+    rel = (relative_path or "").lstrip("/")
+    for base in _STATIC_DIRS:
+        cand = _resolve_static_path(base, rel)
+        if cand and cand.exists() and cand.is_file():
+            return cand
+    return None
+
 @app.get("/static/{file_path:path}")
 async def _serve_static(file_path: str):
     """
@@ -2256,8 +2268,29 @@ async def _serve_static(file_path: str):
     return JSONResponse({"detail": "Not Found"}, status_code=404)
 
 
+# ---------------- TEMPLATES (Jinja2) ----------------
+# Certains modules/utilitaires attendent `templates` au démarrage.
+# On l'initialise ici pour éviter un NameError, même si le site sert surtout du HTML inline.
+try:
+    templates  # noqa: F401
+except NameError:
+    templates = None
+    try:
+        from pathlib import Path
+        from fastapi.templating import Jinja2Templates
+
+        _tmpl_candidates = [
+            _BASE_DIR / "templates",
+            Path.cwd() / "templates",
+            Path("/app/templates"),
+        ]
+        _tmpl_dir = next((d for d in _tmpl_candidates if d.exists() and d.is_dir()), _tmpl_candidates[0])
+        templates = Jinja2Templates(directory=str(_tmpl_dir))
+    except Exception:
+        templates = None
+
 # Enregistrer les fonctions template si systme permissions disponible
-if PERMISSIONS_AVAILABLE:
+if PERMISSIONS_AVAILABLE and templates is not None:
     register_template_functions(templates)
 
 

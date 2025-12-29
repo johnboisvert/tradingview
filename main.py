@@ -2234,63 +2234,120 @@ def _resolve_static_path(base: Path, rel_path: str) -> "Path|None":
         return None
     return None
 
-def _find_static_candidate(relative_path: str):
-    """Return the first existing file for a requested /static path.
-
-    Uses `_resolve_static_path()` to prevent path traversal, then checks existence.
-    """
-    rel = (relative_path or "").lstrip("/")
-    for base in _STATIC_DIRS:
-        cand = _resolve_static_path(base, rel)
-        if cand and cand.exists() and cand.is_file():
-            return cand
-    return None
-
 @app.get("/static/{file_path:path}")
 async def _serve_static(file_path: str):
-    """
-    Sert les fichiers statiques.
-    - Cherche dans /app/static, ./static et /mnt/data/static
-    - Si le fichier n'existe pas (ex: logo), fallback via redirection GitHub raw
-    """
+    """Sert les fichiers statiques (logo/CSS/JS) depuis les répertoires candidats."""
     if not file_path:
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    safe_rel = file_path.lstrip("/").replace("..", "")
-    local = _find_static_candidate(safe_rel)
-    if local:
-        return FileResponse(local)
+    safe_rel = file_path.replace("\\", "/").lstrip("/")
 
-    # Fallback: si le logo n'est pas présent dans le container, on redirige vers GitHub (raw)
-    if safe_rel in ("cryptoia_logo.png", "cryptoia_logo.webp", "cryptoia_logo.jpg"):
-        return RedirectResponse(url="https://raw.githubusercontent.com/johnboisvert/tradingview/main/static/cryptoia_logo.png", status_code=302)
+    for d in _STATIC_DIRS:
+        if not d:
+            continue
+        p = _resolve_static_path(d, safe_rel)
+        if p:
+            resp = FileResponse(str(p))
+            resp.headers["Cache-Control"] = "public, max-age=86400"
+            return resp
 
     return JSONResponse({"detail": "Not Found"}, status_code=404)
 
+#  CORRECTION: Configuration Jinja2 templates
+templates = Jinja2Templates(directory="templates")
 
-# ---------------- TEMPLATES (Jinja2) ----------------
-# Certains modules/utilitaires attendent `templates` au démarrage.
-# On l'initialise ici pour éviter un NameError, même si le site sert surtout du HTML inline.
-try:
-    templates  # noqa: F401
-except NameError:
-    templates = None
-    try:
-        from pathlib import Path
-        from fastapi.templating import Jinja2Templates
+# ----------------------------------------------------------------------------
+# Logo & Branding (global dans tous les templates)
+# - Priorité: variable d'env SITE_LOGO_URL
+# - Sinon: auto-détection dans /static (plusieurs noms possibles)
+# ----------------------------------------------------------------------------
+def _resolve_site_logo_url() -> str:
+    """Resolve a logo URL served by our /static endpoint.
 
-        _tmpl_candidates = [
-            _BASE_DIR / "templates",
-            Path.cwd() / "templates",
-            Path("/app/templates"),
-        ]
-        _tmpl_dir = next((d for d in _tmpl_candidates if d.exists() and d.is_dir()), _tmpl_candidates[0])
-        templates = Jinja2Templates(directory=str(_tmpl_dir))
-    except Exception:
-        templates = None
+    Supports env override + common filenames + img/images subfolders.
+    """
+    env_url = (os.getenv("SITE_LOGO_URL") or os.getenv("LOGO_URL") or "").strip()
+    if env_url:
+        return env_url
+
+    static_dirs = [
+        BASE_DIR / "static",
+        BASE_DIR / "public",
+        BASE_DIR / "assets",
+    ]
+
+    # Common filenames / folders people use
+    rel_candidates = [
+        "logo.svg",
+        "logo.png",
+        "logo.webp",
+        "logo.jpg",
+        "logo.jpeg",
+        "favicon.svg",
+        "favicon.png",
+        "brand.svg",
+        "brand.png",
+        "cryptoia.svg",
+        "cryptoia.png",
+        "crypto-ia.svg",
+        "crypto-ia.png",
+        "img/logo.svg",
+        "img/logo.png",
+        "img/logo.webp",
+        "img/logo.jpg",
+        "img/logo.jpeg",
+        "images/logo.svg",
+        "images/logo.png",
+        "images/logo.webp",
+        "images/logo.jpg",
+        "images/logo.jpeg",
+        "img/cryptoia.png",
+        "images/cryptoia.png",
+    ]
+
+    exts = {".svg", ".png", ".webp", ".jpg", ".jpeg"}
+
+    def _to_url(base_dir: Path, file_path: Path) -> str:
+        rel = file_path.relative_to(base_dir).as_posix()
+        return f"/static/{rel}"
+
+    for base in static_dirs:
+        if base.exists() and base.is_dir():
+            for rel in rel_candidates:
+                fp = base / rel
+                if fp.exists() and fp.is_file():
+                    return _to_url(base, fp)
+
+            # Fallback: pick the first file that looks like a logo, up to 3 folder levels deep.
+            try:
+                for root, dirs, files in os.walk(base):
+                    rel_root = Path(root).relative_to(base)
+                    depth = len(rel_root.parts)
+                    if depth > 3:
+                        dirs[:] = []
+                        continue
+                    for fn in files:
+                        low = fn.lower()
+                        suf = Path(fn).suffix.lower()
+                        if suf in exts and ("logo" in low or "brand" in low):
+                            fp = Path(root) / fn
+                            if fp.is_file():
+                                return _to_url(base, fp)
+            except Exception:
+                pass
+
+    # Default (may 404 if missing, but the sidebar will fall back to text)
+    return "/static/logo.png"
+
+SITE_LOGO_URL = _resolve_site_logo_url()
+SITE_NAME = (os.getenv("SITE_NAME") or "CRYPTOIA").strip() or "CRYPTOIA"
+
+templates.env.globals["SITE_LOGO_URL"] = SITE_LOGO_URL
+templates.env.globals["SITE_NAME"] = SITE_NAME
+print(f"✅ Templates Jinja2 configurés (logo={SITE_LOGO_URL})")
 
 # Enregistrer les fonctions template si systme permissions disponible
-if PERMISSIONS_AVAILABLE and templates is not None:
+if PERMISSIONS_AVAILABLE:
     register_template_functions(templates)
 
 
@@ -2747,7 +2804,9 @@ SIDEBAR = """<style>
 .sidebar::-webkit-scrollbar-track{background:rgba(0,0,0,0.2)}
 .sidebar::-webkit-scrollbar-thumb{background:rgba(6,182,212,0.5);border-radius:4px}
 .sidebar-header{padding:0 20px 20px 20px;border-bottom:2px solid rgba(6,182,212,0.3);margin-bottom:15px}
-.sidebar-title{color:#06b6d4;font-size:20px;font-weight:700;text-align:center;text-transform:uppercase;letter-spacing:1px}
+.sidebar-brand{display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none}
+.sidebar-logo{width:38px;height:38px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.06);padding:6px;border:1px solid rgba(6,182,212,0.35);box-shadow:0 6px 18px rgba(0,0,0,0.35)}
+.sidebar-title{color:#06b6d4;font-size:18px;font-weight:800;text-align:left;text-transform:uppercase;letter-spacing:1px;line-height:1.1}
 .menu-section{margin-bottom:10px}
 .section-title{color:rgba(255,255,255,0.5);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;padding:10px 20px 8px 20px;border-bottom:1px solid rgba(255,255,255,0.1)}
 .menu-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:#e2e8f0;text-decoration:none;font-size:14px;font-weight:500;transition:all 0.3s ease;border-left:3px solid transparent}
@@ -2782,7 +2841,10 @@ body.sidebar-open{margin-left:280px}
     <!-- SIDEBAR COMPLÈTE RÉORGANISÉE -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-title"><img src="/static/cryptoia_logo.png" alt="CryptoIA" style="width:34px;height:34px;border-radius:8px;object-fit:contain;background:rgba(255,255,255,0.06);padding:4px;box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset;" onerror="this.onerror=null;this.src=\'https://raw.githubusercontent.com/johnboisvert/tradingview/main/static/cryptoia_logo.png\';" /><span style="margin-left:10px;letter-spacing:1px;">CRYPTO IA</span></div>
+            <a href="/dashboard" class="sidebar-brand">
+                <img src="__SITE_LOGO_URL__" alt="__SITE_NAME__" class="sidebar-logo" onerror="this.style.display='none';">
+                <div class="sidebar-title">__SITE_NAME__</div>
+            </a>
         </div>
         
         <!-- 📊 DASHBOARD & TRADING (8) -->
@@ -3063,8 +3125,14 @@ body.sidebar-open{margin-left:280px}
         document.getElementById('sidebar').classList.toggle('active');
         document.body.classList.toggle('sidebar-open');
     }
-    </script>
-"""
+    </script>"""
+
+# Appliquer les placeholders (logo + nom) dans la sidebar
+try:
+    SIDEBAR = SIDEBAR.replace("__SITE_LOGO_URL__", SITE_LOGO_URL).replace("__SITE_NAME__", SITE_NAME)
+except Exception:
+    pass
+
 
 # ==================================
 
@@ -4645,8 +4713,12 @@ async def logout(response: Response, session_token: Optional[str] = Cookie(None)
     return redirect
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_panel():
+async def admin_panel(request: Request):
     """Panel d'administration pour gérer les utilisateurs"""
+
+    # Rediriger tout l’ancien /admin vers la nouvelle section /admin-dashboard
+    return RedirectResponse(url="/admin-dashboard", status_code=302)
+
     
     # Rcuprer tous les utilisateurs
     users = db_manager.get_all_users()
@@ -4987,6 +5059,7 @@ async def admin_panel():
 </html>""")
 
 @app.post("/admin/add-user")
+@app.post("/admin-dashboard/add-user")
 async def add_user(request: Request):
     """Ajouter un nouvel utilisateur avec permissions par défaut ou plan d'abonnement"""
     try:
@@ -5085,6 +5158,7 @@ async def add_user(request: Request):
         return {"success": False, "message": f"Erreur: {str(e)}"}
 
 @app.post("/admin/delete-user")
+@app.post("/admin-dashboard/delete-user")
 async def delete_user(request: Request):
     """Supprimer un utilisateur"""
     data = await request.json()
@@ -5097,6 +5171,7 @@ async def delete_user(request: Request):
     return {"status": "success", "message": "Utilisateur supprimé"}
 
 @app.get("/admin/get-user/{username}")
+@app.get("/admin-dashboard/get-user/{username}")
 async def get_user_info(username: str):
     """Récupérer les informations d'un utilisateur"""
     try:
@@ -5127,6 +5202,7 @@ async def get_user_info(username: str):
         return {"success": False, "message": str(e)}
 
 @app.post("/admin/edit-user")
+@app.post("/admin-dashboard/edit-user")
 async def edit_user(request: Request):
     """Modifier un utilisateur existant"""
     try:
@@ -5176,6 +5252,7 @@ async def edit_user(request: Request):
 
 
 @app.post("/admin/update-permissions")
+@app.post("/admin-dashboard/update-permissions")
 async def update_permissions(request: Request):
     """Mettre à jour les permissions d'un utilisateur"""
     try:
@@ -5207,6 +5284,7 @@ async def update_permissions(request: Request):
         return {"success": False, "message": str(e)}
 
 @app.get("/admin/get-permissions/{username}")
+@app.get("/admin-dashboard/get-permissions/{username}")
 async def get_permissions(username: str):
     """Récupérer les permissions d'un utilisateur"""
     try:
@@ -5227,6 +5305,7 @@ async def get_permissions(username: str):
 
 
 @app.post("/admin/change-password")
+@app.post("/admin-dashboard/change-password")
 async def change_password(request: Request):
     """Changer son propre mot de passe"""
     data = await request.json()
@@ -18928,256 +19007,388 @@ async def create_charge(req: CreateChargeRequest, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/pricing-complete", response_class=HTMLResponse)
-async def pricing_complete(request: Request):
-    """
-    Page Pricing synchronisée avec:
-    - plan_pricing (prix) via get_all_plan_pricing()
-    - plan_access (pages/sections incluses) via db_manager (SQLite /tmp/users.db)
-    """
-    # --- Prix depuis la table plan_pricing (canonique) ---
-    pricing = get_all_plan_pricing()
-
-    def _price(plan: str, default_cents: int = 0) -> int:
-        try:
-            cents = int((pricing.get(plan) or {}).get("price_cents") or default_cents)
-        except Exception:
-            cents = default_cents
-        return max(cents, 0)
-
-    def _duration_days(plan: str, default_days: int) -> int:
-        try:
-            d = int((pricing.get(plan) or {}).get("duration_days") or default_days)
-        except Exception:
-            d = default_days
-        return max(d, 1)
-
-    def _duration_label(days: int) -> str:
-        if days >= 360:
-            return "1 an"
-        if days >= 170:
-            return "6 mois"
-        if days >= 80:
-            return "3 mois"
-        return "1 mois"
-
-    def _per_label(days: int) -> str:
-        if days >= 360:
-            return "/an"
-        if days >= 170:
-            return "/6 mois"
-        if days >= 80:
-            return "/3 mois"
-        return "/mois"
-
-    # --- Accès (pages) depuis plan_access (JSON list) ---
-    access_by_plan = {"free": [], "premium": [], "advanced": [], "pro": [], "elite": []}
-    try:
-        conn = db_manager.get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS plan_access (
-                plan TEXT PRIMARY KEY,
-                routes TEXT
-            )
-        """)
-        conn.commit()
-        cur.execute("SELECT plan, routes FROM plan_access")
-        rows = cur.fetchall() or []
-        for plan, routes_json in rows:
-            try:
-                routes = json.loads(routes_json) if routes_json else []
-                if isinstance(routes, list):
-                    access_by_plan[str(plan)] = routes
-            except Exception:
-                pass
-        cur.close()
-        conn.close()
-    except Exception:
-        pass
-
-    route_names = {
-        "/": "Accueil",
-        "/dashboard": "Dashboard Principal",
-        "/stats-dashboard": "Stats Dashboard",
-        "/mes-trades": "Mes Trades",
-        "/strategies": "Stratégies",
-        "/strategie": "Stratégies",
-        "/spot-trading": "Spot Trading",
-        "/watchlist": "Watchlist",
-        "/risk-management": "Gestion Risques",
-        "/gestion-risques": "Gestion Risques",
-        "/backtesting": "Backtesting",
-        "/opportunity-scanner": "Opportunity Scanner",
-        "/ai-market-regime": "Market Regime",
-        "/ai-whale-watcher": "Whale Watcher",
-        "/fear-greed": "Fear & Greed",
-        "/fear-greed-chart": "Fear & Greed Chart",
-        "/dominance": "Dominance",
-        "/heatmap": "Heatmap",
-        "/ai-predictor": "AI Predictor",
-        "/ai-news": "AI News",
-        "/ai-signals": "AI Signals",
-        "/ai-assistant": "AI Assistant",
-        "/contact": "Contact",
-    }
-
-    def pretty_route(r: str) -> str:
-        if not r:
-            return ""
-        if not r.startswith("/"):
-            r = "/" + r
-        return route_names.get(r, r)
-
-    def render_routes(plan: str) -> str:
-        routes = access_by_plan.get(plan, []) or []
-        cleaned, seen = [], set()
-        for r in routes:
-            if not r:
-                continue
-            rr = str(r).strip()
-            if not rr.startswith("/"):
-                rr = "/" + rr
-            if rr in seen:
-                continue
-            seen.add(rr)
-            cleaned.append(rr)
-
-        pretty = sorted([pretty_route(x) for x in cleaned if x], key=lambda s: s.lower())
-        if not pretty:
-            return '<li style="opacity:.7">—</li>'
-        show = pretty[:7]
-        extra = len(pretty) - len(show)
-        lis = "\n".join([f"<li>{x}</li>" for x in show])
-        if extra > 0:
-            lis += f'\n<li style="opacity:.75">+ {extra} autres pages</li>'
-        return lis
-
-    premium_cents  = _price("premium", 2999)
-    advanced_cents = _price("advanced", 7497)
-    pro_cents      = _price("pro", 13494)
-    elite_cents    = _price("elite", 23988)
-
-    prem_days  = _duration_days("premium", 30)
-    adv_days   = _duration_days("advanced", 90)
-    pro_days   = _duration_days("pro", 180)
-    elite_days = _duration_days("elite", 365)
-
-    html = """
-<!doctype html>
+async def pricing_complete():
+    """Page Plans & Tarifs (version complète + promo + checkout)."""
+    html = """<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Plans & Tarifs - Crypto IA</title>
-  <style>
-    body { margin:0; font-family: 'Segoe UI', system-ui, Arial; background: linear-gradient(135deg, #1e1b4b, #6d28d9); color:#fff; }
-    .container { padding: 30px 40px 60px 40px; max-width: 1200px; margin:0 auto; }
-    .hero { background: rgba(0,0,0,0.35); padding: 22px 18px; border-radius: 16px; border:1px solid rgba(255,255,255,0.10); text-align:center; }
-    .hero h1 { margin:0; font-size: 42px; letter-spacing:1px; }
-    .hero p { margin:10px 0 0 0; opacity:.85; }
-    .promo { margin: 22px auto 0 auto; background:#fff; color:#111; border-radius: 16px; padding: 18px; max-width: 700px; display:flex; gap:16px; align-items:center; justify-content:space-between; }
-    .promo .left { display:flex; align-items:center; gap:10px; font-weight:700; }
-    .promo input { flex:1; border-radius: 10px; border:1px solid #ddd; padding: 14px 14px; font-size:14px; outline:none; background:#0b1220; color:#fff; }
-    .promo button { border:0; border-radius: 10px; padding: 14px 18px; font-weight:700; cursor:pointer; background:#6d7ef5; color:#fff; }
-    .grid { margin-top: 22px; display:grid; grid-template-columns: repeat(4, 1fr); gap:18px; }
-    .card { background:#fff; color:#111; border-radius: 18px; padding: 20px 20px 18px 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); position:relative; }
-    .card.popular { outline: 3px solid #f59e0b; }
-    .badge { display:inline-block; font-size:12px; padding: 6px 10px; border-radius: 999px; background: #10b981; color:#fff; font-weight:800; }
-    .tag { display:inline-block; font-size:12px; padding: 6px 10px; border-radius: 999px; background: #e5e7eb; color:#111; font-weight:800; }
-    .ribbon { position:absolute; top: 12px; right:-42px; transform: rotate(45deg); background:#f59e0b; color:#fff; font-weight:900; font-size:12px; padding: 6px 60px; }
-    .title { display:flex; align-items:center; gap:10px; font-size:24px; font-weight:900; }
-    .price { margin-top: 14px; font-size: 54px; font-weight: 900; color:#6d7ef5; }
-    .per { font-size:16px; font-weight:800; opacity:.75; }
-    ul { margin: 16px 0 0 0; padding-left: 18px; color:#374151; }
-    li { margin: 10px 0; }
-    .btn { margin-top: 18px; display:block; width:100%; text-align:center; padding: 14px 14px; border-radius: 12px; background:#6d7ef5; color:#fff; text-decoration:none; font-weight:900; }
-    .sub { opacity:.75; font-size:13px; margin-top: 10px; }
-    @media(max-width: 1060px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-    @media(max-width: 640px) { .container { padding: 18px; } .grid { grid-template-columns: 1fr; } .hero h1 { font-size: 34px; } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plans & Tarifs</title>
+    <style>
+        :root{
+            --bg1:#2a0f6a;
+            --bg2:#3b1aa1;
+            --card:#ffffff;
+            --text:#0f172a;
+            --muted:#64748b;
+            --accent:#7c3aed;
+            --accent2:#5b21b6;
+            --shadow: 0 12px 30px rgba(0,0,0,.25);
+        }
+        body{
+            margin:0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(circle at top, var(--bg2), var(--bg1));
+            color: var(--text);
+            min-height:100vh;
+        }
+        .main-content{ margin-left: 260px; padding: 24px 0; }
+        @media (max-width: 980px){ .main-content{ margin-left: 0; padding: 12px 0; } }
+
+        .page{
+            width: min(1200px, 92vw);
+            margin: 56px auto;
+        }
+        .hero{
+            background: rgba(0,0,0,.18);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 18px;
+            padding: 26px 22px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
+            color: #e9e5ff;
+            text-align:center;
+        }
+        .hero h1{
+            margin:0;
+            font-size: 44px;
+            letter-spacing: .5px;
+        }
+        .hero p{
+            margin:10px 0 0;
+            color: rgba(255,255,255,.75);
+        }
+
+        .promo{
+            margin: 22px auto 10px;
+            width: min(900px, 92vw);
+            background: rgba(255,255,255,.92);
+            border-radius: 14px;
+            padding: 14px 14px;
+            display:flex;
+            gap: 12px;
+            align-items:center;
+            justify-content: center;
+            box-shadow: var(--shadow);
+        }
+        .promo .label{
+            display:flex; align-items:center; gap:10px;
+            font-weight: 700;
+            color: #1f2937;
+            white-space: nowrap;
+        }
+        .promo input{
+            width: min(420px, 60vw);
+            max-width: 420px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,.12);
+            outline:none;
+            font-size: 14px;
+        }
+        .promo button{
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            color: #fff;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform .15s ease;
+        }
+        .promo button:hover{ transform: translateY(-1px); }
+
+        .grid{
+            margin-top: 18px;
+            display:grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+        @media (max-width: 1100px){ .grid{ grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 640px){ .grid{ grid-template-columns: 1fr; } }
+
+        .card{
+            background: var(--card);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            border: 2px solid rgba(124,58,237,.0);
+            padding: 18px 18px 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        .card.popular{
+            border-color: rgba(245,158,11,1);
+            box-shadow: 0 16px 36px rgba(0,0,0,.32);
+        }
+        .ribbon{
+            position:absolute;
+            right:-62px;
+            top: 18px;
+            transform: rotate(45deg);
+            background: #f59e0b;
+            color:#111827;
+            font-weight: 900;
+            font-size: 12px;
+            padding: 8px 70px;
+            letter-spacing: .8px;
+        }
+        .top{
+            display:flex;
+            align-items:center;
+            gap: 10px;
+        }
+        .icon{
+            font-size: 20px;
+        }
+        .name{
+            font-size: 22px;
+            font-weight: 900;
+        }
+        .badge{
+            margin-left:auto;
+            font-size: 12px;
+            font-weight: 800;
+            background: #10b981;
+            color:#fff;
+            padding: 6px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .price{
+            margin-top: 12px;
+            font-size: 52px;
+            font-weight: 950;
+            letter-spacing: -1px;
+            color: #6d28d9;
+        }
+        .per{
+            font-size: 14px;
+            color: var(--muted);
+            font-weight: 800;
+            margin-top: -6px;
+        }
+        .section-title{
+            margin-top: 14px;
+            font-weight: 900;
+            color: #111827;
+        }
+        ul{
+            margin: 10px 0 0;
+            padding-left: 18px;
+            color: #111827;
+        }
+        li{
+            margin: 8px 0;
+            color: #111827;
+        }
+        .pay-btn{
+            margin-top: 16px;
+            width: 100%;
+            padding: 12px 12px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            color: #fff;
+            background: #6b7bf0;
+            font-weight: 900;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            gap: 10px;
+            font-size: 15px;
+        }
+        .pay-btn:disabled{ opacity:.65; cursor:not-allowed; }
+        .hint{
+            margin-top: 10px;
+            text-align:center;
+            font-size: 12px;
+            color: rgba(255,255,255,.72);
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="hero">
-      <h1>💎 Plans & Tarifs</h1>
-      <p>Choisissez le plan qui vous convient — synchronisé avec votre Admin Dashboard</p>
+""" + SIDEBAR + """
+<div class="main-content">
+    <div class="page">
+        <div class="hero">
+            <div style="font-size:40px; margin-bottom:6px;">💎</div>
+            <h1>Plans & Tarifs</h1>
+            <p>Choisissez le plan qui vous convient — synchronisé avec votre Admin Dashboard</p>
+        </div>
+
+        <div class="promo">
+            <div class="label">🎁 Vous avez un code promo?</div>
+            <input id="promo-code" type="text" placeholder="ENTREZ VOTRE CODE PROMO" />
+            <button type="button" onclick="applyPromo(event)">Appliquer</button>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="top">
+                    <div class="icon">💳</div>
+                    <div class="name">Premium</div>
+                    <div class="badge">1 mois</div>
+                </div>
+                <div class="price">$20.00</div>
+                <div class="per">par mois</div>
+                <div class="section-title">Accès inclus:</div>
+                <ul>
+                    <li>AI Predictor</li>
+                    <li>Gestion des Risques</li>
+                    <li>Whale Watcher</li>
+                </ul>
+                <button type="button" class="pay-btn" onclick="checkout('premium','stripe',20,event)">💳 Payer par Carte</button>
+            </div>
+
+            <div class="card popular">
+                <div class="ribbon">POPULAIRE</div>
+                <div class="top">
+                    <div class="icon">💎</div>
+                    <div class="name">Advanced</div>
+                    <div class="badge">3 mois</div>
+                </div>
+                <div class="price">$50.00</div>
+                <div class="per">par 3 mois</div>
+                <div class="section-title">Accès inclus:</div>
+                <ul>
+                    <li>Bullrun Phase</li>
+                    <li>Calendrier</li>
+                    <li>Fear & Greed Chart</li>
+                </ul>
+                <button type="button" class="pay-btn" onclick="checkout('advanced','stripe',50,event)">💳 Payer par Carte</button>
+            </div>
+
+            <div class="card">
+                <div class="top">
+                    <div class="icon">👑</div>
+                    <div class="name">Pro</div>
+                    <div class="badge">6 mois</div>
+                </div>
+                <div class="price">$80.00</div>
+                <div class="per">par 6 mois</div>
+                <div class="section-title">Accès inclus:</div>
+                <ul>
+                    <li>Accès complet aux dashboards IA</li>
+                    <li>Alertes TradingView → Telegram</li>
+                    <li>Support prioritaire</li>
+                </ul>
+                <button type="button" class="pay-btn" onclick="checkout('pro','stripe',80,event)">💳 Payer par Carte</button>
+            </div>
+
+            <div class="card">
+                <div class="top">
+                    <div class="icon">🚀</div>
+                    <div class="name">Elite</div>
+                    <div class="badge">1 an</div>
+                </div>
+                <div class="price">$150.00</div>
+                <div class="per">par an</div>
+                <div class="section-title">Accès inclus:</div>
+                <ul>
+                    <li>Tout le plan Pro</li>
+                    <li>Accès anticipé aux nouveautés</li>
+                    <li>Support VIP</li>
+                </ul>
+                <button type="button" class="pay-btn" onclick="checkout('elite','stripe',150,event)">💳 Payer par Carte</button>
+            </div>
+        </div>
+
+        <div class="hint">Paiement sécurisé. Si un paiement échoue, vérifiez vos clés Stripe/Coinbase dans l’Admin.</div>
     </div>
+</div>
 
-    <div class="promo">
-      <div class="left">🎁 Vous avez un code promo?</div>
-      <input id="promo" placeholder="ENTREZ VOTRE CODE PROMO" />
-      <button onclick="applyPromo()">Appliquer</button>
-    </div>
+<script>
+    let currentPromo = null;
 
-    <div class="grid">
-      <div class="card">
-        <div class="title">💳 Premium <span class="badge">__PREM_LABEL__</span></div>
-        <div class="price">$__PREM_PRICE__ <span class="per">__PREM_PER__</span></div>
-        <div class="sub">Accès inclus:</div>
-        <ul>__PREM_ROUTES__</ul>
-        <a class="btn" href="/pay/stripe/premium">💳 Payer par Carte</a>
-      </div>
-
-      <div class="card popular">
-        <div class="ribbon">POPULAIRE</div>
-        <div class="title">💎 Advanced <span class="badge">__ADV_LABEL__</span> <span class="tag">Économisez</span></div>
-        <div class="price">$__ADV_PRICE__ <span class="per">__ADV_PER__</span></div>
-        <div class="sub">Accès inclus:</div>
-        <ul>__ADV_ROUTES__</ul>
-        <a class="btn" href="/pay/stripe/advanced">💳 Payer par Carte</a>
-      </div>
-
-      <div class="card">
-        <div class="title">👑 Pro <span class="badge">__PRO_LABEL__</span></div>
-        <div class="price">$__PRO_PRICE__ <span class="per">__PRO_PER__</span></div>
-        <div class="sub">Accès inclus:</div>
-        <ul>__PRO_ROUTES__</ul>
-        <a class="btn" href="/pay/stripe/pro">💳 Payer par Carte</a>
-      </div>
-
-      <div class="card">
-        <div class="title">🚀 Elite <span class="badge">__ELI_LABEL__</span></div>
-        <div class="price">$__ELI_PRICE__ <span class="per">__ELI_PER__</span></div>
-        <div class="sub">Accès inclus:</div>
-        <ul>__ELI_ROUTES__</ul>
-        <a class="btn" href="/pay/stripe/elite">💳 Payer par Carte</a>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    function applyPromo(){
-      const code = document.getElementById('promo').value.trim();
-      if(!code){
-        alert("Entrez un code promo.");
-        return;
-      }
-      alert("Code promo appliqué (démo): " + code);
+    function normalizeFeatureLabel(label){
+        if(!label) return "";
+        let s = String(label).trim();
+        if(s.startsWith("/")) s = s.slice(1);
+        // /bullrun-phase -> Bullrun Phase
+        s = s.replace(/[-_]+/g, " ");
+        return s.replace(/\b\w/g, c => c.toUpperCase());
     }
-  </script>
-</body>
-</html>
-"""
 
-    html = (html
-        .replace("__PREM_LABEL__", _duration_label(prem_days))
-        .replace("__ADV_LABEL__", _duration_label(adv_days))
-        .replace("__PRO_LABEL__", _duration_label(pro_days))
-        .replace("__ELI_LABEL__", _duration_label(elite_days))
-        .replace("__PREM_PER__", _per_label(prem_days))
-        .replace("__ADV_PER__", _per_label(adv_days))
-        .replace("__PRO_PER__", _per_label(pro_days))
-        .replace("__ELI_PER__", _per_label(elite_days))
-        .replace("__PREM_PRICE__", f"{premium_cents/100:.2f}")
-        .replace("__ADV_PRICE__", f"{advanced_cents/100:.2f}")
-        .replace("__PRO_PRICE__", f"{pro_cents/100:.2f}")
-        .replace("__ELI_PRICE__", f"{elite_cents/100:.2f}")
-        .replace("__PREM_ROUTES__", render_routes("premium"))
-        .replace("__ADV_ROUTES__", render_routes("advanced"))
-        .replace("__PRO_ROUTES__", render_routes("pro"))
-        .replace("__ELI_ROUTES__", render_routes("elite"))
-    )
-    return HTMLResponse(html)
+    async function applyPromo(ev){
+        const btn = ev && (ev.currentTarget || ev.target);
+        if(btn){ btn.disabled = true; btn.dataset._oldText = btn.innerText; btn.innerText = "Vérification…"; }
+
+        try{
+            const code = (document.getElementById('promo-code').value || '').trim();
+            if(!code){ alert('Entrez un code promo.'); return; }
+
+            const res = await fetch('/api/validate-promo', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ code })
+            });
+
+            const ct = (res.headers.get('content-type') || '').toLowerCase();
+            if(!ct.includes('application/json')){
+                throw new Error('Réponse inattendue (' + res.status + ')');
+            }
+
+            const data = await res.json();
+            if(data && data.valid){
+                currentPromo = data;
+                alert('✅ Code promo appliqué : ' + data.code);
+            } else {
+                currentPromo = null;
+                alert('❌ Code promo invalide.');
+            }
+        } catch(err){
+            console.error(err);
+            alert('Erreur lors de la validation du code promo.');
+        } finally {
+            if(btn){ btn.disabled = false; btn.innerText = btn.dataset._oldText || "Appliquer"; }
+        }
+    }
+
+    async function checkout(plan, method, amount, ev){
+        const btn = ev && (ev.currentTarget || ev.target);
+        if(btn){ btn.disabled = true; btn.dataset._oldText = btn.innerText; btn.innerText = "Chargement…"; }
+
+        try{
+            const payload = {
+                plan,
+                amount: amount,
+                promo_code: currentPromo ? currentPromo.code : null
+            };
+
+            const endpoint = (method === 'coinbase') ? '/api/coinbase-checkout' : '/api/stripe-checkout';
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            const ct = (res.headers.get('content-type') || '').toLowerCase();
+            if(!ct.includes('application/json')){
+                // Often happens when a route redirects to /login or returns HTML
+                const t = await res.text();
+                throw new Error('Réponse inattendue (' + res.status + ').');
+            }
+
+            const data = await res.json();
+            if(data && data.success && data.checkout_url){
+                window.location.href = data.checkout_url;
+            } else {
+                alert('Erreur: ' + (data && data.error ? data.error : 'Impossible de créer la session de paiement.'));
+            }
+        } catch(err){
+            console.error(err);
+            alert('Erreur lors de la création du paiement.');
+        } finally {
+            if(btn){ btn.disabled = false; btn.innerText = btn.dataset._oldText || "Payer"; }
+        }
+    }
+</script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
 @app.get("/pricing-new", response_class=HTMLResponse)
 async def pricing_page_new(request: Request):
     """Page de pricing public avec Coinbase Commerce"""
@@ -22737,7 +22948,7 @@ async def prediction_ia():
 </head>
 <body>
     <div class="sidebar">
-        <div class="sidebar-title"><img src="/static/cryptoia_logo.png" alt="CryptoIA" style="width:34px;height:34px;border-radius:8px;object-fit:contain;background:rgba(255,255,255,0.06);padding:4px;box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset;" onerror="this.onerror=null;this.src=\'https://raw.githubusercontent.com/johnboisvert/tradingview/main/static/cryptoia_logo.png\';" /><span style="margin-left:10px;letter-spacing:1px;">CRYPTO IA</span></div>
+        <div class="sidebar-title">🚀 CRYPTO IA</div>
         
         <div style="color: #64748b; font-size: 11px; padding: 10px; font-weight: 600;">📊 TABLEAU DE BORD</div>
         <a href="/dashboard">🏠 Dashboard Principal</a>
@@ -23225,6 +23436,7 @@ async def permission_denied_handler(request: Request, exc: HTTPException):
 # ============================================================================
 
 @app.get("/admin/activate-subscription")
+@app.get("/admin-dashboard/activate-subscription")
 async def admin_activate_subscription(
     username: str,
     plan: str,
@@ -25235,6 +25447,7 @@ document.addEventListener('DOMContentLoaded', loadPlanPrices);
         return html
 
 @app.post("/admin/pricing/update")
+@app.post("/admin-dashboard/pricing/update")
 async def admin_pricing_update(request: Request):
     """Update plan"""
     session_token = request.cookies.get("session_token")
@@ -25281,6 +25494,7 @@ async def admin_pricing_update(request: Request):
 
 
 @app.post("/admin/pricing/update")
+@app.post("/admin-dashboard/pricing/update")
 async def admin_pricing_update(request: Request):
     """Mise à jour d'un plan"""
     session_token = request.cookies.get("session_token")
@@ -25332,6 +25546,7 @@ async def admin_pricing_update(request: Request):
         print(f"Erreur pricing update: {e}")
         return RedirectResponse("/admin/pricing?error=1", status_code=303)
 @app.get("/admin/init-promo-table")
+@app.get("/admin-dashboard/init-promo-table")
 async def admin_init_promo_table(session_token: Optional[str] = Cookie(None)):
     """Initialise la table promo_codes (à exécuter une seule fois)"""
     user = get_user_from_token(session_token)
@@ -25360,6 +25575,7 @@ async def admin_init_promo_table(session_token: Optional[str] = Cookie(None)):
 
 
 @app.get("/admin/create-launch-promos")
+@app.get("/admin-dashboard/create-launch-promos")
 async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)):
     """Crée automatiquement 5 codes promo de lancement"""
     user = get_user_from_token(session_token)
@@ -25433,6 +25649,7 @@ async def admin_create_launch_promos(session_token: Optional[str] = Cookie(None)
 
 
 @app.get("/admin/create-promo")
+@app.get("/admin-dashboard/create-promo")
 async def admin_create_promo(
     code: str,
     discount_type: str,
@@ -25490,6 +25707,7 @@ async def admin_create_promo(
 
 
 @app.get("/admin/list-promos", response_class=HTMLResponse)
+@app.get("/admin-dashboard/list-promos", response_class=HTMLResponse)
 async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
     """Page admin: liste tous les codes promo avec stats"""
     user = get_user_from_token(session_token)
@@ -25676,6 +25894,7 @@ async def admin_list_promos(session_token: Optional[str] = Cookie(None)):
 
 
 @app.get("/admin/test-promo")
+@app.get("/admin-dashboard/test-promo")
 async def admin_test_promo(
     code: str,
     plan: str = "1_month",
@@ -25721,6 +25940,7 @@ async def admin_test_promo(
 # ============================================================================
 
 @app.get("/admin/get-plan-access/{plan}")
+@app.get("/admin-dashboard/get-plan-access/{plan}")
 async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)):
     """Récupérer les routes accessibles pour un plan d'abonnement"""
     user = get_user_from_token(session_token)
@@ -25762,6 +25982,7 @@ async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)
 
 
 @app.post("/admin/save-plan-access")
+@app.post("/admin-dashboard/save-plan-access")
 async def save_plan_access(request: Request, session_token: Optional[str] = Cookie(None)):
     """Sauvegarder les routes accessibles pour un plan"""
     user = get_user_from_token(session_token)
@@ -25824,12 +26045,14 @@ async def save_plan_access(request: Request, session_token: Optional[str] = Cook
 # Admin - Plan Prices (sync /pricing-complete + Stripe/Coinbase)
 # =====================
 @app.get("/admin/api/plan-prices")
+@app.get("/admin-dashboard/api/plan-prices")
 async def admin_get_plan_prices(request: Request):
     if not request.cookies.get("admin_session"):
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
     return JSONResponse({"success": True, "plans": get_all_plan_pricing()})
 
 @app.post("/admin/save-plan-prices")
+@app.post("/admin-dashboard/save-plan-prices")
 async def admin_save_plan_prices(request: Request):
     if not request.cookies.get("admin_session"):
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
@@ -25866,6 +26089,7 @@ async def admin_save_plan_prices(request: Request):
     return JSONResponse({"success": True, "updated": updated, "plans": get_all_plan_pricing()})
 
 @app.post("/admin/create-promo")
+@app.post("/admin-dashboard/create-promo")
 async def admin_create_promo_post(request: Request, session_token: Optional[str] = Cookie(None)):
     """Créer un code promo (version POST pour le frontend)"""
     user = get_user_from_token(session_token)
@@ -25931,6 +26155,7 @@ async def admin_create_promo_post(request: Request, session_token: Optional[str]
 
 
 @app.post("/admin/delete-promo")
+@app.post("/admin-dashboard/delete-promo")
 async def admin_delete_promo(request: Request, session_token: Optional[str] = Cookie(None)):
     """Supprimer un code promo"""
     user = get_user_from_token(session_token)
@@ -25966,6 +26191,7 @@ async def admin_delete_promo(request: Request, session_token: Optional[str] = Co
 
 
 @app.get("/admin/api/list-promos")
+@app.get("/admin-dashboard/api/list-promos")
 async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
     """API JSON: Lister tous les codes promo pour l'admin dashboard"""
     user = get_user_from_token(session_token)
@@ -26031,6 +26257,7 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
 # ============================================================================
 
 @app.get("/admin/api/retention-dashboard")
+@app.get("/admin-dashboard/api/retention-dashboard")
 async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None)):
     """API pour le Retention Dashboard - Utilisateurs qui expirent, inactifs, stats"""
     user = get_user_from_token(session_token)
@@ -26193,6 +26420,7 @@ async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None))
 
 
 @app.post("/admin/api/extend-subscription")
+@app.post("/admin-dashboard/api/extend-subscription")
 async def admin_extend_subscription(request: Request, session_token: Optional[str] = Cookie(None)):
     """Prolonger l'abonnement d'un utilisateur"""
     user = get_user_from_token(session_token)
@@ -26265,6 +26493,7 @@ async def admin_extend_subscription(request: Request, session_token: Optional[st
 # ============================================================================
 
 @app.get("/admin/api/conversion-funnel")
+@app.get("/admin-dashboard/api/conversion-funnel")
 async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] = Cookie(None)):
     """API pour le Conversion Funnel - Analyse des conversions"""
     user = get_user_from_token(session_token)
@@ -26444,6 +26673,7 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
 # ============================================================================
 
 @app.get("/admin/api/revenue-intelligence")
+@app.get("/admin-dashboard/api/revenue-intelligence")
 async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)):
     """API pour Revenue Intelligence - Revenus, CLV, Top clients, ROI promos"""
     user = get_user_from_token(session_token)
@@ -26567,6 +26797,7 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
 # ============================================================================
 
 @app.get("/admin/api/viral-growth")
+@app.get("/admin-dashboard/api/viral-growth")
 async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
     """API pour Viral Growth - Stats parrainage, leaderboard, sources"""
     user = get_user_from_token(session_token)
@@ -26620,6 +26851,7 @@ async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
 # ============================================================================
 
 @app.get("/admin/api/automation-engine")
+@app.get("/admin-dashboard/api/automation-engine")
 async def admin_automation_engine(session_token: Optional[str] = Cookie(None)):
 
     user = get_user_from_token(session_token)
@@ -28759,6 +28991,7 @@ curl -H "api-key: YOUR_KEY" \\
 
 # Page d'admin pour modifier les plans
 @app.get("/admin/update-plan-features", response_class=HTMLResponse)
+@app.get("/admin-dashboard/update-plan-features", response_class=HTMLResponse)
 async def admin_update_plan_features_page(request: Request):
     """Page admin pour modifier les features d'un plan"""
     # On vrifie si l'utilisateur est admin
@@ -28814,6 +29047,7 @@ async def admin_update_plan_features_page(request: Request):
     """)
 
 @app.post("/admin/update-plan-features")
+@app.post("/admin-dashboard/update-plan-features")
 async def update_plan_features(request: Request):
     """Modifier les features d'un plan (endpoint POST)"""
     user = get_user_from_token(request.cookies.get("session_token"))
@@ -32518,7 +32752,7 @@ async def crypto_pepites():
     <!-- SIDEBAR COMPLÈTE ULTRA PRO -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <div class="sidebar-title"><img src="/static/cryptoia_logo.png" alt="CryptoIA" style="width:34px;height:34px;border-radius:8px;object-fit:contain;background:rgba(255,255,255,0.06);padding:4px;box-shadow:0 0 0 1px rgba(255,255,255,0.08) inset;" onerror="this.onerror=null;this.src=\'https://raw.githubusercontent.com/johnboisvert/tradingview/main/static/cryptoia_logo.png\';" /><span style="margin-left:10px;letter-spacing:1px;">CRYPTO IA</span></div>
+            <div class="sidebar-title">🚀 CRYPTO IA</div>
         </div>
         
         <!-- 📊 TABLEAU DE BORD -->
@@ -41183,6 +41417,7 @@ async def download_ebook(ebook_id: int, request: Request):
 
 # Route 5: GET /admin/ebooks - Dashboard admin
 @app.get("/admin/ebooks")
+@app.get("/admin-dashboard/ebooks")
 async def admin_ebooks(request: Request):
     """Dashboard admin ebooks avec sidebar"""
     user_data = get_user_from_request(request)
@@ -41332,6 +41567,7 @@ async def admin_ebooks(request: Request):
 
 # Route 6: POST /admin/ebooks/add - Ajouter ebook
 @app.post("/admin/ebooks/add")
+@app.post("/admin-dashboard/ebooks/add")
 async def add_ebook(request: Request):
     """Ajouter un ebook"""
     user_data = get_user_from_request(request)
@@ -41380,6 +41616,7 @@ async def add_ebook(request: Request):
 
 # Route 7: POST /admin/ebooks/delete/{ebook_id} - Supprimer
 @app.post("/admin/ebooks/delete/{ebook_id}")
+@app.post("/admin-dashboard/ebooks/delete/{ebook_id}")
 async def delete_ebook(ebook_id: int, request: Request):
     """Supprimer un ebook"""
     user_data = get_user_from_request(request)
@@ -41423,6 +41660,7 @@ async def delete_ebook(ebook_id: int, request: Request):
 
 # Route 8: POST /admin/ebooks/toggle/{ebook_id} - Activer/Dsactiver
 @app.post("/admin/ebooks/toggle/{ebook_id}")
+@app.post("/admin-dashboard/ebooks/toggle/{ebook_id}")
 async def toggle_ebook(ebook_id: int, request: Request):
     """Activer/Désactiver un ebook"""
     user_data = get_user_from_request(request)

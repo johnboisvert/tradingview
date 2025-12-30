@@ -2672,133 +2672,149 @@ class PermissionMiddleware(BaseHTTPMiddleware):
             route_to_check = api_map.get(path, path)
 
         if not check_route_permission(username, route_to_check):
+            # API -> 403 JSON, Pages -> 403 HTML avec message pro + bouton upgrade
+            try:
+                raw_plan = user.get("subscription_plan") or user.get("plan") or "free"
+                plan_key = normalize_plan(str(raw_plan)) if "normalize_plan" in globals() else str(raw_plan).strip().lower()
+            except Exception:
+                plan_key = "free"
+            plan_key = (plan_key or "free").strip().lower() or "free"
+
+            req_key = required_plan_for_route(route_to_check)
+            cur_name = _PLAN_DISPLAY.get(plan_key, (plan_key or "free").title())
+            req_name = _PLAN_DISPLAY.get(req_key, (req_key or "premium").title())
+
             if path.startswith("/api/"):
-                return JSONResponse({"success": False, "message": "Accès premium requis"}, status_code=403)
+                return JSONResponse({
+                    "success": False,
+                    "message": f"Accès refusé — votre plan actuel est {cur_name}. Cette page nécessite: {req_name}.",
+                    "current_plan": plan_key,
+                    "required_plan": req_key
+                }, status_code=403)
 
-                #  PAS DE PERMISSION  Page d'upgrade
-
-                upgrade_page = f"""
-                <!DOCTYPE html>
-                <html><head>
-                    <meta charset="UTF-8">
-                    <title>🔒 Accès Premium Requis</title>
-                    <style>
-                        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-                        body {{
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-                            min-height: 100vh;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            padding: 20px;
-                        }}
-                        .upgrade-box {{
-                            max-width: 600px;
-                            width: 100%;
-                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                            border-radius: 20px;
-                            padding: 50px;
-                            text-align: center;
-                            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-                        }}
-                        .upgrade-icon {{
-                            font-size: 80px;
-                            margin-bottom: 20px;
-                            animation: pulse 2s infinite;
-                        }}
-                        @keyframes pulse {{
-                            0%, 100% {{ transform: scale(1); }}
-                            50% {{ transform: scale(1.1); }}
-                        }}
-                        .upgrade-title {{
-                            color: white;
-                            font-size: 36px;
-                            font-weight: 700;
-                            margin-bottom: 15px;
-                        }}
-                        .upgrade-text {{
-                            color: #e0e7ff;
-                            font-size: 18px;
-                            margin-bottom: 30px;
-                            line-height: 1.6;
-                        }}
-                        .upgrade-btn {{
-                            display: inline-block;
-                            background: white;
-                            color: #667eea;
-                            padding: 18px 40px;
-                            border-radius: 50px;
-                            text-decoration: none;
-                            font-weight: 700;
-                            font-size: 18px;
-                            transition: all 0.3s;
-                            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                        }}
-                        .upgrade-btn:hover {{
-                            transform: translateY(-3px);
-                            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-                        }}
-                        .features-list {{
-                            text-align: left;
-                            margin: 30px auto 0;
-                            max-width: 400px;
-                            color: white;
-                        }}
-                        .feature-item {{
-                            margin: 12px 0;
-                            font-size: 16px;
-                        }}
-                        .feature-item::before {{
-                            content: "✨ ";
-                            margin-right: 10px;
-                        }}
-                        .back-btn {{
-                            display: inline-block;
-                            color: white;
-                            text-decoration: none;
-                            margin-top: 20px;
-                            font-size: 14px;
-                            opacity: 0.8;
-                        }}
-                        .back-btn:hover {{
-                            opacity: 1;
-                        }}
-                    </style>
-                </head>
-                <body>
-                    <div class="upgrade-box">
-                        <div class="upgrade-icon">🔒</div>
-                        <h1 class="upgrade-title">Fonctionnalité Premium</h1>
-                        <p class="upgrade-text">
-                            Cette page fait partie de nos outils avancés réservés aux membres Premium.<br>
-                            Débloquez l'accès complet dès maintenant!
-                        </p>
-                        
-                        <div class="features-list">
-                            <div class="feature-item">16 Outils d'Intelligence Artificielle</div>
-                            <div class="feature-item">Academy complète (22 modules)</div>
-                            <div class="feature-item">Portfolio Tracker avancé</div>
-                            <div class="feature-item">Tous les indicateurs de marché</div>
-                            <div class="feature-item">Support prioritaire</div>
+            upgrade_page = f"""<!DOCTYPE html>
+            <html lang="fr"><head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Accès refusé</title>
+                <style>
+                    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+                    body {{
+                        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+                        background: radial-gradient(circle at top, #1e293b 0%, #0b1220 60%);
+                        min-height: 100vh;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 24px;
+                        color: #e5e7eb;
+                    }}
+                    .card {{
+                        width: 100%;
+                        max-width: 720px;
+                        background: rgba(15, 23, 42, 0.85);
+                        border: 1px solid rgba(148, 163, 184, 0.20);
+                        border-radius: 20px;
+                        padding: 42px 38px;
+                        box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+                    }}
+                    .top {{
+                        display: flex;
+                        gap: 18px;
+                        align-items: center;
+                        margin-bottom: 20px;
+                    }}
+                    .lock {{
+                        width: 58px;
+                        height: 58px;
+                        border-radius: 16px;
+                        display: grid;
+                        place-items: center;
+                        background: rgba(99, 102, 241, 0.18);
+                        border: 1px solid rgba(99, 102, 241, 0.35);
+                        font-size: 28px;
+                    }}
+                    h1 {{
+                        font-size: 28px;
+                        line-height: 1.2;
+                        margin-bottom: 6px;
+                    }}
+                    .sub {{
+                        color: rgba(226, 232, 240, 0.85);
+                        font-size: 15px;
+                        line-height: 1.5;
+                    }}
+                    .badges {{
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 10px;
+                        margin: 18px 0 26px 0;
+                    }}
+                    .badge {{
+                        padding: 10px 12px;
+                        border-radius: 14px;
+                        font-size: 14px;
+                        border: 1px solid rgba(148, 163, 184, 0.22);
+                        background: rgba(2, 6, 23, 0.35);
+                    }}
+                    .badge strong {{ color: #fff; }}
+                    .actions {{
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 12px;
+                        margin-top: 18px;
+                    }}
+                    .btn {{
+                        display: inline-block;
+                        padding: 14px 18px;
+                        border-radius: 14px;
+                        font-weight: 700;
+                        text-decoration: none;
+                        transition: transform .15s ease, opacity .15s ease;
+                    }}
+                    .btn:hover {{ transform: translateY(-1px); opacity: .95; }}
+                    .primary {{
+                        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 60%, #a855f7 100%);
+                        color: #fff;
+                    }}
+                    .secondary {{
+                        background: rgba(148, 163, 184, 0.12);
+                        color: #e5e7eb;
+                        border: 1px solid rgba(148, 163, 184, 0.18);
+                    }}
+                    .hint {{
+                        margin-top: 18px;
+                        font-size: 13px;
+                        color: rgba(226, 232, 240, 0.75);
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <div class="top">
+                        <div class="lock">🔒</div>
+                        <div>
+                            <h1>Accès refusé</h1>
+                            <div class="sub">Cette page est réservée à un plan supérieur.</div>
                         </div>
-                        
-                        <div style="margin-top: 40px;">
-                            <a href="/pricing-complete" class="upgrade-btn">
-                                🚀 Voir les Plans & Prix
-                            </a>
-                        </div>
-                        
-                        <p style="color: #c7d2fe; font-size: 14px; margin-top: 30px;">
-                            À partir de 29.99$/mois • Annulez à tout moment
-                        </p>
-                        
-                        <a href="/mon-compte" class="back-btn">← Retour à mon compte</a>
                     </div>
-                </body>
-                </html>
-                """
-                return Response(content=upgrade_page, status_code=403, media_type="text/html")
+
+                    <div class="badges">
+                        <div class="badge">Plan actuel : <strong>{cur_name}</strong></div>
+                        <div class="badge">Plan requis : <strong>{req_name}</strong></div>
+                        <div class="badge">Page : <strong>{route_to_check}</strong></div>
+                    </div>
+
+                    <div class="actions">
+                        <a class="btn primary" href="/pricing-complete">🚀 Voir les plans & tarifs</a>
+                        <a class="btn secondary" href="/dashboard">← Retour au dashboard</a>
+                        <a class="btn secondary" href="/mon-compte">👤 Mon compte</a>
+                    </div>
+
+                    <div class="hint">Astuce : vous pouvez gérer les pages incluses par plan dans <strong>Admin → Gestion accès par forfait</strong>.</div>
+                </div>
+            </body></html>"""
+            return Response(content=upgrade_page, status_code=403, media_type="text/html")
         
         #  Permission OK  Continuer normalement
         return await call_next(request)
@@ -3823,6 +3839,181 @@ def give_default_permissions(username: str) -> bool:
         print(f"❌ Erreur attribution permissions par défaut pour {username}: {e}")
         return False
 
+import time
+import json
+
+# ----------------------------------------------------------------------------
+#  PLAN ACCESS CONTROL (admin modifiable via /admin-dashboard)
+#  Source of truth: table plan_access(plan TEXT PRIMARY KEY, routes TEXT JSON)
+#  Canonical plan keys: free, premium, advanced, pro, elite
+# ----------------------------------------------------------------------------
+
+_PLAN_ORDER = ["free", "premium", "advanced", "pro", "elite"]
+_PLAN_DISPLAY = {
+    "free": "Free",
+    "premium": "Premium",
+    "advanced": "Advanced",
+    "pro": "Pro",
+    "elite": "Elite",
+}
+
+# Default access (used only if the admin hasn't configured plan_access yet)
+_DEFAULT_PLAN_ROUTES = {
+    "free": {
+        "/",
+        "/dashboard",
+        "/mon-compte",
+        "/contact",
+        "/pricing",
+        "/pricing-new",
+        "/pricing-complete",
+        "/login",
+        "/register",
+        "/logout",
+        "/health",
+    },
+}
+
+# Progressive defaults: each tier inherits previous tier
+_DEFAULT_PLAN_ROUTES["premium"] = set(_DEFAULT_PLAN_ROUTES["free"]) | {
+    "/ai-market-regime",
+    "/ai-whale-watcher",
+    "/fear-greed",
+    "/fear-greed-chart",
+    "/dominance",
+    "/heatmap",
+    "/strategie",
+    "/spot-trading",
+    "/altcoin-season",
+    "/nouvelles",
+    "/convertisseur",
+    "/calendrier",
+    "/graphiques",
+    "/bullrun-phase",
+    "/onchain-metrics",
+}
+_DEFAULT_PLAN_ROUTES["advanced"] = set(_DEFAULT_PLAN_ROUTES["premium"]) | {
+    "/academy",
+    "/academy/*",
+    "/portfolio",
+    "/portfolio/*",
+}
+_DEFAULT_PLAN_ROUTES["pro"] = set(_DEFAULT_PLAN_ROUTES["advanced"]) | {
+    "/ai-predictor",
+}
+_DEFAULT_PLAN_ROUTES["elite"] = set(_DEFAULT_PLAN_ROUTES["pro"])  # elite == all by default
+
+# Small in-memory cache to reduce DB hits
+_PLAN_ACCESS_CACHE = {"ts": 0.0, "data": {}}
+_PLAN_ACCESS_CACHE_TTL_SEC = 20.0
+
+def _use_postgres() -> bool:
+    try:
+        if "db_manager" in globals() and hasattr(db_manager, "use_postgresql"):
+            return bool(db_manager.use_postgresql)
+    except Exception:
+        pass
+    try:
+        return (DB_CONFIG.get("type") == "postgres")
+    except Exception:
+        return False
+
+def _get_db_conn_for_access():
+    try:
+        if "db_manager" in globals() and hasattr(db_manager, "get_connection"):
+            return db_manager.get_connection()
+    except Exception:
+        pass
+    return get_db_connection()
+
+def _ensure_plan_access_table(cursor):
+    # Keep schema simple for both SQLite and Postgres
+    cursor.execute(
+        """CREATE TABLE IF NOT EXISTS plan_access (
+            plan TEXT PRIMARY KEY,
+            routes TEXT NOT NULL
+        )"""
+    )
+
+def _parse_routes_json(routes_json):
+    if not routes_json:
+        return None
+    try:
+        routes = json.loads(routes_json) if isinstance(routes_json, str) else routes_json
+        if isinstance(routes, list):
+            return {str(r).strip() for r in routes if str(r).strip()}
+    except Exception:
+        return None
+    return None
+
+def get_plan_routes(plan_key: str):
+    """Return a set of routes allowed for a plan (DB if configured, else defaults)."""
+    plan_key = normalize_plan(plan_key) if "normalize_plan" in globals() else (plan_key or "free")
+    plan_key = (plan_key or "free").strip().lower() or "free"
+
+    # cache
+    now = time.time()
+    try:
+        if (now - _PLAN_ACCESS_CACHE.get("ts", 0.0)) < _PLAN_ACCESS_CACHE_TTL_SEC:
+            cached = _PLAN_ACCESS_CACHE.get("data", {}).get(plan_key)
+            if cached is not None:
+                return set(cached)
+    except Exception:
+        pass
+
+    routes_set = None
+    try:
+        conn = _get_db_conn_for_access()
+        cur = conn.cursor()
+        _ensure_plan_access_table(cur)
+        conn.commit()
+
+        if _use_postgres():
+            cur.execute("SELECT routes FROM plan_access WHERE plan = %s", (plan_key,))
+        else:
+            cur.execute("SELECT routes FROM plan_access WHERE plan = ?", (plan_key,))
+        row = cur.fetchone()
+        if row and row[0]:
+            routes_set = _parse_routes_json(row[0])
+        try:
+            cur.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+    except Exception:
+        routes_set = None
+
+    if routes_set is None:
+        routes_set = set(_DEFAULT_PLAN_ROUTES.get(plan_key, _DEFAULT_PLAN_ROUTES["free"]))
+
+    # update cache
+    try:
+        _PLAN_ACCESS_CACHE["ts"] = now
+        _PLAN_ACCESS_CACHE.setdefault("data", {})[plan_key] = set(routes_set)
+    except Exception:
+        pass
+    return set(routes_set)
+
+def _route_match(allowed_routes: set, route: str) -> bool:
+    if route in allowed_routes:
+        return True
+    # support wildcard entries like "/academy/*"
+    for r in allowed_routes:
+        if r.endswith("/*") and route.startswith(r[:-1]):
+            return True
+    return False
+
+def required_plan_for_route(route: str) -> str:
+    """Return the lowest plan that grants access to the route (best-effort)."""
+    route = route or "/"
+    for pk in _PLAN_ORDER:
+        if _route_match(get_plan_routes(pk), route):
+            return pk
+    return "elite"
+
 def check_route_permission(username: str, route: str) -> bool:
     """
     ✅ Vérifie si un utilisateur peut accéder à une route.
@@ -3830,51 +4021,46 @@ def check_route_permission(username: str, route: str) -> bool:
     Source de vérité:
     - ADMIN: accès total
     - Sinon: routes autorisées par le plan (table plan_access)
-    - Fallback intégré si la table n'est pas configurée (évite de "briser" le site)
-
-    Note:
-    - Les permissions individuelles (user_permissions) sont volontairement IGNORÉES ici,
-      pour éviter qu'un ancien "default grant" donne accès Premium sans abonnement.
-      Si tu veux offrir un accès spécial, ajoute la route dans plan_access du plan voulu.
+    - Fallback intégré si plan_access n'est pas configuré
     """
     try:
-        # Routes toujours autorisées une fois connecté (même plan free)
-        ALWAYS_ALLOW = {"/dashboard", "/mon-compte"}
+        route = route or "/"
 
-        if route in ALWAYS_ALLOW:
+        # Routes toujours autorisées une fois connecté
+        if route in {"/dashboard", "/mon-compte"}:
             return True
 
-        conn = db_manager.get_connection()
+        conn = _get_db_conn_for_access()
         c = conn.cursor()
+        use_pg = _use_postgres()
 
         # 1) Récupérer rôle + plan + fin d'abonnement
-        if db_manager.use_postgresql:
-            c.execute(
-                "SELECT role, subscription_plan, subscription_end FROM users WHERE username = %s",
-                (username,)
-            )
+        if use_pg:
+            c.execute("SELECT role, subscription_plan, subscription_end FROM users WHERE username = %s", (username,))
         else:
-            c.execute(
-                "SELECT role, subscription_plan, subscription_end FROM users WHERE username = ?",
-                (username,)
-            )
-
+            c.execute("SELECT role, subscription_plan, subscription_end FROM users WHERE username = ?", (username,))
         row = c.fetchone()
-        if not row:
+        try:
+            c.close()
+        except Exception:
+            pass
+        try:
             conn.close()
+        except Exception:
+            pass
+
+        if not row:
             return False
 
-        role = row[0]
+        role = (row[0] or "").strip().lower()
+        if role == "admin":
+            return True
+
         subscription_plan = (row[1] or "free") if len(row) > 1 else "free"
         subscription_end = row[2] if len(row) > 2 else None
 
-        if role == "admin":
-            conn.close()
-            return True
-
-        # 2) Déterminer le "tier" (free / premium / elite), en tenant compte de l'expiration
+        # 2) Expiration
         from datetime import datetime
-
         def _to_dt(v):
             if not v:
                 return None
@@ -3888,102 +4074,13 @@ def check_route_permission(username: str, route: str) -> bool:
             return None
 
         end_dt = _to_dt(subscription_end)
+        plan_key = normalize_plan(str(subscription_plan)) if "normalize_plan" in globals() else str(subscription_plan).strip().lower()
         if end_dt and datetime.now() > end_dt:
-            subscription_plan = "free"
+            plan_key = "free"
+        plan_key = (plan_key or "free").strip().lower() or "free"
 
-        plan_raw = str(subscription_plan).strip().lower()
-
-        def normalize_plan_key(p: str) -> str:
-            if not p:
-                return "free"
-            if "elite" in p or "ultim" in p:
-                return "elite"
-            if "premium" in p or "pro" in p or "mensuel" in p or "month" in p or "year" in p or "ann" in p:
-                return "premium"
-            if p in {"free", "gratuit"}:
-                return "free"
-            # Par défaut: considérer comme premium si ce n'est pas explicitement free
-            return "premium"
-
-        plan_key = normalize_plan_key(plan_raw)
-
-        # 3) Assurer l'existence de la table plan_access (SQLite/Postgres)
-        try:
-            if db_manager.use_postgresql:
-                c.execute("""
-                    CREATE TABLE IF NOT EXISTS plan_access (
-                        plan TEXT PRIMARY KEY,
-                        routes TEXT NOT NULL
-                    )
-                """)
-            else:
-                c.execute("""
-                    CREATE TABLE IF NOT EXISTS plan_access (
-                        plan TEXT PRIMARY KEY,
-                        routes TEXT NOT NULL
-                    )
-                """)
-            conn.commit()
-        except Exception:
-            # si CREATE TABLE échoue (permissions, etc), on continue avec le fallback
-            pass
-
-        # 4) Charger les routes autorisées depuis plan_access (essais: plan exact puis plan_key)
-        plan_routes = None
-
-        def _fetch_plan_routes(plan_name: str):
-            if not plan_name:
-                return None
-            try:
-                if db_manager.use_postgresql:
-                    c.execute("SELECT routes FROM plan_access WHERE plan = %s", (plan_name,))
-                else:
-                    c.execute("SELECT routes FROM plan_access WHERE plan = ?", (plan_name,))
-                r = c.fetchone()
-                if r and r[0]:
-                    import json
-                    return set(json.loads(r[0]))
-            except Exception:
-                return None
-            return None
-
-        plan_routes = _fetch_plan_routes(subscription_plan) or _fetch_plan_routes(plan_raw) or _fetch_plan_routes(plan_key)
-
-        # 5) Fallback (si pas configuré en DB)
-        free_routes = {"/dashboard", "/mon-compte"}
-
-        premium_routes = set(free_routes) | {
-            "/ai-market-regime",
-            "/ai-whale-watcher",
-            "/fear-greed",
-            "/fear-greed-chart",
-            "/dominance",
-            "/heatmap",
-            "/strategie",
-            "/spot-trading",
-            "/altcoin-season",
-            "/nouvelles",
-            "/convertisseur",
-            "/calendrier",
-            "/graphiques",
-            "/bullrun-phase",
-            "/onchain-metrics",
-        }
-
-        elite_routes = set(premium_routes) | {
-            "/ai-predictor",
-        }
-
-        fallback = {
-            "free": free_routes,
-            "premium": premium_routes,
-            "elite": elite_routes,
-        }
-
-        allowed = plan_routes if plan_routes is not None else fallback.get(plan_key, free_routes)
-
-        conn.close()
-        return route in allowed
+        allowed_routes = get_plan_routes(plan_key)
+        return _route_match(allowed_routes, route)
 
     except Exception as e:
         try:
@@ -3991,6 +4088,7 @@ def check_route_permission(username: str, route: str) -> bool:
         except Exception:
             pass
         return False
+
 def get_user_role(username: str) -> str:
     """Obtenir le rôle d'un utilisateur"""
     return db_manager.get_user_role(username)
@@ -24647,15 +24745,21 @@ document.addEventListener('DOMContentLoaded', loadPlanPrices);
         
         async function managePlanAccess(plan) {{
             currentPlan = plan;
-            const planNames = {{
+            const planNames = {
                 'free': '🆓 Free',
-                '1_month': '💎 Premium (1 mois)',
-                '3_months': '🚀 Advanced (3 mois)',
-                '6_months': '⭐ Pro (6 mois)',
-                '1_year': '👑 Elite (1 an)'
-            }};
-            
-            document.getElementById('planName').textContent = planNames[plan];
+                'premium': '💎 Premium',
+                'advanced': '🚀 Advanced',
+                'pro': '⭐ Pro',
+                'elite': '👑 Elite',
+
+                // Compat: anciens IDs
+                '1_month': '💎 Premium',
+                '3_months': '🚀 Advanced',
+                '6_months': '⭐ Pro',
+                '1_year': '👑 Elite'
+            };
+
+            document.getElementById('planName').textContent = planNames[plan] || plan;
             
             // Charger les permissions actuelles du plan
             
@@ -26121,44 +26225,48 @@ async def admin_test_promo(
 
 
 # ============================================================================
-#  GESTION DES ACCS PAR FORFAIT (ADMIN)
+#  GESTION DES ACCÈS PAR FORFAIT (ADMIN) — plan_access
+#  NOTE: Le plan est NORMALISÉ (free/premium/advanced/pro/elite)
 # ============================================================================
-
 @app.get("/admin/get-plan-access/{plan}")
 @app.get("/admin-dashboard/get-plan-access/{plan}")
 async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)):
-    """Récupérer les routes accessibles pour un plan d'abonnement"""
+    """Récupérer les routes accessibles pour un plan d'abonnement."""
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
+
     try:
-        conn = db_manager.get_connection()
+        plan_key = normalize_plan(plan) if "normalize_plan" in globals() else (plan or "free")
+        plan_key = (plan_key or "free").strip().lower() or "free"
+
+        conn = _get_db_conn_for_access()
         cursor = conn.cursor()
-        
-        # Crer la table si elle n'existe pas
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS plan_access (
-                plan TEXT PRIMARY KEY,
-                routes TEXT
-            )
-        """)
+        _ensure_plan_access_table(cursor)
         conn.commit()
-        
-        cursor.execute("SELECT routes FROM plan_access WHERE plan = ?", (plan,))
-        result = cursor.fetchone()
-        
-        cursor.close()
-        conn.close()
-        
-        if result and result[0]:
-            import json
-            routes = json.loads(result[0])
+
+        if _use_postgres():
+            cursor.execute("SELECT routes FROM plan_access WHERE plan = %s", (plan_key,))
         else:
-            routes = []
-        
-        return JSONResponse({"success": True, "routes": routes})
-    
+            cursor.execute("SELECT routes FROM plan_access WHERE plan = ?", (plan_key,))
+        result = cursor.fetchone()
+
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+        routes = []
+        if result and result[0]:
+            parsed = _parse_routes_json(result[0])
+            routes = sorted(parsed) if parsed else []
+
+        return JSONResponse({"success": True, "plan": plan_key, "routes": routes})
+
     except Exception as e:
         print(f"❌ Erreur get_plan_access: {e}")
         import traceback
@@ -26169,50 +26277,87 @@ async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)
 @app.post("/admin/save-plan-access")
 @app.post("/admin-dashboard/save-plan-access")
 async def save_plan_access(request: Request, session_token: Optional[str] = Cookie(None)):
-    """Sauvegarder les routes accessibles pour un plan"""
+    """Sauvegarder les routes accessibles pour un plan."""
     user = get_user_from_token(session_token)
     if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
+
     try:
         data = await request.json()
-        plan = data.get('plan')
-        routes = data.get('routes', [])
-        
+    except Exception:
+        data = {}
+
+    try:
+        plan = data.get("plan")
+        routes = data.get("routes", [])
         if not plan:
             return JSONResponse({"success": False, "message": "Plan manquant"}, status_code=400)
-        
-        import json
-        routes_json = json.dumps(routes)
-        
-        conn = db_manager.get_connection()
+
+        plan_key = normalize_plan(str(plan)) if "normalize_plan" in globals() else str(plan).strip().lower()
+        plan_key = (plan_key or "free").strip().lower() or "free"
+
+        if not isinstance(routes, list):
+            return JSONResponse({"success": False, "message": "Routes invalides"}, status_code=400)
+
+        # Nettoyage + dédup
+        cleaned = []
+        for r in routes:
+            r = str(r or "").strip()
+            if not r:
+                continue
+            if not r.startswith("/"):
+                r = "/" + r
+            cleaned.append(r)
+        # unique (stable)
+        seen = set()
+        cleaned_unique = []
+        for r in cleaned:
+            if r not in seen:
+                seen.add(r)
+                cleaned_unique.append(r)
+
+        routes_json = json.dumps(cleaned_unique)
+
+        conn = _get_db_conn_for_access()
         cursor = conn.cursor()
-        
-        # Crer la table si elle n'existe pas
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS plan_access (
-                plan TEXT PRIMARY KEY,
-                routes TEXT
+        _ensure_plan_access_table(cursor)
+
+        if _use_postgres():
+            cursor.execute(
+                "INSERT INTO plan_access (plan, routes) VALUES (%s, %s) "
+                "ON CONFLICT (plan) DO UPDATE SET routes = EXCLUDED.routes",
+                (plan_key, routes_json)
             )
-        """)
-        
-        # Insrer ou mettre  jour
-        cursor.execute("""
-            INSERT OR REPLACE INTO plan_access (plan, routes)
-            VALUES (?, ?)
-        """, (plan, routes_json))
-        
+        else:
+            cursor.execute(
+                "INSERT OR REPLACE INTO plan_access (plan, routes) VALUES (?, ?)",
+                (plan_key, routes_json)
+            )
+
         conn.commit()
-        cursor.close()
-        conn.close()
-        
-        print(f"✅ Accès du plan {plan} sauvegardés: {len(routes)} routes")
-        
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+        # Invalider le cache
+        try:
+            _PLAN_ACCESS_CACHE["ts"] = 0.0
+            _PLAN_ACCESS_CACHE["data"] = {}
+        except Exception:
+            pass
+
+        print(f"✅ Accès du plan {plan_key} sauvegardés: {len(cleaned_unique)} routes")
+
         return JSONResponse({
             "success": True,
-            "message": f"Accès du plan {plan.upper()} sauvegardés ({len(routes)} pages)"
+            "message": f"Accès du plan {plan_key.upper()} sauvegardés ({len(cleaned_unique)} pages)"
         })
-    
+
     except Exception as e:
         print(f"❌ Erreur save_plan_access: {e}")
         import traceback

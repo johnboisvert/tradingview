@@ -55,10 +55,6 @@ import random
 import os
 import math
 import asyncio
-
-# Global lock used by background monitors (avoid NameError if a monitor starts early)
-monitor_lock = asyncio.Lock()
-
 import json
 import sqlite3
 import hashlib
@@ -2201,6 +2197,25 @@ BADGES_DATA = {
 app = FastAPI()
 
 
+# ----------------------------------------------------------------------
+# Compat: certaines pages ont encore src="__SITE_LOGO_URL__" (placeholder).
+# On intercepte /__SITE_LOGO_URL__ et /admin/__SITE_LOGO_URL__ pour éviter 404.
+# ----------------------------------------------------------------------
+try:
+    from fastapi.responses import RedirectResponse as _RedirectResponse
+except Exception:
+    _RedirectResponse = None
+
+if _RedirectResponse:
+    @app.get("/__SITE_LOGO_URL__")
+    async def _site_logo_placeholder_root():
+        return _RedirectResponse(url=SITE_LOGO_URL, status_code=307)
+
+    @app.get("/admin/__SITE_LOGO_URL__")
+    async def _site_logo_placeholder_admin():
+        return _RedirectResponse(url=SITE_LOGO_URL, status_code=307)
+
+
 # =====================
 # Static files (logo, css, images)
 # =====================
@@ -2240,41 +2255,85 @@ def _resolve_static_path(base: Path, rel_path: str) -> "Path|None":
 
 @app.get("/static/{file_path:path}")
 async def _serve_static(file_path: str):
-    """Serveur statique minimal (logo, favicon, etc.) sans dépendre d'un dossier spécifique.
-
-    - Cherche le fichier dans plusieurs dossiers possibles (_STATIC_DIRS)
-    - Bloque toute tentative de path traversal
-    - Si le logo local est absent, redirige vers SITE_LOGO_URL (ex: GitHub raw)
-    """
+    """Sert les fichiers statiques (logo/CSS/JS) depuis les répertoires candidats."""
     if not file_path:
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    safe_rel = os.path.normpath(str(file_path)).lstrip("/\\")
-    # Bloquer path traversal / chemins absolus
-    if safe_rel.startswith("..") or os.path.isabs(safe_rel):
-        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    safe_rel = file_path.replace("\\", "/").lstrip("/")
 
-    for base in _STATIC_DIRS:
+    for d in _STATIC_DIRS:
+        if not d:
+            continue
+        p = _resolve_static_path(d, safe_rel)
+        if p:
+            resp = FileResponse(str(p))
+            resp.headers["Cache-Control"] = "public, max-age=86400"
+            return resp
+
+    return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+#  CORRECTION: Configuration Jinja2 templates
+templates = Jinja2Templates(directory="templates")
+
+# ----------------------------------------------------------------------------
+# Logo & Branding (global dans tous les templates)
+# - Priorité: variable d'env SITE_LOGO_URL
+# - Sinon: auto-détection dans /static (plusieurs noms possibles)
+# ----------------------------------------------------------------------------
+def _resolve_site_logo_url() -> str:
+    env_url = (os.getenv("SITE_LOGO_URL") or "").strip()
+    if env_url:
+        return env_url
+
+    candidates = [
+        # Généraux
+        "logo.png", "logo.webp", "logo.jpg", "logo.jpeg", "logo.svg",
+        "logo1.png", "logo1.webp", "logo1.jpg", "logo1.jpeg", "logo1.svg",
+        # Ton repo (ex: static/cryptoia_logo.png)
+        "cryptoia_logo.png", "cryptoia_logo.webp", "cryptoia_logo.jpg", "cryptoia_logo.jpeg", "cryptoia_logo.svg",
+        "cryptoia-logo.png", "cryptoia-logo.webp", "cryptoia-logo.jpg", "cryptoia-logo.jpeg", "cryptoia-logo.svg",
+    ]
+
+    # _STATIC_DIRS est défini plus haut (liste de dossiers candidats)
+    static_dirs = []
+    try:
+        static_dirs = list(_STATIC_DIRS) if "_STATIC_DIRS" in globals() else []
+    except Exception:
+        static_dirs = []
+
+    # fallback minimal si jamais _STATIC_DIRS n'existe pas
+    if not static_dirs:
         try:
-            base_p = Path(base).resolve()
-            candidate = (base_p / safe_rel).resolve()
-            # Assurer que candidate reste dans base_p
-            if base_p not in candidate.parents and candidate != base_p:
-                continue
-            if candidate.exists() and candidate.is_file():
-                return FileResponse(str(candidate))
+            static_dirs = [Path(__file__).resolve().parent / "static", Path.cwd() / "static"]
+        except Exception:
+            static_dirs = [Path.cwd() / "static"]
+
+    for d in static_dirs:
+        try:
+            d = Path(d)
+            for name in candidates:
+                if (d / name).is_file():
+                    return f"/static/{name}"
         except Exception:
             continue
 
-    # Fallback logo: si le fichier n'existe pas localement, mais SITE_LOGO_URL est configuré,
-    # on redirige le navigateur vers l'URL externe.
-    _env_logo = (os.getenv("SITE_LOGO_URL") or "").strip()
-    if _env_logo and _env_logo.startswith(("http://", "https://")):
-        bn = Path(safe_rel).name.lower()
-        if bn.startswith("cryptoia_logo") or bn in ("logo1.png", "logo.png"):
-            return RedirectResponse(_env_logo, status_code=307)
+    return "/static/logo.png"
 
-    return JSONResponse({"detail": "Not Found"}, status_code=404)
+SITE_LOGO_URL = _resolve_site_logo_url()
+# Cache-buster pour éviter que le navigateur garde un vieux logo (surtout sur Railway/Render/CDN)
+ASSET_VERSION = (os.getenv("ASSET_VERSION") or str(int(time.time()))).strip()
+if SITE_LOGO_URL.startswith("/static/") and "?" not in SITE_LOGO_URL:
+    SITE_LOGO_URL = f"{SITE_LOGO_URL}?v={ASSET_VERSION}"
+SITE_NAME = (os.getenv("SITE_NAME") or "Crypto IA").strip() or "Crypto IA"
+
+templates.env.globals["SITE_LOGO_URL"] = SITE_LOGO_URL
+templates.env.globals["SITE_NAME"] = SITE_NAME
+print(f"✅ Templates Jinja2 configurés (logo={SITE_LOGO_URL})")
+
+# Enregistrer les fonctions template si systme permissions disponible
+if PERMISSIONS_AVAILABLE:
+    register_template_functions(templates)
+
 
 # ============================================================================
 #  CORRECTION: FONCTIONS EBOOKS ET CONTACT
@@ -3114,6 +3173,10 @@ try:
     SIDEBAR = SIDEBAR.replace("__SITE_LOGO_URL__", SITE_LOGO_URL).replace("__SITE_NAME__", SITE_NAME)
 except Exception:
     pass
+
+
+# Sécurité: s'assurer que les placeholders sont vraiment remplacés (évite __SITE_NAME__ affiché)
+SIDEBAR = (SIDEBAR or "").replace("__SITE_LOGO_URL__", str(SITE_LOGO_URL)).replace("__SITE_NAME__", str(SITE_NAME))
 
 
 # ==================================
@@ -6266,23 +6329,40 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-def format_price(price: float) -> str:
-    """Formate intelligemment les prix selon leur magnitude"""
-    if price < 0.001:
-        decimals = 8  # Memecoins (SHIB, PEPE, CHEEMS)
-    elif price < 1:
-        decimals = 6  # Petites cryptos
-    elif price < 100:
-        decimals = 4  # Altcoins moyens
-    else:
-        decimals = 2  # BTC, ETH, etc.
-    
-    formatted = f"${price:.{decimals}f}"
-    # Supprimer les zros inutiles
-    formatted = formatted.rstrip('0').rstrip('.')
-    if formatted.endswith('$'):
-        formatted += '0'
-    return formatted
+def format_price(price):
+    """Formate un prix en string de façon robuste.
+
+    Accepte: float/int, string numérique, Decimal, ou None.
+    Retourne "—" si aucune valeur.
+    """
+    if price is None:
+        return "—"
+
+    try:
+        if isinstance(price, str):
+            s = price.strip().replace(",", ".")
+            if s == "" or s.lower() in {"none", "null", "nan"}:
+                return "—"
+            price = float(s)
+        else:
+            price = float(price)
+    except Exception:
+        return "—"
+
+    # NaN / Inf
+    try:
+        if price != price or price in (float("inf"), float("-inf")):
+            return "—"
+    except Exception:
+        return "—"
+
+    if abs(price) < 0.001:
+        return f"{price:.8f}".rstrip("0").rstrip(".")
+    if abs(price) < 1:
+        return f"{price:.6f}".rstrip("0").rstrip(".")
+    if abs(price) < 100:
+        return f"{price:.4f}".rstrip("0").rstrip(".")
+    return f"{price:.2f}".rstrip("0").rstrip(".")
 
 class TradeWebhook(BaseModel):
     type: str = "ENTRY"
@@ -6818,69 +6898,29 @@ async def webhook(request: Request):
         return None
 
     def _normalize_tv_payload(p: dict) -> dict:
-        # ✅ Unwrap (TradingView/Pine envoie souvent {"alert": {...}})
-        if isinstance(p.get("alert"), dict):
-            p = p["alert"]
-
-        out = dict(p)
-
         # Map aliases -> canonical keys
         alias_map = {
-            # stop loss
             "sl": "stop_loss",
             "stoploss": "stop_loss",
             "stopLoss": "stop_loss",
-            "stop_loss": "stop_loss",
-
-            # targets / take profits
             "tp": "target1",
             "tp1": "target1",
             "tp2": "target2",
             "tp3": "target3",
-            "take_profit_1": "target1",
-            "take_profit_2": "target2",
-            "take_profit_3": "target3",
-
-            # entry / price
             "entry": "entry_price",
             "entryprice": "entry_price",
             "entryPrice": "entry_price",
             "price": "entry_price",
-            "current_price": "entry_price",
-
-            # confidence
             "confidence": "confidence",
             "conf": "confidence",
-
-            # timeframe
             "tf": "timeframe",
             "timeframe": "timeframe",
-
-            # signal/action
-            "action": "signal",
-            "direction": "signal",
         }
-
-        # Apply alias mapping (ne pas écraser si déjà présent)
-        for k, v in list(out.items()):
-            kk = alias_map.get(k)
+        out = dict(p)
+        for k, v in list(p.items()):
+            kk = alias_map.get(k, None)
             if kk and kk not in out:
                 out[kk] = v
-
-        # ✅ signal -> side + type (car tes logs montrent que TradeWebhook exige souvent "type")
-        sig = out.get("signal")
-        if isinstance(sig, str):
-            s = sig.strip().upper()
-            if s in ("BUY", "LONG"):
-                out["side"] = "BUY"
-            elif s in ("SELL", "SHORT"):
-                out["side"] = "SELL"
-            else:
-                out["side"] = s
-
-            # si "type" requis et absent -> valeur par défaut
-            if "type" not in out or not out.get("type"):
-                out["type"] = "SIGNAL"
 
         # Numeric fields normalization
         for k in ("entry_price", "stop_loss", "target1", "target2", "target3", "confidence"):
@@ -6892,14 +6932,10 @@ async def webhook(request: Request):
         # Normalize type/side
         if "type" in out and isinstance(out["type"], str):
             out["type"] = out["type"].strip().upper()
-        if "side" in out and isinstance(out.get("side"), str):
+        if "side" in out and isinstance(out["side"], str):
             out["side"] = out["side"].strip().upper()
 
-        # Normalize timeframe to str
-        if "timeframe" in out and out["timeframe"] is not None:
-            out["timeframe"] = str(out["timeframe"]).strip()
-
-        # Some alerts send "direction" (déjà mappé -> signal) mais au cas où:
+        # Some alerts send "direction"
         if "direction" in out and "side" not in out:
             if isinstance(out["direction"], str):
                 out["side"] = out["direction"].strip().upper()
@@ -6947,16 +6983,8 @@ async def webhook(request: Request):
         print("❌ Payload non-dict:", type(payload))
         return JSONResponse({"status": "error", "message": "Payload invalide (dict requis)"}, status_code=200)
 
-    # ✅ Unwrap direct si {"alert": {...}}
-    if isinstance(payload.get("alert"), dict):
-        payload = payload["alert"]
-
     payload = _normalize_tv_payload(payload)
-
-    print(
-        f"✅ Webhook reçu: {payload.get('symbol','?')} "
-        f"{payload.get('type','?')} {payload.get('side','?')} tf={payload.get('timeframe','?')}"
-    )
+    print(f"✅ Webhook reçu: {payload.get('symbol','?')} {payload.get('type','?')} {payload.get('side','?')} tf={payload.get('timeframe','?')}")
 
     # Validation TradeWebhook sans renvoyer 422
     try:
@@ -6964,7 +6992,6 @@ async def webhook(request: Request):
     except Exception as e:
         print("❌ TradeWebhook validation error:", e)
         print("   Keys:", list(payload.keys()))
-        print("   Payload:", payload)
         return JSONResponse({"status": "error", "message": "Payload incomplet/invalid"}, status_code=200)
 
     try:
@@ -6974,7 +7001,6 @@ async def webhook(request: Request):
         return JSONResponse({"status": "error", "message": "Erreur traitement webhook"}, status_code=200)
 
     return JSONResponse({"status": "ok", "message": "Webhook reçu"}, status_code=200)
-
 
 @app.get("/health")
 @app.head("/health")
@@ -7637,13 +7663,6 @@ function updateMovers(coins) {
 
 function displayMovers(containerId, coins) {
     const container = document.getElementById(containerId);
-            if (!container) return;
-            if (!container) return;
-            if (!container) return;
-            if (!container) return;
-            if (!container) return;
-            if (!container) return;
-            if (!container) return;
     container.innerHTML = '';
     
     coins.forEach(coin => {
@@ -8299,7 +8318,6 @@ function updateMovers(coins) {
 
 function displayMovers(containerId, coins) {
     const container = document.getElementById(containerId);
-            if (!container) return;
     container.innerHTML = '';
     
     coins.forEach(coin => {
@@ -19052,8 +19070,24 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
+
+# --- Prix dynamiques (admin) ---
+try:
+    _pp = get_all_plan_pricing()  # {plan_name: {duration_months: price}}
+except Exception:
+    _pp = {}
+def _pick_price(plan, months, fallback):
+    try:
+        v = _pp.get(plan, {}).get(months, fallback)
+        return float(v)
+    except Exception:
+        return float(fallback)
+_price_premium_1m = _pick_price("premium", 1, 29.99)
+_price_advanced_3m = _pick_price("advanced", 3, 74.97)
+_price_pro_6m      = _pick_price("pro", 6, 134.94)
+_price_elite_12m   = _pick_price("elite", 12, 239.88)
     """Page de pricing avec support codes promo"""
-    return HTMLResponse(SIDEBAR + """
+            html = SIDEBAR + """
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -19083,7 +19117,7 @@ async def pricing_complete():
             font-size: 20px;
             opacity: 0.9;
         }
-        
+
         /* Section Code Promo */
         .promo-section {
             background: white;
@@ -19156,7 +19190,7 @@ async def pricing_complete():
             font-size: 24px;
             margin-right: 10px;
         }
-        
+
         .pricing-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -19273,7 +19307,7 @@ async def pricing_complete():
         .back-link:hover {
             background: rgba(255,255,255,0.3);
         }
-    
+
     .hero-logo{
         width: 140px;
         height: auto;
@@ -19301,7 +19335,7 @@ async def pricing_complete():
       <h1>💎 Plans & Tarifs</h1>
             <p>Choisissez le plan qui vous convient</p>
         </div>
-        
+
         <!-- Section Code Promo -->
         <div class="promo-section">
             <h3>🎁 Vous avez un code promo?</h3>
@@ -19315,7 +19349,7 @@ async def pricing_complete():
             </div>
             <div id="promoMessage" class="promo-message"></div>
         </div>
-        
+
         <div class="pricing-grid">
             <!-- Plan 1 Month -->
             <div class="pricing-card">
@@ -19337,7 +19371,7 @@ async def pricing_complete():
                     ₿ Payer en Crypto
                 </button>
             </div>
-            
+
             <!-- Plan 3 Months -->
             <div class="pricing-card featured">
                 <div class="plan-name">💎 Advanced</div>
@@ -19359,7 +19393,7 @@ async def pricing_complete():
                     ₿ Payer en Crypto
                 </button>
             </div>
-            
+
             <!-- Plan 6 Months -->
             <div class="pricing-card">
                 <div class="plan-name">👑 Pro</div>
@@ -19381,7 +19415,7 @@ async def pricing_complete():
                     ₿ Payer en Crypto
                 </button>
             </div>
-            
+
             <!-- Plan 1 Year -->
             <div class="pricing-card">
                 <div class="plan-name">🚀 Elite</div>
@@ -19404,7 +19438,7 @@ async def pricing_complete():
                 </button>
             </div>
         </div>
-        
+
         <!-- Section Pages & Fonctionnalités Détaillées -->
         <div style="background: white; border-radius: 20px; padding: 50px; margin-top: 60px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
             <h2 style="text-align: center; color: #333; font-size: 36px; margin-bottom: 20px;">
@@ -19413,7 +19447,7 @@ async def pricing_complete():
             <p style="text-align: center; color: #666; font-size: 18px; margin-bottom: 40px;">
                 Découvrez exactement ce que vous obtenez avec chaque plan
             </p>
-            
+
             <!-- Tabs Navigation -->
             <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
                 <button onclick="showPlan('free')" id="tab-free" class="plan-tab active-tab">
@@ -19432,63 +19466,63 @@ async def pricing_complete():
                     🚀 ELITE
                 </button>
             </div>
-            
+
             <!-- Plan FREE -->
             <div id="plan-free" class="plan-content">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="font-size: 28px; margin-bottom: 10px;">🆓 Plan GRATUIT - $0/mois</h3>
                     <p style="font-size: 16px; opacity: 0.9;">9 pages accessibles sans inscription</p>
                 </div>
-                
+
                 <div class="pages-grid">
                     <div class="page-card">
                         <div class="page-icon">🏠</div>
                         <h4>Page d'Accueil</h4>
                         <p>Vue d'ensemble du marché crypto avec statistiques principales</p>
                     </div>
-                    
+
                     <div class="page-card">
                         <div class="page-icon">📊</div>
                         <h4>Dashboard</h4>
                         <p>Dashboard de base avec indicateurs essentiels et statistiques temps réel</p>
                     </div>
-                    
+
                     <div class="page-card">
                         <div class="page-icon">😨</div>
                         <h4>Fear & Greed Index</h4>
                         <p>Indice de sentiment du marché Bitcoin, indicateur émotionnel</p>
                     </div>
-                    
+
                     <div class="page-card">
                         <div class="page-icon">👑</div>
                         <h4>Bitcoin Dominance</h4>
                         <p>Suivi de la domination BTC vs altcoins avec graphiques historiques</p>
                     </div>
-                    
+
                     <div class="page-card">
                         <div class="page-icon">🔥</div>
                         <h4>Altcoin Season Index</h4>
                         <p>Index 90 jours indiquant si c'est Bitcoin ou Altcoin Season</p>
                     </div>
-                    
+
                     <div class="page-card">
                         <div class="page-icon">🗺️</div>
                         <h4>Crypto Heatmap</h4>
                         <p>Carte thermique du marché crypto avec top gainers/losers</p>
                     </div>
-                    
+
                     <div class="page-card">
                         <div class="page-icon">📰</div>
                         <h4>Actualités Crypto</h4>
                         <p>Feed d'actualités crypto en temps réel de sources fiables</p>
                     </div>
-                    
+
                     <div class="page-card">
                         <div class="page-icon">💱</div>
                         <h4>Convertisseur</h4>
                         <p>Convertisseur de devises crypto/fiat avec taux en direct</p>
                     </div>
-                    
+
                     <div class="page-card">
                         <div class="page-icon">📅</div>
                         <h4>Calendrier Économique</h4>
@@ -19496,55 +19530,55 @@ async def pricing_complete():
                     </div>
                 </div>
             </div>
-            
+
             <!-- Plan PREMIUM -->
             <div id="plan-premium" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="font-size: 28px; margin-bottom: 10px;">💳 Plan PREMIUM - $20.00/mois</h3>
                     <p style="font-size: 16px; opacity: 0.9;">9 pages gratuites + 7 pages premium = 16 pages totales</p>
                 </div>
-                
+
                 <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
                     <strong style="color: #065f46;">✅ Inclut toutes les pages GRATUITES +</strong>
                 </div>
-                
+
                 <div class="pages-grid">
                     <div class="page-card premium-card">
                         <div class="page-icon">🤖</div>
                         <h4>Assistant IA</h4>
                         <p>Assistant IA pour analyse de marché, recommandations personnalisées et réponses trading</p>
                     </div>
-                    
+
                     <div class="page-card premium-card">
                         <div class="page-icon">💹</div>
                         <h4>Spot Trading</h4>
                         <p>Interface de trading spot avec gestion de positions, historique et calcul P&L automatique</p>
                     </div>
-                    
+
                     <div class="page-card premium-card">
                         <div class="page-icon">📊</div>
                         <h4>Dashboard Trades</h4>
                         <p>Vue complète de tous vos trades avec statistiques détaillées et filtres avancés</p>
                     </div>
-                    
+
                     <div class="page-card premium-card">
                         <div class="page-icon">👁️</div>
                         <h4>Watchlist</h4>
                         <p>Liste de surveillance avec alertes de prix personnalisées et notifications temps réel</p>
                     </div>
-                    
+
                     <div class="page-card premium-card">
                         <div class="page-icon">🧮</div>
                         <h4>Calculatrice Trading</h4>
                         <p>Calcul de taille de position, leverage, profits/pertes et conversions</p>
                     </div>
-                    
+
                     <div class="page-card premium-card">
                         <div class="page-icon">🎮</div>
                         <h4>Simulateur Marché</h4>
                         <p>Trading en mode simulation avec données réelles, sans risque financier</p>
                     </div>
-                    
+
                     <div class="page-card premium-card">
                         <div class="page-icon">👤</div>
                         <h4>Mon Compte</h4>
@@ -19552,55 +19586,55 @@ async def pricing_complete():
                     </div>
                 </div>
             </div>
-            
+
             <!-- Plan ADVANCED -->
             <div id="plan-advanced" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="font-size: 28px; margin-bottom: 10px;">💎 Plan ADVANCED - $50.00/3 mois</h3>
                     <p style="font-size: 16px; opacity: 0.9;">16 pages Premium + 7 pages Advanced = 23 pages totales</p>
                 </div>
-                
+
                 <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
                     <strong style="color: #065f46;">✅ Inclut toutes les pages PREMIUM +</strong>
                 </div>
-                
+
                 <div class="pages-grid">
                     <div class="page-card advanced-card">
                         <div class="page-icon">🔍</div>
                         <h4>Scanner Opportunités IA</h4>
                         <p>Détection automatique d'opportunités de trading avec analyse de patterns et scoring</p>
                     </div>
-                    
+
                     <div class="page-card advanced-card">
                         <div class="page-icon">📈</div>
                         <h4>Détection Régime Marché</h4>
                         <p>Identification automatique des phases Bull/Bear/Consolidation avec analyse de volatilité</p>
                     </div>
-                    
+
                     <div class="page-card advanced-card">
                         <div class="page-icon">📋</div>
                         <h4>Gestion Stratégies</h4>
                         <p>Création et gestion de stratégies personnalisées avec optimisation de paramètres</p>
                     </div>
-                    
+
                     <div class="page-card advanced-card">
                         <div class="page-icon">⚠️</div>
                         <h4>Risk Management</h4>
                         <p>Calcul avancé de taille de position, Risk/Reward, Stop Loss et Take Profit suggérés</p>
                     </div>
-                    
+
                     <div class="page-card advanced-card">
                         <div class="page-icon">📊</div>
                         <h4>Stats Dashboard Avancé</h4>
                         <p>Statistiques détaillées avec win rate, profit factor, meilleures/pires trades</p>
                     </div>
-                    
+
                     <div class="page-card advanced-card">
                         <div class="page-icon">📈</div>
                         <h4>Graphiques Personnalisés</h4>
                         <p>Charts avancés avec indicateurs techniques et analyse multi-timeframe</p>
                     </div>
-                    
+
                     <div class="page-card advanced-card">
                         <div class="page-icon">🚀</div>
                         <h4>Détection Bull Run</h4>
@@ -19608,43 +19642,43 @@ async def pricing_complete():
                     </div>
                 </div>
             </div>
-            
+
             <!-- Plan PRO -->
             <div id="plan-pro" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="font-size: 28px; margin-bottom: 10px;">👑 Plan PRO - $134.94/6 mois</h3>
                     <p style="font-size: 16px; opacity: 0.9;">23 pages Advanced + 5 pages Pro = 28 pages totales</p>
                 </div>
-                
+
                 <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
                     <strong style="color: #065f46;">✅ Inclut toutes les pages ADVANCED +</strong>
                 </div>
-                
+
                 <div class="pages-grid">
                     <div class="page-card pro-card">
                         <div class="page-icon">🐋</div>
                         <h4>Whale Watcher</h4>
                         <p>Surveillance des mouvements de gros capitaux avec alertes transactions importantes</p>
                     </div>
-                    
+
                     <div class="page-card pro-card">
                         <div class="page-icon">🔄</div>
                         <h4>Backtesting Complet</h4>
                         <p>Test de stratégies sur données historiques avec métriques avancées (Sharpe, Max DD)</p>
                     </div>
-                    
+
                     <div class="page-card pro-card">
                         <div class="page-icon">📡</div>
                         <h4>Stats Temps Réel</h4>
                         <p>Métriques en direct avec performance du jour, P&L live et taux de réussite</p>
                     </div>
-                    
+
                     <div class="page-card pro-card">
                         <div class="page-icon">📄</div>
                         <h4>Rapports PDF</h4>
                         <p>Génération automatique de rapports mensuels avec analyses et graphiques exportables</p>
                     </div>
-                    
+
                     <div class="page-card pro-card">
                         <div class="page-icon">⛓️</div>
                         <h4>Métriques On-Chain</h4>
@@ -19652,38 +19686,38 @@ async def pricing_complete():
                     </div>
                 </div>
             </div>
-            
+
             <!-- Plan ELITE -->
             <div id="plan-elite" class="plan-content" style="display: none;">
                 <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
                     <h3 style="font-size: 28px; margin-bottom: 10px;">🚀 Plan ELITE - $150.00/an</h3>
                     <p style="font-size: 16px; opacity: 0.9;">28 pages Pro + 3 pages Elite = 31 pages totales - TOUT DÉBLOQUÉ!</p>
                 </div>
-                
+
                 <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
                     <strong style="color: #92400e;">⭐ Inclut TOUTES les pages PRO + Accès API Complet</strong>
                 </div>
-                
+
                 <div class="pages-grid">
                     <div class="page-card elite-card">
                         <div class="page-icon">🔮</div>
                         <h4>Prédictions IA Avancées</h4>
                         <p>Prédictions de prix basées sur machine learning avec modèles avancés et probabilités</p>
                     </div>
-                    
+
                     <div class="page-card elite-card">
                         <div class="page-icon">🔑</div>
                         <h4>Gestion Clés API</h4>
                         <p>Génération de clés API personnelles pour accès programmatique à toutes vos données</p>
                     </div>
-                    
+
                     <div class="page-card elite-card">
                         <div class="page-icon">📚</div>
                         <h4>Documentation API</h4>
                         <p>Documentation complète de l'API avec exemples de code et limites de rate</p>
                     </div>
                 </div>
-                
+
                 <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 30px; border-radius: 15px; margin-top: 30px; text-align: center;">
                     <h3 style="color: #92400e; font-size: 24px; margin-bottom: 15px;">🎁 Bonus Exclusifs ELITE</h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
@@ -19710,7 +19744,7 @@ async def pricing_complete():
                     </div>
                 </div>
             </div>
-            
+
             <style>
                 .plan-tab {
                     padding: 15px 25px;
@@ -19784,26 +19818,26 @@ async def pricing_complete():
                     line-height: 1.6;
                 }
             </style>
-            
+
             <script>
                 function showPlan(planName) {
                     // Cacher tous les plans
                     document.querySelectorAll('.plan-content').forEach(el => {
                         el.style.display = 'none';
                     });
-                    
+
                     // Retirer la classe active de tous les tabs
                     document.querySelectorAll('.plan-tab').forEach(el => {
                         el.classList.remove('active-tab');
                     });
-                    
+
                     // Afficher le plan slectionn
                     document.getElementById('plan-' + planName).style.display = 'block';
                     document.getElementById('tab-' + planName).classList.add('active-tab');
                 }
             </script>
         </div>
-        
+
         <center>
             <a href="/dashboard" class="back-link">← Retour au Dashboard</a>
         </center>
@@ -19823,30 +19857,30 @@ async def pricing_complete():
             },
             discountedPrices: {}
         };
-        
+
         // Appliquer le code promo
         async function applyPromo() {
             const codeInput = document.getElementById('promoCode');
             const code = codeInput.value.trim().toUpperCase();
             const messageDiv = document.getElementById('promoMessage');
-            
+
             if (!code) {
                 showMessage('Veuillez entrer un code promo', 'error');
                 return;
             }
-            
+
             messageDiv.innerHTML = '🔄 Validation en cours...';
             messageDiv.className = 'promo-message';
             messageDiv.style.display = 'block';
-            
+
             try {
                 // Valider pour chaque plan
                 let validForAnyPlan = false;
-                
+
                 for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
                     const response = await fetch(`/api/validate-promo?code=${code}&plan=${plan}&amount=${originalPrice}`);
                     const data = await response.json();
-                    
+
                     if (data.valid && data.discount) {
                         validForAnyPlan = true;
                         appliedPromo.code = code;
@@ -19854,7 +19888,7 @@ async def pricing_complete():
                         updatePriceDisplay(plan, originalPrice, data.final_amount);
                     }
                 }
-                
+
                 if (validForAnyPlan) {
                     showMessage(`✅ Code ${code} appliqué avec succès!`, 'success');
                 } else {
@@ -19866,14 +19900,14 @@ async def pricing_complete():
                 console.error(error);
             }
         }
-        
+
         function showMessage(message, type) {
             const messageDiv = document.getElementById('promoMessage');
             messageDiv.innerHTML = message;
             messageDiv.className = `promo-message ${type}`;
             messageDiv.style.display = 'block';
         }
-        
+
         function updatePriceDisplay(plan, originalPrice, newPrice) {
             const amountSpan = document.getElementById(`amount-${plan}`);
             amountSpan.innerHTML = `
@@ -19881,20 +19915,20 @@ async def pricing_complete():
                 ${newPrice.toFixed(2)}
             `;
         }
-        
+
         function resetPrices() {
             appliedPromo.code = null;
             appliedPromo.discountedPrices = {};
-            
+
             for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
                 const amountSpan = document.getElementById(`amount-${plan}`);
                 amountSpan.textContent = originalPrice.toFixed(2);
             }
         }
-        
+
         async function checkout(plan, method, baseAmount) {
             const finalAmount = appliedPromo.discountedPrices[plan] || baseAmount;
-            
+
             if (method === 'stripe') {
                 const response = await fetch('/api/stripe-checkout', {
                     method: 'POST',
@@ -19903,7 +19937,16 @@ async def pricing_complete():
                         plan: plan,
                         amount: finalAmount,
                         promo_code: appliedPromo.code
-                    })
+                    }
+            # Injecter les prix dynamiques dans les spans (pricing-complete)
+            try:
+                html = html.replace('<span id="amount-1-month">29.99</span>', f'<span id="amount-1-month">{_price_premium_1m:.2f}</span>')
+                html = html.replace('<span id="amount-3-months">74.97</span>', f'<span id="amount-3-months">{_price_advanced_3m:.2f}</span>')
+                html = html.replace('<span id="amount-6-months">134.94</span>', f'<span id="amount-6-months">{_price_pro_6m:.2f}</span>')
+                html = html.replace('<span id="amount-1-year">239.88</span>', f'<span id="amount-1-year">{_price_elite_12m:.2f}</span>')
+            except Exception:
+                pass
+            return HTMLResponse(html)
                 });
                 
                 const data = await response.json();
@@ -20049,9 +20092,6 @@ async def stripe_checkout(request: Request):
         user = get_user_from_token(session_token)
         if user:
             email = user.get('username', email)
-        # Stripe exige un email valide. Si on a seulement un username (ex: admin), on fabrique un email valide.
-        if email and '@' not in str(email):
-            email = f"{email}@cryptoia.ca"
         
         if not STRIPE_AVAILABLE or not STRIPE_SECRET_KEY:
             return JSONResponse({
@@ -20178,8 +20218,6 @@ async def coinbase_checkout(request: Request):
         user = get_user_from_token(session_token)
         if user:
             email = user.get('username', email)
-        if email and '@' not in str(email):
-            email = f"{email}@cryptoia.ca"
         
         print(f"🔵 Demande Coinbase: plan={plan}, amount=${amount}, email={email}, promo={promo_code}")
         
@@ -20269,35 +20307,24 @@ async def coinbase_checkout(request: Request):
                 "message": f"Erreur Coinbase: {error}"
             }, status_code=400)
         
-        # Extraire l'URL de paiement (le SDK peut renvoyer dict ou objet)
-        hosted_url = None
-        charge_id = None
-        if isinstance(charge, dict):
-            hosted_url = charge.get("hosted_url") or (charge.get("data") or {}).get("hosted_url")
-            charge_id = charge.get("id") or (charge.get("data") or {}).get("id")
-        else:
-            hosted_url = getattr(charge, "hosted_url", None)
-            charge_id = getattr(charge, "id", None)
-
-        if not charge or not hosted_url:
+        if not charge or not hasattr(charge, 'hosted_url'):
             print(f"❌ Charge invalide: {charge}")
             return JSONResponse({
                 "success": False,
                 "message": "Charge Coinbase invalide - pas d'URL générée"
             }, status_code=500)
-
-        print(f"✅ Charge Coinbase créée: {charge_id} (${final_amount:.2f})")
-        print(f"🔗 URL de paiement: {hosted_url}")
-
+        
+        print(f"✅ Charge Coinbase créée: {charge.id} (${final_amount:.2f})")
+        print(f"🔗 URL de paiement: {charge.hosted_url}")
+        
         return JSONResponse({
             "success": True,
-            "url": hosted_url,
-            "hosted_url": hosted_url,
-            "charge_id": charge_id,
+            "url": charge.hosted_url,
+            "hosted_url": charge.hosted_url,
+            "charge_id": charge.id,
             "plan": plan,
             "amount": final_amount
         })
-
     
     except Exception as e:
         print(f"❌ Exception Coinbase checkout: {type(e).__name__}: {str(e)}")
@@ -24930,7 +24957,7 @@ document.addEventListener('DOMContentLoaded', loadPlanPrices);
         
         function renderExpiringUsers(users, containerId, zone) {{
             const container = document.getElementById(containerId);
-            if (!container) return;
+            
             if (!users || users.length === 0) {{
                 container.innerHTML = '<p style="color: #10b981;">✅ Aucun utilisateur dans cette zone!</p>';
                 return;
@@ -26269,21 +26296,15 @@ async def save_plan_access(request: Request, session_token: Optional[str] = Cook
 # =====================
 @app.get("/admin/api/plan-prices")
 @app.get("/admin-dashboard/api/plan-prices")
-@app.get("/admin/api/plan-prices")
 async def admin_get_plan_prices(request: Request):
-    session_token = request.cookies.get("session_token")
-    user = get_current_user(session_token) if session_token else None
-    if not user or user.get("role") != "admin":
+    if not request.cookies.get("admin_session"):
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
-
     return JSONResponse({"success": True, "plans": get_all_plan_pricing()})
 
 @app.post("/admin/save-plan-prices")
 @app.post("/admin-dashboard/save-plan-prices")
 async def admin_save_plan_prices(request: Request):
-    session_token = request.cookies.get("session_token")
-    user = get_current_user(session_token) if session_token else None
-    if not user or user.get("role") != "admin":
+    if not request.cookies.get("admin_session"):
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
 
     try:
@@ -26914,20 +26935,6 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
         
         conn = db_manager.get_connection()
         cursor = conn.cursor()
-        # Assurer l'existence de la table promo_codes (évite 500 au 1er démarrage / DB vide)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS promo_codes (
-                code TEXT PRIMARY KEY,
-                discount REAL,
-                type TEXT,
-                valid_until TEXT,
-                max_uses INTEGER,
-                uses INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        conn.commit()
-
         
         # Revenus ce mois
         now = datetime.now()

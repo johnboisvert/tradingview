@@ -6818,29 +6818,69 @@ async def webhook(request: Request):
         return None
 
     def _normalize_tv_payload(p: dict) -> dict:
+        # ✅ Unwrap (TradingView/Pine envoie souvent {"alert": {...}})
+        if isinstance(p.get("alert"), dict):
+            p = p["alert"]
+
+        out = dict(p)
+
         # Map aliases -> canonical keys
         alias_map = {
+            # stop loss
             "sl": "stop_loss",
             "stoploss": "stop_loss",
             "stopLoss": "stop_loss",
+            "stop_loss": "stop_loss",
+
+            # targets / take profits
             "tp": "target1",
             "tp1": "target1",
             "tp2": "target2",
             "tp3": "target3",
+            "take_profit_1": "target1",
+            "take_profit_2": "target2",
+            "take_profit_3": "target3",
+
+            # entry / price
             "entry": "entry_price",
             "entryprice": "entry_price",
             "entryPrice": "entry_price",
             "price": "entry_price",
+            "current_price": "entry_price",
+
+            # confidence
             "confidence": "confidence",
             "conf": "confidence",
+
+            # timeframe
             "tf": "timeframe",
             "timeframe": "timeframe",
+
+            # signal/action
+            "action": "signal",
+            "direction": "signal",
         }
-        out = dict(p)
-        for k, v in list(p.items()):
-            kk = alias_map.get(k, None)
+
+        # Apply alias mapping (ne pas écraser si déjà présent)
+        for k, v in list(out.items()):
+            kk = alias_map.get(k)
             if kk and kk not in out:
                 out[kk] = v
+
+        # ✅ signal -> side + type (car tes logs montrent que TradeWebhook exige souvent "type")
+        sig = out.get("signal")
+        if isinstance(sig, str):
+            s = sig.strip().upper()
+            if s in ("BUY", "LONG"):
+                out["side"] = "BUY"
+            elif s in ("SELL", "SHORT"):
+                out["side"] = "SELL"
+            else:
+                out["side"] = s
+
+            # si "type" requis et absent -> valeur par défaut
+            if "type" not in out or not out.get("type"):
+                out["type"] = "SIGNAL"
 
         # Numeric fields normalization
         for k in ("entry_price", "stop_loss", "target1", "target2", "target3", "confidence"):
@@ -6852,10 +6892,14 @@ async def webhook(request: Request):
         # Normalize type/side
         if "type" in out and isinstance(out["type"], str):
             out["type"] = out["type"].strip().upper()
-        if "side" in out and isinstance(out["side"], str):
+        if "side" in out and isinstance(out.get("side"), str):
             out["side"] = out["side"].strip().upper()
 
-        # Some alerts send "direction"
+        # Normalize timeframe to str
+        if "timeframe" in out and out["timeframe"] is not None:
+            out["timeframe"] = str(out["timeframe"]).strip()
+
+        # Some alerts send "direction" (déjà mappé -> signal) mais au cas où:
         if "direction" in out and "side" not in out:
             if isinstance(out["direction"], str):
                 out["side"] = out["direction"].strip().upper()
@@ -6903,8 +6947,16 @@ async def webhook(request: Request):
         print("❌ Payload non-dict:", type(payload))
         return JSONResponse({"status": "error", "message": "Payload invalide (dict requis)"}, status_code=200)
 
+    # ✅ Unwrap direct si {"alert": {...}}
+    if isinstance(payload.get("alert"), dict):
+        payload = payload["alert"]
+
     payload = _normalize_tv_payload(payload)
-    print(f"✅ Webhook reçu: {payload.get('symbol','?')} {payload.get('type','?')} {payload.get('side','?')} tf={payload.get('timeframe','?')}")
+
+    print(
+        f"✅ Webhook reçu: {payload.get('symbol','?')} "
+        f"{payload.get('type','?')} {payload.get('side','?')} tf={payload.get('timeframe','?')}"
+    )
 
     # Validation TradeWebhook sans renvoyer 422
     try:
@@ -6912,6 +6964,7 @@ async def webhook(request: Request):
     except Exception as e:
         print("❌ TradeWebhook validation error:", e)
         print("   Keys:", list(payload.keys()))
+        print("   Payload:", payload)
         return JSONResponse({"status": "error", "message": "Payload incomplet/invalid"}, status_code=200)
 
     try:
@@ -6921,6 +6974,7 @@ async def webhook(request: Request):
         return JSONResponse({"status": "error", "message": "Erreur traitement webhook"}, status_code=200)
 
     return JSONResponse({"status": "ok", "message": "Webhook reçu"}, status_code=200)
+
 
 @app.get("/health")
 @app.head("/health")

@@ -3394,6 +3394,8 @@ MEXC_PRICE_ENDPOINT = f"{MEXC_API_BASE}/api/v3/ticker/price"
 #  Background Monitor
 monitor_running = False
 
+monitor_lock = asyncio.Lock()  # protège le background monitor
+
 # ============================================================================
 #  SYSTME D'AUTHENTIFICATION AVEC POSTGRESQL
 # ============================================================================
@@ -6898,50 +6900,79 @@ async def webhook(request: Request):
         return None
 
     def _normalize_tv_payload(p: dict) -> dict:
-        # Map aliases -> canonical keys
+        """Normalise les payloads TradingView (formats variés) vers nos clés internes.
+
+        Supporte notamment les indicateurs qui envoient:
+            { "alert": { ... } }
+        ainsi que des variantes de noms de champs (timeframe/signal/stop_loss/take_profit_1...).
+        """
+        raw = dict(p or {})
+
+        # 1) Aplatir le wrapper {"alert": {...}} (ton indicateur envoie ça)
+        try:
+            if "alert" in raw:
+                al = raw.get("alert")
+                if isinstance(al, str):
+                    try:
+                        import json as _json
+                        al = _json.loads(al)
+                    except Exception:
+                        al = None
+                if isinstance(al, dict):
+                    merged = dict(raw)
+                    merged.pop("alert", None)
+                    merged.update(al)  # les champs de alert priment
+                    raw = merged
+        except Exception:
+            pass
+
+        out = dict(raw)
+
         alias_map = {
-            "sl": "stop_loss",
-            "stoploss": "stop_loss",
-            "stopLoss": "stop_loss",
-            "tp": "target1",
-            "tp1": "target1",
-            "tp2": "target2",
-            "tp3": "target3",
-            "entry": "entry_price",
-            "entryprice": "entry_price",
-            "entryPrice": "entry_price",
-            "price": "entry_price",
-            "confidence": "confidence",
-            "conf": "confidence",
-            "tf": "timeframe",
-            "timeframe": "timeframe",
+            # noms internes attendus par TradeWebhook
+            "symbol": "symbol",
+            "ticker": "symbol",
+
+            "tf": "tf",
+            "timeframe": "tf",
+            "interval": "tf",
+
+            "side": "side",
+            "action": "action",
+            "signal": "action",
+            "direction": "action",
+
+            "price": "price",
+            "current_price": "price",
+            "entry_price": "entry",
+            "entry": "entry",
+
+            "sl": "sl",
+            "stoploss": "sl",
+            "stop_loss": "sl",
+            "stopLoss": "sl",
+
+            "tp": "tp1",
+            "tp1": "tp1",
+            "take_profit": "tp1",
+            "take_profit_1": "tp1",
+
+            "tp2": "tp2",
+            "take_profit_2": "tp2",
+
+            "tp3": "tp3",
+            "take_profit_3": "tp3",
+
+            "leverage": "leverage",
+            "risk": "risk",
+            "strategy": "strategy",
         }
-        out = dict(p)
-        for k, v in list(p.items()):
-            kk = alias_map.get(k, None)
-            if kk and kk not in out:
-                out[kk] = v
 
-        # Numeric fields normalization
-        for k in ("entry_price", "stop_loss", "target1", "target2", "target3", "confidence"):
-            if k in out:
-                fv = _to_float(out.get(k))
-                if fv is not None:
-                    out[k] = fv
-
-        # Normalize type/side
-        if "type" in out and isinstance(out["type"], str):
-            out["type"] = out["type"].strip().upper()
-        if "side" in out and isinstance(out["side"], str):
-            out["side"] = out["side"].strip().upper()
-
-        # Some alerts send "direction"
-        if "direction" in out and "side" not in out:
-            if isinstance(out["direction"], str):
-                out["side"] = out["direction"].strip().upper()
-
-        return out
-
+        fixed = {}
+        for k, v in out.items():
+            nk = alias_map.get(k, k)
+            fixed[nk] = v
+        return fixed
     expected_secret = os.getenv("TV_WEBHOOK_SECRET", "").strip()
     provided_secret = (request.query_params.get("secret") or "").strip()
     if expected_secret and provided_secret != expected_secret:
@@ -7131,7 +7162,8 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     <div class="particles" id="particles"></div>
     <div class="main-content">
         <div class="hero">
-            <h1 class="hero-title">🚀 Crypto IA 💎</h1>
+            <div class="hero-logo"><img src="{SITE_LOGO_URL}" alt="Crypto IA" class="hero-logo-img"></div>
+                <h1 class="hero-title">Crypto IA</h1>
             <p class="hero-subtitle">Une plateforme d'analyse crypto pilotée par l'IA, qui convertit le bruit permanent du marché 24/7 en décisions claires, structurées, mesurables — et alignées avec votre stratégie.</p>
         </div>
         <div class="stats-grid">
@@ -7845,7 +7877,8 @@ async def home():
     <div class="particles" id="particles"></div>
     <div class="main-content">
         <div class="hero">
-            <h1 class="hero-title">🚀 Crypto IA 💎</h1>
+            <div class="hero-logo"><img src="{SITE_LOGO_URL}" alt="Crypto IA" class="hero-logo-img"></div>
+                <h1 class="hero-title">Crypto IA</h1>
             <p class="hero-subtitle">Une plateforme d'analyse crypto pilotée par l'IA, qui convertit le bruit permanent du marché 24/7 en décisions claires, structurées, mesurables — et alignées avec votre stratégie.</p>
         </div>
         <div class="stats-grid">

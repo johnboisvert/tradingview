@@ -19069,915 +19069,151 @@ async def create_charge(req: CreateChargeRequest, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/pricing-complete", response_class=HTMLResponse)
-async def pricing_complete():
+async def pricing_complete(request: Request):
+    """Page de prix complète (version stable)."""
+    site_name = (os.getenv("SITE_NAME") or "Crypto IA").strip()
+    logo_url = (os.getenv("SITE_LOGO_URL") or "").strip()
 
-# --- Prix dynamiques (admin) ---
-try:
-    _pp = get_all_plan_pricing()  # {plan_name: {duration_months: price}}
-except Exception:
-    _pp = {}
-def _pick_price(plan, months, fallback):
+    # Essaye d'utiliser ta fonction existante si elle existe; sinon fallback.
+    pricing = {}
     try:
-        v = _pp.get(plan, {}).get(months, fallback)
-        return float(v)
+        if "get_all_plan_pricing" in globals():
+            pricing = get_all_plan_pricing() or {}
     except Exception:
-        return float(fallback)
-_price_premium_1m = _pick_price("premium", 1, 29.99)
-_price_advanced_3m = _pick_price("advanced", 3, 74.97)
-_price_pro_6m      = _pick_price("pro", 6, 134.94)
-_price_elite_12m   = _pick_price("elite", 12, 239.88)
-    """Page de pricing avec support codes promo"""
-            html = SIDEBAR + """
-<!DOCTYPE html>
+        pricing = {}
+
+    fallback_plans = [
+        {"name": "Free", "key": "free", "price": "$0", "desc": "Accès au Dashboard + pages gratuites"},
+        {"name": "Premium", "key": "premium", "price": "$19/mo", "desc": "Accès aux outils IA essentiels"},
+        {"name": "Advanced", "key": "advanced", "price": "$39/mo", "desc": "Analyses avancées + signaux améliorés"},
+        {"name": "Pro", "key": "pro", "price": "$79/mo", "desc": "Suite complète + dashboards pro"},
+        {"name": "Elite", "key": "elite", "price": "$149/mo", "desc": "Accès total + prioritaire"},
+    ]
+
+    plans = []
+    for p in fallback_plans:
+        k = p["key"]
+        if isinstance(pricing, dict) and k in pricing and isinstance(pricing[k], dict):
+            # accepte: {"price": "...", "desc": "...", "features": [...]}
+            merged = dict(p)
+            merged.update(pricing[k])
+            plans.append(merged)
+        else:
+            plans.append(p)
+
+    logo_html = ""
+    if logo_url:
+        logo_html = f'<img src="{logo_url}" alt="{site_name}" style="height:40px; width:auto; object-fit:contain; margin-right:12px;" />'
+
+    cards = []
+    for p in plans:
+        name = p.get("name", "").strip() or "Plan"
+        key = p.get("key", "").strip() or name.lower()
+        price = p.get("price", "").strip() or ""
+        desc = p.get("desc", "").strip() or ""
+        features = p.get("features") if isinstance(p.get("features"), list) else []
+        feat_html = "".join([f"<li>{str(x)}</li>" for x in features]) if features else ""
+        btn = f'/subscribe?plan={key}'
+        cards.append(f'''
+          <div class="card">
+            <div class="card-top">
+              <div class="plan">{name}</div>
+              <div class="price">{price}</div>
+              <div class="desc">{desc}</div>
+            </div>
+            {'<ul class="features">'+feat_html+'</ul>' if feat_html else ''}
+            <a class="btn" href="{btn}">Choisir {name}</a>
+          </div>
+        ''')
+
+    cards_html = "\n".join(cards)
+
+    html = f"""<!doctype html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💎 Plans & Tarifs - Trading Dashboard Pro</title>""" + CSS + """
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }}
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 50px;
-        }}
-        .header h1 {
-            font-size: 48px;
-            margin-bottom: 15px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }}
-        .header p {
-            font-size: 20px;
-            opacity: 0.9;
-        }
-
-        /* Section Code Promo */
-        .promo-section {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            margin: 30px auto;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            max-width: 600px;
-        }
-        .promo-section h3 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 22px;
-        }
-        .promo-input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .promo-input {
-            flex: 1;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-        .promo-input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        .promo-btn {
-            padding: 15px 30px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .promo-btn:hover {
-            background: #5568d3;
-            transform: scale(1.05);
-        }
-        .promo-message {
-            padding: 15px;
-            border-radius: 10px;
-            font-weight: 600;
-            text-align: center;
-            display: none;
-        }
-        .promo-message.success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 2px solid #10b981;
-            display: block;
-        }
-        .promo-message.error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 2px solid #ef4444;
-            display: block;
-        }
-        .original-price {
-            text-decoration: line-through;
-            color: #999;
-            font-size: 24px;
-            margin-right: 10px;
-        }
-
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin-bottom: 50px;
-        }
-        .pricing-card {
-            background: white;
-            border-radius: 20px;
-            padding: 40px 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            transition: transform 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .pricing-card:hover {
-            transform: translateY(-10px);
-        }
-        .pricing-card.featured {
-            border: 3px solid #f59e0b;
-            transform: scale(1.05);
-        }
-        .pricing-card.featured::before {
-            content: "⭐ POPULAIRE";
-            position: absolute;
-            top: 20px;
-            right: -35px;
-            background: #f59e0b;
-            color: white;
-            padding: 5px 40px;
-            transform: rotate(45deg);
-            font-weight: bold;
-            font-size: 12px;
-        }
-        .plan-name {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
-        .plan-price {
-            font-size: 48px;
-            font-weight: bold;
-            color: #667eea;
-            margin: 20px 0;
-        }
-        .plan-price .currency { font-size: 24px; }
-        .plan-price .period { font-size: 16px; color: #666; }
-        .discount-badge {
-            display: inline-block;
-            background: #10b981;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .features {
-            list-style: none;
-            margin: 30px 0;
-            text-align: left;
-        }
-        .features li {
-            padding: 12px 0;
-            color: #555;
-            border-bottom: 1px solid #eee;
-        }
-        .features li:before {
-            content: "✓ ";
-            color: #10b981;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-        .btn-payment {
-            display: block;
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
-        }
-        .btn-stripe {
-            background: #635bff;
-            color: white;
-        }
-        .btn-stripe:hover {
-            background: #4f46e5;
-            transform: scale(1.02);
-        }
-        .btn-coinbase {
-            background: #0052ff;
-            color: white;
-        }
-        .btn-coinbase:hover {
-            background: #0041cc;
-            transform: scale(1.02);
-        }
-        .back-link {
-            display: inline-block;
-            margin-top: 30px;
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-            padding: 12px 24px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-        .back-link:hover {
-            background: rgba(255,255,255,0.3);
-        }
-
-    .hero-logo{
-        width: 140px;
-        height: auto;
-        display: block;
-        margin: 0 auto 10px;
-        filter: drop-shadow(0 10px 24px rgba(0,0,0,0.35));
-    }
-    .interac-note{
-        margin-top: 18px;
-        padding: 12px 14px;
-        border-radius: 12px;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.10);
-        text-align: center;
-        font-weight: 600;
-        color: rgba(255,255,255,0.92);
-    }
-
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Plans & Tarifs — {site_name}</title>
+  <style>
+    :root {{
+      --bg: #0b0f17;
+      --card: rgba(255,255,255,0.06);
+      --card2: rgba(255,255,255,0.04);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.68);
+      --border: rgba(255,255,255,0.12);
+      --brand: #16a34a;
+      --brand2: #22c55e;
+    }}
+    body {{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: radial-gradient(1200px 600px at 15% 10%, rgba(34,197,94,0.18), transparent 60%), var(--bg); color: var(--text); }}
+    .wrap {{ max-width: 1100px; margin: 0 auto; padding: 24px 18px 60px; }}
+    .top {{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin: 10px 0 22px; }}
+    .brand {{ display:flex; align-items:center; gap:10px; }}
+    .brand h1 {{ font-size: 22px; margin:0; letter-spacing:0.2px; }}
+    .brand .sub {{ color: var(--muted); font-size: 14px; margin-top: 2px; }}
+    .grid {{ display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 14px; }}
+    @media (max-width: 1050px) {{ .grid {{ grid-template-columns: repeat(2, minmax(0,1fr)); }} }}
+    @media (max-width: 560px) {{ .grid {{ grid-template-columns: 1fr; }} }}
+    .card {{
+      background: linear-gradient(180deg, var(--card), var(--card2));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display:flex;
+      flex-direction:column;
+      min-height: 240px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }}
+    .plan {{ font-weight: 800; letter-spacing: 0.2px; font-size: 16px; }}
+    .price {{ font-size: 26px; font-weight: 900; margin-top: 10px; }}
+    .desc {{ color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.35; }}
+    .features {{ margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }}
+    .card-top {{ margin-bottom: 14px; }}
+    .btn {{
+      margin-top:auto;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      text-decoration:none;
+      color: #07110a;
+      font-weight: 800;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, var(--brand2), var(--brand));
+      border: 1px solid rgba(255,255,255,0.15);
+    }}
+    .btn:hover {{ filter: brightness(1.04); }}
+    .note {{ margin-top: 18px; color: var(--muted); font-size: 13px; }}
+    .pill {{ display:inline-block; padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 12px; }}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <img class="hero-logo" src="/static/cryptoia_logo.png" alt="CryptoIA" />
-      <h1>💎 Plans & Tarifs</h1>
-            <p>Choisissez le plan qui vous convient</p>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        {logo_html}
+        <div>
+          <h1>Plans & Tarifs</h1>
+          <div class="sub">Choisis ton plan — accès progressif (Free → Elite)</div>
         </div>
-
-        <!-- Section Code Promo -->
-        <div class="promo-section">
-            <h3>🎁 Vous avez un code promo?</h3>
-            <div class="promo-input-group">
-                <input type="text" 
-                       id="promoCode" 
-                       class="promo-input" 
-                       placeholder="Entrez votre code promo"
-                       onkeyup="this.value = this.value.toUpperCase()">
-                <button onclick="applyPromo()" class="promo-btn">Appliquer</button>
-            </div>
-            <div id="promoMessage" class="promo-message"></div>
-        </div>
-
-        <div class="pricing-grid">
-            <!-- Plan 1 Month -->
-            <div class="pricing-card">
-                <div class="plan-name">💳 Premium</div>
-                <div class="discount-badge">1 mois</div>
-                <div class="plan-price" id="price-1-month">
-                    <span class="currency">$</span><span id="amount-1-month">29.99</span>
-                </div>
-                <ul class="features">
-                    <li>Tous les indicateurs IA</li>
-                    <li>Dashboard en temps réel</li>
-                    <li>Signaux de trading</li>
-                    <li>Support prioritaire</li>
-                </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('1_month', 'stripe', 29.99)">
-                    💳 Payer par Carte
-                </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('1_month', 'coinbase', 29.99)">
-                    ₿ Payer en Crypto
-                </button>
-            </div>
-
-            <!-- Plan 3 Months -->
-            <div class="pricing-card featured">
-                <div class="plan-name">💎 Advanced</div>
-                <div class="discount-badge">3 mois - Économisez 17%</div>
-                <div class="plan-price" id="price-3-months">
-                    <span class="currency">$</span><span id="amount-3-months">74.97</span>
-                    <span class="period">/3 mois</span>
-                </div>
-                <ul class="features">
-                    <li>Tous les avantages Premium</li>
-                    <li>Webhooks TradingView</li>
-                    <li>Alertes Telegram</li>
-                    <li>Support 24/7</li>
-                </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('3_months', 'stripe', 74.97)">
-                    💳 Payer par Carte
-                </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('3_months', 'coinbase', 74.97)">
-                    ₿ Payer en Crypto
-                </button>
-            </div>
-
-            <!-- Plan 6 Months -->
-            <div class="pricing-card">
-                <div class="plan-name">👑 Pro</div>
-                <div class="discount-badge">6 mois - Économisez 25%</div>
-                <div class="plan-price" id="price-6-months">
-                    <span class="currency">$</span><span id="amount-6-months">134.94</span>
-                    <span class="period">/6 mois</span>
-                </div>
-                <ul class="features">
-                    <li>Tous les avantages Advanced</li>
-                    <li>API accès complet</li>
-                    <li>Backtesting illimité</li>
-                    <li>Support VIP</li>
-                </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('6_months', 'stripe', 134.94)">
-                    💳 Payer par Carte
-                </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('6_months', 'coinbase', 134.94)">
-                    ₿ Payer en Crypto
-                </button>
-            </div>
-
-            <!-- Plan 1 Year -->
-            <div class="pricing-card">
-                <div class="plan-name">🚀 Elite</div>
-                <div class="discount-badge">1 an - Économisez 33%</div>
-                <div class="plan-price" id="price-1-year">
-                    <span class="currency">$</span><span id="amount-1-year">239.88</span>
-                    <span class="period">/an</span>
-                </div>
-                <ul class="features">
-                    <li>Tous les avantages Pro</li>
-                    <li>Rapports PDF hebdomadaires</li>
-                    <li>Formation exclusive</li>
-                    <li>Support dédié</li>
-                </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('1_year', 'stripe', 239.88)">
-                    💳 Payer par Carte
-                </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('1_year', 'coinbase', 239.88)">
-                    ₿ Payer en Crypto
-                </button>
-            </div>
-        </div>
-
-        <!-- Section Pages & Fonctionnalités Détaillées -->
-        <div style="background: white; border-radius: 20px; padding: 50px; margin-top: 60px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
-            <h2 style="text-align: center; color: #333; font-size: 36px; margin-bottom: 20px;">
-                📋 Pages & Fonctionnalités Disponibles
-            </h2>
-            <p style="text-align: center; color: #666; font-size: 18px; margin-bottom: 40px;">
-                Découvrez exactement ce que vous obtenez avec chaque plan
-            </p>
-
-            <!-- Tabs Navigation -->
-            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
-                <button onclick="showPlan('free')" id="tab-free" class="plan-tab active-tab">
-                    🆓 GRATUIT
-                </button>
-                <button onclick="showPlan('premium')" id="tab-premium" class="plan-tab">
-                    💳 PREMIUM
-                </button>
-                <button onclick="showPlan('advanced')" id="tab-advanced" class="plan-tab">
-                    💎 ADVANCED
-                </button>
-                <button onclick="showPlan('pro')" id="tab-pro" class="plan-tab">
-                    👑 PRO
-                </button>
-                <button onclick="showPlan('elite')" id="tab-elite" class="plan-tab">
-                    🚀 ELITE
-                </button>
-            </div>
-
-            <!-- Plan FREE -->
-            <div id="plan-free" class="plan-content">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">🆓 Plan GRATUIT - $0/mois</h3>
-                    <p style="font-size: 16px; opacity: 0.9;">9 pages accessibles sans inscription</p>
-                </div>
-
-                <div class="pages-grid">
-                    <div class="page-card">
-                        <div class="page-icon">🏠</div>
-                        <h4>Page d'Accueil</h4>
-                        <p>Vue d'ensemble du marché crypto avec statistiques principales</p>
-                    </div>
-
-                    <div class="page-card">
-                        <div class="page-icon">📊</div>
-                        <h4>Dashboard</h4>
-                        <p>Dashboard de base avec indicateurs essentiels et statistiques temps réel</p>
-                    </div>
-
-                    <div class="page-card">
-                        <div class="page-icon">😨</div>
-                        <h4>Fear & Greed Index</h4>
-                        <p>Indice de sentiment du marché Bitcoin, indicateur émotionnel</p>
-                    </div>
-
-                    <div class="page-card">
-                        <div class="page-icon">👑</div>
-                        <h4>Bitcoin Dominance</h4>
-                        <p>Suivi de la domination BTC vs altcoins avec graphiques historiques</p>
-                    </div>
-
-                    <div class="page-card">
-                        <div class="page-icon">🔥</div>
-                        <h4>Altcoin Season Index</h4>
-                        <p>Index 90 jours indiquant si c'est Bitcoin ou Altcoin Season</p>
-                    </div>
-
-                    <div class="page-card">
-                        <div class="page-icon">🗺️</div>
-                        <h4>Crypto Heatmap</h4>
-                        <p>Carte thermique du marché crypto avec top gainers/losers</p>
-                    </div>
-
-                    <div class="page-card">
-                        <div class="page-icon">📰</div>
-                        <h4>Actualités Crypto</h4>
-                        <p>Feed d'actualités crypto en temps réel de sources fiables</p>
-                    </div>
-
-                    <div class="page-card">
-                        <div class="page-icon">💱</div>
-                        <h4>Convertisseur</h4>
-                        <p>Convertisseur de devises crypto/fiat avec taux en direct</p>
-                    </div>
-
-                    <div class="page-card">
-                        <div class="page-icon">📅</div>
-                        <h4>Calendrier Économique</h4>
-                        <p>Événements crypto importants et annonces de projets</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Plan PREMIUM -->
-            <div id="plan-premium" class="plan-content" style="display: none;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">💳 Plan PREMIUM - $20.00/mois</h3>
-                    <p style="font-size: 16px; opacity: 0.9;">9 pages gratuites + 7 pages premium = 16 pages totales</p>
-                </div>
-
-                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
-                    <strong style="color: #065f46;">✅ Inclut toutes les pages GRATUITES +</strong>
-                </div>
-
-                <div class="pages-grid">
-                    <div class="page-card premium-card">
-                        <div class="page-icon">🤖</div>
-                        <h4>Assistant IA</h4>
-                        <p>Assistant IA pour analyse de marché, recommandations personnalisées et réponses trading</p>
-                    </div>
-
-                    <div class="page-card premium-card">
-                        <div class="page-icon">💹</div>
-                        <h4>Spot Trading</h4>
-                        <p>Interface de trading spot avec gestion de positions, historique et calcul P&L automatique</p>
-                    </div>
-
-                    <div class="page-card premium-card">
-                        <div class="page-icon">📊</div>
-                        <h4>Dashboard Trades</h4>
-                        <p>Vue complète de tous vos trades avec statistiques détaillées et filtres avancés</p>
-                    </div>
-
-                    <div class="page-card premium-card">
-                        <div class="page-icon">👁️</div>
-                        <h4>Watchlist</h4>
-                        <p>Liste de surveillance avec alertes de prix personnalisées et notifications temps réel</p>
-                    </div>
-
-                    <div class="page-card premium-card">
-                        <div class="page-icon">🧮</div>
-                        <h4>Calculatrice Trading</h4>
-                        <p>Calcul de taille de position, leverage, profits/pertes et conversions</p>
-                    </div>
-
-                    <div class="page-card premium-card">
-                        <div class="page-icon">🎮</div>
-                        <h4>Simulateur Marché</h4>
-                        <p>Trading en mode simulation avec données réelles, sans risque financier</p>
-                    </div>
-
-                    <div class="page-card premium-card">
-                        <div class="page-icon">👤</div>
-                        <h4>Mon Compte</h4>
-                        <p>Gestion complète du profil, abonnement, statistiques et historique</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Plan ADVANCED -->
-            <div id="plan-advanced" class="plan-content" style="display: none;">
-                <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">💎 Plan ADVANCED - $50.00/3 mois</h3>
-                    <p style="font-size: 16px; opacity: 0.9;">16 pages Premium + 7 pages Advanced = 23 pages totales</p>
-                </div>
-
-                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
-                    <strong style="color: #065f46;">✅ Inclut toutes les pages PREMIUM +</strong>
-                </div>
-
-                <div class="pages-grid">
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">🔍</div>
-                        <h4>Scanner Opportunités IA</h4>
-                        <p>Détection automatique d'opportunités de trading avec analyse de patterns et scoring</p>
-                    </div>
-
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">📈</div>
-                        <h4>Détection Régime Marché</h4>
-                        <p>Identification automatique des phases Bull/Bear/Consolidation avec analyse de volatilité</p>
-                    </div>
-
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">📋</div>
-                        <h4>Gestion Stratégies</h4>
-                        <p>Création et gestion de stratégies personnalisées avec optimisation de paramètres</p>
-                    </div>
-
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">⚠️</div>
-                        <h4>Risk Management</h4>
-                        <p>Calcul avancé de taille de position, Risk/Reward, Stop Loss et Take Profit suggérés</p>
-                    </div>
-
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">📊</div>
-                        <h4>Stats Dashboard Avancé</h4>
-                        <p>Statistiques détaillées avec win rate, profit factor, meilleures/pires trades</p>
-                    </div>
-
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">📈</div>
-                        <h4>Graphiques Personnalisés</h4>
-                        <p>Charts avancés avec indicateurs techniques et analyse multi-timeframe</p>
-                    </div>
-
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">🚀</div>
-                        <h4>Détection Bull Run</h4>
-                        <p>Identification automatique des phases de bull run avec indicateurs et prédictions</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Plan PRO -->
-            <div id="plan-pro" class="plan-content" style="display: none;">
-                <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">👑 Plan PRO - $134.94/6 mois</h3>
-                    <p style="font-size: 16px; opacity: 0.9;">23 pages Advanced + 5 pages Pro = 28 pages totales</p>
-                </div>
-
-                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
-                    <strong style="color: #065f46;">✅ Inclut toutes les pages ADVANCED +</strong>
-                </div>
-
-                <div class="pages-grid">
-                    <div class="page-card pro-card">
-                        <div class="page-icon">🐋</div>
-                        <h4>Whale Watcher</h4>
-                        <p>Surveillance des mouvements de gros capitaux avec alertes transactions importantes</p>
-                    </div>
-
-                    <div class="page-card pro-card">
-                        <div class="page-icon">🔄</div>
-                        <h4>Backtesting Complet</h4>
-                        <p>Test de stratégies sur données historiques avec métriques avancées (Sharpe, Max DD)</p>
-                    </div>
-
-                    <div class="page-card pro-card">
-                        <div class="page-icon">📡</div>
-                        <h4>Stats Temps Réel</h4>
-                        <p>Métriques en direct avec performance du jour, P&L live et taux de réussite</p>
-                    </div>
-
-                    <div class="page-card pro-card">
-                        <div class="page-icon">📄</div>
-                        <h4>Rapports PDF</h4>
-                        <p>Génération automatique de rapports mensuels avec analyses et graphiques exportables</p>
-                    </div>
-
-                    <div class="page-card pro-card">
-                        <div class="page-icon">⛓️</div>
-                        <h4>Métriques On-Chain</h4>
-                        <p>Données blockchain avancées, flux de transactions et indicateurs on-chain</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Plan ELITE -->
-            <div id="plan-elite" class="plan-content" style="display: none;">
-                <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">🚀 Plan ELITE - $150.00/an</h3>
-                    <p style="font-size: 16px; opacity: 0.9;">28 pages Pro + 3 pages Elite = 31 pages totales - TOUT DÉBLOQUÉ!</p>
-                </div>
-
-                <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
-                    <strong style="color: #92400e;">⭐ Inclut TOUTES les pages PRO + Accès API Complet</strong>
-                </div>
-
-                <div class="pages-grid">
-                    <div class="page-card elite-card">
-                        <div class="page-icon">🔮</div>
-                        <h4>Prédictions IA Avancées</h4>
-                        <p>Prédictions de prix basées sur machine learning avec modèles avancés et probabilités</p>
-                    </div>
-
-                    <div class="page-card elite-card">
-                        <div class="page-icon">🔑</div>
-                        <h4>Gestion Clés API</h4>
-                        <p>Génération de clés API personnelles pour accès programmatique à toutes vos données</p>
-                    </div>
-
-                    <div class="page-card elite-card">
-                        <div class="page-icon">📚</div>
-                        <h4>Documentation API</h4>
-                        <p>Documentation complète de l'API avec exemples de code et limites de rate</p>
-                    </div>
-                </div>
-
-                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 30px; border-radius: 15px; margin-top: 30px; text-align: center;">
-                    <h3 style="color: #92400e; font-size: 24px; margin-bottom: 15px;">🎁 Bonus Exclusifs ELITE</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
-                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 36px; margin-bottom: 10px;">🎓</div>
-                            <strong>Formation Exclusive</strong>
-                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Accès aux webinaires et formations trading</p>
-                        </div>
-                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 36px; margin-bottom: 10px;">💬</div>
-                            <strong>Support Dédié VIP</strong>
-                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Réponse prioritaire sous 1 heure</p>
-                        </div>
-                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 36px; margin-bottom: 10px;">📊</div>
-                            <strong>Rapports Hebdo</strong>
-                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Rapports PDF automatiques chaque semaine</p>
-                        </div>
-                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 36px; margin-bottom: 10px;">∞</div>
-                            <strong>Limites Illimitées</strong>
-                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Pas de limite sur les appels API</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <style>
-                .plan-tab {
-                    padding: 15px 25px;
-                    border: 2px solid #e0e0e0;
-                    background: white;
-                    border-radius: 10px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                    font-size: 16px;
-                    min-width: 150px;
-                    white-space: nowrap;
-                    text-align: center;
-                    color: #111;
-                }
-                .plan-tab:hover {
-                    border-color: #667eea;
-                    transform: scale(1.05);
-                    color: #111;
-                }
-                .plan-tab.active-tab {
-                    background: #667eea;
-                    color: white;
-                    border-color: #667eea;
-                }
-                .pages-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                    gap: 20px;
-                    margin-top: 20px;
-                }
-                .page-card {
-                    background: #f9fafb;
-                    border-radius: 12px;
-                    padding: 25px;
-                    border: 2px solid #e5e7eb;
-                    transition: all 0.3s;
-                }
-                .page-card:hover {
-                    transform: translateY(-5px);
-                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-                }
-                .premium-card {
-                    border-color: #667eea;
-                    background: linear-gradient(135deg, #f3f4ff 0%, #ffffff 100%);
-                }
-                .advanced-card {
-                    border-color: #f59e0b;
-                    background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
-                }
-                .pro-card {
-                    border-color: #8b5cf6;
-                    background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 100%);
-                }
-                .elite-card {
-                    border-color: #ef4444;
-                    background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
-                }
-                .page-icon {
-                    font-size: 42px;
-                    margin-bottom: 15px;
-                }
-                .page-card h4 {
-                    color: #333;
-                    font-size: 18px;
-                    margin-bottom: 10px;
-                }
-                .page-card p {
-                    color: #666;
-                    font-size: 14px;
-                    line-height: 1.6;
-                }
-            </style>
-
-            <script>
-                function showPlan(planName) {
-                    // Cacher tous les plans
-                    document.querySelectorAll('.plan-content').forEach(el => {
-                        el.style.display = 'none';
-                    });
-
-                    // Retirer la classe active de tous les tabs
-                    document.querySelectorAll('.plan-tab').forEach(el => {
-                        el.classList.remove('active-tab');
-                    });
-
-                    // Afficher le plan slectionn
-                    document.getElementById('plan-' + planName).style.display = 'block';
-                    document.getElementById('tab-' + planName).classList.add('active-tab');
-                }
-            </script>
-        </div>
-
-        <center>
-            <a href="/dashboard" class="back-link">← Retour au Dashboard</a>
-        </center>
-        <p class="interac-note">Virement interac accepté cryptoia2026@proton.me — veuillez nous écrire.</p>
+      </div>
+      <div class="pill">Support: <a href="/contact" style="color:var(--text); text-decoration:none;">Contact</a></div>
     </div>
 
-    <script>
-        // tat global pour le code promo
-        let appliedPromo = {
-            code: null,
-            discount: 0,
-            originalPrices: {
-                '1_month': 29.99,
-                '3_months': 74.97,
-                '6_months': 134.94,
-                '1_year': 239.88
-            },
-            discountedPrices: {}
-        };
+    <div class="grid">
+      {cards_html}
+    </div>
 
-        // Appliquer le code promo
-        async function applyPromo() {
-            const codeInput = document.getElementById('promoCode');
-            const code = codeInput.value.trim().toUpperCase();
-            const messageDiv = document.getElementById('promoMessage');
-
-            if (!code) {
-                showMessage('Veuillez entrer un code promo', 'error');
-                return;
-            }
-
-            messageDiv.innerHTML = '🔄 Validation en cours...';
-            messageDiv.className = 'promo-message';
-            messageDiv.style.display = 'block';
-
-            try {
-                // Valider pour chaque plan
-                let validForAnyPlan = false;
-
-                for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
-                    const response = await fetch(`/api/validate-promo?code=${code}&plan=${plan}&amount=${originalPrice}`);
-                    const data = await response.json();
-
-                    if (data.valid && data.discount) {
-                        validForAnyPlan = true;
-                        appliedPromo.code = code;
-                        appliedPromo.discountedPrices[plan] = data.final_amount;
-                        updatePriceDisplay(plan, originalPrice, data.final_amount);
-                    }
-                }
-
-                if (validForAnyPlan) {
-                    showMessage(`✅ Code ${code} appliqué avec succès!`, 'success');
-                } else {
-                    showMessage('❌ Code promo invalide ou expiré', 'error');
-                    resetPrices();
-                }
-            } catch (error) {
-                showMessage('❌ Erreur lors de la validation', 'error');
-                console.error(error);
-            }
-        }
-
-        function showMessage(message, type) {
-            const messageDiv = document.getElementById('promoMessage');
-            messageDiv.innerHTML = message;
-            messageDiv.className = `promo-message ${type}`;
-            messageDiv.style.display = 'block';
-        }
-
-        function updatePriceDisplay(plan, originalPrice, newPrice) {
-            const amountSpan = document.getElementById(`amount-${plan}`);
-            amountSpan.innerHTML = `
-                <span class="original-price">$${originalPrice.toFixed(2)}</span>
-                ${newPrice.toFixed(2)}
-            `;
-        }
-
-        function resetPrices() {
-            appliedPromo.code = null;
-            appliedPromo.discountedPrices = {};
-
-            for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
-                const amountSpan = document.getElementById(`amount-${plan}`);
-                amountSpan.textContent = originalPrice.toFixed(2);
-            }
-        }
-
-        async function checkout(plan, method, baseAmount) {
-            const finalAmount = appliedPromo.discountedPrices[plan] || baseAmount;
-
-            if (method === 'stripe') {
-                const response = await fetch('/api/stripe-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        plan: plan,
-                        amount: finalAmount,
-                        promo_code: appliedPromo.code
-                    }
-            # Injecter les prix dynamiques dans les spans (pricing-complete)
-            try:
-                html = html.replace('<span id="amount-1-month">29.99</span>', f'<span id="amount-1-month">{_price_premium_1m:.2f}</span>')
-                html = html.replace('<span id="amount-3-months">74.97</span>', f'<span id="amount-3-months">{_price_advanced_3m:.2f}</span>')
-                html = html.replace('<span id="amount-6-months">134.94</span>', f'<span id="amount-6-months">{_price_pro_6m:.2f}</span>')
-                html = html.replace('<span id="amount-1-year">239.88</span>', f'<span id="amount-1-year">{_price_elite_12m:.2f}</span>')
-            except Exception:
-                pass
-            return HTMLResponse(html)
-                });
-                
-                const data = await response.json();
-                if (data.url) {
-                    window.location.href = data.url;
-                } else {
-                    alert('Erreur: ' + (data.error || 'Impossible de créer la session'));
-                }
-            } else {
-                const response = await fetch('/api/coinbase-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        plan: plan,
-                        amount: finalAmount,
-                        promo_code: appliedPromo.code
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.url) {
-                    window.location.href = data.url;
-                } else {
-                    alert('Erreur: ' + (data.error || 'Impossible de créer le paiement'));
-                }
-            }
-        }
-    </script>
+    <div class="note">
+      * Si tu arrives sur une page bloquée, c'est normal: ton plan ne donne pas accès.
+      Va dans <b>Plans & Tarifs</b> pour upgrader.
+    </div>
+  </div>
 </body>
-</html>
-""")
+</html>"""
+
+    sidebar = globals().get("SIDEBAR", "")
+    return HTMLResponse(sidebar + html)
 @app.get("/pricing-new")
 async def pricing_page_new(request: Request):
     # Page legacy → redirige vers la version complète

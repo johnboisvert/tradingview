@@ -2197,24 +2197,31 @@ BADGES_DATA = {
 app = FastAPI()
 
 
+
 # ----------------------------------------------------------------------
-# Compat: certaines pages ont encore src="__SITE_LOGO_URL__" (placeholder).
-# On intercepte /__SITE_LOGO_URL__ et /admin/__SITE_LOGO_URL__ pour éviter 404.
+# ✅ HTML placeholder injection (fix {SITE_LOGO_URL} showing as /%7BSITE_LOGO_URL%7D)
+#    Some inline HTML pages in this project use "{SITE_LOGO_URL}" placeholders.
+#    This middleware replaces them at response-time so the logo always loads correctly.
 # ----------------------------------------------------------------------
-try:
-    from fastapi.responses import RedirectResponse as _RedirectResponse
-except Exception:
-    _RedirectResponse = None
+from starlette.middleware.base import BaseHTTPMiddleware
 
-if _RedirectResponse:
-    @app.get("/__SITE_LOGO_URL__")
-    async def _site_logo_placeholder_root():
-        return _RedirectResponse(url=SITE_LOGO_URL, status_code=307)
+class _InjectPlaceholdersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        resp = await call_next(request)
+        try:
+            ct = (resp.headers.get("content-type") or "").lower()
+            if "text/html" in ct and hasattr(resp, "body") and resp.body:
+                logo_url = (os.getenv("SITE_LOGO_URL") or "").strip() or "https://github.com/johnboisvert/tradingview/blob/main/static/cryptoia_logo.png?raw=true"
+                body = resp.body
+                body = body.replace(b"{SITE_LOGO_URL}", logo_url.encode("utf-8"))
+                body = body.replace(b"__SITE_LOGO_URL__", logo_url.encode("utf-8"))
+                resp.body = body
+                resp.headers["content-length"] = str(len(body))
+        except Exception:
+            pass
+        return resp
 
-    @app.get("/admin/__SITE_LOGO_URL__")
-    async def _site_logo_placeholder_admin():
-        return _RedirectResponse(url=SITE_LOGO_URL, status_code=307)
-
+app.add_middleware(_InjectPlaceholdersMiddleware)
 
 # =====================
 # Static files (logo, css, images)
@@ -3175,10 +3182,6 @@ except Exception:
     pass
 
 
-# Sécurité: s'assurer que les placeholders sont vraiment remplacés (évite __SITE_NAME__ affiché)
-SIDEBAR = (SIDEBAR or "").replace("__SITE_LOGO_URL__", str(SITE_LOGO_URL)).replace("__SITE_NAME__", str(SITE_NAME))
-
-
 # ==================================
 
 # ============================================================================
@@ -3394,8 +3397,6 @@ MEXC_PRICE_ENDPOINT = f"{MEXC_API_BASE}/api/v3/ticker/price"
 #  Background Monitor
 monitor_running = False
 
-monitor_lock = asyncio.Lock()  # protège le background monitor
-
 # ============================================================================
 #  SYSTME D'AUTHENTIFICATION AVEC POSTGRESQL
 # ============================================================================
@@ -3504,6 +3505,20 @@ class DatabaseManager:
             last_payment_date TEXT,
             total_spent REAL DEFAULT 0.0
         )''')
+
+        # Promo codes (admin revenue intelligence)
+        c.execute('''CREATE TABLE IF NOT EXISTS promo_codes (
+            code TEXT PRIMARY KEY,
+            discount_percent INTEGER DEFAULT 0,
+            discount_amount REAL DEFAULT 0,
+            max_redemptions INTEGER DEFAULT 0,
+            redeemed_count INTEGER DEFAULT 0,
+            active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            expires_at TEXT,
+            notes TEXT
+        )''')
+
         
         # Ajouter les colonnes si elles n'existent pas (pour migration)
         try:
@@ -3551,7 +3566,6 @@ class DatabaseManager:
             c.execute("INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)", 
                       ("admin", password_hash, "admin", datetime.now().isoformat()))
             print("✅ Compte admin par défaut créé: admin / admin123")
-        
         conn.commit()
         conn.close()
     
@@ -6331,40 +6345,23 @@ TELEGRAM_MESSAGE_DELAY = 3  # secondes entre chaque message
 
 CSS = """<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}.container{max-width:1400px;margin:0 auto}.header{text-align:center;margin-bottom:30px;padding:30px;background:linear-gradient(135deg,#1e293b 0%,#334155 100%);border-radius:12px}.header h1{font-size:42px;margin-bottom:10px;background:linear-gradient(to right,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}.header p{color:#94a3b8;font-size:16px}.nav{display:flex;gap:10px;margin-bottom:30px;flex-wrap:wrap;justify-content:center}.nav a{padding:12px 20px;background:#1e293b;border-radius:8px;text-decoration:none;color:#e2e8f0;transition:all .3s;border:1px solid #334155}.nav a:hover{background:#334155;border-color:#60a5fa}.card{background:#1e293b;padding:25px;border-radius:12px;margin-bottom:20px;border:1px solid #334155}.card h2{color:#60a5fa;margin-bottom:20px;font-size:24px;border-bottom:2px solid #334155;padding-bottom:10px}.stat-box{background:#0f172a;padding:20px;border-radius:8px;border-left:4px solid #60a5fa}.stat-box .label{color:#94a3b8;font-size:13px;margin-bottom:8px}.stat-box .value{font-size:32px;font-weight:700;color:#e2e8f0}button{padding:12px 24px;background:#3b82f6;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all .3s}button:hover{background:#2563eb}.btn-danger{background:#ef4444}.btn-danger:hover{background:#dc2626}.spinner{border:5px solid #334155;border-top:5px solid #60a5fa;border-radius:50%;width:60px;height:60px;animation:spin 1s linear infinite;margin:60px auto}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.alert{padding:15px;border-radius:8px;margin:15px 0}.alert-success{background:rgba(16,185,129,.1);border-left:4px solid #10b981;color:#10b981}.alert-error{background:rgba(239,68,68,.1);border-left:4px solid #ef4444;color:#ef4444}table{width:100%;border-collapse:collapse}table th{background:#0f172a;padding:12px;text-align:left;color:#60a5fa;font-weight:600;border-bottom:2px solid #334155}table td{padding:12px;border-bottom:1px solid #334155}table tr:hover{background:#0f172a}input,select{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;margin-bottom:15px}</style>"""
 
-def format_price(price):
-    """Formate un prix en string de façon robuste.
-
-    Accepte: float/int, string numérique, Decimal, ou None.
-    Retourne "—" si aucune valeur.
-    """
-    if price is None:
-        return "—"
-
-    try:
-        if isinstance(price, str):
-            s = price.strip().replace(",", ".")
-            if s == "" or s.lower() in {"none", "null", "nan"}:
-                return "—"
-            price = float(s)
-        else:
-            price = float(price)
-    except Exception:
-        return "—"
-
-    # NaN / Inf
-    try:
-        if price != price or price in (float("inf"), float("-inf")):
-            return "—"
-    except Exception:
-        return "—"
-
-    if abs(price) < 0.001:
-        return f"{price:.8f}".rstrip("0").rstrip(".")
-    if abs(price) < 1:
-        return f"{price:.6f}".rstrip("0").rstrip(".")
-    if abs(price) < 100:
-        return f"{price:.4f}".rstrip("0").rstrip(".")
-    return f"{price:.2f}".rstrip("0").rstrip(".")
+def format_price(price: float) -> str:
+    """Formate intelligemment les prix selon leur magnitude"""
+    if price < 0.001:
+        decimals = 8  # Memecoins (SHIB, PEPE, CHEEMS)
+    elif price < 1:
+        decimals = 6  # Petites cryptos
+    elif price < 100:
+        decimals = 4  # Altcoins moyens
+    else:
+        decimals = 2  # BTC, ETH, etc.
+    
+    formatted = f"${price:.{decimals}f}"
+    # Supprimer les zros inutiles
+    formatted = formatted.rstrip('0').rstrip('.')
+    if formatted.endswith('$'):
+        formatted += '0'
+    return formatted
 
 class TradeWebhook(BaseModel):
     type: str = "ENTRY"
@@ -6576,135 +6573,60 @@ def calculate_confidence_score(trade: TradeWebhook):
     return round(score, 1), reason.capitalize()
 
 
-async def send_telegram_advanced(trade: TradeWebhook):
-    """Envoie message Telegram professionnel avec anti-rate-limit et variables d'env"""
-    global last_telegram_message_time
-    
-    # Vrifier si Telegram est activ
-    if not TELEGRAM_ENABLED:
-        print("ℹ️ Telegram désactivé (TELEGRAM_ENABLED=0)")
-        return
-    
-    try:
-        confidence_score, confidence_reason = calculate_confidence_score(trade)
-        direction_emoji = "📈" if trade.side == "LONG" else "📉"
-        
-        # Heure du Qubec avec gestion automatique EDT/EST
-        timezone_quebec = pytz.timezone('America/Montreal')
-        now_quebec = datetime.now(timezone_quebec)
-        heure = now_quebec.strftime("%Hh%M")
-        
-        rr = calc_rr(trade.entry, trade.sl, trade.tp1)
-        rr_text = f" (R/R: {rr}:1)" if rr else ""
-        trade_type = "Crypto IA"  # Remplacé de tf_label par "Crypto IA"
-        timeframe = trade.tf if trade.tf else "15m"
-        leverage_text = trade.leverage if trade.leverage else "10x"
-        def _pf(x):
-            return format_price(x)
-        entry_txt = _pf(trade.entry)
-        sl_txt = _pf(trade.sl)
+async def send_telegram_advanced(message: str, parse_mode: str = "HTML", buttons: Optional[List[List[Dict[str, str]]]] = None) -> bool:
+    """Envoi Telegram robuste (timeouts + retries + logs propres)."""
+    token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
+    chat_id = (os.getenv("TELEGRAM_CHAT_ID") or "").strip()
+    if not token or not chat_id:
+        print("⚠️ Telegram non configuré (TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID manquant) — message ignoré.")
+        return False
 
-        msg = f"""📩 <b>{trade.symbol}</b> {timeframe} | {trade_type}
-⏰ Heure : {heure}
-🎯 Direction : <b>{trade.side}</b> {direction_emoji}
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
 
-<b>ENTRY:</b> {entry_txt}{rr_text}
-❌ <b>Stop-Loss:</b> {sl_txt}
-💡 <b>Leverage:</b> {leverage_text} Isolée
-"""
-        if trade.tp1:
-            msg += f"✅ <b>Target 1:</b> {_pf(trade.tp1)}\n"
-        if trade.tp2:
-            msg += f"✅ <b>Target 2:</b> {_pf(trade.tp2)}\n"
-        if trade.tp3:
-            msg += f"✅ <b>Target 3:</b> {_pf(trade.tp3)}\n"
+    payload: Dict[str, Any] = {
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": True,
+    }
+    if buttons:
+        payload["reply_markup"] = {"inline_keyboard": buttons}
 
-        msg += f"\n🎯 <b>Confiance de la stratégie:</b> {confidence_score}%\n"
-        msg += f"<i>Pourquoi ?</i> {confidence_reason}\n\n"
-        msg += "💡 <b>Après le TP1, veuillez vous mettre en SLBE</b>\n"
-        msg += "<i>(Stop Loss Break Even - sécurisez vos gains)</i>"
-        
-        if trade.note:
-            msg += f"\n\n📝 <b>Note:</b> {trade.note}"
-        
-        # ============= ANTI-RATE-LIMIT =============
-        # Attendre TG_MIN_DELAY_SEC secondes depuis le dernier message
-        import time
-        current_time = time.time()
-        time_since_last_message = current_time - last_telegram_message_time
-        
-        if time_since_last_message < TG_MIN_DELAY_SEC:
-            wait_time = TG_MIN_DELAY_SEC - time_since_last_message
-            print(f"⏳ Attente de {wait_time:.1f}s pour éviter rate limit...")
-            await asyncio.sleep(wait_time)
-        
-        # ============= ENVOI AVEC RETRY =============
-        max_retries = 3
-        retry_count = 0
-        
-        #  NOUVEAU: Ajouter boutons dashboard + TradingView
-        # Construire l'URL TradingView avec le symbole
-        tradingview_url = f"https://www.tradingview.com/chart/?symbol=BINANCE:{trade.symbol}"
-        
-        telegram_payload = {
-            "chat_id": TELEGRAM_CHAT_ID, 
-            "text": msg, 
-            "parse_mode": TG_PARSE,
-            "reply_markup": {
-                "inline_keyboard": [
-                    [
-                        {
-                            "text": "📊 Dashboard",
-                            "url": "https://www.cryptoia.ca/"
-                        },
-                        {
-                            "text": "📈 TradingView",
-                            "url": tradingview_url
-                        }
-                    ]
-                ]
-            }
-        }
-        
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            while retry_count < max_retries:
-                response = await client.post(
-                    f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
-                    json=telegram_payload
-                )
-                
-                if response.status_code == 200:
-                    last_telegram_message_time = time.time()
-                    print(f"✅ Message Telegram envoyé - {trade.symbol} {trade.side}")
-                    print(f"   Entry: ${trade.entry:.4f} | SL: ${trade.sl:.4f}")
-                    print(f"   Confiance IA: {confidence_score}%")
-                    print(f"   Heure: {heure}")
-                    break
-                    
-                elif response.status_code == 429:
-                    # Rate limit hit - attendre et ressayer
-                    try:
-                        error_data = response.json()
-                        retry_after = error_data.get("parameters", {}).get("retry_after", 5)
-                    except:
-                        retry_after = 5
-                    
-                    retry_count += 1
-                    if retry_count < max_retries:
-                        print(f"⚠️ Rate limit (429) - Attente de {retry_after}s avant retry {retry_count}/{max_retries}...")
-                        await asyncio.sleep(retry_after)
-                    else:
-                        print(f"❌ Rate limit (429) - Max retries atteint pour {trade.symbol}")
-                        
-                else:
-                    print(f"⚠️ Erreur Telegram: {response.status_code} - {response.text}")
-                    break
-                
-    except Exception as e:
-        print(f"❌ Erreur Telegram: {e}")
-        import traceback
-        traceback.print_exc()
+    timeout = httpx.Timeout(25.0, connect=25.0, read=25.0, write=25.0, pool=25.0)
+    delays = [0.8, 1.6, 3.2]
+    last_err: Optional[str] = None
 
+    for attempt, delay in enumerate([0.0] + delays, start=1):
+        if delay:
+            await asyncio.sleep(delay)
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                r = await client.post(url, json=payload)
+            if r.status_code == 200:
+                return True
+
+            try:
+                j = r.json()
+                last_err = j.get("description") or r.text
+            except Exception:
+                last_err = r.text
+
+            print(f"❌ Telegram HTTP {r.status_code}: {str(last_err)[:240]}")
+        except (httpx.ConnectTimeout, httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout) as e:
+            last_err = f"{e.__class__.__name__}"
+            print(f"⚠️ Telegram timeout (tentative {attempt}/{len(delays)+1})")
+            continue
+        except httpx.RequestError as e:
+            last_err = f"{type(e).__name__}: {e}"
+            print(f"⚠️ Telegram réseau (tentative {attempt}/{len(delays)+1}): {str(last_err)[:200]}")
+            continue
+        except Exception as e:
+            last_err = f"{type(e).__name__}: {e}"
+            print(f"❌ Erreur Telegram: {str(last_err)[:200]}")
+            break
+
+    print(f"❌ Telegram échec après retries: {str(last_err)[:240] if last_err else 'unknown'}")
+    return False
 
 async def send_telegram(msg: str) -> None:
     """Envoie un message Telegram (loggue les erreurs).
@@ -6879,159 +6801,109 @@ async def _handle_tradingview_webhook(trade: TradeWebhook):
 
 @app.post("/tv-webhook")
 async def webhook(request: Request):
-    """Endpoint webhook TradingView robuste (évite 422).
+    """Endpoint webhook TradingView robuste (évite 422 + accepte différents formats).
 
-    - Accepte des tests manuels sans body (répond 200).
-    - Accepte JSON, text/plain (JSON string), et form-urlencoded.
-    - Valide via TradeWebhook sans laisser FastAPI renvoyer 422.
+    Supporte :
+    - JSON normal (fields au root)
+    - JSON encapsulé dans { "alert": { ... } }
+    - text/plain contenant un JSON string
+    - form-urlencoded / multipart
     """
-
-    def _to_float(x):
-        if x is None:
-            return None
-        if isinstance(x, (int, float)):
-            return float(x)
-        if isinstance(x, str):
-            s = x.strip().replace("$", "").replace(",", "")
-            try:
-                return float(s)
-            except Exception:
-                return None
-        return None
-
-    def _normalize_tv_payload(p: dict) -> dict:
-        """Normalise les payloads TradingView (formats variés) vers nos clés internes.
-
-        Supporte notamment les indicateurs qui envoient:
-            { "alert": { ... } }
-        ainsi que des variantes de noms de champs (timeframe/signal/stop_loss/take_profit_1...).
-        """
-        raw = dict(p or {})
-
-        # 1) Aplatir le wrapper {"alert": {...}} (ton indicateur envoie ça)
-        try:
-            if "alert" in raw:
-                al = raw.get("alert")
-                if isinstance(al, str):
-                    try:
-                        import json as _json
-                        al = _json.loads(al)
-                    except Exception:
-                        al = None
-                if isinstance(al, dict):
-                    merged = dict(raw)
-                    merged.pop("alert", None)
-                    merged.update(al)  # les champs de alert priment
-                    raw = merged
-        except Exception:
-            pass
-
-        out = dict(raw)
-
-        alias_map = {
-            # noms internes attendus par TradeWebhook
-            "symbol": "symbol",
-            "ticker": "symbol",
-
-            "tf": "tf",
-            "timeframe": "tf",
-            "interval": "tf",
-
-            "side": "side",
-            "action": "action",
-            "signal": "action",
-            "direction": "action",
-
-            "price": "price",
-            "current_price": "price",
-            "entry_price": "entry",
-            "entry": "entry",
-
-            "sl": "sl",
-            "stoploss": "sl",
-            "stop_loss": "sl",
-            "stopLoss": "sl",
-
-            "tp": "tp1",
-            "tp1": "tp1",
-            "take_profit": "tp1",
-            "take_profit_1": "tp1",
-
-            "tp2": "tp2",
-            "take_profit_2": "tp2",
-
-            "tp3": "tp3",
-            "take_profit_3": "tp3",
-
-            "leverage": "leverage",
-            "risk": "risk",
-            "strategy": "strategy",
-        }
-
-        fixed = {}
-        for k, v in out.items():
-            nk = alias_map.get(k, k)
-            fixed[nk] = v
-        return fixed
-    expected_secret = os.getenv("TV_WEBHOOK_SECRET", "").strip()
+    expected_secret = (os.getenv("TV_WEBHOOK_SECRET") or "").strip()
     provided_secret = (request.query_params.get("secret") or "").strip()
     if expected_secret and provided_secret != expected_secret:
         print("❌ Webhook secret invalide")
         return JSONResponse({"status": "error", "message": "Secret invalide"}, status_code=403)
 
-    # Lire le body
     try:
         raw_body = await request.body()
     except Exception:
         raw_body = b""
 
-    if not raw_body or raw_body.strip() in (b"",):
-        # TradingView test / manual ping
+    if not raw_body or raw_body.strip() == b"":
         return JSONResponse({"status": "ok", "message": "No payload (test ok)"}, status_code=200)
 
+    payload: Any = None
     content_type = (request.headers.get("content-type") or "").lower()
-    payload = None
 
-    # Parser payload (JSON, form, text/plain)
     try:
         if "application/json" in content_type:
-            payload = json.loads(raw_body.decode("utf-8", errors="ignore"))
-        elif "application/x-www-form-urlencoded" in content_type:
+            payload = await request.json()
+        elif "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
             form = await request.form()
-            if "payload" in form:
-                payload = json.loads(str(form["payload"]))
-            else:
-                payload = dict(form)
+            payload = dict(form)
+            if isinstance(payload, dict) and len(payload) == 1:
+                only_val = list(payload.values())[0]
+                if isinstance(only_val, str) and only_val.strip().startswith("{"):
+                    payload = json.loads(only_val)
         else:
-            # text/plain ou autre -> on tente JSON
-            text_body = raw_body.decode("utf-8", errors="ignore").strip()
-            payload = json.loads(text_body)
-    except Exception as e:
-        print(f"❌ Erreur parsing payload: {e}")
-        return JSONResponse({"status": "error", "message": "Payload invalide"}, status_code=200)
+            payload = json.loads(raw_body.decode("utf-8", errors="ignore"))
+    except Exception:
+        payload = {"raw": raw_body.decode("utf-8", errors="ignore")}
 
-    if not isinstance(payload, dict):
-        print("❌ Payload non-dict:", type(payload))
-        return JSONResponse({"status": "error", "message": "Payload invalide (dict requis)"}, status_code=200)
+    def _to_float(v):
+        try:
+            if v is None:
+                return None
+            if isinstance(v, (int, float)):
+                return float(v)
+            s = str(v).replace(",", ".").strip()
+            return float(s) if s else None
+        except Exception:
+            return None
 
-    payload = _normalize_tv_payload(payload)
-    print(f"✅ Webhook reçu: {payload.get('symbol','?')} {payload.get('type','?')} {payload.get('side','?')} tf={payload.get('timeframe','?')}")
+    def _normalize(obj: Any) -> Dict[str, Any]:
+        d: Dict[str, Any] = obj if isinstance(obj, dict) else {}
+        if isinstance(d.get("alert"), dict):
+            d = d["alert"]
 
-    # Validation TradeWebhook sans renvoyer 422
+        symbol = (d.get("symbol") or d.get("ticker") or d.get("pair") or d.get("SYMBOL") or "").strip()
+        tf = (d.get("tf") or d.get("timeframe") or d.get("interval") or d.get("Timeframe") or d.get("TF") or "").strip()
+        price = _to_float(d.get("entry") or d.get("price") or d.get("current_price") or d.get("close") or d.get("Entry"))
+        signal = (d.get("side") or d.get("signal") or d.get("action") or d.get("Signal") or "").strip()
+
+        side = signal
+        s = (signal or "").lower()
+        if "buy" in s or s in ("long", "bull", "entry_long", "enter_long", "achat"):
+            side = "LONG"
+        elif "sell" in s or s in ("short", "bear", "entry_short", "enter_short", "vente"):
+            side = "SHORT"
+
+        sl = _to_float(d.get("sl") or d.get("stop_loss") or d.get("stop") or d.get("stoploss") or d.get("Stop Loss"))
+        tp1 = _to_float(d.get("tp1") or d.get("take_profit_1") or d.get("take_profit") or d.get("Take Profit 1"))
+        tp2 = _to_float(d.get("tp2") or d.get("take_profit_2") or d.get("Take Profit 2"))
+        tp3 = _to_float(d.get("tp3") or d.get("take_profit_3") or d.get("Take Profit 3"))
+
+        return {
+            "type": str(d.get("type") or "ENTRY").upper(),
+            "symbol": symbol,
+            "tf": tf or None,
+            "tf_label": d.get("tf_label") or None,
+            "side": side or None,
+            "entry": price,
+            "current_price": _to_float(d.get("current_price")) if d.get("current_price") is not None else price,
+            "sl": sl,
+            "tp1": tp1,
+            "tp2": tp2,
+            "tp3": tp3,
+        }
+
+    normalized = _normalize(payload)
+
+    print(f"✅ Webhook reçu: {normalized.get('symbol') or '?'} {normalized.get('side') or '?'} {normalized.get('type') or '?'} tf={normalized.get('tf') or '?'}")
+
     try:
-        trade = TradeWebhook(**payload)
+        trade = TradeWebhook(**normalized)
     except Exception as e:
-        print("❌ TradeWebhook validation error:", e)
-        print("   Keys:", list(payload.keys()))
-        return JSONResponse({"status": "error", "message": "Payload incomplet/invalid"}, status_code=200)
+        print(f"❌ TradeWebhook validation error: {e}")
+        return JSONResponse({"status": "ok", "message": "Payload received but incomplete"}, status_code=200)
 
     try:
         await _handle_tradingview_webhook(trade)
     except Exception as e:
-        print("❌ Erreur traitement webhook:", e)
-        return JSONResponse({"status": "error", "message": "Erreur traitement webhook"}, status_code=200)
+        print(f"❌ Erreur traitement webhook: {e}")
 
-    return JSONResponse({"status": "ok", "message": "Webhook reçu"}, status_code=200)
+    return JSONResponse({"status": "ok"}, status_code=200)
 
 @app.get("/health")
 @app.head("/health")
@@ -7162,8 +7034,7 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     <div class="particles" id="particles"></div>
     <div class="main-content">
         <div class="hero">
-            <div class="hero-logo"><img src="{SITE_LOGO_URL}" alt="Crypto IA" class="hero-logo-img"></div>
-                <h1 class="hero-title">Crypto IA</h1>
+            <h1 class="hero-title">🚀 Crypto IA 💎</h1>
             <p class="hero-subtitle">Une plateforme d'analyse crypto pilotée par l'IA, qui convertit le bruit permanent du marché 24/7 en décisions claires, structurées, mesurables — et alignées avec votre stratégie.</p>
         </div>
         <div class="stats-grid">
@@ -7877,8 +7748,7 @@ async def home():
     <div class="particles" id="particles"></div>
     <div class="main-content">
         <div class="hero">
-            <div class="hero-logo"><img src="{SITE_LOGO_URL}" alt="Crypto IA" class="hero-logo-img"></div>
-                <h1 class="hero-title">Crypto IA</h1>
+            <h1 class="hero-title">🚀 Crypto IA 💎</h1>
             <p class="hero-subtitle">Une plateforme d'analyse crypto pilotée par l'IA, qui convertit le bruit permanent du marché 24/7 en décisions claires, structurées, mesurables — et alignées avec votre stratégie.</p>
         </div>
         <div class="stats-grid">
@@ -19102,151 +18972,892 @@ async def create_charge(req: CreateChargeRequest, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/pricing-complete", response_class=HTMLResponse)
-async def pricing_complete(request: Request):
-    """Page de prix complète (version stable)."""
-    site_name = (os.getenv("SITE_NAME") or "Crypto IA").strip()
-    logo_url = (os.getenv("SITE_LOGO_URL") or "").strip()
-
-    # Essaye d'utiliser ta fonction existante si elle existe; sinon fallback.
-    pricing = {}
-    try:
-        if "get_all_plan_pricing" in globals():
-            pricing = get_all_plan_pricing() or {}
-    except Exception:
-        pricing = {}
-
-    fallback_plans = [
-        {"name": "Free", "key": "free", "price": "$0", "desc": "Accès au Dashboard + pages gratuites"},
-        {"name": "Premium", "key": "premium", "price": "$19/mo", "desc": "Accès aux outils IA essentiels"},
-        {"name": "Advanced", "key": "advanced", "price": "$39/mo", "desc": "Analyses avancées + signaux améliorés"},
-        {"name": "Pro", "key": "pro", "price": "$79/mo", "desc": "Suite complète + dashboards pro"},
-        {"name": "Elite", "key": "elite", "price": "$149/mo", "desc": "Accès total + prioritaire"},
-    ]
-
-    plans = []
-    for p in fallback_plans:
-        k = p["key"]
-        if isinstance(pricing, dict) and k in pricing and isinstance(pricing[k], dict):
-            # accepte: {"price": "...", "desc": "...", "features": [...]}
-            merged = dict(p)
-            merged.update(pricing[k])
-            plans.append(merged)
-        else:
-            plans.append(p)
-
-    logo_html = ""
-    if logo_url:
-        logo_html = f'<img src="{logo_url}" alt="{site_name}" style="height:40px; width:auto; object-fit:contain; margin-right:12px;" />'
-
-    cards = []
-    for p in plans:
-        name = p.get("name", "").strip() or "Plan"
-        key = p.get("key", "").strip() or name.lower()
-        price = p.get("price", "").strip() or ""
-        desc = p.get("desc", "").strip() or ""
-        features = p.get("features") if isinstance(p.get("features"), list) else []
-        feat_html = "".join([f"<li>{str(x)}</li>" for x in features]) if features else ""
-        btn = f'/subscribe?plan={key}'
-        cards.append(f'''
-          <div class="card">
-            <div class="card-top">
-              <div class="plan">{name}</div>
-              <div class="price">{price}</div>
-              <div class="desc">{desc}</div>
-            </div>
-            {'<ul class="features">'+feat_html+'</ul>' if feat_html else ''}
-            <a class="btn" href="{btn}">Choisir {name}</a>
-          </div>
-        ''')
-
-    cards_html = "\n".join(cards)
-
-    html = f"""<!doctype html>
+async def pricing_complete():
+    """Page de pricing avec support codes promo"""
+    return HTMLResponse(SIDEBAR + """
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Plans & Tarifs — {site_name}</title>
-  <style>
-    :root {{
-      --bg: #0b0f17;
-      --card: rgba(255,255,255,0.06);
-      --card2: rgba(255,255,255,0.04);
-      --text: rgba(255,255,255,0.92);
-      --muted: rgba(255,255,255,0.68);
-      --border: rgba(255,255,255,0.12);
-      --brand: #16a34a;
-      --brand2: #22c55e;
-    }}
-    body {{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: radial-gradient(1200px 600px at 15% 10%, rgba(34,197,94,0.18), transparent 60%), var(--bg); color: var(--text); }}
-    .wrap {{ max-width: 1100px; margin: 0 auto; padding: 24px 18px 60px; }}
-    .top {{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin: 10px 0 22px; }}
-    .brand {{ display:flex; align-items:center; gap:10px; }}
-    .brand h1 {{ font-size: 22px; margin:0; letter-spacing:0.2px; }}
-    .brand .sub {{ color: var(--muted); font-size: 14px; margin-top: 2px; }}
-    .grid {{ display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 14px; }}
-    @media (max-width: 1050px) {{ .grid {{ grid-template-columns: repeat(2, minmax(0,1fr)); }} }}
-    @media (max-width: 560px) {{ .grid {{ grid-template-columns: 1fr; }} }}
-    .card {{
-      background: linear-gradient(180deg, var(--card), var(--card2));
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
-      display:flex;
-      flex-direction:column;
-      min-height: 240px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-    }}
-    .plan {{ font-weight: 800; letter-spacing: 0.2px; font-size: 16px; }}
-    .price {{ font-size: 26px; font-weight: 900; margin-top: 10px; }}
-    .desc {{ color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.35; }}
-    .features {{ margin: 12px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }}
-    .card-top {{ margin-bottom: 14px; }}
-    .btn {{
-      margin-top:auto;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      text-decoration:none;
-      color: #07110a;
-      font-weight: 800;
-      border-radius: 12px;
-      padding: 10px 12px;
-      background: linear-gradient(180deg, var(--brand2), var(--brand));
-      border: 1px solid rgba(255,255,255,0.15);
-    }}
-    .btn:hover {{ filter: brightness(1.04); }}
-    .note {{ margin-top: 18px; color: var(--muted); font-size: 13px; }}
-    .pill {{ display:inline-block; padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); font-size: 12px; }}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💎 Plans & Tarifs - Trading Dashboard Pro</title>""" + CSS + """
+    <style>
+        .pricing-page, .pricing-page * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 50px;
+        }}
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }}
+        .header p {
+            font-size: 20px;
+            opacity: 0.9;
+        }
+        
+        /* Section Code Promo */
+        .promo-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            max-width: 600px;
+        }
+        .promo-section h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+        .promo-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .promo-input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .promo-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .promo-btn {
+            padding: 15px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .promo-btn:hover {
+            background: #5568d3;
+            transform: scale(1.05);
+        }
+        .promo-message {
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-align: center;
+            display: none;
+        }
+        .promo-message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
+            display: block;
+        }
+        .promo-message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+            display: block;
+        }
+        .original-price {
+            text-decoration: line-through;
+            color: #999;
+            font-size: 24px;
+            margin-right: 10px;
+        }
+        
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-bottom: 50px;
+        }
+        .pricing-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .pricing-card:hover {
+            transform: translateY(-10px);
+        }
+        .pricing-card.featured {
+            border: 3px solid #f59e0b;
+            transform: scale(1.05);
+        }
+        .pricing-card.featured::before {
+            content: "⭐ POPULAIRE";
+            position: absolute;
+            top: 20px;
+            right: -35px;
+            background: #f59e0b;
+            color: white;
+            padding: 5px 40px;
+            transform: rotate(45deg);
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .plan-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .plan-price {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+        }
+        .plan-price .currency { font-size: 24px; }
+        .plan-price .period { font-size: 16px; color: #666; }
+        .discount-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .features {
+            list-style: none;
+            margin: 30px 0;
+            text-align: left;
+        }
+        .features li {
+            padding: 12px 0;
+            color: #555;
+            border-bottom: 1px solid #eee;
+        }
+        .features li:before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .btn-payment {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        .btn-stripe {
+            background: #635bff;
+            color: white;
+        }
+        .btn-stripe:hover {
+            background: #4f46e5;
+            transform: scale(1.02);
+        }
+        .btn-coinbase {
+            background: #0052ff;
+            color: white;
+        }
+        .btn-coinbase:hover {
+            background: #0041cc;
+            transform: scale(1.02);
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+    
+    .hero-logo{
+        width: 140px;
+        height: auto;
+        display: block;
+        margin: 0 auto 10px;
+        filter: drop-shadow(0 10px 24px rgba(0,0,0,0.35));
+    }
+    .interac-note{
+        margin-top: 18px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.10);
+        text-align: center;
+        font-weight: 600;
+        color: rgba(255,255,255,0.92);
+    }
+
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="brand">
-        {logo_html}
-        <div>
-          <h1>Plans & Tarifs</h1>
-          <div class="sub">Choisis ton plan — accès progressif (Free → Elite)</div>
+        <div class="pricing-page">
+    <div class="container">
+        <div class="header">
+            <img class="hero-logo" src="{logo_url}" alt="CryptoIA" />
+      <h1>💎 Plans & Tarifs</h1>
+            <p>Choisissez le plan qui vous convient</p>
         </div>
-      </div>
-      <div class="pill">Support: <a href="/contact" style="color:var(--text); text-decoration:none;">Contact</a></div>
+        
+        <!-- Section Code Promo -->
+        <div class="promo-section">
+            <h3>🎁 Vous avez un code promo?</h3>
+            <div class="promo-input-group">
+                <input type="text" 
+                       id="promoCode" 
+                       class="promo-input" 
+                       placeholder="Entrez votre code promo"
+                       onkeyup="this.value = this.value.toUpperCase()">
+                <button onclick="applyPromo()" class="promo-btn">Appliquer</button>
+            </div>
+            <div id="promoMessage" class="promo-message"></div>
+        </div>
+        
+        <div class="pricing-grid">
+            <!-- Plan 1 Month -->
+            <div class="pricing-card">
+                <div class="plan-name">💳 Premium</div>
+                <div class="discount-badge">1 mois</div>
+                <div class="plan-price" id="price-1-month">
+                    <span class="currency">$</span><span id="amount-1-month">29.99</span>
+                </div>
+                <ul class="features">
+                    <li>Tous les indicateurs IA</li>
+                    <li>Dashboard en temps réel</li>
+                    <li>Signaux de trading</li>
+                    <li>Support prioritaire</li>
+                </ul>
+                <button class="btn-payment btn-stripe" onclick="checkout('1_month', 'stripe', 29.99)">
+                    💳 Payer par Carte
+                </button>
+                <button class="btn-payment btn-coinbase" onclick="checkout('1_month', 'coinbase', 29.99)">
+                    ₿ Payer en Crypto
+                </button>
+            </div>
+            
+            <!-- Plan 3 Months -->
+            <div class="pricing-card featured">
+                <div class="plan-name">💎 Advanced</div>
+                <div class="discount-badge">3 mois - Économisez 17%</div>
+                <div class="plan-price" id="price-3-months">
+                    <span class="currency">$</span><span id="amount-3-months">74.97</span>
+                    <span class="period">/3 mois</span>
+                </div>
+                <ul class="features">
+                    <li>Tous les avantages Premium</li>
+                    <li>Webhooks TradingView</li>
+                    <li>Alertes Telegram</li>
+                    <li>Support 24/7</li>
+                </ul>
+                <button class="btn-payment btn-stripe" onclick="checkout('3_months', 'stripe', 74.97)">
+                    💳 Payer par Carte
+                </button>
+                <button class="btn-payment btn-coinbase" onclick="checkout('3_months', 'coinbase', 74.97)">
+                    ₿ Payer en Crypto
+                </button>
+            </div>
+            
+            <!-- Plan 6 Months -->
+            <div class="pricing-card">
+                <div class="plan-name">👑 Pro</div>
+                <div class="discount-badge">6 mois - Économisez 25%</div>
+                <div class="plan-price" id="price-6-months">
+                    <span class="currency">$</span><span id="amount-6-months">134.94</span>
+                    <span class="period">/6 mois</span>
+                </div>
+                <ul class="features">
+                    <li>Tous les avantages Advanced</li>
+                    <li>API accès complet</li>
+                    <li>Backtesting illimité</li>
+                    <li>Support VIP</li>
+                </ul>
+                <button class="btn-payment btn-stripe" onclick="checkout('6_months', 'stripe', 134.94)">
+                    💳 Payer par Carte
+                </button>
+                <button class="btn-payment btn-coinbase" onclick="checkout('6_months', 'coinbase', 134.94)">
+                    ₿ Payer en Crypto
+                </button>
+            </div>
+            
+            <!-- Plan 1 Year -->
+            <div class="pricing-card">
+                <div class="plan-name">🚀 Elite</div>
+                <div class="discount-badge">1 an - Économisez 33%</div>
+                <div class="plan-price" id="price-1-year">
+                    <span class="currency">$</span><span id="amount-1-year">239.88</span>
+                    <span class="period">/an</span>
+                </div>
+                <ul class="features">
+                    <li>Tous les avantages Pro</li>
+                    <li>Rapports PDF hebdomadaires</li>
+                    <li>Formation exclusive</li>
+                    <li>Support dédié</li>
+                </ul>
+                <button class="btn-payment btn-stripe" onclick="checkout('1_year', 'stripe', 239.88)">
+                    💳 Payer par Carte
+                </button>
+                <button class="btn-payment btn-coinbase" onclick="checkout('1_year', 'coinbase', 239.88)">
+                    ₿ Payer en Crypto
+                </button>
+            </div>
+        </div>
+        
+        <!-- Section Pages & Fonctionnalités Détaillées -->
+        <div style="background: white; border-radius: 20px; padding: 50px; margin-top: 60px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <h2 style="text-align: center; color: #333; font-size: 36px; margin-bottom: 20px;">
+                📋 Pages & Fonctionnalités Disponibles
+            </h2>
+            <p style="text-align: center; color: #666; font-size: 18px; margin-bottom: 40px;">
+                Découvrez exactement ce que vous obtenez avec chaque plan
+            </p>
+            
+            <!-- Tabs Navigation -->
+            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
+                <button onclick="showPlan('free')" id="tab-free" class="plan-tab active-tab">
+                    🆓 GRATUIT
+                </button>
+                <button onclick="showPlan('premium')" id="tab-premium" class="plan-tab">
+                    💳 PREMIUM
+                </button>
+                <button onclick="showPlan('advanced')" id="tab-advanced" class="plan-tab">
+                    💎 ADVANCED
+                </button>
+                <button onclick="showPlan('pro')" id="tab-pro" class="plan-tab">
+                    👑 PRO
+                </button>
+                <button onclick="showPlan('elite')" id="tab-elite" class="plan-tab">
+                    🚀 ELITE
+                </button>
+            </div>
+            
+            <!-- Plan FREE -->
+            <div id="plan-free" class="plan-content">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">🆓 Plan GRATUIT - $0/mois</h3>
+                    <p style="font-size: 16px; opacity: 0.9;">9 pages accessibles sans inscription</p>
+                </div>
+                
+                <div class="pages-grid">
+                    <div class="page-card">
+                        <div class="page-icon">🏠</div>
+                        <h4>Page d'Accueil</h4>
+                        <p>Vue d'ensemble du marché crypto avec statistiques principales</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">📊</div>
+                        <h4>Dashboard</h4>
+                        <p>Dashboard de base avec indicateurs essentiels et statistiques temps réel</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">😨</div>
+                        <h4>Fear & Greed Index</h4>
+                        <p>Indice de sentiment du marché Bitcoin, indicateur émotionnel</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">👑</div>
+                        <h4>Bitcoin Dominance</h4>
+                        <p>Suivi de la domination BTC vs altcoins avec graphiques historiques</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">🔥</div>
+                        <h4>Altcoin Season Index</h4>
+                        <p>Index 90 jours indiquant si c'est Bitcoin ou Altcoin Season</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">🗺️</div>
+                        <h4>Crypto Heatmap</h4>
+                        <p>Carte thermique du marché crypto avec top gainers/losers</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">📰</div>
+                        <h4>Actualités Crypto</h4>
+                        <p>Feed d'actualités crypto en temps réel de sources fiables</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">💱</div>
+                        <h4>Convertisseur</h4>
+                        <p>Convertisseur de devises crypto/fiat avec taux en direct</p>
+                    </div>
+                    
+                    <div class="page-card">
+                        <div class="page-icon">📅</div>
+                        <h4>Calendrier Économique</h4>
+                        <p>Événements crypto importants et annonces de projets</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plan PREMIUM -->
+            <div id="plan-premium" class="plan-content" style="display: none;">
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">💳 Plan PREMIUM - $20.00/mois</h3>
+                    <p style="font-size: 16px; opacity: 0.9;">9 pages gratuites + 7 pages premium = 16 pages totales</p>
+                </div>
+                
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+                    <strong style="color: #065f46;">✅ Inclut toutes les pages GRATUITES +</strong>
+                </div>
+                
+                <div class="pages-grid">
+                    <div class="page-card premium-card">
+                        <div class="page-icon">🤖</div>
+                        <h4>Assistant IA</h4>
+                        <p>Assistant IA pour analyse de marché, recommandations personnalisées et réponses trading</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">💹</div>
+                        <h4>Spot Trading</h4>
+                        <p>Interface de trading spot avec gestion de positions, historique et calcul P&L automatique</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">📊</div>
+                        <h4>Dashboard Trades</h4>
+                        <p>Vue complète de tous vos trades avec statistiques détaillées et filtres avancés</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">👁️</div>
+                        <h4>Watchlist</h4>
+                        <p>Liste de surveillance avec alertes de prix personnalisées et notifications temps réel</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">🧮</div>
+                        <h4>Calculatrice Trading</h4>
+                        <p>Calcul de taille de position, leverage, profits/pertes et conversions</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">🎮</div>
+                        <h4>Simulateur Marché</h4>
+                        <p>Trading en mode simulation avec données réelles, sans risque financier</p>
+                    </div>
+                    
+                    <div class="page-card premium-card">
+                        <div class="page-icon">👤</div>
+                        <h4>Mon Compte</h4>
+                        <p>Gestion complète du profil, abonnement, statistiques et historique</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plan ADVANCED -->
+            <div id="plan-advanced" class="plan-content" style="display: none;">
+                <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">💎 Plan ADVANCED - $50.00/3 mois</h3>
+                    <p style="font-size: 16px; opacity: 0.9;">16 pages Premium + 7 pages Advanced = 23 pages totales</p>
+                </div>
+                
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+                    <strong style="color: #065f46;">✅ Inclut toutes les pages PREMIUM +</strong>
+                </div>
+                
+                <div class="pages-grid">
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">🔍</div>
+                        <h4>Scanner Opportunités IA</h4>
+                        <p>Détection automatique d'opportunités de trading avec analyse de patterns et scoring</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">📈</div>
+                        <h4>Détection Régime Marché</h4>
+                        <p>Identification automatique des phases Bull/Bear/Consolidation avec analyse de volatilité</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">📋</div>
+                        <h4>Gestion Stratégies</h4>
+                        <p>Création et gestion de stratégies personnalisées avec optimisation de paramètres</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">⚠️</div>
+                        <h4>Risk Management</h4>
+                        <p>Calcul avancé de taille de position, Risk/Reward, Stop Loss et Take Profit suggérés</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">📊</div>
+                        <h4>Stats Dashboard Avancé</h4>
+                        <p>Statistiques détaillées avec win rate, profit factor, meilleures/pires trades</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">📈</div>
+                        <h4>Graphiques Personnalisés</h4>
+                        <p>Charts avancés avec indicateurs techniques et analyse multi-timeframe</p>
+                    </div>
+                    
+                    <div class="page-card advanced-card">
+                        <div class="page-icon">🚀</div>
+                        <h4>Détection Bull Run</h4>
+                        <p>Identification automatique des phases de bull run avec indicateurs et prédictions</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plan PRO -->
+            <div id="plan-pro" class="plan-content" style="display: none;">
+                <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">👑 Plan PRO - $134.94/6 mois</h3>
+                    <p style="font-size: 16px; opacity: 0.9;">23 pages Advanced + 5 pages Pro = 28 pages totales</p>
+                </div>
+                
+                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+                    <strong style="color: #065f46;">✅ Inclut toutes les pages ADVANCED +</strong>
+                </div>
+                
+                <div class="pages-grid">
+                    <div class="page-card pro-card">
+                        <div class="page-icon">🐋</div>
+                        <h4>Whale Watcher</h4>
+                        <p>Surveillance des mouvements de gros capitaux avec alertes transactions importantes</p>
+                    </div>
+                    
+                    <div class="page-card pro-card">
+                        <div class="page-icon">🔄</div>
+                        <h4>Backtesting Complet</h4>
+                        <p>Test de stratégies sur données historiques avec métriques avancées (Sharpe, Max DD)</p>
+                    </div>
+                    
+                    <div class="page-card pro-card">
+                        <div class="page-icon">📡</div>
+                        <h4>Stats Temps Réel</h4>
+                        <p>Métriques en direct avec performance du jour, P&L live et taux de réussite</p>
+                    </div>
+                    
+                    <div class="page-card pro-card">
+                        <div class="page-icon">📄</div>
+                        <h4>Rapports PDF</h4>
+                        <p>Génération automatique de rapports mensuels avec analyses et graphiques exportables</p>
+                    </div>
+                    
+                    <div class="page-card pro-card">
+                        <div class="page-icon">⛓️</div>
+                        <h4>Métriques On-Chain</h4>
+                        <p>Données blockchain avancées, flux de transactions et indicateurs on-chain</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Plan ELITE -->
+            <div id="plan-elite" class="plan-content" style="display: none;">
+                <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
+                    <h3 style="font-size: 28px; margin-bottom: 10px;">🚀 Plan ELITE - $150.00/an</h3>
+                    <p style="font-size: 16px; opacity: 0.9;">28 pages Pro + 3 pages Elite = 31 pages totales - TOUT DÉBLOQUÉ!</p>
+                </div>
+                
+                <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                    <strong style="color: #92400e;">⭐ Inclut TOUTES les pages PRO + Accès API Complet</strong>
+                </div>
+                
+                <div class="pages-grid">
+                    <div class="page-card elite-card">
+                        <div class="page-icon">🔮</div>
+                        <h4>Prédictions IA Avancées</h4>
+                        <p>Prédictions de prix basées sur machine learning avec modèles avancés et probabilités</p>
+                    </div>
+                    
+                    <div class="page-card elite-card">
+                        <div class="page-icon">🔑</div>
+                        <h4>Gestion Clés API</h4>
+                        <p>Génération de clés API personnelles pour accès programmatique à toutes vos données</p>
+                    </div>
+                    
+                    <div class="page-card elite-card">
+                        <div class="page-icon">📚</div>
+                        <h4>Documentation API</h4>
+                        <p>Documentation complète de l'API avec exemples de code et limites de rate</p>
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 30px; border-radius: 15px; margin-top: 30px; text-align: center;">
+                    <h3 style="color: #92400e; font-size: 24px; margin-bottom: 15px;">🎁 Bonus Exclusifs ELITE</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <div style="font-size: 36px; margin-bottom: 10px;">🎓</div>
+                            <strong>Formation Exclusive</strong>
+                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Accès aux webinaires et formations trading</p>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <div style="font-size: 36px; margin-bottom: 10px;">💬</div>
+                            <strong>Support Dédié VIP</strong>
+                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Réponse prioritaire sous 1 heure</p>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <div style="font-size: 36px; margin-bottom: 10px;">📊</div>
+                            <strong>Rapports Hebdo</strong>
+                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Rapports PDF automatiques chaque semaine</p>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                            <div style="font-size: 36px; margin-bottom: 10px;">∞</div>
+                            <strong>Limites Illimitées</strong>
+                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Pas de limite sur les appels API</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <style>
+                .plan-tab {
+                    padding: 15px 25px;
+                    border: 2px solid #e0e0e0;
+                    background: white;
+                    border-radius: 10px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    font-size: 16px;
+                    min-width: 150px;
+                    white-space: nowrap;
+                    text-align: center;
+                    color: #111;
+                }
+                .plan-tab:hover {
+                    border-color: #667eea;
+                    transform: scale(1.05);
+                    color: #111;
+                }
+                .plan-tab.active-tab {
+                    background: #667eea;
+                    color: white;
+                    border-color: #667eea;
+                }
+                .pages-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 20px;
+                    margin-top: 20px;
+                }
+                .page-card {
+                    background: #f9fafb;
+                    border-radius: 12px;
+                    padding: 25px;
+                    border: 2px solid #e5e7eb;
+                    transition: all 0.3s;
+                }
+                .page-card:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                }
+                .premium-card {
+                    border-color: #667eea;
+                    background: linear-gradient(135deg, #f3f4ff 0%, #ffffff 100%);
+                }
+                .advanced-card {
+                    border-color: #f59e0b;
+                    background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
+                }
+                .pro-card {
+                    border-color: #8b5cf6;
+                    background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 100%);
+                }
+                .elite-card {
+                    border-color: #ef4444;
+                    background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+                }
+                .page-icon {
+                    font-size: 42px;
+                    margin-bottom: 15px;
+                }
+                .page-card h4 {
+                    color: #333;
+                    font-size: 18px;
+                    margin-bottom: 10px;
+                }
+                .page-card p {
+                    color: #666;
+                    font-size: 14px;
+                    line-height: 1.6;
+                }
+            </style>
+            
+            <script>
+                function showPlan(planName) {
+                    // Cacher tous les plans
+                    document.querySelectorAll('.plan-content').forEach(el => {
+                        el.style.display = 'none';
+                    });
+                    
+                    // Retirer la classe active de tous les tabs
+                    document.querySelectorAll('.plan-tab').forEach(el => {
+                        el.classList.remove('active-tab');
+                    });
+                    
+                    // Afficher le plan slectionn
+                    document.getElementById('plan-' + planName).style.display = 'block';
+                    document.getElementById('tab-' + planName).classList.add('active-tab');
+                }
+            </script>
+        </div>
+        
+        <center>
+            <a href="/dashboard" class="back-link">← Retour au Dashboard</a>
+        </center>
+        <p class="interac-note">Virement interac accepté cryptoia2026@proton.me — veuillez nous écrire.</p>
     </div>
 
-    <div class="grid">
-      {cards_html}
-    </div>
-
-    <div class="note">
-      * Si tu arrives sur une page bloquée, c'est normal: ton plan ne donne pas accès.
-      Va dans <b>Plans & Tarifs</b> pour upgrader.
-    </div>
-  </div>
-</body>
-</html>"""
-
-    sidebar = globals().get("SIDEBAR", "")
-    return HTMLResponse(sidebar + html)
+    <script>
+        // tat global pour le code promo
+        let appliedPromo = {
+            code: null,
+            discount: 0,
+            originalPrices: {
+                '1_month': 29.99,
+                '3_months': 74.97,
+                '6_months': 134.94,
+                '1_year': 239.88
+            },
+            discountedPrices: {}
+        };
+        
+        // Appliquer le code promo
+        async function applyPromo() {
+            const codeInput = document.getElementById('promoCode');
+            const code = codeInput.value.trim().toUpperCase();
+            const messageDiv = document.getElementById('promoMessage');
+            
+            if (!code) {
+                showMessage('Veuillez entrer un code promo', 'error');
+                return;
+            }
+            
+            messageDiv.innerHTML = '🔄 Validation en cours...';
+            messageDiv.className = 'promo-message';
+            messageDiv.style.display = 'block';
+            
+            try {
+                // Valider pour chaque plan
+                let validForAnyPlan = false;
+                
+                for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
+                    const response = await fetch(`/api/validate-promo?code=${code}&plan=${plan}&amount=${originalPrice}`);
+                    const data = await response.json();
+                    
+                    if (data.valid && data.discount) {
+                        validForAnyPlan = true;
+                        appliedPromo.code = code;
+                        appliedPromo.discountedPrices[plan] = data.final_amount;
+                        updatePriceDisplay(plan, originalPrice, data.final_amount);
+                    }
+                }
+                
+                if (validForAnyPlan) {
+                    showMessage(`✅ Code ${code} appliqué avec succès!`, 'success');
+                } else {
+                    showMessage('❌ Code promo invalide ou expiré', 'error');
+                    resetPrices();
+                }
+            } catch (error) {
+                showMessage('❌ Erreur lors de la validation', 'error');
+                console.error(error);
+            }
+        }
+        
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('promoMessage');
+            messageDiv.innerHTML = message;
+            messageDiv.className = `promo-message ${type}`;
+            messageDiv.style.display = 'block';
+        }
+        
+        function updatePriceDisplay(plan, originalPrice, newPrice) {
+            const amountSpan = document.getElementById(`amount-${plan}`);
+            amountSpan.innerHTML = `
+                <span class="original-price">$${originalPrice.toFixed(2)}</span>
+                ${newPrice.toFixed(2)}
+            `;
+        }
+        
+        function resetPrices() {
+            appliedPromo.code = null;
+            appliedPromo.discountedPrices = {};
+            
+            for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
+                const amountSpan = document.getElementById(`amount-${plan}`);
+                amountSpan.textContent = originalPrice.toFixed(2);
+            }
+        }
+        
+        async function checkout(plan, method, baseAmount) {
+            const finalAmount = appliedPromo.discountedPrices[plan] || baseAmount;
+            
+            if (method === 'stripe') {
+                const response = await fetch('/api/stripe-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        plan: plan,
+                        amount: finalAmount,
+                        promo_code: appliedPromo.code
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert('Erreur: ' + (data.error || 'Impossible de créer la session'));
+                }
+            } else {
+                const response = await fetch('/api/coinbase-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        plan: plan,
+                        amount: finalAmount,
+                        promo_code: appliedPromo.code
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert('Erreur: ' + (data.error || 'Impossible de créer le paiement'));
+                }
+            }
+        }
+    </script>
+        </div>
+    </body>
+</html>
+""")
 @app.get("/pricing-new")
 async def pricing_page_new(request: Request):
     # Page legacy → redirige vers la version complète

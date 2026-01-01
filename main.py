@@ -4132,12 +4132,26 @@ async def check_tp_sl_hits():
             continue
         
         symbol = trade.get('symbol')
-        side = trade.get('side')
-        entry = float(trade.get('entry'))
-        sl = float(trade.get('sl'))
-        tp1 = float(trade.get('tp1'))
-        tp2 = float(trade.get('tp2'))
-        tp3 = float(trade.get('tp3'))
+        side = (trade.get('side') or '').upper()
+
+        # Parsing safe (évite que la tâche de fond crash si un champ est manquant)
+        try:
+            entry = _to_float(trade.get('entry'))
+            sl = _to_float(trade.get('sl'))
+            tp1 = _to_float(trade.get('tp1'))
+            tp2 = _to_float(trade.get('tp2'))
+            tp3 = _to_float(trade.get('tp3'))
+        except Exception:
+            continue
+
+        if tp2 is None:
+            tp2 = tp1
+        if tp3 is None:
+            tp3 = tp2
+
+        if not symbol or entry is None or sl is None or tp1 is None:
+            continue
+
         
         current_price = await get_mexc_price(symbol)
         if current_price is None:
@@ -6874,6 +6888,31 @@ async def webhook(request: Request):
         tp2 = _to_float(d.get("tp2") or d.get("take_profit_2") or d.get("Take Profit 2"))
         tp3 = _to_float(d.get("tp3") or d.get("take_profit_3") or d.get("Take Profit 3"))
 
+        # Confiance/Leverage (optionnels) — pour afficher le "niveau de confiance" comme avant
+        conf_raw = d.get("confidence") or d.get("conf") or d.get("confidence_pct") or d.get("confidence_score") or d.get("Confidence")
+        confidence = None
+        if conf_raw is not None and str(conf_raw).strip() != "":
+            try:
+                confidence = int(float(str(conf_raw).replace("%","").strip()))
+            except Exception:
+                confidence = None
+
+        lev_raw = d.get("leverage") or d.get("lev") or d.get("Leverage") or d.get("LEVERAGE")
+        leverage = None
+        if lev_raw is not None and str(lev_raw).strip() != "":
+            try:
+                # accepter 10, "10", "10x"
+                slev = str(lev_raw).strip()
+                if slev.lower().endswith("x"):
+                    leverage = slev
+                else:
+                    leverage = f"{int(float(slev))}x"
+            except Exception:
+                leverage = str(lev_raw).strip()
+
+        note = d.get("note") or d.get("comment") or d.get("message") or d.get("Note")
+        action = d.get("action") or d.get("Action")
+
         return {
             "type": str(d.get("type") or "ENTRY").upper(),
             "symbol": symbol,
@@ -6886,6 +6925,10 @@ async def webhook(request: Request):
             "tp1": tp1,
             "tp2": tp2,
             "tp3": tp3,
+            "confidence": confidence,
+            "leverage": leverage,
+            "note": note,
+            "action": action,
         }
 
     normalized = _normalize(payload)

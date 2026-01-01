@@ -2,7 +2,74 @@
 # NOTE: Railway/uvicorn safe. Python comments use '#', not '//'.
 from fastapi import FastAPI, Request, Response, Depends, HTTPException, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response, PlainTextResponse
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+# ---- Lightweight replacement for `itsdangerous` (Railway env may not include it) ----
+# This keeps the same API used in this app: URLSafeTimedSerializer, BadSignature, SignatureExpired.
+import base64
+import hashlib
+import hmac
+import time
+
+class BadSignature(Exception):
+    pass
+
+class SignatureExpired(BadSignature):
+    pass
+
+def _b64url_encode(b: bytes) -> str:
+    return base64.urlsafe_b64encode(b).rstrip(b"=").decode("utf-8")
+
+def _b64url_decode(s: str) -> bytes:
+    pad = "=" * (-len(s) % 4)
+    return base64.urlsafe_b64decode((s + pad).encode("utf-8"))
+
+class URLSafeTimedSerializer:
+    """Small, dependency-free signer compatible with the calls used in this codebase.
+    Token format: <b64url(payload_bytes)>.<b64url(sig)>
+    Where payload_bytes is JSON containing {"t": unix_ts, "d": <data>}
+    """
+
+    def __init__(self, secret_key: str, salt: str = ""):
+        secret_key = (secret_key or "").encode("utf-8")
+        salt_b = (salt or "").encode("utf-8")
+        # derive a stable HMAC key from secret + salt
+        self._key = hashlib.sha256(secret_key + b":" + salt_b).digest()
+
+    def _sign(self, msg: bytes) -> bytes:
+        return hmac.new(self._key, msg, hashlib.sha256).digest()
+
+    def dumps(self, obj) -> str:
+        payload = {"t": int(time.time()), "d": obj}
+        raw = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        sig = self._sign(raw)
+        return _b64url_encode(raw) + "." + _b64url_encode(sig)
+
+    def loads(self, token: str, max_age: int | None = None):
+        try:
+            p1, p2 = token.split(".", 1)
+        except Exception:
+            raise BadSignature("Invalid token format")
+        try:
+            raw = _b64url_decode(p1)
+            sig = _b64url_decode(p2)
+        except Exception:
+            raise BadSignature("Invalid base64")
+        expected = self._sign(raw)
+        if not hmac.compare_digest(sig, expected):
+            raise BadSignature("Bad signature")
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+        except Exception:
+            raise BadSignature("Invalid JSON payload")
+        ts = payload.get("t")
+        if max_age is not None:
+            try:
+                age = int(time.time()) - int(ts)
+            except Exception:
+                raise BadSignature("Invalid timestamp")
+            if age > int(max_age):
+                raise SignatureExpired("Signature expired")
+        return payload.get("d")
+# ---- End replacement ----
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path

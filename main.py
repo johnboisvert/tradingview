@@ -93,6 +93,26 @@ try:
     from protected_routes import router as protected_router, register_template_functions
     PERMISSIONS_AVAILABLE = True
     print("✅ Système de permissions chargé")
+    # Helpers utilisables dans les templates (évite KeyError 'has_feature')
+    def has_feature(user, feature):
+        try:
+            if user is None:
+                return False
+            # feature peut être un enum Feature ou un string (ex: 'AI_SIGNALS')
+            if isinstance(feature, str):
+                f = Feature[feature] if feature in getattr(Feature, '__members__', {}) else feature
+            else:
+                f = feature
+            # Si on ne peut pas résoudre le feature, on préfère ne pas casser le rendu
+            if isinstance(f, str):
+                return True
+            return bool(check_feature_access(user, f))
+        except Exception:
+            return True
+
+    def user_has_feature(user, feature):
+        return has_feature(user, feature)
+
 except ImportError as e:
     print(f"⚠️  Système de permissions non disponible: {e}")
     PERMISSIONS_AVAILABLE = False
@@ -2339,6 +2359,12 @@ print(f"✅ Templates Jinja2 configurés (logo={SITE_LOGO_URL})")
 
 # Enregistrer les fonctions template si systme permissions disponible
 if PERMISSIONS_AVAILABLE:
+    try:
+        templates.env.globals.setdefault('has_feature', has_feature)
+        templates.env.globals.setdefault('user_has_feature', user_has_feature)
+        templates.env.globals.setdefault('Feature', Feature)
+    except Exception as _e:
+        print(f"⚠️  Erreur ajout globals templates: {_e}")
     register_template_functions(templates)
 
 
@@ -3396,6 +3422,7 @@ MEXC_PRICE_ENDPOINT = f"{MEXC_API_BASE}/api/v3/ticker/price"
 
 #  Background Monitor
 monitor_running = False
+monitor_lock = asyncio.Lock()
 
 # ============================================================================
 #  SYSTME D'AUTHENTIFICATION AVEC POSTGRESQL
@@ -4132,26 +4159,12 @@ async def check_tp_sl_hits():
             continue
         
         symbol = trade.get('symbol')
-        side = (trade.get('side') or '').upper()
-
-        # Parsing safe (évite que la tâche de fond crash si un champ est manquant)
-        try:
-            entry = _to_float(trade.get('entry'))
-            sl = _to_float(trade.get('sl'))
-            tp1 = _to_float(trade.get('tp1'))
-            tp2 = _to_float(trade.get('tp2'))
-            tp3 = _to_float(trade.get('tp3'))
-        except Exception:
-            continue
-
-        if tp2 is None:
-            tp2 = tp1
-        if tp3 is None:
-            tp3 = tp2
-
-        if not symbol or entry is None or sl is None or tp1 is None:
-            continue
-
+        side = trade.get('side')
+        entry = float(trade.get('entry'))
+        sl = float(trade.get('sl'))
+        tp1 = float(trade.get('tp1'))
+        tp2 = float(trade.get('tp2'))
+        tp3 = float(trade.get('tp3'))
         
         current_price = await get_mexc_price(symbol)
         if current_price is None:
@@ -6888,31 +6901,6 @@ async def webhook(request: Request):
         tp2 = _to_float(d.get("tp2") or d.get("take_profit_2") or d.get("Take Profit 2"))
         tp3 = _to_float(d.get("tp3") or d.get("take_profit_3") or d.get("Take Profit 3"))
 
-        # Confiance/Leverage (optionnels) — pour afficher le "niveau de confiance" comme avant
-        conf_raw = d.get("confidence") or d.get("conf") or d.get("confidence_pct") or d.get("confidence_score") or d.get("Confidence")
-        confidence = None
-        if conf_raw is not None and str(conf_raw).strip() != "":
-            try:
-                confidence = int(float(str(conf_raw).replace("%","").strip()))
-            except Exception:
-                confidence = None
-
-        lev_raw = d.get("leverage") or d.get("lev") or d.get("Leverage") or d.get("LEVERAGE")
-        leverage = None
-        if lev_raw is not None and str(lev_raw).strip() != "":
-            try:
-                # accepter 10, "10", "10x"
-                slev = str(lev_raw).strip()
-                if slev.lower().endswith("x"):
-                    leverage = slev
-                else:
-                    leverage = f"{int(float(slev))}x"
-            except Exception:
-                leverage = str(lev_raw).strip()
-
-        note = d.get("note") or d.get("comment") or d.get("message") or d.get("Note")
-        action = d.get("action") or d.get("Action")
-
         return {
             "type": str(d.get("type") or "ENTRY").upper(),
             "symbol": symbol,
@@ -6925,10 +6913,6 @@ async def webhook(request: Request):
             "tp1": tp1,
             "tp2": tp2,
             "tp3": tp3,
-            "confidence": confidence,
-            "leverage": leverage,
-            "note": note,
-            "action": action,
         }
 
     normalized = _normalize(payload)
@@ -19017,7 +19001,7 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
     """Page de pricing avec support codes promo"""
-    return HTMLResponse(SIDEBAR + """
+    html = SIDEBAR + """
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -19900,7 +19884,27 @@ async def pricing_complete():
         </div>
     </body>
 </html>
-""")
+    """
+    try:
+        html = html.replace('{logo_url}', SITE_LOGO_URL)
+    except Exception:
+        pass
+    try:
+        _plans = get_all_plan_pricing()
+        def _fmt(_k: str) -> str:
+            _p = _plans.get(_k, {}) if isinstance(_plans, dict) else {}
+            _cents = _p.get('price_cents', 0) if isinstance(_p, dict) else 0
+            try:
+                return f"{(float(_cents) or 0.0)/100.0:.2f}"
+            except Exception:
+                return "0.00"
+        html = html.replace('$29.99', f"${_fmt('premium')}")
+        html = html.replace('$74.97', f"${_fmt('advanced')}")
+        html = html.replace('$134.94', f"${_fmt('pro')}")
+        html = html.replace('$239.88', f"${_fmt('elite')}")
+    except Exception as _e:
+        print(f"⚠️ pricing-complete: impossible de charger les prix dynamiques: {_e}")
+    return HTMLResponse(html)
 @app.get("/pricing-new")
 async def pricing_page_new(request: Request):
     # Page legacy → redirige vers la version complète
@@ -26218,48 +26222,71 @@ async def save_plan_access(request: Request, session_token: Optional[str] = Cook
 # Admin - Plan Prices (sync /pricing-complete + Stripe/Coinbase)
 # =====================
 @app.get("/admin/api/plan-prices")
-@app.get("/admin-dashboard/api/plan-prices")
-async def admin_get_plan_prices(request: Request):
-    if not request.cookies.get("admin_session"):
-        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
-    return JSONResponse({"success": True, "plans": get_all_plan_pricing()})
+async def admin_get_plan_prices(username: str = Depends(require_admin)):
+    """Retourne les prix des plans (admin only)."""
+    try:
+        plans = get_all_plan_pricing()
+        return JSONResponse({"success": True, "plans": plans})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
 @app.post("/admin/save-plan-prices")
 @app.post("/admin-dashboard/save-plan-prices")
-async def admin_save_plan_prices(request: Request):
-    if not request.cookies.get("admin_session"):
-        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
-
+async def admin_save_plan_prices(request: Request, username: str = Depends(require_admin)):
+    """Sauvegarde les prix des plans (admin only).
+    Attend un JSON du type: {"plans": {"premium": {"price": 20.0, "currency": "cad", "duration_days": 30}, ...}}
+    ou directement {"premium": {"price": 20.0, ...}, ...}.
+    """
     try:
         data = await request.json()
     except Exception:
-        data = {}
+        return JSONResponse({"success": False, "error": "Payload JSON invalide"}, status_code=400)
 
-    plans = data.get("plans", {})
-    if not isinstance(plans, dict):
-        return JSONResponse({"success": False, "message": "Payload invalide"}, status_code=400)
+    plans_obj = data.get("plans") if isinstance(data, dict) else None
+    updates = plans_obj if isinstance(plans_obj, dict) else (data if isinstance(data, dict) else None)
+    if not isinstance(updates, dict):
+        return JSONResponse({"success": False, "error": "Format invalide"}, status_code=400)
 
-    updated = []
-    for plan_key, cfg in plans.items():
+    errors = []
+    for plan_name, cfg in updates.items():
+        if not isinstance(cfg, dict):
+            errors.append(str(plan_name))
+            continue
+
+        currency = (cfg.get("currency") or "cad").lower()
+        duration_days = cfg.get("duration_days") or cfg.get("duration") or cfg.get("days")
+        price_cents = cfg.get("price_cents")
+        price = cfg.get("price")
+        # Supporte aussi {"amount": 20.0} / {"amount_cents": 2000}
+        if price is None and "amount" in cfg:
+            price = cfg.get("amount")
+        if price_cents is None and "amount_cents" in cfg:
+            price_cents = cfg.get("amount_cents")
+
         try:
-            p = normalize_plan(plan_key)
-            if p not in DEFAULT_PLAN_PRICES:
-                continue
-            display = str(cfg.get("display_name") or DEFAULT_PLAN_PRICES[p]["display_name"])
-            currency = str(cfg.get("currency") or "cad").lower()
-            if "price_cents" in cfg:
-                cents = int(cfg.get("price_cents") or 0)
-            else:
-                cents = int(round(float(cfg.get("price") or 0) * 100))
-            days = int(cfg.get("duration_days") or DEFAULT_PLAN_PRICES[p]["duration_days"])
-            cents = max(0, cents)
-            days = max(0, days)
-            if set_plan_pricing(p, display, days, cents, currency):
-                updated.append(p)
-        except Exception as e:
-            print(f"⚠️ admin_save_plan_prices: {e}")
+            duration_days = int(duration_days)
+        except Exception:
+            errors.append(str(plan_name))
+            continue
 
-    return JSONResponse({"success": True, "updated": updated, "plans": get_all_plan_pricing()})
+        try:
+            if price_cents is None:
+                price_cents = int(round(float(price) * 100.0))
+            else:
+                price_cents = int(round(float(price_cents)))
+        except Exception:
+            errors.append(str(plan_name))
+            continue
+
+        try:
+            update_plan_pricing(str(plan_name), price_cents, currency, duration_days)
+        except Exception as e:
+            errors.append(f"{plan_name} ({e})")
+
+    if errors:
+        return JSONResponse({"success": False, "error": "Plans invalides: " + ", ".join(errors)}, status_code=400)
+
+    return JSONResponse({"success": True})
 
 @app.post("/admin/create-promo")
 @app.post("/admin-dashboard/create-promo")
@@ -26919,21 +26946,57 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
             })
         
         # ROI des codes promo
-        cursor.execute("""
-            SELECT code, uses, discount, type FROM promo_codes
-            WHERE uses > 0
-            ORDER BY uses DESC
-        """)
-        
         promo_roi = []
-        for row in cursor.fetchall():
-            code, uses, discount, ptype = row
-            # Simuler revenus et ROI
-            avg_purchase = 75
+        promo_rows = []
+        promo_schema = "legacy"
+        try:
+            cursor.execute("""
+                SELECT code, uses, discount, type
+                FROM promo_codes
+                WHERE uses > 0
+                ORDER BY uses DESC
+                LIMIT 10
+            """)
+            promo_rows = cursor.fetchall()
+            promo_schema = "legacy"
+        except Exception:
+            # Nouveau schéma (redeemed_count / discount_amount / discount_percent / discount_type)
+            cursor.execute("""
+                SELECT code,
+                       COALESCE(redeemed_count, 0) AS uses,
+                       COALESCE(discount_amount, 0) AS discount_amount,
+                       COALESCE(discount_percent, 0) AS discount_percent,
+                       COALESCE(discount_type, 'percent') AS type
+                FROM promo_codes
+                WHERE COALESCE(redeemed_count, 0) > 0
+                ORDER BY uses DESC
+                LIMIT 10
+            """)
+            promo_rows = cursor.fetchall()
+            promo_schema = "v2"
+
+        for row in promo_rows:
+            avg_purchase = 75  # panier moyen estimé
+            if promo_schema == "legacy":
+                code, uses, discount, ptype = row
+                uses = int(uses or 0)
+                ptype = (ptype or "percent").lower()
+                discount_amount = float(discount or 0.0) if ptype in ("fixed", "amount") else 0.0
+                discount_percent = float(discount or 0.0) if ptype not in ("fixed", "amount") else 0.0
+            else:
+                code, uses, discount_amount, discount_percent, ptype = row
+                uses = int(uses or 0)
+                ptype = (ptype or "percent").lower()
+                discount_amount = float(discount_amount or 0.0)
+                discount_percent = float(discount_percent or 0.0)
+
             revenue_total = uses * avg_purchase
-            discount_total = uses * (discount if ptype == 'fixed' else avg_purchase * discount / 100)
+            if ptype in ("fixed", "amount"):
+                discount_total = uses * discount_amount
+            else:
+                discount_total = uses * (avg_purchase * discount_percent / 100.0)
+
             roi = ((revenue_total / discount_total) * 100) if discount_total > 0 else 0
-            
             promo_roi.append({
                 "code": code,
                 "uses": uses,

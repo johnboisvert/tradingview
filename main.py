@@ -12285,7 +12285,7 @@ async def news_api():
 
 @app.get("/nouvelles", response_class=HTMLResponse)
 async def news_page():
-    html = SIDEBAR + """<!DOCTYPE html>
+    html = """<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -19044,9 +19044,34 @@ async def create_charge(req: CreateChargeRequest, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/pricing-complete", response_class=HTMLResponse)
-async def pricing_complete():
-    """Page de pricing avec support codes promo"""
-    return HTMLResponse(SIDEBAR + """
+async def pricing_complete(request: Request):
+    """Page Plans & Tarifs (publique)"""
+    plans = get_all_plan_pricing()
+
+    def _price(plan_name: str, fallback_cents: int) -> float:
+        try:
+            return float(int(plans.get(plan_name, {}).get("price_cents", fallback_cents))) / 100.0
+        except Exception:
+            return float(fallback_cents) / 100.0
+
+    premium_total = _price("premium", 2999)
+    advanced_total = _price("advanced", 7497)
+    pro_total = _price("pro", 13494)
+    elite_total = _price("elite", 23988)
+
+    def _save_pct(total: float, months: int) -> int:
+        base = premium_total * max(1, months)
+        if base <= 0:
+            return 0
+        return max(0, int(round((1.0 - (total / base)) * 100)))
+
+    adv_save = _save_pct(advanced_total, 3)
+    pro_save = _save_pct(pro_total, 6)
+    elite_save = _save_pct(elite_total, 12)
+
+    logo_url = SITE_LOGO_URL
+
+    html = SIDEBAR + """
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -19929,7 +19954,29 @@ async def pricing_complete():
         </div>
     </body>
 </html>
-""")
+"""
+
+    # Insère le sidebar juste après <body> pour garder <!DOCTYPE html> en premier (évite Quirks Mode)
+    try:
+        html = re.sub(r"<body([^>]*)>", r"<body\\1>" + SIDEBAR, html, count=1)
+    except Exception:
+        html = SIDEBAR + html
+
+    # Inject logo + prix dynamiques
+    html = html.replace("{logo_url}", str(logo_url))
+    html = html.replace("$29.99", f"${premium_total:.2f}")
+    html = html.replace("$74.97", f"${advanced_total:.2f}")
+    html = html.replace("$134.94", f"${pro_total:.2f}")
+    html = html.replace("$239.88", f"${elite_total:.2f}")
+
+    # Badges économies (si présents)
+    html = html.replace("3 mois - Économisez 17%", f"3 mois - Économisez {adv_save}%")
+    html = html.replace("6 mois - Économisez 25%", f"6 mois - Économisez {pro_save}%")
+    html = html.replace("1 an - Économisez 33%", f"1 an - Économisez {elite_save}%")
+
+    return HTMLResponse(html)
+
+
 @app.get("/pricing-new")
 async def pricing_page_new(request: Request):
     # Page legacy → redirige vers la version complète
@@ -26249,14 +26296,22 @@ async def save_plan_access(request: Request, session_token: Optional[str] = Cook
 @app.get("/admin/api/plan-prices")
 @app.get("/admin-dashboard/api/plan-prices")
 async def admin_get_plan_prices(request: Request):
-    if not request.cookies.get("admin_session"):
+    # Utilise la même auth que /admin-dashboard : cookie "session_token" + role admin
+    token = request.cookies.get("session_token")
+    user = get_user_from_token(token) if token else None
+    if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
+
     return JSONResponse({"success": True, "plans": get_all_plan_pricing()})
+
 
 @app.post("/admin/save-plan-prices")
 @app.post("/admin-dashboard/save-plan-prices")
 async def admin_save_plan_prices(request: Request):
-    if not request.cookies.get("admin_session"):
+    # Utilise la même auth que /admin-dashboard : cookie "session_token" + role admin
+    token = request.cookies.get("session_token")
+    user = get_user_from_token(token) if token else None
+    if not user or user.get("role") != "admin":
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
 
     try:
@@ -26269,9 +26324,8 @@ async def admin_save_plan_prices(request: Request):
         return JSONResponse({"success": False, "message": "Payload invalide"}, status_code=400)
 
     updated = []
-    for plan_key, cfg in plans.items():
+    for p, cfg in plans.items():
         try:
-            p = normalize_plan(plan_key)
             if p not in DEFAULT_PLAN_PRICES:
                 continue
             display = str(cfg.get("display_name") or DEFAULT_PLAN_PRICES[p]["display_name"])
@@ -26289,6 +26343,7 @@ async def admin_save_plan_prices(request: Request):
             print(f"⚠️ admin_save_plan_prices: {e}")
 
     return JSONResponse({"success": True, "updated": updated, "plans": get_all_plan_pricing()})
+
 
 @app.post("/admin/create-promo")
 @app.post("/admin-dashboard/create-promo")

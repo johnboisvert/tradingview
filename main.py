@@ -5,6 +5,45 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Resp
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
+# --- Cookie helpers (fix www/non-www session + logout) ---
+def _cookie_domain_for_host(hostname: str | None) -> str | None:
+    if not hostname:
+        return None
+    h = hostname.lower().strip()
+    if h == "localhost" or h.endswith(".localhost"):
+        return None
+    # Allow the same session cookie on both cryptoia.ca and www.cryptoia.ca
+    if h.endswith("cryptoia.ca"):
+        return ".cryptoia.ca"
+    return None
+
+def _set_session_cookie(response, request, token: str, max_age: int = 60 * 60 * 24 * 7):
+    secure = (getattr(request.url, "scheme", "").lower() == "https")
+    domain = _cookie_domain_for_host(getattr(request.url, "hostname", None))
+    kwargs = dict(httponly=True, samesite="lax", max_age=max_age, path="/", secure=secure)
+    if domain:
+        response.set_cookie("session_token", token, domain=domain, **kwargs)
+    else:
+        response.set_cookie("session_token", token, **kwargs)
+
+def _delete_session_cookie(response, request):
+    domain = _cookie_domain_for_host(getattr(request.url, "hostname", None))
+    # Try deleting with domain (for www/root), then without (for localhost/dev)
+    if domain:
+        response.delete_cookie("session_token", path="/", domain=domain)
+    _delete_session_cookie(response, request)
+
+def _get_session_token_from_request(request):
+    # Backward compatibility: accept common cookie names and Authorization header
+    for k in ("session_token", "access_token", "token"):
+        v = request.cookies.get(k)
+        if v:
+            return v
+    auth = request.headers.get("Authorization") or request.headers.get("authorization")
+    if auth and auth.lower().startswith("bearer "):
+        return auth.split(" ", 1)[1].strip()
+    return None
+
 
 #  CORRECTION 2: Rate Limiting pour scurit
 # slowapi est optionnel: si le paquet n'est pas install, on dsactive le rate limiting
@@ -643,6 +682,25 @@ def init_plan_pricing_db():
                 )
             conn.commit()
     except Exception as e:
+
+        # One-time migration from legacy placeholder pricing to the current defaults
+        # (old: 29.99 / 74.97 / 134.94 / 239.88 -> new: 20 / 50 / 80 / 150)
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT plan_key, price_cents FROM plan_pricing")
+            rows = {r[0]: int(r[1]) for r in cur.fetchall()}
+            legacy = {"premium": 2999, "advanced": 7497, "pro": 13494, "elite": 23988}
+            if all(rows.get(k) == v for k, v in legacy.items()):
+                for k, d in DEFAULT_PLAN_PRICING.items():
+                    cur.execute(
+                        "UPDATE plan_pricing SET price_cents=?, duration_days=?, currency=?, display_name=? WHERE plan_key=?",
+                        (int(d["price_cents"]), int(d["duration_days"]), d["currency"], d["display_name"], k),
+                    )
+                conn.commit()
+        except Exception:
+            pass
+
+
         print(f"⚠️ init_plan_pricing_db: {e}")
 
 def get_all_plan_pricing() -> dict:
@@ -7018,6 +7076,8 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0 auto; }
         .hero { text-align: center; margin-bottom: 60px; position: relative; }
         .hero-title { font-size: 4.5em; font-weight: 900; background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite; letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px; }
+      .hero-logo { height: 110px; width: auto; display: block; margin: 0 auto; filter: drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
+
         @keyframes titleGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .hero-subtitle { font-size: 1.2em; color: rgba(255, 255, 255, 0.7); font-weight: 400; line-height: 1.8; max-width: 900px; margin: 0 auto; animation: fadeInUp 1s ease; }

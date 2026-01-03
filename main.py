@@ -5,45 +5,6 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Resp
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
-# --- Cookie helpers (fix www/non-www session + logout) ---
-def _cookie_domain_for_host(hostname: str | None) -> str | None:
-    if not hostname:
-        return None
-    h = hostname.lower().strip()
-    if h == "localhost" or h.endswith(".localhost"):
-        return None
-    # Allow the same session cookie on both cryptoia.ca and www.cryptoia.ca
-    if h.endswith("cryptoia.ca"):
-        return ".cryptoia.ca"
-    return None
-
-def _set_session_cookie(response, request, token: str, max_age: int = 60 * 60 * 24 * 7):
-    secure = (getattr(request.url, "scheme", "").lower() == "https")
-    domain = _cookie_domain_for_host(getattr(request.url, "hostname", None))
-    kwargs = dict(httponly=True, samesite="lax", max_age=max_age, path="/", secure=secure)
-    if domain:
-        response.set_cookie("session_token", token, domain=domain, **kwargs)
-    else:
-        response.set_cookie("session_token", token, **kwargs)
-
-def _delete_session_cookie(response, request):
-    domain = _cookie_domain_for_host(getattr(request.url, "hostname", None))
-    # Try deleting with domain (for www/root), then without (for localhost/dev)
-    if domain:
-        response.delete_cookie("session_token", path="/", domain=domain)
-    _delete_session_cookie(response, request)
-
-def _get_session_token_from_request(request):
-    # Backward compatibility: accept common cookie names and Authorization header
-    for k in ("session_token", "access_token", "token"):
-        v = request.cookies.get(k)
-        if v:
-            return v
-    auth = request.headers.get("Authorization") or request.headers.get("authorization")
-    if auth and auth.lower().startswith("bearer "):
-        return auth.split(" ", 1)[1].strip()
-    return None
-
 
 #  CORRECTION 2: Rate Limiting pour scurit
 # slowapi est optionnel: si le paquet n'est pas install, on dsactive le rate limiting
@@ -608,99 +569,33 @@ def normalize_plan(plan: str) -> str:
     return PLAN_ALIASES.get(plan, plan)
 
 def init_plan_pricing_db():
-    """Ensure plan_pricing exists and is pre-populated (SQLite + PostgreSQL)."""
+    """Ensure plan pricing table exists and has defaults."""
     try:
         conn = get_db_connection()
-
-        if DB_CONFIG.get("type") == "postgres":
-            cur = conn.cursor()
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS plan_pricing (
-                    plan_key TEXT PRIMARY KEY,
-                    display_name TEXT NOT NULL,
-                    duration_days INTEGER NOT NULL,
-                    price_cents INTEGER NOT NULL,
-                    currency TEXT NOT NULL DEFAULT 'CAD',
-                    updated_at TIMESTAMP
-                )
-                """
-            )
-            conn.commit()
-
-            cur.execute("SELECT COUNT(1) FROM plan_pricing")
-            cnt = int(cur.fetchone()[0] or 0)
-
-            if cnt == 0:
-                now = datetime.utcnow()
-                for k, v in DEFAULT_PLAN_PRICING.items():
-                    cur.execute(
-                        """
-                        INSERT INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (plan_key) DO UPDATE SET
-                            display_name = EXCLUDED.display_name,
-                            duration_days = EXCLUDED.duration_days,
-                            price_cents = EXCLUDED.price_cents,
-                            currency = EXCLUDED.currency,
-                            updated_at = EXCLUDED.updated_at
-                        """,
-                        (k, v["display_name"], int(v["duration_days"]), int(v["price_cents"]), v["currency"], now),
-                    )
-                conn.commit()
-
-            cur.close()
-            return
-
-        # SQLite
-        c = conn.cursor()
-        c.execute(
-            """
-            CREATE TABLE IF NOT EXISTS plan_pricing (
-                plan_key TEXT PRIMARY KEY,
-                display_name TEXT,
-                duration_days INTEGER,
-                price_cents INTEGER,
-                currency TEXT,
-                updated_at TEXT
-            )
-            """
+        cur = conn.cursor()
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS plan_pricing (
+            plan_key TEXT PRIMARY KEY,
+            display_name TEXT,
+            duration_days INTEGER,
+            price_cents INTEGER,
+            currency TEXT,
+            updated_at TEXT
         )
-        conn.commit()
-
-        c.execute("SELECT COUNT(*) FROM plan_pricing")
-        cnt = c.fetchone()[0] or 0
-        if cnt == 0:
+        """)
+        cur.execute("SELECT COUNT(1) FROM plan_pricing")
+        row = cur.fetchone()
+        count = row[0] if row else 0
+        if count == 0:
             now = datetime.utcnow().isoformat()
-            for k, v in DEFAULT_PLAN_PRICING.items():
-                c.execute(
-                    """
-                    INSERT OR REPLACE INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    """,
-                    (k, v["display_name"], int(v["duration_days"]), int(v["price_cents"]), v["currency"], now),
+            for k, v in DEFAULT_PLAN_PRICES.items():
+                cur.execute(
+                    "INSERT OR REPLACE INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at) VALUES (?,?,?,?,?,?)",
+                    (k, v["display_name"], int(v["duration_days"]), int(v["price_cents"]), v["currency"], now)
                 )
-            conn.commit()
+        conn.commit()
+        conn.close()
     except Exception as e:
-
-        # One-time migration from legacy placeholder pricing to the current defaults
-        # (old: 29.99 / 74.97 / 134.94 / 239.88 -> new: 20 / 50 / 80 / 150)
-        try:
-            cur = conn.cursor()
-            cur.execute("SELECT plan_key, price_cents FROM plan_pricing")
-            rows = {r[0]: int(r[1]) for r in cur.fetchall()}
-            legacy = {"premium": 2999, "advanced": 7497, "pro": 13494, "elite": 23988}
-            if all(rows.get(k) == v for k, v in legacy.items()):
-                for k, d in DEFAULT_PLAN_PRICING.items():
-                    cur.execute(
-                        "UPDATE plan_pricing SET price_cents=?, duration_days=?, currency=?, display_name=? WHERE plan_key=?",
-                        (int(d["price_cents"]), int(d["duration_days"]), d["currency"], d["display_name"], k),
-                    )
-                conn.commit()
-        except Exception:
-            pass
-
-
         print(f"⚠️ init_plan_pricing_db: {e}")
 
 def get_all_plan_pricing() -> dict:
@@ -723,48 +618,26 @@ def get_plan_pricing(plan_key: str):
     plan_key = normalize_plan(plan_key)
     return get_all_plan_pricing().get(plan_key)
 
-def set_plan_pricing(plan_key: str, price_cents: int, duration_days: int, display_name: str = None, currency: str = "CAD"):
-    """Upsert a plan price (SQLite + PostgreSQL)."""
-    if not plan_key:
+def set_plan_pricing(plan_key: str, display_name: str, duration_days: int, price_cents: int, currency: str = "cad") -> bool:
+    plan_key = normalize_plan(plan_key)
+    if plan_key not in DEFAULT_PLAN_PRICES:
         return False
     try:
+        init_plan_pricing_db()
         conn = get_db_connection()
-
-        if DB_CONFIG.get("type") == "postgres":
-            cur = conn.cursor()
-            now = datetime.utcnow()
-            cur.execute(
-                """
-                INSERT INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
-                ON CONFLICT (plan_key) DO UPDATE SET
-                    display_name = EXCLUDED.display_name,
-                    duration_days = EXCLUDED.duration_days,
-                    price_cents = EXCLUDED.price_cents,
-                    currency = EXCLUDED.currency,
-                    updated_at = EXCLUDED.updated_at
-                """,
-                (plan_key, display_name or plan_key, int(duration_days), int(price_cents), currency or "CAD", now),
-            )
-            conn.commit()
-            cur.close()
-            return True
-
-        # SQLite
-        c = conn.cursor()
+        cur = conn.cursor()
         now = datetime.utcnow().isoformat()
-        c.execute(
-            """
-            INSERT OR REPLACE INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (plan_key, display_name or plan_key, int(duration_days), int(price_cents), currency or "CAD", now),
+        cur.execute(
+            "INSERT OR REPLACE INTO plan_pricing (plan_key, display_name, duration_days, price_cents, currency, updated_at) VALUES (?,?,?,?,?,?)",
+            (plan_key, display_name, int(duration_days), int(price_cents), (currency or "cad").lower(), now)
         )
         conn.commit()
+        conn.close()
         return True
     except Exception as e:
-        print(f"❌ set_plan_pricing error for {plan_key}: {e}")
+        print(f"⚠️ set_plan_pricing: {e}")
         return False
+
 
 def init_trades_db():
     """Crée la table trades"""
@@ -2415,40 +2288,43 @@ templates = Jinja2Templates(directory="templates")
 # - Sinon: auto-détection dans /static (plusieurs noms possibles)
 # ----------------------------------------------------------------------------
 def _resolve_site_logo_url() -> str:
-    """Return a usable logo URL/path for templates.
-
-    - Accepts SITE_LOGO_URL (http(s), /path, or data:) if it looks valid
-    - Else, uses a local static file if present (served by /static)
-    - Else, falls back to a stable remote logo (GitHub raw)
-    """
     env_url = (os.getenv("SITE_LOGO_URL") or "").strip()
-    bad_tokens = {"SITE LOGO URL", "SITE_LOGO_URL", "__SITE_LOGO_URL__", "{SITE_LOGO_URL}"}
     if env_url:
-        up = env_url.strip().upper()
-        if up not in bad_tokens and "SITE LOGO" not in up:
-            if env_url.startswith(("http://", "https://", "/", "data:")):
-                return env_url
+        return env_url
 
-    filenames = [
-        "logo.png",
-        "logo.svg",
-        "logo.webp",
-        "logo.jpg",
-        "logo.jpeg",
-        "cryptoia_logo.png",
-        "favicon.png",
-        "favicon.ico",
+    candidates = [
+        # Généraux
+        "logo.png", "logo.webp", "logo.jpg", "logo.jpeg", "logo.svg",
+        "logo1.png", "logo1.webp", "logo1.jpg", "logo1.jpeg", "logo1.svg",
+        # Ton repo (ex: static/cryptoia_logo.png)
+        "cryptoia_logo.png", "cryptoia_logo.webp", "cryptoia_logo.jpg", "cryptoia_logo.jpeg", "cryptoia_logo.svg",
+        "cryptoia-logo.png", "cryptoia-logo.webp", "cryptoia-logo.jpg", "cryptoia-logo.jpeg", "cryptoia-logo.svg",
     ]
-    for base in _STATIC_DIRS:
-        for name in filenames:
-            try:
-                p = base / name
-                if p.exists() and p.is_file() and p.stat().st_size > 0:
-                    return f"/static/{name}"
-            except Exception:
-                continue
 
-    return "https://raw.githubusercontent.com/johnboisvert/tradingview/main/static/cryptoia_logo.png"
+    # _STATIC_DIRS est défini plus haut (liste de dossiers candidats)
+    static_dirs = []
+    try:
+        static_dirs = list(_STATIC_DIRS) if "_STATIC_DIRS" in globals() else []
+    except Exception:
+        static_dirs = []
+
+    # fallback minimal si jamais _STATIC_DIRS n'existe pas
+    if not static_dirs:
+        try:
+            static_dirs = [Path(__file__).resolve().parent / "static", Path.cwd() / "static"]
+        except Exception:
+            static_dirs = [Path.cwd() / "static"]
+
+    for d in static_dirs:
+        try:
+            d = Path(d)
+            for name in candidates:
+                if (d / name).is_file():
+                    return f"/static/{name}"
+        except Exception:
+            continue
+
+    return "/static/logo.png"
 
 SITE_LOGO_URL = _resolve_site_logo_url()
 # Cache-buster pour éviter que le navigateur garde un vieux logo (surtout sur Railway/Render/CDN)
@@ -3573,13 +3449,7 @@ class DatabaseManager:
             last_payment_date TIMESTAMP,
             total_spent DECIMAL(10,2) DEFAULT 0.00
         )''')
-        # Créer la table promo_codes (pour l'analytics / growth)
-        c.execute('''CREATE TABLE IF NOT EXISTS promo_codes (
-            code VARCHAR(64) PRIMARY KEY,
-            used_by VARCHAR(50),
-            used_at TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )''')
+
         # Table pour les permissions utilisateurs
         c.execute('''CREATE TABLE IF NOT EXISTS user_permissions (
             username TEXT,
@@ -4063,16 +3933,8 @@ def check_route_permission(username: str, route: str) -> bool:
         plan_raw = str(subscription_plan).strip().lower()
 
         def normalize_plan_key(p: str) -> str:
-            if not p:
-                return "free"
-            if "elite" in p or "ultim" in p:
-                return "elite"
-            if "premium" in p or "pro" in p or "mensuel" in p or "month" in p or "year" in p or "ann" in p:
-                return "premium"
-            if p in {"free", "gratuit"}:
-                return "free"
-            # Par défaut: considérer comme premium si ce n'est pas explicitement free
-            return "premium"
+            """Normalise le plan utilisateur (free/premium/advanced/pro/elite)."""
+            return normalize_plan(p)
 
         plan_key = normalize_plan_key(plan_raw)
 
@@ -7076,8 +6938,6 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
         .main-content { position: relative; z-index: 10; padding: 60px 40px; max-width: 1600px; margin: 0 auto; }
         .hero { text-align: center; margin-bottom: 60px; position: relative; }
         .hero-title { font-size: 4.5em; font-weight: 900; background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #667eea 75%, #764ba2 100%); background-size: 300% 300%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; animation: titleGradient 8s ease infinite, titleFloat 3s ease-in-out infinite; letter-spacing: -2px; text-shadow: 0 0 80px rgba(102, 126, 234, 0.5); margin-bottom: 20px; }
-      .hero-logo { height: 110px; width: auto; display: block; margin: 0 auto; filter: drop-shadow(0 6px 16px rgba(0,0,0,.35)); }
-
         @keyframes titleGradient { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
         @keyframes titleFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
         .hero-subtitle { font-size: 1.2em; color: rgba(255, 255, 255, 0.7); font-weight: 400; line-height: 1.8; max-width: 900px; margin: 0 auto; animation: fadeInUp 1s ease; }
@@ -7765,7 +7625,16 @@ window.addEventListener('DOMContentLoaded', () => {
 </body>
 </html>"""
     
-    return HTMLResponse(SIDEBAR + html)
+        # Titre hero plus pro: logo + texte (au lieu des emojis)
+    try:
+        html = html.replace("🚀 Crypto IA 💎", f'<span class="hero-brand" style="display:inline-flex;align-items:center;gap:14px;">'
+                             f'<img src="{SITE_LOGO_URL}" alt="Crypto IA" style="height:64px;width:auto;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);">'
+                             f'<span>Crypto IA</span>'
+                             f'</span>')
+    except Exception:
+        pass
+
+return HTMLResponse(SIDEBAR + html)
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -12345,7 +12214,7 @@ async def news_api():
 
 @app.get("/nouvelles", response_class=HTMLResponse)
 async def news_page():
-    html = """<!DOCTYPE html>
+    html = SIDEBAR + """<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -19104,32 +18973,26 @@ async def create_charge(req: CreateChargeRequest, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/pricing-complete", response_class=HTMLResponse)
-async def pricing_complete(request: Request):
-    """Page Plans & Tarifs (publique)"""
-    plans = get_all_plan_pricing()
-
-    def _price(plan_name: str, fallback_cents: int) -> float:
+async def pricing_complete():
+    """Page de pricing avec support codes promo"""
+    prices = get_all_plan_pricing()
+    premium_price = float(prices.get("premium_1m", 20.0) or 0)
+    advanced_price = float(prices.get("advanced_3m", 50.0) or 0)
+    pro_price = float(prices.get("pro_6m", 80.0) or 0)
+    elite_price = float(prices.get("elite_1y", 150.0) or 0)
+    def _fmt(x: float) -> str:
         try:
-            return float(int(plans.get(plan_name, {}).get("price_cents", fallback_cents))) / 100.0
+            return f"{float(x):.2f}"
         except Exception:
-            return float(fallback_cents) / 100.0
-
-    premium_total = _price("premium", 2999)
-    advanced_total = _price("advanced", 7497)
-    pro_total = _price("pro", 13494)
-    elite_total = _price("elite", 23988)
-
-    def _save_pct(total: float, months: int) -> int:
-        base = premium_total * max(1, months)
-        if base <= 0:
+            return "0.00"
+    def _save_pct(full: float, paid: float) -> int:
+        try:
+            return max(0, int(round(((full - paid) / full) * 100))) if full > 0 else 0
+        except Exception:
             return 0
-        return max(0, int(round((1.0 - (total / base)) * 100)))
-
-    adv_save = _save_pct(advanced_total, 3)
-    pro_save = _save_pct(pro_total, 6)
-    elite_save = _save_pct(elite_total, 12)
-
-    logo_url = SITE_LOGO_URL
+    adv_save = _save_pct(premium_price * 3, advanced_price)
+    pro_save = _save_pct(premium_price * 6, pro_price)
+    elite_save = _save_pct(premium_price * 12, elite_price)
 
     html = SIDEBAR + """
 <!DOCTYPE html>
@@ -20015,27 +19878,70 @@ async def pricing_complete(request: Request):
     </body>
 </html>
 """
-
-    # Insère le sidebar juste après <body> pour garder <!DOCTYPE html> en premier (évite Quirks Mode)
+    # Injecter le bon logo (évite {logo_url})
     try:
-        html = re.sub(r"<body([^>]*)>", r"<body\\1>" + SIDEBAR, html, count=1)
+        html = html.replace("{logo_url}", SITE_LOGO_URL)
     except Exception:
-        html = SIDEBAR + html
+        pass
 
-    # Inject logo + prix dynamiques
-    html = html.replace("{logo_url}", str(logo_url))
-    html = html.replace("$29.99", f"${premium_total:.2f}")
-    html = html.replace("$74.97", f"${advanced_total:.2f}")
-    html = html.replace("$134.94", f"${pro_total:.2f}")
-    html = html.replace("$239.88", f"${elite_total:.2f}")
+    # Remplacer les prix hardcodés par ceux de l’admin
+    try:
+        html = html.replace("$29.99", "$" + _fmt(premium_price))
+        html = html.replace("$74.97", "$" + _fmt(advanced_price))
+        html = html.replace("$134.94", "$" + _fmt(pro_price))
+        html = html.replace("$239.88", "$" + _fmt(elite_price))
+        html = html.replace("Économisez 17%", f"Économisez {adv_save}%")
+        html = html.replace("Économisez 25%", f"Économisez {pro_save}%")
+        html = html.replace("Économisez 33%", f"Économisez {pro_save}%")
+        html = html.replace("Économisez 38%", f"Économisez {elite_save}%")
+    except Exception:
+        pass
 
-    # Badges économies (si présents)
-    html = html.replace("3 mois - Économisez 17%", f"3 mois - Économisez {adv_save}%")
-    html = html.replace("6 mois - Économisez 25%", f"6 mois - Économisez {pro_save}%")
-    html = html.replace("1 an - Économisez 33%", f"1 an - Économisez {elite_save}%")
+    # Matrice d'accès (pages) visible sur la page Pricing
+    try:
+        matrix_section = """
+<div class="access-matrix" style="margin:28px auto 0;max-width:1200px;">
+  <div style="background: rgba(255,255,255,0.95); border-radius: 18px; padding: 22px; box-shadow: 0 18px 50px rgba(0,0,0,0.12);">
+    <h3 style="margin:0 0 10px; font-size:20px;">Accès par forfait (pages)</h3>
+    <div style="color:#556; font-size:14px; margin-bottom:12px;">Ce tableau se met à jour automatiquement selon ce que vous cochez dans <b>/admin-dashboard</b>.</div>
+    <div id="accessMatrix" style="overflow:auto; border-radius: 12px; border:1px solid #e7e7ef;"></div>
+  </div>
+</div>
+<script>
+(async function(){
+  try{
+    const res = await fetch("/api/public/plan-access");
+    const access = await res.json();
+    const plans = ["free","premium","advanced","pro","elite"];
+    const planLabels = {free:"Gratuit",premium:"Premium",advanced:"Advanced",pro:"Pro",elite:"Elite"};
+    const allRoutes = new Set();
+    plans.forEach(p=> (access[p]||[]).forEach(r=> allRoutes.add(r)));
+    const routes = Array.from(allRoutes).sort();
+    let h = '<table style="width:100%; border-collapse: collapse; font-size:14px;">';
+    h += '<thead><tr style="background:#f6f6fb;">';
+    h += '<th style="text-align:left; padding:10px; border-bottom:1px solid #e7e7ef;">Page</th>';
+    plans.forEach(p=>{ h += '<th style="text-align:center; padding:10px; border-bottom:1px solid #e7e7ef;">'+planLabels[p]+'</th>'; });
+    h += '</tr></thead><tbody>';
+    routes.forEach(route=>{
+      h += '<tr>';
+      h += '<td style="padding:10px; border-bottom:1px solid #f0f0f6; color:#223;">'+ String(route) +'</td>';
+      plans.forEach(p=>{
+        const ok = (access[p]||[]).includes(route);
+        h += '<td style="text-align:center; padding:10px; border-bottom:1px solid #f0f0f6;">'+ (ok ? "✅" : "—") +'</td>';
+      });
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+    document.getElementById("accessMatrix").innerHTML = h;
+  }catch(e){ console.warn("access matrix error", e); }
+})();
+</script>
+"""
+        html = html.replace("<!--ACCESS_MATRIX-->", matrix_section)
+    except Exception:
+        pass
 
     return HTMLResponse(html)
-
 
 @app.get("/pricing-new")
 async def pricing_page_new(request: Request):
@@ -20268,7 +20174,7 @@ async def coinbase_checkout(request: Request):
     try:
         data = await request.json()
         plan = data.get('plan', 'monthly')
-        amount = data.get('amount', 29.99)
+        amount = float(get_plan_pricing(normalize_plan(plan)) or 0)  # montant backend (DB)
         promo_code = data.get('promo_code', None)
         email = data.get('email', 'user@example.com')
         
@@ -20279,6 +20185,9 @@ async def coinbase_checkout(request: Request):
             email = user.get('username', email)
         
         print(f"🔵 Demande Coinbase: plan={plan}, amount=${amount}, email={email}, promo={promo_code}")
+        if amount <= 0:
+            return JSONResponse({"success": False, "message": "Plan invalide"}, status_code=400)
+
         
         if not COINBASE_AVAILABLE or not coinbase_client:
             error_msg = "Coinbase Commerce non configuré - Vérifiez COINBASE_COMMERCE_KEY"
@@ -26356,22 +26265,42 @@ async def save_plan_access(request: Request, session_token: Optional[str] = Cook
 @app.get("/admin/api/plan-prices")
 @app.get("/admin-dashboard/api/plan-prices")
 async def admin_get_plan_prices(request: Request):
-    # Utilise la même auth que /admin-dashboard : cookie "session_token" + role admin
-    token = request.cookies.get("session_token")
-    user = get_user_from_token(token) if token else None
-    if not user or user.get("role") != "admin":
+    if not request.cookies.get("admin_session"):
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
-
     return JSONResponse({"success": True, "plans": get_all_plan_pricing()})
 
+@app.get("/api/public/plan-pricing")
+async def public_plan_pricing():
+    """Prix des forfaits (public) - utilisés par /pricing-complete."""
+    try:
+        return JSONResponse(get_all_plan_pricing())
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/public/plan-access")
+async def public_plan_access():
+    """Accès par forfait (public) - utilisé pour afficher la matrice sur /pricing-complete."""
+    try:
+        conn, cur = get_db_cursor()
+        cur.execute("SELECT plan, routes_json FROM plan_access")
+        rows = cur.fetchall()
+        conn.close()
+        out = {}
+        for r in rows:
+            plan = (r.get("plan") or "").lower().strip()
+            try:
+                routes = json.loads(r.get("routes_json") or "[]")
+            except Exception:
+                routes = []
+            out[plan] = routes
+        return JSONResponse(out)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/admin/save-plan-prices")
 @app.post("/admin-dashboard/save-plan-prices")
 async def admin_save_plan_prices(request: Request):
-    # Utilise la même auth que /admin-dashboard : cookie "session_token" + role admin
-    token = request.cookies.get("session_token")
-    user = get_user_from_token(token) if token else None
-    if not user or user.get("role") != "admin":
+    if not request.cookies.get("admin_session"):
         return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
 
     try:
@@ -26384,8 +26313,9 @@ async def admin_save_plan_prices(request: Request):
         return JSONResponse({"success": False, "message": "Payload invalide"}, status_code=400)
 
     updated = []
-    for p, cfg in plans.items():
+    for plan_key, cfg in plans.items():
         try:
+            p = normalize_plan(plan_key)
             if p not in DEFAULT_PLAN_PRICES:
                 continue
             display = str(cfg.get("display_name") or DEFAULT_PLAN_PRICES[p]["display_name"])
@@ -26403,7 +26333,6 @@ async def admin_save_plan_prices(request: Request):
             print(f"⚠️ admin_save_plan_prices: {e}")
 
     return JSONResponse({"success": True, "updated": updated, "plans": get_all_plan_pricing()})
-
 
 @app.post("/admin/create-promo")
 @app.post("/admin-dashboard/create-promo")
@@ -26574,58 +26503,6 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
 # ============================================================================
 
 @app.get("/admin/api/retention-dashboard")
-async def admin_api_retention_dashboard():
-    """Retention breakdown (works on SQLite + PostgreSQL)."""
-    try:
-        conn = db_manager.get_connection()
-        cur = conn.cursor()
-
-        now = datetime.utcnow()
-        d7 = now - timedelta(days=7)
-        d30 = now - timedelta(days=30)
-        d90 = now - timedelta(days=90)
-
-        if getattr(db_manager, "use_postgresql", False):
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= %s", (d7,))
-            new_7d = cur.fetchone()[0] or 0
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= %s", (d30,))
-            new_30d = cur.fetchone()[0] or 0
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= %s", (d90,))
-            new_90d = cur.fetchone()[0] or 0
-
-            cur.execute(
-                "SELECT COUNT(*) FROM users WHERE subscription_end IS NOT NULL AND subscription_end <= %s AND subscription_end >= %s",
-                (now + timedelta(days=7), now),
-            )
-            expiring_7d = cur.fetchone()[0] or 0
-
-            cur.close()
-        else:
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= ?", (d7.isoformat(),))
-            new_7d = cur.fetchone()[0] or 0
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= ?", (d30.isoformat(),))
-            new_30d = cur.fetchone()[0] or 0
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= ?", (d90.isoformat(),))
-            new_90d = cur.fetchone()[0] or 0
-
-            cur.execute(
-                "SELECT COUNT(*) FROM users WHERE subscription_end IS NOT NULL AND subscription_end <= ? AND subscription_end >= ?",
-                ((now + timedelta(days=7)).isoformat(), now.isoformat()),
-            )
-            expiring_7d = cur.fetchone()[0] or 0
-
-        return {
-            "new_users_7d": int(new_7d),
-            "new_users_30d": int(new_30d),
-            "new_users_90d": int(new_90d),
-            "expiring_7d": int(expiring_7d),
-        }
-    except Exception as e:
-        print(f"❌ admin_api_retention_dashboard: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-
-
 @app.get("/admin-dashboard/api/retention-dashboard")
 async def admin_retention_dashboard(session_token: Optional[str] = Cookie(None)):
     """API pour le Retention Dashboard - Utilisateurs qui expirent, inactifs, stats"""
@@ -26862,43 +26739,6 @@ async def admin_extend_subscription(request: Request, session_token: Optional[st
 # ============================================================================
 
 @app.get("/admin/api/conversion-funnel")
-async def admin_api_conversion_funnel():
-    """Basic conversion funnel (works on SQLite + PostgreSQL)."""
-    try:
-        conn = db_manager.get_connection()
-        cur = conn.cursor()
-        cutoff_30 = datetime.utcnow() - timedelta(days=30)
-
-        if getattr(db_manager, "use_postgresql", False):
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= %s", (cutoff_30,))
-            visits = cur.fetchone()[0] or 0
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= %s AND (username IS NOT NULL AND username <> '')", (cutoff_30,))
-            signups = cur.fetchone()[0] or 0
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= %s AND subscription_plan IS NOT NULL AND subscription_plan <> ''", (cutoff_30,))
-            paid = cur.fetchone()[0] or 0
-            cur.close()
-        else:
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= ?", (cutoff_30.isoformat(),))
-            visits = cur.fetchone()[0] or 0
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= ? AND (username IS NOT NULL AND username <> '')", (cutoff_30.isoformat(),))
-            signups = cur.fetchone()[0] or 0
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= ? AND subscription_plan IS NOT NULL AND subscription_plan <> ''", (cutoff_30.isoformat(),))
-            paid = cur.fetchone()[0] or 0
-
-        return {
-            "window_days": 30,
-            "visits": int(visits),
-            "signups": int(signups),
-            "paid": int(paid),
-            "signup_rate": (signups / visits) if visits else 0,
-            "paid_rate": (paid / signups) if signups else 0,
-        }
-    except Exception as e:
-        print(f"❌ admin_api_conversion_funnel: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-
-
 @app.get("/admin-dashboard/api/conversion-funnel")
 async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] = Cookie(None)):
     """API pour le Conversion Funnel - Analyse des conversions"""
@@ -27079,86 +26919,6 @@ async def admin_conversion_funnel(days: int = 30, session_token: Optional[str] =
 # ============================================================================
 
 @app.get("/admin/api/revenue-intelligence")
-async def admin_api_revenue_intelligence():
-    """Small admin analytics summary (works on SQLite + PostgreSQL)."""
-    try:
-        conn = db_manager.get_connection()
-        cur = conn.cursor()
-
-        cutoff_30 = datetime.utcnow() - timedelta(days=30)
-
-        if getattr(db_manager, "use_postgresql", False):
-            cur.execute("SELECT COUNT(*) FROM users")
-            total_users = cur.fetchone()[0] or 0
-
-            cur.execute("SELECT COUNT(*) FROM users WHERE subscription_plan IS NOT NULL AND subscription_plan <> ''")
-            total_subs = cur.fetchone()[0] or 0
-
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= %s", (cutoff_30,))
-            new_users_30d = cur.fetchone()[0] or 0
-
-            promo_used_30d = 0
-            try:
-                cur.execute("SELECT COUNT(*) FROM promo_codes WHERE used_at IS NOT NULL AND used_at >= %s", (cutoff_30,))
-                promo_used_30d = cur.fetchone()[0] or 0
-            except Exception:
-                promo_used_30d = 0
-
-        else:
-            cur.execute("SELECT COUNT(*) FROM users")
-            total_users = cur.fetchone()[0] or 0
-
-            cur.execute("SELECT COUNT(*) FROM users WHERE subscription_plan IS NOT NULL AND subscription_plan <> ''")
-            total_subs = cur.fetchone()[0] or 0
-
-            cur.execute("SELECT COUNT(*) FROM users WHERE created_at >= ?", (cutoff_30.isoformat(),))
-            new_users_30d = cur.fetchone()[0] or 0
-
-            promo_used_30d = 0
-            try:
-                cur.execute(
-                    "SELECT COUNT(*) FROM promo_codes WHERE used_at IS NOT NULL AND used_at >= ?",
-                    (cutoff_30.isoformat(),),
-                )
-                promo_used_30d = cur.fetchone()[0] or 0
-            except Exception:
-                promo_used_30d = 0
-
-        # Simple revenue estimate using plan_pricing if available
-        monthly_mrr_cents = 0
-        try:
-            pricing = get_all_plan_pricing()
-            cur.execute(
-                "SELECT subscription_plan, COUNT(*) FROM users "
-                "WHERE subscription_plan IS NOT NULL AND subscription_plan <> '' "
-                "GROUP BY subscription_plan"
-            )
-            rows = cur.fetchall() or []
-            for plan_key, n in rows:
-                plan = pricing.get(plan_key)
-                if not plan:
-                    continue
-                days = max(1, int(plan.get("duration_days") or 30))
-                monthly_mrr_cents += int(plan.get("price_cents") or 0) * int(n) * 30 // days
-        except Exception:
-            monthly_mrr_cents = 0
-
-        if getattr(db_manager, "use_postgresql", False):
-            cur.close()
-
-        return {
-            "total_users": int(total_users),
-            "active_subs": int(total_subs),
-            "new_users_30d": int(new_users_30d),
-            "promo_used_30d": int(promo_used_30d),
-            "estimated_mrr_cad": round(monthly_mrr_cents / 100.0, 2),
-        }
-    except Exception as e:
-        print(f"❌ admin_api_revenue_intelligence: {e}")
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-
-
 @app.get("/admin-dashboard/api/revenue-intelligence")
 async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)):
     """API pour Revenue Intelligence - Revenus, CLV, Top clients, ROI promos"""

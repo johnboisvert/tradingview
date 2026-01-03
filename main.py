@@ -26297,9 +26297,7 @@ async def save_plan_access(request: Request, session_token: Optional[str] = Cook
 # =====================
 @app.get("/admin/api/plan-prices")
 @app.get("/admin-dashboard/api/plan-prices")
-async def admin_get_plan_prices(request: Request):
-    if not request.cookies.get("admin_session"):
-        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
+async def admin_get_plan_prices(request: Request, user=Depends(require_admin)):
     return JSONResponse({"success": True, "plans": get_all_plan_pricing()})
 
 @app.get("/api/public/plan-pricing")
@@ -26332,9 +26330,7 @@ async def public_plan_access():
 
 @app.post("/admin/save-plan-prices")
 @app.post("/admin-dashboard/save-plan-prices")
-async def admin_save_plan_prices(request: Request):
-    if not request.cookies.get("admin_session"):
-        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=401)
+async def admin_save_plan_prices(request: Request, user=Depends(require_admin)):
 
     try:
         data = await request.json()

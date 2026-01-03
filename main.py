@@ -521,7 +521,16 @@ def get_db_config():
         print("✅ PostgreSQL (Railway)")
         return {"type": "postgres", "url": database_url}
     print("⚠️ SQLite fallback")
-    return {"type": "sqlite", "path": "/tmp/trades.db" if os.path.exists("/tmp") else "./trades.db"}
+    # SQLite fallback (persist if DB_PATH/DB_DIR provided)
+    db_path = (os.getenv("DB_PATH") or os.getenv("APP_DB_PATH") or "").strip()
+    if not db_path:
+        db_dir = (os.getenv("DB_DIR") or os.getenv("DATA_DIR") or "/tmp/ai_trader").strip()
+        try:
+            os.makedirs(db_dir, exist_ok=True)
+        except Exception:
+            pass
+        db_path = os.path.join(db_dir, "data.db")
+    return {"type": "sqlite", "path": db_path}
 
 DB_CONFIG = get_db_config()
 
@@ -3944,16 +3953,40 @@ def check_route_permission(username: str, route: str) -> bool:
                 c.execute("""
                     CREATE TABLE IF NOT EXISTS plan_access (
                         plan TEXT PRIMARY KEY,
-                        routes TEXT NOT NULL
+                        routes_json TEXT,
+                        routes TEXT
                     )
                 """)
+                # Migration / compat: if older DB used `routes` only, copy it to routes_json
+                try:
+                    cols = [r[1] for r in c.execute("PRAGMA table_info(plan_access)").fetchall()]
+                    if "routes_json" not in cols:
+                        c.execute("ALTER TABLE plan_access ADD COLUMN routes_json TEXT")
+                        c.execute("UPDATE plan_access SET routes_json = routes WHERE routes_json IS NULL AND routes IS NOT NULL")
+                    if "routes" not in cols:
+                        c.execute("ALTER TABLE plan_access ADD COLUMN routes TEXT")
+                    c.execute("UPDATE plan_access SET routes_json = COALESCE(routes_json, '[]')")
+                except Exception as _e:
+                    print("⚠️ plan_access schema check:", _e)
             else:
                 c.execute("""
                     CREATE TABLE IF NOT EXISTS plan_access (
                         plan TEXT PRIMARY KEY,
-                        routes TEXT NOT NULL
+                        routes_json TEXT,
+                        routes TEXT
                     )
                 """)
+                # Migration / compat: if older DB used `routes` only, copy it to routes_json
+                try:
+                    cols = [r[1] for r in c.execute("PRAGMA table_info(plan_access)").fetchall()]
+                    if "routes_json" not in cols:
+                        c.execute("ALTER TABLE plan_access ADD COLUMN routes_json TEXT")
+                        c.execute("UPDATE plan_access SET routes_json = routes WHERE routes_json IS NULL AND routes IS NOT NULL")
+                    if "routes" not in cols:
+                        c.execute("ALTER TABLE plan_access ADD COLUMN routes TEXT")
+                    c.execute("UPDATE plan_access SET routes_json = COALESCE(routes_json, '[]')")
+                except Exception as _e:
+                    print("⚠️ plan_access schema check:", _e)
             conn.commit()
         except Exception:
             # si CREATE TABLE échoue (permissions, etc), on continue avec le fallback
@@ -3967,9 +4000,9 @@ def check_route_permission(username: str, route: str) -> bool:
                 return None
             try:
                 if db_manager.use_postgresql:
-                    c.execute("SELECT routes FROM plan_access WHERE plan = %s", (plan_name,))
+                    c.execute("SELECT COALESCE(routes_json, routes) FROM plan_access WHERE plan = %s", (plan_name,))
                 else:
-                    c.execute("SELECT routes FROM plan_access WHERE plan = ?", (plan_name,))
+                    c.execute("SELECT COALESCE(routes_json, routes) FROM plan_access WHERE plan = ?", (plan_name,))
                 r = c.fetchone()
                 if r and r[0]:
                     import json
@@ -7634,7 +7667,7 @@ window.addEventListener('DOMContentLoaded', () => {
     except Exception:
         pass
 
-return HTMLResponse(SIDEBAR + html)
+    return HTMLResponse(SIDEBAR + html)
 
 @app.get("/", response_class=HTMLResponse)
 async def home():
@@ -26178,7 +26211,7 @@ async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)
         """)
         conn.commit()
         
-        cursor.execute("SELECT routes FROM plan_access WHERE plan = ?", (plan,))
+        cursor.execute("SELECT COALESCE(routes_json, routes) FROM plan_access WHERE plan = ?", (plan,))
         result = cursor.fetchone()
         
         cursor.close()

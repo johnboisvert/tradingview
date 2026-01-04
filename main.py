@@ -515,23 +515,56 @@ except ImportError:
 # ============================================================================
 
 def get_db_config():
-    """Détecte PostgreSQL (Railway) ou SQLite (local)"""
-    database_url = os.getenv("DATABASE_URL")
-    if database_url and POSTGRESQL_AVAILABLE:
-        print("✅ PostgreSQL (Railway)")
-        return {"type": "postgres", "url": database_url}
-    print("⚠️ SQLite fallback")
-    # SQLite fallback (persist if DB_PATH/DB_DIR provided)
-    db_path = (os.getenv("DB_PATH") or os.getenv("APP_DB_PATH") or "").strip()
-    if not db_path:
-        db_dir = (os.getenv("DB_DIR") or os.getenv("DATA_DIR") or "/tmp/ai_trader").strip()
-        try:
-            os.makedirs(db_dir, exist_ok=True)
-        except Exception:
-            pass
-        db_path = os.path.join(db_dir, "data.db")
-    return {"type": "sqlite", "path": db_path}
+    """Détermine un chemin SQLite valide et *écrivable*.
 
+    - Respecte DB_PATH si possible
+    - Sinon utilise DB_DIR/DATA_DIR si écrivable
+    - Sinon fallback /tmp/ai_trader
+    """
+    env_db_path = (os.getenv("DB_PATH") or "").strip()
+    env_db_dir  = (os.getenv("DB_DIR") or "").strip()
+    env_data_dir = (os.getenv("DATA_DIR") or "").strip()
+
+    def _dir_is_writable(d: str) -> bool:
+        try:
+            if not d:
+                return False
+            os.makedirs(d, exist_ok=True)
+            test_path = os.path.join(d, ".write_test")
+            with open(test_path, "w", encoding="utf-8") as f:
+                f.write("ok")
+            os.remove(test_path)
+            return True
+        except Exception:
+            return False
+
+    # 1) DB_PATH explicite
+    if env_db_path:
+        parent = os.path.dirname(env_db_path) or "."
+        if _dir_is_writable(parent):
+            return {"path": env_db_path, "dir": parent}
+        # Si DB_PATH pointe vers un dossier non écrivable, on ignore et on fallback
+        print(f"⚠️ DB_PATH non écrivable: {env_db_path} → fallback /tmp")
+
+    # 2) Candidats de dossiers
+    candidates = []
+    if env_db_dir:
+        candidates.append(env_db_dir)
+    if env_data_dir and env_data_dir not in candidates:
+        candidates.append(env_data_dir)
+    candidates += ["/tmp/ai_trader", "/tmp"]
+
+    chosen_dir = None
+    for d in candidates:
+        if _dir_is_writable(d):
+            chosen_dir = d
+            break
+
+    if not chosen_dir:
+        chosen_dir = "/tmp/ai_trader"
+        os.makedirs(chosen_dir, exist_ok=True)
+
+    return {"path": os.path.join(chosen_dir, "data.db"), "dir": chosen_dir}
 DB_CONFIG = get_db_config()
 
 def get_db_connection():
@@ -3405,6 +3438,7 @@ MEXC_PRICE_ENDPOINT = f"{MEXC_API_BASE}/api/v3/ticker/price"
 
 #  Background Monitor
 monitor_running = False
+monitor_lock = asyncio.Lock()  # évite NameError dans monitor_trades_background
 
 # ============================================================================
 #  SYSTME D'AUTHENTIFICATION AVEC POSTGRESQL
@@ -4055,19 +4089,44 @@ def check_route_permission(username: str, route: str) -> bool:
         except Exception:
             pass
         return False
-def get_user_role(username: str) -> str:
-    """Obtenir le rôle d'un utilisateur"""
-    return db_manager.get_user_role(username)
+def normalize_username(user_obj):
+    """Accepte str/dict (session payload) et retourne un username string ou None."""
+    if user_obj is None:
+        return None
+    if isinstance(user_obj, str):
+        return user_obj
+    if isinstance(user_obj, dict):
+        for k in ("username", "user", "email", "name"):
+            v = user_obj.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return None
+    # fallback
+    try:
+        return str(user_obj)
+    except Exception:
+        return None
 
-def require_admin(session_token: Optional[str] = Cookie(None)):
-    """Dépendance FastAPI pour exiger un rôle admin"""
-    username = require_auth(session_token)
-    role = get_user_role(username)
+def get_user_role(username):
+    """Retourne le rôle de l'utilisateur. Supporte username dict/str."""
+    uname = normalize_username(username)
+    if not uname:
+        return "user"
+    try:
+        return db_manager.get_user_role(uname)
+    except Exception:
+        return "user"
+
+def require_admin(session_token: str = Cookie(None)):
+    """Dépendance FastAPI: assure que l'utilisateur connecté est admin."""
+    user = get_user_from_token(session_token)
+    uname = normalize_username(user)
+    if not uname:
+        raise HTTPException(status_code=401, detail="Non authentifié")
+    role = get_user_role(uname)
     if role != "admin":
-        raise HTTPException(status_code=403, detail="Accès refusé - Admin requis")
-    return username
-
-
+        raise HTTPException(status_code=403, detail="Accès admin requis")
+    return uname
 def load_trades_from_file():
     """📂 Charger les trades depuis le fichier JSON"""
     global trades_db
@@ -27020,66 +27079,34 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
                 "lifetime_value": float(row[2])
             })
         
-        # ROI des codes promo
-        cursor.execute("""
-            SELECT code, uses, discount, type FROM promo_codes
-            WHERE uses > 0
-            ORDER BY uses DESC
-        """)
-        
+        # ROI des codes promo (compatible avec plusieurs schémas)
         promo_roi = []
-        for row in cursor.fetchall():
-            code, uses, discount, ptype = row
-            # Simuler revenus et ROI
-            avg_purchase = 75
-            revenue_total = uses * avg_purchase
-            discount_total = uses * (discount if ptype == 'fixed' else avg_purchase * discount / 100)
-            roi = ((revenue_total / discount_total) * 100) if discount_total > 0 else 0
-            
-            promo_roi.append({
-                "code": code,
-                "uses": uses,
-                "discount_total": discount_total,
-                "revenue_total": revenue_total,
-                "roi": roi
-            })
-        
-        cursor.close()
-        conn.close()
-        
-        return JSONResponse({
-            "success": True,
-            "projections": {
-                "current_month": current_month_revenue,
-                "next_3_months": projection_3_months,
-                "at_risk": at_risk_revenue,
-                "users_expiring": users_expiring
-            },
-            "clv_by_plan": clv_data,
-            "top_clients": top_clients,
-            "promo_roi": promo_roi
-        })
-    
-    except Exception as e:
-        print(f"❌ Erreur revenue intelligence: {e}")
-        import traceback
-        traceback.print_exc()
-        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
-
-
-# ============================================================================
-# 4 VIRAL GROWTH MACHINE API
-# ============================================================================
-
-@app.get("/admin/api/viral-growth")
-@app.get("/admin-dashboard/api/viral-growth")
-async def admin_viral_growth(session_token: Optional[str] = Cookie(None)):
-    """API pour Viral Growth - Stats parrainage, leaderboard, sources"""
-    user = get_user_from_token(session_token)
-    if not user or user.get("role") != "admin":
-        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
-    try:
+        try:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='promo_codes'")
+            if cursor.fetchone():
+                cursor.execute("PRAGMA table_info(promo_codes)")
+                cols = [r[1] for r in cursor.fetchall()]
+                use_col = "uses" if "uses" in cols else ("redeemed_count" if "redeemed_count" in cols else None)
+                disc_col = "discount" if "discount" in cols else (
+                    "discount_percent" if "discount_percent" in cols else (
+                        "discount_amount" if "discount_amount" in cols else None
+                    )
+                )
+                type_col = "type" if "type" in cols else None
+                if use_col and disc_col:
+                    select_cols = ["code", use_col, disc_col] + ([type_col] if type_col else [])
+                    q = f"SELECT {', '.join(select_cols)} FROM promo_codes WHERE {use_col} > 0 ORDER BY {use_col} DESC LIMIT 10"
+                    cursor.execute(q)
+                    rows = cursor.fetchall()
+                    for row in rows:
+                        promo_roi.append({
+                            "code": row[0],
+                            "uses": int(row[1] or 0),
+                            "discount": float(row[2] or 0),
+                            "type": row[3] if type_col else ("percent" if disc_col == "discount_percent" else "amount"),
+                        })
+        except Exception:
+            promo_roi = []
         # Pour l'instant, donnes simules (en attente de table referrals)
         stats = {
             "total_referrals": 127,

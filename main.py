@@ -515,59 +515,28 @@ except ImportError:
 # ============================================================================
 
 def get_db_config():
-    """Détermine un chemin SQLite valide et *écrivable*.
+    """Return DB config dict.
 
-    - Respecte DB_PATH si possible
-    - Sinon utilise DB_DIR/DATA_DIR si écrivable
-    - Sinon fallback /tmp/ai_trader
+    Supports:
+      - DATABASE_URL (Postgres) OR
+      - DB_DIR / DB_PATH (SQLite)
     """
-    env_db_path = (os.getenv("DB_PATH") or "").strip()
-    # If DB_PATH points to a directory, use a default filename inside it.
-    if env_db_path and os.path.isdir(env_db_path):
-        env_db_path = os.path.join(env_db_path, "data.db")
-    env_db_dir  = (os.getenv("DB_DIR") or "").strip()
-    env_data_dir = (os.getenv("DATA_DIR") or "").strip()
+    # Postgres (Railway/Render/etc.)
+    db_url = (os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or os.getenv("PGDATABASE_URL") or "").strip()
+    if db_url:
+        return {"type": "postgres", "url": db_url}
 
-    def _dir_is_writable(d: str) -> bool:
-        try:
-            if not d:
-                return False
-            os.makedirs(d, exist_ok=True)
-            test_path = os.path.join(d, ".write_test")
-            with open(test_path, "w", encoding="utf-8") as f:
-                f.write("ok")
-            os.remove(test_path)
-            return True
-        except Exception:
-            return False
+    # SQLite (default)
+    db_dir = (os.getenv("DB_DIR") or "").strip()
+    db_path = (os.getenv("DB_PATH") or "").strip()
 
-    # 1) DB_PATH explicite
-    if env_db_path:
-        parent = os.path.dirname(env_db_path) or "."
-        if _dir_is_writable(parent):
-            return {"path": env_db_path, "dir": parent}
-        # Si DB_PATH pointe vers un dossier non écrivable, on ignore et on fallback
-        print(f"⚠️ DB_PATH non écrivable: {env_db_path} → fallback /tmp")
+    if not db_dir:
+        db_dir = "/tmp"
+    if not db_path:
+        db_path = os.path.join(db_dir, "ai_trader.db")
 
-    # 2) Candidats de dossiers
-    candidates = []
-    if env_db_dir:
-        candidates.append(env_db_dir)
-    if env_data_dir and env_data_dir not in candidates:
-        candidates.append(env_data_dir)
-    candidates += ["/tmp/ai_trader", "/tmp"]
+    return {"type": "sqlite", "dir": db_dir, "path": db_path}
 
-    chosen_dir = None
-    for d in candidates:
-        if _dir_is_writable(d):
-            chosen_dir = d
-            break
-
-    if not chosen_dir:
-        chosen_dir = "/tmp/ai_trader"
-        os.makedirs(chosen_dir, exist_ok=True)
-
-    return {"path": os.path.join(chosen_dir, "data.db"), "dir": chosen_dir}
 DB_CONFIG = get_db_config()
 
 def get_db_connection():
@@ -683,6 +652,97 @@ def set_plan_pricing(plan_key: str, display_name: str, duration_days: int, price
         print(f"⚠️ set_plan_pricing: {e}")
         return False
 
+
+# ================= PLAN ACCESS DB (ADMIN) =================
+
+DEFAULT_PLAN_ACCESS = {
+    # Par défaut, on garde simple: tu peux tout gérer dans l'admin.
+    # (Si un plan n'a rien, il ne voit que les pages publiques.)
+    "free": ["dashboard", "pricing-complete", "contact"],
+    "premium": ["dashboard", "trades", "spot-trading", "strategie"],
+    "advanced": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed"],
+    "pro": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
+    "elite": ["dashboard", "trades", "spot-trading", "strategie", "ai-market-regime", "ai-whale-watcher", "fear-greed", "backtesting", "watchlist"],
+}
+
+def init_plan_access_db():
+    """Crée la table plan_access si nécessaire (SQLite/Postgres)."""
+    try:
+        conn, cur = get_db_connection()
+        if DB_CONFIG.get("type") == "postgres":
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS plan_access (
+                    plan_key TEXT PRIMARY KEY,
+                    routes_json TEXT NOT NULL,
+                    updated_at TIMESTAMP DEFAULT NOW()
+                )
+            """)
+        else:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS plan_access (
+                    plan_key TEXT PRIMARY KEY,
+                    routes_json TEXT NOT NULL,
+                    updated_at TEXT DEFAULT (datetime('now'))
+                )
+            """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"⚠️ init_plan_access_db: {e}")
+
+def get_plan_access_routes(plan_key: str):
+    """Retourne la liste des routes autorisées pour un plan."""
+    plan_key = normalize_plan_key(plan_key)
+    try:
+        init_plan_access_db()
+        conn, cur = get_db_connection()
+        if DB_CONFIG.get("type") == "postgres":
+            cur.execute("SELECT routes_json FROM plan_access WHERE plan_key = %s", (plan_key,))
+        else:
+            cur.execute("SELECT routes_json FROM plan_access WHERE plan_key = ?", (plan_key,))
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return DEFAULT_PLAN_ACCESS.get(plan_key, [])
+        routes_json = row[0]
+        routes = json.loads(routes_json) if routes_json else []
+        if not isinstance(routes, list):
+            return DEFAULT_PLAN_ACCESS.get(plan_key, [])
+        return [str(x).strip() for x in routes if str(x).strip()]
+    except Exception as e:
+        print(f"⚠️ get_plan_access_routes: {e}")
+        return DEFAULT_PLAN_ACCESS.get(plan_key, [])
+
+def save_plan_access_routes(plan_key: str, routes: list):
+    """Enregistre (upsert) les routes autorisées pour un plan."""
+    plan_key = normalize_plan_key(plan_key)
+    routes = [str(r).strip() for r in (routes or []) if str(r).strip()]
+    try:
+        init_plan_access_db()
+        conn, cur = get_db_connection()
+        routes_json = json.dumps(routes, ensure_ascii=False)
+        if DB_CONFIG.get("type") == "postgres":
+            cur.execute("""
+                INSERT INTO plan_access (plan_key, routes_json, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (plan_key) DO UPDATE
+                SET routes_json = EXCLUDED.routes_json,
+                    updated_at = NOW()
+            """, (plan_key, routes_json))
+        else:
+            cur.execute("""
+                INSERT INTO plan_access (plan_key, routes_json, updated_at)
+                VALUES (?, ?, datetime('now'))
+                ON CONFLICT(plan_key) DO UPDATE SET
+                    routes_json=excluded.routes_json,
+                    updated_at=datetime('now')
+            """, (plan_key, routes_json))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"⚠️ save_plan_access_routes: {e}")
+        return False
 
 def init_trades_db():
     """Crée la table trades"""
@@ -26314,89 +26374,26 @@ async def admin_save_plan_access(request: Request, _admin: str = Depends(require
         if not ok:
             return JSONResponse({"success": False, "error": err or "Erreur inconnue"}, status_code=200)
 
-        return JSONResponse({"success": True, "plan": normalize_plan_key(plan), "routes": get_plan_access_routes(plan)})
+        return JSONResponse({"success": True, "plan": normalized_plan, "routes": routes, "message": "Accès du plan sauvegardés ✅"}, status_code=200)
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=200)
 
 @app.get("/admin/api/plan-prices")
-async def admin_get_plan_prices(_admin: str = Depends(require_admin)):
-    """Retourne les prix actuels (pour l'UI admin)."""
+async def admin_get_plan_prices(user=Depends(require_admin)):
+    """Retourne les prix courants (CAD) pour remplir le formulaire Admin."""
     try:
-        pricing = get_all_plan_pricing() or {}
-        # pricing dict keys are like: premium_1m, advanced_3m, pro_6m, elite_12m
-        def _cents(k: str, fallback: int) -> int:
-            v = pricing.get(k)
-            if isinstance(v, dict):
-                try:
-                    return int(v.get("price_cents") or fallback)
-                except Exception:
-                    return fallback
-            try:
-                return int(v or fallback)
-            except Exception:
-                return fallback
-
-        plans = {
-            "premium": {
-                "key": "premium_1m",
-                "display_name": "Premium",
-                "duration_days": 30,
-                "currency": "cad",
-                "price_cents": _cents("premium_1m", 2999),
-            },
-            "advanced": {
-                "key": "advanced_3m",
-                "display_name": "Advanced",
-                "duration_days": 90,
-                "currency": "cad",
-                "price_cents": _cents("advanced_3m", 7497),
-            },
-            "pro": {
-                "key": "pro_6m",
-                "display_name": "Pro",
-                "duration_days": 180,
-                "currency": "cad",
-                "price_cents": _cents("pro_6m", 13494),
-            },
-            "elite": {
-                "key": "elite_12m",
-                "display_name": "Elite",
-                "duration_days": 365,
-                "currency": "cad",
-                "price_cents": _cents("elite_12m", 14999),
-            },
-        }
-        return JSONResponse({"success": True, "plans": plans})
-    except Exception as e:
-        return JSONResponse({"success": False, "error": str(e)}, status_code=200)
-
-@app.get("/api/public/plan-pricing")
-async def public_plan_pricing():
-    """Prix des forfaits (public) - utilisés par /pricing-complete."""
-    try:
-        return JSONResponse(get_all_plan_pricing())
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
-
-@app.get("/api/public/plan-access")
-async def public_plan_access():
-    """Accès par forfait (public) - utilisé pour afficher la matrice sur /pricing-complete."""
-    try:
-        conn, cur = get_db_cursor()
-        cur.execute("SELECT plan, routes_json FROM plan_access")
-        rows = cur.fetchall()
-        conn.close()
+        pricing = get_all_plan_pricing()  # dict {plan_key: {price_cents, ...}}
         out = {}
-        for r in rows:
-            plan = (r.get("plan") or "").lower().strip()
-            try:
-                routes = json.loads(r.get("routes_json") or "[]")
-            except Exception:
-                routes = []
-            out[plan] = routes
-        return JSONResponse(out)
+        for key in ("premium", "advanced", "pro", "elite"):
+            pc = pricing.get(key, {}).get("price_cents")
+            if pc is None:
+                pc = DEFAULT_PLAN_PRICES[key]["price_cents"]
+            out[key] = round(int(pc) / 100.0, 2)
+        return JSONResponse(out, status_code=200)
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+        print(f"❌ admin_get_plan_prices: {e}")
+        out = {k: round(int(DEFAULT_PLAN_PRICES[k]['price_cents'])/100.0, 2) for k in ("premium","advanced","pro","elite")}
+        return JSONResponse(out, status_code=200)
 
 @app.post("/admin/save-plan-prices")
 async def admin_save_plan_prices(request: Request, _admin: str = Depends(require_admin)):

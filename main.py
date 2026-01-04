@@ -522,6 +522,9 @@ def get_db_config():
     - Sinon fallback /tmp/ai_trader
     """
     env_db_path = (os.getenv("DB_PATH") or "").strip()
+    # If DB_PATH points to a directory, use a default filename inside it.
+    if env_db_path and os.path.isdir(env_db_path):
+        env_db_path = os.path.join(env_db_path, "data.db")
     env_db_dir  = (os.getenv("DB_DIR") or "").strip()
     env_data_dir = (os.getenv("DATA_DIR") or "").strip()
 
@@ -3636,6 +3639,21 @@ class DatabaseManager:
         return False
     
     def get_user_role(self, username: str) -> str:
+        # Defensive: sometimes session payloads pass a dict instead of a plain username/email.
+        try:
+            if isinstance(username, dict):
+                username = (
+                    username.get("username")
+                    or username.get("email")
+                    or username.get("user")
+                    or username.get("name")
+                    or username.get("id")
+                )
+            if username is None:
+                return None
+            username = str(username)
+        except Exception:
+            username = str(username)
         """Obtenir le rôle d'un utilisateur"""
         conn = self.get_connection()
         c = conn.cursor()
@@ -26250,114 +26268,107 @@ async def admin_test_promo(
 # ============================================================================
 
 @app.get("/admin/get-plan-access/{plan}")
-@app.get("/admin-dashboard/get-plan-access/{plan}")
-async def get_plan_access(plan: str, session_token: Optional[str] = Cookie(None)):
-    """Récupérer les routes accessibles pour un plan d'abonnement"""
-    user = get_user_from_token(session_token)
-    if not user or user.get("role") != "admin":
-        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
+async def admin_get_plan_access(plan: str, _admin: str = Depends(require_admin)):
+    """Retourne les routes autorisées pour un plan."""
     try:
-        conn = db_manager.get_connection()
-        cursor = conn.cursor()
-        
-        # Crer la table si elle n'existe pas
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS plan_access (
-                plan TEXT PRIMARY KEY,
-                routes TEXT
-            )
-        """)
-        conn.commit()
-        
-        cursor.execute("SELECT COALESCE(routes_json, routes) FROM plan_access WHERE plan = ?", (plan,))
-        result = cursor.fetchone()
-        
-        cursor.close()
-        conn.close()
-        
-        if result and result[0]:
-            import json
-            routes = json.loads(result[0])
-        else:
-            routes = []
-        
-        return JSONResponse({"success": True, "routes": routes})
-    
+        plan_key = normalize_plan_key(plan)
+        routes = get_plan_access_routes(plan_key)
+        return JSONResponse(
+            {
+                "success": True,
+                "plan": plan_key,
+                "routes": routes,
+                "possible_routes": PLAN_ROUTE_OPTIONS,
+            }
+        )
     except Exception as e:
-        print(f"❌ Erreur get_plan_access: {e}")
-        import traceback
-        traceback.print_exc()
-        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
-
+        return JSONResponse({"success": False, "error": str(e), "routes": []}, status_code=200)
 
 @app.post("/admin/save-plan-access")
-@app.post("/admin-dashboard/save-plan-access")
-async def save_plan_access(request: Request, session_token: Optional[str] = Cookie(None)):
-    """Sauvegarder les routes accessibles pour un plan"""
-    user = get_user_from_token(session_token)
-    if not user or user.get("role") != "admin":
-        return JSONResponse({"success": False, "message": "Non autorisé"}, status_code=403)
-    
+async def admin_save_plan_access(request: Request, _admin: str = Depends(require_admin)):
+    """Enregistre les routes autorisées pour un plan."""
     try:
-        data = await request.json()
-        plan = data.get('plan')
-        routes = data.get('routes', [])
-        
+        payload = {}
+        try:
+            payload = await request.json()
+        except Exception:
+            try:
+                form = await request.form()
+                payload = dict(form)
+            except Exception:
+                payload = {}
+
+        plan = payload.get("plan") if isinstance(payload, dict) else None
+        routes = payload.get("routes") if isinstance(payload, dict) else None
+
         if not plan:
-            return JSONResponse({"success": False, "message": "Plan manquant"}, status_code=400)
-        
-        import json
-        routes_json = json.dumps(routes)
-        
-        conn = db_manager.get_connection()
-        cursor = conn.cursor()
-        
-        # Crer la table si elle n'existe pas
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS plan_access (
-                plan TEXT PRIMARY KEY,
-                routes TEXT
-            )
-        """)
-        
-        # Insrer ou mettre  jour
-        cursor.execute("""
-            INSERT OR REPLACE INTO plan_access (plan, routes)
-            VALUES (?, ?)
-        """, (plan, routes_json))
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
-        
-        print(f"✅ Accès du plan {plan} sauvegardés: {len(routes)} routes")
-        
-        return JSONResponse({
-            "success": True,
-            "message": f"Accès du plan {plan.upper()} sauvegardés ({len(routes)} pages)"
-        })
-    
+            return JSONResponse({"success": False, "error": "Plan manquant"}, status_code=200)
+
+        if routes is None:
+            routes = []
+        if isinstance(routes, str):
+            # allow comma-separated
+            routes = [r.strip() for r in routes.split(",") if r.strip()]
+
+        ok, err = save_plan_access_routes(plan, routes)
+        if not ok:
+            return JSONResponse({"success": False, "error": err or "Erreur inconnue"}, status_code=200)
+
+        return JSONResponse({"success": True, "plan": normalize_plan_key(plan), "routes": get_plan_access_routes(plan)})
     except Exception as e:
-        print(f"❌ Erreur save_plan_access: {e}")
-        import traceback
-        traceback.print_exc()
-        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+        return JSONResponse({"success": False, "error": str(e)}, status_code=200)
 
-
-# ============================================================================
-#  GESTION DES CODES PROMO (ADMIN) - ROUTES POST
-# ============================================================================
-
-
-
-# =====================
-# Admin - Plan Prices (sync /pricing-complete + Stripe/Coinbase)
-# =====================
 @app.get("/admin/api/plan-prices")
-@app.get("/admin-dashboard/api/plan-prices")
-async def admin_get_plan_prices(request: Request, user=Depends(require_admin)):
-    return JSONResponse({"success": True, "plans": get_all_plan_pricing()})
+async def admin_get_plan_prices(_admin: str = Depends(require_admin)):
+    """Retourne les prix actuels (pour l'UI admin)."""
+    try:
+        pricing = get_all_plan_pricing() or {}
+        # pricing dict keys are like: premium_1m, advanced_3m, pro_6m, elite_12m
+        def _cents(k: str, fallback: int) -> int:
+            v = pricing.get(k)
+            if isinstance(v, dict):
+                try:
+                    return int(v.get("price_cents") or fallback)
+                except Exception:
+                    return fallback
+            try:
+                return int(v or fallback)
+            except Exception:
+                return fallback
+
+        plans = {
+            "premium": {
+                "key": "premium_1m",
+                "display_name": "Premium",
+                "duration_days": 30,
+                "currency": "cad",
+                "price_cents": _cents("premium_1m", 2999),
+            },
+            "advanced": {
+                "key": "advanced_3m",
+                "display_name": "Advanced",
+                "duration_days": 90,
+                "currency": "cad",
+                "price_cents": _cents("advanced_3m", 7497),
+            },
+            "pro": {
+                "key": "pro_6m",
+                "display_name": "Pro",
+                "duration_days": 180,
+                "currency": "cad",
+                "price_cents": _cents("pro_6m", 13494),
+            },
+            "elite": {
+                "key": "elite_12m",
+                "display_name": "Elite",
+                "duration_days": 365,
+                "currency": "cad",
+                "price_cents": _cents("elite_12m", 14999),
+            },
+        }
+        return JSONResponse({"success": True, "plans": plans})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=200)
 
 @app.get("/api/public/plan-pricing")
 async def public_plan_pricing():
@@ -26388,39 +26399,87 @@ async def public_plan_access():
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/admin/save-plan-prices")
-@app.post("/admin-dashboard/save-plan-prices")
-async def admin_save_plan_prices(request: Request, user=Depends(require_admin)):
-
+async def admin_save_plan_prices(request: Request, _admin: str = Depends(require_admin)):
+    """Enregistre les prix (depuis l'UI admin)."""
     try:
-        data = await request.json()
-    except Exception:
-        data = {}
+        payload = {}
+        ct = (request.headers.get("content-type") or "").lower()
+        if "application/json" in ct:
+            try:
+                payload = await request.json()
+            except Exception:
+                payload = {}
+        else:
+            try:
+                form = await request.form()
+                payload = dict(form)
+            except Exception:
+                payload = {}
 
-    plans = data.get("plans", {})
-    if not isinstance(plans, dict):
-        return JSONResponse({"success": False, "message": "Payload invalide"}, status_code=400)
+        plans = payload.get("plans") if isinstance(payload, dict) else None
+        if not isinstance(plans, dict):
+            # fallback: allow direct payload as plans dict
+            plans = payload if isinstance(payload, dict) else {}
 
-    updated = []
-    for plan_key, cfg in plans.items():
-        try:
-            p = normalize_plan(plan_key)
-            if p not in DEFAULT_PLAN_PRICES:
+        key_map = {
+            "premium": ("premium_1m", 30, "Premium"),
+            "advanced": ("advanced_3m", 90, "Advanced"),
+            "pro": ("pro_6m", 180, "Pro"),
+            "elite": ("elite_12m", 365, "Elite"),
+        }
+
+        def parse_price_to_cents(v) -> int:
+            if v is None:
+                return None
+            if isinstance(v, dict):
+                # allow {"price_cents": 2999} or {"price": 29.99}
+                if v.get("price_cents") is not None:
+                    return int(v.get("price_cents"))
+                v = v.get("price")
+            if isinstance(v, (int, float)):
+                return int(round(float(v) * 100))
+            s = str(v).strip().replace(" ", "").replace(",", ".")
+            if not s:
+                return None
+            return int(round(float(s) * 100))
+
+        updated = []
+        for ui_key, info in plans.items():
+            ui_key_norm = str(ui_key).strip().lower()
+            if ui_key_norm not in key_map:
                 continue
-            display = str(cfg.get("display_name") or DEFAULT_PLAN_PRICES[p]["display_name"])
-            currency = str(cfg.get("currency") or "cad").lower()
-            if "price_cents" in cfg:
-                cents = int(cfg.get("price_cents") or 0)
-            else:
-                cents = int(round(float(cfg.get("price") or 0) * 100))
-            days = int(cfg.get("duration_days") or DEFAULT_PLAN_PRICES[p]["duration_days"])
-            cents = max(0, cents)
-            days = max(0, days)
-            if set_plan_pricing(p, display, days, cents, currency):
-                updated.append(p)
-        except Exception as e:
-            print(f"⚠️ admin_save_plan_prices: {e}")
 
-    return JSONResponse({"success": True, "updated": updated, "plans": get_all_plan_pricing()})
+            plan_key, default_days, default_name = key_map[ui_key_norm]
+
+            # info can be a dict or a raw number/string
+            if isinstance(info, dict):
+                cents = parse_price_to_cents(info.get("price"))
+                if cents is None:
+                    cents = parse_price_to_cents(info.get("price_cents"))
+                duration_days = int(info.get("duration_days") or default_days)
+                currency = str(info.get("currency") or "cad").lower()
+                display_name = str(info.get("display_name") or default_name)
+            else:
+                cents = parse_price_to_cents(info)
+                duration_days = default_days
+                currency = "cad"
+                display_name = default_name
+
+            if cents is None or cents <= 0:
+                continue
+
+            set_plan_pricing(
+                plan_key=plan_key,
+                display_name=display_name,
+                duration_days=duration_days,
+                price_cents=cents,
+                currency=currency,
+            )
+            updated.append(plan_key)
+
+        return JSONResponse({"success": True, "updated": updated})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=200)
 
 @app.post("/admin/create-promo")
 @app.post("/admin-dashboard/create-promo")

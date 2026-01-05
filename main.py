@@ -23518,10 +23518,7 @@ def get_total_revenue() -> float:
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request, _admin_user: str = Depends(require_admin)):
     """Admin Dashboard (stable): gestion prix + accès par forfait."""
-    # Auth admin
-    # Accès admin géré par require_admin (cookie session_token)
-    if session.get("username") != "admin" and not session.get("is_admin"):
-        return RedirectResponse(url="/", status_code=303)
+    # Accès admin géré par require_admin (session facultative)
 
     # Load pricing
     prices = get_all_plan_pricing()

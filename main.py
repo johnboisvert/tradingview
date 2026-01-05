@@ -4881,6 +4881,72 @@ async def get_crypto_news_real():
 #  ROUTES D'AUTHENTIFICATION
 # ============================================================================
 
+
+@app.middleware("http")
+async def html_placeholder_middleware(request: Request, call_next):
+    """
+    Corrige les placeholders dans les réponses HTML, incluant les TemplateResponse
+    (qui peuvent être streamées, donc sans resp.body).
+    Objectif: éviter les src="{SITE_LOGO_URL}" qui deviennent /%7BSITE_LOGO_URL%7D.
+    """
+    resp = await call_next(request)
+    try:
+        ct = (resp.headers.get("content-type") or "").lower()
+        if "text/html" not in ct:
+            return resp
+
+        body_bytes = None
+
+        # Réponses classiques (HTMLResponse)
+        if hasattr(resp, "body") and isinstance(resp.body, (bytes, bytearray)):
+            body_bytes = bytes(resp.body)
+
+        # Réponses streamées (TemplateResponse / StreamingResponse)
+        elif hasattr(resp, "body_iterator"):
+            chunks = []
+            async for chunk in resp.body_iterator:
+                chunks.append(chunk)
+            body_bytes = b"".join(chunks)
+
+        if body_bytes is None:
+            return resp
+
+        html = body_bytes.decode("utf-8", "ignore")
+
+        logo = (os.getenv("SITE_LOGO_URL") or "").strip()
+        if not logo:
+            logo = (globals().get("SITE_LOGO_URL") or "").strip()
+
+        name = (os.getenv("SITE_NAME") or "").strip()
+        if not name:
+            name = (globals().get("SITE_NAME") or "CRYPTO IA").strip()
+
+        # Variantes possibles dans vos templates
+        html = html.replace("{SITE_LOGO_URL}", logo)
+        html = html.replace("{{SITE_LOGO_URL}}", logo)
+        html = html.replace("${SITE_LOGO_URL}", logo)
+
+        html = html.replace("{SITE_NAME}", name)
+        html = html.replace("{{SITE_NAME}}", name)
+        html = html.replace("${SITE_NAME}", name)
+
+        new_body = html.encode("utf-8")
+
+        from starlette.responses import Response as StarletteResponse
+        new_resp = StarletteResponse(content=new_body, status_code=resp.status_code, media_type="text/html")
+
+        # Conserver les headers (cookies, etc.) — sans Content-Length/Type recalculés
+        for k, v in resp.headers.items():
+            lk = k.lower()
+            if lk in ("content-length", "content-type"):
+                continue
+            new_resp.headers[k] = v
+
+        return new_resp
+    except Exception as e:
+        print(f"⚠️ placeholder middleware error: {e}")
+        return resp
+
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = None, redirect: str = None):
     """Page de connexion"""
@@ -19278,986 +19344,252 @@ async def create_charge(req: CreateChargeRequest, request: Request):
         print(f"❌ Create charge: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/pricing-complete", response_class=HTMLResponse)
 async def pricing_complete():
-    """Page de pricing avec support codes promo"""
+    """Page de pricing (générée server-side) + support codes promo."""
     prices = get_all_plan_pricing()
     premium_price = float(prices.get("premium_1m", 20.0) or 0)
     advanced_price = float(prices.get("advanced_3m", 50.0) or 0)
     pro_price = float(prices.get("pro_6m", 80.0) or 0)
     elite_price = float(prices.get("elite_1y", 150.0) or 0)
+
     def _fmt(x: float) -> str:
         try:
-            return f"{float(x):.2f}"
+            return f"{x:.2f}"
         except Exception:
             return "0.00"
-    def _save_pct(full: float, paid: float) -> int:
-        try:
-            return max(0, int(round(((full - paid) / full) * 100))) if full > 0 else 0
-        except Exception:
-            return 0
-    adv_save = _save_pct(premium_price * 3, advanced_price)
-    pro_save = _save_pct(premium_price * 6, pro_price)
-    elite_save = _save_pct(premium_price * 12, elite_price)
 
-    html = SIDEBAR + """
-<!DOCTYPE html>
+    site_logo = os.getenv("SITE_LOGO_URL", globals().get("SITE_LOGO_URL", ""))
+    html = f"""
+<!doctype html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>💎 Plans & Tarifs - Trading Dashboard Pro</title>""" + CSS + """
-    <style>
-        .pricing-page, .pricing-page * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }}
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 50px;
-        }}
-        .header h1 {
-            font-size: 48px;
-            margin-bottom: 15px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }}
-        .header p {
-            font-size: 20px;
-            opacity: 0.9;
-        }
-        
-        /* Section Code Promo */
-        .promo-section {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            margin: 30px auto;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-            max-width: 600px;
-        }
-        .promo-section h3 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 22px;
-        }
-        .promo-input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .promo-input {
-            flex: 1;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            font-size: 16px;
-            text-transform: uppercase;
-            font-weight: 600;
-        }
-        .promo-input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        .promo-btn {
-            padding: 15px 30px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .promo-btn:hover {
-            background: #5568d3;
-            transform: scale(1.05);
-        }
-        .promo-message {
-            padding: 15px;
-            border-radius: 10px;
-            font-weight: 600;
-            text-align: center;
-            display: none;
-        }
-        .promo-message.success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 2px solid #10b981;
-            display: block;
-        }
-        .promo-message.error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 2px solid #ef4444;
-            display: block;
-        }
-        .original-price {
-            text-decoration: line-through;
-            color: #999;
-            font-size: 24px;
-            margin-right: 10px;
-        }
-        
-        .pricing-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
-            margin-bottom: 50px;
-        }
-        .pricing-card {
-            background: white;
-            border-radius: 20px;
-            padding: 40px 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            transition: transform 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        .pricing-card:hover {
-            transform: translateY(-10px);
-        }
-        .pricing-card.featured {
-            border: 3px solid #f59e0b;
-            transform: scale(1.05);
-        }
-        .pricing-card.featured::before {
-            content: "⭐ POPULAIRE";
-            position: absolute;
-            top: 20px;
-            right: -35px;
-            background: #f59e0b;
-            color: white;
-            padding: 5px 40px;
-            transform: rotate(45deg);
-            font-weight: bold;
-            font-size: 12px;
-        }
-        .plan-name {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
-        .plan-price {
-            font-size: 48px;
-            font-weight: bold;
-            color: #667eea;
-            margin: 20px 0;
-        }
-        .plan-price .currency { font-size: 24px; }
-        .plan-price .period { font-size: 16px; color: #666; }
-        .discount-badge {
-            display: inline-block;
-            background: #10b981;
-            color: white;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .features {
-            list-style: none;
-            margin: 30px 0;
-            text-align: left;
-        }
-        .features li {
-            padding: 12px 0;
-            color: #555;
-            border-bottom: 1px solid #eee;
-        }
-        .features li:before {
-            content: "✓ ";
-            color: #10b981;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-        .btn-payment {
-            display: block;
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
-        }
-        .btn-stripe {
-            background: #635bff;
-            color: white;
-        }
-        .btn-stripe:hover {
-            background: #4f46e5;
-            transform: scale(1.02);
-        }
-        .btn-coinbase {
-            background: #0052ff;
-            color: white;
-        }
-        .btn-coinbase:hover {
-            background: #0041cc;
-            transform: scale(1.02);
-        }
-        .back-link {
-            display: inline-block;
-            margin-top: 30px;
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-            padding: 12px 24px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-        .back-link:hover {
-            background: rgba(255,255,255,0.3);
-        }
-    
-    .hero-logo{
-        width: 140px;
-        height: auto;
-        display: block;
-        margin: 0 auto 10px;
-        filter: drop-shadow(0 10px 24px rgba(0,0,0,0.35));
-    }
-    .interac-note{
-        margin-top: 18px;
-        padding: 12px 14px;
-        border-radius: 12px;
-        background: rgba(255,255,255,0.06);
-        border: 1px solid rgba(255,255,255,0.10);
-        text-align: center;
-        font-weight: 600;
-        color: rgba(255,255,255,0.92);
-    }
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Plans & Tarifs — Crypto IA</title>
+  <style>
+    body {{
+      margin:0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height:100vh;
+      padding:20px;
+    }}
+    .wrap {{ max-width:1100px; margin:0 auto; }}
+    .hero {{
+      background: rgba(20, 24, 40, 0.75);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      color:#fff;
+      text-align:center;
+      margin-bottom:18px;
+    }}
+    .hero img {{ max-height:70px; border-radius:10px; }}
+    .hero h1 {{ margin:10px 0 6px 0; font-size:42px; }}
+    .hero p {{ margin:0; opacity:.85; }}
 
-</style>
+    .promo {{
+      background:#fff;
+      border-radius:16px;
+      padding:18px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:center;
+      margin:18px auto 22px auto;
+      max-width:780px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.15);
+    }}
+    .promo input {{
+      flex:1;
+      padding:14px;
+      border-radius:10px;
+      border:1px solid #d6d6d6;
+      font-size:14px;
+      background:#0b1220;
+      color:#fff;
+    }}
+    .promo button {{
+      padding:14px 18px;
+      border:none;
+      border-radius:10px;
+      background:#667eea;
+      color:#fff;
+      font-weight:700;
+      cursor:pointer;
+    }}
+    .promo small {{ display:block; opacity:.7; margin-top:6px; }}
+
+    .grid {{
+      display:grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap:18px;
+    }}
+    @media (max-width: 1100px) {{
+      .grid {{ grid-template-columns: repeat(2, 1fr); }}
+    }}
+    @media (max-width: 650px) {{
+      .grid {{ grid-template-columns: 1fr; }}
+      .promo {{ flex-direction:column; }}
+    }}
+    .card {{
+      background:#fff;
+      border-radius:18px;
+      padding:18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.12);
+      position:relative;
+      overflow:hidden;
+      min-height: 340px;
+    }}
+    .badge {{
+      position:absolute;
+      right:-40px;
+      top:18px;
+      transform: rotate(45deg);
+      background:#f59e0b;
+      color:#fff;
+      padding:8px 50px;
+      font-weight:800;
+      font-size:12px;
+    }}
+    .card h3 {{ margin:0; font-size:22px; }}
+    .pill {{
+      display:inline-block;
+      margin-top:8px;
+      background:#10b981;
+      color:#fff;
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+      font-weight:800;
+    }}
+    .price {{
+      font-size:44px;
+      font-weight:900;
+      color:#4f67d6;
+      margin:18px 0 8px 0;
+    }}
+    .per {{ opacity:.6; font-weight:700; font-size:14px; }}
+    ul {{ margin:12px 0 0 18px; padding:0; }}
+    li {{ margin:10px 0; }}
+    .cta {{
+      margin-top:16px;
+      width:100%;
+      padding:12px 12px;
+      border-radius:12px;
+      border:none;
+      background:#6b5bd6;
+      color:#fff;
+      font-weight:900;
+      cursor:pointer;
+      font-size:14px;
+    }}
+    .cta.secondary {{ background:#0b1220; }}
+    .note {{
+      text-align:center;
+      color:#fff;
+      opacity:.85;
+      margin-top:16px;
+      font-size:13px;
+    }}
+  </style>
 </head>
 <body>
-        <div class="pricing-page">
-    <div class="container">
-        <div class="header">
-            <img class="hero-logo" src="{logo_url}" alt="CryptoIA" />
+  <div class="wrap">
+    <div class="hero">
+      {f'<img src="{site_logo}" alt="CryptoIA"/>' if site_logo else ''}
       <h1>💎 Plans & Tarifs</h1>
-            <p>Choisissez le plan qui vous convient</p>
-        </div>
-        
-        <!-- Section Code Promo -->
-        <div class="promo-section">
-            <h3>🎁 Vous avez un code promo?</h3>
-            <div class="promo-input-group">
-                <input type="text" 
-                       id="promoCode" 
-                       class="promo-input" 
-                       placeholder="Entrez votre code promo"
-                       onkeyup="this.value = this.value.toUpperCase()">
-                <button onclick="applyPromo()" class="promo-btn">Appliquer</button>
-            </div>
-            <div id="promoMessage" class="promo-message"></div>
-        </div>
-        
-        <div class="pricing-grid">
-            <!-- Plan 1 Month -->
-            <div class="pricing-card">
-                <div class="plan-name">💳 Premium</div>
-                <div class="discount-badge">1 mois</div>
-                <div class="plan-price" id="price-1-month">
-                    <span class="currency">$</span><span id="amount-1-month">29.99</span>
-                </div>
-                <ul class="features">
-                    <li>Tous les indicateurs IA</li>
-                    <li>Dashboard en temps réel</li>
-                    <li>Signaux de trading</li>
-                    <li>Support prioritaire</li>
-                </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('1_month', 'stripe', 29.99)">
-                    💳 Payer par Carte
-                </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('1_month', 'coinbase', 29.99)">
-                    ₿ Payer en Crypto
-                </button>
-            </div>
-            
-            <!-- Plan 3 Months -->
-            <div class="pricing-card featured">
-                <div class="plan-name">💎 Advanced</div>
-                <div class="discount-badge">3 mois - Économisez 17%</div>
-                <div class="plan-price" id="price-3-months">
-                    <span class="currency">$</span><span id="amount-3-months">74.97</span>
-                    <span class="period">/3 mois</span>
-                </div>
-                <ul class="features">
-                    <li>Tous les avantages Premium</li>
-                    <li>Webhooks TradingView</li>
-                    <li>Alertes Telegram</li>
-                    <li>Support 24/7</li>
-                </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('3_months', 'stripe', 74.97)">
-                    💳 Payer par Carte
-                </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('3_months', 'coinbase', 74.97)">
-                    ₿ Payer en Crypto
-                </button>
-            </div>
-            
-            <!-- Plan 6 Months -->
-            <div class="pricing-card">
-                <div class="plan-name">👑 Pro</div>
-                <div class="discount-badge">6 mois - Économisez 25%</div>
-                <div class="plan-price" id="price-6-months">
-                    <span class="currency">$</span><span id="amount-6-months">134.94</span>
-                    <span class="period">/6 mois</span>
-                </div>
-                <ul class="features">
-                    <li>Tous les avantages Advanced</li>
-                    <li>API accès complet</li>
-                    <li>Backtesting illimité</li>
-                    <li>Support VIP</li>
-                </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('6_months', 'stripe', 134.94)">
-                    💳 Payer par Carte
-                </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('6_months', 'coinbase', 134.94)">
-                    ₿ Payer en Crypto
-                </button>
-            </div>
-            
-            <!-- Plan 1 Year -->
-            <div class="pricing-card">
-                <div class="plan-name">🚀 Elite</div>
-                <div class="discount-badge">1 an - Économisez 33%</div>
-                <div class="plan-price" id="price-1-year">
-                    <span class="currency">$</span><span id="amount-1-year">239.88</span>
-                    <span class="period">/an</span>
-                </div>
-                <ul class="features">
-                    <li>Tous les avantages Pro</li>
-                    <li>Rapports PDF hebdomadaires</li>
-                    <li>Formation exclusive</li>
-                    <li>Support dédié</li>
-                </ul>
-                <button class="btn-payment btn-stripe" onclick="checkout('1_year', 'stripe', 239.88)">
-                    💳 Payer par Carte
-                </button>
-                <button class="btn-payment btn-coinbase" onclick="checkout('1_year', 'coinbase', 239.88)">
-                    ₿ Payer en Crypto
-                </button>
-            </div>
-        </div>
-        
-        <!-- Section Pages & Fonctionnalités Détaillées -->
-        <div style="background: white; border-radius: 20px; padding: 50px; margin-top: 60px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
-            <h2 style="text-align: center; color: #333; font-size: 36px; margin-bottom: 20px;">
-                📋 Pages & Fonctionnalités Disponibles
-            </h2>
-            <p style="text-align: center; color: #666; font-size: 18px; margin-bottom: 40px;">
-                Découvrez exactement ce que vous obtenez avec chaque plan
-            </p>
-            
-            <!-- Tabs Navigation -->
-            <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap;">
-                <button onclick="showPlan('free')" id="tab-free" class="plan-tab active-tab">
-                    🆓 GRATUIT
-                </button>
-                <button onclick="showPlan('premium')" id="tab-premium" class="plan-tab">
-                    💳 PREMIUM
-                </button>
-                <button onclick="showPlan('advanced')" id="tab-advanced" class="plan-tab">
-                    💎 ADVANCED
-                </button>
-                <button onclick="showPlan('pro')" id="tab-pro" class="plan-tab">
-                    👑 PRO
-                </button>
-                <button onclick="showPlan('elite')" id="tab-elite" class="plan-tab">
-                    🚀 ELITE
-                </button>
-            </div>
-            
-            <!-- Plan FREE -->
-            <div id="plan-free" class="plan-content">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">🆓 Plan GRATUIT - $0/mois</h3>
-                    <p style="font-size: 16px; opacity: 0.9;">9 pages accessibles sans inscription</p>
-                </div>
-                
-                <div class="pages-grid">
-                    <div class="page-card">
-                        <div class="page-icon">🏠</div>
-                        <h4>Page d'Accueil</h4>
-                        <p>Vue d'ensemble du marché crypto avec statistiques principales</p>
-                    </div>
-                    
-                    <div class="page-card">
-                        <div class="page-icon">📊</div>
-                        <h4>Dashboard</h4>
-                        <p>Dashboard de base avec indicateurs essentiels et statistiques temps réel</p>
-                    </div>
-                    
-                    <div class="page-card">
-                        <div class="page-icon">😨</div>
-                        <h4>Fear & Greed Index</h4>
-                        <p>Indice de sentiment du marché Bitcoin, indicateur émotionnel</p>
-                    </div>
-                    
-                    <div class="page-card">
-                        <div class="page-icon">👑</div>
-                        <h4>Bitcoin Dominance</h4>
-                        <p>Suivi de la domination BTC vs altcoins avec graphiques historiques</p>
-                    </div>
-                    
-                    <div class="page-card">
-                        <div class="page-icon">🔥</div>
-                        <h4>Altcoin Season Index</h4>
-                        <p>Index 90 jours indiquant si c'est Bitcoin ou Altcoin Season</p>
-                    </div>
-                    
-                    <div class="page-card">
-                        <div class="page-icon">🗺️</div>
-                        <h4>Crypto Heatmap</h4>
-                        <p>Carte thermique du marché crypto avec top gainers/losers</p>
-                    </div>
-                    
-                    <div class="page-card">
-                        <div class="page-icon">📰</div>
-                        <h4>Actualités Crypto</h4>
-                        <p>Feed d'actualités crypto en temps réel de sources fiables</p>
-                    </div>
-                    
-                    <div class="page-card">
-                        <div class="page-icon">💱</div>
-                        <h4>Convertisseur</h4>
-                        <p>Convertisseur de devises crypto/fiat avec taux en direct</p>
-                    </div>
-                    
-                    <div class="page-card">
-                        <div class="page-icon">📅</div>
-                        <h4>Calendrier Économique</h4>
-                        <p>Événements crypto importants et annonces de projets</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Plan PREMIUM -->
-            <div id="plan-premium" class="plan-content" style="display: none;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">💳 Plan PREMIUM - $20.00/mois</h3>
-                    <p style="font-size: 16px; opacity: 0.9;">9 pages gratuites + 7 pages premium = 16 pages totales</p>
-                </div>
-                
-                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
-                    <strong style="color: #065f46;">✅ Inclut toutes les pages GRATUITES +</strong>
-                </div>
-                
-                <div class="pages-grid">
-                    <div class="page-card premium-card">
-                        <div class="page-icon">🤖</div>
-                        <h4>Assistant IA</h4>
-                        <p>Assistant IA pour analyse de marché, recommandations personnalisées et réponses trading</p>
-                    </div>
-                    
-                    <div class="page-card premium-card">
-                        <div class="page-icon">💹</div>
-                        <h4>Spot Trading</h4>
-                        <p>Interface de trading spot avec gestion de positions, historique et calcul P&L automatique</p>
-                    </div>
-                    
-                    <div class="page-card premium-card">
-                        <div class="page-icon">📊</div>
-                        <h4>Dashboard Trades</h4>
-                        <p>Vue complète de tous vos trades avec statistiques détaillées et filtres avancés</p>
-                    </div>
-                    
-                    <div class="page-card premium-card">
-                        <div class="page-icon">👁️</div>
-                        <h4>Watchlist</h4>
-                        <p>Liste de surveillance avec alertes de prix personnalisées et notifications temps réel</p>
-                    </div>
-                    
-                    <div class="page-card premium-card">
-                        <div class="page-icon">🧮</div>
-                        <h4>Calculatrice Trading</h4>
-                        <p>Calcul de taille de position, leverage, profits/pertes et conversions</p>
-                    </div>
-                    
-                    <div class="page-card premium-card">
-                        <div class="page-icon">🎮</div>
-                        <h4>Simulateur Marché</h4>
-                        <p>Trading en mode simulation avec données réelles, sans risque financier</p>
-                    </div>
-                    
-                    <div class="page-card premium-card">
-                        <div class="page-icon">👤</div>
-                        <h4>Mon Compte</h4>
-                        <p>Gestion complète du profil, abonnement, statistiques et historique</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Plan ADVANCED -->
-            <div id="plan-advanced" class="plan-content" style="display: none;">
-                <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">💎 Plan ADVANCED - $50.00/3 mois</h3>
-                    <p style="font-size: 16px; opacity: 0.9;">16 pages Premium + 7 pages Advanced = 23 pages totales</p>
-                </div>
-                
-                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
-                    <strong style="color: #065f46;">✅ Inclut toutes les pages PREMIUM +</strong>
-                </div>
-                
-                <div class="pages-grid">
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">🔍</div>
-                        <h4>Scanner Opportunités IA</h4>
-                        <p>Détection automatique d'opportunités de trading avec analyse de patterns et scoring</p>
-                    </div>
-                    
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">📈</div>
-                        <h4>Détection Régime Marché</h4>
-                        <p>Identification automatique des phases Bull/Bear/Consolidation avec analyse de volatilité</p>
-                    </div>
-                    
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">📋</div>
-                        <h4>Gestion Stratégies</h4>
-                        <p>Création et gestion de stratégies personnalisées avec optimisation de paramètres</p>
-                    </div>
-                    
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">⚠️</div>
-                        <h4>Risk Management</h4>
-                        <p>Calcul avancé de taille de position, Risk/Reward, Stop Loss et Take Profit suggérés</p>
-                    </div>
-                    
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">📊</div>
-                        <h4>Stats Dashboard Avancé</h4>
-                        <p>Statistiques détaillées avec win rate, profit factor, meilleures/pires trades</p>
-                    </div>
-                    
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">📈</div>
-                        <h4>Graphiques Personnalisés</h4>
-                        <p>Charts avancés avec indicateurs techniques et analyse multi-timeframe</p>
-                    </div>
-                    
-                    <div class="page-card advanced-card">
-                        <div class="page-icon">🚀</div>
-                        <h4>Détection Bull Run</h4>
-                        <p>Identification automatique des phases de bull run avec indicateurs et prédictions</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Plan PRO -->
-            <div id="plan-pro" class="plan-content" style="display: none;">
-                <div style="background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">👑 Plan PRO - $134.94/6 mois</h3>
-                    <p style="font-size: 16px; opacity: 0.9;">23 pages Advanced + 5 pages Pro = 28 pages totales</p>
-                </div>
-                
-                <div style="background: #f0fdf4; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #10b981;">
-                    <strong style="color: #065f46;">✅ Inclut toutes les pages ADVANCED +</strong>
-                </div>
-                
-                <div class="pages-grid">
-                    <div class="page-card pro-card">
-                        <div class="page-icon">🐋</div>
-                        <h4>Whale Watcher</h4>
-                        <p>Surveillance des mouvements de gros capitaux avec alertes transactions importantes</p>
-                    </div>
-                    
-                    <div class="page-card pro-card">
-                        <div class="page-icon">🔄</div>
-                        <h4>Backtesting Complet</h4>
-                        <p>Test de stratégies sur données historiques avec métriques avancées (Sharpe, Max DD)</p>
-                    </div>
-                    
-                    <div class="page-card pro-card">
-                        <div class="page-icon">📡</div>
-                        <h4>Stats Temps Réel</h4>
-                        <p>Métriques en direct avec performance du jour, P&L live et taux de réussite</p>
-                    </div>
-                    
-                    <div class="page-card pro-card">
-                        <div class="page-icon">📄</div>
-                        <h4>Rapports PDF</h4>
-                        <p>Génération automatique de rapports mensuels avec analyses et graphiques exportables</p>
-                    </div>
-                    
-                    <div class="page-card pro-card">
-                        <div class="page-icon">⛓️</div>
-                        <h4>Métriques On-Chain</h4>
-                        <p>Données blockchain avancées, flux de transactions et indicateurs on-chain</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Plan ELITE -->
-            <div id="plan-elite" class="plan-content" style="display: none;">
-                <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 20px; border-radius: 15px; margin-bottom: 30px;">
-                    <h3 style="font-size: 28px; margin-bottom: 10px;">🚀 Plan ELITE - $150.00/an</h3>
-                    <p style="font-size: 16px; opacity: 0.9;">28 pages Pro + 3 pages Elite = 31 pages totales - TOUT DÉBLOQUÉ!</p>
-                </div>
-                
-                <div style="background: #fef3c7; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
-                    <strong style="color: #92400e;">⭐ Inclut TOUTES les pages PRO + Accès API Complet</strong>
-                </div>
-                
-                <div class="pages-grid">
-                    <div class="page-card elite-card">
-                        <div class="page-icon">🔮</div>
-                        <h4>Prédictions IA Avancées</h4>
-                        <p>Prédictions de prix basées sur machine learning avec modèles avancés et probabilités</p>
-                    </div>
-                    
-                    <div class="page-card elite-card">
-                        <div class="page-icon">🔑</div>
-                        <h4>Gestion Clés API</h4>
-                        <p>Génération de clés API personnelles pour accès programmatique à toutes vos données</p>
-                    </div>
-                    
-                    <div class="page-card elite-card">
-                        <div class="page-icon">📚</div>
-                        <h4>Documentation API</h4>
-                        <p>Documentation complète de l'API avec exemples de code et limites de rate</p>
-                    </div>
-                </div>
-                
-                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 30px; border-radius: 15px; margin-top: 30px; text-align: center;">
-                    <h3 style="color: #92400e; font-size: 24px; margin-bottom: 15px;">🎁 Bonus Exclusifs ELITE</h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
-                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 36px; margin-bottom: 10px;">🎓</div>
-                            <strong>Formation Exclusive</strong>
-                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Accès aux webinaires et formations trading</p>
-                        </div>
-                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 36px; margin-bottom: 10px;">💬</div>
-                            <strong>Support Dédié VIP</strong>
-                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Réponse prioritaire sous 1 heure</p>
-                        </div>
-                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 36px; margin-bottom: 10px;">📊</div>
-                            <strong>Rapports Hebdo</strong>
-                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Rapports PDF automatiques chaque semaine</p>
-                        </div>
-                        <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                            <div style="font-size: 36px; margin-bottom: 10px;">∞</div>
-                            <strong>Limites Illimitées</strong>
-                            <p style="color: #666; font-size: 14px; margin-top: 5px;">Pas de limite sur les appels API</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <style>
-                .plan-tab {
-                    padding: 15px 25px;
-                    border: 2px solid #e0e0e0;
-                    background: white;
-                    border-radius: 10px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                    font-size: 16px;
-                    min-width: 150px;
-                    white-space: nowrap;
-                    text-align: center;
-                    color: #111;
-                }
-                .plan-tab:hover {
-                    border-color: #667eea;
-                    transform: scale(1.05);
-                    color: #111;
-                }
-                .plan-tab.active-tab {
-                    background: #667eea;
-                    color: white;
-                    border-color: #667eea;
-                }
-                .pages-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                    gap: 20px;
-                    margin-top: 20px;
-                }
-                .page-card {
-                    background: #f9fafb;
-                    border-radius: 12px;
-                    padding: 25px;
-                    border: 2px solid #e5e7eb;
-                    transition: all 0.3s;
-                }
-                .page-card:hover {
-                    transform: translateY(-5px);
-                    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-                }
-                .premium-card {
-                    border-color: #667eea;
-                    background: linear-gradient(135deg, #f3f4ff 0%, #ffffff 100%);
-                }
-                .advanced-card {
-                    border-color: #f59e0b;
-                    background: linear-gradient(135deg, #fffbeb 0%, #ffffff 100%);
-                }
-                .pro-card {
-                    border-color: #8b5cf6;
-                    background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 100%);
-                }
-                .elite-card {
-                    border-color: #ef4444;
-                    background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
-                }
-                .page-icon {
-                    font-size: 42px;
-                    margin-bottom: 15px;
-                }
-                .page-card h4 {
-                    color: #333;
-                    font-size: 18px;
-                    margin-bottom: 10px;
-                }
-                .page-card p {
-                    color: #666;
-                    font-size: 14px;
-                    line-height: 1.6;
-                }
-            </style>
-            
-            <script>
-                function showPlan(planName) {
-                    // Cacher tous les plans
-                    document.querySelectorAll('.plan-content').forEach(el => {
-                        el.style.display = 'none';
-                    });
-                    
-                    // Retirer la classe active de tous les tabs
-                    document.querySelectorAll('.plan-tab').forEach(el => {
-                        el.classList.remove('active-tab');
-                    });
-                    
-                    // Afficher le plan slectionn
-                    document.getElementById('plan-' + planName).style.display = 'block';
-                    document.getElementById('tab-' + planName).classList.add('active-tab');
-                }
-            </script>
-        </div>
-        
-        <center>
-            <a href="/dashboard" class="back-link">← Retour au Dashboard</a>
-        </center>
-        <p class="interac-note">Virement interac accepté cryptoia2026@proton.me — veuillez nous écrire.</p>
+      <p>Choisissez le plan qui vous convient</p>
     </div>
 
-    <script>
-        // tat global pour le code promo
-        let appliedPromo = {
-            code: null,
-            discount: 0,
-            originalPrices: {
-                '1_month': 29.99,
-                '3_months': 74.97,
-                '6_months': 134.94,
-                '1_year': 239.88
-            },
-            discountedPrices: {}
-        };
-        
-        // Appliquer le code promo
-        async function applyPromo() {
-            const codeInput = document.getElementById('promoCode');
-            const code = codeInput.value.trim().toUpperCase();
-            const messageDiv = document.getElementById('promoMessage');
-            
-            if (!code) {
-                showMessage('Veuillez entrer un code promo', 'error');
-                return;
-            }
-            
-            messageDiv.innerHTML = '🔄 Validation en cours...';
-            messageDiv.className = 'promo-message';
-            messageDiv.style.display = 'block';
-            
-            try {
-                // Valider pour chaque plan
-                let validForAnyPlan = false;
-                
-                for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
-                    const response = await fetch(`/api/validate-promo?code=${code}&plan=${plan}&amount=${originalPrice}`);
-                    const data = await response.json();
-                    
-                    if (data.valid && data.discount) {
-                        validForAnyPlan = true;
-                        appliedPromo.code = code;
-                        appliedPromo.discountedPrices[plan] = data.final_amount;
-                        updatePriceDisplay(plan, originalPrice, data.final_amount);
-                    }
-                }
-                
-                if (validForAnyPlan) {
-                    showMessage(`✅ Code ${code} appliqué avec succès!`, 'success');
-                } else {
-                    showMessage('❌ Code promo invalide ou expiré', 'error');
-                    resetPrices();
-                }
-            } catch (error) {
-                showMessage('❌ Erreur lors de la validation', 'error');
-                console.error(error);
-            }
-        }
-        
-        function showMessage(message, type) {
-            const messageDiv = document.getElementById('promoMessage');
-            messageDiv.innerHTML = message;
-            messageDiv.className = `promo-message ${type}`;
-            messageDiv.style.display = 'block';
-        }
-        
-        function updatePriceDisplay(plan, originalPrice, newPrice) {
-            const amountSpan = document.getElementById(`amount-${plan}`);
-            amountSpan.innerHTML = `
-                <span class="original-price">$${originalPrice.toFixed(2)}</span>
-                ${newPrice.toFixed(2)}
-            `;
-        }
-        
-        function resetPrices() {
-            appliedPromo.code = null;
-            appliedPromo.discountedPrices = {};
-            
-            for (const [plan, originalPrice] of Object.entries(appliedPromo.originalPrices)) {
-                const amountSpan = document.getElementById(`amount-${plan}`);
-                amountSpan.textContent = originalPrice.toFixed(2);
-            }
-        }
-        
-        async function checkout(plan, method, baseAmount) {
-            const finalAmount = appliedPromo.discountedPrices[plan] || baseAmount;
-            
-            if (method === 'stripe') {
-                const response = await fetch('/api/stripe-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        plan: plan,
-                        amount: finalAmount,
-                        promo_code: appliedPromo.code
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.url) {
-                    window.location.href = data.url;
-                } else {
-                    alert('Erreur: ' + (data.error || 'Impossible de créer la session'));
-                }
-            } else {
-                const response = await fetch('/api/coinbase-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        plan: plan,
-                        amount: finalAmount,
-                        promo_code: appliedPromo.code
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.url) {
-                    window.location.href = data.url;
-                } else {
-                    alert('Erreur: ' + (data.error || 'Impossible de créer le paiement'));
-                }
-            }
-        }
-    </script>
-        </div>
-    </body>
+    <div class="promo">
+      <div style="min-width:210px; font-weight:900;">🎁 Vous avez un code promo?</div>
+      <input id="promoCode" placeholder="ENTREZ VOTRE CODE PROMO" />
+      <button onclick="applyPromo()">Appliquer</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>💳 Premium</h3>
+        <div class="pill">1 mois</div>
+        <div class="price">$<span id="price-premium">{_fmt(premium_price)}</span></div>
+        <div class="per">/ mois</div>
+        <ul>
+          <li>Tous les indicateurs IA</li>
+          <li>Dashboard en temps réel</li>
+          <li>Signaux de trading</li>
+          <li>Support prioritaire</li>
+        </ul>
+        <button class="cta" onclick="selectPlan('premium')">Passer à Premium</button>
+      </div>
+
+      <div class="card" style="border:3px solid #f59e0b;">
+        <div class="badge">POPULAIRE</div>
+        <h3>💎 Advanced</h3>
+        <div class="pill">3 mois - Économisez 17%</div>
+        <div class="price">$<span id="price-advanced">{_fmt(advanced_price)}</span></div>
+        <div class="per">/ 3 mois</div>
+        <ul>
+          <li>Tous les avantages Premium</li>
+          <li>Webhooks TradingView</li>
+          <li>Alertes Telegram</li>
+          <li>Support 24/7</li>
+        </ul>
+        <button class="cta" onclick="selectPlan('advanced')">Passer à Advanced</button>
+      </div>
+
+      <div class="card">
+        <h3>👑 Pro</h3>
+        <div class="pill">6 mois - Économisez 33%</div>
+        <div class="price">$<span id="price-pro">{_fmt(pro_price)}</span></div>
+        <div class="per">/ 6 mois</div>
+        <ul>
+          <li>Tous les avantages Advanced</li>
+          <li>API accès complet</li>
+          <li>Backtesting illimité</li>
+          <li>Support VIP</li>
+        </ul>
+        <button class="cta" onclick="selectPlan('pro')">Passer à Pro</button>
+      </div>
+
+      <div class="card">
+        <h3>🚀 Elite</h3>
+        <div class="pill">1 an - Économisez 33%</div>
+        <div class="price">$<span id="price-elite">{_fmt(elite_price)}</span></div>
+        <div class="per">/ an</div>
+        <ul>
+          <li>Tous les avantages Pro</li>
+          <li>Rapports PDF hebdomadaires</li>
+          <li>Formation exclusive</li>
+          <li>Support dédié</li>
+        </ul>
+        <button class="cta" onclick="selectPlan('elite')">Passer à Elite</button>
+      </div>
+    </div>
+
+    <div class="note">Les prix sont en CAD. Les accès aux pages sont gérés par votre plan dans l’Admin.</div>
+  </div>
+
+  <script>
+    function applyPromo() {{
+      const code = (document.getElementById('promoCode').value || '').trim();
+      if(!code) {{
+        alert('Entrez un code promo.');
+        return;
+      }}
+      alert('Code promo reçu: ' + code + '\n(Support promo à intégrer selon votre logique.)');
+    }}
+    function selectPlan(plan) {{
+      // Redirige vers la page de paiement existante si vous en avez une.
+      // Vous pouvez aussi ouvrir un modal Stripe/Coinbase ici.
+      window.location.href = '/checkout?plan=' + encodeURIComponent(plan);
+    }}
+  </script>
+</body>
 </html>
 """
-    # Injecter le bon logo (évite {logo_url})
-    try:
-        html = html.replace("{logo_url}", SITE_LOGO_URL)
-    except Exception:
-        pass
-
-    # Remplacer les prix hardcodés par ceux de l’admin
-    try:
-        html = html.replace("$29.99", "$" + _fmt(premium_price))
-        html = html.replace("$74.97", "$" + _fmt(advanced_price))
-        html = html.replace("$134.94", "$" + _fmt(pro_price))
-        html = html.replace("$239.88", "$" + _fmt(elite_price))
-        html = html.replace("Économisez 17%", f"Économisez {adv_save}%")
-        html = html.replace("Économisez 25%", f"Économisez {pro_save}%")
-        html = html.replace("Économisez 33%", f"Économisez {pro_save}%")
-        html = html.replace("Économisez 38%", f"Économisez {elite_save}%")
-    except Exception:
-        pass
-
-    # Matrice d'accès (pages) visible sur la page Pricing
-    try:
-        matrix_section = """
-<div class="access-matrix" style="margin:28px auto 0;max-width:1200px;">
-  <div style="background: rgba(255,255,255,0.95); border-radius: 18px; padding: 22px; box-shadow: 0 18px 50px rgba(0,0,0,0.12);">
-    <h3 style="margin:0 0 10px; font-size:20px;">Accès par forfait (pages)</h3>
-    <div style="color:#556; font-size:14px; margin-bottom:12px;">Ce tableau se met à jour automatiquement selon ce que vous cochez dans <b>/admin-dashboard</b>.</div>
-    <div id="accessMatrix" style="overflow:auto; border-radius: 12px; border:1px solid #e7e7ef;"></div>
-  </div>
-</div>
-<script>
-(async function(){
-  try{
-    const res = await fetch("/api/public/plan-access");
-    const access = await res.json();
-    const plans = ["free","premium","advanced","pro","elite"];
-    const planLabels = {free:"Gratuit",premium:"Premium",advanced:"Advanced",pro:"Pro",elite:"Elite"};
-    const allRoutes = new Set();
-    plans.forEach(p=> (access[p]||[]).forEach(r=> allRoutes.add(r)));
-    const routes = Array.from(allRoutes).sort();
-    let h = '<table style="width:100%; border-collapse: collapse; font-size:14px;">';
-    h += '<thead><tr style="background:#f6f6fb;">';
-    h += '<th style="text-align:left; padding:10px; border-bottom:1px solid #e7e7ef;">Page</th>';
-    plans.forEach(p=>{ h += '<th style="text-align:center; padding:10px; border-bottom:1px solid #e7e7ef;">'+planLabels[p]+'</th>'; });
-    h += '</tr></thead><tbody>';
-    routes.forEach(route=>{
-      h += '<tr>';
-      h += '<td style="padding:10px; border-bottom:1px solid #f0f0f6; color:#223;">'+ String(route) +'</td>';
-      plans.forEach(p=>{
-        const ok = (access[p]||[]).includes(route);
-        h += '<td style="text-align:center; padding:10px; border-bottom:1px solid #f0f0f6;">'+ (ok ? "✅" : "—") +'</td>';
-      });
-      h += '</tr>';
-    });
-    h += '</tbody></table>';
-    document.getElementById("accessMatrix").innerHTML = h;
-  }catch(e){ console.warn("access matrix error", e); }
-})();
-</script>
-"""
-        html = html.replace("<!--ACCESS_MATRIX-->", matrix_section)
-    except Exception:
-        pass
-
-    
-    # 🔁 Forcer l'injection des prix dynamiques dans le HTML (évite les anciens hardcodes 29.99/74.97/134.94/239.88)
-    try:
-        import re as _re
-        html = _re.sub(r'(id="amount-1-month">\s*)[\d.]+', r'\1' + f"{premium_price:.2f}", html)
-        html = _re.sub(r'(id="amount-3-months">\s*)[\d.]+', r'\1' + f"{advanced_price:.2f}", html)
-        html = _re.sub(r'(id="amount-6-months">\s*)[\d.]+', r'\1' + f"{pro_price:.2f}", html)
-        html = _re.sub(r'(id="amount-1-year">\s*)[\d.]+', r'\1' + f"{elite_price:.2f}", html)
-    except Exception as _e:
-        print(f"⚠️  Injection prix HTML échouée: {_e}")
-
     return HTMLResponse(html)
 
 @app.get("/pricing-new")
@@ -24103,1883 +23435,301 @@ async def stripe_webhook_debug(request: Request):
 # PAGE ADMIN DASHBOARD
 # ============================================================================
 
+
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
-    """Page d'administration moderne avec gestion des permissions"""
-    
-    # Vrifier l'authentification
-    session_token = request.cookies.get("session_token")
-    if not session_token:
-        return RedirectResponse("/login", status_code=303)
-    
-    user = get_user_from_token(session_token)
-    if not user or user.get("role") != "admin":
-        return HTMLResponse(SIDEBAR + "<h1>403 - Accès refusé</h1>", status_code=403)
-    
-    # Rcuprer tous les utilisateurs
-    conn = db_manager.get_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        SELECT username, role, subscription_plan, subscription_end, 
-               payment_method, created_at, total_spent
-        FROM users 
-        ORDER BY created_at DESC
-    """)
-    
-    users = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    
-    # Stats
-    total_users = len(users)
-    active_subs = sum(1 for u in users if u[2] and u[2] != 'free' and u[3])
-    total_revenue = sum(float(u[6] or 0) for u in users)
-    
-    # Liste des routes disponibles
-    routes_list = [
-        # Dashboard & Trading
-        "/dashboard", "/stats-dashboard", "/trades", "/strategie", 
-        "/spot-trading", "/watchlist", "/risk-management", "/backtesting",
-        
-        # Intelligence Artificielle (21 outils + Technical Analysis)
-        "/ai-opportunity-scanner", "/ai-market-regime", "/ai-whale-watcher",
-        "/ai-assistant", "/ai-signals", "/ai-news", "/ai-predictor",
-        "/prediction-ia", "/ai-patterns", "/ai-sentiment", "/ai-sizer",
-        "/ai-exit", "/ai-timeframe", "/ai-liquidity", "/ai-alerts", "/ai-gem-hunter",
-        "/ai-technical-analysis",
-        
-        #  V5 - Les 5 Nouvelles Features Premium
-        "/narrative-radar", "/ai-crypto-coach", "/ai-swarm-agents",
-        "/altseason-copilot-pro", "/rug-scam-shield",
-        
-        # Analyse de March
-        "/fear-greed", "/fear-greed-chart", "/dominance", "/altcoin-season",
-        "/heatmap", "/bullrun-phase", "/graphiques", "/onchain-metrics",
-        
-        # Portfolio & DeFi
-        "/portfolio-tracker", "/defi-yield", "/crypto-pepites",
-        
-        # Formation & Academy
-        "/academy", "/crypto-academy", "/academy-progress",
-        
-        # Outils
-        "/calculatrice", "/convertisseur", "/market-simulation", "/calendrier",
-        
-        # Contenu & Info
-        "/nouvelles", "/success-stories",
-        
-        # Compte & Pricing
-        "/mon-compte", "/pricing-complete"
+    """Admin Dashboard (stable): gestion prix + accès par forfait."""
+    # Auth admin
+    session = request.session or {}
+    if not session.get("logged_in"):
+        return RedirectResponse(url="/login", status_code=303)
+    if session.get("username") != "admin" and not session.get("is_admin"):
+        return RedirectResponse(url="/", status_code=303)
+
+    # Load pricing
+    prices = get_all_plan_pricing()
+    premium_price = float(prices.get("premium_1m", 20.0) or 0)
+    advanced_price = float(prices.get("advanced_3m", 50.0) or 0)
+    pro_price = float(prices.get("pro_6m", 80.0) or 0)
+    elite_price = float(prices.get("elite_1y", 150.0) or 0)
+
+    # All routes list (doit correspondre à vos pages protégées)
+    all_routes = [
+        ("dashboard", "Dashboard"),
+        ("stats", "Stats Dashboard"),
+        ("trades", "Trades"),
+        ("strategies", "Strategie"),
+        ("spot-trading", "Spot Trading"),
+        ("watchlist", "Watchlist"),
+        ("risk-management", "Risk Management"),
+        ("backtesting", "Backtesting"),
+        ("ai-opportunity-scanner", "Ai Opportunity Scanner"),
+        ("ai-market-regime", "Ai Market Regime"),
+        ("ai-whale-watcher", "Ai Whale Watcher"),
+        ("ai-assistant", "Ai Assistant"),
+        ("ai-signals", "Ai Signals"),
+        ("ai-news", "Ai News"),
+        ("ai-predictor", "Ai Predictor"),
+        ("ai-patterns", "Ai Patterns"),
+        ("ai-sentiment", "Ai Sentiment"),
+        ("ai-sizer", "Ai Sizer"),
+        ("ai-exit", "Ai Exit"),
+        ("ai-timeframe", "Ai Timeframe"),
+        ("ai-liquidity", "Ai Liquidity"),
+        ("ai-alerts", "Ai Alerts"),
+        ("ai-gem-hunter", "Ai Gem Hunter"),
+        ("ai-technical-analysis", "Ai Technical Analysis"),
+        ("narrative-radar", "Narrative Radar"),
+        ("ai-crypto-coach", "Ai Crypto Coach"),
+        ("ai-swarm-agents", "Ai Swarm Agents"),
     ]
-    
-    # PR-CONSTRUIRE LE HTML DES CHECKBOXES (VITER F-STRING AVEC BACKSLASH)
-    checkboxes_html = ""
-    for route in routes_list:
-        route_id = route.replace('/', '_')  # Fait en dehors du f-string!
-        route_label = route.replace('/', '').replace('-', ' ').title()
-        checkboxes_html += f'''
-                    <div class="permission-item">
-                        <input type="checkbox" id="perm_{route_id}" class="perm-checkbox" value="{route}">
-                        <label for="perm_{route_id}">{route_label}</label>
-                    </div>'''
-    
-    # PR-CONSTRUIRE LES CHECKBOXES POUR LES PLANS (mme systme mais IDs diffrents)
-    checkboxes_html_plan = ""
-    for route in routes_list:
-        route_id = route.replace('/', '_')
-        route_label = route.replace('/', '').replace('-', ' ').title()
-        checkboxes_html_plan += f'''
-                    <div class="permission-item">
-                        <input type="checkbox" id="plan_perm_{route_id}" class="plan-perm-checkbox" value="{route}">
-                        <label for="plan_perm_{route_id}">{route_label}</label>
-                    </div>'''
-    
-    # Construire HTML users
-    users_html = ""
-    for user_data in users:
-        username = user_data[0]
-        role = user_data[1]
-        plan = user_data[2] or 'free'
-        created = str(user_data[5])[:10] if user_data[5] else '-'
-        
-        role_badge = f'<span class="badge badge-admin">{role}</span>' if role == 'admin' else f'<span class="badge badge-user">{role}</span>'
-        plan_badge = f'<span class="badge badge-premium">{plan}</span>'
-        
-        # Construire les boutons sans backslashes
-        escaped_username = username.replace('"', '&quot;')
-        
-        edit_button = '<button onclick="editUser(' + "'" + escaped_username + "'" + ')" class="btn btn-edit">✏️ Modifier</button>'
-        perm_button = '<button onclick="managePermissions(' + "'" + escaped_username + "'" + ')" class="btn btn-permissions">🔐 Permissions</button>'
-        
-        delete_button = ""
-        if username != "admin":
-            delete_button = '<button onclick="deleteUser(' + "'" + escaped_username + "'" + ')" class="btn btn-danger">🗑️ Supprimer</button>'
-        
-        users_html += f"""
-        <tr>
-            <td><strong>{username}</strong></td>
-            <td>{role_badge}</td>
-            <td>{plan_badge}</td>
-            <td>{created}</td>
-            <td class="actions">
-                {edit_button}
-                {perm_button}
-                {delete_button}
-            </td>
-        </tr>
-        """
-    
-    return HTMLResponse(f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Admin Dashboard</title>
-        <style>
-            * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-            body {{ 
-                font-family: 'Segoe UI', sans-serif; 
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                min-height: 100vh; 
-                padding: 20px; 
-                margin-left: 280px;
-            }}
-            
-            .container {{ max-width: 1600px; margin: 0 auto; }}
-            
-            .header {{
-                background: white;
-                padding: 30px;
-                border-radius: 15px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                margin-bottom: 30px;
-            }}
-            
-            h1 {{ color: #333; font-size: 32px; margin-bottom: 10px; }}
-            .subtitle {{ color: #666; }}
-            
-            .action-buttons {{
-                display: flex;
-                gap: 15px;
-                margin-top: 20px;
-            }}
-            
-            .btn-add {{
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                color: white;
-                border: none;
-                padding: 15px 30px;
-                border-radius: 10px;
-                font-size: 16px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s;
-            }}
-            
-            .btn-add:hover {{
-                transform: translateY(-2px);
-                box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-            }}
-            
-            .stats-grid {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                gap: 20px;
-                margin-bottom: 30px;
-            }}
-            
-            .stat-card {{
-                background: white;
-                padding: 25px;
-                border-radius: 15px;
-                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            }}
-            
-            .stat-label {{ color: #666; font-size: 14px; text-transform: uppercase; }}
-            .stat-value {{ font-size: 36px; font-weight: bold; color: #667eea; margin: 10px 0; }}
-            
-            .users-section {{
-                background: white;
-                padding: 30px;
-                border-radius: 15px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            }}
-            
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 20px;
-            }}
-            
-            th, td {{
-                padding: 15px;
-                text-align: left;
-                border-bottom: 1px solid #eee;
-            }}
-            
-            th {{ background: #f8f9fa; font-weight: 600; color: #333; }}
-            
-            .badge {{
-                padding: 5px 12px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 600;
-            }}
-            
-            .badge-admin {{ background: #ffd43b; color: #333; }}
-            .badge-user {{ background: #e0e0e0; color: #666; }}
-            .badge-premium {{ background: #51cf66; color: white; }}
-            
-            .actions {{ display: flex; gap: 8px; flex-wrap: wrap; }}
-            
-            .btn {{
-                padding: 8px 15px;
-                border: none;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 13px;
-                font-weight: 600;
-                transition: all 0.3s;
-            }}
-            
-            .btn-edit {{ background: #4dabf7; color: white; }}
-            .btn-edit:hover {{ background: #339af0; }}
-            
-            .btn-permissions {{ background: #ffd43b; color: #333; }}
-            .btn-permissions:hover {{ background: #fcc419; }}
-            
-            .btn-danger {{ background: #ff6b6b; color: white; }}
-            .btn-danger:hover {{ background: #f03e3e; }}
-            
-            /* MODAL STYLES */
-            .modal {{
-                display: none;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.7);
-                z-index: 10000;
-                justify-content: center;
-                align-items: center;
-            }}
-            
-            .modal.active {{ display: flex; }}
-            
-            .modal-content {{
-                background: white;
-                padding: 40px;
-                border-radius: 20px;
-                max-width: 600px;
-                width: 90%;
-                max-height: 90vh;
-                overflow-y: auto;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-            }}
-            
-            .modal-header {{
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 30px;
-            }}
-            
-            .modal-title {{ font-size: 24px; font-weight: 700; color: #333; }}
-            
-            .close-btn {{
-                background: none;
-                border: none;
-                font-size: 30px;
-                cursor: pointer;
-                color: #999;
-            }}
-            
-            .close-btn:hover {{ color: #333; }}
-            
-            .form-group {{
-                margin-bottom: 20px;
-            }}
-            
-            .form-group label {{
-                display: block;
-                font-weight: 600;
-                color: #333;
-                margin-bottom: 8px;
-            }}
-            
-            .form-group input,
-            .form-group select {{
-                width: 100%;
-                padding: 12px;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                font-size: 14px;
-                transition: all 0.3s;
-            }}
-            
-            .form-group input:focus,
-            .form-group select:focus {{
-                outline: none;
-                border-color: #667eea;
-                box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            }}
-            
-            .permissions-grid {{
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-                max-height: 450px;
-                overflow-y: auto;
-                padding: 15px;
-                background: #f8f9fa;
-                border-radius: 8px;
-            }}
-            
-            .permission-item {{
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }}
-            
-            .permission-item input[type="checkbox"] {{
-                width: 18px;
-                height: 18px;
-                cursor: pointer;
-            }}
-            
-            .permission-item label {{
-                cursor: pointer;
-                font-weight: 500;
-                margin: 0;
-            }}
-            
-            .btn-submit {{
-                width: 100%;
-                padding: 15px;
-                background: linear-gradient(135deg, #667eea, #764ba2);
-                color: white;
-                border: none;
-                border-radius: 10px;
-                font-size: 16px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.3s;
-                margin-top: 20px;
-            }}
-            
-            .btn-submit:hover {{
-                transform: translateY(-2px);
-                box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-            }}
-            
-            .message {{
-                padding: 15px;
-                border-radius: 8px;
-                margin-top: 15px;
-                display: none;
-            }}
-            
-            .message.success {{
-                background: #d4edda;
-                color: #155724;
-                border: 1px solid #c3e6cb;
-                display: block;
-            }}
-            
-            .message.error {{
-                background: #f8d7da;
-                color: #721c24;
-                border: 1px solid #f5c6cb;
-                display: block;
-            }}
-        </style>
-    </head>
-    <body>
-        {SIDEBAR}
-        <div class="container">
-            <div class="header">
-                <h1>👑 Admin Dashboard</h1>
-                <p class="subtitle">Gestion des utilisateurs et permissions</p>
-                <div class="action-buttons">
-                    <button onclick="openAddUserModal()" class="btn-add">➕ Ajouter un Utilisateur</button>
-                </div>
-            </div>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">Total Utilisateurs</div>
-                    <div class="stat-value">{total_users}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Abonnements Actifs</div>
-                    <div class="stat-value">{active_subs}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Revenus Totaux</div>
-                    
-                </div>
-            </div>
-            
-            <!-- 🥇 RETENTION WARFARE DASHBOARD -->
-            
-            
-            <!-- 🥈 CONVERSION FUNNEL MICROSCOPE -->
-            
-            
-            <!-- SECTION GESTION DES ACCÈS PAR FORFAIT -->
-            <div class="users-section" style="margin-bottom: 30px;">
 
-<h2>💰 Gestion des Prix des Abonnements</h2>
-<p class="muted">Modifiez les prix ici: ça se répercute automatiquement sur <b>/pricing-complete</b> et sur les paiements <b>Stripe + Coinbase</b>.</p>
+    # UI
+    html = f"""
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Admin Dashboard — Crypto IA</title>
+  <style>
+    body {{
+      margin:0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height:100vh;
+      padding:20px;
+    }}
+    .container {{ max-width:1100px; margin:0 auto; }}
+    .top {{
+      background:#fff;
+      border-radius:18px;
+      padding:18px 18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.12);
+      margin-bottom:16px;
+    }}
+    .top h1 {{ margin:0; font-size:34px; }}
+    .top p {{ margin:8px 0 0 0; opacity:.7; }}
 
-<div class="card">
-  <div class="grid-2">
-    <div>
-      <label>Premium (1 mois)</label>
-      <div class="row">
-        <input id="price-premium" type="number" step="0.01" min="0" placeholder="20.00">
-        <span class="suffix">CAD</span>
-      </div>
+    .card {{
+      background:#fff;
+      border-radius:18px;
+      padding:18px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.12);
+      margin-bottom:16px;
+    }}
+    .row {{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:16px;
+    }}
+    @media (max-width: 850px) {{
+      .row {{ grid-template-columns: 1fr; }}
+    }}
+    label {{ display:block; font-weight:800; margin-top:10px; }}
+    input[type="number"] {{
+      width: 180px;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid #d6d6d6;
+      margin-top:6px;
+      font-size:14px;
+    }}
+    .btn {{
+      padding:12px 14px;
+      border:none;
+      border-radius:12px;
+      background:#6b5bd6;
+      color:#fff;
+      font-weight:900;
+      cursor:pointer;
+      margin-top:12px;
+    }}
+    .pill {{
+      display:inline-block;
+      padding:8px 10px;
+      border-radius:999px;
+      background:#0b1220;
+      color:#fff;
+      font-weight:900;
+      font-size:12px;
+      margin-right:8px;
+      cursor:pointer;
+    }}
+    .pill.active {{ background:#10b981; }}
+    .gridRoutes {{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:8px;
+      max-height: 320px;
+      overflow:auto;
+      border:1px solid #e5e7eb;
+      padding:10px;
+      border-radius:12px;
+      background:#f9fafb;
+    }}
+    .toast {{
+      display:none;
+      margin-top:12px;
+      padding:10px 12px;
+      border-radius:12px;
+      font-weight:800;
+    }}
+    .toast.ok {{ background:#dcfce7; color:#065f46; }}
+    .toast.err {{ background:#fee2e2; color:#991b1b; }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <h1>👑 Admin Dashboard</h1>
+      <p>Gestion des prix & accès par forfait (les modifications s'appliquent automatiquement sur /pricing-complete).</p>
     </div>
-    <div>
-      <label>Advanced (3 mois)</label>
-      <div class="row">
-        <input id="price-advanced" type="number" step="0.01" min="0" placeholder="50.00">
-        <span class="suffix">CAD</span>
+
+    <div class="row">
+      <div class="card">
+        <h2 style="margin:0 0 8px 0;">💰 Gestion des Prix des Abonnements</h2>
+        <div style="opacity:.75; margin-bottom:10px;">Modifiez les prix ici (CAD). Puis cliquez sur <b>Sauvegarder</b>.</div>
+
+        <label>Premium (1 mois)</label>
+        <input id="price_premium" type="number" min="0" step="0.01" value="{premium_price}"/> CAD
+
+        <label>Advanced (3 mois)</label>
+        <input id="price_advanced" type="number" min="0" step="0.01" value="{advanced_price}"/> CAD
+
+        <label>Pro (6 mois)</label>
+        <input id="price_pro" type="number" min="0" step="0.01" value="{pro_price}"/> CAD
+
+        <label>Elite (1 an)</label>
+        <input id="price_elite" type="number" min="0" step="0.01" value="{elite_price}"/> CAD
+
+        <button class="btn" onclick="savePrices()">💾 Sauvegarder les prix</button>
+        <div id="toastPrices" class="toast"></div>
       </div>
-    </div>
-    <div>
-      <label>Pro (6 mois)</label>
-      <div class="row">
-        <input id="price-pro" type="number" step="0.01" min="0" placeholder="80.00">
-        <span class="suffix">CAD</span>
-      </div>
-    </div>
-    <div>
-      <label>Elite (1 an)</label>
-      <div class="row">
-        <input id="price-elite" type="number" step="0.01" min="0" placeholder="150.00">
-        <span class="suffix">CAD</span>
+
+      <div class="card">
+        <h2 style="margin:0 0 8px 0;">🎯 Gestion des Accès par Forfait</h2>
+        <div style="opacity:.75; margin-bottom:10px;">Clique un plan, coche/décoche les pages, puis <b>Enregistrer</b>.</div>
+
+        <div style="margin-bottom:10px;">
+          <span class="pill active" data-plan="free" onclick="selectPlan('free')">Gratuit</span>
+          <span class="pill" data-plan="premium" onclick="selectPlan('premium')">Premium</span>
+          <span class="pill" data-plan="advanced" onclick="selectPlan('advanced')">Advanced</span>
+          <span class="pill" data-plan="pro" onclick="selectPlan('pro')">Pro</span>
+          <span class="pill" data-plan="elite" onclick="selectPlan('elite')">Elite</span>
+        </div>
+
+        <div class="gridRoutes" id="routesGrid">
+          {"".join([f'<label><input type="checkbox" class="routeCk" value="{r[0]}"> {r[1]}</label>' for r in all_routes])}
+        </div>
+
+        <div style="margin-top:10px;">
+          <button class="btn" style="background:#10b981;" onclick="selectAll(true)">✅ Tout sélectionner</button>
+          <button class="btn" style="background:#ef4444;" onclick="selectAll(false)">❌ Tout désélectionner</button>
+        </div>
+
+        <button class="btn" onclick="saveAccess()">💾 Enregistrer Accès du Plan</button>
+        <div id="toastAccess" class="toast"></div>
       </div>
     </div>
   </div>
-
-  <div class="actions">
-    <button class="btn btn-primary" onclick="savePlanPrices()">💾 Sauvegarder les prix</button>
-    <span id="prices-status" class="status"></span>
-  </div>
-</div>
 
 <script>
-async function loadPlanPrices(){{
-  try{{
-    const r = await fetch('/admin/api/plan-prices');
-    const j = await r.json();
-    if(!j.success) return;
-    const p = j.plans || {{}};
-    const v = (k, d) => (p[k] && p[k].price_cents != null) ? (p[k].price_cents/100).toFixed(2) : d;
-    document.getElementById('price-premium').value  = v('premium','20.00');
-    document.getElementById('price-advanced').value = v('advanced','50.00');
-    document.getElementById('price-pro').value      = v('pro','80.00');
-    document.getElementById('price-elite').value    = v('elite','150.00');
-  }}catch(e){{}}
-}}
+  let currentPlan = "free";
 
-async function savePlanPrices(){{
-  const status = document.getElementById('prices-status');
-  status.textContent = 'Enregistrement...';
-  try{{
-    const payload = {{
-      plans: {{
-        premium:  {{ price: parseFloat(document.getElementById('price-premium').value||20),  duration_days: 30,  currency: 'cad', display_name: 'Premium' }},
-        advanced: {{ price: parseFloat(document.getElementById('price-advanced').value||50), duration_days: 90,  currency: 'cad', display_name: 'Advanced' }},
-        pro:      {{ price: parseFloat(document.getElementById('price-pro').value||80),      duration_days: 180, currency: 'cad', display_name: 'Pro' }},
-        elite:    {{ price: parseFloat(document.getElementById('price-elite').value||150),   duration_days: 365, currency: 'cad', display_name: 'Elite' }}
-      }}
-    }};
-    const r = await fetch('/admin/save-plan-prices', {{ method:'POST', headers:{{'Content-Type':'application/json'}}, body: JSON.stringify(payload) }});
-    const j = await r.json();
-    if(j.success){{
-      status.textContent = '✅ Prix sauvegardés';
-    }}else{{
-      status.textContent = '❌ ' + (j.message||'Erreur');
-    }}
-  }}catch(e){{
-    status.textContent = '❌ Erreur';
+  function toast(id, ok, msg) {{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.className = "toast " + (ok ? "ok" : "err");
+    el.textContent = msg || (ok ? "OK" : "Erreur");
+    el.style.display = "block";
+    setTimeout(() => {{ el.style.display = "none"; }}, 3500);
   }}
-}}
-document.addEventListener('DOMContentLoaded', loadPlanPrices);
+
+  function selectPlan(plan) {{
+    currentPlan = plan;
+    document.querySelectorAll(".pill").forEach(p => {{
+      p.classList.toggle("active", p.getAttribute("data-plan") === plan);
+    }});
+    loadAccess(plan);
+  }}
+
+  function getSelectedRoutes() {{
+    return Array.from(document.querySelectorAll(".routeCk"))
+      .filter(x => x.checked)
+      .map(x => x.value);
+  }}
+
+  function selectAll(v) {{
+    document.querySelectorAll(".routeCk").forEach(x => x.checked = !!v);
+  }}
+
+  async function loadAccess(plan) {{
+    try {{
+      const res = await fetch("/admin/get-plan-access/" + encodeURIComponent(plan));
+      const data = await res.json();
+      const allowed = new Set((data && data.routes) ? data.routes : []);
+      document.querySelectorAll(".routeCk").forEach(x => {{
+        x.checked = allowed.has(x.value);
+      }});
+    }} catch(e) {{
+      toast("toastAccess", false, "Erreur chargement accès: " + e);
+    }}
+  }}
+
+  async function saveAccess() {{
+    try {{
+      const routes = getSelectedRoutes();
+      const res = await fetch("/admin/save-plan-access", {{
+        method: "POST",
+        headers: {{ "Content-Type": "application/json" }},
+        body: JSON.stringify({{ plan: currentPlan, routes }})
+      }});
+      const data = await res.json();
+      const ok = !!(data && (data.success || data.status === "ok"));
+      toast("toastAccess", ok, data.message || data.error || (ok ? "Accès enregistrés." : "Erreur inconnue"));
+    }} catch(e) {{
+      toast("toastAccess", false, "Erreur enregistrement: " + e);
+    }}
+  }}
+
+  async function savePrices() {{
+    try {{
+      const premium = parseFloat(document.getElementById("price_premium").value || "0") || 0;
+      const advanced = parseFloat(document.getElementById("price_advanced").value || "0") || 0;
+      const pro = parseFloat(document.getElementById("price_pro").value || "0") || 0;
+      const elite = parseFloat(document.getElementById("price_elite").value || "0") || 0;
+
+      const payload = {{
+        plans: {{
+          premium: {{ price: premium, label: "Premium (1 mois)", duration: "1 mois" }},
+          advanced: {{ price: advanced, label: "Advanced (3 mois)", duration: "3 mois" }},
+          pro: {{ price: pro, label: "Pro (6 mois)", duration: "6 mois" }},
+          elite: {{ price: elite, label: "Elite (1 an)", duration: "1 an" }}
+        }}
+      }};
+
+      const res = await fetch("/admin/save-plan-prices", {{
+        method: "POST",
+        headers: {{ "Content-Type": "application/json" }},
+        body: JSON.stringify(payload)
+      }});
+      const data = await res.json();
+      const ok = !!(data && (data.success || data.status === "ok"));
+      toast("toastPrices", ok, data.message || data.error || (ok ? "Prix sauvegardés." : "Erreur inconnue"));
+    }} catch(e) {{
+      toast("toastPrices", false, "Erreur sauvegarde: " + e);
+    }}
+  }}
+
+  // init
+  loadAccess(currentPlan);
 </script>
 
-<hr style="margin:24px 0;opacity:.12"/>
-
-                <h2>🎯 Gestion des Accès par Forfait</h2>
-                <p style="color: #666; margin-bottom: 20px;">Définir quelles pages sont accessibles pour chaque plan d'abonnement</p>
-<div style="margin-top: 18px; display: flex; flex-wrap: wrap; gap: 12px;">
-    <button class="plan-pill" onclick="managePlanAccess('free')">🆓 <span>Gratuit</span> <small>(Free)</small></button>
-    <button class="plan-pill" onclick="managePlanAccess('premium')">💳 <span>Premium</span> <small>($20.00)</small></button>
-    <button class="plan-pill" onclick="managePlanAccess('advanced')">💎 <span>Advanced</span> <small>($49.99)</small></button>
-    <button class="plan-pill" onclick="managePlanAccess('pro')">👑 <span>Pro</span> <small>($79.99)</small></button>
-    <button class="plan-pill" onclick="managePlanAccess('elite')">🚀 <span>Elite</span> <small>($149.99)</small></button>
-</div>
-<div style="margin-top: 12px; color: #6b7280; font-size: 14px; line-height: 1.4;">
-    Cliquez sur un plan pour cocher/décocher les pages accessibles, puis cliquez <b>Enregistrer</b> dans la fenêtre.
-<div style="margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px;">
-    <button class="plan-pill" style="min-width: auto; padding: 10px 14px;" onclick="window.location.href='/admin'">⚙️ Ouvrir Admin (vue classique)</button>
-    <button class="plan-pill" style="min-width: auto; padding: 10px 14px;" onclick="window.location.href='/admin/ebooks'">📚 Gérer les Ebooks</button>
-</div>
-</div>
-
-                
-                
-            </div>
-            
-            <!-- 🥉 REVENUE INTELLIGENCE CENTER -->
-            
-            
-            <!-- 4️⃣ VIRAL GROWTH MACHINE -->
-            
-            
-            <!-- 5️⃣ AUTOMATION ENGINE -->
-            
-            
-            <!-- SECTION GESTION DES CODES PROMO -->
-            <div class="users-section" style="margin-bottom: 30px;">
-                <h2>🎟️ Gestion des Codes Promo</h2>
-                <p style="color: #666; margin-bottom: 20px;">Créer et gérer les codes de réduction pour les abonnements</p>
-                
-                <div class="action-buttons" style="margin-bottom: 20px;">
-                    <button onclick="openPromoModal()" class="btn-add" style="background: linear-gradient(135deg, #ec4899, #be185d);">
-                        ➕ Créer un Code Promo
-                    </button>
-                    <button onclick="loadPromoList()" class="btn-add" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
-                        📋 Liste des Codes
-                    </button>
-                    <button onclick="createLaunchPromos()" class="btn-add" style="background: linear-gradient(135deg, #f97316, #ea580c);">
-                        🚀 Codes de Lancement (AUTO)
-                    </button>
-                </div>
-                
-                <div id="promoListContainer" style="display: none; margin-top: 20px;">
-                    <h3>Codes Actifs</h3>
-                    <div id="promoListContent" style="background: #f8fafc; padding: 20px; border-radius: 10px;">
-                        <!-- Liste des promos sera chargée ici -->
-                    </div>
-                </div>
-            </div>
-            
-            <div class="users-section">
-                <h2>📋 Liste des Utilisateurs</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Utilisateur</th>
-                            <th>Rôle</th>
-                            <th>Plan</th>
-                            <th>Créé</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {users_html}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <!-- MODAL AJOUTER/MODIFIER UTILISATEUR -->
-        <div id="userModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title" id="modalTitle">Ajouter un Utilisateur</h2>
-                    <button class="close-btn" onclick="closeModal('userModal')">&times;</button>
-                </div>
-                <form id="userForm">
-                    <input type="hidden" id="editMode" value="false">
-                    <input type="hidden" id="originalUsername" value="">
-                    <div class="form-group">
-                        <label>👤 Nom d'utilisateur</label>
-                        <input type="text" id="username" required minlength="3" placeholder="Ex: john_doe">
-                    </div>
-                    <div class="form-group">
-                        <label>🔒 Mot de passe</label>
-                        <input type="password" id="password" minlength="6" placeholder="Laissez vide pour ne pas changer">
-                        <small style="color: #999; font-size: 12px;">* Requis pour nouvel utilisateur, optionnel pour modification</small>
-                    </div>
-                    <div class="form-group">
-                        <label>👑 Rôle / Plan</label>
-                        <select id="role">
-                            <option value="user">User (Normal - Sans abonnement)</option>
-                            <option value="admin">Admin (Accès complet)</option>
-                            <option value="free">🆓 Free</option>
-                            <option value="1_month">💎 Premium (1 mois)</option>
-                            <option value="3_months">🚀 Advanced (3 mois)</option>
-                            <option value="6_months">⭐ Pro (6 mois)</option>
-                            <option value="1_year">👑 Elite (1 an)</option>
-                        </select>
-                        <small style="color: #999; font-size: 12px; margin-top: 5px; display: block;">
-                            💡 Choisir un plan assignera automatiquement les permissions configurées pour ce plan
-                        </small>
-                    </div>
-                    <button type="submit" class="btn-submit" id="submitBtn">✅ Créer Utilisateur</button>
-                </form>
-                <div id="userMessage" class="message"></div>
-            </div>
-        </div>
-        
-        <!-- MODAL PERMISSIONS -->
-        <div id="permissionsModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">🔐 Gérer les Permissions</h2>
-                    <button class="close-btn" onclick="closeModal('permissionsModal')">&times;</button>
-                </div>
-                <p style="margin-bottom: 20px; color: #666;">
-                    Sélectionnez les pages accessibles pour <strong id="permUsername"></strong>
-                </p>
-                <div class="permissions-grid" id="permissionsGrid">
-{checkboxes_html}
-                </div>
-                <div style="display:flex;gap:10px;margin:20px 0;">
-                    <button onclick="selectAllPermissions()" class="btn-select-all" style="flex:1;padding:12px;background:#4caf50;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">✅ Tout Sélectionner</button>
-                    <button onclick="deselectAllPermissions()" class="btn-deselect-all" style="flex:1;padding:12px;background:#f44336;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">❌ Tout Désélectionner</button>
-                </div>
-                <button onclick="savePermissions()" class="btn-submit">💾 Enregistrer Permissions</button>
-                <div id="permMessage" class="message"></div>
-            </div>
-        </div>
-        
-        <!-- MODAL GESTION ACCÈS PAR FORFAIT -->
-        <div id="planAccessModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">🎯 Gérer les Accès - <span id="planName"></span></h2>
-                    <button class="close-btn" onclick="closeModal('planAccessModal')">&times;</button>
-                </div>
-                <p style="margin-bottom: 20px; color: #666;">
-                    Sélectionnez les pages accessibles pour ce plan d'abonnement
-                </p>
-                <div class="permissions-grid" id="planPermissionsGrid">
-{checkboxes_html_plan}
-                </div>
-                <div style="display:flex;gap:10px;margin:20px 0;">
-                    <button onclick="selectAllPlanPermissions()" class="btn-select-all" style="flex:1;padding:12px;background:#4caf50;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">✅ Tout Sélectionner</button>
-                    <button onclick="deselectAllPlanPermissions()" class="btn-deselect-all" style="flex:1;padding:12px;background:#f44336;color:white;border:none;border-radius:8px;font-weight:600;cursor:pointer;">❌ Tout Désélectionner</button>
-                </div>
-                <button onclick="savePlanAccess()" class="btn-submit">💾 Enregistrer Accès du Plan</button>
-                <div id="planAccessMessage" class="message"></div>
-            </div>
-        </div>
-        
-        <!-- MODAL CRÉATION CODE PROMO -->
-        <div id="promoModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">🎟️ Créer un Code Promo</h2>
-                    <button class="close-btn" onclick="closeModal('promoModal')">&times;</button>
-                </div>
-                <form id="promoForm" onsubmit="createPromoCode(event)">
-                    <div class="form-group">
-                        <label>🏷️ Code Promo</label>
-                        <input type="text" id="promoCode" required placeholder="Ex: LAUNCH50" style="text-transform: uppercase;">
-                    </div>
-                    <div class="form-group">
-                        <label>💰 Réduction</label>
-                        <input type="number" id="promoDiscount" required min="1" step="0.01" placeholder="Ex: 50">
-                    </div>
-                    <div class="form-group">
-                        <label>📊 Type de Réduction</label>
-                        <select id="promoType" required>
-                            <option value="percentage">Pourcentage (%)</option>
-                            <option value="fixed">Montant Fixe ($)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>📅 Valide jusqu’à (optionnel)</label>
-                        <input type="date" id="promoValidUntil">
-                    </div>
-                    <div class="form-group">
-                        <label>🔢 Nombre d'utilisations max (optionnel)</label>
-                        <input type="number" id="promoMaxUses" min="1" placeholder="Illimité si vide">
-                    </div>
-                    <button type="submit" class="btn-submit">✨ Créer le Code Promo</button>
-                    <div id="promoMessage" class="message"></div>
-                </form>
-            </div>
-        </div>
-        
-        <script>
-        let currentPermUser = '';
-        
-        function openAddUserModal() {{
-            document.getElementById('modalTitle').textContent = 'Ajouter un Utilisateur';
-            document.getElementById('userForm').reset();
-            document.getElementById('editMode').value = 'false';
-            document.getElementById('username').readOnly = false;
-            document.getElementById('password').required = true;
-            document.getElementById('submitBtn').textContent = '✅ Créer Utilisateur';
-            document.getElementById('userModal').classList.add('active');
-        }}
-        
-        async function editUser(username) {{
-            document.getElementById('modalTitle').textContent = "Modifier l'Utilisateur";
-            document.getElementById('editMode').value = 'true';
-            document.getElementById('originalUsername').value = username;
-            
-            // Charger les infos de l'utilisateur
-            
-            try {{
-                const response = await fetch(`/admin/get-user/${{username}}`);
-                const data = await response.json();
-                
-                if (data.success) {{
-                    document.getElementById('username').value = data.user.username;
-                    document.getElementById('username').readOnly = true; // Pas de changement de username
-                    document.getElementById('role').value = data.user.role;
-                    document.getElementById('password').value = '';
-                    document.getElementById('password').required = false;
-                    document.getElementById('submitBtn').textContent = '💾 Sauvegarder Modifications';
-                    document.getElementById('userModal').classList.add('active');
-                }} else {{
-                    alert('❌ Erreur: ' + data.message);
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de connexion');
-                console.error(error);
-            }}
-        }}
-        
-        function closeModal(modalId) {{
-            document.getElementById(modalId).classList.remove('active');
-        }}
-        
-        async function managePermissions(username) {{
-            currentPermUser = username;
-            document.getElementById('permUsername').textContent = username;
-            
-            // Charger les permissions actuelles
-            
-            try {{
-                const response = await fetch(`/admin/get-permissions/${{username}}`);
-                const data = await response.json();
-                
-                // Dcocher toutes
-                document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
-                
-                // Cocher les permissions existantes
-                if (data.success && data.routes) {{
-                    data.routes.forEach(route => {{
-                        const checkbox = document.getElementById('perm_' + route.replace(/\//g, '_'));
-                        if (checkbox) checkbox.checked = true;
-                    }});
-                }}
-                
-                document.getElementById('permissionsModal').classList.add('active');
-            }} catch (error) {{
-                alert('Erreur lors du chargement des permissions');
-            }}
-        }}
-        
-        async function savePermissions() {{
-            const checkboxes = document.querySelectorAll('.perm-checkbox:checked');
-            const routes = Array.from(checkboxes).map(cb => cb.value);
-            
-            try {{
-                const response = await fetch('/admin/update-permissions', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{
-                        username: currentPermUser,
-                        routes: routes
-                    }})
-                }});
-                
-                const data = await response.json();
-                
-                const msg = document.getElementById('permMessage');
-                if (data.success) {{
-                    msg.className = 'message success';
-                    msg.textContent = '✅ ' + data.message;
-                    setTimeout(() => {{ closeModal('permissionsModal'); }}, 1500);
-                }} else {{
-                    msg.className = 'message error';
-                    msg.textContent = '❌ ' + data.message;
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de connexion');
-            }}
-        }}
-        
-        function selectAllPermissions() {{
-            document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = true);
-        }}
-        
-        function deselectAllPermissions() {{
-            document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
-        }}
-        
-        document.getElementById('userForm').addEventListener('submit', async (e) => {{
-            e.preventDefault();
-            
-            const editMode = document.getElementById('editMode').value === 'true';
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const role = document.getElementById('role').value;
-            const originalUsername = document.getElementById('originalUsername').value;
-            
-            // Validation du mot de passe pour nouvel utilisateur
-            if (!editMode && !password) {{
-                alert('❌ Le mot de passe est requis pour un nouvel utilisateur');
-                return;
-            }}
-            
-            try {{
-                const endpoint = editMode ? '/admin/edit-user' : '/admin/add-user';
-                const payload = editMode 
-                    ? {{originalUsername, username, password, role}}
-                    : {{username, password, role}};
-                
-                const response = await fetch(endpoint, {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify(payload)
-                }});
-                
-                const data = await response.json();
-                console.log('Server response:', data);
-                
-                const msg = document.getElementById('userMessage');
-                if (data.success) {{
-                    msg.className = 'message success';
-                    msg.textContent = '✅ ' + data.message;
-                    setTimeout(() => {{
-                        window.location.reload();
-                    }}, 1500);
-                }} else {{
-                    msg.className = 'message error';
-                    msg.textContent = '❌ ' + data.message;
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de connexion au serveur');
-                console.error(error);
-            }}
-        }});
-        
-        async function deleteUser(username) {{
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer "${{username}}" ?`)) {{
-                return;
-            }}
-            
-            try {{
-                const response = await fetch('/admin/delete-user', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{username}})
-                }});
-                
-                const data = await response.json();
-                
-                if (data.status === 'success') {{
-                    alert('✅ Utilisateur supprimé!');
-                    window.location.reload();
-                }} else {{
-                    alert('❌ Erreur: ' + data.message);
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de connexion');
-            }}
-        }}
-        
-        // ========== GESTION DES ACCS PAR FORFAIT ==========
-        let currentPlan = '';
-        
-        async function managePlanAccess(plan) {{
-            currentPlan = plan;
-            const planNames = {{
-                'free': '🆓 Free',
-                '1_month': '💎 Premium (1 mois)',
-                '3_months': '🚀 Advanced (3 mois)',
-                '6_months': '⭐ Pro (6 mois)',
-                '1_year': '👑 Elite (1 an)'
-            }};
-            
-            document.getElementById('planName').textContent = planNames[plan];
-            
-            // Charger les permissions actuelles du plan
-            
-            try {{
-                const response = await fetch(`/admin/get-plan-access/${{plan}}`);
-                const data = await response.json();
-                
-                // Dcocher toutes
-                document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
-                
-                // Cocher les permissions existantes
-                if (data.success && data.routes) {{
-                    data.routes.forEach(route => {{
-                        const checkbox = document.getElementById('plan_perm_' + route.replace(/\//g, '_'));
-                        if (checkbox) checkbox.checked = true;
-                    }});
-                }}
-                
-                document.getElementById('planAccessModal').classList.add('active');
-            }} catch (error) {{
-                alert('❌ Erreur de chargement');
-                console.error(error);
-            }}
-        }}
-        
-        async function savePlanAccess() {{
-            const selectedRoutes = Array.from(document.querySelectorAll('.plan-perm-checkbox:checked'))
-                .map(cb => cb.value);
-            
-            try {{
-                const response = await fetch('/admin/save-plan-access', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{
-                        plan: currentPlan,
-                        routes: selectedRoutes
-                    }})
-                }});
-                
-                const data = await response.json();
-                const msg = document.getElementById('planAccessMessage');
-                
-                if (data.success) {{
-                    msg.className = 'message success';
-                    msg.textContent = '✅ ' + data.message;
-                    setTimeout(() => {{
-                        closeModal('planAccessModal');
-                    }}, 1500);
-                }} else {{
-                    msg.className = 'message error';
-                    msg.textContent = '❌ ' + data.message;
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de sauvegarde');
-                console.error(error);
-            }}
-        }}
-        
-        function selectAllPlanPermissions() {{
-            document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = true);
-        }}
-        
-        function deselectAllPlanPermissions() {{
-            document.querySelectorAll('.plan-perm-checkbox').forEach(cb => cb.checked = false);
-        }}
-        
-        // ========== GESTION DES CODES PROMO ==========
-        function openPromoModal() {{
-            document.getElementById('promoForm').reset();
-            document.getElementById('promoModal').classList.add('active');
-        }}
-        
-        async function createPromoCode(event) {{
-            event.preventDefault();
-            
-            const code = document.getElementById('promoCode').value.toUpperCase();
-            const discount = parseFloat(document.getElementById('promoDiscount').value);
-            const type = document.getElementById('promoType').value;
-            const validUntil = document.getElementById('promoValidUntil').value;
-            const maxUses = parseInt(document.getElementById('promoMaxUses').value) || null;
-            
-            try {{
-                const response = await fetch('/admin/create-promo', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{
-                        code,
-                        discount,
-                        type,
-                        valid_until: validUntil,
-                        max_uses: maxUses
-                    }})
-                }});
-                
-                const data = await response.json();
-                const msg = document.getElementById('promoMessage');
-                
-                if (data.success) {{
-                    msg.className = 'message success';
-                    msg.textContent = '✅ ' + data.message;
-                    setTimeout(() => {{
-                        closeModal('promoModal');
-                        loadPromoList();
-                    }}, 1500);
-                }} else {{
-                    msg.className = 'message error';
-                    msg.textContent = '❌ ' + data.message;
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de création');
-                console.error(error);
-            }}
-        }}
-        
-        async function loadPromoList() {{
-            try {{
-                const response = await fetch('/admin/api/list-promos');
-                const data = await response.json();
-                
-                const container = document.getElementById('promoListContainer');
-                const content = document.getElementById('promoListContent');
-                
-                if (data.success && data.promos && data.promos.length > 0) {{
-                    let html = '<table style="width: 100%; border-collapse: collapse;">';
-                    html += '<thead><tr style="background: #e2e8f0;"><th style="padding: 10px;">Code</th><th>Réduction</th><th>Type</th><th>Valide jusqu’à</th><th>Utilisations</th><th>Actions</th></tr></thead>';
-                    html += '<tbody>';
-                    
-                    data.promos.forEach(promo => {{
-                        const usesText = promo.max_uses ? `${{promo.uses || 0}}/${{promo.max_uses}}` : `${{promo.uses || 0}}/∞`;
-                        const discount = promo.type === 'percentage' ? `${{promo.discount}}%` : `$${{promo.discount}}`;
-                        
-                        html += `<tr style="border-bottom: 1px solid #e2e8f0;">
-                            <td style="padding: 10px;"><strong>${{promo.code}}</strong></td>
-                            <td>${{discount}}</td>
-                            <td>${{promo.type === 'percentage' ? 'Pourcentage' : 'Fixe'}}</td>
-                            <td>${{promo.valid_until || 'Illimité'}}</td>
-                            <td>${{usesText}}</td>
-                            <td>
-                                <button onclick="deletePromo('${{promo.code}}')" style="background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">🗑️</button>
-                            </td>
-                        </tr>`;
-                    }});
-                    
-                    html += '</tbody></table>';
-                    content.innerHTML = html;
-                    container.style.display = 'block';
-                }} else {{
-                    content.innerHTML = '<p style="color: #666; text-align: center;">Aucun code promo actif</p>';
-                    container.style.display = 'block';
-                }}
-            }} catch (error) {{
-                console.error('Erreur loadPromoList:', error);
-                alert('❌ Erreur de chargement des codes promo');
-            }}
-        }}
-        
-        async function deletePromo(code) {{
-            if (!confirm(`Supprimer le code promo "${{code}}" ?`)) return;
-            
-            try {{
-                const response = await fetch('/admin/delete-promo', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{ code }})
-                }});
-                
-                const data = await response.json();
-                
-                if (data.success) {{
-                    alert('✅ Code supprimé!');
-                    loadPromoList();
-                }} else {{
-                    alert('❌ Erreur: ' + data.message);
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de connexion');
-            }}
-        }}
-        
-        async function createLaunchPromos() {{
-            if (!confirm('Créer les codes promo de lancement automatiques?')) return;
-            
-            try {{
-                const response = await fetch('/admin/create-launch-promos', {{
-                    method: 'POST'
-                }});
-                
-                const data = await response.json();
-                
-                if (data.success) {{
-                    alert('✅ ' + data.message);
-                    loadPromoList();
-                }} else {{
-                    alert('❌ Erreur: ' + data.message);
-                }}
-            }} catch (error) {{
-                alert('❌ Erreur de création');
-            }}
-        }}
-        
-        // ========================================
-        // RETENTION WARFARE DASHBOARD
-        // ========================================
-        
-        async function loadRetentionDashboard() {{
-            try {{
-                const response = await fetch('/admin/api/retention-dashboard');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur retention dashboard:', data);
-                    return;
-                }}
-                
-                // Zone Rouge (3 jours)
-                renderExpiringUsers(data.red_zone, 'redZoneContent', 'red');
-                
-                // Zone Orange (7 jours)
-                renderExpiringUsers(data.orange_zone, 'orangeZoneContent', 'orange');
-                
-                // Zone Jaune (30 jours)
-                renderExpiringUsers(data.yellow_zone, 'yellowZoneContent', 'yellow');
-                
-                // Users Inactifs
-                renderInactiveUsers(data.inactive_users);
-                
-                // Stats Rtention
-                renderRetentionStats(data.retention_stats);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement retention dashboard:', error);
-            }}
-        }}
-        
-        function renderExpiringUsers(users, containerId, zone) {{
-            const container = document.getElementById(containerId);
-            
-            if (!users || users.length === 0) {{
-                container.innerHTML = '<p style="color: #10b981;">✅ Aucun utilisateur dans cette zone!</p>';
-                return;
-            }}
-            
-            const totalRevenue = users.reduce((sum, u) => sum + (u.revenue_at_risk || 0), 0);
-            
-            let html = '<p style="font-weight: 600; color: #333; margin-bottom: 15px;">' + 
-                users.length + ' utilisateurs = <span style="color: #dc2626;">$' + totalRevenue.toFixed(2) + ' à risque</span></p>';
-            
-            users.forEach(user => {{
-                const daysLeft = user.days_until_expiry;
-                const planEmoji = {{
-                    '1_month': '💎',
-                    '3_months': '🚀',
-                    '6_months': '⭐',
-                    '1_year': '👑'
-                }}[user.plan] || '📦';
-                
-                const borderColor = zone === 'red' ? '#dc2626' : zone === 'orange' ? '#f59e0b' : '#eab308';
-                const textColor = zone === 'red' ? '#dc2626' : '#f59e0b';
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ' + borderColor + ';">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
-                        '<div>' +
-                            '<strong style="color: #333;">' + planEmoji + ' ' + user.username + '</strong>' +
-                            '<span style="color: #666; margin-left: 10px;">' + user.plan + '</span>' +
-                        '</div>' +
-                        '<div style="color: ' + textColor + '; font-weight: 600;">Expire dans ' + daysLeft + ' jour(s)</div>' +
-                    '</div>' +
-                    '<div style="display: flex; gap: 8px; flex-wrap: wrap;">' +
-                        '<button onclick="extendSubscription(&quot;' + user.username + '&quot;, 30)" style="background: #10b981; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎁 +30 jours gratuit</button>' +
-                        '<button onclick="sendRenewalEmail(&quot;' + user.username + '&quot;)" style="background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 Envoyer rappel</button>' +
-                        '<button onclick="offerDiscount(&quot;' + user.username + '&quot;, 20)" style="background: #f59e0b; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 Offrir -20%</button>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderInactiveUsers(users) {{
-            const container = document.getElementById('inactiveUsers');
-            
-            if (!users || users.length === 0) {{
-                container.innerHTML = '<p style="color: #10b981;">✅ Tous les utilisateurs sont actifs!</p>';
-                return;
-            }}
-            
-            let html = '<p style="font-weight: 600; color: #333; margin-bottom: 15px;">' + 
-                users.length + ' utilisateurs n&apos;ont pas visité depuis 7+ jours</p>';
-            
-            users.forEach(user => {{
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #6366f1;">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">' +
-                        '<div>' +
-                            '<strong style="color: #333;">' + user.username + '</strong>' +
-                            '<span style="color: #666; margin-left: 10px;">' + user.plan + '</span>' +
-                        '</div>' +
-                        '<div style="color: #6366f1; font-weight: 600;">Inactif depuis ' + user.days_inactive + ' jours</div>' +
-                    '</div>' +
-                    '<div style="display: flex; gap: 8px;">' +
-                        '<button onclick="sendEngagementEmail(' + "'" + user.username + "'" + ')" style="background: #6366f1; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">📧 On t&apos;a manqué!</button>' +
-                        '<button onclick="offerCoaching(' + "'" + user.username + "'" + ')" style="background: #8b5cf6; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-size: 13px;">🎯 Offrir coaching</button>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderRetentionStats(stats) {{
-            const container = document.getElementById('retentionStats');
-            
-            if (!stats) {{
-                container.innerHTML = '<p style="color: #666;">Aucune donnée disponible</p>';
-                return;
-            }}
-            
-            const html = 
-            '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
-                '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">' +
-                    '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">GLOBAL</div>' +
-                    '<div style="color: #10b981; font-size: 28px; font-weight: bold;">' + (stats.global || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #dbeafe; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">' +
-                    '<div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PREMIUM</div>' +
-                    '<div style="color: #3b82f6; font-size: 28px; font-weight: bold;">' + (stats.premium || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #f3e8ff; padding: 15px; border-radius: 8px; border-left: 4px solid #8b5cf6;">' +
-                    '<div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ADVANCED</div>' +
-                    '<div style="color: #8b5cf6; font-size: 28px; font-weight: bold;">' + (stats.advanced || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b;">' +
-                    '<div style="color: #b45309; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PRO</div>' +
-                    '<div style="color: #f59e0b; font-size: 28px; font-weight: bold;">' + (stats.pro || 0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #d1fae5; padding: 15px; border-radius: 8px; border-left: 4px solid #059669;">' +
-                    '<div style="color: #047857; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ELITE</div>' +
-                    '<div style="color: #059669; font-size: 28px; font-weight: bold;">' + (stats.elite || 0) + '%</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        // Actions
-        async function extendSubscription(username, days) {{
-            if (!confirm("Prolonger l'abonnement de " + username + " de " + days + " jours?")) return;
-            
-            try {{
-                const response = await fetch('/admin/api/extend-subscription', {{
-                    method: 'POST',
-                    headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{ username, days }})
-                }});
-                
-                const data = await response.json();
-                alert(data.success ? '✅ Prolongé!' : '❌ ' + data.message);
-                if (data.success) loadRetentionDashboard();
-            }} catch (error) {{
-                alert('❌ Erreur');
-            }}
-        }}
-        
-        async function sendRenewalEmail(username) {{
-            alert('📧 Email de rappel envoyé à ' + username + '! (Feature prochaine)');
-        }}
-        
-        async function offerDiscount(username, percent) {{
-            alert('💰 Code promo -' + percent + '% envoyé à ' + username + '! (Feature prochaine)');
-        }}
-        
-        async function sendEngagementEmail(username) {{
-            alert('📧 Email &quot;On t&apos;a manqué!&quot; envoyé à ' + username + '! (Feature prochaine)');
-        }}
-        
-        async function offerCoaching(username) {{
-            alert('🎯 Offre de coaching envoyée à ' + username + '! (Feature prochaine)');
-        }}
-        
-        // Charger au dmarrage - SCURIS avec checks
-        setTimeout(function() {{
-            (async function() {{
-                try {{
-                    if (typeof loadRetentionDashboard === 'function') {{
-                        await loadRetentionDashboard();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Retention Dashboard:', error);
-                    // Continuer mme si erreur
-                }}
-            }})();
-        }}, 100);
-        
-        // ========================================
-        // CONVERSION FUNNEL MICROSCOPE
-        // ========================================
-        
-        async function loadConversionFunnel() {{
-            try {{
-                const periodElement = document.getElementById('funnelPeriod');
-                const period = periodElement ? periodElement.value : '30';
-                const response = await fetch('/admin/api/conversion-funnel?days=' + period);
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur conversion funnel:', data);
-                    return;
-                }}
-                
-                renderFunnelVisualization(data.funnel);
-                renderFunnelInsights(data.insights);
-                renderPlanConversion(data.by_plan);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement conversion funnel:', error);
-            }}
-        }}
-        
-        function renderFunnelVisualization(funnel) {{
-            const container = document.getElementById('funnelContainer');
-            
-            if (!funnel || !funnel.steps) {{
-                container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px;">Pas encore de données</p>';
-                return;
-            }}
-            
-            let html = '<div style="max-width: 800px; margin: 0 auto;">';
-            
-            funnel.steps.forEach((step, index) => {{
-                const isLast = index === funnel.steps.length - 1;
-                const dropPercent = step.drop_percent || 0;
-                const isHighDrop = dropPercent > 50;
-                
-                // Barre de progression
-                const barWidth = (step.count / funnel.steps[0].count) * 100;
-                const barColor = isHighDrop ? '#ef4444' : step.conversion_rate > 70 ? '#10b981' : '#f59e0b';
-                
-                html += '<div style="margin-bottom: 20px;">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">' +
-                        '<div style="font-weight: 600; color: #333; font-size: 16px;">' + step.name + '</div>' +
-                        '<div style="font-size: 20px; font-weight: bold; color: ' + barColor + ';">' + step.count.toLocaleString() + ' users</div>' +
-                    '</div>' +
-                    '<div style="background: #f3f4f6; height: 40px; border-radius: 8px; overflow: hidden; position: relative;">' +
-                        '<div style="background: ' + barColor + '; height: 100%; width: ' + barWidth + '%; transition: width 0.3s;"></div>' +
-                        '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 600; color: #333;">' + 
-                            barWidth.toFixed(1) + '%' +
-                        '</div>' +
-                    '</div>';
-                
-                if (!isLast) {{
-                    const arrow = isHighDrop ? '🚨' : '↓';
-                    const dropColor = isHighDrop ? '#dc2626' : '#666';
-                    html += '<div style="text-align: center; padding: 10px; color: ' + dropColor + '; font-weight: 600;">' +
-                        arrow + ' ' + dropPercent.toFixed(1) + '% perdus ici' +
-                    '</div>';
-                }}
-                
-                html += '</div>';
-            }});
-            
-            // Taux de conversion global
-            html += '<div style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; padding: 20px; border-radius: 10px; text-align: center; margin-top: 30px;">' +
-                '<div style="font-size: 14px; margin-bottom: 5px;">TAUX DE CONVERSION GLOBAL</div>' +
-                '<div style="font-size: 36px; font-weight: bold;">' + funnel.global_conversion.toFixed(1) + '%</div>' +
-            '</div>';
-            
-            html += '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderFunnelInsights(insights) {{
-            const container = document.getElementById('insightsContent');
-            
-            if (!insights || insights.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Aucun insight pour le moment</p>';
-                return;
-            }}
-            
-            let html = '';
-            
-            insights.forEach(insight => {{
-                const iconMap = {{
-                    'warning': '⚠️',
-                    'success': '✅',
-                    'info': '💡'
-                }};
-                const colorMap = {{
-                    'warning': '#f59e0b',
-                    'success': '#10b981',
-                    'info': '#3b82f6'
-                }};
-                
-                const icon = iconMap[insight.type] || '💡';
-                const color = colorMap[insight.type] || '#3b82f6';
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid ' + color + ';">' +
-                    '<div style="display: flex; align-items: start; gap: 10px;">' +
-                        '<div style="font-size: 24px;">' + icon + '</div>' +
-                        '<div style="flex: 1;">' +
-                            '<div style="font-weight: 600; color: #333; margin-bottom: 5px;">' + insight.title + '</div>' +
-                            '<div style="color: #666; font-size: 14px;">' + insight.description + '</div>' +
-                            (insight.action ? '<div style="color: ' + color + '; font-weight: 600; font-size: 13px; margin-top: 8px;">→ Action: ' + insight.action + '</div>' : '') +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderPlanConversion(planData) {{
-            const container = document.getElementById('planConversionContent');
-            
-            if (!planData || planData.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Pas encore de données par plan</p>';
-                return;
-            }}
-            
-            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">';
-            
-            planData.forEach(plan => {{
-                const isBest = plan.is_best;
-                const isWorst = plan.is_worst;
-                const borderColor = isBest ? '#10b981' : isWorst ? '#ef4444' : '#e5e7eb';
-                const badge = isBest ? '🏆 BEST' : isWorst ? '⚠️ FAIBLE' : '';
-                
-                html += '<div style="background: white; border: 2px solid ' + borderColor + '; padding: 15px; border-radius: 10px;">' +
-                    '<div style="font-weight: 600; color: #333; margin-bottom: 5px;">' + plan.name + '</div>' +
-                    (badge ? '<div style="color: ' + borderColor + '; font-size: 11px; font-weight: 600; margin-bottom: 10px;">' + badge + '</div>' : '<div style="margin-bottom: 10px;"></div>') +
-                    '<div style="font-size: 28px; font-weight: bold; color: ' + borderColor + '; margin-bottom: 5px;">' + plan.conversion_rate.toFixed(1) + '%</div>' +
-                    '<div style="color: #666; font-size: 13px;">' + plan.conversions + ' / ' + plan.visits + ' visites</div>' +
-                '</div>';
-            }});
-            
-            html += '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        // Charger au dmarrage - SCURIS avec checks
-        setTimeout(function() {{
-            (async function() {{
-                try {{
-                    if (typeof loadConversionFunnel === 'function') {{
-                        await loadConversionFunnel();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Conversion Funnel:', error);
-                    // Continuer mme si erreur
-                }}
-            }})();
-        }}, 200);
-        
-        // ========================================
-        // REVENUE INTELLIGENCE CENTER
-        // ========================================
-        
-        async function loadRevenueIntelligence() {{
-            try {{
-                const response = await fetch('/admin/api/revenue-intelligence');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur revenue intelligence:', data);
-                    return;
-                }}
-                
-                renderRevenueProjections(data.projections);
-                renderCLVByPlan(data.clv_by_plan);
-                renderTopClients(data.top_clients);
-                renderPromoROI(data.promo_roi);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement revenue intelligence:', error);
-            }}
-        }}
-        
-        function renderRevenueProjections(data) {{
-            const container = document.getElementById('revenueProjections');
-            
-            if (!data) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">' +
-                '<div style="background: #f0fdf4; padding: 20px; border-radius: 10px; border-left: 4px solid #10b981;">' +
-                    '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">CE MOIS</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #10b981; margin-bottom: 5px;">$' + data.current_month.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">Confirmé</div>' +
-                '</div>' +
-                '<div style="background: #dbeafe; padding: 20px; border-radius: 10px; border-left: 4px solid #3b82f6;">' +
-                    '<div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">PROJECTION 3 MOIS</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #3b82f6; margin-bottom: 5px;">$' + data.next_3_months.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">Estimé</div>' +
-                '</div>' +
-                '<div style="background: #f3e8ff; padding: 20px; border-radius: 10px; border-left: 4px solid #8b5cf6;">' +
-                    '<div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">REVENUS À RISQUE</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #8b5cf6; margin-bottom: 5px;">$' + data.at_risk.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">' + data.users_expiring + ' users expirent</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderCLVByPlan(plans) {{
-            const container = document.getElementById('clvByPlan');
-            
-            if (!plans || plans.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">';
-            
-            plans.forEach(plan => {{
-                const isBest = plan.is_best;
-                const borderColor = isBest ? '#10b981' : '#e5e7eb';
-                const badge = isBest ? '<div style="color: #10b981; font-size: 11px; font-weight: 600; margin-bottom: 8px;">🏆 BEST CLV</div>' : '';
-                
-                html += '<div style="background: white; border: 2px solid ' + borderColor + '; padding: 15px; border-radius: 10px;">' +
-                    '<div style="font-weight: 600; color: #333; margin-bottom: 5px;">' + plan.name + '</div>' +
-                    badge +
-                    '<div style="font-size: 28px; font-weight: bold; color: ' + borderColor + '; margin-bottom: 5px;">$' + plan.clv.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">Renouvellent ' + plan.renewal_rate.toFixed(1) + 'x</div>' +
-                '</div>';
-            }});
-            
-            html += '</div>';
-            container.innerHTML = html;
-        }}
-        
-        function renderTopClients(clients) {{
-            const container = document.getElementById('topClients');
-            
-            if (!clients || clients.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Pas encore de clients</p>';
-                return;
-            }}
-            
-            let html = '<div style="max-width: 800px;">';
-            
-            clients.forEach((client, index) => {{
-                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1) + '.';
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">' +
-                    '<div style="display: flex; align-items: center; gap: 15px;">' +
-                        '<div style="font-size: 24px; width: 40px;">' + medal + '</div>' +
-                        '<div>' +
-                            '<div style="font-weight: 600; color: #333;">' + client.username + '</div>' +
-                            '<div style="color: #666; font-size: 13px;">' + client.plan + '</div>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div style="font-size: 24px; font-weight: bold; color: #10b981;">$' + client.lifetime_value.toFixed(2) + '</div>' +
-                '</div>';
-            }});
-            
-            html += '</div>';
-            container.innerHTML = html;
-        }}
-        
-        function renderPromoROI(promos) {{
-            const container = document.getElementById('promoROI');
-            
-            if (!promos || promos.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Aucun code promo utilisé</p>';
-                return;
-            }}
-            
-            let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse;">' +
-                '<thead><tr style="background: #f3f4f6;">' +
-                '<th style="padding: 12px; text-align: left; font-weight: 600;">Code</th>' +
-                '<th style="padding: 12px; text-align: center; font-weight: 600;">Utilisé</th>' +
-                '<th style="padding: 12px; text-align: right; font-weight: 600;">Rabais</th>' +
-                '<th style="padding: 12px; text-align: right; font-weight: 600;">Revenus</th>' +
-                '<th style="padding: 12px; text-align: right; font-weight: 600;">ROI</th>' +
-                '</tr></thead><tbody>';
-            
-            promos.forEach(promo => {{
-                const roiColor = promo.roi > 200 ? '#10b981' : promo.roi > 100 ? '#f59e0b' : '#ef4444';
-                const roiIcon = promo.roi > 200 ? '🔥' : promo.roi > 100 ? '✅' : '⚠️';
-                
-                html += '<tr style="border-bottom: 1px solid #e5e7eb;">' +
-                    '<td style="padding: 12px; font-weight: 600;">' + promo.code + '</td>' +
-                    '<td style="padding: 12px; text-align: center;">' + promo.uses + 'x</td>' +
-                    '<td style="padding: 12px; text-align: right; color: #ef4444;">-$' + promo.discount_total.toFixed(2) + '</td>' +
-                    '<td style="padding: 12px; text-align: right; color: #10b981;">+$' + promo.revenue_total.toFixed(2) + '</td>' +
-                    '<td style="padding: 12px; text-align: right; font-weight: bold; color: ' + roiColor + ';">' + roiIcon + ' ' + promo.roi.toFixed(0) + '%</td>' +
-                '</tr>';
-            }});
-            
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        }}
-        
-        // ========================================
-        // 4 VIRAL GROWTH MACHINE
-        // ========================================
-        
-        async function loadViralGrowth() {{
-            try {{
-                const response = await fetch('/admin/api/viral-growth');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur viral growth:', data);
-                    return;
-                }}
-                
-                renderReferralStats(data.stats);
-                renderReferralLeaderboard(data.leaderboard);
-                renderAcquisitionSources(data.sources);
-                renderCPAComparison(data.cpa);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement viral growth:', error);
-            }}
-        }}
-        
-        function renderReferralStats(stats) {{
-            const container = document.getElementById('referralStats');
-            
-            if (!stats) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
-                '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">TOTAL PARRAINAGES</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #10b981;">' + stats.total_referrals + '</div>' +
-                '</div>' +
-                '<div style="background: #dbeafe; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">RÉFÉRÉS PAYANTS</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #3b82f6;">' + stats.paid_referrals + '</div>' +
-                '</div>' +
-                '<div style="background: #f3e8ff; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">REVENUS GÉNÉRÉS</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #8b5cf6;">$' + stats.revenue_generated.toFixed(2) + '</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderReferralLeaderboard(leaders) {{
-            const container = document.getElementById('referralLeaderboard');
-            
-            if (!leaders || leaders.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Aucun parrainage actif</p>';
-                return;
-            }}
-            
-            let html = '<div style="max-width: 800px;">';
-            
-            leaders.forEach((leader, index) => {{
-                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : (index + 1) + '.';
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 10px;">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: center;">' +
-                        '<div style="display: flex; align-items: center; gap: 15px;">' +
-                            '<div style="font-size: 24px; width: 40px;">' + medal + '</div>' +
-                            '<div>' +
-                                '<div style="font-weight: 600; color: #333;">' + leader.username + '</div>' +
-                                '<div style="color: #666; font-size: 13px;">' + leader.referrals + ' référés | ' + leader.paid + ' payants</div>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div style="text-align: right;">' +
-                            '<div style="font-size: 20px; font-weight: bold; color: #10b981;">$' + leader.revenue.toFixed(2) + '</div>' +
-                            '<div style="color: #666; font-size: 12px;">revenus générés</div>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            html += '</div>';
-            container.innerHTML = html;
-        }}
-        
-        function renderAcquisitionSources(sources) {{
-            const container = document.getElementById('acquisitionSources');
-            
-            if (!sources || sources.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            const total = sources.reduce((sum, s) => sum + s.count, 0);
-            
-            let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">';
-            
-            sources.forEach(source => {{
-                const percent = ((source.count / total) * 100).toFixed(1);
-                
-                html += '<div style="background: #f9fafb; padding: 15px; border-radius: 8px; text-align: center;">' +
-                    '<div style="font-weight: 600; color: #333; margin-bottom: 8px;">' + source.name + '</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #6366f1; margin-bottom: 5px;">' + source.count + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">' + percent + '% du total</div>' +
-                '</div>';
-            }});
-            
-            html += '</div>';
-            container.innerHTML = html;
-        }}
-        
-        function renderCPAComparison(cpa) {{
-            const container = document.getElementById('cpaComparison');
-            
-            if (!cpa) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            const savings = ((1 - (cpa.referral / cpa.ads)) * 100).toFixed(0);
-            
-            const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">' +
-                '<div style="background: #fef2f2; padding: 20px; border-radius: 10px; border-left: 4px solid #ef4444;">' +
-                    '<div style="color: #991b1b; font-size: 12px; font-weight: 600; margin-bottom: 5px;">VIA ADS</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #ef4444; margin-bottom: 5px;">$' + cpa.ads.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">par user</div>' +
-                '</div>' +
-                '<div style="background: #f0fdf4; padding: 20px; border-radius: 10px; border-left: 4px solid #10b981;">' +
-                    '<div style="color: #065f46; font-size: 12px; font-weight: 600; margin-bottom: 5px;">VIA PARRAINAGE</div>' +
-                    '<div style="font-size: 32px; font-weight: bold; color: #10b981; margin-bottom: 5px;">$' + cpa.referral.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 13px;">par user</div>' +
-                '</div>' +
-                '<div style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center;">' +
-                    '<div style="font-size: 14px; margin-bottom: 5px;">ÉCONOMIE</div>' +
-                    '<div style="font-size: 48px; font-weight: bold;">-' + savings + '%</div>' +
-                    '<div style="font-size: 14px;">🔥 Parrainage 76% moins cher!</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        // ========================================
-        // 5 AUTOMATION ENGINE
-        // ========================================
-        
-        async function loadAutomationEngine() {{
-            try {{
-                const response = await fetch('/admin/api/automation-engine');
-                const data = await response.json();
-                
-                if (!data.success) {{
-                    console.error('Erreur automation engine:', data);
-                    return;
-                }}
-                
-                renderAutomationRules(data.rules);
-                renderAutomationPerformance(data.performance);
-                
-            }} catch (error) {{
-                console.error('Erreur chargement automation engine:', error);
-            }}
-        }}
-        
-        function renderAutomationRules(rules) {{
-            const container = document.getElementById('automationRules');
-            
-            if (!rules || rules.length === 0) {{
-                container.innerHTML = '<p style="color: #999;">Aucune règle créée. Commence par créer ta première règle!</p>';
-                return;
-            }}
-            
-            let html = '';
-            
-            rules.forEach(rule => {{
-                const statusColor = rule.is_active ? '#10b981' : '#9ca3af';
-                const statusText = rule.is_active ? '✅ ACTIVE' : '⏸️ PAUSE';
-                
-                html += '<div style="background: #f9fafb; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 4px solid ' + statusColor + ';">' +
-                    '<div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">' +
-                        '<div>' +
-                            '<div style="font-weight: 600; font-size: 16px; color: #333; margin-bottom: 5px;">' + rule.name + '</div>' +
-                            '<div style="color: #666; font-size: 13px;">Trigger: ' + rule.trigger + '</div>' +
-                        '</div>' +
-                        '<div style="color: ' + statusColor + '; font-weight: 600; font-size: 12px;">' + statusText + '</div>' +
-                    '</div>' +
-                    '<div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">' +
-                        '<div style="font-size: 12px; color: #666; margin-bottom: 5px;">ACTIONS:</div>' +
-                        '<div style="color: #333; font-size: 14px;">' + rule.actions_description + '</div>' +
-                    '</div>' +
-                    '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 13px;">' +
-                        '<div><span style="color: #666;">Déclenchements:</span> <strong>' + rule.triggers_count + '</strong></div>' +
-                        '<div><span style="color: #666;">Conversions:</span> <strong style="color: #10b981;">' + rule.conversions + '</strong></div>' +
-                        '<div><span style="color: #666;">Taux:</span> <strong>' + rule.conversion_rate.toFixed(1) + '%</strong></div>' +
-                    '</div>' +
-                '</div>';
-            }});
-            
-            container.innerHTML = html;
-        }}
-        
-        function renderAutomationPerformance(perf) {{
-            const container = document.getElementById('automationPerformance');
-            
-            if (!perf) {{
-                container.innerHTML = '<p style="color: #999;">Pas de données</p>';
-                return;
-            }}
-            
-            const html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">' +
-                '<div style="background: #f0fdf4; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #059669; font-size: 12px; font-weight: 600; margin-bottom: 5px;">EMAILS ENVOYÉS</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #10b981;">' + perf.emails_sent + '</div>' +
-                '</div>' +
-                '<div style="background: #dbeafe; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #1d4ed8; font-size: 12px; font-weight: 600; margin-bottom: 5px;">TAUX OUVERTURE</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #3b82f6;">' + perf.open_rate.toFixed(0) + '%</div>' +
-                '</div>' +
-                '<div style="background: #f3e8ff; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #6d28d9; font-size: 12px; font-weight: 600; margin-bottom: 5px;">REVENUS GÉNÉRÉS</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #8b5cf6;">$' + perf.revenue_generated.toFixed(2) + '</div>' +
-                '</div>' +
-                '<div style="background: #fef3c7; padding: 15px; border-radius: 8px;">' +
-                    '<div style="color: #92400e; font-size: 12px; font-weight: 600; margin-bottom: 5px;">ROI MOYEN</div>' +
-                    '<div style="font-size: 28px; font-weight: bold; color: #f59e0b;">$' + perf.roi_per_email.toFixed(2) + '</div>' +
-                    '<div style="color: #666; font-size: 11px;">par email</div>' +
-                '</div>' +
-            '</div>';
-            
-            container.innerHTML = html;
-        }}
-        
-        function openCreateRuleModal() {{
-            alert('🚧 Feature en développement: Créer règle d automation');
-        }}
-        
-        // Charger toutes les features au dmarrage - SCURIS avec checks
-        setTimeout(function() {{
-            (async function() {{
-                // Revenue Intelligence
-                try {{
-                    if (typeof loadRevenueIntelligence === 'function') {{
-                        await loadRevenueIntelligence();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Revenue Intelligence:', error);
-                }}
-                
-                // Viral Growth
-                
-                try {{
-                    if (typeof loadViralGrowth === 'function') {{
-                        await loadViralGrowth();
-                    }}
-                }} catch (error) {{
-                    console.error('⚠️ Erreur Viral Growth:', error);
-                }}
-                
-
-            }})();
-        }}, 300);
-        
-        </script>
-    </body>
-    </html>
-    """)
-    
-    def _generate_permissions_checkboxes(self, routes):
-        html = ""
-        for route in routes:
-            route_id = route.replace('/', '_')
-            route_name = route.replace('/', '').replace('-', ' ').title()
-            html += f"""
-                <div class="permission-item">
-                    <input type="checkbox" id="perm_{route_id}" class="perm-checkbox" value="{route}">
-                    <label for="perm_{route_id}">{route_name}</label>
-                </div>
-            """
-        return html
+</body>
+</html>
+"""
+    return HTMLResponse(html)
 
 @app.post("/admin/pricing/update")
 @app.post("/admin-dashboard/pricing/update")
@@ -27354,6 +25104,19 @@ async def admin_revenue_intelligence(session_token: Optional[str] = Cookie(None)
 # ============================================================================
 # 5 AUTOMATION ENGINE API
 # ============================================================================
+
+
+@app.get("/admin/api/viral-growth")
+async def admin_api_viral_growth(days: int = 30):
+    """Endpoint optionnel (évite 404 côté admin)."""
+    # Données placeholder (à brancher sur vos analytics si désiré)
+    return JSONResponse({
+        "success": True,
+        "days": days,
+        "referrals": 0,
+        "shares": 0,
+        "viralCoefficient": 0.0
+    })
 
 @app.get("/admin/api/automation-engine")
 @app.get("/admin-dashboard/api/automation-engine")

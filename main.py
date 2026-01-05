@@ -578,6 +578,26 @@ def get_db_connection():
     return sqlite3.connect(DB_CONFIG["path"], timeout=30.0)
 
 
+
+# =====================
+# DB CONFIG (centralisé)
+# =====================
+try:
+    DB_CONFIG = get_db_config()
+except Exception as _e:
+    print(f"⚠️ get_db_config() a échoué, fallback /tmp: {_e}")
+    DB_CONFIG = {"type": "sqlite", "path": "/tmp/cryptoia.db", "dir": "/tmp"}
+
+# Compatibilité: certains modules utilisent DB_DIR/DB_PATH
+try:
+    DB_DIR = (DB_CONFIG.get("dir") or os.path.dirname(DB_CONFIG.get("path", "/tmp/cryptoia.db")))
+    DB_PATH = DB_CONFIG.get("path", "/tmp/cryptoia.db")
+    os.makedirs(DB_DIR, exist_ok=True)
+except Exception as _e:
+    print(f"⚠️  Impossible de créer DB_DIR, fallback /tmp: {_e}")
+    DB_DIR = "/tmp"
+    DB_PATH = "/tmp/cryptoia.db"
+
 # =====================
 # PLAN PRICING (CAD) + SYNC ADMIN / PRICING / PAYMENTS
 # =====================
@@ -7305,7 +7325,10 @@ async def dashboard(session_token: Optional[str] = Cookie(None)):
     <div class="particles" id="particles"></div>
     <div class="main-content">
         <div class="hero">
-            <h1 class="hero-title">🚀 Crypto IA 💎</h1>
+            <div style="display:flex;justify-content:center;margin:8px 0 18px 0;">
+          <img src="{SITE_LOGO_URL}" alt="Crypto IA" style="height:84px;width:auto;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);" loading="lazy">
+        </div>
+        <h1 class="hero-title">🚀 Crypto IA 💎</h1>
             <p class="hero-subtitle">Une plateforme d'analyse crypto pilotée par l'IA, qui convertit le bruit permanent du marché 24/7 en décisions claires, structurées, mesurables — et alignées avec votre stratégie.</p>
         </div>
         <div class="stats-grid">
@@ -7923,6 +7946,7 @@ async def home():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crypto IA</title>
+    <link rel="icon" href="{SITE_LOGO_URL}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -8028,7 +8052,10 @@ async def home():
     <div class="particles" id="particles"></div>
     <div class="main-content">
         <div class="hero">
-            <h1 class="hero-title">🚀 Crypto IA 💎</h1>
+            <div style="display:flex;justify-content:center;margin:8px 0 18px 0;">
+          <img src="{SITE_LOGO_URL}" alt="Crypto IA" style="height:84px;width:auto;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25);" loading="lazy">
+        </div>
+        <h1 class="hero-title">🚀 Crypto IA 💎</h1>
             <p class="hero-subtitle">Une plateforme d'analyse crypto pilotée par l'IA, qui convertit le bruit permanent du marché 24/7 en décisions claires, structurées, mesurables — et alignées avec votre stratégie.</p>
         </div>
         <div class="stats-grid">
@@ -20219,6 +20246,17 @@ async def pricing_complete():
         html = html.replace("<!--ACCESS_MATRIX-->", matrix_section)
     except Exception:
         pass
+
+    
+    # 🔁 Forcer l'injection des prix dynamiques dans le HTML (évite les anciens hardcodes 29.99/74.97/134.94/239.88)
+    try:
+        import re as _re
+        html = _re.sub(r'(id="amount-1-month">\s*)[\d.]+', r'\1' + f"{premium_price:.2f}", html)
+        html = _re.sub(r'(id="amount-3-months">\s*)[\d.]+', r'\1' + f"{advanced_price:.2f}", html)
+        html = _re.sub(r'(id="amount-6-months">\s*)[\d.]+', r'\1' + f"{pro_price:.2f}", html)
+        html = _re.sub(r'(id="amount-1-year">\s*)[\d.]+', r'\1' + f"{elite_price:.2f}", html)
+    except Exception as _e:
+        print(f"⚠️  Injection prix HTML échouée: {_e}")
 
     return HTMLResponse(html)
 
@@ -34680,7 +34718,7 @@ async def subscribe_push(request: Request):
         # TODO: Sauvegarder en DB
         return {"success": True, "message": "Subscribed to push notifications"}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": str(e), "message": str(e)}
 
 @app.post("/api/send-push")
 async def send_push_notification(request: Request):
@@ -34690,7 +34728,7 @@ async def send_push_notification(request: Request):
         # TODO: Implmenter avec Web Push
         return {"success": True, "message": "Push sent"}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": str(e), "message": str(e)}
 
 # ========== FEATURE 4 ==========
 

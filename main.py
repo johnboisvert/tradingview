@@ -2408,6 +2408,23 @@ BADGES_DATA = {
 
 
 app = FastAPI()
+# --- Sessions (required for request.session) ---
+try:
+    from starlette.middleware.sessions import SessionMiddleware
+    _SESSION_SECRET = (os.getenv("SESSION_SECRET_KEY") or os.getenv("SESSION_SECRET") or os.getenv("SECRET_KEY") or "").strip()
+    if not _SESSION_SECRET:
+        _SESSION_SECRET = "CHANGE_ME_SESSION_SECRET"  # ⚠️ Définir SESSION_SECRET_KEY dans Railway
+    _HTTPS_ONLY = os.getenv("SESSION_HTTPS_ONLY", "1").strip().lower() not in ("0", "false", "no")
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=_SESSION_SECRET,
+        same_site="lax",
+        https_only=_HTTPS_ONLY,
+        max_age=60 * 60 * 24 * 30,  # 30 jours
+    )
+except Exception as _e:
+    print(f"⚠️ SessionMiddleware non installé: {_e}")
+
 
 
 

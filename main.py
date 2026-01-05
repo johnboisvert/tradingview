@@ -23436,6 +23436,53 @@ async def stripe_webhook_debug(request: Request):
 # ============================================================================
 
 
+# ----------------- Admin stats helpers (safe) -----------------
+def get_total_users_count() -> int:
+    try:
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM users")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return int(row[0] or 0) if row else 0
+    except Exception as e:
+        print(f"⚠️ get_total_users_count: {e}")
+        return 0
+
+def get_active_subscriptions_count() -> int:
+    """Active = plan != free AND subscription_end in the future."""
+    try:
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+        now_iso = datetime.utcnow().isoformat()
+        cur.execute(
+            "SELECT COUNT(*) FROM users WHERE subscription_plan IS NOT NULL AND subscription_plan != ? "
+            "AND subscription_end IS NOT NULL AND subscription_end > ?",
+            ("free", now_iso),
+        )
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return int(row[0] or 0) if row else 0
+    except Exception as e:
+        print(f"⚠️ get_active_subscriptions_count: {e}")
+        return 0
+
+def get_total_revenue() -> float:
+    """Best effort: sum(users.total_spent) if present."""
+    try:
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COALESCE(SUM(total_spent), 0) FROM users")
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return float(row[0] or 0) if row else 0.0
+    except Exception as e:
+        print(f"⚠️ get_total_revenue: {e}")
+        return 0.0
+
 @app.get("/admin-dashboard", response_class=HTMLResponse)
 async def admin_dashboard(request: Request):
     """Admin Dashboard (stable): gestion prix + accès par forfait."""

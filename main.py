@@ -2423,7 +2423,7 @@ try:
         max_age=60 * 60 * 24 * 30,  # 30 jours
     )
 except Exception as _e:
-    print(f"⚠️ SessionMiddleware non installé: {_e}")
+    print(f"ℹ️ SessionMiddleware absent (OK): {_e}")
 
 
 
@@ -11231,7 +11231,7 @@ async def ai_market_regime():
                     const globalData = await globalResponse.json();
                     
                     // Rcuprer Fear & Greed Index
-                    const fgResponse = await fetch('https://api.alternative.me/fng/?limit=1&format=json');
+                    const fgResponse = await fetch('/api/fear-greed-raw&format=json');
                     const fgData = await fgResponse.json();
                     
                     // Rcuprer top cryptos pour altcoin index
@@ -12271,7 +12271,7 @@ async def fear_greed_full():
     try:
         print("🔄 Tentative de connexion à l'API Fear & Greed...")
         async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.get("https://api.alternative.me/fng/?limit=30")
+            r = await client.get("/api/fear-greed-raw")
             print(f"📡 Status code: {r.status_code}")
             
             if r.status_code == 200:
@@ -12311,6 +12311,21 @@ async def fear_greed_full():
     
     print("⚠️ Retour des données fallback (34)")
     return {"current_value": 50, "current_classification": "Neutral", "status": "fallback"}
+
+
+@app.get("/api/fear-greed-raw")
+async def fear_greed_raw():
+    """Proxy Fear & Greed API (Alternative.me) to avoid browser CORS/network issues."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get("/api/fear-greed-raw")
+            if r.status_code == 200:
+                return r.json()
+    except Exception as e:
+        print(f"⚠️ fear_greed_raw proxy error: {type(e).__name__} - {e}")
+
+    # Fallback minimal (format compatible avec alternative.me)
+    return {"data": [{"value": "50", "value_classification": "Neutral", "timestamp": str(int(time.time())), "time_until_update": "0"}]}
 
 @app.get("/api/btc-dominance")
 async def api_btc_dominance():
@@ -20245,7 +20260,7 @@ async def stats_dashboard():
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
             # Fear & Greed (30 derniers jours)
-            fg_resp = await client.get("https://api.alternative.me/fng/?limit=30")
+            fg_resp = await client.get("/api/fear-greed-raw")
             fg_val = 55
             fg_history = [55] * 8
             if fg_resp.status_code == 200:
@@ -23501,12 +23516,10 @@ def get_total_revenue() -> float:
         return 0.0
 
 @app.get("/admin-dashboard", response_class=HTMLResponse)
-async def admin_dashboard(request: Request):
+async def admin_dashboard(request: Request, _admin_user: str = Depends(require_admin)):
     """Admin Dashboard (stable): gestion prix + accès par forfait."""
     # Auth admin
-    session = request.session or {}
-    if not session.get("logged_in"):
-        return RedirectResponse(url="/login", status_code=303)
+    # Accès admin géré par require_admin (cookie session_token)
     if session.get("username") != "admin" and not session.get("is_admin"):
         return RedirectResponse(url="/", status_code=303)
 

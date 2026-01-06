@@ -19504,7 +19504,8 @@ async def pricing_complete_page(request: Request, session_token: Optional[str] =
 
     def _routes_summary(plan_key: str) -> str:
         try:
-            routes = list(_fetch_plan_routes(plan_key) or [])
+            # Lit les accès réellement configurés dans l'Admin (table plan_access: route_key/enabled)
+            routes = list(get_plan_access_routes(plan_key) or [])
             routes = [r for r in routes if r and r.startswith("/") and r not in HIDDEN_ROUTES]
             routes.sort(key=lambda x: ROUTE_LABELS.get(x, x))
             if not routes:
@@ -19515,8 +19516,10 @@ async def pricing_complete_page(request: Request, session_token: Optional[str] =
             if extra > 0:
                 return ", ".join(show) + f" +{extra}"
             return ", ".join(show)
-        except Exception:
+        except Exception as e:
+            print(f"⚠️ pricing-complete: erreur routes_summary({plan_key}): {e}")
             return "(erreur)"
+
 
     feat_labels = {k: v for k, v in PLAN_FEATURE_DEFS}
 
@@ -19689,6 +19692,9 @@ async def pricing_complete_page(request: Request, session_token: Optional[str] =
     html = html.replace("%%ADV_FEATS%%", _features_summary("advanced"))
     html = html.replace("%%PRO_FEATS%%", _features_summary("pro"))
     html = html.replace("%%ELITE_FEATS%%", _features_summary("elite"))
+
+    # Fix double-curly braces in inline CSS/HTML blocks
+    html = html.replace("{{", "{").replace("}}", "}")
 
     return HTMLResponse(html)
 

@@ -19358,25 +19358,55 @@ async def create_charge(req: CreateChargeRequest, request: Request):
 
 
 @app.get("/pricing-complete", response_class=HTMLResponse)
-async def pricing_complete(request: Request):
-    # Pricing from settings.db (admin editable)
+async def pricing_complete_page(request: Request, session_token: Optional[str] = Cookie(None)):
+    """Pricing page complète (avec menu gauche + prix dynamiques + accès dynamiques)."""
+    # Load prices from DB (admin editable)
     pricing = get_all_plan_pricing()
-    premium_price = (pricing.get("premium", {}).get("price_cents", 0) or 0) / 100.0
-    advanced_price = (pricing.get("advanced", {}).get("price_cents", 0) or 0) / 100.0
-    pro_price = (pricing.get("pro", {}).get("price_cents", 0) or 0) / 100.0
-    elite_price = (pricing.get("elite", {}).get("price_cents", 0) or 0) / 100.0
 
-    # Access routes per plan (admin editable)
+    def fmt_price_cad(price_cents: int) -> str:
+        try:
+            return f"${(int(price_cents) / 100):.2f}".replace(".00", "")
+        except Exception:
+            return "$0"
+
+    plan_map = {
+        "premium": {"key": "premium", "default_price": 2050, "default_dur": "mois"},
+        "advanced": {"key": "advanced", "default_price": 5050, "default_dur": "3 mois"},
+        "pro": {"key": "pro", "default_price": 8050, "default_dur": "6 mois"},
+        "elite": {"key": "elite", "default_price": 15050, "default_dur": "an"},
+    }
+
+    def plan_price(plan_key: str) -> str:
+        p = pricing.get(plan_key)
+        if p and p.get("price_cents") is not None:
+            return fmt_price_cad(int(p.get("price_cents")))
+        return fmt_price_cad(plan_map[plan_key]["default_price"])
+
+    def plan_duration(plan_key: str) -> str:
+        p = pricing.get(plan_key)
+        if p and p.get("duration_days"):
+            d = int(p.get("duration_days"))
+            # friendly
+            if d <= 31:
+                return "mois"
+            if d <= 100:
+                return "3 mois"
+            if d <= 200:
+                return "6 mois"
+            return "an"
+        return plan_map[plan_key]["default_dur"]
+
+    # Route labels for summaries
     ROUTE_LABELS = {
         "/dashboard": "Dashboard Principal",
         "/stats-dashboard": "Stats Dashboard",
-        "/mes-trades": "Mes Trades",
-        "/strategies": "Stratégies",
+        "/trades": "Mes Trades",
         "/spot-trading": "Spot Trading",
+        "/strategie": "Stratégies",
         "/watchlist": "Watchlist",
-        "/gestion-risques": "Gestion Risques",
+        "/risk-management": "Gestion Risques",
         "/backtesting": "Backtesting",
-        "/opportunity-scanner": "Opportunity Scanner",
+        "/ai-opportunity-scanner": "Opportunity Scanner",
         "/ai-market-regime": "AI Market Regime",
         "/ai-whale-watcher": "AI Whale Watcher",
         "/ai-assistant": "AI Assistant",
@@ -19385,323 +19415,200 @@ async def pricing_complete(request: Request):
         "/ai-predictor": "AI Predictor",
         "/ai-patterns": "AI Patterns",
         "/ai-sentiment": "AI Sentiment",
-        "/position-sizer": "Position Sizer",
-        "/fear-greed": "Fear & Greed",
-        "/fear-greed-chart": "Fear & Greed Chart",
-        "/dominance": "Dominance",
-        "/heatmap": "Heatmap",
-        "/contact": "Contact",
+        "/ai-sizer": "Position Sizer",
         "/pricing-complete": "Plans & Tarifs",
+        "/contact": "Contact",
+        "/": "Accueil",
     }
+    HIDDEN_ROUTES = {"/", "/contact", "/pricing", "/pricing-complete", "/login", "/logout"}
 
-    def _fetch_plan_routes(plan_key: str) -> list:
+    def _routes_summary(plan_key: str) -> str:
         try:
-            plan_key = normalize_plan(plan_key)
-            conn = db_manager.get_connection()
-            cur = conn.cursor()
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS plan_access (
-                    plan TEXT PRIMARY KEY,
-                    routes_json TEXT,
-                    routes TEXT,
-                    updated_at TEXT
-                )
-            """)
-            cur.execute("SELECT routes_json FROM plan_access WHERE plan = ?", (plan_key,))
-            row = cur.fetchone()
-            conn.close()
-            if not row or not row[0]:
-                return []
-            routes = json.loads(row[0]) if isinstance(row[0], str) else row[0]
-            out = []
-            for r in (routes or []):
-                rr = (str(r) or "").strip()
-                if rr and not rr.startswith("/"):
-                    rr = "/" + rr
-                if rr:
-                    out.append(rr)
-            return out
+            routes = list(_fetch_plan_routes(plan_key) or [])
+            routes = [r for r in routes if r and r.startswith("/") and r not in HIDDEN_ROUTES]
+            routes.sort(key=lambda x: ROUTE_LABELS.get(x, x))
+            if not routes:
+                return "(à définir dans l'Admin)"
+            labels = [ROUTE_LABELS.get(r, r.replace("/", "").replace("-", " ").title()) for r in routes]
+            show = labels[:5]
+            extra = len(labels) - len(show)
+            if extra > 0:
+                return ", ".join(show) + f" +{extra}"
+            return ", ".join(show)
         except Exception:
-            return []
+            return "(erreur)"
 
-    def _routes_summary(plan_key: str):
-        # Remove "infrastructure" pages from marketing list
-        hidden = {"/pricing-complete", "/mon-compte", "/admin-dashboard", "/login", "/logout", "/register"}
-        routes = [r for r in _fetch_plan_routes(plan_key) if r not in hidden]
-        labels = []
-        for r in routes:
-            labels.append(ROUTE_LABELS.get(r, r.lstrip("/").replace("-", " ").title()))
-        labels = sorted(set(labels), key=lambda x: x.lower())
-        return labels
+    feat_labels = {k: v for k, v in PLAN_FEATURE_DEFS}
 
-    # Features per plan (toggles)
-    feat_defs = dict(PLAN_FEATURE_DEFS) if "PLAN_FEATURE_DEFS" in globals() else {}
-    def _feature_labels(plan_key: str) -> list:
-        try:
-            feats = get_plan_features(plan_key)
-            labels = []
-            for k in feats:
-                labels.append(feat_defs.get(k, k.replace("_", " ").title()))
-            # De-dupe while preserving order
-            seen = set()
-            out = []
-            for x in labels:
-                if x not in seen:
-                    seen.add(x)
-                    out.append(x)
-            return out
-        except Exception:
-            return []
+    def _features_summary(plan_key: str) -> str:
+        feats = get_plan_features(plan_key)
+        if not feats:
+            feats = DEFAULT_PLAN_FEATURES.get(plan_key, [])
+        labels = [feat_labels.get(f, f) for f in feats]
+        if not labels:
+            return "—"
+        show = labels[:4]
+        extra = len(labels) - len(show)
+        if extra > 0:
+            return ", ".join(show) + f" +{extra}"
+        return ", ".join(show)
 
-    def _render_bullets(plan_key: str) -> str:
-        feats = _feature_labels(plan_key)
-        pages = _routes_summary(plan_key)
+    premium_price = plan_price("premium")
+    advanced_price = plan_price("advanced")
+    pro_price = plan_price("pro")
+    elite_price = plan_price("elite")
 
-        items = []
-        for lbl in feats[:4]:
-            items.append(f"<li>{lbl}</li>")
+    premium_dur = plan_duration("premium")
+    advanced_dur = plan_duration("advanced")
+    pro_dur = plan_duration("pro")
+    elite_dur = plan_duration("elite")
 
-        # Pages summary
-        if pages:
-            if len(pages) <= 6:
-                items.append(f"<li><b>Accès inclus:</b> {', '.join(pages)}</li>")
-            else:
-                items.append(f"<li><b>Accès inclus:</b> {', '.join(pages[:6])} <span style='opacity:.8'>(+{len(pages)-6} autres)</span></li>")
-        else:
-            items.append("<li><b>Accès inclus:</b> Pages publiques + Dashboard</li>")
-
-        return "\n".join(items)
-
-    html = f"""
-<!DOCTYPE html>
-<html lang="fr">
+    html = """<!DOCTYPE html>
+<html lang=\"fr\">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plans & Tarifs — {SITE_NAME}</title>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>Plans & Tarifs — CRYPTO IA</title>
   <style>
-    body {{
-      margin: 0;
-      padding: 20px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      color: #ffffff;
-    }}
-    .wrap {{
-      max-width: 1100px;
-      margin: 0 auto;
-    }}
-    .hero {{
-      background: rgba(0,0,0,0.25);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 24px;
-      padding: 26px;
-      text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
-    }}
-    .hero h1 {{ margin: 10px 0 6px; font-size: 40px; }}
-    .hero p {{ margin: 0; opacity: .9; }}
-    .logo {{
-      width: 90px;
-      height: 90px;
-      border-radius: 18px;
-      margin: 0 auto 10px;
-      display: block;
-      object-fit: cover;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.25);
-    }}
-    .promo {{
-      margin: 18px auto 0;
-      max-width: 740px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 16px;
-      padding: 14px;
-    }}
-    .promo input {{
-      flex: 1;
-      min-width: 220px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.22);
-      background: rgba(0,0,0,0.25);
-      color: white;
-      outline: none;
-    }}
-    .btn {{
-      padding: 10px 16px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.22);
-      background: rgba(0,0,0,0.25);
-      color: white;
-      cursor: pointer;
-      font-weight: 800;
-    }}
-    .btn.primary {{
-      background: rgba(99,102,241,0.85);
-      border-color: rgba(99,102,241,0.95);
-    }}
-    .grid {{
-      margin-top: 22px;
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 18px;
-    }}
-    @media (max-width: 1020px) {{ .grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }} }}
-    @media (max-width: 640px) {{ .grid {{ grid-template-columns: 1fr; }} }}
-    .card {{
-      background: rgba(255,255,255,0.14);
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 18px;
-      padding: 18px 16px;
-      color: #0b1220;
-      background: #ffffff;
-      position: relative;
-      box-shadow: 0 14px 35px rgba(0,0,0,0.18);
-    }}
-    .card h2 {{ margin: 0; font-size: 22px; color:#0b1220; }}
-    .price {{ font-size: 44px; font-weight: 900; margin: 10px 0 2px; color: #4f46e5; }}
-    .sub {{ opacity: .75; font-weight: 700; margin-bottom: 10px; color: #0b1220; }}
-    ul {{ margin: 10px 0 14px; padding-left: 18px; color:#0b1220; }}
+    body {{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background: linear-gradient(135deg,#5b6cff,#8b5cf6); color:#0b1220; }}
+    .wrap {{ margin-left: 280px; min-height:100vh; padding: 28px 18px; }}
+    @media (max-width: 980px) {{ .wrap {{ margin-left:0; padding-top:90px; }} .sidebar{{position:fixed}} }}
+    .container {{ max-width:1100px; margin:0 auto; }}
+    .hero {{ background: rgba(15, 23, 42, 0.78); color:#fff; border-radius: 18px; padding: 22px; box-shadow: 0 18px 50px rgba(0,0,0,.25); text-align:center; }}
+    .hero img {{ width:72px; height:72px; border-radius:16px; box-shadow:0 8px 30px rgba(0,0,0,.35); }}
+    .hero h1 {{ margin: 10px 0 6px; font-size: 36px; }}
+    .hero p {{ margin:0; opacity:.9; }}
+    .promo {{ margin: 18px auto 0; max-width: 760px; display:flex; gap:10px; align-items:center; justify-content:center; background: rgba(255,255,255,0.92); padding: 12px; border-radius: 14px; }}
+    .promo input {{ flex:1; padding:10px 12px; border-radius: 12px; border:1px solid rgba(0,0,0,0.12); }}
+    .promo button {{ padding:10px 14px; border-radius: 12px; border:0; background:#5b6cff; color:white; font-weight:900; cursor:pointer; }}
+    .grid {{ margin-top: 18px; display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }}
+    @media (max-width: 1050px) {{ .grid {{ grid-template-columns: 1fr 1fr; }} }}
+    @media (max-width: 560px) {{ .grid {{ grid-template-columns: 1fr; }} }}
+    .plan {{ background: rgba(255,255,255,0.95); border-radius: 18px; padding: 18px; box-shadow: 0 18px 50px rgba(0,0,0,.20); border:1px solid rgba(0,0,0,0.06); }}
+    .plan h2 {{ margin:0 0 8px; font-size: 22px; display:flex; align-items:center; justify-content:space-between; gap:10px; }}
+    .tag {{ font-size: 12px; padding:4px 10px; border-radius:999px; background: rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.35); color:#065f46; }}
+    .price {{ font-size: 44px; font-weight: 900; color:#3b82f6; line-height: 1; }}
+    .per {{ opacity:.7; margin-bottom: 10px; }}
+    .muted-line {{ font-size: 12px; opacity:.8; margin-bottom: 8px; }}
+    ul {{ margin: 10px 0 16px 18px; padding:0; }}
     li {{ margin: 6px 0; }}
-    .cta {{
-      display: block;
-      text-align: center;
-      margin-top: 10px;
-      padding: 12px 14px;
-      border-radius: 14px;
-      background: rgba(79,70,229,0.90);
-      color: white;
-      font-weight: 900;
-      text-decoration: none;
-    }}
-    .badge {{
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      padding: 6px 10px;
-      font-size: 12px;
-      border-radius: 999px;
-      background: rgba(16,185,129,0.15);
-      border: 1px solid rgba(16,185,129,0.35);
-      color: #065f46;
-      font-weight: 900;
-    }}
-    .popular {{
-      position:absolute;
-      top: 12px;
-      left: 12px;
-      padding: 6px 10px;
-      font-size: 12px;
-      border-radius: 999px;
-      background: rgba(245,158,11,0.18);
-      border: 1px solid rgba(245,158,11,0.35);
-      color: #7c2d12;
-      font-weight: 900;
-    }}
-    .footerNote {{
-      text-align:center;
-      margin-top: 16px;
-      opacity: .9;
-      font-size: 13px;
-    }}
+    .btn {{ display:block; text-align:center; padding: 12px 12px; border-radius: 14px; font-weight: 900; background:#5b6cff; color:white; text-decoration:none; }}
+    .btn:hover {{ filter:brightness(1.07); }}
+    .note {{ margin-top: 14px; text-align:center; color: rgba(255,255,255,0.95); font-size: 12px; }}
   </style>
 </head>
 <body>
   {SIDEBAR}
-  <div class="wrap">
-    <div class="hero">
-      <img class="logo" src="/static/logo.png" alt="{SITE_NAME}">
-      <h1>💎 Plans & Tarifs</h1>
-      <p>Choisissez le plan qui vous convient — les accès aux pages sont gérés dans l'Admin.</p>
-
-      <div class="promo">
-        <div style="font-weight:900;">🎁 Vous avez un code promo ?</div>
-        <input id="promoCode" placeholder="ENTREZ VOTRE CODE PROMO" />
-        <button class="btn primary" onclick="applyPromo()">Appliquer</button>
-        <div id="promoMsg" style="width:100%; text-align:center; font-weight:800; opacity:.9;"></div>
+  <div class=\"wrap\">
+    <div class=\"container\">
+      <div class=\"hero\">
+        <img src=\"https://www.cryptoia.ca/static/logo.png\" alt=\"CRYPTOIA\" onerror=\"this.style.display='none'\" />
+        <h1>💎 Plans & Tarifs</h1>
+        <p>Choisissez le plan qui vous convient</p>
+        <div class=\"promo\">
+          <div style=\"font-weight:900\">🎁 Code promo ?</div>
+          <input id=\"promoCode\" placeholder=\"ENTREZ VOTRE CODE PROMO\" />
+          <button onclick=\"applyPromo()\">Appliquer</button>
+        </div>
       </div>
+
+      <div class=\"grid\">
+        <div class=\"plan\">
+          <h2>💳 Premium <span class=\"tag\">%%PREMIUM_DUR%%</span></h2>
+          <div class=\"price\">%%PREMIUM_PRICE%%</div>
+          <div class=\"per\">/ %%PREMIUM_DUR%%</div>
+          <div class=\"muted-line\"><b>Pages:</b> %%PREMIUM_PAGES%%</div>
+          <div class=\"muted-line\"><b>Features:</b> %%PREMIUM_FEATS%%</div>
+          <ul>
+            <li>Dashboard en temps réel</li>
+            <li>Signaux de trading</li>
+          </ul>
+          <a class=\"btn\" href=\"/stripe-checkout?plan=premium\">Passer à Premium</a>
+        </div>
+
+        <div class=\"plan\" style=\"outline: 3px solid rgba(245,158,11,0.75);\">
+          <h2>💎 Advanced <span class=\"tag\">%%ADV_DUR%%</span></h2>
+          <div class=\"price\">%%ADV_PRICE%%</div>
+          <div class=\"per\">/ %%ADV_DUR%%</div>
+          <div class=\"muted-line\"><b>Pages:</b> %%ADV_PAGES%%</div>
+          <div class=\"muted-line\"><b>Features:</b> %%ADV_FEATS%%</div>
+          <ul>
+            <li>Webhooks TradingView</li>
+            <li>Alertes Telegram</li>
+          </ul>
+          <a class=\"btn\" href=\"/stripe-checkout?plan=advanced\">Passer à Advanced</a>
+        </div>
+
+        <div class=\"plan\">
+          <h2>👑 Pro <span class=\"tag\">%%PRO_DUR%%</span></h2>
+          <div class=\"price\">%%PRO_PRICE%%</div>
+          <div class=\"per\">/ %%PRO_DUR%%</div>
+          <div class=\"muted-line\"><b>Pages:</b> %%PRO_PAGES%%</div>
+          <div class=\"muted-line\"><b>Features:</b> %%PRO_FEATS%%</div>
+          <ul>
+            <li>API accès complet</li>
+            <li>Backtesting illimité</li>
+          </ul>
+          <a class=\"btn\" href=\"/stripe-checkout?plan=pro\">Passer à Pro</a>
+        </div>
+
+        <div class=\"plan\">
+          <h2>🚀 Elite <span class=\"tag\">%%ELITE_DUR%%</span></h2>
+          <div class=\"price\">%%ELITE_PRICE%%</div>
+          <div class=\"per\">/ %%ELITE_DUR%%</div>
+          <div class=\"muted-line\"><b>Pages:</b> %%ELITE_PAGES%%</div>
+          <div class=\"muted-line\"><b>Features:</b> %%ELITE_FEATS%%</div>
+          <ul>
+            <li>Rapports PDF hebdomadaires</li>
+            <li>Support dédié</li>
+          </ul>
+          <a class=\"btn\" href=\"/stripe-checkout?plan=elite\">Passer à Elite</a>
+        </div>
+      </div>
+
+      <div class=\"note\">Les prix sont en CAD. Les accès aux pages sont gérés par votre plan dans l'Admin.</div>
     </div>
-
-    <div class="grid">
-      <div class="card">
-        <h2>Premium</h2>
-        <div class="badge">1 mois</div>
-        <div class="price">${premium_price:.2f}</div>
-        <div class="sub">/ mois</div>
-        <ul>
-          {_render_bullets("premium")}
-        </ul>
-        <a class="cta" href="/checkout?plan=premium">Passer à Premium</a>
-      </div>
-
-      <div class="card" style="border:2px solid rgba(245,158,11,0.65);">
-        <div class="popular">POPULAIRE</div>
-        <h2>Advanced</h2>
-        <div class="badge">3 mois</div>
-        <div class="price">${advanced_price:.2f}</div>
-        <div class="sub">/ 3 mois</div>
-        <ul>
-          {_render_bullets("advanced")}
-        </ul>
-        <a class="cta" href="/checkout?plan=advanced">Passer à Advanced</a>
-      </div>
-
-      <div class="card">
-        <h2>Pro</h2>
-        <div class="badge">6 mois</div>
-        <div class="price">${pro_price:.2f}</div>
-        <div class="sub">/ 6 mois</div>
-        <ul>
-          {_render_bullets("pro")}
-        </ul>
-        <a class="cta" href="/checkout?plan=pro">Passer à Pro</a>
-      </div>
-
-      <div class="card">
-        <h2>Elite</h2>
-        <div class="badge">1 an</div>
-        <div class="price">${elite_price:.2f}</div>
-        <div class="sub">/ an</div>
-        <ul>
-          {_render_bullets("elite")}
-        </ul>
-        <a class="cta" href="/checkout?plan=elite">Passer à Elite</a>
-      </div>
-    </div>
-
-    <div class="footerNote">Les prix sont en CAD. Les accès aux pages sont gérés par votre plan dans l’Admin.</div>
   </div>
 
-<script>
-  async function applyPromo() {{
-    const code = (document.getElementById("promoCode").value || "").trim().toUpperCase();
-    const msg = document.getElementById("promoMsg");
-    msg.textContent = "";
-    if (!code) return;
-
-    try {{
-      const res = await fetch("/api/validate-promo?code=" + encodeURIComponent(code));
-      const data = await res.json();
-      if (!res.ok || !data?.valid) {{
-        msg.textContent = data?.message || "Code invalide.";
-        return;
-      }}
-      msg.textContent = "✅ Code appliqué: " + code + " (" + (data?.label || "") + ")";
-    }} catch(e) {{
-      msg.textContent = "Erreur promo: " + e;
-    }}
-  }}
-</script>
+  <script>
+    async function applyPromo() {
+      var code = (document.getElementById('promoCode').value || '').trim();
+      if (!code) { alert('Entrez un code promo'); return; }
+      try {
+        var res = await fetch('/api/verify-promo', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({code: code})
+        });
+        var data = await res.json();
+        if (data && data.valid) alert('✅ Code promo appliqué: ' + code.toUpperCase());
+        else alert('❌ Code invalide');
+      } catch (e) {
+        alert('Erreur promo: ' + e);
+      }
+    }
+  </script>
 </body>
 </html>
-""".replace("{SIDEBAR}", SIDEBAR)
+"""
+
+    html = html.replace("{SIDEBAR}", SIDEBAR)
+    html = html.replace("%%PREMIUM_PRICE%%", premium_price)
+    html = html.replace("%%ADV_PRICE%%", advanced_price)
+    html = html.replace("%%PRO_PRICE%%", pro_price)
+    html = html.replace("%%ELITE_PRICE%%", elite_price)
+    html = html.replace("%%PREMIUM_DUR%%", premium_dur)
+    html = html.replace("%%ADV_DUR%%", advanced_dur)
+    html = html.replace("%%PRO_DUR%%", pro_dur)
+    html = html.replace("%%ELITE_DUR%%", elite_dur)
+    html = html.replace("%%PREMIUM_PAGES%%", _routes_summary("premium"))
+    html = html.replace("%%ADV_PAGES%%", _routes_summary("advanced"))
+    html = html.replace("%%PRO_PAGES%%", _routes_summary("pro"))
+    html = html.replace("%%ELITE_PAGES%%", _routes_summary("elite"))
+    html = html.replace("%%PREMIUM_FEATS%%", _features_summary("premium"))
+    html = html.replace("%%ADV_FEATS%%", _features_summary("advanced"))
+    html = html.replace("%%PRO_FEATS%%", _features_summary("pro"))
+    html = html.replace("%%ELITE_FEATS%%", _features_summary("elite"))
 
     return HTMLResponse(html)
 

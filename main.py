@@ -5497,7 +5497,7 @@ async def admin_panel(request: Request):
 
 @app.post("/admin/add-user")
 @app.post("/admin-dashboard/add-user")
-async def add_user(request: Request):
+async def add_user(request: Request, _admin_user: str = Depends(require_admin)):
     """Ajouter un nouvel utilisateur avec permissions par défaut ou plan d'abonnement"""
     try:
         data = await request.json()
@@ -5596,7 +5596,7 @@ async def add_user(request: Request):
 
 @app.post("/admin/delete-user")
 @app.post("/admin-dashboard/delete-user")
-async def delete_user(request: Request):
+async def delete_user(request: Request, _admin_user: str = Depends(require_admin)):
     """Supprimer un utilisateur"""
     data = await request.json()
     user_to_delete = data.get("username")
@@ -5609,7 +5609,7 @@ async def delete_user(request: Request):
 
 @app.get("/admin/get-user/{username}")
 @app.get("/admin-dashboard/get-user/{username}")
-async def get_user_info(username: str):
+async def get_user_info(username: str, _admin_user: str = Depends(require_admin)):
     """Récupérer les informations d'un utilisateur"""
     try:
         conn = db_manager.get_connection()
@@ -5640,7 +5640,7 @@ async def get_user_info(username: str):
 
 @app.post("/admin/edit-user")
 @app.post("/admin-dashboard/edit-user")
-async def edit_user(request: Request):
+async def edit_user(request: Request, _admin_user: str = Depends(require_admin)):
     """Modifier un utilisateur existant"""
     try:
         data = await request.json()
@@ -5690,7 +5690,7 @@ async def edit_user(request: Request):
 
 @app.post("/admin/update-permissions")
 @app.post("/admin-dashboard/update-permissions")
-async def update_permissions(request: Request):
+async def update_permissions(request: Request, _admin_user: str = Depends(require_admin)):
     """Mettre à jour les permissions d'un utilisateur"""
     try:
         data = await request.json()
@@ -5722,7 +5722,7 @@ async def update_permissions(request: Request):
 
 @app.get("/admin/get-permissions/{username}")
 @app.get("/admin-dashboard/get-permissions/{username}")
-async def get_permissions(username: str):
+async def get_permissions(username: str, _admin_user: str = Depends(require_admin)):
     """Récupérer les permissions d'un utilisateur"""
     try:
         conn = db_manager.get_connection()
@@ -5743,7 +5743,7 @@ async def get_permissions(username: str):
 
 @app.post("/admin/change-password")
 @app.post("/admin-dashboard/change-password")
-async def change_password(request: Request):
+async def change_password(request: Request, _admin_user: str = Depends(require_admin)):
     """Changer son propre mot de passe"""
     data = await request.json()
     new_password = data.get("newPassword")
@@ -23356,11 +23356,7 @@ async def permission_denied_handler(request: Request, exc: HTTPException):
 
 @app.get("/admin/activate-subscription")
 @app.get("/admin-dashboard/activate-subscription")
-async def admin_activate_subscription(
-    username: str,
-    plan: str,
-    request: Request
-):
+async def admin_activate_subscription(username: str, plan: str, request: Request, _admin_user: str = Depends(require_admin)):
     """
     Route d'admin pour activer manuellement un abonnement
     Usage: /admin/activate-subscription?username=admin&plan=1_month
@@ -23764,6 +23760,7 @@ async def admin_dashboard(request: Request, _admin_user: str = Depends(require_a
       <h2 style="margin:0 0 8px 0;">⚡ Outils Admin</h2>
       <div style="opacity:.75; margin-bottom:10px;">Accès rapide aux sections avancées.</div>
       <div class="tools">
+        <a class="btn orange" href="/admin-dashboard/users">👥 Utilisateurs</a>
         <a class="btn orange" href="/admin-dashboard/list-promos">🎟️ Codes Promo</a>
         <a class="btn orange" href="/admin-dashboard/ebooks">📚 Ebooks</a>
         <a class="btn secondary" href="/admin-dashboard/update-plan-features">🧩 Plan Features (toggles)</a>
@@ -23923,7 +23920,8 @@ async def admin_test_promo(
     code: str,
     plan: str = "1_month",
     amount: float = 29.99,
-    session_token: Optional[str] = Cookie(None)
+    session_token: Optional[str] = Cookie(None),
+    _admin_user: str = Depends(require_admin),
 ):
     """Teste la validation d'un code promo"""
     user = get_user_from_token(session_token)
@@ -24422,6 +24420,656 @@ async def admin_api_list_promos(session_token: Optional[str] = Cookie(None)):
         import traceback
         traceback.print_exc()
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+@app.get("/admin-dashboard/list-promos", response_class=HTMLResponse)
+async def admin_list_promos_page(request: Request, _admin_user: str = Depends(require_admin)):
+    """Page admin: gérer les codes promo (liste + création + suppression)."""
+    html = """<!doctype html>
+<html lang='fr'>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Codes Promo — Admin</title>
+  <style>
+    body {{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b1220; color:#e5e7eb; }}
+    .container {{ max-width:1100px; margin:0 auto; padding:28px 18px; }}
+    .card {{ background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.10); border-radius:18px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }}
+    .row {{ display:grid; grid-template-columns: 420px 1fr; gap:12px; align-items:start; }}
+    @media (max-width: 980px) {{ .row {{ grid-template-columns: 1fr; }} }}
+    h1 {{ margin:0 0 8px 0; font-size:32px; }}
+    .muted {{ opacity:.8; }}
+    label {{ display:block; margin:12px 0 6px; font-weight:700; }}
+    input, select {{ width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.25); color:#e5e7eb; }}
+    .btn {{ display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 12px; border-radius:12px; border:1px solid rgba(6,182,212,0.35); background: rgba(6,182,212,0.12); color:#e5e7eb; cursor:pointer; font-weight:800; }}
+    .btn:hover {{ filter: brightness(1.1); }}
+    .btn.danger {{ border-color: rgba(239,68,68,0.45); background: rgba(239,68,68,0.15); }}
+    .btn.secondary {{ border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); }}
+    .actions {{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }}
+    table {{ width:100%; border-collapse: collapse; }}
+    th, td {{ text-align:left; padding:10px 10px; border-bottom:1px solid rgba(255,255,255,0.10); font-size:14px; vertical-align: top; }}
+    th {{ opacity:.9; }}
+    code {{ background: rgba(255,255,255,0.08); padding:2px 8px; border-radius:10px; }}
+    .pill {{ display:inline-flex; padding:2px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.12); opacity:.92; font-size:12px; }}
+    .toast {{ margin-top:10px; padding:10px 12px; border-radius:12px; display:none; }}
+    .toast.ok {{ display:block; background: rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.35); }}
+    .toast.bad {{ display:block; background: rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); }}
+  </style>
+</head>
+<body>
+  {SIDEBAR}
+  <div class="container">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <div>
+        <h1>🎟️ Codes Promo</h1>
+        <div class="muted">Créer, lister et supprimer les codes promo.</div>
+      </div>
+      <div class="actions">
+        <a class="btn secondary" href="/admin-dashboard">⬅ Retour Admin</a>
+        <a class="btn" href="/admin-dashboard/create-launch-promos">🚀 Promos lancement</a>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div class="row">
+      <div class="card">
+        <h2 style="margin:0 0 10px 0;">➕ Créer un code</h2>
+
+        <label>Code *</label>
+        <input id="code" placeholder="Ex: WELCOME10" maxlength="32" />
+
+        <label>Type</label>
+        <select id="type">
+          <option value="percentage">Pourcentage (%)</option>
+          <option value="fixed">Montant fixe</option>
+        </select>
+
+        <label>Rabais *</label>
+        <input id="discount" type="number" step="0.01" min="0" placeholder="Ex: 10 (pour 10%)" />
+
+        <label>Valide jusqu'au (optionnel)</label>
+        <input id="valid_until" type="date" />
+
+        <label>Utilisations max (optionnel)</label>
+        <input id="max_uses" type="number" min="1" step="1" placeholder="Ex: 200" />
+
+        <div class="actions">
+          <button class="btn" onclick="createPromo()">Créer</button>
+          <button class="btn secondary" onclick="resetForm()">Réinitialiser</button>
+        </div>
+
+        <div id="toast" class="toast"></div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+          <h2 style="margin:0;">📋 Liste</h2>
+          <div class="actions">
+            <button class="btn secondary" onclick="loadPromos()">🔄 Rafraîchir</button>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Rabais</th>
+                <th>Validité</th>
+                <th>Utilisations</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbody">
+              <tr><td colspan="5" class="muted">Chargement...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="toast2" class="toast"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  function toast(id, ok, msg) {{
+    const el = document.getElementById(id);
+    el.className = "toast " + (ok ? "ok" : "bad");
+    el.textContent = msg || (ok ? "OK" : "Erreur");
+  }}
+
+  function resetForm() {{
+    document.getElementById("code").value = "";
+    document.getElementById("type").value = "percentage";
+    document.getElementById("discount").value = "";
+    document.getElementById("valid_until").value = "";
+    document.getElementById("max_uses").value = "";
+    document.getElementById("toast").style.display = "none";
+  }}
+
+  function fmtDate(d) {{
+    if (!d) return "—";
+    try {{
+      if (typeof d === "string") return d;
+      return new Date(d).toISOString().slice(0,10);
+    }} catch(e) {{ return String(d); }}
+  }}
+
+  async function loadPromos() {{
+    try {{
+      const res = await fetch("/admin-dashboard/api/list-promos");
+      const data = await res.json();
+      if (!data || !data.success) {{
+        document.getElementById("tbody").innerHTML = `<tr><td colspan="5">Erreur: ${data?.message || "inconnue"}</td></tr>`;
+        toast("toast2", false, data?.message || "Non autorisé / erreur");
+        return;
+      }}
+      const promos = data.promos || [];
+      if (promos.length === 0) {{
+        document.getElementById("tbody").innerHTML = `<tr><td colspan="5" class="muted">Aucun code promo.</td></tr>`;
+        return;
+      }}
+      const rows = promos.map(p => {{
+        const code = p.code || "";
+        const type = p.type || "percentage";
+        const discount = p.discount ?? "";
+        const label = type === "fixed" ? `${discount}$` : `${discount}%`;
+        const valid = p.valid_until || "";
+        const used = (p.used_count ?? 0);
+        const maxu = p.max_uses ?? null;
+        const usage = maxu ? `${used}/${maxu}` : `${used}/∞`;
+        return `
+          <tr>
+            <td><code>${code}</code></td>
+            <td><span class="pill">${label}</span></td>
+            <td>${valid ? valid : "—"}</td>
+            <td>${usage}</td>
+            <td>
+              <button class="btn danger" onclick="deletePromo('${code.replace(/'/g, "\\'")}')">🗑 Supprimer</button>
+            </td>
+          </tr>
+        `;
+      }}).join("");
+      document.getElementById("tbody").innerHTML = rows;
+    }} catch(e) {{
+      document.getElementById("tbody").innerHTML = `<tr><td colspan="5">Erreur chargement: ${e}</td></tr>`;
+      toast("toast2", false, "Erreur chargement: " + e);
+    }}
+  }}
+
+  async function createPromo() {{
+    try {{
+      const code = (document.getElementById("code").value || "").trim().toUpperCase();
+      const type = document.getElementById("type").value;
+      const discount = parseFloat(document.getElementById("discount").value || "");
+      const valid_until = document.getElementById("valid_until").value || null;
+      const max_uses_raw = document.getElementById("max_uses").value || "";
+      const max_uses = max_uses_raw ? parseInt(max_uses_raw) : null;
+
+      if (!code || isNaN(discount)) {{
+        toast("toast", false, "Code et rabais obligatoires.");
+        return;
+      }}
+
+      const res = await fetch("/admin-dashboard/create-promo", {{
+        method: "POST",
+        headers: {{ "Content-Type": "application/json" }},
+        body: JSON.stringify({{ code, type, discount, valid_until, max_uses }})
+      }});
+      const data = await res.json();
+      if (!res.ok || !data?.success) {{
+        toast("toast", false, data?.message || "Erreur création.");
+        return;
+      }}
+      toast("toast", true, data?.message || "Créé.");
+      await loadPromos();
+    }} catch(e) {{
+      toast("toast", false, "Erreur: " + e);
+    }}
+  }}
+
+  async function deletePromo(code) {{
+    if (!code) return;
+    if (!confirm("Supprimer le code " + code + " ?")) return;
+    try {{
+      const res = await fetch("/admin-dashboard/delete-promo", {{
+        method: "POST",
+        headers: {{ "Content-Type": "application/json" }},
+        body: JSON.stringify({{ code }})
+      }});
+      const data = await res.json();
+      const ok = res.ok && data?.success;
+      toast("toast2", ok, data?.message || (ok ? "Supprimé" : "Erreur suppression"));
+      if (ok) await loadPromos();
+    }} catch(e) {{
+      toast("toast2", false, "Erreur suppression: " + e);
+    }}
+  }}
+
+  loadPromos();
+</script>
+</body>
+</html>""".replace("{SIDEBAR}", SIDEBAR)
+    return HTMLResponse(html)
+
+
+@app.get("/admin-dashboard/create-launch-promos", response_class=HTMLResponse)
+async def admin_launch_promos_page(request: Request, _admin_user: str = Depends(require_admin)):
+    """Page admin: créer rapidement des promos de lancement."""
+    html = """<!doctype html>
+<html lang='fr'>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Promos Lancement — Admin</title>
+  <style>
+    body {{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b1220; color:#e5e7eb; }}
+    .container {{ max-width:980px; margin:0 auto; padding:28px 18px; }}
+    .card {{ background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.10); border-radius:18px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }}
+    h1 {{ margin:0 0 8px 0; font-size:32px; }}
+    .muted {{ opacity:.8; }}
+    label {{ display:block; margin:12px 0 6px; font-weight:700; }}
+    input {{ width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.25); color:#e5e7eb; }}
+    .btn {{ display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 12px; border-radius:12px; border:1px solid rgba(6,182,212,0.35); background: rgba(6,182,212,0.12); color:#e5e7eb; cursor:pointer; font-weight:800; }}
+    .btn:hover {{ filter: brightness(1.1); }}
+    .btn.secondary {{ border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); }}
+    .grid {{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }}
+    @media (max-width: 800px) {{ .grid {{ grid-template-columns: 1fr; }} }}
+    .toast {{ margin-top:12px; padding:10px 12px; border-radius:12px; display:none; }}
+    .toast.ok {{ display:block; background: rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.35); }}
+    .toast.bad {{ display:block; background: rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); }}
+    code {{ background: rgba(255,255,255,0.08); padding:2px 8px; border-radius:10px; }}
+  </style>
+</head>
+<body>
+  {SIDEBAR}
+  <div class="container">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <div>
+        <h1>🚀 Promos de lancement</h1>
+        <div class="muted">Crée un pack de codes promo « prêts à vendre ». (Idempotent: ne duplique pas si déjà existants.)</div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn secondary" href="/admin-dashboard">⬅ Retour Admin</a>
+        <a class="btn secondary" href="/admin-dashboard/list-promos">🎟️ Voir promos</a>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div class="card">
+      <h2 style="margin:0 0 10px 0;">⚙️ Paramètres</h2>
+      <div class="grid">
+        <div>
+          <label>Valide (jours)</label>
+          <input id="days" type="number" min="1" step="1" value="14" />
+        </div>
+        <div>
+          <label>Utilisations max par code</label>
+          <input id="maxuses" type="number" min="1" step="1" value="200" />
+        </div>
+      </div>
+
+      <div style="height:10px"></div>
+      <div class="muted">Codes créés:</div>
+      <ul class="muted" style="line-height:1.7;">
+        <li><code>WELCOME10</code> — 10%</li>
+        <li><code>LAUNCH20</code> — 20%</li>
+        <li><code>VIP30</code> — 30%</li>
+      </ul>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn" onclick="createPack()">Créer le pack</button>
+        <button class="btn secondary" onclick="location.href='/admin-dashboard/list-promos'">Voir la liste</button>
+      </div>
+
+      <div id="toast" class="toast"></div>
+    </div>
+  </div>
+
+<script>
+  function toast(ok, msg) {{
+    const el = document.getElementById("toast");
+    el.className = "toast " + (ok ? "ok" : "bad");
+    el.textContent = msg || (ok ? "OK" : "Erreur");
+  }}
+
+  async function createPack() {{
+    try {{
+      const days_valid = parseInt(document.getElementById("days").value || "14");
+      const max_uses = parseInt(document.getElementById("maxuses").value || "200");
+      const res = await fetch("/admin-dashboard/create-launch-promos", {{
+        method: "POST",
+        headers: {{ "Content-Type": "application/json" }},
+        body: JSON.stringify({{ days_valid, max_uses }})
+      }});
+      const data = await res.json();
+      const ok = res.ok && (data?.success || data?.status === "ok");
+      toast(ok, data?.message || (ok ? "Pack créé." : "Erreur"));
+    }} catch(e) {{
+      toast(false, "Erreur: " + e);
+    }}
+  }}
+</script>
+</body>
+</html>""".replace("{SIDEBAR}", SIDEBAR)
+    return HTMLResponse(html)
+
+
+@app.post("/admin-dashboard/create-launch-promos")
+async def admin_create_launch_promos_post(request: Request, _admin_user: str = Depends(require_admin)):
+    """Crée un pack de promos de lancement (idempotent)."""
+    try:
+        payload = {}
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        days_valid = int(payload.get("days_valid", 14) or 14)
+        max_uses = int(payload.get("max_uses", 200) or 200)
+
+        # Définition du pack
+        pack = [
+            {"code": "WELCOME10", "discount": 10, "type": "percentage"},
+            {"code": "LAUNCH20", "discount": 20, "type": "percentage"},
+            {"code": "VIP30", "discount": 30, "type": "percentage"},
+        ]
+
+        from datetime import datetime, timedelta
+        valid_until = (datetime.utcnow() + timedelta(days=max(1, days_valid))).date().isoformat()
+
+        conn = db_manager.get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS promo_codes (
+                code TEXT PRIMARY KEY,
+                discount REAL NOT NULL,
+                type TEXT DEFAULT 'percentage',
+                valid_until TEXT,
+                max_uses INTEGER DEFAULT NULL,
+                used_count INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        created = 0
+        skipped = 0
+        for p in pack:
+            code = p["code"].upper().strip()
+            # Check existing
+            if db_manager.use_postgresql:
+                cur.execute("SELECT code FROM promo_codes WHERE code = %s", (code,))
+            else:
+                cur.execute("SELECT code FROM promo_codes WHERE code = ?", (code,))
+            if cur.fetchone():
+                skipped += 1
+                continue
+            if db_manager.use_postgresql:
+                cur.execute(
+                    "INSERT INTO promo_codes (code, discount, type, valid_until, max_uses) VALUES (%s,%s,%s,%s,%s)",
+                    (code, p["discount"], p["type"], valid_until, max_uses)
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO promo_codes (code, discount, type, valid_until, max_uses) VALUES (?,?,?,?,?)",
+                    (code, p["discount"], p["type"], valid_until, max_uses)
+                )
+            created += 1
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return JSONResponse({
+            "success": True,
+            "message": f"Pack promos: {created} créé(s), {skipped} déjà existant(s). (Valide jusqu’au {valid_until})"
+        })
+    except Exception as e:
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+@app.get("/admin-dashboard/users", response_class=HTMLResponse)
+async def admin_users_page(request: Request, _admin_user: str = Depends(require_admin)):
+    """Page admin: gestion utilisateurs (création, suppression, rôle, abonnement)."""
+    html = """<!doctype html>
+<html lang='fr'>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Utilisateurs — Admin</title>
+  <style>
+    body {{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background:#0b1220; color:#e5e7eb; }}
+    .container {{ max-width:1100px; margin:0 auto; padding:28px 18px; }}
+    .card {{ background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.10); border-radius:18px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }}
+    .row {{ display:grid; grid-template-columns: 420px 1fr; gap:12px; align-items:start; }}
+    @media (max-width: 980px) {{ .row {{ grid-template-columns: 1fr; }} }}
+    h1 {{ margin:0 0 8px 0; font-size:32px; }}
+    .muted {{ opacity:.8; }}
+    label {{ display:block; margin:12px 0 6px; font-weight:700; }}
+    input, select {{ width:100%; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.25); color:#e5e7eb; }}
+    .btn {{ display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 12px; border-radius:12px; border:1px solid rgba(6,182,212,0.35); background: rgba(6,182,212,0.12); color:#e5e7eb; cursor:pointer; font-weight:800; }}
+    .btn:hover {{ filter: brightness(1.1); }}
+    .btn.secondary {{ border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); }}
+    .btn.danger {{ border-color: rgba(239,68,68,0.45); background: rgba(239,68,68,0.15); }}
+    code {{ background: rgba(255,255,255,0.08); padding:2px 8px; border-radius:10px; }}
+    .grid2 {{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; }}
+    .toast {{ margin-top:10px; padding:10px 12px; border-radius:12px; display:none; }}
+    .toast.ok {{ display:block; background: rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.35); }}
+    .toast.bad {{ display:block; background: rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); }}
+  </style>
+</head>
+<body>
+  {SIDEBAR}
+  <div class="container">
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <div>
+        <h1>👥 Utilisateurs</h1>
+        <div class="muted">Créer, modifier le rôle, activer un forfait, supprimer.</div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn secondary" href="/admin-dashboard">⬅ Retour Admin</a>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div class="row">
+      <div class="card">
+        <h2 style="margin:0 0 10px 0;">➕ Ajouter utilisateur</h2>
+
+        <label>Username *</label>
+        <input id="nu" placeholder="ex: john" />
+
+        <label>Mot de passe *</label>
+        <input id="np" type="password" placeholder="min 6 caractères" />
+
+        <label>Forfait (création)</label>
+        <select id="nplan">
+          <option value="free">Free</option>
+          <option value="1_month">Premium (1 mois)</option>
+          <option value="3_months">Advanced (3 mois)</option>
+          <option value="6_months">Pro (6 mois)</option>
+          <option value="1_year">Elite (1 an)</option>
+        </select>
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+          <button class="btn" onclick="addUser()">Créer</button>
+          <button class="btn secondary" onclick="resetNew()">Reset</button>
+        </div>
+
+        <div id="t1" class="toast"></div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin:0 0 10px 0;">🔎 Gérer un utilisateur</h2>
+
+        <label>Username</label>
+        <div class="grid2">
+          <input id="q" placeholder="ex: john" />
+          <button class="btn secondary" onclick="loadUser()">Charger</button>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div id="uinfo" class="muted">Aucun utilisateur chargé.</div>
+
+        <div style="height:10px"></div>
+
+        <label>Rôle (admin/user)</label>
+        <select id="urole">
+          <option value="user">user</option>
+          <option value="admin">admin</option>
+        </select>
+
+        <label>Nouveau mot de passe (optionnel)</label>
+        <input id="upass" type="password" placeholder="laisser vide pour ne pas changer" />
+
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+          <button class="btn" onclick="saveRole()">💾 Sauver rôle / mdp</button>
+          <button class="btn" onclick="activatePlan()">⭐ Activer forfait</button>
+          <button class="btn danger" onclick="deleteUser()">🗑 Supprimer</button>
+        </div>
+
+        <div style="height:10px"></div>
+        <label>Forfait à activer</label>
+        <select id="plan">
+          <option value="free">Free</option>
+          <option value="1_month">Premium (1 mois)</option>
+          <option value="3_months">Advanced (3 mois)</option>
+          <option value="6_months">Pro (6 mois)</option>
+          <option value="1_year">Elite (1 an)</option>
+        </select>
+
+        <div id="t2" class="toast"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let current = null;
+
+  function toast(id, ok, msg) {{
+    const el = document.getElementById(id);
+    el.className = "toast " + (ok ? "ok" : "bad");
+    el.textContent = msg || (ok ? "OK" : "Erreur");
+  }}
+
+  function resetNew() {{
+    document.getElementById("nu").value = "";
+    document.getElementById("np").value = "";
+    document.getElementById("nplan").value = "free";
+    document.getElementById("t1").style.display = "none";
+  }}
+
+  async function addUser() {{
+    try {{
+      const username = (document.getElementById("nu").value||"").trim();
+      const password = document.getElementById("np").value||"";
+      const role = document.getElementById("nplan").value;
+      const res = await fetch("/admin-dashboard/add-user", {{
+        method:"POST",
+        headers:{{"Content-Type":"application/json"}},
+        body: JSON.stringify({{ username, password, role }})
+      }});
+      const data = await res.json();
+      const ok = !!data?.success;
+      toast("t1", ok, data?.message || (ok ? "Créé" : "Erreur"));
+    }} catch(e) {{
+      toast("t1", false, "Erreur: " + e);
+    }}
+  }}
+
+  async function loadUser() {{
+    try {{
+      const u = (document.getElementById("q").value||"").trim();
+      if (!u) return toast("t2", false, "Username requis.");
+      const res = await fetch("/admin-dashboard/get-user/" + encodeURIComponent(u));
+      const data = await res.json();
+      if (!res.ok || !data?.success) {{
+        current = null;
+        document.getElementById("uinfo").textContent = "Introuvable.";
+        return toast("t2", false, data?.message || "Introuvable");
+      }}
+      current = data.user;
+      document.getElementById("uinfo").innerHTML = `
+        <div>Username: <code>${current.username}</code></div>
+        <div>Role: <code>${current.role}</code></div>
+        <div>Plan: <code>${current.subscription_plan || "—"}</code></div>
+        <div>Créé: <code>${current.created_at || "—"}</code></div>
+      `;
+      document.getElementById("urole").value = (current.role || "user");
+      toast("t2", true, "Chargé.");
+    }} catch(e) {{
+      toast("t2", false, "Erreur: " + e);
+    }}
+  }}
+
+  async function saveRole() {{
+    try {{
+      if (!current?.username) return toast("t2", false, "Charge un utilisateur d'abord.");
+      const originalUsername = current.username;
+      const username = current.username;
+      const role = document.getElementById("urole").value;
+      const password = (document.getElementById("upass").value||"").trim();
+      const res = await fetch("/admin-dashboard/edit-user", {{
+        method:"POST",
+        headers:{{"Content-Type":"application/json"}},
+        body: JSON.stringify({{ originalUsername, username, role, password }})
+      }});
+      const data = await res.json();
+      const ok = !!data?.success;
+      toast("t2", ok, data?.message || (ok ? "Sauvé" : "Erreur"));
+      if (ok) {{
+        document.getElementById("upass").value = "";
+        await loadUser();
+      }}
+    }} catch(e) {{
+      toast("t2", false, "Erreur: " + e);
+    }}
+  }}
+
+  async function activatePlan() {{
+    try {{
+      if (!current?.username) return toast("t2", false, "Charge un utilisateur d'abord.");
+      const plan = document.getElementById("plan").value;
+      const url = "/admin-dashboard/activate-subscription?username=" + encodeURIComponent(current.username) + "&plan=" + encodeURIComponent(plan);
+      const res = await fetch(url);
+      const data = await res.json();
+      const ok = !data?.error;
+      toast("t2", ok, data?.message || (ok ? "Forfait activé." : (data?.error || "Erreur")));
+      if (ok) await loadUser();
+    }} catch(e) {{
+      toast("t2", false, "Erreur: " + e);
+    }}
+  }}
+
+  async function deleteUser() {{
+    try {{
+      if (!current?.username) return toast("t2", false, "Charge un utilisateur d'abord.");
+      if (!confirm("Supprimer " + current.username + " ?")) return;
+      const res = await fetch("/admin-dashboard/delete-user", {{
+        method:"POST",
+        headers:{{"Content-Type":"application/json"}},
+        body: JSON.stringify({{ username: current.username }})
+      }});
+      const data = await res.json();
+      const ok = (data?.status === "success") || data?.success;
+      toast("t2", ok, data?.message || (ok ? "Supprimé" : "Erreur"));
+      if (ok) {{
+        current = null;
+        document.getElementById("uinfo").textContent = "Aucun utilisateur chargé.";
+      }}
+    }} catch(e) {{
+      toast("t2", false, "Erreur: " + e);
+    }}
+  }}
+</script>
+</body>
+</html>""".replace("{SIDEBAR}", SIDEBAR)
+    return HTMLResponse(html)
+
 
 
 # ============================================================================

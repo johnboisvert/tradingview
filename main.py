@@ -3658,7 +3658,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 USE_POSTGRESQL = POSTGRESQL_AVAILABLE and DATABASE_URL is not None
 
 # Base de donnes des utilisateurs et sessions
-USERS_DB = "/tmp/users.db"  # Force /tmp pour Railway
+USERS_DB = os.path.join(DB_DIR, "users.db")  # SQLite users DB (persistant via DB_DIR)
 active_sessions = {}  # 🆕 {token: {"username": str, "subscription_plan": str, ...}}
 
 class DatabaseManager:
@@ -5654,21 +5654,28 @@ async def admin_list_users(q: str = "", limit: int = 200, _admin_user: str = Dep
         conn.close()
 
         def _to_dt(v):
+            import datetime as dt
             if v is None:
                 return None
-            if isinstance(v, (datetime.datetime, datetime.date)):
-                return datetime.datetime(v.year, v.month, v.day) if isinstance(v, datetime.date) and not isinstance(v, datetime.datetime) else v
-            s = str(v)
-            # sqlite may store "YYYY-MM-DD HH:MM:SS"
+            # psycopg2 may return datetime/date objects; sqlite may return str
+            if isinstance(v, (dt.datetime, dt.date)):
+                # If it's a date (no time), normalize to midnight
+                if isinstance(v, dt.date) and not isinstance(v, dt.datetime):
+                    return dt.datetime(v.year, v.month, v.day)
+                return v
+            s = str(v).strip()
+            if not s:
+                return None
+            # sqlite may store "YYYY-MM-DD HH:MM:SS" or ISO
             try:
-                return datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))
+                return dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
             except Exception:
                 try:
-                    return datetime.datetime.strptime(s[:19], "%Y-%m-%d %H:%M:%S")
+                    return dt.datetime.strptime(s[:19], "%Y-%m-%d %H:%M:%S")
                 except Exception:
                     return None
 
-        now = datetime.datetime.utcnow()
+        now = datetime.utcnow()
         users = []
         for r in rows:
             username, role, plan, sub_end, created_at = r[0], r[1], r[2], r[3], r[4]

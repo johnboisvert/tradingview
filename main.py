@@ -5615,6 +5615,79 @@ async def get_user_info(username: str, _admin_user: str = Depends(require_admin)
     except Exception as e:
         return {"success": False, "message": str(e)}
 
+
+
+@app.get("/admin-dashboard/api/list-users")
+async def admin_list_users(q: str = "", limit: int = 200, _admin_user: str = Depends(require_admin)):
+    """Liste des utilisateurs (admin)."""
+    try:
+        q = (q or "").strip()
+        limit = int(limit) if limit else 200
+        limit = max(1, min(limit, 1000))
+
+        conn = db_manager.get_connection()
+        c = conn.cursor()
+        if db_manager.use_postgresql:
+            if q:
+                c.execute(
+                    "SELECT username, role, subscription_plan, subscription_end, created_at FROM users WHERE username ILIKE %s ORDER BY created_at DESC LIMIT %s",
+                    (f"%{q}%", limit),
+                )
+            else:
+                c.execute(
+                    "SELECT username, role, subscription_plan, subscription_end, created_at FROM users ORDER BY created_at DESC LIMIT %s",
+                    (limit,),
+                )
+        else:
+            if q:
+                c.execute(
+                    "SELECT username, role, subscription_plan, subscription_end, created_at FROM users WHERE username LIKE ? ORDER BY created_at DESC LIMIT ?",
+                    (f"%{q}%", limit),
+                )
+            else:
+                c.execute(
+                    "SELECT username, role, subscription_plan, subscription_end, created_at FROM users ORDER BY created_at DESC LIMIT ?",
+                    (limit,),
+                )
+
+        rows = c.fetchall()
+        conn.close()
+
+        def _to_dt(v):
+            if v is None:
+                return None
+            if isinstance(v, (datetime.datetime, datetime.date)):
+                return datetime.datetime(v.year, v.month, v.day) if isinstance(v, datetime.date) and not isinstance(v, datetime.datetime) else v
+            s = str(v)
+            # sqlite may store "YYYY-MM-DD HH:MM:SS"
+            try:
+                return datetime.datetime.fromisoformat(s.replace("Z", "+00:00"))
+            except Exception:
+                try:
+                    return datetime.datetime.strptime(s[:19], "%Y-%m-%d %H:%M:%S")
+                except Exception:
+                    return None
+
+        now = datetime.datetime.utcnow()
+        users = []
+        for r in rows:
+            username, role, plan, sub_end, created_at = r[0], r[1], r[2], r[3], r[4]
+            plan = (plan or "free").lower()
+            end_dt = _to_dt(sub_end)
+            active = bool(plan and plan != "free" and end_dt and end_dt > now)
+            users.append({
+                "username": username,
+                "role": role or "user",
+                "plan": plan,
+                "expire": end_dt.strftime("%Y-%m-%d") if end_dt else "",
+                "active": active,
+                "created_at": str(created_at) if created_at is not None else "",
+            })
+
+        return {"success": True, "users": users}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
 @app.post("/admin/edit-user")
 @app.post("/admin-dashboard/edit-user")
 async def edit_user(request: Request, _admin_user: str = Depends(require_admin)):
@@ -24880,6 +24953,16 @@ async def admin_users_page(request: Request, _admin_user: str = Depends(require_
     .toast {{ margin-top:10px; padding:10px 12px; border-radius:12px; display:none; }}
     .toast.ok {{ display:block; background: rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.35); }}
     .toast.bad {{ display:block; background: rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.35); }}
+  
+    .tablewrap {{ overflow:auto; border-radius:14px; border:1px solid rgba(255,255,255,.12); }}
+    table {{ width:100%; border-collapse:collapse; font-size:14px; }}
+    th, td {{ padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08); text-align:left; }}
+    th {{ color:#cbd5e1; font-weight:700; font-size:12px; text-transform:uppercase; letter-spacing:.08em; }}
+    tr:hover td {{ background: rgba(255,255,255,.04); cursor:pointer; }}
+    .badge {{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.06); }}
+    .badge.ok {{ border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.12); }}
+    .badge.bad {{ border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.12); }}
+
   </style>
 </head>
 <body>
@@ -24967,6 +25050,33 @@ async def admin_users_page(request: Request, _admin_user: str = Depends(require_
         <div id="t2" class="toast"></div>
       </div>
     </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <h2 style="margin:0;">📋 Liste des utilisateurs</h2>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input id="qsearch" placeholder="Rechercher (username)..." style="min-width:240px;" />
+          <button class="btn" onclick="loadList()">↻ Rafraîchir</button>
+        </div>
+      </div>
+      <div class="muted" style="margin-top:6px;">Clique sur une ligne pour charger l’utilisateur dans le panneau “Gérer un utilisateur”.</div>
+      <div class="tablewrap" style="margin-top:12px;">
+        <table id="ut">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Rôle</th>
+              <th>Forfait</th>
+              <th>Expire</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="t3" class="toast" style="margin-top:12px;"></div>
+    </div>
+
   </div>
 
 <script>
@@ -24985,6 +25095,47 @@ async def admin_users_page(request: Request, _admin_user: str = Depends(require_
     document.getElementById("t1").style.display = "none";
   }}
 
+  async function loadList() {{
+    try {{
+      const q = (document.getElementById("qsearch").value || "").trim();
+      const url = "/admin-dashboard/api/list-users" + (q ? ("?q=" + encodeURIComponent(q)) : "");
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data?.success) {{
+        toast("t3", false, data?.message || "Erreur");
+        return;
+      }}
+      const tbody = document.querySelector("#ut tbody");
+      tbody.innerHTML = "";
+      (data.users || []).forEach(u => {{
+        const tr = document.createElement("tr");
+        const exp = u.expire || "";
+        const status = u.active ? '<span class="badge ok">Actif</span>' : '<span class="badge bad">Inactif</span>';
+        tr.innerHTML = `
+          <td>${{u.username}}</td>
+          <td><span class="badge">${{u.role}}</span></td>
+          <td><span class="badge">${{u.plan}}</span></td>
+          <td>${{exp}}</td>
+          <td>${{status}}</td>
+        `;
+        tr.addEventListener("click", () => {{
+          document.getElementById("q").value = u.username;
+          loadUser();
+          window.scrollTo({{ top: 0, behavior: "smooth" }});
+        }});
+        tbody.appendChild(tr);
+      }});
+      toast("t3", true, `${{(data.users||[]).length}} utilisateur(s) chargé(s)`);
+    }} catch(e) {{
+      toast("t3", false, "Erreur: " + e);
+    }}
+  }}
+
+  // Auto-load list
+  document.addEventListener("DOMContentLoaded", () => {{
+    loadList();
+  }});
+
   async function addUser() {{
     try {{
       const username = (document.getElementById("nu").value||"").trim();
@@ -24998,6 +25149,7 @@ async def admin_users_page(request: Request, _admin_user: str = Depends(require_
       const data = await res.json();
       const ok = !!data?.success;
       toast("t1", ok, data?.message || (ok ? "Créé" : "Erreur"));
+          if (ok) { resetNew(); await loadList(); }
     }} catch(e) {{
       toast("t1", false, "Erreur: " + e);
     }}
@@ -25083,6 +25235,7 @@ async def admin_users_page(request: Request, _admin_user: str = Depends(require_
         current = null;
         document.getElementById("uinfo").textContent = "Aucun utilisateur chargé.";
       }}
+        await loadList();
     }} catch(e) {{
       toast("t2", false, "Erreur: " + e);
     }}
